@@ -13,6 +13,9 @@
   --border-color: rgba(0,0,0,0.06);
   --card-bg: #ffffff;
   --inner-surface: rgba(255,255,255,0.85);
+  --form-bg: #ffffff;
+  --form-text: #1a1a1a;
+  --form-border: #e2e8f0;
 }
 
 .theme-dark {
@@ -29,6 +32,9 @@
   --border-color: rgba(255,255,255,0.08);
   --card-bg: #243140;
   --inner-surface: rgba(255,255,255,0.04);
+  --form-bg: #ffffff;
+  --form-text: #1a1a1a;
+  --form-border: #e2e8f0;
 }
 
 .theme-highcontrast {
@@ -49,4 +55,7 @@
   --secondary-color: #ffc107;
   --warning-color: #ffcc00;
   --info-color: #66d9ef;
+  --form-bg: #ffffff;
+  --form-text: #000000;
+  --form-border: #666666;
 }

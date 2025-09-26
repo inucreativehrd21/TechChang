@@ -261,14 +261,19 @@ textarea {
 }
 
 .btn-primary {
-    background: var(--gradient-primary);
-    color: white;
+    background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%) !important;
+    color: #ffffff !important;
+    font-weight: 600 !important;
+    border: none !important;
+    padding: 0.75rem 1.5rem !important;
+    border-radius: 8px !important;
 }
 
 .btn-primary:hover {
-    background: var(--gradient-secondary);
-    transform: translateY(-1px);
-    box-shadow: var(--shadow-medium);
+    background: linear-gradient(135deg, #1d4ed8 0%, #1e40af 100%) !important;
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(37, 99, 235, 0.4) !important;
+    color: #ffffff !important;
 }
 
 .btn-outline-secondary {
@@ -349,9 +354,11 @@ textarea {
 
 /* 폼 스타일 고급화 */
 .form-control {
-    border: 2px solid #e9ecef;
+    border: 2px solid var(--form-border);
     border-radius: var(--border-radius-sm);
     padding: 0.75rem 1rem;
+    background: var(--form-bg) !important;
+    color: var(--form-text) !important;
     transition: var(--transition);
     font-size: 1rem;
 }
@@ -359,6 +366,8 @@ textarea {
 .form-control:focus {
     border-color: var(--primary-color);
     box-shadow: 0 0 0 0.2rem rgba(74, 144, 226, 0.25);
+    background: var(--form-bg) !important;
+    color: var(--form-text) !important;
     transform: scale(1.02);
 }
 
@@ -916,7 +925,9 @@ a:hover {
 
 .answer-form-section textarea {
     border-radius: 8px;
-    border: 2px solid #e9ecef;
+    border: 2px solid var(--form-border);
+    background: var(--form-bg) !important;
+    color: var(--form-text) !important;
     transition: all 0.3s ease;
     font-size: 1rem;
     line-height: 1.6;
@@ -927,6 +938,8 @@ a:hover {
 .answer-form-section textarea:focus {
     border-color: var(--primary-color);
     box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25);
+    background: var(--form-bg) !important;
+    color: var(--form-text) !important;
     outline: none;
 }
 

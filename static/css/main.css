@@ -110,20 +110,20 @@
    =========================================== */
 
 .form-control {
-  border: 2px solid var(--border-color);
+  border: 2px solid var(--form-border);
   border-radius: var(--radius-md);
   padding: var(--spacing-md);
   font-size: var(--font-base);
-  color: var(--text-color);
-  background: var(--bg-primary);
+  color: var(--form-text) !important;
+  background: var(--form-bg) !important;
   transition: var(--transition-normal);
 }
 
 .form-control:focus {
   border-color: var(--primary-color);
   box-shadow: 0 0 0 3px rgba(74, 144, 226, 0.1);
-  color: var(--text-color);
-  background: var(--bg-primary);
+  color: var(--form-text) !important;
+  background: var(--form-bg) !important;
 }
 
 .form-label {

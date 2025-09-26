@@ -33,7 +33,17 @@
     <!-- Custom CSS (분리된 토큰/테마/컴포넌트) -->
     <link rel="stylesheet" href="{% static 'css/variables.css' %}">
     <link rel="stylesheet" href="{% static 'css/themes.css' %}">
-    <link rel="stylesheet" href="{% static 'style.css' %}">
+        <!-- Custom CSS (분리된 토큰/테마/컴포넌트) -->
+    <link rel="stylesheet" href="{% static 'css/variables.css' %}">
+    <link rel="stylesheet" href="{% static 'css/themes.css' %}">
+    <link rel="stylesheet" href="{% static 'css/base.css' %}">
+    <link rel="stylesheet" href="{% static 'css/components.css' %}">
+    <link rel="stylesheet" href="{% static 'css/utilities.css' %}">
+    <link rel="stylesheet" href="{% static 'css/main.css' %}">
+    <link rel="stylesheet" href="{% static 'css/form-improvements.css' %}">
+    
+    <!-- Legacy CSS 파일 (점진적 제거 예정) -->
+    <link rel="stylesheet" href="{% static 'style.css' %}"
     
     <title>{% block title %}PyBo - 지식을 나누는 커뮤니티{% endblock %}</title>
 </head>
