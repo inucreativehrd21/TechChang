@@ -1,167 +1,307 @@
-
-{% load static %}
-<!doctype html>
+<!DOCTYPE html>
 <html lang="ko">
 <head>
-    <!-- Required meta tags -->
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-    <meta name="description" content="대한민국 대표 지식 공유 커뮤니티 - PyBo">
-    <meta name="keywords" content="질문답변, 커뮤니티, 지식공유, 개발자">
-    <meta name="author" content="PyBo Community">
+    {% load static %}
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="PyBo - 지식을 나누는 현대적인 개발자 커뮤니티">
+    <meta name="keywords" content="개발, 프로그래밍, 질문, 답변, 커뮤니티">
     
-    <!-- Open Graph Meta Tags -->
-    <meta property="og:title" content="PyBo - 지식을 나누는 커뮤니티">
-    <meta property="og:description" content="개발자들을 위한 최고의 Q&A 플랫폼">
-    <meta property="og:type" content="website">
-    <meta property="og:url" content="{{ request.build_absolute_uri }}">
-    
-    <!-- Favicon -->
-    <link rel="icon" type="image/x-icon" href="{% static 'favicon.ico' %}">
-    
-    <!-- Bootstrap CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    
-    <!-- Font Awesome -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    
-    <!-- Google Fonts -->
+    <!-- Preload fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     
-    <!-- Custom CSS (분리된 토큰/테마/컴포넌트) -->
-    <link rel="stylesheet" href="{% static 'css/variables.css' %}">
-    <link rel="stylesheet" href="{% static 'css/themes.css' %}">
-        <!-- Custom CSS (분리된 토큰/테마/컴포넌트) -->
-    <link rel="stylesheet" href="{% static 'css/variables.css' %}">
-    <link rel="stylesheet" href="{% static 'css/themes.css' %}">
-    <link rel="stylesheet" href="{% static 'css/base.css' %}">
-    <link rel="stylesheet" href="{% static 'css/components.css' %}">
-    <link rel="stylesheet" href="{% static 'css/utilities.css' %}">
-    <link rel="stylesheet" href="{% static 'css/main.css' %}">
-    <link rel="stylesheet" href="{% static 'css/form-improvements.css' %}">
-    
-    <!-- Legacy CSS 파일 (점진적 제거 예정) -->
-    <link rel="stylesheet" href="{% static 'style.css' %}"
+    <!-- Modern CSS Architecture -->
+    <link rel="stylesheet" href="{% static 'css/modern-variables.css' %}">
+    <link rel="stylesheet" href="{% static 'css/modern-themes.css' %}">
+    <link rel="stylesheet" href="{% static 'css/modern-base.css' %}">
+    <link rel="stylesheet" href="{% static 'css/modern-navbar.css' %}">
+    <link rel="stylesheet" href="{% static 'css/modern-forms.css' %}">
+    <link rel="stylesheet" href="{% static 'css/modern-auth.css' %}">
     
     <title>{% block title %}PyBo - 지식을 나누는 커뮤니티{% endblock %}</title>
 </head>
-    <body class="{{ theme_class|default:'theme-light' }}" data-theme-default="light">
-<!-- 네비게이션바 -->
-{% include "navbar.html" %}
-<!-- 기본 템플릿 안에 삽입될 내용 Start -->
-{% block content %}
-{% endblock %}
-<!-- 기본 템플릿 안에 삽입될 내용 End -->
-            <!-- Theme Toggle Script -->
-                        <script>
-                        (function(){
-                            const KEY='site-theme';
-                            const body=document.body;
-                            const IS_AUTH = "{{ user.is_authenticated|yesno:'true,false' }}" === 'true';
-                            function apply(theme){
-                                body.classList.remove('theme-light','theme-dark','theme-highcontrast');
-                                body.classList.add('theme-'+theme);
-                            }
-                            function getCookie(name){
-                                const v=document.cookie.match('(^|;)\\s*'+name+'=([^;]+)');
-                                return v?decodeURIComponent(v.pop()):'';
-                            }
-                            function getCsrf(){
-                                return getCookie('csrftoken');
-                            }
-                            const saved=localStorage.getItem(KEY) || getCookie('site_theme');
-                            if(saved) {
-                                console.log('Applying saved theme:', saved);
-                                apply(saved);
-                            } else {
-                                console.log('No saved theme, using default light');
-                            }
-                            window.setTheme=function(theme){
-                                console.log('Setting theme to:', theme);
-                                apply(theme);
-                                localStorage.setItem(KEY,theme);
-                                document.cookie = 'site_theme='+theme+';path=/;max-age='+(3600*24*365);
-                                console.log('Theme applied, current body classes:', body.className);
-                                if(IS_AUTH){
-                                    fetch('{% url "common:save_theme" %}',{
-                                        method:'POST',
-                                        headers:{'X-CSRFToken': getCsrf(),'Accept':'application/json','Content-Type':'application/x-www-form-urlencoded'},
-                                        body:new URLSearchParams({theme})
-                                    }).then(r=>r.json()).then(d=>{
-                                        if(d.status!=='ok') console.warn('Theme save error',d);
-                                        else console.log('Theme saved successfully:', d);
-                                    }).catch(e=>console.error('Theme save failed',e));
-                                }
-                            };
-                        })();
-                        </script>
- <!-- Bootstrap JS -->
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-
-<!-- Back to Top Button -->
-<button id="backToTop" class="btn btn-primary" style="display: none; position: fixed; bottom: 20px; right: 20px; z-index: 1000; border-radius: 50%; width: 50px; height: 50px;">
-    <i class="fas fa-arrow-up"></i>
-</button>
-
-<!-- Global JavaScript -->
-<script>
-// Back to Top 기능
-document.addEventListener('DOMContentLoaded', function() {
-    const backToTopButton = document.getElementById('backToTop');
+<body class="{{ theme_class|default:'theme-light' }}" data-theme-default="light">
     
-    window.addEventListener('scroll', function() {
-        if (window.pageYOffset > 300) {
-            backToTopButton.style.display = 'block';
-        } else {
-            backToTopButton.style.display = 'none';
+    <!-- Skip to main content -->
+    <a href="#main-content" class="sr-only">메인 콘텐츠로 바로가기</a>
+    
+    <!-- Navigation -->
+    {% include "modern-navbar.html" %}
+    
+    <!-- Main Content -->
+    <main id="main-content" class="main-content">
+        {% block content %}
+        {% endblock %}
+    </main>
+    
+    <!-- Back to Top Button -->
+    <button id="backToTop" class="back-to-top" aria-label="맨 위로 이동">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="m18 15-6-6-6 6"/>
+        </svg>
+    </button>
+    
+    <!-- Scripts -->
+    <script>
+        // Theme Management
+        (function() {
+            const KEY = 'site-theme';
+            const body = document.body;
+            const IS_AUTH = "{{ user.is_authenticated|yesno:'true,false' }}" === 'true';
+            
+            function applyTheme(theme) {
+                body.classList.remove('theme-light', 'theme-dark', 'theme-highcontrast');
+                body.classList.add('theme-' + theme);
+                body.setAttribute('data-theme', theme);
+            }
+            
+            function getCookie(name) {
+                const value = document.cookie.match('(^|;)\\s*' + name + '=([^;]+)');
+                return value ? decodeURIComponent(value.pop()) : '';
+            }
+            
+            function getCsrf() {
+                return getCookie('csrftoken');
+            }
+            
+            // Load saved theme
+            const saved = localStorage.getItem(KEY) || getCookie('site_theme');
+            if (saved && ['light', 'dark', 'highcontrast'].includes(saved)) {
+                applyTheme(saved);
+            }
+            
+            // Global theme setter
+            window.setTheme = function(theme) {
+                applyTheme(theme);
+                localStorage.setItem(KEY, theme);
+                document.cookie = 'site_theme=' + theme + ';path=/;max-age=' + (3600 * 24 * 365);
+                
+                if (IS_AUTH) {
+                    fetch('{% url "common:save_theme" %}', {
+                        method: 'POST',
+                        headers: {
+                            'X-CSRFToken': getCsrf(),
+                            'Accept': 'application/json',
+                            'Content-Type': 'application/x-www-form-urlencoded'
+                        },
+                        body: new URLSearchParams({ theme })
+                    }).catch(console.error);
+                }
+            };
+        })();
+        
+        // Modern Navigation
+        (function() {
+            // Mobile menu toggle
+            const mobileToggle = document.querySelector('[data-mobile-menu]');
+            const mobileNav = document.getElementById('mobile-navigation');
+            
+            if (mobileToggle && mobileNav) {
+                mobileToggle.addEventListener('click', function() {
+                    const isOpen = mobileNav.classList.contains('active');
+                    
+                    if (isOpen) {
+                        mobileNav.classList.remove('active');
+                        mobileToggle.setAttribute('aria-expanded', 'false');
+                    } else {
+                        mobileNav.classList.add('active');
+                        mobileToggle.setAttribute('aria-expanded', 'true');
+                    }
+                });
+            }
+            
+            // Desktop dropdowns
+            const dropdownToggles = document.querySelectorAll('[data-dropdown]');
+            dropdownToggles.forEach(toggle => {
+                const dropdownId = toggle.getAttribute('data-dropdown') + '-dropdown';
+                const dropdown = document.getElementById(dropdownId);
+                
+                if (dropdown) {
+                    toggle.addEventListener('click', function(e) {
+                        e.preventDefault();
+                        const isOpen = dropdown.style.opacity === '1';
+                        
+                        // Close all dropdowns
+                        document.querySelectorAll('.dropdown-menu').forEach(menu => {
+                            menu.style.opacity = '0';
+                            menu.style.visibility = 'hidden';
+                            menu.style.transform = 'translateY(-10px)';
+                        });
+                        
+                        if (!isOpen) {
+                            dropdown.style.opacity = '1';
+                            dropdown.style.visibility = 'visible';
+                            dropdown.style.transform = 'translateY(0)';
+                            toggle.setAttribute('aria-expanded', 'true');
+                        } else {
+                            toggle.setAttribute('aria-expanded', 'false');
+                        }
+                    });
+                }
+            });
+            
+            // Close dropdowns when clicking outside
+            document.addEventListener('click', function(e) {
+                if (!e.target.closest('.nav-dropdown')) {
+                    document.querySelectorAll('.dropdown-menu').forEach(menu => {
+                        menu.style.opacity = '0';
+                        menu.style.visibility = 'hidden';
+                        menu.style.transform = 'translateY(-10px)';
+                    });
+                    document.querySelectorAll('[data-dropdown]').forEach(toggle => {
+                        toggle.setAttribute('aria-expanded', 'false');
+                    });
+                }
+            });
+        })();
+        
+        // Back to Top Button
+        (function() {
+            const backToTop = document.getElementById('backToTop');
+            
+            if (backToTop) {
+                window.addEventListener('scroll', function() {
+                    if (window.pageYOffset > 300) {
+                        backToTop.classList.add('show');
+                    } else {
+                        backToTop.classList.remove('show');
+                    }
+                });
+                
+                backToTop.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    window.scrollTo({
+                        top: 0,
+                        behavior: 'smooth'
+                    });
+                });
+            }
+        })();
+        
+        // Enhanced Form Interactions
+        (function() {
+            // Auto-resize textareas
+            const textareas = document.querySelectorAll('textarea');
+            textareas.forEach(textarea => {
+                textarea.addEventListener('input', function() {
+                    this.style.height = 'auto';
+                    this.style.height = this.scrollHeight + 'px';
+                });
+            });
+            
+            // Focus enhancement
+            const formControls = document.querySelectorAll('.form-control');
+            formControls.forEach(control => {
+                control.addEventListener('focus', function() {
+                    this.parentElement.classList.add('focused');
+                });
+                
+                control.addEventListener('blur', function() {
+                    this.parentElement.classList.remove('focused');
+                });
+            });
+        })();
+    </script>
+    
+    {% block script %}
+    {% endblock %}
+    
+    <style>
+        /* Main content spacing for fixed navbar */
+        .main-content {
+            padding-top: 72px;
+            min-height: calc(100vh - 72px);
         }
-    });
-    
-    backToTopButton.addEventListener('click', function() {
-        window.scrollTo({
-            top: 0,
-            behavior: 'smooth'
-        });
-    });
-
-    // 툴팁 초기화
-    const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
-    tooltipTriggerList.map(function (tooltipTriggerEl) {
-        return new bootstrap.Tooltip(tooltipTriggerEl);
-    });
-
-    // 토스트 초기화
-    const toastElList = [].slice.call(document.querySelectorAll('.toast'));
-    toastElList.map(function (toastEl) {
-        return new bootstrap.Toast(toastEl);
-    });
-});
-
-// 전역 알림 함수
-function showAlert(message, type = 'info') {
-    const alertDiv = document.createElement('div');
-    alertDiv.className = `alert alert-${type} alert-dismissible fade show position-fixed`;
-    alertDiv.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
-    alertDiv.innerHTML = `
-        ${message}
-        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-    `;
-    document.body.appendChild(alertDiv);
-    
-    // 5초 후 자동 제거
-    setTimeout(() => {
-        if (alertDiv.parentNode) {
-            alertDiv.remove();
+        
+        /* Back to top button */
+        .back-to-top {
+            position: fixed;
+            bottom: var(--spacing-6);
+            right: var(--spacing-6);
+            width: 48px;
+            height: 48px;
+            background: var(--primary-500);
+            color: white;
+            border: none;
+            border-radius: var(--radius-full);
+            cursor: pointer;
+            box-shadow: var(--shadow-lg);
+            z-index: var(--z-fixed);
+            opacity: 0;
+            visibility: hidden;
+            transform: translateY(20px);
+            transition: all var(--transition-base);
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
-    }, 5000);
-}
-</script>
-
-<!-- 페이지별 스크립트 -->
-{% block script %}
-{% endblock %}
-
+        
+        .back-to-top.show {
+            opacity: 1;
+            visibility: visible;
+            transform: translateY(0);
+        }
+        
+        .back-to-top:hover {
+            background: var(--primary-600);
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-xl);
+        }
+        
+        /* Auth pages don't need top padding */
+        .auth-page ~ .main-content,
+        .auth-page .main-content {
+            padding-top: 0;
+        }
+        
+        /* Focus enhancement */
+        .focused {
+            transform: scale(1.01);
+        }
+        
+        /* Smooth scrolling */
+        html {
+            scroll-behavior: smooth;
+        }
+        
+        /* Loading states */
+        .loading {
+            pointer-events: none;
+        }
+        
+        .loading::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 20px;
+            height: 20px;
+            margin: -10px 0 0 -10px;
+            border: 2px solid transparent;
+            border-top: 2px solid var(--primary-500);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        /* Print styles */
+        @media print {
+            .modern-navbar,
+            .back-to-top,
+            .mobile-nav {
+                display: none !important;
+            }
+            
+            .main-content {
+                padding-top: 0 !important;
+            }
+        }
+    </style>
 </body>
 </html>

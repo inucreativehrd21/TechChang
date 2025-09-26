@@ -1,0 +1,193 @@
+/* ===========================================
+   모던 베이스 스타일 - Awwwards/Siteinspire 기반
+   =========================================== */
+
+/* CSS Reset & Base */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  font-size: 16px;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+body {
+  font-family: var(--font-family-primary);
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-normal);
+  line-height: 1.6;
+  color: var(--text-primary);
+  background: var(--bg-primary);
+  transition: all var(--transition-base);
+  min-height: 100vh;
+}
+
+/* Typography */
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-family-display);
+  font-weight: var(--font-weight-bold);
+  line-height: 1.2;
+  color: var(--text-primary);
+  margin-bottom: var(--spacing-4);
+}
+
+h1 { font-size: var(--font-size-4xl); }
+h2 { font-size: var(--font-size-3xl); }
+h3 { font-size: var(--font-size-2xl); }
+h4 { font-size: var(--font-size-xl); }
+h5 { font-size: var(--font-size-lg); }
+h6 { font-size: var(--font-size-base); }
+
+p {
+  margin-bottom: var(--spacing-4);
+  color: var(--text-secondary);
+}
+
+a {
+  color: var(--primary-500);
+  text-decoration: none;
+  transition: all var(--transition-fast);
+}
+
+a:hover {
+  color: var(--primary-600);
+  text-decoration: underline;
+}
+
+/* Lists */
+ul, ol {
+  margin-bottom: var(--spacing-4);
+  padding-left: var(--spacing-6);
+}
+
+li {
+  margin-bottom: var(--spacing-1);
+  color: var(--text-secondary);
+}
+
+/* Images */
+img {
+  max-width: 100%;
+  height: auto;
+}
+
+/* Code */
+code {
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  font-size: 0.875em;
+  background: var(--bg-tertiary);
+  padding: var(--spacing-1) var(--spacing-2);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+}
+
+pre {
+  background: var(--bg-tertiary);
+  padding: var(--spacing-4);
+  border-radius: var(--radius-lg);
+  overflow-x: auto;
+  margin-bottom: var(--spacing-4);
+  border: 1px solid var(--border-primary);
+}
+
+pre code {
+  background: none;
+  padding: 0;
+}
+
+/* Tables */
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: var(--spacing-6);
+  background: var(--card-bg);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  box-shadow: var(--card-shadow);
+}
+
+th, td {
+  padding: var(--spacing-3) var(--spacing-4);
+  text-align: left;
+  border-bottom: 1px solid var(--border-primary);
+}
+
+th {
+  background: var(--bg-tertiary);
+  font-weight: var(--font-weight-semibold);
+  color: var(--text-primary);
+}
+
+td {
+  color: var(--text-secondary);
+}
+
+/* Utilities */
+.container {
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 var(--spacing-4);
+}
+
+@media (min-width: 640px) {
+  .container { padding: 0 var(--spacing-6); }
+}
+
+@media (min-width: 1024px) {
+  .container { padding: 0 var(--spacing-8); }
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Focus styles */
+:focus {
+  outline: 2px solid var(--primary-500);
+  outline-offset: 2px;
+}
+
+:focus:not(:focus-visible) {
+  outline: none;
+}
+
+/* Selection */
+::selection {
+  background: var(--primary-100);
+  color: var(--primary-900);
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg-secondary);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border-secondary);
+  border-radius: var(--radius-full);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--primary-500);
+}
