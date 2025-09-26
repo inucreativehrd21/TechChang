@@ -1,0 +1,519 @@
+
+{% extends 'base.html' %}
+{% load pybo_filter %}
+
+{% block title %}{{ question.subject }} - PyBo{% endblock %}
+
+{% block content %}
+<div class="container my-3 fade-in-up">
+    <!-- 메시지 표시 -->
+    {% if messages %}
+    {% for message in messages %}
+    <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+        <i class="fas fa-exclamation-triangle me-2"></i>
+        <strong>{{ message.tags|title }}</strong> {{ message.message }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    {% endfor %}
+    {% endif %}
+
+    <!-- 브레드크럼 -->
+    <nav aria-label="breadcrumb" class="mb-3">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{% url 'pybo:index' %}"><i class="fas fa-home"></i> 홈</a></li>
+            {% if question.category %}
+            <li class="breadcrumb-item"><a href="?category={{ question.category.name }}">{{ question.category.name }}</a></li>
+            {% endif %}
+            <li class="breadcrumb-item active">{{ question.subject|truncatechars:30 }}</li>
+        </ol>
+    </nav>
+
+    <!-- 질문 헤더 -->
+    <div class="question-header mb-4">
+        <div class="d-flex justify-content-between align-items-start">
+            <div class="flex-grow-1">
+                <h1 class="question-title mb-3">{{ question.subject }}</h1>
+                <div class="question-meta d-flex flex-wrap align-items-center gap-3">
+                    {% if question.category %}
+                    <span class="badge bg-primary">
+                        <i class="fas fa-folder me-1"></i>{{ question.category.name }}
+                    </span>
+                    {% endif %}
+                    <span class="text-muted">
+                        <i class="fas fa-eye me-1"></i>조회 {{ question.view_count }}회
+                    </span>
+                    <span class="text-muted">
+                        <i class="fas fa-calendar me-1"></i>{{ question.create_date|date:"Y.m.d H:i" }}
+                    </span>
+                    {% if question.modify_date %}
+                    <span class="text-muted">
+                        <i class="fas fa-edit me-1"></i>수정 {{ question.modify_date|date:"Y.m.d H:i" }}
+                    </span>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="question-stats">
+                <div class="row text-center g-2">
+                    <div class="col">
+                        <div class="stats-badge">
+                            <div class="h5 mb-0">{{ question.voter.count }}</div>
+                            <small>추천</small>
+                        </div>
+                    </div>
+                    <div class="col">
+                        <div class="stats-badge">
+                            <div class="h5 mb-0">{{ question.answer_set.count }}</div>
+                            <small>답변</small>
+                        </div>
+                    </div>
+                    <div class="col">
+                        <div class="stats-badge">
+                            <div class="h5 mb-0">{{ question.comment_set.count }}</div>
+                            <small>댓글</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- 질문 내용 -->
+    <div class="card question-card mb-4">
+        <div class="card-body p-4">
+            <div class="question-content mb-4">
+                {{ question.content|mark }}
+            </div>
+            
+            <!-- 작성자 정보와 액션 버튼 -->
+            <div class="d-flex justify-content-between align-items-center">
+                <div class="author-info d-flex align-items-center">
+                    <div class="user-avatar me-3">
+                        <div class="avatar-circle" style="width: 40px; height: 40px;">
+                            {{ question.author.username|slice:":1" }}
+                        </div>
+                    </div>
+                    <div>
+                        <div class="fw-bold">
+                            <a href="{% url 'pybo:profile' question.author.id %}" 
+                               class="text-decoration-none">{{ question.author.username }}</a>
+                        </div>
+                        <small class="text-muted">질문 작성자</small>
+                    </div>
+                </div>
+                
+                <div class="action-buttons d-flex gap-2">
+                    {% if user.is_authenticated %}
+                    <button type="button" class="btn btn-outline-primary btn-sm recommend" 
+                            data-uri="{% url 'pybo:question_vote' question.id %}">
+                        <i class="fas fa-thumbs-up me-1"></i>
+                        추천 <span class="badge bg-primary">{{ question.voter.count }}</span>
+                    </button>
+                    {% endif %}
+                    
+                    {% if request.user == question.author %}
+                    <a href="{% url 'pybo:question_modify' question.id %}" 
+                       class="btn btn-outline-secondary btn-sm">
+                        <i class="fas fa-edit me-1"></i>수정
+                    </a>
+                    <button type="button" class="btn btn-outline-danger btn-sm delete" 
+                            data-uri="{% url 'pybo:question_delete' question.id %}">
+                        <i class="fas fa-trash me-1"></i>삭제
+                    </button>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- 질문 댓글 -->
+    {% if question.comment_set.count > 0 %}
+    <div class="comments-section mt-4 border-top pt-4">
+        <div class="mb-3">
+            <h6 class="text-muted fw-semibold mb-0">
+                <i class="fas fa-comment-dots me-2"></i>질문 댓글 {{ question.comment_set.count }}개
+            </h6>
+        </div>
+        {% for comment in question.comment_set.all %}  
+        <a id="comment_{{ comment.id }}"></a>
+        <div class="comment-item p-3 mb-3 bg-light rounded">
+            <div class="comment-content mb-2">
+                <span style="white-space: pre-line;">{{ comment.content }}</span>
+            </div>
+            <div class="comment-meta d-flex justify-content-between align-items-center">
+                <div class="d-flex align-items-center">
+                    <small class="text-muted">
+                        <strong>
+                            <a href="{% url 'pybo:profile' comment.author.id %}" 
+                               class="text-decoration-none">{{ comment.author.username }}</a>
+                        </strong>
+                        · {{ comment.create_date }}
+                        {% if comment.modify_date %}
+                        · <span class="text-warning">수정됨: {{ comment.modify_date }}</span>
+                        {% endif %}
+                    </small>
+                </div>
+                {% if request.user == comment.author %}
+                <div class="comment-actions">
+                    <a href="{% url 'pybo:comment_modify_question' comment.id %}" 
+                       class="btn btn-sm btn-outline-secondary">
+                        <i class="fas fa-edit"></i>
+                    </a>
+                    <button type="button" class="btn btn-sm btn-outline-danger delete ms-1" 
+                            data-uri="{% url 'pybo:comment_delete_question' comment.id %}">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+    
+    <div class="question-comment-add mt-3 mb-4">
+        <a href="{% url 'pybo:comment_create_question' question.id %}" 
+           class="btn btn-outline-info btn-sm">
+            <i class="fas fa-plus me-1"></i>질문에 댓글 추가
+        </a>
+    </div>
+    <!-- 답변 섹션 -->
+    <div class="answers-section mb-5">
+        <div class="section-header d-flex justify-content-between align-items-center mb-4">
+            <h4 class="fw-bold mb-0">
+                <i class="fas fa-comments text-primary me-2"></i>
+                답변 <span class="badge bg-primary">{{ question.answer_set.count }}</span>
+            </h4>
+            <div class="d-flex gap-2">
+                <a href="?sort=recent&answer_page=1" 
+                   class="btn btn-sm btn-outline-primary {% if sort == 'recent' %}active{% endif %}">
+                    <i class="fas fa-clock me-1"></i>최신순
+                </a>
+                <a href="?sort=recommend&answer_page=1" 
+                   class="btn btn-sm btn-outline-success {% if sort == 'recommend' %}active{% endif %}">
+                    <i class="fas fa-thumbs-up me-1"></i>추천순
+                </a>
+            </div>
+        </div>
+
+        {% for answer in answer_list %}
+        <a id="answer_{{ answer.id }}"></a>
+        <div class="card answer-card mb-4">
+            <div class="card-body p-4">
+                <div class="answer-content mb-4">
+                    {{ answer.content|mark }}
+                </div>
+                
+                <div class="d-flex justify-content-between align-items-center">
+                    <div class="author-info d-flex align-items-center">
+                        <div class="user-avatar me-3">
+                            <div class="avatar-circle" style="width: 35px; height: 35px; font-size: 14px;">
+                                {{ answer.author.username|slice:":1" }}
+                            </div>
+                        </div>
+                        <div>
+                            <div class="fw-semibold">
+                                <a href="{% url 'pybo:profile' answer.author.id %}" 
+                                   class="text-decoration-none">{{ answer.author.username }}</a>
+                            </div>
+                            <div class="d-flex align-items-center gap-3">
+                                <small class="text-muted">
+                                    <i class="fas fa-clock me-1"></i>{{ answer.create_date }}
+                                </small>
+                                {% if answer.modify_date %}
+                                <small class="text-muted">
+                                    <i class="fas fa-edit me-1"></i>수정됨: {{ answer.modify_date }}
+                                </small>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="action-buttons d-flex gap-2">
+                        {% if user.is_authenticated %}
+                        <button type="button" class="btn btn-outline-success btn-sm recommend" 
+                                data-uri="{% url 'pybo:answer_vote' answer.id %}">
+                            <i class="fas fa-thumbs-up me-1"></i>
+                            추천 <span class="badge bg-success">{{ answer.voter.count }}</span>
+                        </button>
+                        {% endif %}
+                        
+                        {% if request.user == answer.author %}
+                        <a href="{% url 'pybo:answer_modify' answer.id %}" 
+                           class="btn btn-outline-secondary btn-sm">
+                            <i class="fas fa-edit me-1"></i>수정
+                        </a>
+                        <button type="button" class="btn btn-outline-danger btn-sm delete" 
+                                data-uri="{% url 'pybo:answer_delete' answer.id %}">
+                            <i class="fas fa-trash me-1"></i>삭제
+                        </button>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- 답변 댓글 -->
+        {% if answer.comment_set.count > 0 %}
+        <div class="comments-section mt-3 border-top pt-3">
+            <div class="mb-2">
+                <small class="text-muted fw-semibold">
+                    <i class="fas fa-comment-dots me-1"></i>댓글 {{ answer.comment_set.count }}개
+                </small>
+            </div>
+            {% for comment in answer.comment_set.all %}  
+            <a id="comment_{{ comment.id }}"></a>
+            <div class="comment-item p-3 mb-2 bg-light rounded">
+                <div class="comment-content mb-2">
+                    <span style="white-space: pre-line;">{{ comment.content }}</span>
+                </div>
+                <div class="comment-meta d-flex justify-content-between align-items-center">
+                    <div class="d-flex align-items-center">
+                        <small class="text-muted">
+                            <strong>
+                                <a href="{% url 'pybo:profile' comment.author.id %}" 
+                                   class="text-decoration-none">{{ comment.author.username }}</a>
+                            </strong>
+                            · {{ comment.create_date }}
+                            {% if comment.modify_date %}
+                            · <span class="text-warning">수정됨: {{ comment.modify_date }}</span>
+                            {% endif %}
+                        </small>
+                    </div>
+                    {% if request.user == comment.author %}
+                    <div class="comment-actions">
+                        <a href="{% url 'pybo:comment_modify_answer' comment.id %}" 
+                           class="btn btn-sm btn-outline-secondary">
+                            <i class="fas fa-edit"></i>
+                        </a>
+                        <button type="button" class="btn btn-sm btn-outline-danger delete ms-1" 
+                                data-uri="{% url 'pybo:comment_delete_answer' comment.id %}">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+        
+        <div class="comment-add mt-3">
+            <a href="{% url 'pybo:comment_create_answer' answer.id %}" 
+               class="btn btn-outline-primary btn-sm">
+                <i class="fas fa-plus me-1"></i>댓글 추가
+            </a>
+        </div>
+        {% empty %}
+        <div class="text-center py-5">
+            <i class="fas fa-comment-slash text-muted mb-3" style="font-size: 3rem;"></i>
+            <p class="text-muted mb-0">아직 답변이 없습니다.</p>
+            <p class="text-muted">첫 번째 답변을 작성해보세요!</p>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- 답변 페이징 -->
+    {% if answer_list.paginator.num_pages > 1 %}
+    <nav aria-label="답변 페이지네이션" class="mb-5">
+    <ul class="pagination justify-content-center">
+            {% if answer_list.has_previous %}
+            <li class="page-item">
+                <a class="page-link" href="?sort={{ sort }}&answer_page={{ answer_list.previous_page_number }}">
+                    <i class="fas fa-chevron-left"></i> 이전
+                </a>
+            </li>
+            {% else %}
+            <li class="page-item disabled">
+                <span class="page-link"><i class="fas fa-chevron-left"></i> 이전</span>
+            </li>
+            {% endif %}
+            
+            {% for page_number in answer_list.paginator.page_range %}
+            {% if page_number >= answer_list.number|add:-3 and page_number <= answer_list.number|add:3 %}
+                {% if page_number == answer_list.number %}
+                <li class="page-item active">
+                    <span class="page-link">{{ page_number }}</span>
+                </li>
+                {% else %}
+                <li class="page-item">
+                    <a class="page-link" href="?sort={{ sort }}&answer_page={{ page_number }}">{{ page_number }}</a>
+                </li>
+                {% endif %}
+            {% endif %}
+            {% endfor %}
+            
+            {% if answer_list.has_next %}
+            <li class="page-item">
+                <a class="page-link" href="?sort={{ sort }}&answer_page={{ answer_list.next_page_number }}">
+                    다음 <i class="fas fa-chevron-right"></i>
+                </a>
+            </li>
+            {% else %}
+            <li class="page-item disabled">
+                <span class="page-link">다음 <i class="fas fa-chevron-right"></i></span>
+            </li>
+            {% endif %}
+        </ul>
+    </nav>
+    {% endif %}
+    <!-- 답변 작성 폼 -->
+    <div class="answer-form-section">
+        <div class="card border-primary">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">
+                    <i class="fas fa-pen me-2"></i>답변 작성하기
+                </h5>
+            </div>
+            <div class="card-body">
+                {% if user.is_authenticated %}
+                <form action="{% url 'pybo:answer_create' question.id %}" method="post">
+                    {% csrf_token %}
+                    
+                    {% if form.errors %}
+                    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        <strong>입력 오류가 있습니다:</strong>
+                        {% for field in form %}
+                        {% if field.errors %}
+                        <div class="mt-2">
+                            <strong>{{ field.label }}:</strong> {{ field.errors|join:", " }}
+                        </div>
+                        {% endif %}
+                        {% endfor %}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                    {% endif %}
+                    
+                    <div class="mb-3">
+                        <label for="content" class="form-label fw-semibold">
+                            <i class="fas fa-comment-medical me-1"></i>답변 내용
+                        </label>
+                        <textarea name="content" id="content" class="form-control" rows="8" 
+                                  placeholder="도움이 되는 답변을 작성해주세요..."></textarea>
+                        <div class="form-text">
+                            <i class="fas fa-info-circle me-1"></i>
+                            마크다운 문법을 사용할 수 있습니다.
+                        </div>
+                    </div>
+                    
+                    <div class="d-flex justify-content-between align-items-center">
+                        <small class="text-muted">
+                            <i class="fas fa-user me-1"></i>{{ user.username }}로 답변 작성
+                        </small>
+                        <button type="submit" class="btn btn-primary btn-lg">
+                            <i class="fas fa-paper-plane me-2"></i>답변 등록
+                        </button>
+                    </div>
+                </form>
+                {% else %}
+                <div class="text-center py-4">
+                    <i class="fas fa-sign-in-alt text-muted mb-3" style="font-size: 3rem;"></i>
+                    <h5 class="text-muted mb-3">답변을 작성하려면 로그인이 필요합니다</h5>
+                    <a href="{% url 'common:login' %}" class="btn btn-primary me-2">
+                        <i class="fas fa-sign-in-alt me-1"></i>로그인
+                    </a>
+                    <a href="{% url 'common:signup' %}" class="btn btn-outline-primary">
+                        <i class="fas fa-user-plus me-1"></i>회원가입
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+{% block script %}
+<script type='text/javascript'>
+document.addEventListener('DOMContentLoaded', function() {
+    // 삭제 확인 모달
+    const deleteElements = document.getElementsByClassName("delete");
+    Array.from(deleteElements).forEach(function(element) {
+        element.addEventListener('click', function(e) {
+            e.preventDefault();
+            
+            if (confirm("⚠️ 정말로 삭제하시겠습니까?\n\n삭제된 내용은 복구할 수 없습니다.")) {
+                window.location.href = this.dataset.uri;
+            }
+        });
+    });
+
+    // 추천 버튼 처리
+    const recommendElements = document.getElementsByClassName("recommend");
+    Array.from(recommendElements).forEach(function(element) {
+        element.addEventListener('click', function(e) {
+            e.preventDefault();
+            
+            const button = this;
+            const uri = this.dataset.uri;
+            
+            // 버튼 비활성화
+            button.disabled = true;
+            button.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>처리중...';
+            
+            if (confirm("👍 이 내용을 추천하시겠습니까?")) {
+                window.location.href = uri;
+            } else {
+                // 취소 시 버튼 복원
+                setTimeout(() => {
+                    button.disabled = false;
+                    const icon = button.querySelector('i');
+                    const badge = button.querySelector('.badge');
+                    button.innerHTML = '<i class="fas fa-thumbs-up me-1"></i>추천 ' + badge.outerHTML;
+                }, 100);
+            }
+        });
+    });
+
+    // 부드러운 스크롤 (앵커 링크)
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener('click', function (e) {
+            e.preventDefault();
+            const target = document.querySelector(this.getAttribute('href'));
+            if (target) {
+                target.scrollIntoView({
+                    behavior: 'smooth',
+                    block: 'start'
+                });
+            }
+        });
+    });
+
+    // 카드 호버 효과
+    document.querySelectorAll('.question-card, .answer-card').forEach(card => {
+        card.addEventListener('mouseenter', function() {
+            this.style.transform = 'translateY(-2px)';
+            this.style.transition = 'all 0.3s ease';
+        });
+        
+        card.addEventListener('mouseleave', function() {
+            this.style.transform = 'translateY(0)';
+        });
+    });
+
+    // 답변 폼 개선
+    const answerTextarea = document.getElementById('content');
+    if (answerTextarea) {
+        answerTextarea.addEventListener('focus', function() {
+            this.style.borderColor = 'var(--bs-primary)';
+            this.style.boxShadow = '0 0 0 0.2rem rgba(13, 110, 253, 0.25)';
+        });
+        
+        answerTextarea.addEventListener('blur', function() {
+            this.style.borderColor = '';
+            this.style.boxShadow = '';
+        });
+    }
+
+    // 페이지 로드 완료 후 애니메이션
+    setTimeout(() => {
+        document.querySelectorAll('.question-card, .answer-card, .stats-card').forEach((el, index) => {
+            el.style.opacity = '0';
+            el.style.transform = 'translateY(20px)';
+            el.style.transition = 'all 0.6s ease';
+            
+            setTimeout(() => {
+                el.style.opacity = '1';
+                el.style.transform = 'translateY(0)';
+            }, index * 100);
+        });
+    }, 100);
+});
+</script>
+{% endblock %}
