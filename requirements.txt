@@ -1,0 +1,11 @@
+# Django 웹앱 필수
+Django>=5.1,<5.3
+
+# 프로덕션 WSGI 서버 (Lightsail에서 gunicorn 사용 권장)
+gunicorn>=21.2,<22
+
+# 정적 파일 서빙(간편 배포용) — Nginx 없이도 서빙 가능
+whitenoise>=6.6,<7
+
+# 데이터베이스: 현재 SQLite 사용. PostgreSQL 사용 시 아래 주석 해제
+# psycopg2-binary>=2.9,<3
