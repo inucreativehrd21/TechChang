@@ -12,13 +12,20 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 
 import os
 from pathlib import Path
-from dotenv import load_dotenv
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
-# .env 파일 로드
-load_dotenv(BASE_DIR / '.env')
+# .env 파일 로드 (안전하게 처리)
+try:
+    from dotenv import load_dotenv
+    env_path = BASE_DIR / '.env'
+    if env_path.exists():
+        load_dotenv(env_path, encoding='utf-8')
+except (ImportError, UnicodeDecodeError) as e:
+    # dotenv가 없거나 인코딩 오류 시 환경변수만 사용
+    print(f"Warning: Could not load .env file: {e}")
+    pass
 
 
 # Quick-start development settings - unsuitable for production
