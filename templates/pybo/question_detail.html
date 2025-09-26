@@ -4,6 +4,9 @@
 
 {% block title %}{{ question.subject }} - PyBo{% endblock %}
 
+{% extends 'base.html' %}
+{% load pybo_filter %}
+{% load common_tags %}
 {% block content %}
 <div class="container my-3 fade-in-up">
     <!-- 메시지 표시 -->

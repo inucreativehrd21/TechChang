@@ -1,4 +1,5 @@
 
+{% load common_tags %}
 <!-- 네비게이션바 -->
 <nav class="navbar navbar-expand-lg fixed-top">
     <div class="container-fluid">
@@ -43,16 +44,16 @@
                         <li><a class="dropdown-item" href="{% url 'pybo:question_create' %}">
                             <i class="fas fa-plus me-2"></i>질문 등록
                         </a></li>
-                           <li class="nav-item dropdown ms-2">
-                               <a class="nav-link dropdown-toggle" href="#" id="themeMenu" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                                   <i class="fas fa-circle-half-stroke"></i> 테마
-                               </a>
-                               <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="themeMenu">
-                                   <li><button class="dropdown-item" type="button" onclick="setTheme('light')">라이트</button></li>
-                                   <li><button class="dropdown-item" type="button" onclick="setTheme('dark')">다크</button></li>
-                                   <li><button class="dropdown-item" type="button" onclick="setTheme('highcontrast')">고대비</button></li>
-                               </ul>
-                           </li>
+                    </ul>
+                </li>
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle" href="#" id="themeMenu" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="fas fa-circle-half-stroke me-1"></i>테마
+                    </a>
+                    <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="themeMenu">
+                        <li><button class="dropdown-item" type="button" onclick="setTheme('light')">라이트</button></li>
+                        <li><button class="dropdown-item" type="button" onclick="setTheme('dark')">다크</button></li>
+                        <li><button class="dropdown-item" type="button" onclick="setTheme('highcontrast')">고대비</button></li>
                     </ul>
                 </li>
                 <li class="nav-item">
@@ -70,14 +71,17 @@
                        id="userDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                         <div class="user-avatar me-2">
                             <div class="avatar-circle" style="width: 24px; height: 24px; font-size: 0.8rem;">
-                                {{ user.username|slice:":1" }}
+                                {{ user|display_name_initial }}
                             </div>
                         </div>
-                        {{ user.username }}
+                        {{ user|display_name }}
                     </a>
                     <ul class="dropdown-menu dropdown-menu-end">
                         <li><a class="dropdown-item" href="{% url 'pybo:profile' user.id %}">
                             <i class="fas fa-user me-2"></i>내 프로필
+                        </a></li>
+                        <li><a class="dropdown-item" href="{% url 'common:profile_edit' %}">
+                            <i class="fas fa-edit me-2"></i>프로필 편집
                         </a></li>
                         <li><a class="dropdown-item" href="#">
                             <i class="fas fa-cog me-2"></i>설정

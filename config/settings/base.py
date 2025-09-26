@@ -10,6 +10,7 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
+import os
 from pathlib import Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -132,3 +133,10 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 LOGIN_REDIRECT_URL = '/'
 
 ALLOWED_HOSTS = ['43.202.203.131']
+
+# OpenAI API 설정
+OPENAI_API_KEY = os.environ.get('OPENAI_API_KEY', '')
+
+# 미디어 파일 설정 (이미지 업로드용)
+MEDIA_URL = '/media/'
+MEDIA_ROOT = BASE_DIR / 'media'

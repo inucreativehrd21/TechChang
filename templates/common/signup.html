@@ -25,6 +25,12 @@
             <input type="text" class="form-control" name="email" id="email"
                    value="{{ form.email.value|default_if_none:'' }}">
         </div>
+        <div class="mb-3">
+            <label for="nickname">닉네임</label>
+            <input type="text" class="form-control" name="nickname" id="nickname"
+                   value="{{ form.nickname.value|default_if_none:'' }}" placeholder="닉네임을 입력하세요 (선택사항)">
+            <div class="form-text">닉네임을 설정하지 않으면 사용자명이 표시됩니다.</div>
+        </div>
         <button type="submit" class="btn btn-primary">생성하기</button>
     </form>
 </div>

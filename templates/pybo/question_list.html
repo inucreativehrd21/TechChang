@@ -1,6 +1,7 @@
 
 {% extends 'base.html' %}
 {% load pybo_filter %}
+{% load common_tags %}
 {% block content %}
 <div class="container my-3 fade-in-up">
     <!-- 헤더 섹션 -->
@@ -121,10 +122,10 @@
                 <td>
                     <div class="d-flex align-items-center justify-content-center">
                         <div class="user-avatar me-2">
-                            <div class="avatar-circle">{{ question.author.username|slice:":1" }}</div>
+                            <div class="avatar-circle">{{ question.author|display_name_initial }}</div>
                         </div>
                         <a href="{% url 'pybo:profile' question.author.id %}" 
-                           class="text-decoration-none small">{{ question.author.username }}</a>
+                           class="text-decoration-none small">{{ question.author|display_name }}</a>
                     </div>
                 </td>
                 <td>

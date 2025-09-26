@@ -62,11 +62,18 @@
                                 return getCookie('csrftoken');
                             }
                             const saved=localStorage.getItem(KEY) || getCookie('site_theme');
-                            if(saved) apply(saved);
+                            if(saved) {
+                                console.log('Applying saved theme:', saved);
+                                apply(saved);
+                            } else {
+                                console.log('No saved theme, using default light');
+                            }
                             window.setTheme=function(theme){
+                                console.log('Setting theme to:', theme);
                                 apply(theme);
                                 localStorage.setItem(KEY,theme);
                                 document.cookie = 'site_theme='+theme+';path=/;max-age='+(3600*24*365);
+                                console.log('Theme applied, current body classes:', body.className);
                                 if(IS_AUTH){
                                     fetch('{% url "common:save_theme" %}',{
                                         method:'POST',
@@ -74,6 +81,7 @@
                                         body:new URLSearchParams({theme})
                                     }).then(r=>r.json()).then(d=>{
                                         if(d.status!=='ok') console.warn('Theme save error',d);
+                                        else console.log('Theme saved successfully:', d);
                                     }).catch(e=>console.error('Theme save failed',e));
                                 }
                             };

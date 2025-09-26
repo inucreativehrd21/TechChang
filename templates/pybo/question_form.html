@@ -23,14 +23,26 @@
         {% endif %}
         <!-- 오류표시 End -->
         <div class="mb-3">
-            <label for="subject" class="form-label">제목</label>
-            <input type="text" class="form-control" name="subject" id="subject"
-                   value="{{ form.subject.value|default_if_none:'' }}">
+            <label for="{{ form.category.id_for_label }}" class="form-label">{{ form.category.label }} <span class="text-danger">*</span></label>
+            {{ form.category }}
+            {% if form.category.errors %}
+                <div class="text-danger small mt-1">{{ form.category.errors }}</div>
+            {% endif %}
+            <div class="form-text">질문에 적합한 카테고리를 선택해주세요.</div>
         </div>
         <div class="mb-3">
-            <label for="content" class="form-label">내용</label>
-            <textarea class="form-control" name="content"
-                      id="content" rows="10">{{ form.content.value|default_if_none:'' }}</textarea>
+            <label for="{{ form.subject.id_for_label }}" class="form-label">{{ form.subject.label }} <span class="text-danger">*</span></label>
+            {{ form.subject }}
+            {% if form.subject.errors %}
+                <div class="text-danger small mt-1">{{ form.subject.errors }}</div>
+            {% endif %}
+        </div>
+        <div class="mb-3">
+            <label for="{{ form.content.id_for_label }}" class="form-label">{{ form.content.label }} <span class="text-danger">*</span></label>
+            {{ form.content }}
+            {% if form.content.errors %}
+                <div class="text-danger small mt-1">{{ form.content.errors }}</div>
+            {% endif %}
         </div>
         <button type="submit" class="btn btn-primary">저장하기</button>
     </form>

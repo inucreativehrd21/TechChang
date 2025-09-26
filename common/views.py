@@ -1,11 +1,13 @@
 
 # from django.shortcuts import render
 from django.contrib.auth import authenticate, login, logout
-from django.shortcuts import render, redirect
+from django.shortcuts import render, redirect, get_object_or_404
 from django.http import JsonResponse
 from django.views.decorators.http import require_POST
+from django.contrib.auth.decorators import login_required
+from django.contrib import messages
 from django.conf import settings
-from common.forms import UserForm
+from common.forms import UserForm, ProfileForm
 from .models import Profile
 
 
@@ -17,7 +19,14 @@ def signup(request):
     if request.method == "POST":
         form = UserForm(request.POST)
         if form.is_valid():
-            form.save()
+            user = form.save()
+            # 닉네임 처리
+            nickname = form.cleaned_data.get('nickname')
+            if nickname:
+                profile, created = Profile.objects.get_or_create(user=user)
+                profile.nickname = nickname
+                profile.save()
+            
             username = form.cleaned_data.get('username')
             raw_password = form.cleaned_data.get('password1')
             user = authenticate(username=username, password=raw_password)  # 사용자 인증
@@ -54,3 +63,20 @@ def save_theme(request):
     # 클라이언트 JS와 통일된 이름의 쿠키
     resp.set_cookie('site_theme', theme, max_age=3600*24*365, samesite='Lax')
     return resp
+
+
+@login_required(login_url='common:login')
+def profile_edit(request):
+    """사용자 프로필 편집"""
+    profile, created = Profile.objects.get_or_create(user=request.user)
+    
+    if request.method == 'POST':
+        form = ProfileForm(request.POST, instance=profile)
+        if form.is_valid():
+            form.save()
+            messages.success(request, '프로필이 성공적으로 업데이트되었습니다.')
+            return redirect('common:profile_edit')
+    else:
+        form = ProfileForm(instance=profile)
+    
+    return render(request, 'common/profile_edit.html', {'form': form, 'profile': profile})

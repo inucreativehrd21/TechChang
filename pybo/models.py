@@ -29,6 +29,8 @@ class Answer(models.Model):
     create_date = models.DateTimeField()
     modify_date = models.DateTimeField(null=True, blank=True)
     voter = models.ManyToManyField(User, related_name='voter_answer')
+    is_ai = models.BooleanField(default=False)  # AI가 생성한 답변인지 표시
+    image = models.ImageField(upload_to='answers/', blank=True, null=True)  # 이미지 첨부
 
 class Comment(models.Model):
     author = models.ForeignKey(User, on_delete=models.CASCADE)
@@ -37,3 +39,4 @@ class Comment(models.Model):
     modify_date = models.DateTimeField(null=True, blank=True)
     question = models.ForeignKey(Question, null=True, blank=True, on_delete=models.CASCADE)
     answer = models.ForeignKey(Answer, null=True, blank=True, on_delete=models.CASCADE)
+    image = models.ImageField(upload_to='comments/', blank=True, null=True)  # 이미지 첨부
