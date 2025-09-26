@@ -1,3 +1,19 @@
 db.sqlite3
 *pyc
 __pycache__
+
+# 환경변수 파일 (보안상 중요)
+.env
+.env.local
+.env.production
+
+# 미디어 파일
+media/
+
+# IDE 설정
+.vscode/
+.idea/
+
+# OS 생성 파일
+.DS_Store
+Thumbs.db
