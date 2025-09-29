@@ -1,20 +1,21 @@
 
 {% load common_tags %}
+{% load static %}
 <!-- 네비게이션바 -->
-<nav class="navbar navbar-expand-lg fixed-top">
+<nav class="navbar navbar-expand-lg navbar-dark bg-primary fixed-top">
     <div class="container-fluid">
         <a class="navbar-brand d-flex align-items-center" href="{% url 'pybo:index' %}">
-            <i class="fas fa-comments me-2"></i>
-            <span>PyBo</span>
+            <i class="fas fa-cog me-2"></i>
+            <span>테크창</span>
         </a>
         
-        <button class="navbar-toggler border-0" type="button"
+        <button class="navbar-toggler" type="button"
                 data-bs-toggle="collapse"
                 data-bs-target="#navbarSupportedContent"
                 aria-controls="navbarSupportedContent"
                 aria-expanded="false"
                 aria-label="Toggle navigation">
-            <i class="fas fa-bars text-white"></i>
+            <span class="navbar-toggler-icon"></span>
         </button>
         
         <div class="collapse navbar-collapse" id="navbarSupportedContent">
@@ -24,37 +25,6 @@
                     <a class="nav-link" href="{% url 'pybo:index' %}">
                         <i class="fas fa-home me-1"></i>홈
                     </a>
-                </li>
-                <li class="nav-item dropdown">
-                    <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" 
-                       data-bs-toggle="dropdown" aria-expanded="false">
-                        <i class="fas fa-list me-1"></i>게시판
-                    </a>
-                    <ul class="dropdown-menu">
-                        <li><a class="dropdown-item" href="{% url 'pybo:index' %}">
-                            <i class="fas fa-question-circle me-2"></i>질문답변
-                        </a></li>
-                        <li><a class="dropdown-item" href="{% url 'pybo:recent_answers' %}">
-                            <i class="fas fa-reply me-2"></i>최근답변
-                        </a></li>
-                        <li><a class="dropdown-item" href="{% url 'pybo:recent_comments' %}">
-                            <i class="fas fa-comments me-2"></i>최근댓글
-                        </a></li>
-                        <li><hr class="dropdown-divider"></li>
-                        <li><a class="dropdown-item" href="{% url 'pybo:question_create' %}">
-                            <i class="fas fa-plus me-2"></i>질문 등록
-                        </a></li>
-                    </ul>
-                </li>
-                <li class="nav-item dropdown">
-                    <a class="nav-link dropdown-toggle" href="#" id="themeMenu" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                        <i class="fas fa-circle-half-stroke me-1"></i>테마
-                    </a>
-                    <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="themeMenu">
-                        <li><button class="dropdown-item" type="button" onclick="setTheme('light')">라이트</button></li>
-                        <li><button class="dropdown-item" type="button" onclick="setTheme('dark')">다크</button></li>
-                        <li><button class="dropdown-item" type="button" onclick="setTheme('highcontrast')">고대비</button></li>
-                    </ul>
                 </li>
                 <li class="nav-item">
                     <a class="nav-link" href="#" data-bs-toggle="modal" data-bs-target="#aboutModal">
@@ -69,11 +39,15 @@
                 <li class="nav-item dropdown">
                     <a class="nav-link dropdown-toggle d-flex align-items-center" href="#" 
                        id="userDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                        <div class="user-avatar me-2">
-                            <div class="avatar-circle" style="width: 24px; height: 24px; font-size: 0.8rem;">
-                                {{ user|display_name_initial }}
-                            </div>
+                        {% if user.profile.profile_image %}
+                        <img src="{{ user.profile.profile_image.url }}" alt="프로필" 
+                             class="rounded-circle me-2" style="width: 24px; height: 24px; object-fit: cover;">
+                        {% else %}
+                        <div class="bg-primary rounded-circle d-flex align-items-center justify-content-center text-white me-2" 
+                             style="width: 24px; height: 24px; font-size: 0.8rem;">
+                            {{ user|display_name_initial }}
                         </div>
+                        {% endif %}
                         {{ user|display_name }}
                     </a>
                     <ul class="dropdown-menu dropdown-menu-end">
@@ -81,10 +55,10 @@
                             <i class="fas fa-user me-2"></i>내 프로필
                         </a></li>
                         <li><a class="dropdown-item" href="{% url 'common:profile_edit' %}">
-                            <i class="fas fa-edit me-2"></i>프로필 편집
+                            <i class="fas fa-edit me-2"></i>프로필 설정
                         </a></li>
-                        <li><a class="dropdown-item" href="#">
-                            <i class="fas fa-cog me-2"></i>설정
+                        <li><a class="dropdown-item" href="{% url 'common:password_change' %}">
+                            <i class="fas fa-key me-2"></i>비밀번호 변경
                         </a></li>
                         <li><hr class="dropdown-divider"></li>
                         <li><a class="dropdown-item" href="{% url 'common:logout' %}">
@@ -115,25 +89,28 @@
         <div class="modal-content">
             <div class="modal-header bg-primary text-white">
                 <h5 class="modal-title" id="aboutModalLabel">
-                    <i class="fas fa-info-circle me-2"></i>PyBo 소개
+                    <i class="fas fa-info-circle me-2"></i>테크창 소개
                 </h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
                 <div class="text-center mb-4">
-                    <i class="fas fa-comments fa-4x text-primary mb-3"></i>
-                    <h2>PyBo</h2>
-                    <p class="lead">지식을 나누는 대한민국 대표 커뮤니티</p>
+                    <!-- 단체사진 -->
+                    <img src="{% static 'images/group.jpg' %}" alt="테크창 단체사진" 
+                         class="img-fluid rounded shadow mb-3" 
+                         style="max-height: 280px; object-fit: cover;">
+                    <h2>테크창</h2>
+                    <p class="lead">HRD와 테크놀로지 지식을 공유하는 플랫폼</p>
                 </div>
                 <div class="row">
                     <div class="col-md-6">
                         <h5><i class="fas fa-star text-warning me-2"></i>주요 기능</h5>
                         <ul class="list-unstyled">
-                            <li><i class="fas fa-check text-success me-2"></i>질문 & 답변</li>
-                            <li><i class="fas fa-check text-success me-2"></i>댓글 시스템</li>
-                            <li><i class="fas fa-check text-success me-2"></i>추천 시스템</li>
-                            <li><i class="fas fa-check text-success me-2"></i>카테고리 분류</li>
-                            <li><i class="fas fa-check text-success me-2"></i>사용자 프로필</li>
+                            <li><i class="fas fa-check text-success me-2"></i>HRD 지식 공유</li>
+                            <li><i class="fas fa-check text-success me-2"></i>데이터분석 토론</li>
+                            <li><i class="fas fa-check text-success me-2"></i>프로그래밍 Q&A</li>
+                            <li><i class="fas fa-check text-success me-2"></i>전문가 네트워킹</li>
+                            <li><i class="fas fa-check text-success me-2"></i>기술 동향 공유</li>
                         </ul>
                     </div>
                     <div class="col-md-6">

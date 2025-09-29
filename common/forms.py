@@ -18,13 +18,13 @@ class UserForm(UserCreationForm):
 class ProfileForm(forms.ModelForm):
     class Meta:
         model = Profile
-        fields = ['nickname', 'theme']
+        fields = ['nickname', 'profile_image']
         labels = {
             'nickname': '닉네임',
-            'theme': '테마',
+            'profile_image': '프로필 이미지',
         }
         widgets = {
             'nickname': forms.TextInput(attrs={'class': 'form-control', 'placeholder': '닉네임을 입력하세요'}),
-            'theme': forms.Select(attrs={'class': 'form-select'}),
+            'profile_image': forms.ClearableFileInput(attrs={'class': 'form-control'}),
         }
 

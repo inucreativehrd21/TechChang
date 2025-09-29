@@ -11,7 +11,7 @@ from ..models import Question, Answer
 def answer_create(request, question_id):
     question = get_object_or_404(Question, pk=question_id)
     if request.method == "POST":
-        form = AnswerForm(request.POST)
+        form = AnswerForm(request.POST, request.FILES)
         if form.is_valid():
             answer = form.save(commit=False)
             answer.author = request.user  # author 속성에 로그인 계정 저장
@@ -32,7 +32,7 @@ def answer_modify(request, answer_id):
         messages.error(request, '수정권한이 없습니다')
         return redirect('pybo:detail', question_id=answer.question.id)
     if request.method == "POST":
-        form = AnswerForm(request.POST, instance=answer)
+        form = AnswerForm(request.POST, request.FILES, instance=answer)
         if form.is_valid():
             answer = form.save(commit=False)
             answer.modify_date = timezone.now()

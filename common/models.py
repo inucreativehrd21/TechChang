@@ -17,6 +17,7 @@ class Profile(models.Model):
 
 	user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='profile')
 	nickname = models.CharField(max_length=30, blank=True, null=True, help_text='닉네임을 설정하지 않으면 사용자명이 표시됩니다.')
+	profile_image = models.ImageField(upload_to='profile_images/', blank=True, null=True, help_text='프로필 이미지를 업로드하세요.')
 	theme = models.CharField(max_length=20, choices=THEME_CHOICES, default=THEME_LIGHT)
 	updated_at = models.DateTimeField(auto_now=True)
 	created_at = models.DateTimeField(auto_now_add=True)

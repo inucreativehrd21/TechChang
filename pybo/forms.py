@@ -1,22 +1,26 @@
 
 from django import forms
-from pybo.models import Question, Answer, Comment
+from pybo.models import Question, Answer, Comment, Category
 
 
 class QuestionForm(forms.ModelForm):
+    # 카테고리는 실제 Category 인스턴스를 선택하도록 변경
+    category = forms.ModelChoiceField(
+        queryset=Category.objects.filter(name__in=['HRD', '데이터분석', '프로그래밍']).order_by('name'),
+        empty_label='카테고리 선택',
+        widget=forms.Select(attrs={'class': 'form-select', 'required': True}),
+        label='카테고리'
+    )
+    
     class Meta:
         model = Question  # 사용할 모델
-        fields = ['category', 'subject', 'content']  # 카테고리를 첫 번째로 이동
+        fields = ['category', 'subject', 'content', 'image']  # 이미지 필드 추가
         labels = {
             'subject': '제목',
             'content': '내용',
-            'category': '카테고리',
+            'image': '이미지 첨부',
         }  # 폼의 속성에 대한 한글 라벨 지정
         widgets = {
-            'category': forms.Select(attrs={
-                'class': 'form-select',
-                'required': True
-            }),
             'subject': forms.TextInput(attrs={
                 'class': 'form-control',
                 'placeholder': '질문 제목을 입력하세요'
@@ -25,6 +29,10 @@ class QuestionForm(forms.ModelForm):
                 'class': 'form-control',
                 'rows': 10,
                 'placeholder': '질문 내용을 자세히 작성해주세요'
+            }),
+            'image': forms.FileInput(attrs={
+                'class': 'form-control',
+                'accept': 'image/*'
             }),
         }
 
@@ -37,7 +45,10 @@ class AnswerForm(forms.ModelForm):
             'image': '이미지 첨부',
         }
         widgets = {
-            'image': forms.FileInput(attrs={'class': 'form-control', 'accept': 'image/*'}),
+            'image': forms.FileInput(attrs={
+                'class': 'form-control',
+                'accept': 'image/*'
+            }),
         }
 
 class CommentForm(forms.ModelForm):
@@ -49,5 +60,8 @@ class CommentForm(forms.ModelForm):
             'image': '이미지 첨부',
         }
         widgets = {
-            'image': forms.FileInput(attrs={'class': 'form-control', 'accept': 'image/*'}),
+            'image': forms.FileInput(attrs={
+                'class': 'form-control',
+                'accept': 'image/*'
+            }),
         }

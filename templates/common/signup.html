@@ -1,115 +1,188 @@
 {% extends "base.html" %}
+
+{% block title %}회원가입 - 테크창{% endblock %}
+
 {% block content %}
-<div class="auth-page">
-    <div class="auth-container">
-        <div class="form-card">
-            <div class="form-header">
-                <h1 class="form-title">회원가입</h1>
-                <p class="form-subtitle">PyBo 커뮤니티에 오신 것을 환영합니다</p>
-            </div>
-
-            <form method="post" action="{% url 'common:signup' %}" class="auth-form">
-                {% csrf_token %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8 col-lg-6">
+            <div class="card shadow-lg border-0" style="border-radius: 20px;">
+                <!-- 헤더 -->
+                <div class="card-header bg-success text-white text-center py-4" style="border-radius: 20px 20px 0 0;">
+                    <i class="fas fa-user-plus fa-3x mb-3"></i>
+                    <h2 class="mb-1">회원가입</h2>
+                    <p class="mb-0 opacity-75">테크창 커뮤니티의 새로운 멤버가 되어보세요</p>
+                </div>
                 
-                {% if form.errors %}
-                <div class="form-errors">
-                    <ul>
-                        {% for field in form %}
-                            {% for error in field.errors %}
-                                <li><strong>{{ field.label }}:</strong> {{ error }}</li>
-                            {% endfor %}
-                        {% endfor %}
-                        {% for error in form.non_field_errors %}
-                            <li>{{ error }}</li>
-                        {% endfor %}
-                    </ul>
-                </div>
-                {% endif %}
+                <!-- 본문 -->
+                <div class="card-body p-5">
+                    <form method="post" action="{% url 'common:signup' %}">
+                        {% csrf_token %}
+                        
+                        <!-- 에러 메시지 -->
+                        {% if form.errors %}
+                        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                            <i class="fas fa-exclamation-triangle me-2"></i>
+                            <strong>회원가입 실패!</strong>
+                            <ul class="mb-0 mt-2">
+                                {% for field in form %}
+                                    {% for error in field.errors %}
+                                        <li><strong>{{ field.label }}:</strong> {{ error }}</li>
+                                    {% endfor %}
+                                {% endfor %}
+                                {% for error in form.non_field_errors %}
+                                    <li>{{ error }}</li>
+                                {% endfor %}
+                            </ul>
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        </div>
+                        {% endif %}
 
-                <div class="form-group">
-                    <label for="username" class="form-label required">사용자 이름</label>
-                    <div class="input-group has-icon">
-                        <span class="input-icon">👤</span>
-                        <input type="text" 
-                               class="form-control" 
-                               name="username" 
-                               id="username"
-                               value="{{ form.username.value|default_if_none:'' }}"
-                               placeholder="사용자 이름을 입력하세요"
-                               required>
-                    </div>
-                </div>
+                        <div class="row">
+                            <!-- 사용자명 -->
+                            <div class="col-md-6 mb-4">
+                                <label for="username" class="form-label fw-semibold">
+                                    <i class="fas fa-user me-2 text-success"></i>사용자 이름 <span class="text-danger">*</span>
+                                </label>
+                                <div class="input-group">
+                                    <span class="input-group-text bg-light border-end-0">
+                                        <i class="fas fa-user text-muted"></i>
+                                    </span>
+                                    <input type="text" 
+                                           class="form-control border-start-0 ps-0" 
+                                           name="username" 
+                                           id="username"
+                                           value="{{ form.username.value|default_if_none:'' }}"
+                                           placeholder="영문, 숫자, 특수문자"
+                                           style="border-radius: 0 10px 10px 0;"
+                                           required>
+                                </div>
+                            </div>
 
-                <div class="form-group">
-                    <label for="email" class="form-label required">이메일</label>
-                    <div class="input-group has-icon">
-                        <span class="input-icon">📧</span>
-                        <input type="email" 
-                               class="form-control" 
-                               name="email" 
-                               id="email"
-                               value="{{ form.email.value|default_if_none:'' }}"
-                               placeholder="이메일 주소를 입력하세요"
-                               required>
-                    </div>
-                </div>
+                            <!-- 이메일 -->
+                            <div class="col-md-6 mb-4">
+                                <label for="email" class="form-label fw-semibold">
+                                    <i class="fas fa-envelope me-2 text-success"></i>이메일 <span class="text-danger">*</span>
+                                </label>
+                                <div class="input-group">
+                                    <span class="input-group-text bg-light border-end-0">
+                                        <i class="fas fa-envelope text-muted"></i>
+                                    </span>
+                                    <input type="email" 
+                                           class="form-control border-start-0 ps-0" 
+                                           name="email" 
+                                           id="email"
+                                           value="{{ form.email.value|default_if_none:'' }}"
+                                           placeholder="example@email.com"
+                                           style="border-radius: 0 10px 10px 0;"
+                                           required>
+                                </div>
+                            </div>
+                        </div>
 
-                <div class="form-group">
-                    <label for="password1" class="form-label required">비밀번호</label>
-                    <div class="input-group has-icon">
-                        <span class="input-icon">🔒</span>
-                        <input type="password" 
-                               class="form-control" 
-                               name="password1" 
-                               id="password1"
-                               value="{{ form.password1.value|default_if_none:'' }}"
-                               placeholder="비밀번호를 입력하세요"
-                               required>
-                    </div>
-                </div>
+                        <div class="row">
+                            <!-- 비밀번호 -->
+                            <div class="col-md-6 mb-4">
+                                <label for="password1" class="form-label fw-semibold">
+                                    <i class="fas fa-lock me-2 text-success"></i>비밀번호 <span class="text-danger">*</span>
+                                </label>
+                                <div class="input-group">
+                                    <span class="input-group-text bg-light border-end-0">
+                                        <i class="fas fa-lock text-muted"></i>
+                                    </span>
+                                    <input type="password" 
+                                           class="form-control border-start-0 ps-0" 
+                                           name="password1" 
+                                           id="password1"
+                                           placeholder="8자리 이상"
+                                           style="border-radius: 0 10px 10px 0;"
+                                           required>
+                                </div>
+                            </div>
 
-                <div class="form-group">
-                    <label for="password2" class="form-label required">비밀번호 확인</label>
-                    <div class="input-group has-icon">
-                        <span class="input-icon">🔐</span>
-                        <input type="password" 
-                               class="form-control" 
-                               name="password2" 
-                               id="password2"
-                               value="{{ form.password2.value|default_if_none:'' }}"
-                               placeholder="비밀번호를 다시 입력하세요"
-                               required>
-                    </div>
-                </div>
+                            <!-- 비밀번호 확인 -->
+                            <div class="col-md-6 mb-4">
+                                <label for="password2" class="form-label fw-semibold">
+                                    <i class="fas fa-shield-alt me-2 text-success"></i>비밀번호 확인 <span class="text-danger">*</span>
+                                </label>
+                                <div class="input-group">
+                                    <span class="input-group-text bg-light border-end-0">
+                                        <i class="fas fa-shield-alt text-muted"></i>
+                                    </span>
+                                    <input type="password" 
+                                           class="form-control border-start-0 ps-0" 
+                                           name="password2" 
+                                           id="password2"
+                                           placeholder="비밀번호 재입력"
+                                           style="border-radius: 0 10px 10px 0;"
+                                           required>
+                                </div>
+                            </div>
+                        </div>
 
-                <div class="form-group">
-                    <label for="nickname" class="form-label">닉네임</label>
-                    <div class="input-group has-icon">
-                        <span class="input-icon">✨</span>
-                        <input type="text" 
-                               class="form-control" 
-                               name="nickname" 
-                               id="nickname"
-                               value="{{ form.nickname.value|default_if_none:'' }}"
-                               placeholder="닉네임을 입력하세요 (선택사항)">
-                    </div>
-                    <div class="form-text">닉네임을 설정하지 않으면 사용자명이 표시됩니다.</div>
-                </div>
+                        <!-- 닉네임 -->
+                        <div class="mb-4">
+                            <label for="nickname" class="form-label fw-semibold">
+                                <i class="fas fa-tag me-2 text-success"></i>닉네임 <span class="text-muted">(선택사항)</span>
+                            </label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-light border-end-0">
+                                    <i class="fas fa-tag text-muted"></i>
+                                </span>
+                                <input type="text" 
+                                       class="form-control border-start-0 ps-0" 
+                                       name="nickname" 
+                                       id="nickname"
+                                       value="{{ form.nickname.value|default_if_none:'' }}"
+                                       placeholder="커뮤니티에서 표시될 이름"
+                                       style="border-radius: 0 10px 10px 0;">
+                            </div>
+                            <div class="form-text text-muted">
+                                <i class="fas fa-info-circle me-1"></i>
+                                닉네임을 설정하지 않으면 사용자명이 표시됩니다.
+                            </div>
+                        </div>
 
-                <div class="form-actions">
-                    <button type="submit" class="btn btn-primary btn-lg btn-block">
-                        <span class="btn-icon">🚀</span>
-                        <span>계정 생성하기</span>
-                    </button>
-                </div>
+                        <!-- 약관 동의 -->
+                        <div class="mb-4">
+                            <div class="card bg-light">
+                                <div class="card-body py-3">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="agreeTerms" required>
+                                        <label class="form-check-label" for="agreeTerms">
+                                            <i class="fas fa-check-circle me-1 text-success"></i>
+                                            <strong>테크창 이용약관</strong> 및 <strong>개인정보처리방침</strong>에 동의합니다 <span class="text-danger">*</span>
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
 
-                <div class="auth-footer">
-                    <p class="auth-link-text">
-                        이미 계정이 있으신가요? 
-                        <a href="{% url 'common:login' %}" class="auth-link">로그인하기</a>
-                    </p>
+                        <!-- 회원가입 버튼 -->
+                        <div class="d-grid mb-4">
+                            <button type="submit" class="btn btn-success btn-lg" style="border-radius: 10px;">
+                                <i class="fas fa-user-plus me-2"></i>계정 생성하기
+                            </button>
+                        </div>
+
+                        <!-- 로그인 링크 -->
+                        <div class="text-center">
+                            <p class="text-muted mb-2">이미 계정이 있으신가요?</p>
+                            <a href="{% url 'common:login' %}" class="btn btn-outline-success" style="border-radius: 10px;">
+                                <i class="fas fa-sign-in-alt me-2"></i>로그인하기
+                            </a>
+                        </div>
+                    </form>
                 </div>
-            </form>
+            </div>
+            
+            <!-- 하단 정보 -->
+            <div class="text-center mt-4">
+                <p class="text-muted small">
+                    <i class="fas fa-users me-1"></i>
+                    HRD와 테크놀로지 전문가들이 함께하는 커뮤니티
+                </p>
+            </div>
         </div>
     </div>
 </div>

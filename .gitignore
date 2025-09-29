@@ -17,3 +17,17 @@ media/
 # OS 생성 파일
 .DS_Store
 Thumbs.db
+
+# 가상환경 및 패키지 캐시
+.venv/
+venv/
+
+# 테스트/분석 산출물
+.pytest_cache/
+.mypy_cache/
+.coverage
+coverage.xml
+htmlcov/
+
+# 로그 파일
+*.log

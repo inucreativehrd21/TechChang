@@ -10,7 +10,7 @@ from ..models import Question
 @login_required(login_url='common:login')
 def question_create(request):
     if request.method == 'POST':
-        form = QuestionForm(request.POST)
+        form = QuestionForm(request.POST, request.FILES)
         if form.is_valid():
             question = form.save(commit=False)
             question.author = request.user  # author 속성에 로그인 계정 저장
@@ -29,7 +29,7 @@ def question_modify(request, question_id):
         messages.error(request, '수정권한이 없습니다')
         return redirect('pybo:detail', question_id=question.id)
     if request.method == "POST":
-        form = QuestionForm(request.POST, instance=question)
+        form = QuestionForm(request.POST, request.FILES, instance=question)
         if form.is_valid():
             question = form.save(commit=False)
             question.modify_date = timezone.now()  # 수정일시 저장

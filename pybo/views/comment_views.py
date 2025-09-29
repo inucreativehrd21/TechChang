@@ -14,7 +14,7 @@ def comment_create_question(request, question_id):
     """
     question = get_object_or_404(Question, pk=question_id)
     if request.method == "POST":
-        form = CommentForm(request.POST)
+        form = CommentForm(request.POST, request.FILES)
         if form.is_valid():
             comment = form.save(commit=False)
             comment.author = request.user
@@ -40,7 +40,7 @@ def comment_modify_question(request, comment_id):
         return redirect('pybo:detail', question_id=comment.question.id)
 
     if request.method == "POST":
-        form = CommentForm(request.POST, instance=comment)
+        form = CommentForm(request.POST, request.FILES, instance=comment)
         if form.is_valid():
             comment = form.save(commit=False)
             comment.modify_date = timezone.now()
@@ -74,7 +74,7 @@ def comment_create_answer(request, answer_id):
     """
     answer = get_object_or_404(Answer, pk=answer_id)
     if request.method == "POST":
-        form = CommentForm(request.POST)
+        form = CommentForm(request.POST, request.FILES)
         if form.is_valid():
             comment = form.save(commit=False)
             comment.author = request.user
@@ -100,7 +100,7 @@ def comment_modify_answer(request, comment_id):
         return redirect('pybo:detail', question_id=comment.answer.question.id)
 
     if request.method == "POST":
-        form = CommentForm(request.POST, instance=comment)
+        form = CommentForm(request.POST, request.FILES, instance=comment)
         if form.is_valid():
             comment = form.save(commit=False)
             comment.modify_date = timezone.now()

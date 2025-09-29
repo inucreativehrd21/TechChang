@@ -18,6 +18,7 @@ class Question(models.Model):
     voter = models.ManyToManyField(User, related_name='voter_question')  # 추천인 추가
     view_count = models.PositiveIntegerField(default=0)  # 조회수 추가
     category = models.ForeignKey(Category, on_delete=models.PROTECT)  # 카테고리 필수
+    image = models.ImageField(upload_to='questions/', blank=True, null=True)  # 이미지 첨부
 
     def __str__(self):
             return self.subject

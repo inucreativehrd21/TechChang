@@ -11,4 +11,6 @@ urlpatterns = [
     path('signup/', views.signup, name='signup'),
     path('theme/', views.save_theme, name='save_theme'),
     path('profile/edit/', views.profile_edit, name='profile_edit'),
+    path('password/change/', auth_views.PasswordChangeView.as_view(template_name='common/password_change.html', success_url='/common/password/change/done/'), name='password_change'),
+    path('password/change/done/', auth_views.PasswordChangeDoneView.as_view(template_name='common/password_change_done.html'), name='password_change_done'),
 ]
