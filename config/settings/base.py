@@ -128,12 +128,15 @@ USE_TZ = True
 
 
 # Static files (CSS, JavaScript, Images)
-# https://docs.djangoproject.com/en/5.2/howto/static-files/
+ # https://docs.djangoproject.com/en/5.2/howto/static-files/
 
-STATIC_URL = 'static/'
+# URL은 절대 경로로 설정해야 하며(선행 슬래시 필요),
+# Nginx 사용 시 collectstatic 결과물을 제공할 수 있도록 STATIC_ROOT를 지정합니다.
+STATIC_URL = '/static/'
 STATICFILES_DIRS = [
     BASE_DIR / 'static',
 ]
+STATIC_ROOT = BASE_DIR / 'staticfiles'
 
 # Media files (user uploads)
 MEDIA_URL = '/media/'
@@ -147,11 +150,9 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # 로그인 성공후 이동하는 URL
 LOGIN_REDIRECT_URL = '/'
 
-ALLOWED_HOSTS = ['43.202.203.131']
+ALLOWED_HOSTS = ['43.202.203.131', 'tc.o-r.kr']
 
 # OpenAI API 설정
 OPENAI_API_KEY = os.environ.get('OPENAI_API_KEY', '')
 
-# 미디어 파일 설정 (이미지 업로드용)
-MEDIA_URL = '/media/'
-MEDIA_ROOT = BASE_DIR / 'media'
+# (중복 설정 제거됨)
