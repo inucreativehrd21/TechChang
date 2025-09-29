@@ -2,6 +2,22 @@
    대한민국 대표 커뮤니티 프리미엄 스타일시트
    =========================================== */
 
+/*
+     웹폰트: 환경 간(로컬 runserver vs Nginx) 폰트 차이를 없애기 위해 self-host 방식으로 선언합니다.
+     - 폰트 파일을 다음 위치에 배치하세요:
+         static/fonts/NotoSansKR-VariableFont_wght.woff2
+         static/fonts/NotoSansKR-VariableFont_wght.woff   (옵션)
+     - ManifestStaticFilesStorage가 collectstatic 시 url(...)을 해시 파일명으로 재작성할 수 있도록
+         절대경로(/static/...)가 아닌 상대경로('fonts/...')를 사용합니다.
+*/
+@font-face {
+        font-family: 'Noto Sans KR';
+        src: url('fonts/NotoSansKR-VariableFont_wght.woff2') format('woff2');
+        font-weight: 100 900;
+        font-style: normal;
+        font-display: swap;
+}
+
 /* 테마 구조 가이드
     1) :root : 공통 불변 토큰 (색상 외 재사용 가능 요소: radius, shadow 등)
     2) .theme-light / .theme-dark : 색상/gradient/표면(surface) 계층 토큰 정의
