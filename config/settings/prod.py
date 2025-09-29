@@ -6,7 +6,10 @@ DEBUG = False
 
 ALLOWED_HOSTS = ['43.202.203.131', 'tc.o-r.kr']
 
-# 정적 파일: 해시 기반 파일명으로 캐시 무효화(collectstatic 필요)
-STATICFILES_STORAGE = 'django.contrib.staticfiles.storage.ManifestStaticFilesStorage'
+STATIC_URL = '/static/'
+STATIC_ROOT = BASE_DIR / 'staticfiles'
+STATICFILES_DIRS = []
+MEDIA_URL = '/media/'
+MEDIA_ROOT = BASE_DIR / 'media'
 
 # 프로덕션에서는 Nginx가 /static/ /media/를 서빙함. Django urlpatterns에 static() 추가 금지.
