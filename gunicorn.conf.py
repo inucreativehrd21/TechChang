@@ -10,7 +10,7 @@ from pathlib import Path
 BASE_DIR = Path(__file__).resolve().parent
 
 # 로그 디렉토리 설정 (환경 변수로 덮어쓰기 가능)
-_log_dir_env = os.environ.get('GUNICORN_LOG_DIR', '/srv/mysite/logs')
+_log_dir_env = os.environ.get('GUNICORN_LOG_DIR', str(BASE_DIR / 'logs'))
 LOG_DIR = Path(_log_dir_env)
 if not LOG_DIR.is_absolute():
     LOG_DIR = BASE_DIR / LOG_DIR
@@ -22,7 +22,7 @@ except PermissionError:
     LOG_DIR.mkdir(parents=True, exist_ok=True)
 
 # 서버 소켓
-bind = "43.203.93.244:8000"
+bind = "127.0.0.1:8000"
 backlog = 2048
 
 # 워커 프로세스
