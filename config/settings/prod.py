@@ -12,7 +12,7 @@ ALLOWED_HOSTS = ['43.203.93.244', 'tc.o-r.kr', '127.0.0.1', 'localhost']
 # 정적 파일 설정 (프로덕션 최적화)
 STATIC_URL = '/static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
-STATICFILES_DIRS = []  # 프로덕션에서는 collectstatic만 사용
+STATICFILES_DIRS = [BASE_DIR / 'static']
 
 # ManifestStaticFilesStorage로 캐시 무효화 지원
 STATICFILES_STORAGE = 'django.contrib.staticfiles.storage.ManifestStaticFilesStorage'
@@ -73,5 +73,21 @@ LOGGING = {
         },
     },
 }
+
+# 이메일 설정 (환경 변수 기반)
+EMAIL_BACKEND = os.environ.get('DJANGO_EMAIL_BACKEND', 'django.core.mail.backends.smtp.EmailBackend')
+EMAIL_HOST = os.environ.get('DJANGO_EMAIL_HOST', '')
+EMAIL_PORT = int(os.environ.get('DJANGO_EMAIL_PORT', 587))
+EMAIL_HOST_USER = os.environ.get('DJANGO_EMAIL_HOST_USER', '')
+EMAIL_HOST_PASSWORD = os.environ.get('DJANGO_EMAIL_HOST_PASSWORD', '')
+EMAIL_USE_TLS = os.environ.get('DJANGO_EMAIL_USE_TLS', 'true').lower() == 'true'
+EMAIL_USE_SSL = os.environ.get('DJANGO_EMAIL_USE_SSL', 'false').lower() == 'true'
+EMAIL_TIMEOUT = int(os.environ.get('DJANGO_EMAIL_TIMEOUT', 20))
+
+if EMAIL_USE_SSL:
+    EMAIL_USE_TLS = False
+
+DEFAULT_FROM_EMAIL = os.environ.get('DJANGO_DEFAULT_FROM_EMAIL', DEFAULT_FROM_EMAIL)
+SERVER_EMAIL = os.environ.get('DJANGO_SERVER_EMAIL', DEFAULT_FROM_EMAIL)
 
 # 프로덕션에서는 Nginx가 /static/ /media/를 서빙함

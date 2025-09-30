@@ -1,6 +1,7 @@
 from django.db import models
 from django.contrib.auth import get_user_model
 from django.utils import timezone
+from datetime import timedelta
 import random
 import string
 
@@ -39,8 +40,14 @@ class Profile(models.Model):
 
 class EmailVerification(models.Model):
     """이메일 인증 모델"""
+
+    CODE_LENGTH = 4
+    CODE_EXPIRY_MINUTES = 10
+    MAX_ATTEMPTS = 5
+    RESEND_COOLDOWN_SECONDS = 60
+
     email = models.EmailField(verbose_name="이메일")
-    code = models.CharField(max_length=4, verbose_name="인증코드")
+    code = models.CharField(max_length=CODE_LENGTH, verbose_name="인증코드")
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="생성일시")
     verified_at = models.DateTimeField(null=True, blank=True, verbose_name="인증일시")
     is_verified = models.BooleanField(default=False, verbose_name="인증완료")
@@ -56,17 +63,32 @@ class EmailVerification(models.Model):
     
     @classmethod
     def generate_code(cls):
-        """4자리 숫자 코드 생성"""
-        return ''.join(random.choices(string.digits, k=4))
+        """고정 길이의 숫자 코드 생성"""
+        return ''.join(random.choices(string.digits, k=cls.CODE_LENGTH))
     
     def is_expired(self):
         """10분 후 만료 체크"""
-        from datetime import timedelta
-        from django.utils import timezone
-        return timezone.now() > self.created_at + timedelta(minutes=10)
+        return timezone.now() > self.created_at + timedelta(minutes=self.CODE_EXPIRY_MINUTES)
     
     def can_retry(self):
         """재시도 가능 여부 (5회 제한)"""
-        return self.attempts < 5
+        return self.attempts < self.MAX_ATTEMPTS
+
+    def remaining_attempts(self):
+        return max(0, self.MAX_ATTEMPTS - self.attempts)
+
+    def increment_attempts(self):
+        """실패 시도 카운터 증가"""
+        self.attempts += 1
+        self.save(update_fields=['attempts'])
+        return self.remaining_attempts()
+
+    def mark_verified(self):
+        self.is_verified = True
+        self.verified_at = timezone.now()
+        self.save(update_fields=['is_verified', 'verified_at'])
+
+    def can_resend(self):
+        return timezone.now() >= self.created_at + timedelta(seconds=self.RESEND_COOLDOWN_SECONDS)
 
 # Create your models here.

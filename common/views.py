@@ -9,11 +9,15 @@ from django.contrib import messages
 from django.conf import settings
 from django.utils import timezone
 from django.core.mail import send_mail
-from django.views.decorators.csrf import csrf_exempt
+from django.core.cache import cache
 import json
+import logging
 from django.contrib.auth.models import User
-from common.forms import UserForm, ProfileForm, EmailVerificationForm
+from common.forms import UserForm, ProfileForm
 from .models import Profile, EmailVerification
+
+
+logger = logging.getLogger(__name__)
 
 
 def logout_view(request):
@@ -146,35 +150,41 @@ def account_delete(request):
     # GET 요청시 확인 페이지 표시
     return render(request, 'common/account_delete_confirm.html')
 
-@csrf_exempt
 def send_verification_email(request):
     """이메일 인증 코드 발송 (AJAX)"""
     if request.method != 'POST':
-        return JsonResponse({'success': False, 'message': '잘못된 요청입니다.'})
-    
+        return JsonResponse({'success': False, 'message': '잘못된 요청입니다.'}, status=405)
+
     try:
-        data = json.loads(request.body)
-        email = data.get('email', '').strip()
-        
-        if not email:
-            return JsonResponse({'success': False, 'message': '이메일을 입력해주세요.'})
-        
-        # 이메일 중복 체크
-        if User.objects.filter(email=email).exists():
-            return JsonResponse({'success': False, 'message': '이미 사용 중인 이메일입니다.'})
-        
-        # 기존 인증 시도가 있다면 삭제 (새로운 시도)
-        EmailVerification.objects.filter(email=email).delete()
-        
-        # 인증 코드 생성
-        code = EmailVerification.generate_code()
-        verification = EmailVerification.objects.create(email=email, code=code)
-        
-        # 이메일 발송 (개발 환경에서는 콘솔에 출력)
-        try:
-            send_mail(
-                subject='[테크창] 이메일 인증 코드',
-                message=f'''
+        data = json.loads(request.body or '{}')
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False, 'message': '요청 형식이 올바르지 않습니다.'}, status=400)
+
+    email = data.get('email', '').strip().lower()
+    if not email:
+        return JsonResponse({'success': False, 'message': '이메일을 입력해주세요.'}, status=400)
+
+    if User.objects.filter(email=email).exists():
+        return JsonResponse({'success': False, 'message': '이미 사용 중인 이메일입니다.'}, status=400)
+
+    # 이메일/아이피별 간단한 요청 속도 제한
+    cooldown_key = f"email_verification:cooldown:{email}"
+    if cache.get(cooldown_key):
+        return JsonResponse({'success': False, 'message': '인증 코드를 잠시 후 다시 요청해주세요.'}, status=429)
+
+    ip_address = request.META.get('HTTP_X_FORWARDED_FOR', '').split(',')[0] or request.META.get('REMOTE_ADDR')
+    if ip_address:
+        ip_cooldown_key = f"email_verification:cooldown_ip:{ip_address}"
+        if cache.get(ip_cooldown_key):
+            return JsonResponse({'success': False, 'message': '요청이 너무 빈번합니다. 잠시 후 다시 시도해주세요.'}, status=429)
+
+    # 진행 중인 인증 레코드 정리
+    EmailVerification.objects.filter(email=email, is_verified=False).delete()
+
+    code = EmailVerification.generate_code()
+    verification = EmailVerification.objects.create(email=email, code=code)
+
+    message_body = f'''
 안녕하세요! 테크창입니다.
 
 회원가입을 위한 이메일 인증 코드는 다음과 같습니다:
@@ -185,65 +195,70 @@ def send_verification_email(request):
 인증 코드를 입력하여 회원가입을 완료해주세요.
 
 감사합니다.
-''',
-                from_email=settings.DEFAULT_FROM_EMAIL,
-                recipient_list=[email],
-                fail_silently=False,
-            )
-            return JsonResponse({'success': True, 'message': f'인증 코드가 {email}로 발송되었습니다.'})
-        except Exception as e:
-            # 개발 환경에서 이메일 발송 실패 시
-            return JsonResponse({'success': True, 'message': f'개발 모드: 인증코드는 {code}입니다.'})
-            
-    except Exception as e:
-        return JsonResponse({'success': False, 'message': '이메일 발송 중 오류가 발생했습니다.'})
+'''
+
+    try:
+        send_mail(
+            subject='[테크창] 이메일 인증 코드',
+            message=message_body,
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            recipient_list=[email],
+            fail_silently=False,
+        )
+    except Exception as exc:
+        logger.exception("Failed to send verification email to %s", email)
+        verification.delete()
+        if settings.DEBUG:
+            return JsonResponse({'success': True, 'message': f'개발 모드: 인증코드는 {code}입니다.', 'code': code})
+        return JsonResponse({'success': False, 'message': '이메일 발송 중 문제가 발생했습니다. 잠시 후 다시 시도해주세요.'}, status=500)
+
+    cache.set(cooldown_key, True, timeout=EmailVerification.RESEND_COOLDOWN_SECONDS)
+    if ip_address:
+        cache.set(f"email_verification:cooldown_ip:{ip_address}", True, timeout=EmailVerification.RESEND_COOLDOWN_SECONDS)
+
+    return JsonResponse({'success': True, 'message': f'인증 코드가 {email}로 발송되었습니다.'})
 
 def verify_email_code(request):
     """이메일 인증 코드 확인 (AJAX)"""
     if request.method != 'POST':
-        return JsonResponse({'success': False, 'message': '잘못된 요청입니다.'})
-    
+        return JsonResponse({'success': False, 'message': '잘못된 요청입니다.'}, status=405)
+
     try:
-        data = json.loads(request.body)
-        email = data.get('email', '').strip()
-        code = data.get('code', '').strip()
-        
-        if not email or not code:
-            return JsonResponse({'success': False, 'message': '이메일과 인증코드를 모두 입력해주세요.'})
-        
-        # 인증 시도 찾기
-        verification = EmailVerification.objects.filter(
-            email=email, 
-            is_verified=False
-        ).order_by('-created_at').first()
-        
-        if not verification:
-            return JsonResponse({'success': False, 'message': '인증 요청을 찾을 수 없습니다.'})
-        
-        # 만료 체크
-        if verification.is_expired():
-            return JsonResponse({'success': False, 'message': '인증 코드가 만료되었습니다. 새로운 코드를 요청해주세요.'})
-        
-        # 시도 횟수 체크
-        verification.attempts += 1
-        verification.save()
-        
-        if not verification.can_retry():
-            return JsonResponse({'success': False, 'message': '인증 시도 횟수를 초과했습니다. 새로운 코드를 요청해주세요.'})
-        
-        # 코드 확인
-        if verification.code != code:
-            return JsonResponse({'success': False, 'message': f'인증 코드가 틀렸습니다. (남은 시도: {5 - verification.attempts}회)'})
-        
-        # 인증 완료
-        verification.is_verified = True
-        verification.verified_at = timezone.now()
-        verification.save()
-        
-        return JsonResponse({'success': True, 'message': '이메일 인증이 완료되었습니다.'})
-        
-    except Exception as e:
-        return JsonResponse({'success': False, 'message': '인증 처리 중 오류가 발생했습니다.'})
+        data = json.loads(request.body or '{}')
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False, 'message': '요청 형식이 올바르지 않습니다.'}, status=400)
+
+    email = data.get('email', '').strip().lower()
+    code = data.get('code', '').strip()
+
+    if not email or not code:
+        return JsonResponse({'success': False, 'message': '이메일과 인증코드를 모두 입력해주세요.'}, status=400)
+
+    verification = EmailVerification.objects.filter(
+        email=email,
+        is_verified=False
+    ).order_by('-created_at').first()
+
+    if not verification:
+        return JsonResponse({'success': False, 'message': '인증 요청을 찾을 수 없습니다. 코드를 다시 요청해주세요.'}, status=404)
+
+    if verification.is_expired():
+        verification.delete()
+        return JsonResponse({'success': False, 'message': '인증 코드가 만료되었습니다. 새로운 코드를 요청해주세요.'}, status=400)
+
+    if not verification.can_retry():
+        verification.delete()
+        return JsonResponse({'success': False, 'message': '인증 시도 횟수를 초과했습니다. 새로운 코드를 요청해주세요.'}, status=429)
+
+    if verification.code != code:
+        remaining = verification.increment_attempts()
+        if remaining <= 0:
+            verification.delete()
+            return JsonResponse({'success': False, 'message': '인증 시도 횟수를 초과했습니다. 새로운 코드를 요청해주세요.'}, status=429)
+        return JsonResponse({'success': False, 'message': f'인증 코드가 틀렸습니다. (남은 시도: {remaining}회)'}, status=400)
+
+    verification.mark_verified()
+    return JsonResponse({'success': True, 'message': '이메일 인증이 완료되었습니다.'})
 
 def signup_with_email_verification(request):
     """이메일 인증이 포함된 회원가입"""
