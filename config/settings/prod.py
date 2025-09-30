@@ -7,7 +7,7 @@ DEBUG = False
 SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', SECRET_KEY)
 
 # 호스트 설정
-ALLOWED_HOSTS = ['43.203.93.244', 'tc.o-r.kr']
+ALLOWED_HOSTS = ['43.203.93.244', 'tc.o-r.kr', '127.0.0.1', 'localhost']
 
 # 정적 파일 설정 (프로덕션 최적화)
 STATIC_URL = '/static/'
