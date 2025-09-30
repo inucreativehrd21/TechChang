@@ -4,6 +4,22 @@
 
 import multiprocessing
 import os
+from pathlib import Path
+
+# 기본 경로 계산
+BASE_DIR = Path(__file__).resolve().parent
+
+# 로그 디렉토리 설정 (환경 변수로 덮어쓰기 가능)
+_log_dir_env = os.environ.get('GUNICORN_LOG_DIR', '/srv/mysite/logs')
+LOG_DIR = Path(_log_dir_env)
+if not LOG_DIR.is_absolute():
+    LOG_DIR = BASE_DIR / LOG_DIR
+
+try:
+    LOG_DIR.mkdir(parents=True, exist_ok=True)
+except PermissionError:
+    LOG_DIR = BASE_DIR / 'logs'
+    LOG_DIR.mkdir(parents=True, exist_ok=True)
 
 # 서버 소켓
 bind = "43.203.93.244:8000"
@@ -25,8 +41,8 @@ daemon = False  # systemd 사용시 False
 
 # 로깅
 loglevel = "info"
-accesslog = "/srv/mysite/logs/gunicorn_access.log"
-errorlog = "/srv/mysite/logs/gunicorn_error.log"
+accesslog = str(LOG_DIR / "gunicorn_access.log")
+errorlog = str(LOG_DIR / "gunicorn_error.log")
 access_log_format = '%(h)s %(l)s %(u)s %(t)s "%(r)s" %(s)s %(b)s "%(f)s" "%(a)s" %(D)s'
 
 # 프로세스 이름
