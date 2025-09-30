@@ -1,3 +1,4 @@
+<!-- templates/common/signup_with_verification.html -->
 {% extends 'base.html' %}
 {% load static %}
 
@@ -7,6 +8,7 @@
   {{ block.super }}
   {% csrf_token %}
   <script>
+    // CSRF 토큰 전역 변수에 저장
     window.CSRF_TOKEN = "{{ csrf_token }}";
   </script>
 {% endblock %}
@@ -30,8 +32,9 @@
               </div>
             {% endfor %}
           {% endif %}
-          <form method="post" id="signupForm">
+          <form method="post" id="signupForm" action="{% url 'common:signup' %}">
             {% csrf_token %}
+            <!-- 사용자명 -->
             <div class="mb-3">
               <label for="{{ form.username.id_for_label }}" class="form-label fw-semibold">
                 <i class="fas fa-user me-2 text-primary"></i>사용자명 <span class="text-danger">*</span>
@@ -42,6 +45,7 @@
               {% endif %}
             </div>
 
+            <!-- 이메일 입력 및 인증코드 발송 -->
             <div class="mb-3">
               <label for="{{ form.email.id_for_label }}" class="form-label fw-semibold">
                 <i class="fas fa-envelope me-2 text-primary"></i>이메일 <span class="text-danger">*</span>
@@ -58,7 +62,8 @@
               <div class="form-text">이메일로 인증 코드를 받아 확인해주세요.</div>
             </div>
 
-            <div class="mb-3" id="codeSection" style="display: none;">
+            <!-- 인증코드 입력란 -->
+            <div class="mb-3" id="codeSection" style="display:none;">
               <label class="form-label fw-semibold">
                 <i class="fas fa-key me-2 text-success"></i>이메일 인증 코드 <span class="text-danger">*</span>
               </label>
@@ -73,6 +78,7 @@
               <div id="verificationStatus"></div>
             </div>
 
+            <!-- 닉네임 -->
             <div class="mb-3">
               <label for="{{ form.nickname.id_for_label }}" class="form-label fw-semibold">
                 <i class="fas fa-id-badge me-2 text-primary"></i>닉네임 <span class="text-muted">(선택사항)</span>
@@ -84,6 +90,7 @@
               <div class="form-text">닉네임을 설정하지 않으면 사용자명이 표시됩니다.</div>
             </div>
 
+            <!-- 비밀번호 -->
             <div class="mb-3">
               <label for="{{ form.password1.id_for_label }}" class="form-label fw-semibold">
                 <i class="fas fa-lock me-2 text-primary"></i>비밀번호 <span class="text-danger">*</span>
@@ -94,6 +101,7 @@
               {% endif %}
             </div>
 
+            <!-- 비밀번호 확인 -->
             <div class="mb-4">
               <label for="{{ form.password2.id_for_label }}" class="form-label fw-semibold">
                 <i class="fas fa-lock me-2 text-primary"></i>비밀번호 확인 <span class="text-danger">*</span>
@@ -104,6 +112,7 @@
               {% endif %}
             </div>
 
+            <!-- 회원가입 버튼 -->
             <div class="d-flex justify-content-between align-items-center">
               <a href="{% url 'common:login' %}" class="btn btn-outline-secondary">
                 <i class="fas fa-arrow-left me-1"></i>로그인으로 돌아가기
@@ -124,132 +133,84 @@
     </div>
   </div>
 </div>
+{% endblock %}
 
+{% block extra_js %}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-  const emailInput = document.getElementById('id_email');
-  const sendCodeBtn = document.getElementById('sendCodeBtn');
-  const codeSection = document.getElementById('codeSection');
-  const verificationCode = document.getElementById('verificationCode');
-  const verifyCodeBtn = document.getElementById('verifyCodeBtn');
+  const emailInput      = document.querySelector('input[name="email"]');
+  const sendCodeBtn     = document.getElementById('sendCodeBtn');
+  const codeSection     = document.getElementById('codeSection');
+  const verificationCode= document.getElementById('verificationCode');
+  const verifyCodeBtn   = document.getElementById('verifyCodeBtn');
   const verificationStatus = document.getElementById('verificationStatus');
-  const submitBtn = document.getElementById('submitBtn');
-  
-  let isEmailVerified = false;
-  let codeSent = false;
-  
-  function getCookie(name) {
-    let cookieValue = null;
-    if (document.cookie && document.cookie !== '') {
-      document.cookie.split(';').forEach(c => {
-        const [key, val] = c.trim().split('=');
-        if (key === name) cookieValue = decodeURIComponent(val);
-      });
-    }
-    return cookieValue;
+  const submitBtn       = document.getElementById('submitBtn');
+
+  function getCSRF() {
+    return window.CSRF_TOKEN ||
+      document.cookie.replace(/(?:(?:^|.*;\s*)csrftoken\s*\=\s*([^;]*).*$)|^.*$/, "$1");
   }
-  
-  sendCodeBtn.addEventListener('click', function() {
+
+  sendCodeBtn.addEventListener('click', () => {
     const email = emailInput.value.trim();
     if (!email) {
       alert('이메일을 입력해주세요.');
       return;
     }
     sendCodeBtn.disabled = true;
-    sendCodeBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>발송 중...';
-    fetch('{% url "common:send_verification_email" %}', {
+    fetch("{% url 'common:send_verification_email' %}", {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'X-CSRFToken': getCookie('csrftoken')
+        'X-CSRFToken': getCSRF()
       },
-      body: JSON.stringify({ email: email })
+      body: JSON.stringify({ email })
     })
-    .then(res => res.json())
+    .then(r => r.json())
     .then(data => {
+      alert(data.message);
       if (data.success) {
         codeSection.style.display = 'block';
-        sendCodeBtn.innerHTML = '<i class="fas fa-check me-1"></i>발송완료';
-        sendCodeBtn.classList.replace('btn-outline-primary','btn-success');
-        codeSent = true;
-        let countdown = 60;
-        const timer = setInterval(() => {
-          if (countdown <= 0) {
-            clearInterval(timer);
-            sendCodeBtn.disabled = false;
-            sendCodeBtn.innerHTML = '<i class="fas fa-paper-plane me-1"></i>재발송';
-            sendCodeBtn.classList.replace('btn-success','btn-outline-primary');
-          } else {
-            sendCodeBtn.innerHTML = `<i class="fas fa-clock me-1"></i>${countdown}초`;
-            countdown--;
-          }
-        }, 1000);
-        alert(data.message);
       } else {
-        alert(data.message);
         sendCodeBtn.disabled = false;
-        sendCodeBtn.innerHTML = '<i class="fas fa-paper-plane me-1"></i>인증코드 발송';
       }
     })
-    .catch(err => {
-      alert('오류가 발생했습니다.');
+    .catch(() => {
+      alert('서버 오류가 발생했습니다.');
       sendCodeBtn.disabled = false;
-      sendCodeBtn.innerHTML = '<i class="fas fa-paper-plane me-1"></i>인증코드 발송';
     });
   });
-  
-  verifyCodeBtn.addEventListener('click', function() {
+
+  verifyCodeBtn.addEventListener('click', () => {
     const email = emailInput.value.trim();
-    const code = verificationCode.value.trim();
+    const code  = verificationCode.value.trim();
     if (!email || !code) {
-      alert('이메일과 인증코드를 모두 입력해주세요.');
+      alert('이메일과 인증 코드를 모두 입력해주세요.');
       return;
     }
     verifyCodeBtn.disabled = true;
-    verifyCodeBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>확인 중...';
-    fetch('{% url "common:verify_email_code" %}', {
+    fetch("{% url 'common:verify_email_code' %}", {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'X-CSRFToken': getCookie('csrftoken')
+        'X-CSRFToken': getCSRF()
       },
-      body: JSON.stringify({ email: email, code: code })
+      body: JSON.stringify({ email, code })
     })
-    .then(res => res.json())
+    .then(r => r.json())
     .then(data => {
+      verificationStatus.textContent = data.message;
       if (data.success) {
-        isEmailVerified = true;
-        verificationStatus.innerHTML = '<div class="alert alert-success small mt-2"><i class="fas fa-check-circle me-1"></i>' + data.message + '</div>';
-        verifyCodeBtn.innerHTML = '<i class="fas fa-check me-1"></i>인증완료';
-        verifyCodeBtn.classList.replace('btn-outline-success','btn-success');
-        verificationCode.disabled = true;
-        checkFormValidity();
+        submitBtn.disabled = false;
+        verifyCodeBtn.disabled = true;
       } else {
-        verificationStatus.innerHTML = '<div class="alert alert-danger small mt-2"><i class="fas fa-times-circle me-1"></i>' + data.message + '</div>';
         verifyCodeBtn.disabled = false;
-        verifyCodeBtn.innerHTML = '<i class="fas fa-check me-1"></i>인증 확인';
       }
     })
-    .catch(err => {
-      alert('오류가 발생했습니다.');
+    .catch(() => {
+      alert('서버 오류가 발생했습니다.');
       verifyCodeBtn.disabled = false;
-      verifyCodeBtn.innerHTML = '<i class="fas fa-check me-1"></i>인증 확인';
     });
-  });
-  
-  function checkFormValidity() {
-    if (isEmailVerified) submitBtn.disabled = false;
-  }
-  
-  emailInput.addEventListener('input', function() {
-    isEmailVerified = false;
-    codeSent = false;
-    codeSection.style.display = 'none';
-    verificationStatus.innerHTML = '';
-    sendCodeBtn.disabled = false;
-    sendCodeBtn.innerHTML = '<i class="fas fa-paper-plane me-1"></i>인증코드 발송';
-    sendCodeBtn.classList.replace('btn-success','btn-outline-primary');
-    checkFormValidity();
   });
 });
 </script>
