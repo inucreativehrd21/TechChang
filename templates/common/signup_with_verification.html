@@ -1,17 +1,7 @@
-<!-- templates/common/signup_with_verification.html -->
 {% extends 'base.html' %}
 {% load static %}
 
 {% block title %}회원가입 - 테크창{% endblock %}
-
-{% block head_extra %}
-  {{ block.super }}
-  {% csrf_token %}
-  <script>
-    // CSRF 토큰 전역 변수에 저장
-    window.CSRF_TOKEN = "{{ csrf_token }}";
-  </script>
-{% endblock %}
 
 {% block content %}
 <div class="container mt-4">
@@ -32,20 +22,14 @@
               </div>
             {% endfor %}
           {% endif %}
-          <form method="post" id="signupForm" action="{% url 'common:signup' %}">
+          <form id="signupForm" method="post" action="{% url 'common:signup' %}">
             {% csrf_token %}
-            <!-- 사용자명 -->
             <div class="mb-3">
               <label for="{{ form.username.id_for_label }}" class="form-label fw-semibold">
                 <i class="fas fa-user me-2 text-primary"></i>사용자명 <span class="text-danger">*</span>
               </label>
               {{ form.username }}
-              {% if form.username.errors %}
-                <div class="text-danger small mt-1">{{ form.username.errors }}</div>
-              {% endif %}
             </div>
-
-            <!-- 이메일 입력 및 인증코드 발송 -->
             <div class="mb-3">
               <label for="{{ form.email.id_for_label }}" class="form-label fw-semibold">
                 <i class="fas fa-envelope me-2 text-primary"></i>이메일 <span class="text-danger">*</span>
@@ -56,64 +40,24 @@
                   <i class="fas fa-paper-plane me-1"></i>인증코드 발송
                 </button>
               </div>
-              {% if form.email.errors %}
-                <div class="text-danger small mt-1">{{ form.email.errors }}</div>
-              {% endif %}
               <div class="form-text">이메일로 인증 코드를 받아 확인해주세요.</div>
             </div>
-
-            <!-- 인증코드 입력란 -->
             <div class="mb-3" id="codeSection" style="display:none;">
               <label class="form-label fw-semibold">
                 <i class="fas fa-key me-2 text-success"></i>이메일 인증 코드 <span class="text-danger">*</span>
               </label>
               <div class="input-group">
-                <input type="text" class="form-control" id="verificationCode"
-                       placeholder="4자리 숫자 입력" maxlength="4" pattern="\d{4}">
+                <input type="text" class="form-control" id="verificationCode" placeholder="4자리 숫자 입력" maxlength="4">
                 <button type="button" class="btn btn-outline-success" id="verifyCodeBtn">
                   <i class="fas fa-check me-1"></i>인증 확인
                 </button>
               </div>
-              <div class="form-text">이메일로 받은 4자리 인증 코드를 입력하세요.</div>
-              <div id="verificationStatus"></div>
+              <div id="verificationStatus" class="mt-2"></div>
             </div>
-
-            <!-- 닉네임 -->
-            <div class="mb-3">
-              <label for="{{ form.nickname.id_for_label }}" class="form-label fw-semibold">
-                <i class="fas fa-id-badge me-2 text-primary"></i>닉네임 <span class="text-muted">(선택사항)</span>
-              </label>
-              {{ form.nickname }}
-              {% if form.nickname.errors %}
-                <div class="text-danger small mt-1">{{ form.nickname.errors }}</div>
-              {% endif %}
-              <div class="form-text">닉네임을 설정하지 않으면 사용자명이 표시됩니다.</div>
-            </div>
-
-            <!-- 비밀번호 -->
-            <div class="mb-3">
-              <label for="{{ form.password1.id_for_label }}" class="form-label fw-semibold">
-                <i class="fas fa-lock me-2 text-primary"></i>비밀번호 <span class="text-danger">*</span>
-              </label>
-              {{ form.password1 }}
-              {% if form.password1.errors %}
-                <div class="text-danger small mt-1">{{ form.password1.errors }}</div>
-              {% endif %}
-            </div>
-
-            <!-- 비밀번호 확인 -->
-            <div class="mb-4">
-              <label for="{{ form.password2.id_for_label }}" class="form-label fw-semibold">
-                <i class="fas fa-lock me-2 text-primary"></i>비밀번호 확인 <span class="text-danger">*</span>
-              </label>
-              {{ form.password2 }}
-              {% if form.password2.errors %}
-                <div class="text-danger small mt-1">{{ form.password2.errors }}</div>
-              {% endif %}
-            </div>
-
-            <!-- 회원가입 버튼 -->
-            <div class="d-flex justify-content-between align-items-center">
+            {{ form.nickname.label_tag }} {{ form.nickname }}
+            {{ form.password1.label_tag }} {{ form.password1 }}
+            {{ form.password2.label_tag }} {{ form.password2 }}
+            <div class="d-flex justify-content-between align-items-center mt-4">
               <a href="{% url 'common:login' %}" class="btn btn-outline-secondary">
                 <i class="fas fa-arrow-left me-1"></i>로그인으로 돌아가기
               </a>
@@ -138,26 +82,23 @@
 {% block extra_js %}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-  const emailInput      = document.querySelector('input[name="email"]');
-  const sendCodeBtn     = document.getElementById('sendCodeBtn');
-  const codeSection     = document.getElementById('codeSection');
-  const verificationCode= document.getElementById('verificationCode');
-  const verifyCodeBtn   = document.getElementById('verifyCodeBtn');
-  const verificationStatus = document.getElementById('verificationStatus');
-  const submitBtn       = document.getElementById('submitBtn');
+  const emailEl   = document.getElementById('{{ form.email.id_for_label }}');
+  const sendBtn   = document.getElementById('sendCodeBtn');
+  const codeSec   = document.getElementById('codeSection');
+  const codeInput = document.getElementById('verificationCode');
+  const verifyBtn = document.getElementById('verifyCodeBtn');
+  const statusDiv = document.getElementById('verificationStatus');
+  const submitBtn = document.getElementById('submitBtn');
 
   function getCSRF() {
-    return window.CSRF_TOKEN ||
-      document.cookie.replace(/(?:(?:^|.*;\s*)csrftoken\s*\=\s*([^;]*).*$)|^.*$/, "$1");
+    const match = document.cookie.match(/csrftoken=([^;]+)/);
+    return match && match[1];
   }
 
-  sendCodeBtn.addEventListener('click', () => {
-    const email = emailInput.value.trim();
-    if (!email) {
-      alert('이메일을 입력해주세요.');
-      return;
-    }
-    sendCodeBtn.disabled = true;
+  sendBtn.addEventListener('click', () => {
+    const email = emailEl.value.trim();
+    if (!email) return alert('이메일을 입력해주세요.');
+    sendBtn.disabled = true;
     fetch("{% url 'common:send_verification_email' %}", {
       method: 'POST',
       headers: {
@@ -169,26 +110,20 @@ document.addEventListener('DOMContentLoaded', function() {
     .then(r => r.json())
     .then(data => {
       alert(data.message);
-      if (data.success) {
-        codeSection.style.display = 'block';
-      } else {
-        sendCodeBtn.disabled = false;
-      }
+      if (data.success) codeSec.style.display = 'block';
+      else sendBtn.disabled = false;
     })
     .catch(() => {
-      alert('서버 오류가 발생했습니다.');
-      sendCodeBtn.disabled = false;
+      alert('서버 오류');
+      sendBtn.disabled = false;
     });
   });
 
-  verifyCodeBtn.addEventListener('click', () => {
-    const email = emailInput.value.trim();
-    const code  = verificationCode.value.trim();
-    if (!email || !code) {
-      alert('이메일과 인증 코드를 모두 입력해주세요.');
-      return;
-    }
-    verifyCodeBtn.disabled = true;
+  verifyBtn.addEventListener('click', () => {
+    const email = emailEl.value.trim();
+    const code  = codeInput.value.trim();
+    if (!email || !code) return alert('이메일과 코드 모두 입력해주세요.');
+    verifyBtn.disabled = true;
     fetch("{% url 'common:verify_email_code' %}", {
       method: 'POST',
       headers: {
@@ -199,17 +134,13 @@ document.addEventListener('DOMContentLoaded', function() {
     })
     .then(r => r.json())
     .then(data => {
-      verificationStatus.textContent = data.message;
-      if (data.success) {
-        submitBtn.disabled = false;
-        verifyCodeBtn.disabled = true;
-      } else {
-        verifyCodeBtn.disabled = false;
-      }
+      statusDiv.textContent = data.message;
+      if (data.success) submitBtn.disabled = false;
+      else verifyBtn.disabled = false;
     })
     .catch(() => {
-      alert('서버 오류가 발생했습니다.');
-      verifyCodeBtn.disabled = false;
+      alert('서버 오류');
+      verifyBtn.disabled = false;
     });
   });
 });
