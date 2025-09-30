@@ -149,9 +149,9 @@ STATICFILES_FINDERS = [
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
-# 파일 업로드 제한 설정 (5MB)
-FILE_UPLOAD_MAX_MEMORY_SIZE = 5 * 1024 * 1024  # 5MB
-DATA_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024  # 10MB
+# 파일 업로드 제한 설정 (20MB)
+FILE_UPLOAD_MAX_MEMORY_SIZE = 20 * 1024 * 1024  # 20MB
+DATA_UPLOAD_MAX_MEMORY_SIZE = 20 * 1024 * 1024  # 20MB
 
 # 이미지 업로드 보안 설정
 FILE_UPLOAD_PERMISSIONS = 0o644
@@ -175,8 +175,8 @@ RATE_LIMIT_REQUESTS = int(os.environ.get('RATE_LIMIT_REQUESTS', 300))  # 시간�
 RATE_LIMIT_WINDOW = int(os.environ.get('RATE_LIMIT_WINDOW', 3600))   # 1시간 윈도우
 DDOS_THRESHOLD = int(os.environ.get('DDOS_THRESHOLD', 120))        # 1분에 120회 초과시 의심
 BLOCK_DURATION = int(os.environ.get('BLOCK_DURATION', 180))       # 3분간 차단
-SUSPICION_SCORE_THRESHOLD = int(os.environ.get('SUSPICION_SCORE_THRESHOLD', 10))
-PROTECTED_PATH_ATTEMPTS_LIMIT = int(os.environ.get('PROTECTED_PATH_ATTEMPTS_LIMIT', 20))
+SUSPICION_SCORE_THRESHOLD = int(os.environ.get('SUSPICION_SCORE_THRESHOLD', 20))
+PROTECTED_PATH_ATTEMPTS_LIMIT = int(os.environ.get('PROTECTED_PATH_ATTEMPTS_LIMIT', 50))
 
 def _split_patterns(raw_value):
     return [pattern.strip() for pattern in raw_value.split(',') if pattern.strip()]
@@ -259,7 +259,7 @@ LOGGING = {
 
 # 이메일 설정 (개발용)
 EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
-DEFAULT_FROM_EMAIL = 'noreply@techwindow.kr'
+DEFAULT_FROM_EMAIL = 'noreply@techchang.kr'
 
 # 추가 보안 설정
 SECURE_BROWSER_XSS_FILTER = True
