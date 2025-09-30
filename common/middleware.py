@@ -22,11 +22,23 @@ class SecurityMiddleware:
     def __init__(self, get_response):
         self.get_response = get_response
         
-        # 설정값들 (안전한 기본값)
-        self.RATE_LIMIT_REQUESTS = getattr(settings, 'RATE_LIMIT_REQUESTS', 100)  # 시간당 요청 수
+        # 설정값들 (환경 설정 우선)
+        self.RATE_LIMIT_REQUESTS = getattr(settings, 'RATE_LIMIT_REQUESTS', 300)  # 시간당 요청 수
         self.RATE_LIMIT_WINDOW = getattr(settings, 'RATE_LIMIT_WINDOW', 3600)  # 1시간 윈도우
-        self.DDOS_THRESHOLD = getattr(settings, 'DDOS_THRESHOLD', 20)  # 1분에 20회 초과시 의심
-        self.BLOCK_DURATION = getattr(settings, 'BLOCK_DURATION', 300)  # 5분간 차단
+        self.DDOS_THRESHOLD = getattr(settings, 'DDOS_THRESHOLD', 120)  # 1분에 120회 초과시 의심
+        self.BLOCK_DURATION = getattr(settings, 'BLOCK_DURATION', 180)  # 3분간 차단
+        self.SUSPICION_SCORE_THRESHOLD = getattr(settings, 'SUSPICION_SCORE_THRESHOLD', 10)
+        self.PROTECTED_PATH_ATTEMPTS_LIMIT = getattr(settings, 'PROTECTED_PATH_ATTEMPTS_LIMIT', 20)
+        self.TRUSTED_PATHS = getattr(settings, 'TRUSTED_HEALTHCHECK_PATHS', ['/health', '/status'])
+
+        suspicious_patterns = getattr(settings, 'SUSPICIOUS_USER_AGENT_PATTERNS', [
+            r'bot', r'crawler', r'spider', r'scraper'
+        ])
+        trusted_patterns = getattr(settings, 'TRUSTED_USER_AGENT_PATTERNS', [
+            'curl', 'python-requests', 'wget', 'uptimerobot'
+        ])
+        self.SUSPICIOUS_AGENT_PATTERNS = [re.compile(pattern, re.IGNORECASE) for pattern in suspicious_patterns]
+        self.TRUSTED_AGENT_PATTERNS = [re.compile(pattern, re.IGNORECASE) for pattern in trusted_patterns]
         
         # 보호할 경로들
         self.PROTECTED_PATHS = [
@@ -36,16 +48,7 @@ class SecurityMiddleware:
             '/pybo/answer/create/',
         ]
         
-        # 의심스러운 User-Agent 패턴
-        self.SUSPICIOUS_AGENTS = [
-            r'bot',
-            r'crawler',
-            r'spider',
-            r'scraper',
-            r'python',
-            r'curl',
-            r'wget',
-        ]
+        # 의심스러운 User-Agent 패턴은 설정으로 대체됨
     
     def __call__(self, request):
         # 보안 검사 실행
@@ -77,8 +80,8 @@ class SecurityMiddleware:
             logger.error(f"DDoS pattern detected from IP: {client_ip}")
             return HttpResponse("Suspicious activity detected", status=403)
         
-        # 4. 의심스러운 User-Agent 확인
-        if self.is_suspicious_user_agent(request):
+        # 4. 의심스러운 User-Agent 확인 (신뢰 경로 제외)
+        if not self.is_trusted_path(request.path) and self.is_suspicious_user_agent(request):
             self.increase_suspicion_score(client_ip)
             logger.info(f"Suspicious User-Agent from IP {client_ip}: {request.META.get('HTTP_USER_AGENT', '')}")
         
@@ -134,17 +137,15 @@ class SecurityMiddleware:
     
     def is_suspicious_user_agent(self, request):
         """의심스러운 User-Agent 확인"""
-        user_agent = request.META.get('HTTP_USER_AGENT', '').lower()
-        
-        for pattern in self.SUSPICIOUS_AGENTS:
-            if re.search(pattern, user_agent):
-                return True
-        
-        # 빈 User-Agent도 의심스러움
+        user_agent = request.META.get('HTTP_USER_AGENT', '')
+
         if not user_agent.strip():
             return True
-        
-        return False
+
+        if any(pattern.search(user_agent) for pattern in self.TRUSTED_AGENT_PATTERNS):
+            return False
+
+        return any(pattern.search(user_agent) for pattern in self.SUSPICIOUS_AGENT_PATTERNS)
     
     def increase_suspicion_score(self, ip):
         """IP의 의심 점수 증가"""
@@ -155,8 +156,12 @@ class SecurityMiddleware:
         cache.set(cache_key, new_score, 3600)  # 1시간 유지
         
         # 의심 점수가 높으면 차단
-        if new_score >= 5:
+        if new_score >= self.SUSPICION_SCORE_THRESHOLD:
             self.block_ip(ip, "High suspicion score")
+
+    def is_trusted_path(self, path):
+        """신뢰된 경로(헬스체크 등)인지 확인"""
+        return any(path.startswith(trusted) for trusted in self.TRUSTED_PATHS)
     
     def is_protected_path(self, path):
         """보호된 경로인지 확인"""
@@ -172,7 +177,7 @@ class SecurityMiddleware:
         cache_key = f"protected_access:{ip}"
         attempts = cache.get(cache_key, 0)
         
-        if attempts >= 10:  # 10회 시도 후 차단
+        if attempts >= self.PROTECTED_PATH_ATTEMPTS_LIMIT:
             self.block_ip(ip, "Excessive protected path access")
             return False
         

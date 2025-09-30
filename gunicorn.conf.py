@@ -6,7 +6,7 @@ import multiprocessing
 import os
 
 # 서버 소켓
-bind = "127.0.0.1:8000"
+bind = "43.203.93.244:8000"
 backlog = 2048
 
 # 워커 프로세스

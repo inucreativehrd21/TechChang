@@ -1,24 +1,20 @@
 # Django 웹앱 필수
-Django>=5.1,<5.3
+Django==5.2.6
 
-# 프로덕션 WSGI 서버 (Lightsail에서 gunicorn 사용 권장)
+# 프로덕션 WSGI 서버 (Gunicorn 서비스 유닛에서 사용)
 gunicorn>=21.2,<22
 
-# 정적 파일 서빙(간편 배포용) — Nginx 없이도 서빙 가능
-whitenoise>=6.6,<7
+# OpenAI API (AI 답변 생성 커맨드용)
+openai>=1.3.0,<2.0.0
 
-# OpenAI API
-openai>=1.3.0
+# 환경변수 관리 (.env 로드)
+python-dotenv>=1.0.0,<2.0.0
 
-# 환경변수 관리
-python-dotenv>=1.0.0
+# 이미지 처리 (모델 ImageField 이용)
+Pillow>=10.0.0,<11.0.0
 
-# 이미지 처리 (답변/댓글 이미지 첨부 기능용)
-Pillow>=10.0.0
-
-# 스케줄링 (AI 답변 자동 생성용)
-celery>=5.3.0
-redis>=5.0.0
+# 마크다운 렌더링 (템플릿 필터)
+Markdown>=3.5,<4.0
 
 # 데이터베이스: 현재 SQLite 사용. PostgreSQL 사용 시 아래 주석 해제
 # psycopg2-binary>=2.9,<3

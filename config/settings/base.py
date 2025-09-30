@@ -165,16 +165,31 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # 로그인 성공후 이동하는 URL
 LOGIN_REDIRECT_URL = '/'
 
-ALLOWED_HOSTS = ['43.202.203.131', 'tc.o-r.kr']
+ALLOWED_HOSTS = ['43.203.93.244', 'tc.o-r.kr']
 
 # OpenAI API 설정
 OPENAI_API_KEY = os.environ.get('OPENAI_API_KEY', '')
 
-# 보안 미들웨어 설정
-RATE_LIMIT_REQUESTS = 100  # 시간당 요청 제한
-RATE_LIMIT_WINDOW = 3600   # 1시간 윈도우
-DDOS_THRESHOLD = 20        # 1분에 20회 초과시 의심
-BLOCK_DURATION = 300       # 5분간 차단
+# 보안 미들웨어 설정 (환경변수로 조정 가능)
+RATE_LIMIT_REQUESTS = int(os.environ.get('RATE_LIMIT_REQUESTS', 300))  # 시간당 요청 제한
+RATE_LIMIT_WINDOW = int(os.environ.get('RATE_LIMIT_WINDOW', 3600))   # 1시간 윈도우
+DDOS_THRESHOLD = int(os.environ.get('DDOS_THRESHOLD', 120))        # 1분에 120회 초과시 의심
+BLOCK_DURATION = int(os.environ.get('BLOCK_DURATION', 180))       # 3분간 차단
+SUSPICION_SCORE_THRESHOLD = int(os.environ.get('SUSPICION_SCORE_THRESHOLD', 10))
+PROTECTED_PATH_ATTEMPTS_LIMIT = int(os.environ.get('PROTECTED_PATH_ATTEMPTS_LIMIT', 20))
+
+def _split_patterns(raw_value):
+    return [pattern.strip() for pattern in raw_value.split(',') if pattern.strip()]
+
+SUSPICIOUS_USER_AGENT_PATTERNS = _split_patterns(
+    os.environ.get('SUSPICIOUS_USER_AGENT_PATTERNS', 'bot,crawler,spider,scraper')
+)
+TRUSTED_USER_AGENT_PATTERNS = _split_patterns(
+    os.environ.get('TRUSTED_USER_AGENT_PATTERNS', 'curl,python-requests,wget,uptimerobot')
+)
+TRUSTED_HEALTHCHECK_PATHS = _split_patterns(
+    os.environ.get('TRUSTED_HEALTHCHECK_PATHS', '/health,/status')
+)
 
 # 캐시 설정 (메모리 기반 - 간단한 설정)
 CACHES = {
