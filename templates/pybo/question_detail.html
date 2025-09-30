@@ -122,10 +122,11 @@
                     <a href="{% url 'pybo:question_modify' question.id %}" class="btn btn-outline-secondary btn-sm">
                         <i class="fas fa-edit me-1"></i>수정
                     </a>
-                    <button type="button" class="btn btn-outline-danger btn-sm delete" 
-                            data-uri="{% url 'pybo:question_delete' question.id %}">
+                    <a href="{% url 'pybo:question_delete' question.id %}" 
+                       class="btn btn-outline-danger btn-sm"
+                       onclick="return confirm('정말로 이 질문을 삭제하시겠습니까?')">
                         <i class="fas fa-trash me-1"></i>삭제
-                    </button>
+                    </a>
                     {% endif %}
                 </div>
             </div>

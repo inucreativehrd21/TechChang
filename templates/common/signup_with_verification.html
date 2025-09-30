@@ -1,0 +1,284 @@
+{% extends 'base.html' %}
+
+{% block title %}회원가입 - 테크창{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-6">
+            <div class="card shadow border-0" style="border-radius: 15px;">
+                <div class="card-header bg-primary text-white text-center py-4" style="border-radius: 15px 15px 0 0;">
+                    <i class="fas fa-user-plus fa-3x mb-3"></i>
+                    <h2 class="mb-1">회원가입</h2>
+                    <p class="mb-0">테크창 커뮤니티에 오신 것을 환영합니다</p>
+                </div>
+                
+                <div class="card-body p-4">
+                    <!-- 에러 메시지 -->
+                    {% if messages %}
+                    {% for message in messages %}
+                    <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                    {% endfor %}
+                    {% endif %}
+
+                    <!-- 회원가입 폼 -->
+                    <form method="post" id="signupForm">
+                        {% csrf_token %}
+                        
+                        <!-- 사용자명 -->
+                        <div class="mb-3">
+                            <label for="{{ form.username.id_for_label }}" class="form-label fw-semibold">
+                                <i class="fas fa-user me-2 text-primary"></i>사용자명 <span class="text-danger">*</span>
+                            </label>
+                            {{ form.username }}
+                            {% if form.username.errors %}
+                                <div class="text-danger small mt-1">{{ form.username.errors }}</div>
+                            {% endif %}
+                        </div>
+
+                        <!-- 이메일과 인증 -->
+                        <div class="mb-3">
+                            <label for="{{ form.email.id_for_label }}" class="form-label fw-semibold">
+                                <i class="fas fa-envelope me-2 text-primary"></i>이메일 <span class="text-danger">*</span>
+                            </label>
+                            <div class="input-group">
+                                {{ form.email }}
+                                <button type="button" class="btn btn-outline-primary" id="sendCodeBtn">
+                                    <i class="fas fa-paper-plane me-1"></i>인증코드 발송
+                                </button>
+                            </div>
+                            {% if form.email.errors %}
+                                <div class="text-danger small mt-1">{{ form.email.errors }}</div>
+                            {% endif %}
+                            <div class="form-text">이메일로 인증 코드를 받아 확인해주세요.</div>
+                        </div>
+
+                        <!-- 이메일 인증 코드 -->
+                        <div class="mb-3" id="codeSection" style="display: none;">
+                            <label class="form-label fw-semibold">
+                                <i class="fas fa-key me-2 text-success"></i>이메일 인증 코드 <span class="text-danger">*</span>
+                            </label>
+                            <div class="input-group">
+                                <input type="text" class="form-control" id="verificationCode" 
+                                       placeholder="4자리 숫자 입력" maxlength="4" pattern="\d{4}">
+                                <button type="button" class="btn btn-outline-success" id="verifyCodeBtn">
+                                    <i class="fas fa-check me-1"></i>인증 확인
+                                </button>
+                            </div>
+                            <div class="form-text">이메일로 받은 4자리 인증 코드를 입력하세요.</div>
+                            <div id="verificationStatus"></div>
+                        </div>
+
+                        <!-- 닉네임 -->
+                        <div class="mb-3">
+                            <label for="{{ form.nickname.id_for_label }}" class="form-label fw-semibold">
+                                <i class="fas fa-id-badge me-2 text-primary"></i>닉네임 <span class="text-muted">(선택사항)</span>
+                            </label>
+                            {{ form.nickname }}
+                            {% if form.nickname.errors %}
+                                <div class="text-danger small mt-1">{{ form.nickname.errors }}</div>
+                            {% endif %}
+                            <div class="form-text">닉네임을 설정하지 않으면 사용자명이 표시됩니다.</div>
+                        </div>
+
+                        <!-- 비밀번호 -->
+                        <div class="mb-3">
+                            <label for="{{ form.password1.id_for_label }}" class="form-label fw-semibold">
+                                <i class="fas fa-lock me-2 text-primary"></i>비밀번호 <span class="text-danger">*</span>
+                            </label>
+                            {{ form.password1 }}
+                            {% if form.password1.errors %}
+                                <div class="text-danger small mt-1">{{ form.password1.errors }}</div>
+                            {% endif %}
+                        </div>
+
+                        <!-- 비밀번호 확인 -->
+                        <div class="mb-4">
+                            <label for="{{ form.password2.id_for_label }}" class="form-label fw-semibold">
+                                <i class="fas fa-lock me-2 text-primary"></i>비밀번호 확인 <span class="text-danger">*</span>
+                            </label>
+                            {{ form.password2 }}
+                            {% if form.password2.errors %}
+                                <div class="text-danger small mt-1">{{ form.password2.errors }}</div>
+                            {% endif %}
+                        </div>
+
+                        <!-- 버튼 영역 -->
+                        <div class="d-flex justify-content-between align-items-center">
+                            <a href="{% url 'common:login' %}" class="btn btn-outline-secondary">
+                                <i class="fas fa-arrow-left me-1"></i>로그인으로 돌아가기
+                            </a>
+                            <button type="submit" class="btn btn-primary btn-lg" id="submitBtn" disabled>
+                                <i class="fas fa-user-plus me-1"></i>회원가입 완료
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            
+            <!-- 하단 안내 -->
+            <div class="text-center mt-4">
+                <p class="text-muted small">
+                    <i class="fas fa-shield-alt me-1"></i>
+                    테크창은 안전한 이메일 인증을 통해 계정을 보호합니다
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const emailInput = document.getElementById('id_email');
+    const sendCodeBtn = document.getElementById('sendCodeBtn');
+    const codeSection = document.getElementById('codeSection');
+    const verificationCode = document.getElementById('verificationCode');
+    const verifyCodeBtn = document.getElementById('verifyCodeBtn');
+    const verificationStatus = document.getElementById('verificationStatus');
+    const submitBtn = document.getElementById('submitBtn');
+    
+    let isEmailVerified = false;
+    let codeSent = false;
+    
+    // CSRF 토큰 가져오기
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+    
+    // 인증 코드 발송
+    sendCodeBtn.addEventListener('click', function() {
+        const email = emailInput.value.trim();
+        if (!email) {
+            alert('이메일을 입력해주세요.');
+            return;
+        }
+        
+        sendCodeBtn.disabled = true;
+        sendCodeBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>발송 중...';
+        
+        fetch('/common/send-verification-email/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken')
+            },
+            body: JSON.stringify({email: email})
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                codeSection.style.display = 'block';
+                sendCodeBtn.innerHTML = '<i class="fas fa-check me-1"></i>발송완료';
+                sendCodeBtn.classList.remove('btn-outline-primary');
+                sendCodeBtn.classList.add('btn-success');
+                codeSent = true;
+                
+                // 재발송 타이머 (60초)
+                let countdown = 60;
+                const timer = setInterval(() => {
+                    if (countdown <= 0) {
+                        clearInterval(timer);
+                        sendCodeBtn.disabled = false;
+                        sendCodeBtn.innerHTML = '<i class="fas fa-paper-plane me-1"></i>재발송';
+                        sendCodeBtn.classList.remove('btn-success');
+                        sendCodeBtn.classList.add('btn-outline-primary');
+                    } else {
+                        sendCodeBtn.innerHTML = `<i class="fas fa-clock me-1"></i>${countdown}초 후 재발송`;
+                        countdown--;
+                    }
+                }, 1000);
+                
+                alert(data.message);
+            } else {
+                alert(data.message);
+                sendCodeBtn.disabled = false;
+                sendCodeBtn.innerHTML = '<i class="fas fa-paper-plane me-1"></i>인증코드 발송';
+            }
+        })
+        .catch(error => {
+            alert('오류가 발생했습니다.');
+            sendCodeBtn.disabled = false;
+            sendCodeBtn.innerHTML = '<i class="fas fa-paper-plane me-1"></i>인증코드 발송';
+        });
+    });
+    
+    // 인증 코드 확인
+    verifyCodeBtn.addEventListener('click', function() {
+        const email = emailInput.value.trim();
+        const code = verificationCode.value.trim();
+        
+        if (!email || !code) {
+            alert('이메일과 인증코드를 모두 입력해주세요.');
+            return;
+        }
+        
+        verifyCodeBtn.disabled = true;
+        verifyCodeBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>확인 중...';
+        
+        fetch('/common/verify-email-code/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken')
+            },
+            body: JSON.stringify({email: email, code: code})
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                isEmailVerified = true;
+                verificationStatus.innerHTML = '<div class="alert alert-success small mt-2"><i class="fas fa-check-circle me-1"></i>' + data.message + '</div>';
+                verifyCodeBtn.innerHTML = '<i class="fas fa-check me-1"></i>인증완료';
+                verifyCodeBtn.classList.remove('btn-outline-success');
+                verifyCodeBtn.classList.add('btn-success');
+                verificationCode.disabled = true;
+                checkFormValidity();
+            } else {
+                verificationStatus.innerHTML = '<div class="alert alert-danger small mt-2"><i class="fas fa-times-circle me-1"></i>' + data.message + '</div>';
+                verifyCodeBtn.disabled = false;
+                verifyCodeBtn.innerHTML = '<i class="fas fa-check me-1"></i>인증 확인';
+            }
+        })
+        .catch(error => {
+            alert('오류가 발생했습니다.');
+            verifyCodeBtn.disabled = false;
+            verifyCodeBtn.innerHTML = '<i class="fas fa-check me-1"></i>인증 확인';
+        });
+    });
+    
+    // 폼 유효성 검사
+    function checkFormValidity() {
+        if (isEmailVerified) {
+            submitBtn.disabled = false;
+        }
+    }
+    
+    // 이메일 변경 시 인증 상태 초기화
+    emailInput.addEventListener('input', function() {
+        isEmailVerified = false;
+        codeSent = false;
+        codeSection.style.display = 'none';
+        verificationStatus.innerHTML = '';
+        sendCodeBtn.disabled = false;
+        sendCodeBtn.innerHTML = '<i class="fas fa-paper-plane me-1"></i>인증코드 발송';
+        sendCodeBtn.classList.remove('btn-success');
+        sendCodeBtn.classList.add('btn-outline-primary');
+        checkFormValidity();
+    });
+});
+</script>
+{% endblock %}

@@ -59,6 +59,8 @@ MIDDLEWARE = [
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'common.middleware.SecurityMiddleware',  # 보안 미들웨어
+    'common.middleware.RequestLoggingMiddleware',  # 요청 로깅 미들웨어
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
@@ -128,19 +130,32 @@ USE_TZ = True
 
 
 # Static files (CSS, JavaScript, Images)
- # https://docs.djangoproject.com/en/5.2/howto/static-files/
+# https://docs.djangoproject.com/en/5.2/howto/static-files/
 
-# URL은 절대 경로로 설정해야 하며(선행 슬래시 필요),
-# Nginx 사용 시 collectstatic 결과물을 제공할 수 있도록 STATIC_ROOT를 지정합니다.
+# 정적 파일 설정 - 성능 및 보안 최적화
 STATIC_URL = '/static/'
 STATICFILES_DIRS = [
     BASE_DIR / 'static',
 ]
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 
-# Media files (user uploads)
+# 정적 파일 파인더 설정 (성능 향상)
+STATICFILES_FINDERS = [
+    'django.contrib.staticfiles.finders.FileSystemFinder',
+    'django.contrib.staticfiles.finders.AppDirectoriesFinder',
+]
+
+# 미디어 파일 설정 (사용자 업로드)
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
+
+# 파일 업로드 제한 설정 (5MB)
+FILE_UPLOAD_MAX_MEMORY_SIZE = 5 * 1024 * 1024  # 5MB
+DATA_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024  # 10MB
+
+# 이미지 업로드 보안 설정
+FILE_UPLOAD_PERMISSIONS = 0o644
+DIRECTORY_PERMISSIONS = 0o755
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
@@ -154,5 +169,86 @@ ALLOWED_HOSTS = ['43.202.203.131', 'tc.o-r.kr']
 
 # OpenAI API 설정
 OPENAI_API_KEY = os.environ.get('OPENAI_API_KEY', '')
+
+# 보안 미들웨어 설정
+RATE_LIMIT_REQUESTS = 100  # 시간당 요청 제한
+RATE_LIMIT_WINDOW = 3600   # 1시간 윈도우
+DDOS_THRESHOLD = 20        # 1분에 20회 초과시 의심
+BLOCK_DURATION = 300       # 5분간 차단
+
+# 캐시 설정 (메모리 기반 - 간단한 설정)
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+        'LOCATION': 'unique-snowflake',
+        'TIMEOUT': 300,
+        'OPTIONS': {
+            'MAX_ENTRIES': 1000,
+        }
+    }
+}
+
+# 로깅 설정 (안전한 버전)
+import os
+
+# 로그 디렉토리가 없으면 생성
+LOGS_DIR = BASE_DIR / 'logs'
+if not LOGS_DIR.exists():
+    LOGS_DIR.mkdir(exist_ok=True)
+
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'verbose': {
+            'format': '{levelname} {asctime} {module} {message}',
+            'style': '{',
+        },
+        'simple': {
+            'format': '{levelname} {message}',
+            'style': '{',
+        },
+    },
+    'handlers': {
+        'console': {
+            'level': 'INFO',
+            'class': 'logging.StreamHandler',
+            'formatter': 'simple',
+        },
+        'security_file': {
+            'level': 'WARNING',
+            'class': 'logging.handlers.RotatingFileHandler',
+            'filename': LOGS_DIR / 'security.log',
+            'maxBytes': 1024*1024*5,  # 5MB
+            'backupCount': 3,
+            'formatter': 'verbose',
+        },
+    },
+    'root': {
+        'handlers': ['console'],
+        'level': 'INFO',
+    },
+    'loggers': {
+        'django': {
+            'handlers': ['console'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+        'security': {
+            'handlers': ['security_file', 'console'],
+            'level': 'WARNING',
+            'propagate': False,
+        },
+    },
+}
+
+# 이메일 설정 (개발용)
+EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+DEFAULT_FROM_EMAIL = 'noreply@techwindow.kr'
+
+# 추가 보안 설정
+SECURE_BROWSER_XSS_FILTER = True
+SECURE_CONTENT_TYPE_NOSNIFF = True
+X_FRAME_OPTIONS = 'DENY'
 
 # (중복 설정 제거됨)

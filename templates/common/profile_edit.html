@@ -105,13 +105,29 @@
                             <div class="form-text">JPG, PNG 파일을 업로드할 수 있습니다. 최대 5MB</div>
                         </div>
                         
-                        <div class="d-flex justify-content-between">
+                        <div class="d-flex justify-content-between align-items-center">
                             <a href="{% url 'pybo:index' %}" class="btn btn-outline-secondary">
                                 <i class="fas fa-arrow-left me-1"></i>취소
                             </a>
                             <button type="submit" class="btn btn-primary">
                                 <i class="fas fa-save me-1"></i>변경사항 저장
                             </button>
+                        </div>
+                        
+                        <!-- 위험한 작업 영역 -->
+                        <hr class="my-4">
+                        <div class="alert alert-warning">
+                            <h6 class="alert-heading">
+                                <i class="fas fa-exclamation-triangle me-2"></i>위험한 작업
+                            </h6>
+                            <p class="mb-0">아래 작업은 되돌릴 수 없습니다. 신중하게 결정해주세요.</p>
+                        </div>
+                        <div class="text-center">
+                            <a href="{% url 'common:account_delete' %}" 
+                               class="btn btn-outline-danger"
+                               onclick="return confirm('정말로 회원 탈퇴 페이지로 이동하시겠습니까?')">
+                                <i class="fas fa-user-times me-1"></i>회원 탈퇴
+                            </a>
                         </div>
                     </form>
                 </div>

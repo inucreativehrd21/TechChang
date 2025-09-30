@@ -5,7 +5,8 @@
 <nav class="navbar navbar-expand-lg navbar-dark bg-primary fixed-top">
     <div class="container-fluid">
         <a class="navbar-brand d-flex align-items-center" href="{% url 'pybo:index' %}">
-            <i class="fas fa-cog me-2"></i>
+            <img src="{% static 'images/techwindow-logo.png' %}" alt="테크창 로고" 
+                 style="height: 32px; width: auto; margin-right: 8px;">
             <span>테크창</span>
         </a>
         
@@ -103,31 +104,47 @@
                     <p class="lead">HRD와 테크놀로지 지식을 공유하는 플랫폼</p>
                 </div>
                 <div class="row">
-                    <div class="col-md-6">
-                        <h5><i class="fas fa-star text-warning me-2"></i>주요 기능</h5>
-                        <ul class="list-unstyled">
-                            <li><i class="fas fa-check text-success me-2"></i>HRD 지식 공유</li>
-                            <li><i class="fas fa-check text-success me-2"></i>데이터분석 토론</li>
-                            <li><i class="fas fa-check text-success me-2"></i>프로그래밍 Q&A</li>
-                            <li><i class="fas fa-check text-success me-2"></i>전문가 네트워킹</li>
-                            <li><i class="fas fa-check text-success me-2"></i>기술 동향 공유</li>
-                        </ul>
-                    </div>
-                    <div class="col-md-6">
-                        <h5><i class="fas fa-chart-line text-info me-2"></i>통계</h5>
-                        <div class="stats-card">
-                            <div class="row text-center">
-                                <div class="col-4">
-                                    <div class="h4 mb-0">1K+</div>
-                                    <small>질문</small>
-                                </div>
-                                <div class="col-4">
-                                    <div class="h4 mb-0">5K+</div>
-                                    <small>답변</small>
-                                </div>
-                                <div class="col-4">
-                                    <div class="h4 mb-0">500+</div>
-                                    <small>사용자</small>
+                    <div class="col-12">
+                        <div class="text-center bg-light rounded p-4 mb-4">
+                            <h3 class="text-primary mb-3">
+                                <i class="fas fa-graduation-cap me-2"></i>인천대학교 창의인재개발학과
+                            </h3>
+                            <h5 class="text-secondary mb-3">전공심화연구모임</h5>
+                            <p class="lead text-muted mb-3">
+                                HRD(인적자원개발)와 첨단 기술이 만나는 혁신적인 학습 공간
+                            </p>
+                        </div>
+                        
+                        <div class="card border-0 shadow-sm">
+                            <div class="card-body">
+                                <h5 class="card-title text-center mb-4">
+                                    <i class="fas fa-lightbulb text-warning me-2"></i>우리의 미션
+                                </h5>
+                                <div class="row g-4">
+                                    <div class="col-md-4 text-center">
+                                        <div class="bg-primary bg-opacity-10 rounded-circle d-inline-flex align-items-center justify-content-center mb-3" 
+                                             style="width: 80px; height: 80px;">
+                                            <i class="fas fa-users fa-2x text-primary"></i>
+                                        </div>
+                                        <h6>인재개발 연구</h6>
+                                        <p class="small text-muted">창의적 인재양성을 위한 체계적 연구와 실무 적용</p>
+                                    </div>
+                                    <div class="col-md-4 text-center">
+                                        <div class="bg-success bg-opacity-10 rounded-circle d-inline-flex align-items-center justify-content-center mb-3" 
+                                             style="width: 80px; height: 80px;">
+                                            <i class="fas fa-laptop-code fa-2x text-success"></i>
+                                        </div>
+                                        <h6>기술 융합</h6>
+                                        <p class="small text-muted">데이터분석, AI, 프로그래밍 등 첨단기술과 HRD의 만남</p>
+                                    </div>
+                                    <div class="col-md-4 text-center">
+                                        <div class="bg-info bg-opacity-10 rounded-circle d-inline-flex align-items-center justify-content-center mb-3" 
+                                             style="width: 80px; height: 80px;">
+                                            <i class="fas fa-share-alt fa-2x text-info"></i>
+                                        </div>
+                                        <h6>지식 공유</h6>
+                                        <p class="small text-muted">전공 지식과 실무 경험의 활발한 교류와 협력</p>
+                                    </div>
                                 </div>
                             </div>
                         </div>

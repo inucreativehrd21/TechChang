@@ -19,8 +19,8 @@ def index(request):
     category_name = request.GET.get('category', '').strip()  # 카테고리
     sort = request.GET.get('sort', 'recent')  # 정렬 방식
     
-    # 기본 쿼리셋 - select_related로 성능 최적화
-    question_list = Question.objects.select_related('author', 'category').prefetch_related('voter')
+    # 기본 쿼리셋 - select_related로 성능 최적화 (삭제되지 않은 질문만)
+    question_list = Question.objects.filter(is_deleted=False).select_related('author', 'category').prefetch_related('voter')
     
     # 정렬 처리
     if sort == 'recommend':
@@ -75,9 +75,10 @@ def detail(request, question_id):
     except (ValueError, TypeError):
         raise Http404("잘못된 질문 ID입니다.")
     
-    # select_related, prefetch_related로 성능 최적화
+    # select_related, prefetch_related로 성능 최적화 (삭제되지 않은 질문만)
     question = get_object_or_404(
-        Question.objects.select_related('author', 'category')
+        Question.objects.filter(is_deleted=False)
+                       .select_related('author', 'category')
                        .prefetch_related('voter', 'comment_set__author'),
         pk=question_id
     )

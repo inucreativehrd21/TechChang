@@ -106,7 +106,6 @@
                                        class="form-control form-control-lg border-start-0 ps-0" 
                                        name="subject" 
                                        id="{{ form.subject.id_for_label }}"
-                                       placeholder="예: Python 리스트 정렬 방법을 알고 싶습니다"
                                        style="border-radius: 0 10px 10px 0;"
                                        value="{{ form.subject.value|default_if_none:'' }}"
                                        required>
@@ -126,19 +125,6 @@
                                       class="form-control" 
                                       id="{{ form.content.id_for_label }}"
                                       rows="12" 
-                                      placeholder="질문 내용을 자세히 작성해주세요.
-
-예시:
-1. 현재 상황: 어떤 문제를 해결하려고 하시나요?
-2. 시도한 방법: 어떤 방법들을 시도해보셨나요?
-3. 에러 메시지: 어떤 오류가 발생했나요?
-4. 기대 결과: 어떤 결과를 원하시나요?
-
-코드가 있다면 아래와 같이 작성해주세요:
-```python
-# 여기에 코드를 입력하세요
-print('Hello World')
-```"
                                       style="border-radius: 10px; min-height: 250px;"
                                       required>{{ form.content.value|default_if_none:'' }}</textarea>
                             <div class="form-text">
@@ -169,17 +155,7 @@ print('Hello World')
                             </div>
                         </div>
 
-                        <!-- 미리보기 영역 -->
-                        <div class="mb-4">
-                            <div class="card bg-light">
-                                <div class="card-header py-2">
-                                    <small class="text-muted">
-                                        <i class="fas fa-eye me-1"></i>
-                                        작성 중인 내용이 실제로 어떻게 보이는지 확인해보세요
-                                    </small>
-                                </div>
-                            </div>
-                        </div>
+
                         
                         <!-- 버튼 영역 -->
                         <div class="d-flex justify-content-between align-items-center pt-4 border-top">
@@ -218,180 +194,54 @@ print('Hello World')
 {% block script %}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // 카테고리 선택 시 아이콘 변경
     const categorySelect = document.querySelector('select[name="category"]');
+    const form = document.querySelector('form');
+    
+    // 카테고리 선택 시 스타일 변경
     if (categorySelect) {
         categorySelect.addEventListener('change', function() {
-            const selectedOption = this.options[this.selectedIndex];
-            if (selectedOption.value) {
+            if (this.value) {
                 this.style.color = '#0891b2';
                 this.style.fontWeight = '600';
             }
         });
     }
     
-    // 제목 입력 시 실시간 피드백
-    const subjectInput = document.querySelector('input[name="subject"]');
-    if (subjectInput) {
-        subjectInput.addEventListener('input', function() {
-            const length = this.value.length;
-            const formText = this.parentNode.parentNode.querySelector('.form-text');
-            
-            if (length < 10) {
-                formText.innerHTML = '<i class="fas fa-exclamation-triangle me-1 text-warning"></i>제목은 10자 이상 작성하는 것이 좋습니다 (현재: ' + length + '자)';
-            } else if (length > 100) {
-                formText.innerHTML = '<i class="fas fa-times-circle me-1 text-danger"></i>제목이 너무 깁니다. 100자 이하로 작성해주세요 (현재: ' + length + '자)';
-            } else {
-                formText.innerHTML = '<i class="fas fa-check-circle me-1 text-success"></i>좋은 제목입니다! (현재: ' + length + '자)';
-            }
-        });
-    }
-    
-    // 내용 입력 시 글자수 표시
-    const contentTextarea = document.querySelector('textarea[name="content"]');
-    if (contentTextarea) {
-        const formText = contentTextarea.parentNode.querySelector('.form-text');
-        const originalText = formText.innerHTML;
-        
-        contentTextarea.addEventListener('input', function() {
-            const length = this.value.length;
-            const lines = this.value.split('\n').length;
-            
-            let statusText = '';
-            if (length < 50) {
-                statusText = '<i class="fas fa-info-circle me-1 text-info"></i>내용을 더 자세히 작성하면 좋은 답변을 받을 수 있습니다';
-            } else {
-                statusText = '<i class="fas fa-check-circle me-1 text-success"></i>충분한 내용입니다!';
-            }
-            
-            formText.innerHTML = originalText + '<br><small>' + statusText + ' (글자수: ' + length + ', 줄수: ' + lines + ')</small>';
-        });
-    }
-    
-    // 폼 제출 전 검증
-    const form = document.querySelector('form');
+    // 폼 제출 시 검증 및 로딩 상태
     if (form) {
         form.addEventListener('submit', function(e) {
-            const category = document.querySelector('select[name="category"]').value;
-            const subject = document.querySelector('input[name="subject"]').value.trim();
-            const content = document.querySelector('textarea[name="content"]').value.trim();
+            const category = categorySelect?.value;
+            const subject = form.querySelector('input[name="subject"]')?.value.trim();
+            const content = form.querySelector('textarea[name="content"]')?.value.trim();
             
+            // 기본 검증
             if (!category) {
                 alert('카테고리를 선택해주세요.');
                 e.preventDefault();
                 return;
             }
             
-            if (subject.length < 5) {
+            if (!subject || subject.length < 5) {
                 alert('제목은 5자 이상 입력해주세요.');
                 e.preventDefault();
                 return;
             }
             
-            if (content.length < 20) {
+            if (!content || content.length < 20) {
                 alert('내용은 20자 이상 입력해주세요.');
                 e.preventDefault();
                 return;
             }
             
             // 로딩 상태 표시
-            const submitBtn = this.querySelector('button[type="submit"]');
-            const originalText = submitBtn.innerHTML;
-            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>등록 중...';
-            submitBtn.disabled = true;
-            
-            setTimeout(() => {
-                submitBtn.innerHTML = originalText;
-                submitBtn.disabled = false;
-            }, 3000);
-        });
-    }
-});
-</script>
-        const helpText = formGroup.querySelector('.form-text');
-        const originalHelpText = helpText.innerHTML;
-        
-        contentTextarea.addEventListener('input', function() {
-            const length = this.value.length;
-            const minLength = 20;
-            
-            if (length < minLength) {
-                helpText.innerHTML = `${originalHelpText}<br><small class="text-warning">최소 ${minLength}자 이상 작성해주세요. (현재: ${length}자)</small>`;
-            } else {
-                helpText.innerHTML = `${originalHelpText}<br><small class="text-success">충분한 설명입니다! (현재: ${length}자)</small>`;
-            }
-        });
-        
-        // 자동 높이 조절
-        contentTextarea.addEventListener('input', function() {
-            this.style.height = 'auto';
-            this.style.height = Math.max(this.scrollHeight, 200) + 'px';
-        });
-    }
-    
-    // 카테고리 선택 시 도움말
-    if (categorySelect) {
-        categorySelect.addEventListener('change', function() {
-            const formGroup = this.closest('.form-group');
-            const helpText = formGroup.querySelector('.form-text');
-            
-            if (this.value) {
-                helpText.innerHTML = '<i class="fas fa-check-circle me-1 text-success"></i>카테고리가 선택되었습니다.';
-                helpText.style.color = '#10b981';
-            } else {
-                helpText.innerHTML = '질문에 적합한 카테고리를 선택해주세요.';
-                helpText.style.color = '';
+            const submitBtn = form.querySelector('button[type="submit"]');
+            if (submitBtn) {
+                const originalText = submitBtn.innerHTML;
+                submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>등록 중...';
+                submitBtn.disabled = true;
             }
         });
     }
-    
-    // 폼 제출 전 검증
-    form.addEventListener('submit', function(e) {
-        const submitBtn = form.querySelector('.btn-submit');
-        
-        // 로딩 상태 표시
-        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>등록 중...';
-        submitBtn.disabled = true;
-        
-        // 간단한 검증
-        if (!categorySelect.value) {
-            e.preventDefault();
-            alert('카테고리를 선택해주세요.');
-            submitBtn.innerHTML = '<i class="fas fa-paper-plane me-2"></i>질문 등록';
-            submitBtn.disabled = false;
-            return;
-        }
-        
-        if (!subjectInput.value.trim()) {
-            e.preventDefault();
-            alert('제목을 입력해주세요.');
-            submitBtn.innerHTML = '<i class="fas fa-paper-plane me-2"></i>질문 등록';
-            submitBtn.disabled = false;
-            return;
-        }
-        
-        if (!contentTextarea.value.trim()) {
-            e.preventDefault();
-            alert('내용을 입력해주세요.');
-            submitBtn.innerHTML = '<i class="fas fa-paper-plane me-2"></i>질문 등록';
-            submitBtn.disabled = false;
-            return;
-        }
-    });
-    
-    // 버튼 호버 효과
-    const buttons = document.querySelectorAll('.btn-action, .btn-submit');
-    buttons.forEach(btn => {
-        btn.addEventListener('mouseenter', function() {
-            this.style.transform = 'translateY(-2px)';
-            this.style.boxShadow = 'var(--shadow-md)';
-        });
-        
-        btn.addEventListener('mouseleave', function() {
-            this.style.transform = 'translateY(0)';
-            this.style.boxShadow = '';
-        });
-    });
 });
 </script>
 {% endblock %}

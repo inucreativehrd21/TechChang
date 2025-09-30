@@ -19,6 +19,8 @@ class Question(models.Model):
     view_count = models.PositiveIntegerField(default=0)  # 조회수 추가
     category = models.ForeignKey(Category, on_delete=models.PROTECT)  # 카테고리 필수
     image = models.ImageField(upload_to='questions/', blank=True, null=True)  # 이미지 첨부
+    is_deleted = models.BooleanField(default=False)  # Soft delete 필드
+    deleted_date = models.DateTimeField(null=True, blank=True)  # 삭제 날짜
 
     def __str__(self):
             return self.subject
@@ -32,6 +34,8 @@ class Answer(models.Model):
     voter = models.ManyToManyField(User, related_name='voter_answer')
     is_ai = models.BooleanField(default=False)  # AI가 생성한 답변인지 표시
     image = models.ImageField(upload_to='answers/', blank=True, null=True)  # 이미지 첨부
+    is_deleted = models.BooleanField(default=False)  # Soft delete 필드
+    deleted_date = models.DateTimeField(null=True, blank=True)  # 삭제 날짜
 
 class Comment(models.Model):
     author = models.ForeignKey(User, on_delete=models.CASCADE)

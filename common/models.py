@@ -1,6 +1,8 @@
 from django.db import models
 from django.contrib.auth import get_user_model
-
+from django.utils import timezone
+import random
+import string
 
 User = get_user_model()
 
@@ -34,5 +36,37 @@ class Profile(models.Model):
 	def __str__(self):
 		return f"Profile({self.user.username})"
 
+
+class EmailVerification(models.Model):
+    """이메일 인증 모델"""
+    email = models.EmailField(verbose_name="이메일")
+    code = models.CharField(max_length=4, verbose_name="인증코드")
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="생성일시")
+    verified_at = models.DateTimeField(null=True, blank=True, verbose_name="인증일시")
+    is_verified = models.BooleanField(default=False, verbose_name="인증완료")
+    attempts = models.PositiveIntegerField(default=0, verbose_name="시도횟수")
+    
+    class Meta:
+        verbose_name = "이메일 인증"
+        verbose_name_plural = "이메일 인증"
+        ordering = ['-created_at']
+    
+    def __str__(self):
+        return f"{self.email} - {self.code}"
+    
+    @classmethod
+    def generate_code(cls):
+        """4자리 숫자 코드 생성"""
+        return ''.join(random.choices(string.digits, k=4))
+    
+    def is_expired(self):
+        """10분 후 만료 체크"""
+        from datetime import timedelta
+        from django.utils import timezone
+        return timezone.now() > self.created_at + timedelta(minutes=10)
+    
+    def can_retry(self):
+        """재시도 가능 여부 (5회 제한)"""
+        return self.attempts < 5
 
 # Create your models here.

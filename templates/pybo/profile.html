@@ -42,29 +42,37 @@
             </tbody>
         </table>
         <!-- 질문 페이징 -->
-        <ul class="pagination justify-content-center">
-            {% if question_list.has_previous %}
-            <li class="page-item">
-                <a class="page-link" href="?question_page={{ question_list.previous_page_number }}">이전</a>
-            </li>
-            {% endif %}
-            {% for page_number in question_list.paginator.page_range %}
-                {% if page_number == question_list.number %}
-                <li class="page-item active">
-                    <a class="page-link" href="?question_page={{ page_number }}">{{ page_number }}</a>
-                </li>
-                {% else %}
-                <li class="page-item">
-                    <a class="page-link" href="?question_page={{ page_number }}">{{ page_number }}</a>
-                </li>
-                {% endif %}
-            {% endfor %}
-            {% if question_list.has_next %}
-            <li class="page-item">
-                <a class="page-link" href="?question_page={{ question_list.next_page_number }}">다음</a>
-            </li>
-            {% endif %}
-        </ul>
+        {% if question_list.paginator.num_pages > 1 %}
+        <div class="d-flex justify-content-center mt-3">
+            <nav aria-label="질문 페이지 네비게이션">
+                <ul class="pagination pagination-sm">
+                    {% if question_list.has_previous %}
+                    <li class="page-item">
+                        <a class="page-link" href="?question_page=1">&laquo; 처음</a>
+                    </li>
+                    <li class="page-item">
+                        <a class="page-link" href="?question_page={{ question_list.previous_page_number }}">이전</a>
+                    </li>
+                    {% endif %}
+                    
+                    <li class="page-item active">
+                        <span class="page-link">
+                            {{ question_list.number }} / {{ question_list.paginator.num_pages }}
+                        </span>
+                    </li>
+                    
+                    {% if question_list.has_next %}
+                    <li class="page-item">
+                        <a class="page-link" href="?question_page={{ question_list.next_page_number }}">다음</a>
+                    </li>
+                    <li class="page-item">
+                        <a class="page-link" href="?question_page={{ question_list.paginator.num_pages }}">마지막 &raquo;</a>
+                    </li>
+                    {% endif %}
+                </ul>
+            </nav>
+        </div>
+        {% endif %}
         {% else %}
         <p>작성한 질문이 없습니다.</p>
         {% endif %}
@@ -97,29 +105,37 @@
             </tbody>
         </table>
         <!-- 답변 페이징 -->
-        <ul class="pagination justify-content-center">
-            {% if answer_list.has_previous %}
-            <li class="page-item">
-                <a class="page-link" href="?answer_page={{ answer_list.previous_page_number }}">이전</a>
-            </li>
-            {% endif %}
-            {% for page_number in answer_list.paginator.page_range %}
-                {% if page_number == answer_list.number %}
-                <li class="page-item active">
-                    <a class="page-link" href="?answer_page={{ page_number }}">{{ page_number }}</a>
-                </li>
-                {% else %}
-                <li class="page-item">
-                    <a class="page-link" href="?answer_page={{ page_number }}">{{ page_number }}</a>
-                </li>
-                {% endif %}
-            {% endfor %}
-            {% if answer_list.has_next %}
-            <li class="page-item">
-                <a class="page-link" href="?answer_page={{ answer_list.next_page_number }}">다음</a>
-            </li>
-            {% endif %}
-        </ul>
+        {% if answer_list.paginator.num_pages > 1 %}
+        <div class="d-flex justify-content-center mt-3">
+            <nav aria-label="답변 페이지 네비게이션">
+                <ul class="pagination pagination-sm">
+                    {% if answer_list.has_previous %}
+                    <li class="page-item">
+                        <a class="page-link" href="?answer_page=1">&laquo; 처음</a>
+                    </li>
+                    <li class="page-item">
+                        <a class="page-link" href="?answer_page={{ answer_list.previous_page_number }}">이전</a>
+                    </li>
+                    {% endif %}
+                    
+                    <li class="page-item active">
+                        <span class="page-link">
+                            {{ answer_list.number }} / {{ answer_list.paginator.num_pages }}
+                        </span>
+                    </li>
+                    
+                    {% if answer_list.has_next %}
+                    <li class="page-item">
+                        <a class="page-link" href="?answer_page={{ answer_list.next_page_number }}">다음</a>
+                    </li>
+                    <li class="page-item">
+                        <a class="page-link" href="?answer_page={{ answer_list.paginator.num_pages }}">마지막 &raquo;</a>
+                    </li>
+                    {% endif %}
+                </ul>
+            </nav>
+        </div>
+        {% endif %}
         {% else %}
         <p>작성한 답변이 없습니다.</p>
         {% endif %}
@@ -152,29 +168,37 @@
             </tbody>
         </table>
         <!-- 댓글 페이징 -->
-        <ul class="pagination justify-content-center">
-            {% if comment_list.has_previous %}
-            <li class="page-item">
-                <a class="page-link" href="?comment_page={{ comment_list.previous_page_number }}">이전</a>
-            </li>
-            {% endif %}
-            {% for page_number in comment_list.paginator.page_range %}
-                {% if page_number == comment_list.number %}
-                <li class="page-item active">
-                    <a class="page-link" href="?comment_page={{ page_number }}">{{ page_number }}</a>
-                </li>
-                {% else %}
-                <li class="page-item">
-                    <a class="page-link" href="?comment_page={{ page_number }}">{{ page_number }}</a>
-                </li>
-                {% endif %}
-            {% endfor %}
-            {% if comment_list.has_next %}
-            <li class="page-item">
-                <a class="page-link" href="?comment_page={{ comment_list.next_page_number }}">다음</a>
-            </li>
-            {% endif %}
-        </ul>
+        {% if comment_list.paginator.num_pages > 1 %}
+        <div class="d-flex justify-content-center mt-3">
+            <nav aria-label="댓글 페이지 네비게이션">
+                <ul class="pagination pagination-sm">
+                    {% if comment_list.has_previous %}
+                    <li class="page-item">
+                        <a class="page-link" href="?comment_page=1">&laquo; 처음</a>
+                    </li>
+                    <li class="page-item">
+                        <a class="page-link" href="?comment_page={{ comment_list.previous_page_number }}">이전</a>
+                    </li>
+                    {% endif %}
+                    
+                    <li class="page-item active">
+                        <span class="page-link">
+                            {{ comment_list.number }} / {{ comment_list.paginator.num_pages }}
+                        </span>
+                    </li>
+                    
+                    {% if comment_list.has_next %}
+                    <li class="page-item">
+                        <a class="page-link" href="?comment_page={{ comment_list.next_page_number }}">다음</a>
+                    </li>
+                    <li class="page-item">
+                        <a class="page-link" href="?comment_page={{ comment_list.paginator.num_pages }}">마지막 &raquo;</a>
+                    </li>
+                    {% endif %}
+                </ul>
+            </nav>
+        </div>
+        {% endif %}
         {% else %}
         <p>작성한 댓글이 없습니다.</p>
         {% endif %}

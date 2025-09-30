@@ -42,12 +42,25 @@ def question_modify(request, question_id):
 
 @login_required(login_url='common:login')
 def question_delete(request, question_id):
-    question = get_object_or_404(Question, pk=question_id)
+    """질문 안전 삭제 (Soft Delete)"""
+    question = get_object_or_404(Question, pk=question_id, is_deleted=False)
+    
+    # 권한 검증
     if request.user != question.author:
         messages.error(request, '삭제권한이 없습니다')
         return redirect('pybo:detail', question_id=question.id)
-    question.delete()
-    return redirect('pybo:index')
+    
+    if request.method == 'POST':
+        # Soft delete 실행
+        question.is_deleted = True
+        question.deleted_date = timezone.now()
+        question.save()
+        messages.success(request, '질문이 삭제되었습니다.')
+        return redirect('pybo:index')
+    
+    # GET 요청시 확인 페이지 표시
+    context = {'question': question}
+    return render(request, 'pybo/question_delete_confirm.html', context)
 
 @login_required(login_url='common:login')
 def question_vote(request, question_id):
