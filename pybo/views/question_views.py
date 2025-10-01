@@ -12,11 +12,18 @@ def question_create(request):
     if request.method == 'POST':
         form = QuestionForm(request.POST, request.FILES)
         if form.is_valid():
-            question = form.save(commit=False)
-            question.author = request.user  # author 속성에 로그인 계정 저장
-            question.create_date = timezone.now()
-            question.save()
-            return redirect('pybo:index')
+            try:
+                question = form.save(commit=False)
+                question.author = request.user  # author 속성에 로그인 계정 저장
+                question.create_date = timezone.now()
+                question.save()
+                messages.success(request, '게시글이 성공적으로 등록되었습니다.')
+                return redirect('pybo:index')
+            except Exception as e:
+                messages.error(request, f'게시글 저장 중 오류가 발생했습니다: {str(e)}')
+                print(f"Question creation error: {e}")  # 서버 로그용
+        else:
+            messages.error(request, '폼 유효성 검사에 실패했습니다. 입력 내용을 확인해주세요.')
     else:
         form = QuestionForm()
     context = {'form': form}
