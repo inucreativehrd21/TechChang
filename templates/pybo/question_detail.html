@@ -85,7 +85,9 @@
             <a href="{% url 'pybo:question_modify' question.id %}" class="btn btn-sm btn-outline-secondary">수정</a>
             <a href="{% url 'pybo:question_delete' question.id %}" class="btn btn-sm btn-outline-danger">삭제</a>
           {% endif %}
-          <button type="button" class="btn btn-outline-info btn-sm" onclick="toggleCommentForm('question')">
+                <button type="button"
+                class="btn btn-outline-info btn-sm"
+                onclick="toggleCommentForm('question_{{ question.id }}')">
             댓글 추가
           </button>
         </div>
@@ -216,9 +218,7 @@
             {% endif %}
             </div>
             {% comment %} 답변 폼(숨김) {% endcomment %}
-            <form id="answer_{{ answer.id }}" class="d-none mb-3"
-                method="post"
-                action="{% url 'pybo:comment_create_answer' question.id answer.id %}">
+            <form id="answer_{{ answer.id }}" class="d-none">
               {% csrf_token %}
               <textarea name="content" class="form-control mb-2"
                         placeholder="댓글을 작성하세요…" required></textarea>
