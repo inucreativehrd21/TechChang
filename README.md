@@ -1,45 +1,44 @@
-# 🚀 테크창 (TechWindow) - Technology + HRD 통합 플랫폼
+# 🚀 테크창 커뮤니티 플랫폼
 
-**테크창**은 Technology와 HRD(Human Resource Development)를 결합한 혁신적인 지식 공유 플랫폼입니다. 
-데이터분석, 프로그래밍, 인적자원개발 전문가들이 모여 실무 경험과 전문 지식을 나누는 프리미엄 커뮤니티입니다.
+**테크창**은 HRD, 데이터분석, 프로그래밍 전문가들이 모여 지식을 공유하는 현대적인 커뮤니티 플랫폼입니다.
 
-## ✨ 테크창만의 특별 기능
+## ✨ 주요 특징
 
-### 🎆 전문 영역별 지식 허브
-- **HRD 전문관**: 인재개발, 교육 커리큘럼, 조직 발전 노하우
-- **데이터분석 마스터**: 빅데이터, AI/ML, 비즈니스 인텔리전스 전문 지식
-- **프로그래밍 구루**: 최신 기술 트렌드, 실무 개발 경험, 코드 리뷰
+### 📌 카테고리별 지식 공유
+- **HRD**: 인적자원개발 및 교육 전문 지식
+- **데이터분석**: 빅데이터, AI/ML, 비즈니스 인텔리전스
+- **프로그래밍**: 개발 경험, 기술 트렌드, 코드 리뷰
+- **자유게시판**: 자유로운 주제의 소통 공간
+- **앨범**: 이미지 중심의 갤러리 공간
 
-### 🏆 프리미엄 커뮤니티 기능
-- **실시간 Q&A**: 빠른 문제 해결과 전문가 답변
-- **🖼️ 비주얼 콘텐츠**: 다이어그램, 스크린샷, 코드 첨부
-- **🎆 전문가 네트워킹**: 업계 리더들과의 직접 소통
-- **📝 지식 아카이브**: 체계적 자료 수집과 사례 연구
-- **⭐ 품질 관리**: 전문가 검증 및 커뮤니티 평가 시스템
+### � 커뮤니티 중심 설계
+- **게시글 & 댓글**: 질문형 게시판이 아닌 자유로운 소통 구조
+- **이미지 첨부**: 게시글과 댓글에 이미지 업로드 지원
+- **사용자 프로필**: 닉네임 시스템과 프로필 이미지
+- **추천 시스템**: 유용한 콘텐츠 추천 기능
+- **검색 & 정렬**: 효율적인 콘텐츠 탐색
 
-## 🛠️ 테크창 기술 아키텍처
+## 🛠️ 기술 스택
 
-### 🏆 엔터프라이즈 Backend
-- **Django 5.2.6**: 엔터프라이즈급 웹 프레임워크
-- **Python 3.10+**: AI/ML 통합 지원 언어
-- **PostgreSQL**: 프로덕션 데이터베이스 (개발: SQLite)
-- **Gunicorn**: 고성능 WSGI 서버
-- **Redis**: 캐싱 및 세션 저장소
+### Backend
+- **Django 5.2.6**: 안정적인 웹 프레임워크
+- **Python 3.10+**: 현대적인 Python 버전
+- **SQLite**: 개발용 데이터베이스
+- **Pillow**: 이미지 처리
 
-### 🎨 모던 Frontend
-- **Bootstrap 5**: 반응형 UI 프레임워크
-- **Font Awesome 6**: 프로페셔널 아이콘 세트
+### Frontend
+- **Bootstrap 5.3.2**: 반응형 UI 프레임워크
+- **Font Awesome 6.0.0**: 아이콘 라이브러리
 - **Custom CSS**: 테크창 브랜드 디자인
-- **Vanilla JavaScript**: 경량 인터랙션 라이브러리
+- **Vanilla JavaScript**: 인터랙티브 기능
 
-### 🚀 클라우드 인프라
-- **AWS/GCP**: 글로벌 클라우드 배포
-- **Nginx**: 고성능 리버스 프록시
-- **Docker**: 컨테이너 오케스트레이션
-- **Let's Encrypt**: 무료 SSL/TLS 인증서
-- **Monitoring**: 성능 및 에러 모니터링
+### 배포 & 인프라
+- **Gunicorn**: WSGI 서버
+- **Nginx**: 리버스 프록시
+- **systemd**: 서비스 관리
+- **Let's Encrypt**: SSL/TLS 인증서
 
-## 🏗️ 테크창 프로젝트 구조
+## 🏗️ 프로젝트 구조
 
 ```
 techwindow/
@@ -48,76 +47,74 @@ techwindow/
 │   │   ├── base.py        # 기본 설정
 │   │   ├── local.py       # 개발 환경
 │   │   └── prod.py        # 프로덕션 환경
-│   ├── urls.py            # URL 라우팅
-│   └── wsgi.py            # WSGI 설정
-├── pybo/                  # 메인 앱
-│   ├── models.py          # 데이터 모델
-│   ├── forms.py           # 폼 정의
-│   ├── views/             # 뷰 로직
-│   ├── templates/         # 템플릿
-│   └── management/        # 관리 명령
-├── common/                # 공통 기능 (인증, 프로필)
-├── static/                # 정적 파일
-├── media/                 # 업로드된 파일
-├── templates/             # 공통 템플릿
-├── requirements.txt       # Python 의존성
-├── nginx.conf            # Nginx 설정
-├── gunicorn.conf.py      # Gunicorn 설정
-├── mysite.service        # systemd 서비스
-├── deploy.sh             # 배포 스크립트
-└── dev.sh                # 개발 도구
+│   └── urls.py            # 메인 URL 설정
+├── common/                 # 사용자 인증 앱
+│   ├── models.py          # 프로필 모델
+│   ├── views.py           # 로그인/회원가입
+│   └── templatetags/      # 템플릿 필터
+├── pybo/                   # 커뮤니티 메인 앱
+│   ├── models.py          # 게시글, 댓글, 카테고리
+│   ├── views/             # 분할된 뷰 파일들
+│   ├── forms.py           # Django 폼
+│   ├── templatetags/      # 커스텀 필터
+│   └── management/        # 관리 명령어
+├── templates/              # 템플릿 파일
+│   ├── base.html          # 기본 레이아웃
+│   ├── navbar.html        # 네비게이션
+│   ├── pybo/              # 커뮤니티 템플릿
+│   └── common/            # 인증 템플릿
+├── static/                 # 정적 파일
+│   ├── bootstrap.min.css
+│   ├── bootstrap.min.js
+│   └── style.css
+├── media/                  # 업로드 파일
+└── requirements.txt        # Python 의존성
 ```
 
-## 🚀 빠른 시작
+## � 주요 기능
+
+### 커뮤니티 기능
+- ✅ **게시글 작성/조회**: 카테고리별 게시글 관리
+- ✅ **댓글 시스템**: 게시글에 댓글 작성/삭제 
+- ✅ **추천 시스템**: 게시글과 댓글에 추천/비추천
+- ✅ **검색 기능**: 제목, 내용, 작성자 검색
+- ✅ **페이지네이션**: 효율적인 페이지 분할
+
+### 사용자 관리
+- ✅ **회원가입/로그인**: Django 기본 인증 시스템
+- ✅ **프로필 관리**: 프로필 이미지 업로드
+- ✅ **작성글 관리**: 내가 쓴 글/댓글 조회
+- ✅ **권한 관리**: 작성자만 수정/삭제 가능
+
+### 관리 기능
+- ✅ **카테고리 관리**: 게시판 카테고리 생성/관리
+- ✅ **관리자 페이지**: Django Admin 인터페이스
+- ✅ **이미지 업로드**: 프로필 이미지 관리
+
+## �🚀 빠른 시작
 
 ### 개발 환경 설정
 
 1. **저장소 클론**
    ```bash
-   git clone https://github.com/inucreativehrd21/Django-Study.git
-   cd Django-Study
+   git clone <repository-url>
+   cd mysite
    ```
 
-2. **개발 환경 자동 설정**
-   ```bash
-   # Linux/macOS
-   chmod +x dev.sh
-   ./dev.sh setup
-   
-   # Windows (Git Bash)
-   bash dev.sh setup
-   ```
-
-3. **개발 서버 실행**
-   ```bash
-   ./dev.sh run
-   ```
-
-4. **브라우저에서 접속**
-   - https://tc.o-r.kr
-
-### 수동 설정 (고급 사용자)
-
-1. **가상환경 생성 및 활성화**
+2. **Python 가상환경 생성**
    ```bash
    python -m venv venv
    
-   # Linux/macOS
-   source venv/bin/activate
-   
    # Windows
    venv\Scripts\activate
+   
+   # Linux/macOS
+   source venv/bin/activate
    ```
 
-2. **의존성 설치**
+3. **의존성 설치**
    ```bash
-   pip install -r requirements.txt
-   ```
-
-3. **환경변수 설정**
-   ```bash
-   cp .env.example .env
-   # .env 파일을 편집하여 환경에 맞게 설정
+   pip install django pillow
    ```
 
 4. **데이터베이스 마이그레이션**
@@ -126,40 +123,106 @@ techwindow/
    python manage.py migrate
    ```
 
-5. **카테고리 초기화**
-   ```bash
-   python manage.py initialize_categories --force
-   ```
-
-6. **슈퍼유저 생성**
+5. **관리자 계정 생성 (선택사항)**
    ```bash
    python manage.py createsuperuser
    ```
 
-7. **정적 파일 수집**
+6. **개발 서버 실행**
+   ```bash
+   python manage.py runserver
+   ```
+
+7. **브라우저에서 접속**
+   - http://localhost:8000
+
+## 🌐 배포 가이드
+
+### 필요한 설정
+
+1. **환경변수 설정 (`settings.py` 수정)**
+   ```python
+   # 프로덕션 환경에서 설정 필요
+   DEBUG = False
+   ALLOWED_HOSTS = ['yourdomain.com', 'www.yourdomain.com']
+   
+   # 정적 파일 설정
+   STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+   MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+   ```
+
+2. **정적 파일 수집**
    ```bash
    python manage.py collectstatic
    ```
 
-## 🌐 프로덕션 배포
+3. **데이터베이스 설정**
+   - SQLite (개발용): 기본 설정으로 사용 가능
+   - PostgreSQL/MySQL (프로덕션 권장): settings.py에서 데이터베이스 설정 변경
 
-### 자동 배포 (권장)
+### 웹 서버 배포 (예: Apache/Nginx)
 
+1. **WSGI 설정**
+   ```python
+   # wsgi.py 파일이 이미 config/ 디렉토리에 있음
+   # 웹 서버에서 이 파일을 참조하도록 설정
+   ```
+
+2. **정적 파일 서빙**
+   ```
+   # 웹 서버에서 /static/ 경로를 staticfiles/ 디렉토리로 설정
+      # /media/ 경로를 media/ 디렉토리로 설정
+   ```
+
+## 🔧 관리 명령어
+
+### Django 기본 명령어
 ```bash
-# 서버에서 실행
-sudo chmod +x deploy.sh
-sudo ./deploy.sh production
+# 개발 서버 실행
+python manage.py runserver
+
+# 마이그레이션 생성 및 적용
+python manage.py makemigrations
+python manage.py migrate
+
+# 관리자 계정 생성
+python manage.py createsuperuser
+
+# Django 쉘 실행
+python manage.py shell
+
+# 정적 파일 수집
+python manage.py collectstatic
 ```
 
-### 수동 배포
+## 🔒 보안 기능
 
-1. **서버 설정**
-   ```bash
-   # Nginx 설정 복사
-   sudo cp nginx.conf /etc/nginx/sites-available/mysite
-   sudo ln -s /etc/nginx/sites-available/mysite /etc/nginx/sites-enabled/
-   
-   # systemd 서비스 등록
+- **CSRF 보호**: Django 기본 CSRF 토큰 사용
+- **XSS 방지**: 템플릿 자동 이스케이핑
+- **SQL 인젝션 방지**: Django ORM 사용
+- **파일 업로드 보안**: 이미지 파일 타입 검증
+- **사용자 인증**: Django 내장 인증 시스템
+- **권한 관리**: 작성자 권한 확인
+
+## 🤝 기여하기
+
+1. Fork 프로젝트
+2. Feature 브랜치 생성 (`git checkout -b feature/AmazingFeature`)
+3. 변경사항 커밋 (`git commit -m 'Add some AmazingFeature'`)
+4. 브랜치에 Push (`git push origin feature/AmazingFeature`)
+5. Pull Request 생성
+
+## 📄 라이선스
+
+이 프로젝트는 MIT 라이선스 하에 배포됩니다. 자세한 내용은 `LICENSE` 파일을 참조하세요.
+
+## 📞 문의
+
+프로젝트 관련 문의사항이 있으시면 이슈를 생성해주세요.
+
+---
+
+**TechWindow Community Platform v2.0.0** - Django 기반 현대적인 커뮤니티 플랫폼 ✨
    sudo cp mysite.service /etc/systemd/system/
    sudo systemctl daemon-reload
    sudo systemctl enable mysite
