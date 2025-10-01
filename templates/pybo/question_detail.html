@@ -26,7 +26,9 @@
     <div class="text-muted small d-flex align-items-center">
         조회 {{ question.view_count }}회
         {% if user.is_authenticated %}
-            <form method="post" action="{% url 'pybo:vote_question' question.id %}" class="d-inline ms-3">
+            <form method="post"
+                action="{% url 'pybo:question_vote' question.id %}"
+                class="d-inline ms-3">
             {% csrf_token %}
             <button type="submit"
                     class="btn btn-sm btn-outline-{{ question.voter.filter(id=user.id).exists|yesno:'secondary,success' }}">
@@ -37,6 +39,7 @@
             <span class="ms-3"><i class="fas fa-thumbs-up"></i> {{ question.voter.count }}</span>
         {% endif %}
     </div>
+
 
   
   <div class="card-body">
@@ -185,9 +188,12 @@
             
             <!-- 추천 버튼 추가 -->
             {% if user.is_authenticated %}
-                <form method="post" action="{% url 'pybo:vote_answer' answer.id %}" class="d-inline me-2">
+                <form method="post"
+                    action="{% url 'pybo:answer_vote' answer.id %}"
+                    class="d-inline me-2">
                 {% csrf_token %}
-                <button type="submit" class="btn btn-sm btn-outline-{{ answer.voter.filter(id=user.id).exists|yesno:'secondary,success' }}">
+                <button type="submit"
+                        class="btn btn-sm btn-outline-{{ answer.voter.filter(id=user.id).exists|yesno:'secondary,success' }}">
                     <i class="fas fa-thumbs-up"></i> {{ answer.voter.count }}
                 </button>
                 </form>
