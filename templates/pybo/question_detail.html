@@ -23,7 +23,6 @@
       <span class="badge bg-primary me-2">{{ question.category.name }}</span>
       <h1 class="h4 mb-0">{{ question.subject }}</h1>
     </div>
-
     <div class="text-muted small d-flex align-items-center">
         조회 {{ question.view_count }}회
         {% if user.is_authenticated %}
@@ -40,7 +39,7 @@
             <span class="ms-3"><i class="fas fa-thumbs-up"></i> {{ question.voter.count }}</span>
         {% endif %}
     </div>
-
+</div>
 
   
   <div class="card-body">
@@ -167,56 +166,55 @@
           <!-- 답변 작성자 정보 -->
           <div class="d-flex justify-content-between align-items-center">
             <div class="d-flex align-items-center">
-              {% if answer.author.profile.profile_image %}
-                <img src="{{ answer.author.profile.profile_image.url }}" alt="프로필" 
-                     class="rounded-circle me-2" style="width: 32px; height: 32px; object-fit: cover;">
-              {% else %}
+                {% if answer.author.profile.profile_image %}
+                <img src="{{ answer.author.profile.profile_image.url }}" alt="프로필"
+                    class="rounded-circle me-2" style="width: 32px; height: 32px; object-fit: cover;">
+                {% else %}
                 <div class="bg-secondary rounded-circle d-flex align-items-center justify-content-center me-2 text-white"
-                     style="width: 32px; height: 32px; font-size: 0.9rem;">
-                  {{ answer.author.username|slice:":1"|upper }}
+                    style="width: 32px; height: 32px; font-size: 0.9rem;">
+                    {{ answer.author.username|slice:":1"|upper }}
                 </div>
-              {% endif %}
-              <div>
+                {% endif %}
+                <div>
                 <a href="#" class="text-decoration-none">{{ answer.author|display_name }}</a>
                 <div class="small text-muted">
-                  {{ answer.create_date|date:"Y-m-d H:i" }}
-                  {% if answer.modify_date %}
+                    {{ answer.create_date|date:"Y-m-d H:i" }}
+                    {% if answer.modify_date %}
                     · 수정됨: {{ answer.modify_date|date:"Y-m-d H:i" }}
-                  {% endif %}
+                    {% endif %}
                 </div>
-              </div>
+                </div>
             </div>
             
-            <!-- 추천 버튼 추가 -->
+            <!-- 추천 버튼 -->
             {% if user.is_authenticated %}
-              <form method="post"
-                action="{% url 'pybo:answer_vote' answer.id %}"
-                class="d-inline me-2">
-              {% csrf_token %}
-              <button type="submit"
-                  class="btn btn-sm btn-outline-{% if user in answer.voter.all %}success{% else %}secondary{% endif %}">
-                  <i class="fas fa-thumbs-up"></i> {{ answer.voter.count }}
+                <form method="post"
+                    action="{% url 'pybo:answer_vote' answer.id %}"
+                    class="d-inline me-2">
+                {% csrf_token %}
+                <button type="submit"
+                        class="btn btn-sm btn-outline-{% if user in answer.voter.all %}success{% else %}secondary{% endif %}">
+                    <i class="fas fa-thumbs-up"></i> {{ answer.voter.count }}
                 </button>
-              </form>
+                </form>
             {% else %}
-              <span class="me-2"><i class="fas fa-thumbs-up"></i> {{ answer.voter.count }}</span>
+                <span class="me-2"><i class="fas fa-thumbs-up"></i> {{ answer.voter.count }}</span>
             {% endif %}
 
             <!-- 답변 액션 버튼 -->
             {% if user.is_authenticated %}
-              <div class="btn-group" role="group">
+                <div class="btn-group" role="group">
                 {% if request.user == answer.author %}
-                  <a href="{% url 'pybo:answer_modify' answer.id %}" class="btn btn-sm btn-outline-secondary">수정</a>
-                  <a href="{% url 'pybo:answer_delete' answer.id %}" class="btn btn-sm btn-outline-danger">삭제</a>
+                    <a href="{% url 'pybo:answer_modify' answer.id %}" class="btn btn-sm btn-outline-secondary">수정</a>
+                    <a href="{% url 'pybo:answer_delete' answer.id %}" class="btn btn-sm btn-outline-danger">삭제</a>
                 {% endif %}
-                <button type="button" class="btn btn-outline-info btn-sm" onclick="toggleCommentForm('answer_{{ answer.id }}')">
-                  댓글 추가
+                <button type="button" class="btn btn-outline-info btn-sm"
+                        onclick="toggleCommentForm('answer_{{ answer.id }}')">
+                    댓글 추가
                 </button>
-              </div>
+                </div>
             {% endif %}
-          </div>
-        </div>
-      </div>
+            </div>
       
       <!-- 답변 댓글 -->
       {% if answer.comment_set.count > 0 %}
