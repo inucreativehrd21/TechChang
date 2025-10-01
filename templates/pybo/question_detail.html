@@ -23,10 +23,21 @@
       <span class="badge bg-primary me-2">{{ question.category.name }}</span>
       <h1 class="h4 mb-0">{{ question.subject }}</h1>
     </div>
-    <div class="text-muted small">
-      조회 {{ question.view_count }}회
+    <div class="text-muted small d-flex align-items-center">
+        조회 {{ question.view_count }}회
+        {% if user.is_authenticated %}
+            <form method="post" action="{% url 'pybo:vote_question' question.id %}" class="d-inline ms-3">
+            {% csrf_token %}
+            <button type="submit"
+                    class="btn btn-sm btn-outline-{{ question.voter.filter(id=user.id).exists|yesno:'secondary,success' }}">
+                <i class="fas fa-thumbs-up"></i> {{ question.voter.count }}
+            </button>
+            </form>
+        {% else %}
+            <span class="ms-3"><i class="fas fa-thumbs-up"></i> {{ question.voter.count }}</span>
+        {% endif %}
     </div>
-  </div>
+
   
   <div class="card-body">
     <!-- 질문 내용 -->
@@ -172,6 +183,19 @@
               </div>
             </div>
             
+            <!-- 추천 버튼 추가 -->
+            {% if user.is_authenticated %}
+                <form method="post" action="{% url 'pybo:vote_answer' answer.id %}" class="d-inline me-2">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-sm btn-outline-{{ answer.voter.filter(id=user.id).exists|yesno:'secondary,success' }}">
+                    <i class="fas fa-thumbs-up"></i> {{ answer.voter.count }}
+                </button>
+                </form>
+            {% else %}
+                <span class="me-2"><i class="fas fa-thumbs-up"></i> {{ answer.voter.count }}</span>
+            {% endif %}
+
+
             <!-- 답변 액션 버튼 -->
             {% if user.is_authenticated %}
               <div class="btn-group" role="group">
