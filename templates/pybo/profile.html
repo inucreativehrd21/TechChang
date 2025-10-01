@@ -11,15 +11,15 @@
         <div class="card-body">
             <p><strong>사용자명:</strong> {{ profile_user.username }}</p>
             <p><strong>가입일:</strong> {{ profile_user.date_joined }}</p>
-            <p><strong>작성한 질문:</strong> {{ profile_user.author_question.count }}개</p>
-            <p><strong>작성한 답변:</strong> {{ profile_user.author_answer.count }}개</p>
+            <p><strong>작성한 게시글:</strong> {{ profile_user.author_question.count }}개</p>
+            <p><strong>작성한 의견:</strong> {{ profile_user.author_answer.count }}개</p>
             <p><strong>작성한 댓글:</strong> {{ profile_user.comment_set.count }}개</p>
         </div>
     </div>
 
-    <!-- 작성한 질문 -->
+    <!-- 작성한 게시글 -->
     <div class="my-4">
-        <h6 class="border-bottom pb-2">작성한 질문</h6>
+        <h6 class="border-bottom pb-2">작성한 게시글</h6>
         {% if question_list %}
         <table class="table">
             <thead>
@@ -41,10 +41,10 @@
             {% endfor %}
             </tbody>
         </table>
-        <!-- 질문 페이징 -->
+        <!-- 게시글 페이징 -->
         {% if question_list.paginator.num_pages > 1 %}
         <div class="d-flex justify-content-center mt-3">
-            <nav aria-label="질문 페이지 네비게이션">
+            <nav aria-label="게시글 페이지 네비게이션">
                 <ul class="pagination pagination-sm">
                     {% if question_list.has_previous %}
                     <li class="page-item">
@@ -74,19 +74,19 @@
         </div>
         {% endif %}
         {% else %}
-        <p>작성한 질문이 없습니다.</p>
+        <p>작성한 게시글이 없습니다.</p>
         {% endif %}
     </div>
 
-    <!-- 작성한 답변 -->
+    <!-- 작성한 의견 -->
     <div class="my-4">
-        <h6 class="border-bottom pb-2">작성한 답변</h6>
+        <h6 class="border-bottom pb-2">작성한 의견</h6>
         {% if answer_list %}
         <table class="table">
             <thead>
             <tr class="table-dark">
                 <th>내용</th>
-                <th>질문</th>
+                <th>게시글</th>
                 <th>작성일시</th>
             </tr>
             </thead>
@@ -104,10 +104,10 @@
             {% endfor %}
             </tbody>
         </table>
-        <!-- 답변 페이징 -->
+        <!-- 의견 페이징 -->
         {% if answer_list.paginator.num_pages > 1 %}
         <div class="d-flex justify-content-center mt-3">
-            <nav aria-label="답변 페이지 네비게이션">
+            <nav aria-label="의견 페이지 네비게이션">
                 <ul class="pagination pagination-sm">
                     {% if answer_list.has_previous %}
                     <li class="page-item">
@@ -137,7 +137,7 @@
         </div>
         {% endif %}
         {% else %}
-        <p>작성한 답변이 없습니다.</p>
+        <p>작성한 의견이 없습니다.</p>
         {% endif %}
     </div>
 

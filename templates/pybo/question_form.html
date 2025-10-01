@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 
-{% block title %}질문 등록 - 테크창{% endblock %}
+{% block title %}게시글 등록 - 테크창{% endblock %}
 
 {% block content %}
 <div class="container mt-4">
@@ -10,17 +10,17 @@
             <div class="card shadow-lg border-0 mb-4" style="border-radius: 20px;">
                 <div class="card-header bg-info text-white text-center py-4" style="border-radius: 20px 20px 0 0;">
                     <i class="fas fa-question-circle fa-3x mb-3"></i>
-                    <h1 class="mb-1">질문 등록</h1>
-                    <p class="mb-0 opacity-75">궁금한 것을 자유롭게 질문해보세요</p>
+                    <h1 class="mb-1">게시글 등록</h1>
+                    <p class="mb-0 opacity-75">궁금한 것을 자유롭게 게시해보세요</p>
                 </div>
                 
                 <div class="card-body p-5">
-                    <!-- 질문 작성 가이드 -->
+                    <!-- 게시글 작성 가이드 -->
                     <div class="alert alert-info border-0 mb-4" style="background: linear-gradient(135deg, #e3f2fd, #f3e5f5); border-radius: 15px;">
                         <div class="row align-items-center">
                             <div class="col-md-8">
                                 <h5 class="alert-heading mb-2">
-                                    <i class="fas fa-lightbulb me-2"></i>좋은 질문 작성 팁
+                                    <i class="fas fa-lightbulb me-2"></i>좋은 게시글 작성 팁
                                 </h5>
                                 <ul class="mb-0 small">
                                     <li>구체적이고 명확한 제목을 작성하세요</li>
@@ -67,7 +67,7 @@
                                 </div>
                                 <div class="form-text">
                                     <i class="fas fa-info-circle me-1"></i>
-                                    질문에 가장 적합한 카테고리를 선택해주세요
+                                    게시글에 가장 적합한 카테고리를 선택해주세요
                                 </div>
                             </div>
 
@@ -96,7 +96,7 @@
                         <!-- 제목 입력 -->
                         <div class="mb-4">
                             <label for="{{ form.subject.id_for_label }}" class="form-label fw-semibold">
-                                <i class="fas fa-heading me-2 text-info"></i>질문 제목 <span class="text-danger">*</span>
+                                <i class="fas fa-heading me-2 text-info"></i>게시글 제목 <span class="text-danger">*</span>
                             </label>
                             <div class="input-group">
                                 <span class="input-group-text bg-light border-end-0">
@@ -112,14 +112,14 @@
                             </div>
                             <div class="form-text">
                                 <i class="fas fa-magic me-1"></i>
-                                구체적이고 명확한 제목을 작성하면 더 좋은 답변을 받을 수 있습니다
+                                구체적이고 명확한 제목을 작성하면 더 좋은 의견을 받을 수 있습니다
                             </div>
                         </div>
                         
                         <!-- 내용 입력 -->
                         <div class="mb-4">
                             <label for="{{ form.content.id_for_label }}" class="form-label fw-semibold">
-                                <i class="fas fa-edit me-2 text-info"></i>질문 내용 <span class="text-danger">*</span>
+                                <i class="fas fa-edit me-2 text-info"></i>게시글 내용 <span class="text-danger">*</span>
                             </label>
                             <textarea name="content" 
                                       class="form-control" 
@@ -162,7 +162,7 @@
                             <div>
                                 <small class="text-muted">
                                     <i class="fas fa-clock me-1"></i>
-                                    질문을 등록하면 커뮤니티 멤버들이 답변을 도와드립니다
+                                    게시글을 등록하면 커뮤니티 멤버들이 의견을 도와드립니다
                                 </small>
                             </div>
                             <div>
@@ -170,7 +170,7 @@
                                     <i class="fas fa-times me-2"></i>취소
                                 </a>
                                 <button type="submit" class="btn btn-info btn-lg px-5" style="border-radius: 10px;">
-                                    <i class="fas fa-paper-plane me-2"></i>질문 등록하기
+                                    <i class="fas fa-paper-plane me-2"></i>게시글 등록하기
                                 </button>
                             </div>
                         </div>
@@ -182,7 +182,7 @@
             <div class="text-center mt-4">
                 <p class="text-muted small">
                     <i class="fas fa-users me-1"></i>
-                    테크창 커뮤니티의 전문가들이 여러분의 질문에 답변해드립니다
+                    테크창 커뮤니티의 전문가들이 여러분의 게시글에 의견을 남겨드립니다
                 </p>
             </div>
         </div>

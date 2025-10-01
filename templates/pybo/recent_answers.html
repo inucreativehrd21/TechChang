@@ -2,7 +2,7 @@
 {% load pybo_filter %}
 {% block content %}
 <div class="container my-3">
-    <h5 class="border-bottom pb-2">최근 답변</h5>
+    <h5 class="border-bottom pb-2">최근 의견</h5>
     <table class="table">
         <thead>
         <tr class="text-center table-dark">
@@ -26,7 +26,7 @@
         {% endfor %}
         {% else %}
         <tr>
-            <td colspan="4">답변이 없습니다.</td>
+            <td colspan="4">의견이 없습니다.</td>
         </tr>
         {% endif %}
         </tbody>

@@ -68,12 +68,12 @@
                 </div>
             </div>
 
-            <!-- 질문 목록 -->
+            <!-- 게시글 목록 -->
             <div class="card">
                 <div class="card-header d-flex justify-content-between align-items-center">
-                    <h5 class="mb-0">질문 목록</h5>
+                    <h5 class="mb-0">게시글 목록</h5>
                     <a href="{% url 'pybo:question_create' %}" class="btn btn-primary btn-sm">
-                        <i class="fas fa-plus me-1"></i>질문 등록
+                        <i class="fas fa-plus me-1"></i>게시글 작성
                     </a>
                 </div>
                 <div class="card-body p-0">
@@ -87,7 +87,7 @@
                                     <th style="width: 100px;" class="text-center">작성자</th>
                                     <th style="width: 120px;" class="text-center">작성일</th>
                                     <th style="width: 60px;" class="text-center">추천</th>
-                                    <th style="width: 60px;" class="text-center">답변</th>
+                                    <th style="width: 60px;" class="text-center">의견</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -131,11 +131,11 @@
                     </div>
                     {% else %}
                     <div class="text-center py-5">
-                        <i class="fas fa-question-circle fa-3x text-muted mb-3"></i>
-                        <h5>등록된 질문이 없습니다</h5>
-                        <p class="text-muted">첫 번째 질문을 등록해보세요!</p>
+                        <i class="fas fa-edit fa-3x text-muted mb-3"></i>
+                        <h5>등록된 게시글이 없습니다</h5>
+                        <p class="text-muted">첫 번째 게시글을 작성해보세요!</p>
                         <a href="{% url 'pybo:question_create' %}" class="btn btn-primary">
-                            <i class="fas fa-plus me-1"></i>질문 등록
+                            <i class="fas fa-plus me-1"></i>게시글 작성
                         </a>
                     </div>
                     {% endif %}
