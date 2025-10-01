@@ -24,7 +24,7 @@
                 <a href="{% url 'pybo:detail' comment.answer.question.id %}#comment_{{ comment.id }}" class="text-decoration-none">{{ comment.content|truncatewords:10 }}</a>
                 {% endif %}
             </td>
-            <td><a href="{% url 'pybo:profile' comment.author.id %}" class="text-decoration-none">{{ comment.author.username }}</a></td>
+            <td><a href="{% url 'pybo:profile' comment.author.id %}" class="text-decoration-none">{% if comment.author.profile.nickname %}{{ comment.author.profile.nickname }}{% else %}{{ comment.author.username }}{% endif %}</a></td>
             <td>{{ comment.create_date }}</td>
         </tr>
         {% endfor %}

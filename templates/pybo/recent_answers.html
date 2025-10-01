@@ -20,7 +20,7 @@
             <td class="text-start">
                 <a href="{% url 'pybo:detail' answer.question.id %}#answer_{{ answer.id }}" class="text-decoration-none">{{ answer.content|truncatewords:10 }}</a>
             </td>
-            <td><a href="{% url 'pybo:profile' answer.author.id %}" class="text-decoration-none">{{ answer.author.username }}</a></td>
+            <td><a href="{% url 'pybo:profile' answer.author.id %}" class="text-decoration-none">{% if answer.author.profile.nickname %}{{ answer.author.profile.nickname }}{% else %}{{ answer.author.username }}{% endif %}</a></td>
             <td>{{ answer.create_date }}</td>
         </tr>
         {% endfor %}

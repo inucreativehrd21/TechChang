@@ -27,7 +27,14 @@
                        class="list-group-item list-group-item-action {% if category == '프로그래밍' %}active{% endif %}">
                         <i class="fas fa-code me-2"></i>프로그래밍
                     </a>
-                    
+                    <a href="?category=자유게시판&sort={{ sort }}&kw={{ kw }}&page=1" 
+                       class="list-group-item list-group-item-action {% if category == '자유게시판' %}active{% endif %}">
+                        <i class="fas fa-comments me-2"></i>자유게시판
+                    </a>
+                    <a href="?category=앨범&sort={{ sort }}&kw={{ kw }}&page=1" 
+                       class="list-group-item list-group-item-action {% if category == '앨범' %}active{% endif %}">
+                        <i class="fas fa-images me-2"></i>앨범
+                    </a>
                 </div>
             </div>
         </div>
@@ -98,7 +105,7 @@
                                         {% endif %}
                                     </td>
                                     <td class="text-center">
-                                        <small>{{ question.author.username }}</small>
+                                        <small>{% if question.author.profile.nickname %}{{ question.author.profile.nickname }}{% else %}{{ question.author.username }}{% endif %}</small>
                                     </td>
                                     <td class="text-center">
                                         <small>{{ question.create_date|date:"m-d H:i" }}</small>

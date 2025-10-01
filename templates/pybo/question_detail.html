@@ -299,7 +299,7 @@
                                         <small class="text-muted">
                                             <strong>
                                                 <a href="{% url 'pybo:profile' comment.author.id %}" 
-                                                   class="text-decoration-none">{{ comment.author.username }}</a>
+                                                   class="text-decoration-none">{% if comment.author.profile.nickname %}{{ comment.author.profile.nickname }}{% else %}{{ comment.author.username }}{% endif %}</a>
                                             </strong>
                                             · {{ comment.create_date }}
                                             {% if comment.modify_date %}
