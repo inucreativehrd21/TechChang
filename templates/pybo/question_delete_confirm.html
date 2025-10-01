@@ -24,7 +24,7 @@
                                 <h5 class="alert-heading mb-2">⚠️ 주의사항</h5>
                                 <ul class="mb-0">
                                     <li><strong>영구 삭제:</strong> 삭제된 게시글은 복구할 수 없습니다</li>
-                                    <li><strong>관련 데이터:</strong> 모든 의견과 댓글도 함께 삭제됩니다</li>
+                                    <li><strong>관련 데이터:</strong> 모든 댓글과 댓글도 함께 삭제됩니다</li>
                                     <li><strong>추천 내역:</strong> 추천 정보도 모두 사라집니다</li>
                                 </ul>
                             </div>
@@ -43,7 +43,7 @@
                             <div class="text-muted small mb-2">
                                 <i class="fas fa-calendar me-1"></i>{{ question.create_date|date:"Y-m-d H:i" }}
                                 <i class="fas fa-eye ms-3 me-1"></i>조회 {{ question.view_count }}회
-                                <i class="fas fa-comments ms-3 me-1"></i>의견 {{ question.answer_set.count }}개
+                                <i class="fas fa-comments ms-3 me-1"></i>댓글 {{ question.answer_set.count }}개
                             </div>
                             <div class="card-text text-truncate" style="max-height: 100px; overflow: hidden;">
                                 {{ question.content|truncatewords:30 }}

@@ -85,11 +85,6 @@
             <a href="{% url 'pybo:question_modify' question.id %}" class="btn btn-sm btn-outline-secondary">수정</a>
             <a href="{% url 'pybo:question_delete' question.id %}" class="btn btn-sm btn-outline-danger">삭제</a>
           {% endif %}
-                <button type="button"
-                class="btn btn-outline-info btn-sm"
-                onclick="toggleCommentForm('question_{{ question.id }}')">
-            댓글 추가
-          </button>
         </div>
       {% endif %}
     </div>
@@ -137,7 +132,7 @@
   <div class="d-flex justify-content-between align-items-center mb-3">
     <h5 class="mb-0">
       <i class="fas fa-comments text-primary me-2"></i>
-      의견 {{ question.answer_set.count }}개
+      댓글 {{ question.answer_set.count }}개
     </h5>
     <div class="btn-group" role="group">
       <a href="?sort=recent" class="btn btn-outline-primary btn-sm {% if sort == 'recent' or not sort %}active{% endif %}">
@@ -263,8 +258,8 @@
     {% endfor %}
   {% else %}
     <div class="text-center py-5 text-muted">
-      <h6>아직 의견이 없습니다</h6>
-      <p>첫 번째 의견을 작성해보세요!</p>
+      <h6>아직 댓글이 없습니다</h6>
+      <p>첫 번째 댓글을 작성해보세요!</p>
     </div>
   {% endif %}
 </div>
@@ -314,7 +309,7 @@
     <div class="card-header">
       <h5 class="mb-0">
         <i class="fas fa-edit text-primary me-2"></i>
-        의견 작성
+        댓글 작성
       </h5>
     </div>
     <div class="card-body">
@@ -323,9 +318,9 @@
         {% include "form_errors.html" %}
         
         <div class="mb-3">
-          <label for="{{ form.content.id_for_label }}" class="form-label">의견 내용</label>
+          <label for="{{ form.content.id_for_label }}" class="form-label">댓글 내용</label>
           <textarea name="content" id="{{ form.content.id_for_label }}" class="form-control" 
-                    rows="6" placeholder="도움이 되는 의견을 작성해주세요. 마크다운 문법을 사용할 수 있습니다." 
+                    rows="6" placeholder="도움이 되는 댓글을 작성해주세요. 마크다운 문법을 사용할 수 있습니다." 
                     required>{{ form.content.value|default_if_none:"" }}</textarea>
         </div>
         
@@ -339,11 +334,11 @@
         <div class="d-flex justify-content-between align-items-center">
           <div class="text-muted">
             <i class="fas fa-user me-1"></i>
-            {{ user|display_name }}님으로 의견 작성
+            {{ user|display_name }}님으로 댓글 작성
           </div>
           <button type="submit" class="btn btn-primary">
             <i class="fas fa-paper-plane me-1"></i>
-            의견 등록
+            댓글 등록
           </button>
         </div>
       </form>
@@ -352,7 +347,7 @@
 {% else %}
   <div class="card mt-4 bg-light">
     <div class="card-body text-center">
-      <h6>의견을 작성하려면 로그인이 필요합니다</h6>
+      <h6>댓글을 작성하려면 로그인이 필요합니다</h6>
       <a href="{% url 'common:login' %}" class="btn btn-primary">로그인</a>
     </div>
   </div>

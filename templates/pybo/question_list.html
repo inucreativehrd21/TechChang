@@ -82,18 +82,18 @@
                         <table class="table table-hover mb-0">
                             <thead class="table-light">
                                 <tr>
-                                    <th style="width: 80px;" class="text-center d-none d-md-table-cell">번호</th>
+                                    <th style="width: 80px;" class="text-center">번호</th>
                                     <th>제목</th>
                                     <th style="width: 100px;" class="text-center">작성자</th>
-                                    <th style="width: 120px;" class="text-center d-none d-md-table-cell">작성일</th>
-                                    <th style="width: 60px;" class="text-center d-none d-md-table-cell">추천</th>
-                                    <th style="width: 60px;" class="text-center d-none d-md-table-cell">의견</th>
+                                    <th style="width: 120px;" class="text-center">작성일</th>
+                                    <th style="width: 60px;" class="text-center">추천</th>
+                                    <th style="width: 60px;" class="text-center">댓글</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {% for question in question_list %}
                                 <tr>
-                                    <td class="text-center text-muted d-none d-md-table-cell" style="white-space: nowrap;">
+                                    <td class="text-center text-muted" style="white-space: nowrap;">
                                         {{ question_list.paginator.count|sub:question_list.start_index|sub:forloop.counter0|add:1 }}
                                     </td>
                                     <td>
@@ -101,23 +101,23 @@
                                             {{ question.subject }}
                                         </a>
                                         {% if question.answer_set.count > 0 %}
-                                        <span class="text-danger small ms-2 d-inline d-md-none">[{{ question.answer_set.count }}]</span>
+                                        <span class="text-danger small ms-2">[{{ question.answer_set.count }}]</span>
                                         {% endif %}
                                     </td>
                                     <td class="text-center">
                                         <small>{% if question.author.profile.nickname %}{{ question.author.profile.nickname }}{% else %}{{ question.author.username }}{% endif %}</small>
                                     </td>
-                                    <td class="text-center d-none d-md-table-cell">
+                                    <td class="text-center">
                                         <small>{{ question.create_date|date:"m-d H:i" }}</small>
                                     </td>
-                                    <td class="text-center d-none d-md-table-cell">
+                                    <td class="text-center">
                                         {% if question.voter.count > 0 %}
                                         <span class="badge bg-success">{{ question.voter.count }}</span>
                                         {% else %}
                                         <span class="text-muted">0</span>
                                         {% endif %}
                                     </td>
-                                    <td class="text-center d-none d-md-table-cell">
+                                    <td class="text-center">
                                         {% if question.answer_set.count > 0 %}
                                         <span class="badge bg-primary">{{ question.answer_set.count }}</span>
                                         {% else %}

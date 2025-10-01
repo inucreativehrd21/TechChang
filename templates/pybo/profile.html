@@ -12,7 +12,7 @@
             <p><strong>사용자명:</strong> {{ profile_user.username }}</p>
             <p><strong>가입일:</strong> {{ profile_user.date_joined }}</p>
             <p><strong>작성한 게시글:</strong> {{ profile_user.author_question.count }}개</p>
-            <p><strong>작성한 의견:</strong> {{ profile_user.author_answer.count }}개</p>
+            <p><strong>작성한 댓글:</strong> {{ profile_user.author_answer.count }}개</p>
             <p><strong>작성한 댓글:</strong> {{ profile_user.comment_set.count }}개</p>
         </div>
     </div>
@@ -78,9 +78,9 @@
         {% endif %}
     </div>
 
-    <!-- 작성한 의견 -->
+    <!-- 작성한 댓글 -->
     <div class="my-4">
-        <h6 class="border-bottom pb-2">작성한 의견</h6>
+        <h6 class="border-bottom pb-2">작성한 댓글</h6>
         {% if answer_list %}
         <table class="table">
             <thead>
@@ -104,10 +104,10 @@
             {% endfor %}
             </tbody>
         </table>
-        <!-- 의견 페이징 -->
+        <!-- 댓글 페이징 -->
         {% if answer_list.paginator.num_pages > 1 %}
         <div class="d-flex justify-content-center mt-3">
-            <nav aria-label="의견 페이지 네비게이션">
+            <nav aria-label="댓글 페이지 네비게이션">
                 <ul class="pagination pagination-sm">
                     {% if answer_list.has_previous %}
                     <li class="page-item">
@@ -137,7 +137,7 @@
         </div>
         {% endif %}
         {% else %}
-        <p>작성한 의견이 없습니다.</p>
+        <p>작성한 댓글이 없습니다.</p>
         {% endif %}
     </div>
 

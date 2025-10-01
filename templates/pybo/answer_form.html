@@ -1,12 +1,12 @@
 {% extends 'base.html' %}
 {% block content %}
-<!-- 의견 수정-->
+<!-- 댓글 수정-->
 <div class="container my-3">
     <form method="post">
         {% csrf_token %}
         {% include "form_errors.html" %}
         <div class="mb-3">
-            <label for="content" class="form-label">의견내용</label>
+            <label for="content" class="form-label">댓글내용</label>
             <textarea class="form-control" name="content" id="content"
                       rows="10">{{ form.content.value|default_if_none:'' }}</textarea>
         </div>
