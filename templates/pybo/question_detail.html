@@ -32,7 +32,7 @@
                     class="d-inline ms-3">
                 {% csrf_token %}
                 <button type="submit"
-                    class="btn btn-sm btn-outline-{{ question.voter.filter(id=user.id).exists|yesno:'secondary,success' }}">
+                    class="btn btn-sm btn-outline-{% if question.voter.filter(id=user.id).exists() %}success{% else %}secondary{% endif %}">
                     <i class="fas fa-thumbs-up"></i> {{ question.voter.count }}
                 </button>
             </form>
@@ -194,7 +194,7 @@
                 class="d-inline me-2">
               {% csrf_token %}
               <button type="submit"
-                  class="btn btn-sm btn-outline-{{ answer.voter.filter(id=user.id).exists|yesno:'secondary,success' }}">
+                  class="btn btn-sm btn-outline-{% if answer.voter.filter(id=user.id).exists() %}success{% else %}secondary{% endif %}">
                   <i class="fas fa-thumbs-up"></i> {{ answer.voter.count }}
                 </button>
               </form>
