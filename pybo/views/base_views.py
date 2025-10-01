@@ -5,6 +5,7 @@ from django.db.models import Q, Count, F
 from django.http import Http404
 from django.core.cache import cache
 from django.conf import settings
+import time
 
 from ..models import Question, Answer, Comment, Category
 
@@ -69,20 +70,36 @@ def index(request):
     return render(request, 'pybo/question_list.html', context)
 
 def detail(request, question_id):
-    """질문 상세 페이지 - 답변 페이징, 정렬, 조회수 기능"""
-    try:
-        question_id = int(question_id)
-    except (ValueError, TypeError):
-        raise Http404("잘못된 질문 ID입니다.")
-    
     # select_related, prefetch_related로 성능 최적화 (삭제되지 않은 질문만)
     question = get_object_or_404(
         Question.objects.filter(is_deleted=False)
-                       .select_related('author', 'category')
-                       .prefetch_related('voter', 'comment_set__author'),
+                        .select_related('author', 'category')
+                        .prefetch_related('voter', 'comment_set__author'),
         pk=question_id
     )
-    
+
+    # 조회수 중복 방지 (5분 이내 재방문 카운트 방지)
+    session_key = f'viewed_question_{question_id}'
+    last_view = request.session.get(session_key, 0)
+    now = int(time.time())
+    if now - last_view > 300:  # 300초(5분) 이상 경과 시에만 카운트
+        question.view_count += 1
+        question.save(update_fields=['view_count'])
+        request.session[session_key] = now
+
+    # 정렬 파라미터
+    sort = request.GET.get('sort')
+
+    # 답변 목록 구하기 (정렬 함수 호출 예시)
+    answer_list = get_answer_list(question, sort)
+
+    context = {
+        'question': question,
+        'answer_list': answer_list,
+        'sort': sort,
+    }
+    return render(request, 'pybo/question_detail.html', context)
+
     # 조회수 증가 (F 표현식으로 race condition 방지)
     Question.objects.filter(pk=question_id).update(view_count=F('view_count') + 1)
     question.refresh_from_db(fields=['view_count'])
