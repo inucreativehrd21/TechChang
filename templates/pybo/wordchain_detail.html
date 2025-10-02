@@ -310,6 +310,23 @@ document.addEventListener('DOMContentLoaded', function() {
 let lastChatFetch = null;
 const renderedChatKeys = new Set(); // prevent duplicate rendering (author+time+msg)
 
+function formatChatDate(isoString) {
+  if (!isoString) return '';
+  try {
+    const d = new Date(isoString);
+    if (isNaN(d.getTime())) return isoString;
+    const Y = d.getFullYear();
+    const M = String(d.getMonth() + 1).padStart(2, '0');
+    const D = String(d.getDate()).padStart(2, '0');
+    const h = String(d.getHours()).padStart(2, '0');
+    const m = String(d.getMinutes()).padStart(2, '0');
+    const s = String(d.getSeconds()).padStart(2, '0');
+    return `${Y}-${M}-${D} ${h}:${m}:${s}`;
+  } catch (e) {
+    return isoString;
+  }
+}
+
 function renderChatMessage(item) {
   const wrap = document.createElement('div');
   wrap.className = 'chat-message mb-2 p-2';
@@ -318,7 +335,8 @@ function renderChatMessage(item) {
   header.className = 'small text-muted mb-1';
   // use author_display when available (profile nickname), fallback to username
   const who = item.author_display || item.author || '익명';
-  header.textContent = `${who} · ${item.create_date}`;
+  const pretty = formatChatDate(item.create_date);
+  header.textContent = `${who} · ${pretty}`;
 
   const body = document.createElement('div');
   body.textContent = item.message;
