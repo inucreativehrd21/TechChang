@@ -86,7 +86,7 @@
     <div class="col-lg-8">
     <!-- 단어 입력 폼 (활성 게임일 때만) -->
     {% if game.status == 'active' and user.is_authenticated %}
-      <div class="col-12 mb-4">
+      <div class="mb-4">
         <div class="card border-primary">
           <div class="card-header bg-primary text-white">
             <h6 class="mb-0">
@@ -112,7 +112,7 @@
         </div>
       </div>
     {% elif game.status == 'active' and not user.is_authenticated %}
-      <div class="col-12 mb-4">
+      <div class="mb-4">
         <div class="card border-warning">
           <div class="card-body text-center">
             <h6 class="text-warning mb-2">
@@ -128,7 +128,7 @@
     {% endif %}
 
   <!-- 단어 목록 -->
-  <div class="col-12">
+  <div>
       <div class="card">
         <div class="card-header">
           <h5 class="mb-0">
@@ -171,9 +171,10 @@
           {% endif %}
         </div>
       </div>
-    </div>
+  </div>
+  </div>
 
-    <!-- 우측 채팅 패널 -->
+  <!-- 우측 채팅 패널 -->
     <div class="col-lg-4 mt-3 mt-lg-0">
       <div class="card h-100">
         <div class="card-header bg-white">
@@ -300,8 +301,11 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 });
+
+// --------- 채팅 기능 ---------
 </script>
 
+<script>
 // --------- 채팅 기능 ---------
 let lastChatFetch = null;
 function renderChatMessage(item) {
@@ -372,6 +376,7 @@ document.addEventListener('DOMContentLoaded', function() {
   fetchChats();
   setInterval(fetchChats, 3000);
 });
+</script>
 
 <style>
 .word-chain-container {
