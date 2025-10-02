@@ -83,6 +83,7 @@
   {% endif %}
 
   <div class="row">
+    <div class="col-lg-8">
     <!-- 단어 입력 폼 (활성 게임일 때만) -->
     {% if game.status == 'active' and user.is_authenticated %}
       <div class="col-12 mb-4">
@@ -126,8 +127,8 @@
       </div>
     {% endif %}
 
-    <!-- 단어 목록 -->
-    <div class="col-12">
+  <!-- 단어 목록 -->
+  <div class="col-12">
       <div class="card">
         <div class="card-header">
           <h5 class="mb-0">
@@ -167,6 +168,36 @@
               <h6>아직 단어가 없습니다</h6>
               <p class="text-muted">첫 번째 단어를 입력해보세요!</p>
             </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    <!-- 우측 채팅 패널 -->
+    <div class="col-lg-4 mt-3 mt-lg-0">
+      <div class="card h-100">
+        <div class="card-header bg-white">
+          <h6 class="mb-0">
+            <i class="fas fa-comments me-2"></i>채팅
+          </h6>
+        </div>
+        <div class="card-body p-3 d-flex flex-column" style="height: 560px;">
+          <div id="chatList" class="mb-3 flex-grow-1 overflow-auto" style="background: #fff; border-radius:8px; padding:12px;">
+            <!-- 메시지 항목이 여기 렌더링 됩니다 -->
+          </div>
+
+          {% if user.is_authenticated and game.status == 'active' %}
+            <form id="chatForm" onsubmit="sendChat(event)" class="d-flex gap-2">
+              {% csrf_token %}
+              <input id="chatInput" class="form-control" type="text" placeholder="메시지를 입력하세요" maxlength="250" autocomplete="off">
+              <button class="btn btn-primary" type="submit">전송</button>
+            </form>
+          {% elif not user.is_authenticated %}
+            <div class="text-center">
+              <a href="{% url 'common:login' %}?next={{ request.path }}" class="btn btn-outline-primary">로그인하고 채팅하기</a>
+            </div>
+          {% else %}
+            <div class="text-center text-muted">게임이 종료되어 채팅을 할 수 없습니다.</div>
           {% endif %}
         </div>
       </div>
@@ -271,6 +302,77 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 </script>
 
+// --------- 채팅 기능 ---------
+let lastChatFetch = null;
+function renderChatMessage(item) {
+  const wrap = document.createElement('div');
+  wrap.className = 'chat-message mb-2 p-2';
+
+  const header = document.createElement('div');
+  header.className = 'small text-muted mb-1';
+  header.textContent = `${item.author} · ${item.create_date}`;
+
+  const body = document.createElement('div');
+  body.textContent = item.message;
+
+  wrap.appendChild(header);
+  wrap.appendChild(body);
+  return wrap;
+}
+
+function fetchChats() {
+  fetch('{% url "pybo:wordchain_get_chats" game.id %}' + (lastChatFetch ? '?since=' + encodeURIComponent(lastChatFetch) : ''))
+    .then(r => r.json())
+    .then(data => {
+      if (data.success && data.messages && data.messages.length) {
+        const chatList = document.getElementById('chatList');
+        data.messages.forEach(m => {
+          chatList.appendChild(renderChatMessage(m));
+          lastChatFetch = m.create_date;
+        });
+        chatList.scrollTop = chatList.scrollHeight;
+      }
+    }).catch(e => console.error(e));
+}
+
+function sendChat(e) {
+  e.preventDefault();
+  const input = document.getElementById('chatInput');
+  const text = input.value.trim();
+  if (!text) return;
+  const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+  const btn = e.target.querySelector('button[type="submit"]');
+  const old = btn.innerHTML;
+  btn.innerHTML = '전송중...'; btn.disabled = true;
+
+  fetch('{% url "pybo:wordchain_add_chat" game.id %}', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+      'X-CSRFToken': csrfToken
+    },
+    body: new URLSearchParams({message: text})
+  }).then(r => r.json()).then(data => {
+    if (data.success) {
+      const chatList = document.getElementById('chatList');
+      chatList.appendChild(renderChatMessage(data));
+      chatList.scrollTop = chatList.scrollHeight;
+      input.value = '';
+    } else {
+      alert(data.message || '메시지 전송 실패');
+    }
+  }).catch(err => {
+    console.error(err);
+    alert('오류가 발생했습니다.');
+  }).finally(() => { btn.innerHTML = old; btn.disabled = false; });
+}
+
+// 주기적 폴링
+document.addEventListener('DOMContentLoaded', function() {
+  fetchChats();
+  setInterval(fetchChats, 3000);
+});
+
 <style>
 .word-chain-container {
     background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
@@ -300,6 +402,17 @@ document.addEventListener('DOMContentLoaded', function() {
 #wordInput:focus {
     border-color: #0d6efd;
     box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25);
+}
+
+/* Chat styles */
+.chat-message {
+  background: #fff;
+  border-radius: 6px;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+}
+
+#chatList {
+  background: #fafafa;
 }
 </style>
 {% endblock %}

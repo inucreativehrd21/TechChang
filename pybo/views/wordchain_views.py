@@ -12,7 +12,9 @@ from django.core.paginator import Paginator
 from django.db import transaction
 from django.db.models import Count
 
-from ..models import WordChainGame, WordChainEntry
+from ..models import WordChainGame, WordChainEntry, WordChainChatMessage
+from django.views.decorators.http import require_POST, require_GET
+from django.utils import timezone
 
 
 def wordchain_list(request):
@@ -162,6 +164,64 @@ def wordchain_add_word(request, game_id):
             
     except Exception as e:
         return JsonResponse({'success': False, 'message': '단어 추가 중 오류가 발생했습니다.'})
+
+
+@login_required
+@require_POST
+def wordchain_add_chat(request, game_id):
+    """채팅 메시지 추가 (AJAX POST)
+    요청: message
+    반환: JSON {success, message, author, create_date}
+    """
+    game = get_object_or_404(WordChainGame, id=game_id)
+    if game.status != 'active':
+        return JsonResponse({'success': False, 'message': '종료된 게임입니다.'})
+
+    text = request.POST.get('message', '').strip()
+    if not text:
+        return JsonResponse({'success': False, 'message': '메시지를 입력해주세요.'})
+
+    try:
+        chat = WordChainChatMessage.objects.create(
+            game=game,
+            author=request.user,
+            message=text,
+            create_date=timezone.now()
+        )
+        return JsonResponse({
+            'success': True,
+            'author': request.user.username,
+            'message': chat.message,
+            'create_date': chat.create_date.strftime('%Y-%m-%d %H:%M:%S')
+        })
+    except Exception as e:
+        return JsonResponse({'success': False, 'message': '메시지 전송 중 오류가 발생했습니다.'})
+
+
+@require_GET
+def wordchain_get_chats(request, game_id):
+    """최근 채팅 메시지 반환 (AJAX GET)
+    파라미터: since (옵션, ISO datetime) -> 해당 시간 이후 메시지
+    """
+    game = get_object_or_404(WordChainGame, id=game_id)
+    since = request.GET.get('since')
+    qs = game.chat_messages.select_related('author')
+    if since:
+        try:
+            since_dt = timezone.datetime.fromisoformat(since)
+            qs = qs.filter(create_date__gt=since_dt)
+        except Exception:
+            pass
+
+    messages = []
+    for m in qs.order_by('create_date')[:200]:
+        messages.append({
+            'author': m.author.username,
+            'message': m.message,
+            'create_date': m.create_date.strftime('%Y-%m-%d %H:%M:%S')
+        })
+
+    return JsonResponse({'success': True, 'messages': messages})
 
 
 @login_required

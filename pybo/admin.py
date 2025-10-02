@@ -2,6 +2,7 @@
 from django.contrib import admin
 
 from .models import Question, Answer, Comment, Category, WordChainGame, WordChainEntry
+from .models import WordChainChatMessage
 
 class QuestionAdmin(admin.ModelAdmin):
     search_fields = ['subject']
@@ -34,6 +35,17 @@ class WordChainEntryAdmin(admin.ModelAdmin):
     readonly_fields = ('create_date',)
 
 
+class WordChainChatMessageAdmin(admin.ModelAdmin):
+    list_display = ('game', 'author', 'create_date', 'short_message')
+    list_filter = ('create_date', 'game')
+    search_fields = ('author__username', 'message')
+    readonly_fields = ('create_date',)
+
+    def short_message(self, obj):
+        return (obj.message[:60] + '...') if len(obj.message) > 60 else obj.message
+    short_message.short_description = '메시지'
+
+
 # Register your models here.
 admin.site.register(Question, QuestionAdmin)
 admin.site.register(Answer, AnswerAdmin)
@@ -41,3 +53,4 @@ admin.site.register(Comment, CommentAdmin)
 admin.site.register(Category, CategoryAdmin)
 admin.site.register(WordChainGame, WordChainGameAdmin)
 admin.site.register(WordChainEntry, WordChainEntryAdmin)
+admin.site.register(WordChainChatMessage, WordChainChatMessageAdmin)

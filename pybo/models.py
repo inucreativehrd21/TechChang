@@ -95,3 +95,17 @@ class WordChainEntry(models.Model):
     
     def __str__(self):
         return f"{self.game.title} - {self.word} ({self.author.username})"
+
+
+class WordChainChatMessage(models.Model):
+    """끝말잇기 게임 내 채팅 메시지"""
+    game = models.ForeignKey(WordChainGame, on_delete=models.CASCADE, related_name='chat_messages')
+    author = models.ForeignKey(User, on_delete=models.CASCADE)
+    message = models.TextField()
+    create_date = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['create_date']
+
+    def __str__(self):
+        return f"{self.game.title} - {self.author.username}: {self.message[:20]}"

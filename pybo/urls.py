@@ -50,5 +50,7 @@ urlpatterns = [
     path('wordchain/create/', wordchain_views.wordchain_create, name='wordchain_create'),
     path('wordchain/<int:game_id>/', wordchain_views.wordchain_detail, name='wordchain_detail'),
     path('wordchain/<int:game_id>/add_word/', wordchain_views.wordchain_add_word, name='wordchain_add_word'),
+     path('wordchain/<int:game_id>/add_chat/', wordchain_views.wordchain_add_chat, name='wordchain_add_chat'),
+     path('wordchain/<int:game_id>/chats/', wordchain_views.wordchain_get_chats, name='wordchain_get_chats'),
     path('wordchain/<int:game_id>/finish/', wordchain_views.wordchain_finish, name='wordchain_finish'),
 ]
