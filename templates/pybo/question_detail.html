@@ -218,11 +218,7 @@
   {% endif %}
 </div>
 
-<div class="comments-section mt-4 mb-4">
-  <h5 class="mb-3">
-    <i class="fas fa-comments text-primary me-2"></i> 댓글
-  </h5>
-
+<div class="comments-section mt-3 mb-3">
   {% for answer in answer_list %}
     {% if answer.comment_set.count > 0 %}
       <div class="answer-group mb-4">
