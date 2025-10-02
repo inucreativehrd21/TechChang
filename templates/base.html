@@ -16,7 +16,7 @@
     <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <!-- Custom CSS -->
-    <link href="{% static 'style.css' %}?v=2025100203" rel="stylesheet">
+    <link href="{% static 'style.css' %}?v={{ 'now'|date:'YmdHis' }}" rel="stylesheet">
     
     {% block extra_css %}{% endblock %}
     

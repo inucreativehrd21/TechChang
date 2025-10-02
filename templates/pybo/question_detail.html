@@ -6,6 +6,7 @@
 {% block title %}{{ question.subject }} - 테크창{% endblock %}
 
 {% block content %}
+<!-- 🔥 댓글 시스템 완전 리팩토링 - {{ 'now'|date:'Y.m.d H:i:s' }} 🔥 -->
 <!-- 메시지 표시 -->
 {% if messages %}
   {% for message in messages %}
@@ -218,54 +219,73 @@
   {% endif %}
 </div>
 
-<!-- 모든 답변 댓글을 독립적으로 표시 -->
-{% for answer in answer_list %}
-  {% if answer.comment_set.count > 0 %}
-    <div class="answer-comments-section mb-4">
-      <div class="d-flex align-items-center mb-3">
-        <h6 class="mb-0 text-muted me-2">
-          💬 {{ answer.author|display_name }}님 댓글에 대한 답변들 ({{ answer.comment_set.count }}개)
-        </h6>
-        <small class="text-muted">
-          답변: "{{ answer.content|truncatechars:30 }}..."
-        </small>
-      </div>
-      
-      {% for comment in answer.comment_set.all %}
-        <div class="comment-item card border-info mb-2" style="border-left: 4px solid #0dcaf0 !important;">
-          <div class="card-body py-2 px-3">
+<!-- ========================================= 
+     🔥 평면형 댓글 시스템 (중첩 없음) 🔥 
+     ========================================= -->
+<div class="flat-comments-section mt-4 mb-4" style="background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%); padding: 1.5rem; border-radius: 12px; border-left: 5px solid #0dcaf0;">
+  <div class="text-center mb-4">
+    <h5 class="text-primary mb-0">
+      💬 모든 댓글 보기 (평면형)
+    </h5>
+    <small class="text-muted">댓글들이 더 이상 중첩되지 않습니다</small>
+  </div>
+  
+  {% for answer in answer_list %}
+    {% if answer.comment_set.count > 0 %}
+      <div class="answer-group mb-4">
+        <div class="answer-reference p-3 mb-3" style="background: rgba(255,255,255,0.7); border-radius: 8px; border-left: 3px solid #6c757d;">
+          <strong>� {{ answer.author|display_name }}님의 답변</strong>
+          <div class="text-muted small mt-1">{{ answer.content|striptags|truncatechars:100 }}</div>
+        </div>
+        
+        {% for comment in answer.comment_set.all %}
+          <div class="flat-comment mb-3 p-3" style="background: white; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); border-left: 3px solid #17a2b8;">
             <div class="d-flex justify-content-between align-items-start">
-              <div>
-                <strong>
-                  <a href="#" class="text-decoration-none">
+              <div class="flex-grow-1">
+                <div class="comment-header d-flex align-items-center mb-2">
+                  <strong class="text-info me-2">
                     {% if comment.author.profile.nickname %}
                       {{ comment.author.profile.nickname }}
                     {% else %}
                       {{ comment.author.username }}
                     {% endif %}
-                  </a>
-                </strong>
-                <span class="text-muted small">
-                  · {{ comment.create_date|date:"Y.m.d H:i" }}
+                  </strong>
+                  <span class="badge bg-light text-dark small">
+                    {{ comment.create_date|date:"m.d H:i" }}
+                  </span>
                   {% if comment.modify_date %}
-                    · 수정됨: {{ comment.modify_date|date:"Y.m.d H:i" }}
+                    <span class="badge bg-warning text-dark small ms-1">수정됨</span>
                   {% endif %}
-                </span>
+                </div>
+                <div class="comment-content">
+                  {{ comment.content|linebreaksbr }}
+                </div>
               </div>
               {% if request.user == comment.author %}
-                <div class="btn-group">
-                  <a href="{% url 'pybo:comment_modify_answer' comment.id %}" class="btn btn-sm btn-outline-secondary">수정</a>
-                  <a href="{% url 'pybo:comment_delete_answer' comment.id %}" class="btn btn-sm btn-outline-danger">삭제</a>
+                <div class="comment-actions ms-3">
+                  <div class="btn-group-vertical">
+                    <a href="{% url 'pybo:comment_modify_answer' comment.id %}" class="btn btn-sm btn-outline-secondary mb-1">✏️</a>
+                    <a href="{% url 'pybo:comment_delete_answer' comment.id %}" class="btn btn-sm btn-outline-danger">🗑️</a>
+                  </div>
                 </div>
               {% endif %}
             </div>
-            <p class="mb-0 mt-1">{{ comment.content }}</p>
           </div>
-        </div>
-      {% endfor %}
+        {% endfor %}
+      </div>
+    {% endif %}
+  {% endfor %}
+  
+  {% comment %} 댓글이 없는 경우 {% endcomment %}
+  {% if not answer_list or not answer_list.0.comment_set.exists %}
+    <div class="text-center py-4">
+      <div class="text-muted">
+        <i class="fas fa-comments fa-2x mb-2 opacity-50"></i>
+        <p>아직 댓글이 없습니다.</p>
+      </div>
     </div>
   {% endif %}
-{% endfor %}
+</div>
 
 <!-- 페이지네이션 -->
 {% if answer_list.paginator.num_pages > 1 %}
