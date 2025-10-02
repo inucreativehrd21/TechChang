@@ -1074,3 +1074,120 @@ a:hover {
         font-size: 0.9rem;
     }
 }
+
+/* ===========================================
+   모바일 게시글 목록 최적화 스타일
+   =========================================== */
+
+/* 모바일 카테고리 가로 스크롤 */
+@media (max-width: 991.98px) {
+    .overflow-auto {
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none; /* Firefox */
+        -ms-overflow-style: none; /* IE */
+    }
+    
+    .overflow-auto::-webkit-scrollbar {
+        display: none; /* Chrome, Safari, Opera */
+    }
+    
+    /* 모바일 게시글 카드 스타일 */
+    .mobile-post-card {
+        border-bottom: 1px solid var(--border-color);
+        padding: 1rem;
+        transition: background-color 0.2s ease;
+    }
+    
+    .mobile-post-card:hover {
+        background-color: var(--hover-bg-light);
+    }
+    
+    .mobile-post-card:last-child {
+        border-bottom: none;
+    }
+    
+    /* 모바일 게시글 제목 */
+    .mobile-post-title {
+        font-size: 1rem;
+        font-weight: 500;
+        line-height: 1.4;
+        margin-bottom: 0.5rem;
+    }
+    
+    .mobile-post-title a {
+        color: var(--text-color);
+        text-decoration: none;
+    }
+    
+    .mobile-post-title a:hover {
+        color: var(--primary-color);
+    }
+    
+    /* 모바일 게시글 메타정보 */
+    .mobile-post-meta {
+        font-size: 0.8rem;
+        color: var(--text-secondary);
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 0.75rem;
+    }
+    
+    .mobile-post-meta i {
+        font-size: 0.7rem;
+        opacity: 0.7;
+    }
+    
+    /* 모바일 배지 스타일 */
+    .mobile-badge {
+        font-size: 0.7rem;
+        padding: 0.2rem 0.5rem;
+    }
+    
+    /* 모바일 검색창 최적화 */
+    .mobile-search-container .input-group-text {
+        padding: 0.5rem 0.75rem;
+    }
+    
+    .mobile-search-container .form-control {
+        font-size: 0.9rem;
+    }
+    
+    .mobile-search-container .btn {
+        padding: 0.5rem 0.75rem;
+        font-size: 0.9rem;
+    }
+    
+    /* 모바일 카테고리 버튼 */
+    .mobile-category-btn {
+        font-size: 0.8rem;
+        padding: 0.4rem 0.8rem;
+        border-radius: 1.5rem;
+        white-space: nowrap;
+    }
+    
+    /* 모바일에서 게시글 작성 버튼 */
+    .mobile-write-btn {
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        z-index: 1000;
+        border-radius: 50%;
+        width: 56px;
+        height: 56px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        display: none;
+    }
+    
+    @media (max-width: 767.98px) {
+        .mobile-write-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .desktop-write-btn {
+            display: none !important;
+        }
+    }
+}
