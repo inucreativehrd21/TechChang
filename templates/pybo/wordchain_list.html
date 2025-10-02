@@ -179,41 +179,55 @@
         </h5>
         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
       </div>
-      <form method="post" action="{% url 'pybo:wordchain_create' %}">
-        {% csrf_token %}
-        <div class="modal-body">
-          <div class="mb-3">
-            <label for="title" class="form-label">게임 제목</label>
-            <input type="text" class="form-control" id="title" name="title" 
-                   placeholder="예: 수업시간 끝말잇기" maxlength="100">
-            <small class="form-text text-muted">비워두면 자동으로 생성됩니다.</small>
+      {% if user.is_authenticated %}
+        <form method="post" action="{% url 'pybo:wordchain_create' %}">
+          {% csrf_token %}
+          <div class="modal-body">
+            <div class="mb-3">
+              <label for="title" class="form-label">게임 제목</label>
+              <input type="text" class="form-control" id="title" name="title" 
+                     placeholder="예: 수업시간 끝말잇기" maxlength="100">
+              <small class="form-text text-muted">비워두면 자동으로 생성됩니다.</small>
+            </div>
+            <div class="mb-3">
+              <label for="first_word" class="form-label">첫 단어 <span class="text-danger">*</span></label>
+              <input type="text" class="form-control" id="first_word" name="first_word" 
+                     placeholder="예: 컴퓨터" maxlength="50" required>
+              <small class="form-text text-muted">
+                2글자 이상의 한글 단어를 입력해주세요.
+              </small>
+            </div>
+            <div class="alert alert-info">
+              <i class="fas fa-info-circle me-1"></i>
+              <strong>게임 규칙:</strong>
+              <ul class="mb-0 mt-2">
+                <li>한글 단어만 입력 가능합니다</li>
+                <li>2글자 이상이어야 합니다</li>
+                <li>중복 단어는 사용할 수 없습니다</li>
+                <li>게임 생성자만 게임을 종료할 수 있습니다</li>
+              </ul>
+            </div>
           </div>
-          <div class="mb-3">
-            <label for="first_word" class="form-label">첫 단어 <span class="text-danger">*</span></label>
-            <input type="text" class="form-control" id="first_word" name="first_word" 
-                   placeholder="예: 컴퓨터" maxlength="50" required>
-            <small class="form-text text-muted">
-              2글자 이상의 한글 단어를 입력해주세요.
-            </small>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">취소</button>
+            <button type="submit" class="btn btn-primary">
+              <i class="fas fa-gamepad me-1"></i>게임 시작!
+            </button>
           </div>
-          <div class="alert alert-info">
-            <i class="fas fa-info-circle me-1"></i>
-            <strong>게임 규칙:</strong>
-            <ul class="mb-0 mt-2">
-              <li>한글 단어만 입력 가능합니다</li>
-              <li>2글자 이상이어야 합니다</li>
-              <li>중복 단어는 사용할 수 없습니다</li>
-              <li>게임 생성자만 게임을 종료할 수 있습니다</li>
-            </ul>
+        </form>
+      {% else %}
+        <div class="modal-body text-center">
+          <div class="alert alert-warning">
+            <i class="fas fa-sign-in-alt me-1"></i>
+            로그인이 필요합니다. 게임을 시작하려면 로그인 후 이용해주세요.
           </div>
         </div>
         <div class="modal-footer">
+          <a href="{% url 'common:login' %}?next={{ request.path }}" class="btn btn-primary">
+            <i class="fas fa-sign-in-alt me-1"></i>로그인</a>
           <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">취소</button>
-          <button type="submit" class="btn btn-primary">
-            <i class="fas fa-gamepad me-1"></i>게임 시작!
-          </button>
         </div>
-      </form>
+      {% endif %}
     </div>
   </div>
 </div>
