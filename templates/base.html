@@ -5,14 +5,18 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="테크창 - HRD와 테크놀로지 지식을 공유하는 플랫폼">
     <meta name="keywords" content="HRD, 데이터분석, 프로그래밍, 테크놀로지, 지식공유">
-    
+    <!-- CSRF 토큰을 전역 JS 변수에 저장 -->
+    {% csrf_token %}
+    <script>
+        window.CSRF_TOKEN = "{{ csrf_token }}";
+    </script>
     <!-- Bootstrap CSS -->
     {% load static %}
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <!-- Custom CSS -->
-    <link href="{% static 'style.css' %}" rel="stylesheet">
+    <link href="{% static 'style.css' %}?v=2025100201" rel="stylesheet">
     
     {% block extra_css %}{% endblock %}
     

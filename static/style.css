@@ -1093,15 +1093,15 @@ a:hover {
     
     /* 모바일 게시글 카드 스타일 */
     .mobile-post-card {
-        background: rgba(255, 255, 255, 0.8);
-        border: 1px solid rgba(0, 0, 0, 0.08);
-        border-radius: 12px;
-        padding: 1.2rem;
-        margin-bottom: 0.8rem;
-        transition: all 0.2s ease;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
-        backdrop-filter: blur(10px);
-        -webkit-backdrop-filter: blur(10px);
+        background: rgba(255, 255, 255, 0.8) !important;
+        border: 1px solid rgba(0, 0, 0, 0.08) !important;
+        border-radius: 12px !important;
+        padding: 1.2rem !important;
+        margin-bottom: 0.8rem !important;
+        transition: all 0.2s ease !important;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04) !important;
+        backdrop-filter: blur(10px) !important;
+        -webkit-backdrop-filter: blur(10px) !important;
     }
     
     .mobile-post-card:hover {
