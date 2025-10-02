@@ -222,7 +222,7 @@ python manage.py collectstatic
 
 ---
 
-**TechWindow Community Platform v2.0.0** - Django 기반 현대적인 커뮤니티 플랫폼 ✨
+**TechWindow Community Platform v1.0.0** - Django 기반 현대적인 커뮤니티 플랫폼 ✨
    sudo cp mysite.service /etc/systemd/system/
    sudo systemctl daemon-reload
    sudo systemctl enable mysite
@@ -341,21 +341,21 @@ coverage html
 
 ## 🗺️ 테크창 비전 로드맵
 
-### 🎆 Phase 1: 커뮤니티 고도화 (Q4 2024)
+### 🎆 Phase 1: 커뮤니티 고도화 (Q4 2025)
 - [ ] 🔔 실시간 알림 시스템
 - [ ] 🔍 고급 검색 엔진 (ElasticSearch)
 - [ ] 🏷️ 전문 태그 시스템
 - [ ] 🏅 전문가 인증 배지
 - [ ] 📊 실시간 질문-답변 매칭
 
-### 🚀 Phase 2: AI 통합 플랫폼 (Q1 2025)
+### 🚀 Phase 2: AI 통합 플랫폼 (Q1 2026)
 - [ ] 🤖 AI 답변 어시스턴트
 - [ ] 📱 모바일 앱 (네이티브)
 - [ ] 🌍 다국어 지원 (KR/EN)
 - [ ] 📈 비즈니스 대시보드
 - [ ] 💼 기업 전용 솔루션
 
-### 🌐 Phase 3: 글로벌 확장 (Q2 2025)
+### 🌐 Phase 3: 글로벌 확장 (Q2 2026)
 - [ ] 📺 온라인 웨비나 플랫폼
 - [ ] 📄 전문 자격증 연동
 - [ ] 🔗 기업 HRD 시스템 연동
