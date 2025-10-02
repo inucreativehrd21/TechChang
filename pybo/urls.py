@@ -1,7 +1,7 @@
 
 from django.urls import path
 
-from .views import base_views, question_views, answer_views, comment_views, profile_views
+from .views import base_views, question_views, answer_views, comment_views, profile_views, wordchain_views
 
 app_name = 'pybo'
 
@@ -44,4 +44,11 @@ urlpatterns = [
     
     # profile_views.py
     path('profile/<int:user_id>/', profile_views.profile, name='profile'),
+    
+    # wordchain_views.py - 끝말잇기 게임
+    path('wordchain/', wordchain_views.wordchain_list, name='wordchain_list'),
+    path('wordchain/create/', wordchain_views.wordchain_create, name='wordchain_create'),
+    path('wordchain/<int:game_id>/', wordchain_views.wordchain_detail, name='wordchain_detail'),
+    path('wordchain/<int:game_id>/add_word/', wordchain_views.wordchain_add_word, name='wordchain_add_word'),
+    path('wordchain/<int:game_id>/finish/', wordchain_views.wordchain_finish, name='wordchain_finish'),
 ]

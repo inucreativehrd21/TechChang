@@ -6,7 +6,6 @@
 {% block title %}{{ question.subject }} - 테크창{% endblock %}
 
 {% block content %}
-<!-- 🔥 댓글 시스템 완전 리팩토링 - {{ 'now'|date:'Y.m.d H:i:s' }} 🔥 -->
 <!-- 메시지 표시 -->
 {% if messages %}
   {% for message in messages %}
@@ -219,15 +218,11 @@
   {% endif %}
 </div>
 
-<!-- ========================================= 
-     🔥 평면형 댓글 시스템 (중첩 없음) 🔥 
-     ========================================= -->
-<div class="flat-comments-section mt-4 mb-4" style="background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%); padding: 1.5rem; border-radius: 12px; border-left: 5px solid #0dcaf0;">
+<div class="comments-section mt-4 mb-4" style="background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%); padding: 1.5rem; border-radius: 12px; border-left: 5px solid #0dcaf0;">
   <div class="text-center mb-4">
     <h5 class="text-primary mb-0">
-      💬 모든 댓글 보기 (평면형)
+      💬 댓글
     </h5>
-    <small class="text-muted">댓글들이 더 이상 중첩되지 않습니다</small>
   </div>
   
   {% for answer in answer_list %}
@@ -276,12 +271,11 @@
     {% endif %}
   {% endfor %}
   
-  {% comment %} 댓글이 없는 경우 {% endcomment %}
   {% if not answer_list or not answer_list.0.comment_set.exists %}
     <div class="text-center py-4">
       <div class="text-muted">
         <i class="fas fa-comments fa-2x mb-2 opacity-50"></i>
-        <p>아직 댓글이 없습니다.</p>
+        <p>댓글이 없습니다.</p>
       </div>
     </div>
   {% endif %}

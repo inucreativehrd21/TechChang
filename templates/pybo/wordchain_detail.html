@@ -1,0 +1,291 @@
+{% extends 'base.html' %}
+{% load common_tags %}
+
+{% block title %}{{ game.title }} - 끝말잇기 게임{% endblock %}
+
+{% block content %}
+<div class="container my-4">
+  <!-- 게임 헤더 -->
+  <div class="card mb-4">
+    <div class="card-header {% if game.status == 'active' %}bg-success text-white{% else %}bg-secondary text-white{% endif %}">
+      <div class="d-flex justify-content-between align-items-center">
+        <div>
+          <h4 class="mb-1">
+            {% if game.status == 'active' %}
+              <i class="fas fa-play-circle me-2"></i>
+            {% else %}
+              <i class="fas fa-flag-checkered me-2"></i>
+            {% endif %}
+            {{ game.title }}
+          </h4>
+          <small>
+            생성자: {{ game.creator|display_name }} · 
+            {% if game.status == 'finished' %}
+              {{ game.end_date|date:"Y.m.d H:i" }} 종료
+            {% else %}
+              {{ game.create_date|date:"Y.m.d H:i" }} 시작
+            {% endif %}
+          </small>
+        </div>
+        <div class="text-end">
+          <div class="d-flex gap-2 mb-1">
+            <span class="badge bg-light text-dark">단어 {{ total_entries }}개</span>
+            <span class="badge bg-light text-dark">참가자 {{ participants }}명</span>
+          </div>
+          {% if game.status == 'active' and user == game.creator %}
+            <button class="btn btn-warning btn-sm" onclick="finishGame()">
+              <i class="fas fa-stop me-1"></i>게임 종료
+            </button>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+    
+    {% if game.status == 'active' %}
+      <div class="card-body {% if game.status == 'active' %}bg-success bg-opacity-10{% endif %}">
+        {% if game.last_word %}
+          <div class="text-center">
+            <h5 class="text-success mb-2">다음 단어를 입력해주세요!</h5>
+            <div class="d-inline-flex align-items-center bg-white p-3 rounded-lg border border-success">
+              <span class="fs-4 me-2">{{ game.last_word }}</span>
+              <i class="fas fa-arrow-right text-success mx-2"></i>
+              <span class="fs-4 text-primary fw-bold">{{ game.expected_first_char }}___</span>
+            </div>
+          </div>
+        {% else %}
+          <div class="text-center">
+            <h5 class="text-success">첫 단어가 등록되었습니다! 이어서 단어를 입력해보세요.</h5>
+          </div>
+        {% endif %}
+      </div>
+    {% else %}
+      <div class="card-body bg-secondary bg-opacity-10">
+        <div class="text-center">
+          <h5 class="text-secondary">게임이 종료되었습니다</h5>
+          <p class="mb-0">총 {{ total_entries }}개의 단어로 {{ participants }}명이 참여했습니다!</p>
+        </div>
+      </div>
+    {% endif %}
+  </div>
+
+  <div class="row">
+    <!-- 단어 입력 폼 (활성 게임일 때만) -->
+    {% if game.status == 'active' and user.is_authenticated %}
+      <div class="col-12 mb-4">
+        <div class="card border-primary">
+          <div class="card-header bg-primary text-white">
+            <h6 class="mb-0">
+              <i class="fas fa-keyboard me-2"></i>단어 입력
+            </h6>
+          </div>
+          <div class="card-body">
+            <form id="wordForm" onsubmit="addWord(event)">
+              {% csrf_token %}
+              <div class="input-group">
+                <input type="text" class="form-control form-control-lg" id="wordInput" 
+                       placeholder="{% if game.expected_first_char %}'{{ game.expected_first_char }}'로 시작하는 단어를 입력하세요{% else %}단어를 입력하세요{% endif %}" 
+                       maxlength="50" autocomplete="off">
+                <button class="btn btn-primary btn-lg" type="submit">
+                  <i class="fas fa-paper-plane me-1"></i>입력
+                </button>
+              </div>
+              <small class="form-text text-muted mt-1">
+                한글 2글자 이상, 이전에 사용되지 않은 단어여야 합니다.
+              </small>
+            </form>
+          </div>
+        </div>
+      </div>
+    {% elif game.status == 'active' and not user.is_authenticated %}
+      <div class="col-12 mb-4">
+        <div class="card border-warning">
+          <div class="card-body text-center">
+            <h6 class="text-warning mb-2">
+              <i class="fas fa-sign-in-alt me-2"></i>로그인이 필요합니다
+            </h6>
+            <p class="mb-2">끝말잇기 게임에 참여하려면 로그인해주세요.</p>
+            <a href="{% url 'common:login' %}" class="btn btn-warning">
+              <i class="fas fa-sign-in-alt me-1"></i>로그인
+            </a>
+          </div>
+        </div>
+      </div>
+    {% endif %}
+
+    <!-- 단어 목록 -->
+    <div class="col-12">
+      <div class="card">
+        <div class="card-header">
+          <h5 class="mb-0">
+            <i class="fas fa-list me-2"></i>단어 목록 ({{ total_entries }}개)
+          </h5>
+        </div>
+        <div class="card-body p-0">
+          {% if entries %}
+            <div id="wordList" class="word-chain-container" style="max-height: 500px; overflow-y: auto;">
+              {% for entry in entries %}
+                <div class="word-entry d-flex align-items-center p-3 {% if not forloop.last %}border-bottom{% endif %}" 
+                     style="transition: all 0.2s ease;">
+                  <div class="word-number me-3">
+                    <span class="badge bg-primary rounded-circle" style="width: 30px; height: 30px; display: flex; align-items: center; justify-content: center;">
+                      {{ forloop.counter }}
+                    </span>
+                  </div>
+                  <div class="word-content flex-grow-1">
+                    <div class="word-text fs-5 fw-bold text-primary mb-1">{{ entry.word }}</div>
+                    <small class="text-muted">
+                      <i class="fas fa-user me-1"></i>{{ entry.author|display_name }}
+                      <i class="fas fa-clock ms-2 me-1"></i>{{ entry.create_date|date:"m.d H:i:s" }}
+                    </small>
+                  </div>
+                  {% if forloop.last and game.status == 'active' %}
+                    <div class="next-hint text-end">
+                      <div class="text-success fw-bold">다음: "{{ entry.word|last }}"</div>
+                      <small class="text-muted">{{ entry.word|last }}로 시작</small>
+                    </div>
+                  {% endif %}
+                </div>
+              {% endfor %}
+            </div>
+          {% else %}
+            <div class="text-center py-5">
+              <i class="fas fa-comments fa-3x text-muted mb-3"></i>
+              <h6>아직 단어가 없습니다</h6>
+              <p class="text-muted">첫 번째 단어를 입력해보세요!</p>
+            </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 뒤로 가기 -->
+  <div class="text-center mt-4">
+    <a href="{% url 'pybo:wordchain_list' %}" class="btn btn-outline-secondary">
+      <i class="fas fa-arrow-left me-1"></i>게임 목록으로
+    </a>
+  </div>
+</div>
+{% endblock %}
+
+{% block script %}
+<script>
+function addWord(event) {
+    event.preventDefault();
+    
+    const wordInput = document.getElementById('wordInput');
+    const word = wordInput.value.trim();
+    
+    if (!word) {
+        alert('단어를 입력해주세요.');
+        return;
+    }
+    
+    // CSRF 토큰 가져오기
+    const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+    
+    // 버튼 비활성화
+    const submitBtn = event.target.querySelector('button[type="submit"]');
+    const originalText = submitBtn.innerHTML;
+    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>입력중...';
+    submitBtn.disabled = true;
+    
+    // AJAX 요청
+    fetch('{% url "pybo:wordchain_add_word" game.id %}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'X-CSRFToken': csrfToken,
+        },
+        body: new URLSearchParams({
+            'word': word
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // 성공시 페이지 새로고침
+            location.reload();
+        } else {
+            alert(data.message);
+            // 버튼 복구
+            submitBtn.innerHTML = originalText;
+            submitBtn.disabled = false;
+            wordInput.focus();
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('오류가 발생했습니다. 다시 시도해주세요.');
+        // 버튼 복구
+        submitBtn.innerHTML = originalText;
+        submitBtn.disabled = false;
+    });
+}
+
+function finishGame() {
+    if (confirm('정말로 게임을 종료하시겠습니까?')) {
+        location.href = '{% url "pybo:wordchain_finish" game.id %}';
+    }
+}
+
+// 단어 목록을 맨 아래로 스크롤
+document.addEventListener('DOMContentLoaded', function() {
+    const wordList = document.getElementById('wordList');
+    if (wordList) {
+        wordList.scrollTop = wordList.scrollHeight;
+    }
+    
+    // 입력 필드에 포커스
+    const wordInput = document.getElementById('wordInput');
+    if (wordInput) {
+        wordInput.focus();
+    }
+});
+
+// 단어 항목 호버 효과
+document.addEventListener('DOMContentLoaded', function() {
+    const wordEntries = document.querySelectorAll('.word-entry');
+    wordEntries.forEach(entry => {
+        entry.addEventListener('mouseenter', function() {
+            this.style.backgroundColor = '#f8f9fa';
+        });
+        entry.addEventListener('mouseleave', function() {
+            this.style.backgroundColor = '';
+        });
+    });
+});
+</script>
+
+<style>
+.word-chain-container {
+    background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
+}
+
+.word-entry:hover {
+    background-color: #f8f9fa !important;
+}
+
+.word-number .badge {
+    font-size: 0.8rem;
+}
+
+.word-text {
+    text-shadow: 0 1px 2px rgba(0,0,0,0.1);
+}
+
+.next-hint {
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.7; }
+}
+
+#wordInput:focus {
+    border-color: #0d6efd;
+    box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25);
+}
+</style>
+{% endblock %}
