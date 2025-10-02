@@ -8,6 +8,8 @@ from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.http import JsonResponse
 from django.utils import timezone
+from datetime import timedelta
+from django.utils.dateparse import parse_datetime
 from django.core.paginator import Paginator
 from django.db import transaction
 from django.db.models import Count
@@ -15,6 +17,7 @@ from django.db.models import Count
 from ..models import WordChainGame, WordChainEntry, WordChainChatMessage
 from django.views.decorators.http import require_POST, require_GET
 from django.utils import timezone
+from django.contrib.auth import get_user_model
 
 
 def wordchain_list(request):
@@ -182,17 +185,47 @@ def wordchain_add_chat(request, game_id):
         return JsonResponse({'success': False, 'message': '메시지를 입력해주세요.'})
 
     try:
+        # 서버 측 중복 방지: 동일 작성자(author)와 동일 메시지(message)가
+        # 최근 short_window(초) 이내에 저장되어 있다면 새로 생성하지 않고
+        # 기존 메시지의 정보를 반환합니다. 이는 빠른 연속 클릭/중복 전송을 방지합니다.
+        short_window = 3  # seconds
+        cutoff = timezone.now() - timedelta(seconds=short_window)
+        existing = game.chat_messages.filter(
+            author=request.user,
+            message=text,
+            create_date__gte=cutoff
+        ).order_by('-create_date').first()
+        if existing:
+            # try to get display name from profile, fallback to username
+            try:
+                author_display = existing.author.profile.display_name
+            except Exception:
+                author_display = existing.author.username
+            return JsonResponse({
+                'success': True,
+                'author': existing.author.username,
+                'author_display': author_display,
+                'message': existing.message,
+                'create_date': existing.create_date.isoformat(),
+                'note': 'duplicate_ignored'
+            })
         chat = WordChainChatMessage.objects.create(
             game=game,
             author=request.user,
             message=text,
             create_date=timezone.now()
         )
+        # return ISO formatted datetime so client and server can exchange reliably
+        try:
+            author_display = chat.author.profile.display_name
+        except Exception:
+            author_display = chat.author.username
         return JsonResponse({
             'success': True,
             'author': request.user.username,
+            'author_display': author_display,
             'message': chat.message,
-            'create_date': chat.create_date.strftime('%Y-%m-%d %H:%M:%S')
+            'create_date': chat.create_date.isoformat()
         })
     except Exception as e:
         return JsonResponse({'success': False, 'message': '메시지 전송 중 오류가 발생했습니다.'})
@@ -208,17 +241,31 @@ def wordchain_get_chats(request, game_id):
     qs = game.chat_messages.select_related('author')
     if since:
         try:
-            since_dt = timezone.datetime.fromisoformat(since)
-            qs = qs.filter(create_date__gt=since_dt)
+            # parse a variety of datetime formats (including ISO and space-separated)
+            parsed = parse_datetime(since)
+            if parsed is None:
+                # try replacing space with T and parse again
+                parsed = parse_datetime(since.replace(' ', 'T'))
+            if parsed is not None:
+                # if naive, make aware using current timezone
+                if timezone.is_naive(parsed):
+                    parsed = timezone.make_aware(parsed, timezone.get_current_timezone())
+                qs = qs.filter(create_date__gt=parsed)
         except Exception:
+            # fall back: ignore since and return recent messages
             pass
 
     messages = []
     for m in qs.order_by('create_date')[:200]:
+        try:
+            author_display = m.author.profile.display_name
+        except Exception:
+            author_display = m.author.username
         messages.append({
             'author': m.author.username,
+            'author_display': author_display,
             'message': m.message,
-            'create_date': m.create_date.strftime('%Y-%m-%d %H:%M:%S')
+            'create_date': m.create_date.isoformat()
         })
 
     return JsonResponse({'success': True, 'messages': messages})

@@ -308,13 +308,17 @@ document.addEventListener('DOMContentLoaded', function() {
 <script>
 // --------- 채팅 기능 ---------
 let lastChatFetch = null;
+const renderedChatKeys = new Set(); // prevent duplicate rendering (author+time+msg)
+
 function renderChatMessage(item) {
   const wrap = document.createElement('div');
   wrap.className = 'chat-message mb-2 p-2';
 
   const header = document.createElement('div');
   header.className = 'small text-muted mb-1';
-  header.textContent = `${item.author} · ${item.create_date}`;
+  // use author_display when available (profile nickname), fallback to username
+  const who = item.author_display || item.author || '익명';
+  header.textContent = `${who} · ${item.create_date}`;
 
   const body = document.createElement('div');
   body.textContent = item.message;
@@ -328,14 +332,20 @@ function fetchChats() {
   fetch('{% url "pybo:wordchain_get_chats" game.id %}' + (lastChatFetch ? '?since=' + encodeURIComponent(lastChatFetch) : ''))
     .then(r => r.json())
     .then(data => {
-      if (data.success && data.messages && data.messages.length) {
-        const chatList = document.getElementById('chatList');
-        data.messages.forEach(m => {
-          chatList.appendChild(renderChatMessage(m));
-          lastChatFetch = m.create_date;
-        });
-        chatList.scrollTop = chatList.scrollHeight;
-      }
+          if (data.success && data.messages && data.messages.length) {
+            const chatList = document.getElementById('chatList');
+            data.messages.forEach(m => {
+              // composite key: author + create_date + message
+              const who = m.author_display || m.author || '익명';
+              const key = `${who}|${m.create_date}|${m.message}`;
+              if (!renderedChatKeys.has(key)) {
+                chatList.appendChild(renderChatMessage(m));
+                renderedChatKeys.add(key);
+                lastChatFetch = m.create_date; // advance since to last seen
+              }
+            });
+            chatList.scrollTop = chatList.scrollHeight;
+          }
     }).catch(e => console.error(e));
 }
 
@@ -359,7 +369,14 @@ function sendChat(e) {
   }).then(r => r.json()).then(data => {
     if (data.success) {
       const chatList = document.getElementById('chatList');
-      chatList.appendChild(renderChatMessage(data));
+      // server returns create_date in ISO format
+  const who = data.author_display || data.author || '익명';
+  const key = `${who}|${data.create_date}|${data.message}`;
+      if (!renderedChatKeys.has(key)) {
+        chatList.appendChild(renderChatMessage(data));
+        renderedChatKeys.add(key);
+        lastChatFetch = data.create_date;
+      }
       chatList.scrollTop = chatList.scrollHeight;
       input.value = '';
     } else {
