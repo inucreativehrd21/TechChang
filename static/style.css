@@ -1244,6 +1244,25 @@ a:hover {
     text-decoration: underline !important;
 }
 
+/* 답변 댓글 섹션 스타일 */
+.answer-comments-section {
+    background: rgba(240, 248, 255, 0.3);
+    border-radius: 8px;
+    padding: 1rem;
+    border: 1px solid rgba(13, 202, 240, 0.2);
+}
+
+.answer-comments-section h6 {
+    color: #0dcaf0;
+    font-weight: 600;
+}
+
+.answer-comments-section small {
+    background: rgba(13, 202, 240, 0.1);
+    padding: 0.2rem 0.5rem;
+    border-radius: 4px;
+}
+
 /* 모바일에서 댓글 버튼 크기 조정 */
 @media (max-width: 768px) {
     .comment-item .btn-sm {
@@ -1253,5 +1272,13 @@ a:hover {
     
     .comment-item .btn-group {
         gap: 0.2rem;
+    }
+    
+    .answer-comments-section {
+        padding: 0.75rem;
+    }
+    
+    .answer-comments-section h6 {
+        font-size: 0.9rem;
     }
 }

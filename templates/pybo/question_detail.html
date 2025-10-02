@@ -209,45 +209,6 @@
                 </div>
             {% endif %}
             </div>
-            
-      <!-- 답변 댓글 -->
-      {% if answer.comment_set.count > 0 %}
-        <div class="comments-section mb-3">
-          <h6 class="mb-3 text-muted">💬 댓글 {{ answer.comment_set.count }}개</h6>
-          {% for comment in answer.comment_set.all %}
-            <div class="comment-item card border-info mb-2" style="border-left: 4px solid #0dcaf0 !important;">
-              <div class="card-body py-2 px-3">
-              <div class="d-flex justify-content-between align-items-start">
-                <div>
-                  <strong>
-                    <a href="#" class="text-decoration-none">
-                      {% if comment.author.profile.nickname %}
-                        {{ comment.author.profile.nickname }}
-                      {% else %}
-                        {{ comment.author.username }}
-                      {% endif %}
-                    </a>
-                  </strong>
-                  <span class="text-muted small">
-                    · {{ comment.create_date|date:"Y.m.d H:i" }}
-                    {% if comment.modify_date %}
-                      · 수정됨: {{ comment.modify_date|date:"Y.m.d H:i" }}
-                    {% endif %}
-                  </span>
-                </div>
-                {% if request.user == comment.author %}
-                  <div class="btn-group">
-                    <a href="{% url 'pybo:comment_modify_answer' comment.id %}" class="btn btn-sm btn-outline-secondary">수정</a>
-                    <a href="{% url 'pybo:comment_delete_answer' comment.id %}" class="btn btn-sm btn-outline-danger">삭제</a>
-                  </div>
-                {% endif %}
-                </div>
-                <p class="mb-0 mt-1">{{ comment.content }}</p>
-              </div>
-            </div>
-          {% endfor %}
-        </div>
-      {% endif %}
     {% endfor %}
   {% else %}
     <div class="text-center py-5 text-muted">
@@ -256,6 +217,55 @@
     </div>
   {% endif %}
 </div>
+
+<!-- 모든 답변 댓글을 독립적으로 표시 -->
+{% for answer in answer_list %}
+  {% if answer.comment_set.count > 0 %}
+    <div class="answer-comments-section mb-4">
+      <div class="d-flex align-items-center mb-3">
+        <h6 class="mb-0 text-muted me-2">
+          💬 {{ answer.author|display_name }}님 댓글에 대한 답변들 ({{ answer.comment_set.count }}개)
+        </h6>
+        <small class="text-muted">
+          답변: "{{ answer.content|truncatechars:30 }}..."
+        </small>
+      </div>
+      
+      {% for comment in answer.comment_set.all %}
+        <div class="comment-item card border-info mb-2" style="border-left: 4px solid #0dcaf0 !important;">
+          <div class="card-body py-2 px-3">
+            <div class="d-flex justify-content-between align-items-start">
+              <div>
+                <strong>
+                  <a href="#" class="text-decoration-none">
+                    {% if comment.author.profile.nickname %}
+                      {{ comment.author.profile.nickname }}
+                    {% else %}
+                      {{ comment.author.username }}
+                    {% endif %}
+                  </a>
+                </strong>
+                <span class="text-muted small">
+                  · {{ comment.create_date|date:"Y.m.d H:i" }}
+                  {% if comment.modify_date %}
+                    · 수정됨: {{ comment.modify_date|date:"Y.m.d H:i" }}
+                  {% endif %}
+                </span>
+              </div>
+              {% if request.user == comment.author %}
+                <div class="btn-group">
+                  <a href="{% url 'pybo:comment_modify_answer' comment.id %}" class="btn btn-sm btn-outline-secondary">수정</a>
+                  <a href="{% url 'pybo:comment_delete_answer' comment.id %}" class="btn btn-sm btn-outline-danger">삭제</a>
+                </div>
+              {% endif %}
+            </div>
+            <p class="mb-0 mt-1">{{ comment.content }}</p>
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+  {% endif %}
+{% endfor %}
 
 <!-- 페이지네이션 -->
 {% if answer_list.paginator.num_pages > 1 %}
