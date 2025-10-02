@@ -1207,3 +1207,51 @@ a:hover {
         }
     }
 }
+
+/* ===========================================
+   댓글 카드 스타일
+   =========================================== */
+
+.comment-item.card {
+    transition: all 0.2s ease;
+    border: 1px solid rgba(0, 0, 0, 0.08) !important;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.comment-item.card:hover {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    transform: translateY(-1px);
+}
+
+.comment-item .card-body {
+    background: rgba(255, 255, 255, 0.95);
+}
+
+.comments-section h6 {
+    font-weight: 600;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+    padding-bottom: 0.5rem;
+}
+
+/* 댓글 작성자 프로필 스타일 */
+.comment-item .text-decoration-none {
+    color: var(--primary-color);
+    font-weight: 500;
+}
+
+.comment-item .text-decoration-none:hover {
+    color: var(--primary-color);
+    text-decoration: underline !important;
+}
+
+/* 모바일에서 댓글 버튼 크기 조정 */
+@media (max-width: 768px) {
+    .comment-item .btn-sm {
+        font-size: 0.7rem;
+        padding: 0.2rem 0.4rem;
+    }
+    
+    .comment-item .btn-group {
+        gap: 0.2rem;
+    }
+}
