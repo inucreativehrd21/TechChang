@@ -8,6 +8,32 @@ import string
 User = get_user_model()
 
 
+class KakaoUser(models.Model):
+	"""카카오 로그인 사용자"""
+	kakao_id = models.BigIntegerField(unique=True, verbose_name="카카오 ID")
+	nickname = models.CharField(max_length=100, null=True, blank=True, verbose_name="닉네임")
+	email = models.EmailField(null=True, blank=True, verbose_name="이메일")
+	profile_image = models.URLField(null=True, blank=True, verbose_name="프로필 이미지")
+	thumbnail_image = models.URLField(null=True, blank=True, verbose_name="썸네일 이미지")
+
+	# 토큰 정보
+	access_token = models.TextField(verbose_name="액세스 토큰")
+	refresh_token = models.TextField(null=True, blank=True, verbose_name="리프레시 토큰")
+	token_expires_at = models.DateTimeField(null=True, blank=True, verbose_name="토큰 만료 시각")
+
+	# 메타 정보
+	created_at = models.DateTimeField(auto_now_add=True, verbose_name="가입일")
+	last_login = models.DateTimeField(null=True, blank=True, verbose_name="최근 로그인")
+
+	class Meta:
+		verbose_name = "카카오 사용자"
+		verbose_name_plural = "카카오 사용자들"
+		db_table = 'kakao_users'
+
+	def __str__(self):
+		return f"카카오:{self.nickname or self.kakao_id}"
+
+
 class Profile(models.Model):
 	THEME_LIGHT = 'light'
 	THEME_DARK = 'dark'

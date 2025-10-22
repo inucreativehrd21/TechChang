@@ -19,11 +19,20 @@ class Question(models.Model):
     view_count = models.PositiveIntegerField(default=0)  # 조회수 추가
     category = models.ForeignKey(Category, on_delete=models.PROTECT)  # 카테고리 필수
     image = models.ImageField(upload_to='questions/', blank=True, null=True)  # 이미지 첨부
+    file = models.FileField(upload_to='question_files/', blank=True, null=True)  # 파일 첨부
     is_deleted = models.BooleanField(default=False)  # Soft delete 필드
     deleted_date = models.DateTimeField(null=True, blank=True)  # 삭제 날짜
 
     def __str__(self):
             return self.subject
+
+    @property
+    def filename(self):
+        """파일명만 반환"""
+        if self.file:
+            import os
+            return os.path.basename(self.file.name)
+        return None
 
 class Answer(models.Model):
     author = models.ForeignKey(User, on_delete=models.CASCADE, related_name='author_answer')

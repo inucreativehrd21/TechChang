@@ -12,9 +12,12 @@ from django.core.mail import send_mail
 from django.core.cache import cache
 import json
 import logging
+import requests
+import secrets
+from datetime import timedelta
 from django.contrib.auth.models import User
 from common.forms import UserForm, ProfileForm
-from .models import Profile, EmailVerification
+from .models import Profile, EmailVerification, KakaoUser
 
 
 logger = logging.getLogger(__name__)
@@ -266,46 +269,223 @@ def signup_with_email_verification(request):
         form = UserForm(request.POST)
         if form.is_valid():
             email = form.cleaned_data.get('email')
-            
+
             # 이메일 인증 확인
             verification = EmailVerification.objects.filter(
-                email=email, 
+                email=email,
                 is_verified=True
             ).order_by('-verified_at').first()
-            
+
             if not verification:
                 messages.error(request, '이메일 인증을 먼저 완료해주세요.')
                 return render(request, 'common/signup_with_verification.html', {'form': form})
-            
+
             # 인증 후 30분 이내인지 확인 (보안상)
             from datetime import timedelta
             if timezone.now() > verification.verified_at + timedelta(minutes=30):
                 messages.error(request, '이메일 인증이 만료되었습니다. 다시 인증해주세요.')
                 verification.delete()
                 return render(request, 'common/signup_with_verification.html', {'form': form})
-            
+
             # 사용자 생성
             user = form.save()
-            
+
             # 프로필 생성
             nickname = form.cleaned_data.get('nickname')
             if nickname:
                 profile, created = Profile.objects.get_or_create(user=user)
                 profile.nickname = nickname
                 profile.save()
-            
+
             # 인증 기록 삭제
             verification.delete()
-            
+
             # 자동 로그인
             username = form.cleaned_data.get('username')
             raw_password = form.cleaned_data.get('password1')
             user = authenticate(username=username, password=raw_password)
             login(request, user)
-            
+
             messages.success(request, '회원가입이 완료되었습니다! 테크창에 오신 것을 환영합니다.')
             return redirect('pybo:index')
     else:
         form = UserForm()
-    
+
     return render(request, 'common/signup_with_verification.html', {'form': form})
+
+
+# ==================== 카카오 로그인 ====================
+def kakao_login(request):
+    """카카오 로그인 시작 (인가 코드 요청)"""
+    # 환경변수에서 카카오 REST API 키 가져오기
+    kakao_rest_api_key = settings.KAKAO_REST_API_KEY
+
+    # 도메인 기반 redirect_uri 생성
+    host = request.get_host()
+    scheme = 'https' if request.is_secure() else 'http'
+    redirect_uri = f"{scheme}://{host}/common/kakao/callback/"
+
+    kakao_auth_url = (
+        f"https://kauth.kakao.com/oauth/authorize"
+        f"?client_id={kakao_rest_api_key}"
+        f"&redirect_uri={redirect_uri}"
+        f"&response_type=code"
+    )
+
+    return redirect(kakao_auth_url)
+
+
+def kakao_callback(request):
+    """카카오 로그인 콜백 (토큰 및 사용자 정보 받기)"""
+    code = request.GET.get('code')
+
+    if not code:
+        messages.error(request, '카카오 로그인에 실패했습니다.')
+        return redirect('common:login')
+
+    # 환경변수에서 키 가져오기
+    kakao_rest_api_key = settings.KAKAO_REST_API_KEY
+    kakao_client_secret = settings.KAKAO_CLIENT_SECRET
+
+    # 도메인 기반 redirect_uri 생성
+    host = request.get_host()
+    scheme = 'https' if request.is_secure() else 'http'
+    redirect_uri = f"{scheme}://{host}/common/kakao/callback/"
+
+    # 1. 토큰 요청
+    token_url = "https://kauth.kakao.com/oauth/token"
+    token_data = {
+        'grant_type': 'authorization_code',
+        'client_id': kakao_rest_api_key,
+        'client_secret': kakao_client_secret,
+        'redirect_uri': redirect_uri,
+        'code': code,
+    }
+
+    try:
+        token_response = requests.post(token_url, data=token_data)
+        token_json = token_response.json()
+
+        if 'error' in token_json:
+            messages.error(request, f'토큰 요청 실패: {token_json.get("error_description")}')
+            return redirect('common:login')
+
+        access_token = token_json.get('access_token')
+        refresh_token = token_json.get('refresh_token')
+        expires_in = token_json.get('expires_in', 21600)  # 기본 6시간
+
+        # 2. 사용자 정보 요청
+        user_info_url = "https://kapi.kakao.com/v2/user/me"
+        headers = {
+            'Authorization': f'Bearer {access_token}',
+            'Content-Type': 'application/x-www-form-urlencoded;charset=utf-8'
+        }
+
+        user_info_response = requests.get(user_info_url, headers=headers)
+        user_info = user_info_response.json()
+
+        if 'id' not in user_info:
+            messages.error(request, '사용자 정보를 가져올 수 없습니다.')
+            return redirect('common:login')
+
+        # 3. 카카오 사용자 정보 파싱
+        kakao_id = user_info['id']
+        kakao_account = user_info.get('kakao_account', {})
+        profile = kakao_account.get('profile', {})
+
+        nickname = profile.get('nickname')
+        email = kakao_account.get('email')
+        profile_image = profile.get('profile_image_url')
+        thumbnail_image = profile.get('thumbnail_image_url')
+
+        # 4. KakaoUser DB에 저장 또는 업데이트
+        kakao_user, created = KakaoUser.objects.get_or_create(
+            kakao_id=kakao_id,
+            defaults={
+                'nickname': nickname,
+                'email': email,
+                'profile_image': profile_image,
+                'thumbnail_image': thumbnail_image,
+                'access_token': access_token,
+                'refresh_token': refresh_token,
+                'token_expires_at': timezone.now() + timedelta(seconds=expires_in),
+            }
+        )
+
+        if not created:
+            # 기존 사용자 정보 업데이트
+            kakao_user.nickname = nickname
+            kakao_user.email = email
+            kakao_user.profile_image = profile_image
+            kakao_user.thumbnail_image = thumbnail_image
+            kakao_user.access_token = access_token
+            kakao_user.refresh_token = refresh_token
+            kakao_user.token_expires_at = timezone.now() + timedelta(seconds=expires_in)
+            kakao_user.last_login = timezone.now()
+            kakao_user.save()
+
+        # 5. Django User 자동 생성 또는 로그인
+        username = f'kakao_{kakao_id}'
+
+        try:
+            # 기존 Django User 확인
+            django_user = User.objects.get(username=username)
+        except User.DoesNotExist:
+            # Django User 생성 (임의의 복잡한 비밀번호 설정)
+            random_password = secrets.token_urlsafe(32)
+            django_user = User.objects.create_user(
+                username=username,
+                email=email if email else f'kakao_{kakao_id}@kakao.user',
+                password=random_password
+            )
+
+            # Profile 생성
+            Profile.objects.get_or_create(user=django_user, defaults={'nickname': nickname})
+
+        # Django 인증 시스템으로 로그인
+        login(request, django_user, backend='django.contrib.auth.backends.ModelBackend')
+
+        # 세션에 카카오 정보 추가 저장
+        request.session['kakao_user_id'] = kakao_user.id
+        request.session['kakao_nickname'] = kakao_user.nickname
+        request.session['is_kakao_user'] = True
+
+        messages.success(request, f'{nickname}님, 카카오 로그인에 성공했습니다!')
+        return redirect('pybo:index')
+
+    except requests.exceptions.RequestException as e:
+        logger.error(f"카카오 API 요청 오류: {e}")
+        messages.error(request, '카카오 로그인 중 오류가 발생했습니다.')
+        return redirect('common:login')
+    except Exception as e:
+        logger.error(f"카카오 로그인 오류: {e}")
+        messages.error(request, f'로그인 처리 중 오류가 발생했습니다: {str(e)}')
+        return redirect('common:login')
+
+
+def kakao_logout(request):
+    """카카오 로그아웃"""
+    kakao_user_id = request.session.get('kakao_user_id')
+
+    if kakao_user_id:
+        try:
+            kakao_user = KakaoUser.objects.get(id=kakao_user_id)
+            access_token = kakao_user.access_token
+
+            # 카카오 로그아웃 API 호출
+            logout_url = "https://kapi.kakao.com/v1/user/logout"
+            headers = {'Authorization': f'Bearer {access_token}'}
+            requests.post(logout_url, headers=headers)
+        except Exception as e:
+            logger.error(f"카카오 로그아웃 오류: {e}")
+
+    # Django 로그아웃
+    logout(request)
+
+    # 세션 정리
+    request.session.pop('kakao_user_id', None)
+    request.session.pop('kakao_nickname', None)
+    request.session.pop('is_kakao_user', None)
+
+    messages.success(request, '로그아웃되었습니다.')
+    return redirect('common:login')

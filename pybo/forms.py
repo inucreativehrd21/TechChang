@@ -46,20 +46,28 @@ class QuestionForm(forms.ModelForm):
             'data-bs-toggle': 'tooltip',
             'title': '관련 이미지나 스크린샷을 첨부하세요 (선택사항)'
         })
-    
+
+        # 파일 필드 향상
+        self.fields['file'].widget.attrs.update({
+            'class': 'form-control',
+            'data-bs-toggle': 'tooltip',
+            'title': 'PDF, 문서, 압축파일 등을 첨부할 수 있습니다 (선택사항)'
+        })
+
     category = forms.ModelChoiceField(
         queryset=Category.objects.none(),  # __init__에서 동적 설정
         label='카테고리',
         help_text='질문 내용에 가장 적합한 카테고리를 선택하세요.'
     )
-    
+
     class Meta:
         model = Question  # 사용할 모델
-        fields = ['category', 'subject', 'content', 'image']  # 이미지 필드 추가
+        fields = ['category', 'subject', 'content', 'image', 'file']  # 파일 필드 추가
         labels = {
             'subject': '제목',
             'content': '내용',
             'image': '이미지 첨부',
+            'file': '파일 첨부',
         }  # 폼의 속성에 대한 한글 라벨 지정
         widgets = {
             'subject': forms.TextInput(attrs={

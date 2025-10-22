@@ -16,5 +16,8 @@ Pillow>=10.0.0,<11.0.0
 # 마크다운 렌더링 (템플릿 필터)
 Markdown>=3.5,<4.0
 
+# HTTP 요청 라이브러리 (카카오 로그인 API 호출)
+requests>=2.31.0,<3.0.0
+
 # 데이터베이스: 현재 SQLite 사용. PostgreSQL 사용 시 아래 주석 해제
 # psycopg2-binary>=2.9,<3

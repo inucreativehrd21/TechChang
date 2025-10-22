@@ -44,7 +44,10 @@ urlpatterns = [
     
     # profile_views.py
     path('profile/<int:user_id>/', profile_views.profile, name='profile'),
-    
+
+    # file download
+    path('download/<int:question_id>/', base_views.download_file, name='download_file'),
+
     # wordchain_views.py - 끝말잇기 게임
     path('wordchain/', wordchain_views.wordchain_list, name='wordchain_list'),
     path('wordchain/create/', wordchain_views.wordchain_create, name='wordchain_create'),

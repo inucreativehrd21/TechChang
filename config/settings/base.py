@@ -170,6 +170,14 @@ ALLOWED_HOSTS = ['43.203.93.244', 'tc.o-r.kr']
 # OpenAI API 설정
 OPENAI_API_KEY = os.environ.get('OPENAI_API_KEY', '')
 
+# 카카오 로그인 API 설정
+KAKAO_REST_API_KEY = os.environ.get('KAKAO_REST_API_KEY', '')
+KAKAO_CLIENT_SECRET = os.environ.get('KAKAO_CLIENT_SECRET', '')
+
+# 끝말잇기 게임 설정
+WORDCHAIN_TIMEOUT = int(os.environ.get('WORDCHAIN_TIMEOUT', 30))  # 기본 30초
+WORDCHAIN_USE_DICTIONARY_API = os.environ.get('WORDCHAIN_USE_DICTIONARY_API', 'True').lower() == 'true'
+
 # 보안 미들웨어 설정 (환경변수로 조정 가능)
 RATE_LIMIT_REQUESTS = int(os.environ.get('RATE_LIMIT_REQUESTS', 300))  # 시간당 요청 제한
 RATE_LIMIT_WINDOW = int(os.environ.get('RATE_LIMIT_WINDOW', 3600))   # 1시간 윈도우

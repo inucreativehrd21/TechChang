@@ -14,4 +14,9 @@ urlpatterns = [
     path('password/change/', auth_views.PasswordChangeView.as_view(template_name='common/password_change.html', success_url='/common/password/change/done/'), name='password_change'),
     path('password/change/done/', auth_views.PasswordChangeDoneView.as_view(template_name='common/password_change_done.html'), name='password_change_done'),
     path('account/delete/', views.account_delete, name='account_delete'),
+
+    # 카카오 로그인
+    path('kakao/login/', views.kakao_login, name='kakao_login'),
+    path('kakao/callback/', views.kakao_callback, name='kakao_callback'),
+    path('kakao/logout/', views.kakao_logout, name='kakao_logout'),
 ]
