@@ -142,9 +142,9 @@
                                 <span class="input-group-text bg-light border-end-0">
                                     <i class="fas fa-image text-muted"></i>
                                 </span>
-                                <input type="file" 
-                                       class="form-control border-start-0 ps-0" 
-                                       name="image" 
+                                <input type="file"
+                                       class="form-control border-start-0 ps-0"
+                                       name="image"
                                        id="{{ form.image.id_for_label }}"
                                        accept="image/*"
                                        style="border-radius: 0 10px 10px 0;">
@@ -155,8 +155,28 @@
                             </div>
                         </div>
 
+                        <!-- 파일 업로드 -->
+                        <div class="mb-4">
+                            <label for="{{ form.file.id_for_label }}" class="form-label fw-semibold">
+                                <i class="fas fa-file me-2 text-info"></i>파일 첨부 <span class="text-muted">(선택사항)</span>
+                            </label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-light border-end-0">
+                                    <i class="fas fa-paperclip text-muted"></i>
+                                </span>
+                                <input type="file"
+                                       class="form-control border-start-0 ps-0"
+                                       name="file"
+                                       id="{{ form.file.id_for_label }}"
+                                       style="border-radius: 0 10px 10px 0;">
+                            </div>
+                            <div class="form-text">
+                                <i class="fas fa-info-circle me-1"></i>
+                                PDF, 문서, 압축파일 등을 첨부할 수 있습니다 (최대 20MB)
+                            </div>
+                        </div>
 
-                        
+
                         <!-- 버튼 영역 -->
                         <div class="d-flex justify-content-between align-items-center pt-4 border-top">
                             <div>

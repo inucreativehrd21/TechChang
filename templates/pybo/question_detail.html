@@ -54,7 +54,20 @@
         <img src="{{ question.image.url }}" alt="질문 이미지" class="img-fluid rounded" style="max-height: 400px;">
       </div>
     {% endif %}
-    
+
+    <!-- 첨부 파일 다운로드 -->
+    {% if question.file %}
+      <div class="mb-3">
+        <div class="alert alert-info d-flex align-items-center" role="alert">
+          <i class="fas fa-paperclip me-2"></i>
+          <span class="me-auto">첨부 파일: <strong>{{ question.filename }}</strong></span>
+          <a href="{% url 'pybo:download_file' question.id %}" class="btn btn-sm btn-primary">
+            <i class="fas fa-download me-1"></i>다운로드
+          </a>
+        </div>
+      </div>
+    {% endif %}
+
     <!-- 질문 작성자 정보 -->
     <div class="d-flex justify-content-between align-items-center">
       <div class="d-flex align-items-center">

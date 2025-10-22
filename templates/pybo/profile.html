@@ -78,9 +78,9 @@
         {% endif %}
     </div>
 
-    <!-- 작성한 댓글 -->
+    <!-- 작성한 답변 -->
     <div class="my-4">
-        <h6 class="border-bottom pb-2">작성한 댓글</h6>
+        <h6 class="border-bottom pb-2">작성한 답변</h6>
         {% if answer_list %}
         <table class="table">
             <thead>
@@ -104,10 +104,10 @@
             {% endfor %}
             </tbody>
         </table>
-        <!-- 댓글 페이징 -->
+        <!-- 답변 페이징 -->
         {% if answer_list.paginator.num_pages > 1 %}
         <div class="d-flex justify-content-center mt-3">
-            <nav aria-label="댓글 페이지 네비게이션">
+            <nav aria-label="답변 페이지 네비게이션">
                 <ul class="pagination pagination-sm">
                     {% if answer_list.has_previous %}
                     <li class="page-item">
@@ -117,13 +117,13 @@
                         <a class="page-link" href="?answer_page={{ answer_list.previous_page_number }}">이전</a>
                     </li>
                     {% endif %}
-                    
+
                     <li class="page-item active">
                         <span class="page-link">
                             {{ answer_list.number }} / {{ answer_list.paginator.num_pages }}
                         </span>
                     </li>
-                    
+
                     {% if answer_list.has_next %}
                     <li class="page-item">
                         <a class="page-link" href="?answer_page={{ answer_list.next_page_number }}">다음</a>
@@ -137,7 +137,7 @@
         </div>
         {% endif %}
         {% else %}
-        <p>작성한 댓글이 없습니다.</p>
+        <p>작성한 답변이 없습니다.</p>
         {% endif %}
     </div>
 

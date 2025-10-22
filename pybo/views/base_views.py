@@ -2,10 +2,12 @@
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from django.shortcuts import render, get_object_or_404
 from django.db.models import Q, Count, F
-from django.http import Http404
+from django.http import Http404, FileResponse, HttpResponse
 from django.core.cache import cache
 from django.conf import settings
 import time
+import os
+import mimetypes
 
 
 from ..models import Question, Answer, Comment, Category
@@ -160,3 +162,30 @@ def recent_comments(request):
         
     context = {'comment_list': page_obj, 'page': page}
     return render(request, 'pybo/recent_comments.html', context)
+
+
+def download_file(request, question_id):
+    """파일 다운로드"""
+    question = get_object_or_404(Question, pk=question_id)
+
+    if not question.file:
+        raise Http404("파일이 존재하지 않습니다.")
+
+    file_path = question.file.path
+
+    if not os.path.exists(file_path):
+        raise Http404("파일이 존재하지 않습니다.")
+
+    # 파일명 추출
+    filename = os.path.basename(file_path)
+
+    # MIME 타입 추측
+    content_type, _ = mimetypes.guess_type(file_path)
+    if content_type is None:
+        content_type = 'application/octet-stream'
+
+    # 파일 응답
+    response = FileResponse(open(file_path, 'rb'), content_type=content_type)
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+
+    return response

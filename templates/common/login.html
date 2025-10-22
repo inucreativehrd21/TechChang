@@ -17,83 +17,120 @@
                 
                 <!-- 본문 -->
                 <div class="card-body p-5">
-                    <form method="post" action="{% url 'common:login' %}">
-                        {% csrf_token %}
-                        <input type="hidden" name="next" value="{{ next }}">
-                        
-                        <!-- 에러 메시지 -->
-                        {% if form.errors %}
-                        <div class="alert alert-danger alert-dismissible fade show" role="alert">
-                            <i class="fas fa-exclamation-triangle me-2"></i>
-                            <strong>로그인 실패!</strong>
-                            <ul class="mb-0 mt-2">
-                                {% for field in form %}
-                                    {% for error in field.errors %}
-                                        <li>{{ error }}</li>
-                                    {% endfor %}
-                                {% endfor %}
-                                {% for error in form.non_field_errors %}
-                                    <li>{{ error }}</li>
-                                {% endfor %}
-                            </ul>
-                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                        </div>
-                        {% endif %}
-
-                        <!-- 사용자명 입력 -->
-                        <div class="mb-4">
-                            <label for="username" class="form-label fw-semibold">
-                                <i class="fas fa-user me-2 text-primary"></i>사용자 이름
-                            </label>
-                            <div class="input-group">
-                                <span class="input-group-text bg-light border-end-0">
-                                    <i class="fas fa-user text-muted"></i>
-                                </span>
-                                <input type="text" 
-                                       class="form-control form-control-lg border-start-0 ps-0" 
-                                       name="username" 
-                                       id="username"
-                                       value="{{ form.username.value|default_if_none:'' }}"
-                                       placeholder="사용자 이름을 입력하세요"
-                                       style="border-radius: 0 10px 10px 0;"
-                                       required>
-                            </div>
-                        </div>
-
-                        <!-- 비밀번호 입력 -->
-                        <div class="mb-4">
-                            <label for="password" class="form-label fw-semibold">
-                                <i class="fas fa-lock me-2 text-primary"></i>비밀번호
-                            </label>
-                            <div class="input-group">
-                                <span class="input-group-text bg-light border-end-0">
-                                    <i class="fas fa-lock text-muted"></i>
-                                </span>
-                                <input type="password" 
-                                       class="form-control form-control-lg border-start-0 ps-0" 
-                                       name="password" 
-                                       id="password"
-                                       placeholder="비밀번호를 입력하세요"
-                                       style="border-radius: 0 10px 10px 0;"
-                                       required>
-                            </div>
-                        </div>
-
-                        <!-- 로그인 버튼 -->
-                        <div class="d-grid mb-4">
-                            <button type="submit" class="btn btn-primary btn-lg" style="border-radius: 10px;">
-                                <i class="fas fa-sign-in-alt me-2"></i>로그인
-                            </button>
-                        </div>
-
-                        <!-- 회원가입 링크 -->
-                        <div class="text-center">
-                            <p class="text-muted mb-2">아직 계정이 없으신가요?</p>
-                            <a href="{% url 'common:signup' %}" class="btn btn-outline-primary" style="border-radius: 10px;">
-                                <i class="fas fa-user-plus me-2"></i>회원가입하기
+                    <!-- 카카오 로그인 (메인) -->
+                    <div class="mb-4">
+                        <div class="d-grid">
+                            <a href="{% url 'common:kakao_login' %}" class="btn btn-warning btn-lg d-flex align-items-center justify-content-center" style="border-radius: 10px; background-color: #FEE500; border-color: #FEE500; color: #000000;">
+                                <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23000000'%3E%3Cpath d='M12 3c5.799 0 10.5 3.664 10.5 8.185 0 4.52-4.701 8.184-10.5 8.184a13.5 13.5 0 0 1-1.727-.11l-4.408 2.883c-.501.265-.678.236-.472-.413l.892-3.678c-2.88-1.46-4.785-3.99-4.785-6.866C1.5 6.665 6.201 3 12 3Z'/%3E%3C/svg%3E" alt="Kakao" style="width: 24px; height: 24px; margin-right: 12px;">
+                                <span style="font-weight: 600; font-size: 16px;">카카오 로그인</span>
                             </a>
                         </div>
-                    </form>
+                        <p class="text-center text-muted small mt-3 mb-0">
+                            <i class="fas fa-info-circle me-1"></i>
+                            카카오 계정으로 간편하게 로그인하세요
+                        </p>
+                    </div>
+
+                    <!-- 구분선 -->
+                    <div class="position-relative my-4">
+                        <hr style="border-top: 2px solid #e9ecef;">
+                        <span class="position-absolute top-50 start-50 translate-middle bg-white px-3 text-muted small">
+                            관리자 로그인
+                        </span>
+                    </div>
+
+                    <!-- 관리자 로그인 (접을 수 있는 형태) -->
+                    <div class="accordion" id="adminLoginAccordion">
+                        <div class="accordion-item border-0">
+                            <h2 class="accordion-header">
+                                <button class="accordion-button collapsed bg-light" type="button" data-bs-toggle="collapse" data-bs-target="#adminLoginForm" style="border-radius: 10px;">
+                                    <i class="fas fa-user-shield me-2"></i>
+                                    관리자 로그인 (ID/PW)
+                                </button>
+                            </h2>
+                            <div id="adminLoginForm" class="accordion-collapse collapse" data-bs-parent="#adminLoginAccordion">
+                                <div class="accordion-body">
+                                    <form method="post" action="{% url 'common:login' %}">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="next" value="{{ next }}">
+
+                                        <!-- 에러 메시지 -->
+                                        {% if form.errors %}
+                                        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                                            <i class="fas fa-exclamation-triangle me-2"></i>
+                                            <strong>로그인 실패!</strong>
+                                            <ul class="mb-0 mt-2">
+                                                {% for field in form %}
+                                                    {% for error in field.errors %}
+                                                        <li>{{ error }}</li>
+                                                    {% endfor %}
+                                                {% endfor %}
+                                                {% for error in form.non_field_errors %}
+                                                    <li>{{ error }}</li>
+                                                {% endfor %}
+                                            </ul>
+                                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                                        </div>
+                                        {% endif %}
+
+                                        <!-- 사용자명 입력 -->
+                                        <div class="mb-3">
+                                            <label for="username" class="form-label fw-semibold small">
+                                                <i class="fas fa-user me-2 text-primary"></i>사용자 이름
+                                            </label>
+                                            <div class="input-group">
+                                                <span class="input-group-text bg-light border-end-0">
+                                                    <i class="fas fa-user text-muted"></i>
+                                                </span>
+                                                <input type="text"
+                                                       class="form-control border-start-0 ps-0"
+                                                       name="username"
+                                                       id="username"
+                                                       value="{{ form.username.value|default_if_none:'' }}"
+                                                       placeholder="관리자 계정"
+                                                       style="border-radius: 0 8px 8px 0;"
+                                                       required>
+                                            </div>
+                                        </div>
+
+                                        <!-- 비밀번호 입력 -->
+                                        <div class="mb-3">
+                                            <label for="password" class="form-label fw-semibold small">
+                                                <i class="fas fa-lock me-2 text-primary"></i>비밀번호
+                                            </label>
+                                            <div class="input-group">
+                                                <span class="input-group-text bg-light border-end-0">
+                                                    <i class="fas fa-lock text-muted"></i>
+                                                </span>
+                                                <input type="password"
+                                                       class="form-control border-start-0 ps-0"
+                                                       name="password"
+                                                       id="password"
+                                                       placeholder="비밀번호"
+                                                       style="border-radius: 0 8px 8px 0;"
+                                                       required>
+                                            </div>
+                                        </div>
+
+                                        <!-- 로그인 버튼 -->
+                                        <div class="d-grid">
+                                            <button type="submit" class="btn btn-primary" style="border-radius: 8px;">
+                                                <i class="fas fa-sign-in-alt me-2"></i>관리자 로그인
+                                            </button>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 회원가입 링크 -->
+                    <div class="text-center mt-4">
+                        <p class="text-muted mb-2 small">일반 계정으로 가입하시겠어요?</p>
+                        <a href="{% url 'common:signup' %}" class="btn btn-outline-secondary btn-sm" style="border-radius: 8px;">
+                            <i class="fas fa-user-plus me-2"></i>회원가입하기
+                        </a>
+                    </div>
                 </div>
             </div>
             

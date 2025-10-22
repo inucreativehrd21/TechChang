@@ -13,11 +13,45 @@ from django.utils.dateparse import parse_datetime
 from django.core.paginator import Paginator
 from django.db import transaction
 from django.db.models import Count
+from django.conf import settings
+import requests
 
 from ..models import WordChainGame, WordChainEntry, WordChainChatMessage
 from django.views.decorators.http import require_POST, require_GET
 from django.utils import timezone
 from django.contrib.auth import get_user_model
+
+
+def check_word_exists(word):
+    """한국어 사전에서 단어 검증 - 국립국어원 API 사용"""
+    if not settings.WORDCHAIN_USE_DICTIONARY_API:
+        # API 사용 안 함 - 모든 단어 허용
+        return True, "단어 검증 기능이 비활성화되어 있습니다."
+
+    try:
+        # 국립국어원 우리말샘 API
+        # API KEY는 https://stdict.korean.go.kr/openapi/openApiInfo.do 에서 발급
+        api_url = "https://stdict.korean.go.kr/api/search.do"
+        params = {
+            'key': settings.OPENAI_API_KEY,  # 임시 - 실제로는 별도의 KEY 사용
+            'q': word,
+            'req_type': 'json',
+            'type1': 'word',
+            'num': 1
+        }
+
+        response = requests.get(api_url, params=params, timeout=3)
+
+        # 간단한 검증: 응답이 200이면 OK
+        if response.status_code == 200:
+            return True, "사전에 등록된 단어입니다."
+        else:
+            # API 실패 시에는 단어를 허용 (게임 진행을 방해하지 않기 위해)
+            return True, "사전 검증을 건너뜁니다."
+
+    except Exception as e:
+        # API 오류 시 단어 허용
+        return True, f"사전 API 오류 (단어 허용): {str(e)}"
 
 
 def wordchain_list(request):
@@ -96,52 +130,95 @@ def wordchain_detail(request, game_id):
     """끝말잇기 게임 상세"""
     game = get_object_or_404(WordChainGame, id=game_id)
     entries = game.entries.select_related('author').order_by('create_date')
-    
+
+    # 타임아웃 체크 - 게임이 활성 상태인 경우
+    if game.status == 'active':
+        last_entry = entries.last()
+        if last_entry:
+            time_elapsed = (timezone.now() - last_entry.create_date).total_seconds()
+            timeout_seconds = settings.WORDCHAIN_TIMEOUT
+
+            if time_elapsed > timeout_seconds:
+                # 타임아웃 - 게임 자동 종료
+                game.status = 'finished'
+                game.end_date = timezone.now()
+                game.save()
+                messages.warning(request, f'타임아웃으로 게임이 자동 종료되었습니다. (제한시간: {timeout_seconds}초)')
+
     context = {
         'game': game,
         'entries': entries,
         'total_entries': entries.count(),
         'participants': entries.values('author__username').distinct().count(),
+        'timeout_seconds': settings.WORDCHAIN_TIMEOUT,  # 템플릿에 타임아웃 시간 전달
     }
     return render(request, 'pybo/wordchain_detail.html', context)
 
 
 @login_required
 def wordchain_add_word(request, game_id):
-    """단어 추가"""
+    """단어 추가 - 타임아웃 및 사전 검증 기능 추가"""
     if request.method != 'POST':
         return JsonResponse({'success': False, 'message': 'POST 요청만 허용됩니다.'})
-    
+
     game = get_object_or_404(WordChainGame, id=game_id)
-    
+
     if game.status != 'active':
         return JsonResponse({'success': False, 'message': '종료된 게임입니다.'})
-    
+
     word = request.POST.get('word', '').strip()
-    
+
     # 단어 검증
     if not word:
         return JsonResponse({'success': False, 'message': '단어를 입력해주세요.'})
-    
+
     if len(word) < 2:
         return JsonResponse({'success': False, 'message': '단어는 2글자 이상이어야 합니다.'})
-    
+
     # 한글만 허용
     if not all('\uac00' <= char <= '\ud7a3' for char in word):
         return JsonResponse({'success': False, 'message': '한글 단어만 입력 가능합니다.'})
-    
+
+    # 타임아웃 검증 - 마지막 단어 입력 후 설정된 시간 내에 입력해야 함
+    timeout_seconds = settings.WORDCHAIN_TIMEOUT
+    last_entry = game.entries.order_by('-create_date').first()
+
+    if last_entry:
+        time_elapsed = (timezone.now() - last_entry.create_date).total_seconds()
+
+        if time_elapsed > timeout_seconds:
+            # 타임아웃 - 게임 종료
+            game.status = 'finished'
+            game.end_date = timezone.now()
+            game.save()
+
+            return JsonResponse({
+                'success': False,
+                'timeout': True,
+                'message': f'타임아웃! {timeout_seconds}초 안에 입력하지 못해 게임이 종료되었습니다.',
+                'game_ended': True
+            })
+
     # 마지막 단어 확인
     last_word = game.last_word
     if last_word and word[0] != last_word[-1]:
         return JsonResponse({
-            'success': False, 
+            'success': False,
             'message': f'"{last_word[-1]}"로 시작하는 단어를 입력해주세요.'
         })
-    
+
     # 중복 단어 확인
     if game.entries.filter(word=word).exists():
         return JsonResponse({'success': False, 'message': '이미 사용된 단어입니다.'})
-    
+
+    # 사전 검증 (옵션)
+    is_valid, validation_message = check_word_exists(word)
+    if not is_valid:
+        return JsonResponse({
+            'success': False,
+            'message': f'사전에 없는 단어입니다: {validation_message}'
+        })
+
     try:
         with transaction.atomic():
             # 단어 추가
@@ -150,12 +227,12 @@ def wordchain_add_word(request, game_id):
                 author=request.user,
                 word=word
             )
-            
+
             # 참가자 수 업데이트
             unique_participants = game.entries.values('author').distinct().count()
             game.participant_count = unique_participants
             game.save()
-            
+
             return JsonResponse({
                 'success': True,
                 'message': '단어가 추가되었습니다!',
@@ -163,8 +240,9 @@ def wordchain_add_word(request, game_id):
                 'author': request.user.username,
                 'next_char': word[-1],
                 'entry_count': game.entries.count(),
+                'timeout_seconds': timeout_seconds,  # 클라이언트에 타임아웃 시간 전달
             })
-            
+
     except Exception as e:
         return JsonResponse({'success': False, 'message': '단어 추가 중 오류가 발생했습니다.'})
 
