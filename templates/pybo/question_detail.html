@@ -221,7 +221,52 @@
                     <a href="{% url 'pybo:answer_delete' answer.id %}" class="btn btn-sm btn-outline-danger">삭제</a>
                 </div>
             {% endif %}
+          </div>
+
+          <!-- 이 답변에 대한 댓글 표시 -->
+          {% if answer.comment_set.count > 0 %}
+            <div class="answer-comments mt-4 pt-3 border-top">
+              <h6 class="mb-3 text-muted">
+                <i class="fas fa-comment-dots me-2"></i>답변에 대한 댓글 {{ answer.comment_set.count }}개
+              </h6>
+              {% for comment in answer.comment_set.all %}
+                <div class="comment-item mb-3 p-3" style="background: #f8f9fa; border-radius: 8px; border-left: 3px solid #17a2b8;">
+                  <div class="d-flex justify-content-between align-items-start">
+                    <div class="flex-grow-1">
+                      <div class="comment-header d-flex align-items-center mb-2">
+                        <strong class="text-info me-2">
+                          {% if comment.author.profile.nickname %}
+                            {{ comment.author.profile.nickname }}
+                          {% else %}
+                            {{ comment.author.username }}
+                          {% endif %}
+                        </strong>
+                        <span class="badge bg-light text-dark small">
+                          {{ comment.create_date|date:"Y.m.d H:i" }}
+                        </span>
+                        {% if comment.modify_date %}
+                          <span class="badge bg-warning text-dark small ms-1">수정됨</span>
+                        {% endif %}
+                      </div>
+                      <div class="comment-content">
+                        {{ comment.content|linebreaksbr }}
+                      </div>
+                    </div>
+                    {% if request.user == comment.author %}
+                      <div class="comment-actions ms-3">
+                        <div class="btn-group">
+                          <a href="{% url 'pybo:comment_modify_answer' comment.id %}" class="btn btn-sm btn-outline-secondary">수정</a>
+                          <a href="{% url 'pybo:comment_delete_answer' comment.id %}" class="btn btn-sm btn-outline-danger">삭제</a>
+                        </div>
+                      </div>
+                    {% endif %}
+                  </div>
+                </div>
+              {% endfor %}
             </div>
+          {% endif %}
+        </div>
+      </div>
     {% endfor %}
   {% else %}
     <div class="text-center py-5 text-muted">
@@ -229,58 +274,6 @@
       <p>첫 번째 답변을 작성해보세요!</p>
     </div>
   {% endif %}
-</div>
-
-<div class="comments-section mt-3 mb-3">
-  {% for answer in answer_list %}
-    {% if answer.comment_set.count > 0 %}
-      <div class="answer-group mb-4">
-        <div class="answer-reference p-3 mb-3" style="background: rgba(255,255,255,0.7); border-radius: 8px; border-left: 3px solid #6c757d;">
-          <strong>� {{ answer.author|display_name }}님의 답변</strong>
-          <div class="text-muted small mt-1">{{ answer.content|striptags|truncatechars:100 }}</div>
-        </div>
-        
-        {% for comment in answer.comment_set.all %}
-          <div class="flat-comment mb-3 p-3" style="background: white; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); border-left: 3px solid #17a2b8;">
-            <div class="d-flex justify-content-between align-items-start">
-              <div class="flex-grow-1">
-                <div class="comment-header d-flex align-items-center mb-2">
-                  <strong class="text-info me-2">
-                    {% if comment.author.profile.nickname %}
-                      {{ comment.author.profile.nickname }}
-                    {% else %}
-                      {{ comment.author.username }}
-                    {% endif %}
-                  </strong>
-                  <span class="badge bg-light text-dark small">
-                    {{ comment.create_date|date:"m.d H:i" }}
-                  </span>
-                  {% if comment.modify_date %}
-                    <span class="badge bg-warning text-dark small ms-1">수정됨</span>
-                  {% endif %}
-                </div>
-                <div class="comment-content">
-                  {{ comment.content|linebreaksbr }}
-                </div>
-              </div>
-              {% if request.user == comment.author %}
-                <div class="comment-actions ms-3">
-                  <div class="btn-group-vertical">
-                    <a href="{% url 'pybo:comment_modify_answer' comment.id %}" class="btn btn-sm btn-outline-secondary mb-1">✏️</a>
-                    <a href="{% url 'pybo:comment_delete_answer' comment.id %}" class="btn btn-sm btn-outline-danger">🗑️</a>
-                  </div>
-                </div>
-              {% endif %}
-            </div>
-          </div>
-        {% endfor %}
-      </div>
-    {% endif %}
-  {% endfor %}
-  
-  {% comment %}
-  댓글 표시는 위의 반복문에서 처리되므로 별도의 "댓글이 없습니다" 메시지는 불필요
-  {% endcomment %}
 </div>
 
 <!-- 페이지네이션 -->

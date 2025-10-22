@@ -43,6 +43,29 @@
     
     {% if game.status == 'active' %}
       <div class="card-body {% if game.status == 'active' %}bg-success bg-opacity-10{% endif %}">
+        <!-- 타임 게이지 바 -->
+        <div class="mb-4">
+          <div class="d-flex justify-content-between align-items-center mb-2">
+            <span class="fw-bold">
+              <i class="fas fa-clock me-2"></i>남은 시간
+            </span>
+            <span id="timerText" class="fw-bold fs-5">
+              <span id="timeRemaining">{{ timeout_seconds }}</span>초
+            </span>
+          </div>
+          <div class="progress" style="height: 30px; border-radius: 15px;">
+            <div id="timerBar"
+                 class="progress-bar progress-bar-striped progress-bar-animated"
+                 role="progressbar"
+                 style="width: 100%; transition: width 0.1s linear, background-color 0.5s;"
+                 aria-valuenow="100"
+                 aria-valuemin="0"
+                 aria-valuemax="100">
+              <span class="fw-bold" id="timerBarText">{{ timeout_seconds }}초 남음</span>
+            </div>
+          </div>
+        </div>
+
         {% if game.last_word %}
           <div class="text-center">
             <h5 class="text-success mb-2">다음 단어를 입력해주세요!</h5>
@@ -302,6 +325,74 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 });
 
+// --------- 타이머 기능 ---------
+{% if game.status == 'active' %}
+(function() {
+    const timeoutSeconds = {{ timeout_seconds }};
+    const timerBar = document.getElementById('timerBar');
+    const timerText = document.getElementById('timeRemaining');
+    const timerBarText = document.getElementById('timerBarText');
+
+    {% if entries %}
+    // 마지막 단어 입력 시간 (서버에서 전달)
+    const lastEntryTime = new Date('{{ entries.last.create_date|date:"c" }}');
+    {% else %}
+    // 게임 시작 시간
+    const lastEntryTime = new Date('{{ game.create_date|date:"c" }}');
+    {% endif %}
+
+    function updateTimer() {
+        const now = new Date();
+        const elapsedSeconds = (now - lastEntryTime) / 1000;
+        const remainingSeconds = Math.max(0, timeoutSeconds - elapsedSeconds);
+        const percentage = (remainingSeconds / timeoutSeconds) * 100;
+
+        // 진행률 업데이트
+        timerBar.style.width = percentage + '%';
+        timerBar.setAttribute('aria-valuenow', percentage);
+
+        // 남은 시간 표시
+        const displaySeconds = Math.ceil(remainingSeconds);
+        timerText.textContent = displaySeconds;
+        timerBarText.textContent = displaySeconds + '초 남음';
+
+        // 색상 변경 (초록 -> 노랑 -> 빨강)
+        if (percentage > 50) {
+            timerBar.classList.remove('bg-warning', 'bg-danger');
+            timerBar.classList.add('bg-success');
+        } else if (percentage > 25) {
+            timerBar.classList.remove('bg-success', 'bg-danger');
+            timerBar.classList.add('bg-warning');
+        } else {
+            timerBar.classList.remove('bg-success', 'bg-warning');
+            timerBar.classList.add('bg-danger');
+        }
+
+        // 시간 초과 시
+        if (remainingSeconds <= 0) {
+            timerBarText.textContent = '시간 초과!';
+            clearInterval(timerInterval);
+
+            // 3초 후 페이지 새로고침 (게임 종료 확인)
+            setTimeout(function() {
+                alert('타임아웃! 게임이 종료되었습니다.');
+                location.reload();
+            }, 1000);
+        }
+
+        // 마지막 10초 경고음 효과 (진동)
+        if (remainingSeconds <= 10 && remainingSeconds > 0) {
+            timerBar.style.animation = 'shake 0.5s infinite';
+        }
+    }
+
+    // 100ms마다 타이머 업데이트
+    const timerInterval = setInterval(updateTimer, 100);
+
+    // 초기 실행
+    updateTimer();
+})();
+{% endif %}
 // --------- 채팅 기능 ---------
 </script>
 
@@ -453,6 +544,13 @@ document.addEventListener('DOMContentLoaded', function() {
 
 #chatList {
   background: #fafafa;
+}
+
+/* Timer shake animation */
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-5px); }
+  75% { transform: translateX(5px); }
 }
 </style>
 {% endblock %}

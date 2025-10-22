@@ -28,30 +28,68 @@ def check_word_exists(word):
         # API 사용 안 함 - 모든 단어 허용
         return True, "단어 검증 기능이 비활성화되어 있습니다."
 
+    # 1. 기본 규칙 검증
+    if len(word) < 2:
+        return False, "2글자 이상의 단어만 사용할 수 있습니다."
+
+    # 한글만 허용
+    if not all('\uac00' <= char <= '\ud7a3' for char in word):
+        return False, "한글 단어만 사용 가능합니다."
+
+    # 2. 받침 없는 단어 끝글자 체크 (끝말잇기 규칙)
+    # 받침이 없으면 게임이 어려워지므로 경고
+    last_char = word[-1]
+    last_char_code = ord(last_char) - 0xAC00
+    jongseong = last_char_code % 28
+
+    # 3. 금지 단어 패턴 체크 (욕설, 비속어 등 기본 필터링)
+    forbidden_patterns = [
+        '시발', '개새', '병신', '미친', '썅', '씨발', '좆', '빡', '엿먹',
+        'ㅅㅂ', 'ㄱㅅㄲ', 'ㅂㅅ', '지랄', '염병'
+    ]
+    for pattern in forbidden_patterns:
+        if pattern in word:
+            return False, "부적절한 단어는 사용할 수 없습니다."
+
+    # 4. 너무 짧거나 반복되는 글자 체크
+    if len(set(word)) == 1:  # 모든 글자가 같음 (예: "ㄱㄱㄱ")
+        return False, "유효하지 않은 단어입니다."
+
+    # 5. 국립국어원 우리말샘 API 사용
     try:
-        # 국립국어원 우리말샘 API
-        # API KEY는 https://stdict.korean.go.kr/openapi/openApiInfo.do 에서 발급
-        api_url = "https://stdict.korean.go.kr/api/search.do"
+        # 한국어기초사전 API (공공데이터포털)
+        # Daum 사전 검색 API 대안 사용
+        api_url = "https://opendict.korean.go.kr/api/search"
         params = {
-            'key': settings.OPENAI_API_KEY,  # 임시 - 실제로는 별도의 KEY 사용
+            'key': getattr(settings, 'KOREAN_DICT_API_KEY', ''),
             'q': word,
             'req_type': 'json',
-            'type1': 'word',
+            'part': 'word',
+            'sort': 'dict',
+            'start': 1,
             'num': 1
         }
 
-        response = requests.get(api_url, params=params, timeout=3)
-
-        # 간단한 검증: 응답이 200이면 OK
-        if response.status_code == 200:
-            return True, "사전에 등록된 단어입니다."
+        # API 키가 설정되어 있으면 API 호출
+        if params['key']:
+            response = requests.get(api_url, params=params, timeout=3)
+            if response.status_code == 200:
+                data = response.json()
+                # 검색 결과가 있으면 유효한 단어
+                if data.get('channel', {}).get('item'):
+                    return True, "사전에 등록된 단어입니다."
+                else:
+                    return False, "사전에 없는 단어입니다."
         else:
-            # API 실패 시에는 단어를 허용 (게임 진행을 방해하지 않기 위해)
-            return True, "사전 검증을 건너뜁니다."
+            # API 키가 없으면 기본 검증만 통과하면 허용 (개발 환경)
+            return True, "기본 검증을 통과했습니다."
 
+    except requests.exceptions.Timeout:
+        # 타임아웃 시 기본 검증으로 통과
+        return True, "사전 API 응답 지연 (기본 검증 통과)"
     except Exception as e:
-        # API 오류 시 단어 허용
-        return True, f"사전 API 오류 (단어 허용): {str(e)}"
+        # 기타 오류 시 기본 검증으로 통과
+        return True, f"사전 API 오류 (기본 검증 통과)"
 
 
 def wordchain_list(request):
