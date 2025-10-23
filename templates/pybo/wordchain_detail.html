@@ -304,96 +304,37 @@
 
 {% block content %}
 <div class="container game-container my-4">
-  <!-- 게임 상태 헤더 -->
-  <div class="text-center mb-4">
-    <h2 class="display-4 fw-bold" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">
-      {% if game.status == 'active' %}
-  {% elif game.status == 'waiting' %}
-    <!-- 대기실 UI -->
-    <div class="row g-4 justify-content-center">
-      <div class="col-lg-8">
-        <div class="card border-0 shadow-lg" style="border-radius: 25px; overflow: hidden;">
-          <div class="card-header text-white text-center py-4" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
-            <h3><i class="fas fa-hourglass-half me-2"></i>게임 대기 중</h3>
-            <p class="mb-0">최소 2명 이상의 참가자가 필요합니다</p>
-          </div>
-          <div class="card-body p-4">
-            <!-- 참가자 목록 -->
-            <h5 class="mb-3"><i class="fas fa-users me-2"></i>참가자 ({{ participant_count }}/{{ game.max_participants }})</h5>
-            <div class="row g-3 mb-4">
-              {% for participant in participants %}
-              <div class="col-md-6">
-                <div class="d-flex align-items-center p-3 bg-light rounded">
-                  <i class="fas fa-user-circle fa-2x text-primary me-3"></i>
-                  <div>
-                    <strong>{{ participant|display_name }}</strong>
-                    {% if participant == game.creator %}
-                    <span class="badge bg-warning text-dark ms-2">방장</span>
-                    {% endif %}
-                  </div>
-                </div>
-              </div>
-              {% endfor %}
-            </div>
-
-            <!-- 버튼 영역 -->
-            <div class="d-flex gap-3 justify-content-center">
-              {% if user.is_authenticated %}
-                {% if user in participants.all %}
-                  {% if user == game.creator %}
-                    <button class="btn btn-success btn-lg" onclick="startGame()">
-                      <i class="fas fa-play me-2"></i>게임 시작
-                    </button>
-                  {% else %}
-                    <div class="alert alert-info mb-0">
-                      <i class="fas fa-info-circle me-2"></i>방장이 게임을 시작할 때까지 기다려주세요
-                    </div>
-                  {% endif %}
-                {% else %}
-                  {% if participant_count < game.max_participants %}
-                    <button class="btn btn-primary btn-lg" onclick="joinGame()">
-                      <i class="fas fa-sign-in-alt me-2"></i>게임 참가
-                    </button>
-                  {% else %}
-                    <div class="alert alert-warning mb-0">
-                      <i class="fas fa-users-slash me-2"></i>참가자가 꽉 찼습니다
-                    </div>
-                  {% endif %}
-                {% endif %}
-              {% else %}
-                <a href="{% url 'common:login' %}?next={{ request.path }}" class="btn btn-primary btn-lg">
-                  <i class="fas fa-sign-in-alt me-2"></i>로그인하고 참여하기
-                </a>
-              {% endif %}
-            </div>
-
-            <!-- 첫 단어 표시 -->
-            {% if game.last_word %}
-            <div class="mt-4 text-center">
-              <h5 class="text-muted">시작 단어</h5>
-              <div class="display-4 fw-bold text-primary">{{ game.last_word }}</div>
-            </div>
-            {% endif %}
-          </div>
-        </div>
+  <!-- 게임 타이틀 헤더 -->
+  <div class="card border-0 shadow-sm mb-4" style="border-radius: 20px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+    <div class="card-body text-center text-white py-4">
+      <h2 class="display-5 fw-bold mb-3">
+        {% if game.status == 'waiting' %}
+          <i class="fas fa-hourglass-half me-2"></i>
+        {% elif game.status == 'active' %}
+          <i class="fas fa-fire me-2"></i>
+        {% else %}
+          <i class="fas fa-flag-checkered me-2"></i>
+        {% endif %}
+        {{ game.title }}
+      </h2>
+      <div class="d-flex flex-wrap justify-content-center gap-3">
+        <span class="badge bg-white text-primary fs-6 px-3 py-2" style="border-radius: 12px;">
+          <i class="fas fa-hashtag me-1"></i>단어 {{ total_entries }}개
+        </span>
+        <span class="badge bg-white text-success fs-6 px-3 py-2" style="border-radius: 12px;">
+          <i class="fas fa-users me-1"></i>참가자 {{ participant_count }}/{{ game.max_participants }}명
+        </span>
+        <span class="badge bg-white text-info fs-6 px-3 py-2" style="border-radius: 12px;">
+          <i class="fas fa-crown me-1"></i>{{ game.creator|display_name }}
+        </span>
+        <span class="badge bg-white text-{% if game.status == 'waiting' %}warning{% elif game.status == 'active' %}success{% else %}secondary{% endif %} fs-6 px-3 py-2" style="border-radius: 12px;">
+          <i class="fas fa-circle me-1" style="font-size: 0.6em;"></i>{{ game.get_status_display }}
+        </span>
       </div>
-    </div>
-
-        <i class="fas fa-fire text-danger"></i>
-      {% else %}
-        <i class="fas fa-flag-checkered text-secondary"></i>
-      {% endif %}
-      {{ game.title }}
-    </h2>
-    <div class="d-flex justify-content-center gap-3 mt-3">
-      <span class="badge bg-primary fs-6"><i class="fas fa-hashtag me-1"></i>단어 {{ total_entries }}개</span>
-      <span class="badge bg-success fs-6"><i class="fas fa-users me-1"></i>참가자 {{ participant_count }}명</span>
-      <span class="badge bg-info fs-6"><i class="fas fa-user me-1"></i>{{ game.creator|display_name }}</span>
     </div>
   </div>
 
-  {% if game.status == 'active' %}
-  {% elif game.status == 'waiting' %}
+  {% if game.status == 'waiting' %}
     <!-- 대기실 UI -->
     <div class="row g-4 justify-content-center">
       <div class="col-lg-8">
@@ -464,6 +405,8 @@
       </div>
     </div>
 
+
+  {% elif game.status == 'active' %}
     <div class="row g-4">
       <div class="col-lg-8">
         <!-- 타이머 & 단어 체인 -->
@@ -625,7 +568,7 @@
           <h2 class="mb-3">게임 종료!</h2>
           <p class="lead text-muted">
             총 <strong class="text-primary">{{ total_entries }}개</strong>의 단어로<br>
-            <strong class="text-success">{{ participants }}명</strong>이 참여했습니다!
+            <strong class="text-success">{{ participant_count }}명</strong>이 참여했습니다!
           </p>
           <a href="{% url 'pybo:wordchain_list' %}" class="btn btn-primary btn-lg mt-3" style="border-radius: 15px;">
             <i class="fas fa-list me-2"></i>게임 목록으로
