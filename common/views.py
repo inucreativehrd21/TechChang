@@ -489,3 +489,196 @@ def kakao_logout(request):
 
     messages.success(request, '로그아웃되었습니다.')
     return redirect('common:login')
+
+
+# ==================== 관리자 기능 ====================
+
+from functools import wraps
+from django.http import HttpResponseForbidden
+from django.db.models import Q, Count
+
+
+def admin_required(view_func):
+    """관리자 권한이 필요한 뷰를 위한 데코레이터"""
+    @wraps(view_func)
+    def wrapper(request, *args, **kwargs):
+        if not request.user.is_authenticated:
+            messages.error(request, '로그인이 필요합니다.')
+            return redirect('common:login')
+        if not request.user.is_staff and not request.user.is_superuser:
+            messages.error(request, '관리자 권한이 필요합니다.')
+            return redirect('index')
+        return view_func(request, *args, **kwargs)
+    return wrapper
+
+
+@admin_required
+def admin_dashboard(request):
+    """관리자 대시보드"""
+    # 통계 정보
+    total_users = User.objects.count()
+    active_users = User.objects.filter(is_active=True).count()
+
+    # 회원 등급별 통계
+    from common.models import Profile
+    rank_stats = Profile.objects.values('rank').annotate(count=Count('rank'))
+
+    # 최근 가입 사용자
+    recent_users = User.objects.select_related('profile').order_by('-date_joined')[:10]
+
+    context = {
+        'total_users': total_users,
+        'active_users': active_users,
+        'inactive_users': total_users - active_users,
+        'rank_stats': rank_stats,
+        'recent_users': recent_users,
+    }
+
+    return render(request, 'common/admin_dashboard.html', context)
+
+
+@admin_required
+def admin_user_list(request):
+    """사용자 목록 관리"""
+    # 검색 및 필터링
+    search_query = request.GET.get('search', '')
+    rank_filter = request.GET.get('rank', '')
+    status_filter = request.GET.get('status', '')
+
+    users = User.objects.select_related('profile').order_by('-date_joined')
+
+    # 검색
+    if search_query:
+        users = users.filter(
+            Q(username__icontains=search_query) |
+            Q(email__icontains=search_query) |
+            Q(profile__nickname__icontains=search_query)
+        )
+
+    # 회원 등급 필터
+    if rank_filter:
+        users = users.filter(profile__rank=rank_filter)
+
+    # 활성화 상태 필터
+    if status_filter == 'active':
+        users = users.filter(is_active=True)
+    elif status_filter == 'inactive':
+        users = users.filter(is_active=False)
+
+    # 페이지네이션
+    from django.core.paginator import Paginator
+    paginator = Paginator(users, 20)  # 페이지당 20명
+    page_number = request.GET.get('page', 1)
+    page_obj = paginator.get_page(page_number)
+
+    context = {
+        'page_obj': page_obj,
+        'search_query': search_query,
+        'rank_filter': rank_filter,
+        'status_filter': status_filter,
+        'rank_choices': Profile.RANK_CHOICES,
+    }
+
+    return render(request, 'common/admin_user_list.html', context)
+
+
+@admin_required
+@require_POST
+def admin_change_rank(request, user_id):
+    """사용자 등급 변경"""
+    user = get_object_or_404(User, id=user_id)
+    new_rank = request.POST.get('rank')
+
+    if new_rank not in dict(Profile.RANK_CHOICES).keys():
+        return JsonResponse({'success': False, 'message': '유효하지 않은 등급입니다.'})
+
+    profile, created = Profile.objects.get_or_create(user=user)
+    old_rank = profile.rank_display
+    profile.rank = new_rank
+    profile.save()
+
+    messages.success(request, f'{user.username}님의 등급이 {old_rank}에서 {profile.rank_display}(으)로 변경되었습니다.')
+
+    return JsonResponse({
+        'success': True,
+        'message': '등급이 변경되었습니다.',
+        'new_rank': profile.rank_display,
+        'new_rank_class': profile.rank_badge_class
+    })
+
+
+@admin_required
+@require_POST
+def admin_toggle_active(request, user_id):
+    """사용자 활성화/비활성화"""
+    user = get_object_or_404(User, id=user_id)
+
+    # 자기 자신은 비활성화할 수 없음
+    if user.id == request.user.id:
+        return JsonResponse({'success': False, 'message': '자기 자신은 비활성화할 수 없습니다.'})
+
+    # 슈퍼유저는 비활성화할 수 없음
+    if user.is_superuser:
+        return JsonResponse({'success': False, 'message': '슈퍼유저는 비활성화할 수 없습니다.'})
+
+    user.is_active = not user.is_active
+    user.save()
+
+    status = '활성화' if user.is_active else '비활성화'
+    messages.success(request, f'{user.username}님이 {status}되었습니다.')
+
+    return JsonResponse({
+        'success': True,
+        'message': f'사용자가 {status}되었습니다.',
+        'is_active': user.is_active
+    })
+
+
+@admin_required
+def admin_user_detail(request, user_id):
+    """사용자 상세 정보 및 수정"""
+    user = get_object_or_404(User, id=user_id)
+    profile, created = Profile.objects.get_or_create(user=user)
+
+    if request.method == 'POST':
+        # 닉네임 수정
+        nickname = request.POST.get('nickname', '').strip()
+        profile.nickname = nickname
+
+        # 이메일 수정
+        email = request.POST.get('email', '').strip()
+        if email:
+            user.email = email
+
+        # 등급 수정
+        rank = request.POST.get('rank')
+        if rank in dict(Profile.RANK_CHOICES).keys():
+            profile.rank = rank
+
+        # staff 권한 수정
+        if request.user.is_superuser:
+            is_staff = request.POST.get('is_staff') == 'on'
+            user.is_staff = is_staff
+
+        user.save()
+        profile.save()
+
+        messages.success(request, f'{user.username}님의 정보가 수정되었습니다.')
+        return redirect('common:admin_user_detail', user_id=user.id)
+
+    # 사용자 활동 통계
+    from pybo.models import Question, Answer, Comment
+    question_count = Question.objects.filter(author=user).count()
+    answer_count = Answer.objects.filter(author=user).count()
+    comment_count = Comment.objects.filter(author=user).count()
+
+    context = {
+        'target_user': user,
+        'profile': profile,
+        'rank_choices': Profile.RANK_CHOICES,
+        'question_count': question_count,
+        'answer_count': answer_count,
+        'comment_count': comment_count,
+    }
+
+    return render(request, 'common/admin_user_detail.html', context)

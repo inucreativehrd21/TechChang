@@ -1,0 +1,155 @@
+{% extends 'base.html' %}
+
+{% block title %}관리자 대시보드 - 테크창{% endblock %}
+
+{% block content %}
+<div class="container my-4">
+  <!-- 페이지 헤더 -->
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>
+      <i class="fas fa-tachometer-alt me-2 text-primary"></i>관리자 대시보드
+    </h2>
+    <a href="{% url 'common:admin_user_list' %}" class="btn btn-primary">
+      <i class="fas fa-users me-2"></i>사용자 관리
+    </a>
+  </div>
+
+  <!-- 통계 카드 -->
+  <div class="row g-3 mb-4">
+    <!-- 전체 사용자 -->
+    <div class="col-md-4">
+      <div class="card border-primary">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-center">
+            <div>
+              <h6 class="text-muted mb-1">전체 사용자</h6>
+              <h3 class="mb-0">{{ total_users }}</h3>
+            </div>
+            <div class="bg-primary bg-opacity-10 rounded p-3">
+              <i class="fas fa-users fa-2x text-primary"></i>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 활성 사용자 -->
+    <div class="col-md-4">
+      <div class="card border-success">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-center">
+            <div>
+              <h6 class="text-muted mb-1">활성 사용자</h6>
+              <h3 class="mb-0 text-success">{{ active_users }}</h3>
+            </div>
+            <div class="bg-success bg-opacity-10 rounded p-3">
+              <i class="fas fa-user-check fa-2x text-success"></i>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 비활성 사용자 -->
+    <div class="col-md-4">
+      <div class="card border-danger">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-center">
+            <div>
+              <h6 class="text-muted mb-1">비활성 사용자</h6>
+              <h3 class="mb-0 text-danger">{{ inactive_users }}</h3>
+            </div>
+            <div class="bg-danger bg-opacity-10 rounded p-3">
+              <i class="fas fa-user-times fa-2x text-danger"></i>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 회원 등급별 통계 -->
+  <div class="card mb-4">
+    <div class="card-header bg-white">
+      <h5 class="mb-0">
+        <i class="fas fa-chart-pie me-2"></i>회원 등급별 통계
+      </h5>
+    </div>
+    <div class="card-body">
+      <div class="row">
+        {% for stat in rank_stats %}
+          <div class="col-md-4 mb-3">
+            <div class="text-center p-3 border rounded">
+              {% if stat.rank == 'regular' %}
+                <div class="badge bg-secondary mb-2" style="font-size: 1rem;">일반회원</div>
+              {% elif stat.rank == 'member' %}
+                <div class="badge bg-primary mb-2" style="font-size: 1rem;">정회원</div>
+              {% elif stat.rank == 'tech_chang' %}
+                <div class="badge bg-warning text-dark mb-2" style="font-size: 1rem;">테크창</div>
+              {% endif %}
+              <h3 class="mb-0">{{ stat.count }}명</h3>
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+
+  <!-- 최근 가입 사용자 -->
+  <div class="card">
+    <div class="card-header bg-white">
+      <h5 class="mb-0">
+        <i class="fas fa-user-plus me-2"></i>최근 가입 사용자
+      </h5>
+    </div>
+    <div class="card-body">
+      <div class="table-responsive">
+        <table class="table table-hover">
+          <thead>
+            <tr>
+              <th>사용자명</th>
+              <th>닉네임</th>
+              <th>이메일</th>
+              <th>등급</th>
+              <th>가입일</th>
+              <th>상태</th>
+              <th>관리</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for user in recent_users %}
+              <tr>
+                <td>{{ user.username }}</td>
+                <td>{{ user.profile.nickname|default:"-" }}</td>
+                <td>{{ user.email|default:"-" }}</td>
+                <td>
+                  <span class="badge {{ user.profile.rank_badge_class }}">
+                    {{ user.profile.rank_display }}
+                  </span>
+                </td>
+                <td>{{ user.date_joined|date:"Y-m-d H:i" }}</td>
+                <td>
+                  {% if user.is_active %}
+                    <span class="badge bg-success">활성</span>
+                  {% else %}
+                    <span class="badge bg-danger">비활성</span>
+                  {% endif %}
+                </td>
+                <td>
+                  <a href="{% url 'common:admin_user_detail' user.id %}" class="btn btn-sm btn-outline-primary">
+                    상세보기
+                  </a>
+                </td>
+              </tr>
+            {% empty %}
+              <tr>
+                <td colspan="7" class="text-center text-muted">등록된 사용자가 없습니다.</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

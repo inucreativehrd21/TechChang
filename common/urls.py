@@ -19,4 +19,11 @@ urlpatterns = [
     path('kakao/login/', views.kakao_login, name='kakao_login'),
     path('kakao/callback/', views.kakao_callback, name='kakao_callback'),
     path('kakao/logout/', views.kakao_logout, name='kakao_logout'),
+
+    # 관리자 기능
+    path('admin/dashboard/', views.admin_dashboard, name='admin_dashboard'),
+    path('admin/users/', views.admin_user_list, name='admin_user_list'),
+    path('admin/user/<int:user_id>/', views.admin_user_detail, name='admin_user_detail'),
+    path('admin/user/<int:user_id>/change-rank/', views.admin_change_rank, name='admin_change_rank'),
+    path('admin/user/<int:user_id>/toggle-active/', views.admin_toggle_active, name='admin_toggle_active'),
 ]

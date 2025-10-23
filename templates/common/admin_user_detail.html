@@ -1,0 +1,222 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ target_user.username }} 상세정보 - 관리자{% endblock %}
+
+{% block content %}
+<div class="container my-4">
+  <!-- 페이지 헤더 -->
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>
+      <i class="fas fa-user me-2 text-primary"></i>사용자 상세 정보
+    </h2>
+    <a href="{% url 'common:admin_user_list' %}" class="btn btn-outline-secondary">
+      <i class="fas fa-arrow-left me-2"></i>목록으로
+    </a>
+  </div>
+
+  <div class="row">
+    <!-- 기본 정보 -->
+    <div class="col-md-8">
+      <div class="card mb-4">
+        <div class="card-header bg-primary text-white">
+          <h5 class="mb-0">
+            <i class="fas fa-info-circle me-2"></i>기본 정보
+          </h5>
+        </div>
+        <div class="card-body">
+          <form method="post">
+            {% csrf_token %}
+
+            <div class="row mb-3">
+              <label class="col-sm-3 col-form-label fw-bold">사용자명</label>
+              <div class="col-sm-9">
+                <input type="text" class="form-control-plaintext" readonly
+                       value="{{ target_user.username }}">
+              </div>
+            </div>
+
+            <div class="row mb-3">
+              <label class="col-sm-3 col-form-label fw-bold">닉네임</label>
+              <div class="col-sm-9">
+                <input type="text" name="nickname" class="form-control"
+                       value="{{ profile.nickname|default:'' }}"
+                       placeholder="닉네임 (선택사항)">
+              </div>
+            </div>
+
+            <div class="row mb-3">
+              <label class="col-sm-3 col-form-label fw-bold">이메일</label>
+              <div class="col-sm-9">
+                <input type="email" name="email" class="form-control"
+                       value="{{ target_user.email|default:'' }}"
+                       placeholder="이메일 (선택사항)">
+              </div>
+            </div>
+
+            <div class="row mb-3">
+              <label class="col-sm-3 col-form-label fw-bold">회원 등급</label>
+              <div class="col-sm-9">
+                <select name="rank" class="form-select">
+                  {% for value, label in rank_choices %}
+                    <option value="{{ value }}"
+                            {% if profile.rank == value %}selected{% endif %}>
+                      {{ label }}
+                    </option>
+                  {% endfor %}
+                </select>
+              </div>
+            </div>
+
+            {% if user.is_superuser %}
+              <div class="row mb-3">
+                <label class="col-sm-3 col-form-label fw-bold">관리자 권한</label>
+                <div class="col-sm-9">
+                  <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" name="is_staff"
+                           {% if target_user.is_staff %}checked{% endif %}>
+                    <label class="form-check-label">
+                      관리자 권한 부여
+                    </label>
+                  </div>
+                  <small class="text-muted">
+                    관리자 권한을 부여하면 관리 페이지에 접근할 수 있습니다.
+                  </small>
+                </div>
+              </div>
+            {% endif %}
+
+            <div class="row mb-3">
+              <label class="col-sm-3 col-form-label fw-bold">가입일</label>
+              <div class="col-sm-9">
+                <input type="text" class="form-control-plaintext" readonly
+                       value="{{ target_user.date_joined|date:'Y-m-d H:i:s' }}">
+              </div>
+            </div>
+
+            <div class="row mb-3">
+              <label class="col-sm-3 col-form-label fw-bold">최근 로그인</label>
+              <div class="col-sm-9">
+                <input type="text" class="form-control-plaintext" readonly
+                       value="{{ target_user.last_login|date:'Y-m-d H:i:s'|default:'-' }}">
+              </div>
+            </div>
+
+            <div class="text-end">
+              <button type="submit" class="btn btn-primary">
+                <i class="fas fa-save me-2"></i>정보 저장
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- 우측 통계 및 상태 -->
+    <div class="col-md-4">
+      <!-- 계정 상태 -->
+      <div class="card mb-3">
+        <div class="card-header bg-white">
+          <h6 class="mb-0">
+            <i class="fas fa-shield-alt me-2"></i>계정 상태
+          </h6>
+        </div>
+        <div class="card-body">
+          <div class="mb-3">
+            <strong>활성화 상태:</strong>
+            {% if target_user.is_active %}
+              <span class="badge bg-success">활성</span>
+            {% else %}
+              <span class="badge bg-danger">비활성</span>
+            {% endif %}
+          </div>
+
+          <div class="mb-3">
+            <strong>회원 등급:</strong>
+            <span class="badge {{ profile.rank_badge_class }}">
+              {{ profile.rank_display }}
+            </span>
+          </div>
+
+          <div class="mb-3">
+            <strong>관리자 권한:</strong>
+            {% if target_user.is_superuser %}
+              <span class="badge bg-danger">슈퍼유저</span>
+            {% elif target_user.is_staff %}
+              <span class="badge bg-info">관리자</span>
+            {% else %}
+              <span class="badge bg-secondary">일반 사용자</span>
+            {% endif %}
+          </div>
+
+          {% if not target_user.is_superuser %}
+            <div class="d-grid gap-2 mt-3">
+              <button class="btn btn-warning btn-sm" onclick="toggleUserActive()">
+                <i class="fas fa-{% if target_user.is_active %}ban{% else %}check{% endif %} me-2"></i>
+                {% if target_user.is_active %}계정 비활성화{% else %}계정 활성화{% endif %}
+              </button>
+            </div>
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- 활동 통계 -->
+      <div class="card">
+        <div class="card-header bg-white">
+          <h6 class="mb-0">
+            <i class="fas fa-chart-bar me-2"></i>활동 통계
+          </h6>
+        </div>
+        <div class="card-body">
+          <div class="d-flex justify-content-between mb-2">
+            <span><i class="fas fa-question-circle text-primary me-2"></i>작성한 질문</span>
+            <strong>{{ question_count }}</strong>
+          </div>
+          <div class="d-flex justify-content-between mb-2">
+            <span><i class="fas fa-comment text-success me-2"></i>작성한 답변</span>
+            <strong>{{ answer_count }}</strong>
+          </div>
+          <div class="d-flex justify-content-between mb-2">
+            <span><i class="fas fa-comments text-info me-2"></i>작성한 댓글</span>
+            <strong>{{ comment_count }}</strong>
+          </div>
+          <hr>
+          <div class="d-flex justify-content-between">
+            <span class="fw-bold">총 활동</span>
+            <strong class="text-primary">{{ question_count|add:answer_count|add:comment_count }}</strong>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+function toggleUserActive() {
+  const userId = {{ target_user.id }};
+  const csrfToken = '{{ csrf_token }}';
+
+  if (confirm('이 사용자의 계정 상태를 변경하시겠습니까?')) {
+    fetch(`/common/admin/user/${userId}/toggle-active/`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'X-CSRFToken': csrfToken
+      }
+    })
+    .then(response => response.json())
+    .then(data => {
+      if (data.success) {
+        alert(data.message);
+        location.reload();
+      } else {
+        alert('오류: ' + data.message);
+      }
+    })
+    .catch(error => {
+      console.error('Error:', error);
+      alert('오류가 발생했습니다.');
+    });
+  }
+}
+</script>
+{% endblock %}

@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//c/develop1/d/**)",
+      "Bash(python manage.py makemigrations:*)",
+      "Bash(pip install:*)",
+      "Bash(python manage.py migrate:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

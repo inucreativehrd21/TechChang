@@ -44,10 +44,21 @@ class Profile(models.Model):
 		(THEME_HIGHCONTRAST, 'High Contrast'),
 	]
 
+	# 회원 등급
+	RANK_REGULAR = 'regular'
+	RANK_MEMBER = 'member'
+	RANK_TECH_CHANG = 'tech_chang'
+	RANK_CHOICES = [
+		(RANK_REGULAR, '일반회원'),
+		(RANK_MEMBER, '정회원'),
+		(RANK_TECH_CHANG, '테크창'),
+	]
+
 	user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='profile')
 	nickname = models.CharField(max_length=30, blank=True, null=True, help_text='닉네임을 설정하지 않으면 사용자명이 표시됩니다.')
 	profile_image = models.ImageField(upload_to='profile_images/', blank=True, null=True, help_text='프로필 이미지를 업로드하세요.')
 	theme = models.CharField(max_length=20, choices=THEME_CHOICES, default=THEME_LIGHT)
+	rank = models.CharField(max_length=20, choices=RANK_CHOICES, default=RANK_REGULAR, verbose_name='회원 등급')
 	updated_at = models.DateTimeField(auto_now=True)
 	created_at = models.DateTimeField(auto_now_add=True)
 
@@ -59,6 +70,21 @@ class Profile(models.Model):
 	def display_name(self):
 		"""닉네임이 있으면 닉네임을, 없으면 사용자명을 반환"""
 		return self.nickname if self.nickname else self.user.username
+
+	@property
+	def rank_display(self):
+		"""회원 등급을 한글로 반환"""
+		return dict(self.RANK_CHOICES).get(self.rank, '일반회원')
+
+	@property
+	def rank_badge_class(self):
+		"""회원 등급에 따른 뱃지 색상 클래스"""
+		rank_classes = {
+			self.RANK_REGULAR: 'bg-secondary',
+			self.RANK_MEMBER: 'bg-primary',
+			self.RANK_TECH_CHANG: 'bg-warning text-dark',
+		}
+		return rank_classes.get(self.rank, 'bg-secondary')
 
 	def __str__(self):
 		return f"Profile({self.user.username})"

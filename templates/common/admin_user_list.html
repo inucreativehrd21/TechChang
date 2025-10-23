@@ -1,0 +1,267 @@
+{% extends 'base.html' %}
+
+{% block title %}사용자 관리 - 테크창{% endblock %}
+
+{% block content %}
+<div class="container my-4">
+  <!-- 페이지 헤더 -->
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>
+      <i class="fas fa-users me-2 text-primary"></i>사용자 관리
+    </h2>
+    <a href="{% url 'common:admin_dashboard' %}" class="btn btn-outline-secondary">
+      <i class="fas fa-arrow-left me-2"></i>대시보드로
+    </a>
+  </div>
+
+  <!-- 검색 및 필터 -->
+  <div class="card mb-4">
+    <div class="card-body">
+      <form method="get" class="row g-3">
+        <div class="col-md-4">
+          <label class="form-label">검색</label>
+          <input type="text" name="search" class="form-control"
+                 placeholder="사용자명, 닉네임, 이메일"
+                 value="{{ search_query }}">
+        </div>
+        <div class="col-md-3">
+          <label class="form-label">회원 등급</label>
+          <select name="rank" class="form-select">
+            <option value="">전체</option>
+            {% for value, label in rank_choices %}
+              <option value="{{ value }}" {% if rank_filter == value %}selected{% endif %}>
+                {{ label }}
+              </option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-3">
+          <label class="form-label">상태</label>
+          <select name="status" class="form-select">
+            <option value="">전체</option>
+            <option value="active" {% if status_filter == 'active' %}selected{% endif %}>활성</option>
+            <option value="inactive" {% if status_filter == 'inactive' %}selected{% endif %}>비활성</option>
+          </select>
+        </div>
+        <div class="col-md-2 d-flex align-items-end">
+          <button type="submit" class="btn btn-primary w-100">
+            <i class="fas fa-search me-2"></i>검색
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- 사용자 목록 -->
+  <div class="card">
+    <div class="card-header bg-white d-flex justify-content-between align-items-center">
+      <h5 class="mb-0">사용자 목록 ({{ page_obj.paginator.count }}명)</h5>
+    </div>
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-hover mb-0">
+          <thead class="table-light">
+            <tr>
+              <th>ID</th>
+              <th>사용자명</th>
+              <th>닉네임</th>
+              <th>이메일</th>
+              <th>등급</th>
+              <th>가입일</th>
+              <th>상태</th>
+              <th>권한</th>
+              <th>관리</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for user in page_obj %}
+              <tr id="user-row-{{ user.id }}">
+                <td>{{ user.id }}</td>
+                <td>
+                  <strong>{{ user.username }}</strong>
+                  {% if user.is_superuser %}
+                    <span class="badge bg-danger ms-1" style="font-size: 0.7rem;">슈퍼유저</span>
+                  {% endif %}
+                </td>
+                <td>{{ user.profile.nickname|default:"-" }}</td>
+                <td>{{ user.email|default:"-" }}</td>
+                <td>
+                  <select class="form-select form-select-sm rank-selector"
+                          data-user-id="{{ user.id }}"
+                          style="width: 140px;">
+                    {% for value, label in rank_choices %}
+                      <option value="{{ value }}"
+                              {% if user.profile.rank == value %}selected{% endif %}>
+                        {{ label }}
+                      </option>
+                    {% endfor %}
+                  </select>
+                </td>
+                <td>{{ user.date_joined|date:"Y-m-d" }}</td>
+                <td>
+                  <span class="status-badge-{{ user.id }}">
+                    {% if user.is_active %}
+                      <span class="badge bg-success">활성</span>
+                    {% else %}
+                      <span class="badge bg-danger">비활성</span>
+                    {% endif %}
+                  </span>
+                </td>
+                <td>
+                  {% if user.is_staff %}
+                    <span class="badge bg-info">관리자</span>
+                  {% else %}
+                    <span class="text-muted">일반</span>
+                  {% endif %}
+                </td>
+                <td>
+                  <div class="btn-group">
+                    <a href="{% url 'common:admin_user_detail' user.id %}"
+                       class="btn btn-sm btn-outline-primary">
+                      <i class="fas fa-eye"></i>
+                    </a>
+                    {% if not user.is_superuser %}
+                      <button class="btn btn-sm btn-outline-warning toggle-active-btn"
+                              data-user-id="{{ user.id }}"
+                              title="{% if user.is_active %}비활성화{% else %}활성화{% endif %}">
+                        <i class="fas fa-{% if user.is_active %}ban{% else %}check{% endif %}"></i>
+                      </button>
+                    {% endif %}
+                  </div>
+                </td>
+              </tr>
+            {% empty %}
+              <tr>
+                <td colspan="9" class="text-center text-muted py-4">
+                  검색 결과가 없습니다.
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- 페이지네이션 -->
+  {% if page_obj.paginator.num_pages > 1 %}
+    <nav aria-label="사용자 페이지네이션" class="mt-4">
+      <ul class="pagination justify-content-center">
+        {% if page_obj.has_previous %}
+          <li class="page-item">
+            <a class="page-link" href="?page=1{% if search_query %}&search={{ search_query }}{% endif %}{% if rank_filter %}&rank={{ rank_filter }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}">
+              처음
+            </a>
+          </li>
+          <li class="page-item">
+            <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}{% if rank_filter %}&rank={{ rank_filter }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}">
+              이전
+            </a>
+          </li>
+        {% endif %}
+
+        {% for num in page_obj.paginator.page_range %}
+          {% if num >= page_obj.number|add:-3 and num <= page_obj.number|add:3 %}
+            <li class="page-item {% if num == page_obj.number %}active{% endif %}">
+              <a class="page-link" href="?page={{ num }}{% if search_query %}&search={{ search_query }}{% endif %}{% if rank_filter %}&rank={{ rank_filter }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}">
+                {{ num }}
+              </a>
+            </li>
+          {% endif %}
+        {% endfor %}
+
+        {% if page_obj.has_next %}
+          <li class="page-item">
+            <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}{% if rank_filter %}&rank={{ rank_filter }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}">
+              다음
+            </a>
+          </li>
+          <li class="page-item">
+            <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% if search_query %}&search={{ search_query }}{% endif %}{% if rank_filter %}&rank={{ rank_filter }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}">
+              끝
+            </a>
+          </li>
+        {% endif %}
+      </ul>
+    </nav>
+  {% endif %}
+</div>
+
+<script>
+// 등급 변경
+document.addEventListener('DOMContentLoaded', function() {
+  const rankSelectors = document.querySelectorAll('.rank-selector');
+
+  rankSelectors.forEach(selector => {
+    selector.addEventListener('change', function() {
+      const userId = this.dataset.userId;
+      const newRank = this.value;
+      const csrfToken = '{{ csrf_token }}';
+
+      if (confirm('이 사용자의 등급을 변경하시겠습니까?')) {
+        fetch(`/common/admin/user/${userId}/change-rank/`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'X-CSRFToken': csrfToken
+          },
+          body: new URLSearchParams({
+            'rank': newRank
+          })
+        })
+        .then(response => response.json())
+        .then(data => {
+          if (data.success) {
+            alert('등급이 변경되었습니다.');
+            location.reload();
+          } else {
+            alert('오류: ' + data.message);
+            location.reload();
+          }
+        })
+        .catch(error => {
+          console.error('Error:', error);
+          alert('오류가 발생했습니다.');
+          location.reload();
+        });
+      } else {
+        location.reload();
+      }
+    });
+  });
+
+  // 활성화/비활성화 토글
+  const toggleBtns = document.querySelectorAll('.toggle-active-btn');
+
+  toggleBtns.forEach(btn => {
+    btn.addEventListener('click', function() {
+      const userId = this.dataset.userId;
+      const csrfToken = '{{ csrf_token }}';
+
+      if (confirm('이 사용자의 상태를 변경하시겠습니까?')) {
+        fetch(`/common/admin/user/${userId}/toggle-active/`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'X-CSRFToken': csrfToken
+          }
+        })
+        .then(response => response.json())
+        .then(data => {
+          if (data.success) {
+            alert(data.message);
+            location.reload();
+          } else {
+            alert('오류: ' + data.message);
+          }
+        })
+        .catch(error => {
+          console.error('Error:', error);
+          alert('오류가 발생했습니다.');
+        });
+      }
+    });
+  });
+});
+</script>
+{% endblock %}

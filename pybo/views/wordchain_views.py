@@ -55,37 +55,66 @@ def check_word_exists(word):
     if len(set(word)) == 1:  # 모든 글자가 같음 (예: "ㄱㄱㄱ")
         return False, "유효하지 않은 단어입니다."
 
-    # 5. 국립국어원 우리말샘 API 사용
+    # 5. 국립국어원 한국어기초사전 API 사용
     try:
-        # 한국어기초사전 API (공공데이터포털)
-        # Daum 사전 검색 API 대안 사용
-        api_url = "https://opendict.korean.go.kr/api/search"
+        # 국립국어원 한국어기초사전 검색 API
+        # https://krdict.korean.go.kr/openApi/openApiInfo
+        api_url = "https://krdict.korean.go.kr/api/search"
+        api_key = getattr(settings, 'KOREAN_DICT_API_KEY', '')
+
+        # API 키가 없으면 기본 검증만 통과 (개발 환경)
+        if not api_key:
+            return True, "기본 검증을 통과했습니다. (API 키 미설정)"
+
         params = {
-            'key': getattr(settings, 'KOREAN_DICT_API_KEY', ''),
+            'key': api_key,
             'q': word,
-            'req_type': 'json',
-            'part': 'word',
-            'sort': 'dict',
+            'method': 'exact',  # 정확히 일치하는 단어만 검색
+            'part': 'word',     # 단어만 검색 (관용구 제외)
             'start': 1,
-            'num': 1
+            'num': 1            # 결과 1개만
         }
 
-        # API 키가 설정되어 있으면 API 호출
-        if params['key']:
-            response = requests.get(api_url, params=params, timeout=3)
-            if response.status_code == 200:
-                data = response.json()
-                # 검색 결과가 있으면 유효한 단어
-                if data.get('channel', {}).get('item'):
+        response = requests.get(api_url, params=params, timeout=5)
+
+        # 응답 확인
+        if response.status_code != 200:
+            # API 오류 시 기본 검증으로 통과
+            return True, f"사전 API 오류 (기본 검증 통과) - 상태코드: {response.status_code}"
+
+        # XML 응답 파싱
+        import xml.etree.ElementTree as ET
+
+        try:
+            root = ET.fromstring(response.content)
+
+            # 에러 코드 확인
+            error_code = root.find('.//error_code')
+            if error_code is not None:
+                error_text = error_code.text
+                # API 오류 시 기본 검증 통과
+                return True, f"사전 API 오류 (기본 검증 통과) - {error_text}"
+
+            # total 값 확인 (검색 결과 개수)
+            total = root.find('.//total')
+            if total is not None:
+                result_count = int(total.text)
+                if result_count > 0:
+                    # 사전에 등재된 단어
                     return True, "사전에 등록된 단어입니다."
                 else:
+                    # 사전에 없는 단어
                     return False, "사전에 없는 단어입니다."
-        else:
-            # API 키가 없으면 기본 검증만 통과하면 허용 (개발 환경)
-            return True, "기본 검증을 통과했습니다."
+            else:
+                # total 태그가 없으면 기본 검증 통과
+                return True, "사전 API 응답 형식 오류 (기본 검증 통과)"
+
+        except ET.ParseError:
+            # XML 파싱 오류
+            return True, "사전 API 응답 파싱 오류 (기본 검증 통과)"
 
     except requests.exceptions.Timeout:
-        # 타임아웃 시 기본 검증으로 통과
+        # 타임아웃 시 기본 검증으로 통과 (게임 진행 방해하지 않기)
         return True, "사전 API 응답 지연 (기본 검증 통과)"
     except Exception as e:
         # 기타 오류 시 기본 검증으로 통과

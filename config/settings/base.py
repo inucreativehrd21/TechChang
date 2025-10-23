@@ -177,6 +177,7 @@ KAKAO_CLIENT_SECRET = os.environ.get('KAKAO_CLIENT_SECRET', '')
 # 끝말잇기 게임 설정
 WORDCHAIN_TIMEOUT = int(os.environ.get('WORDCHAIN_TIMEOUT', 30))  # 기본 30초
 WORDCHAIN_USE_DICTIONARY_API = os.environ.get('WORDCHAIN_USE_DICTIONARY_API', 'True').lower() == 'true'
+KOREAN_DICT_API_KEY = os.environ.get('KOREAN_DICT_API_KEY', '')  # 국립국어원 한국어기초사전 API 키
 
 # 보안 미들웨어 설정 (환경변수로 조정 가능)
 RATE_LIMIT_REQUESTS = int(os.environ.get('RATE_LIMIT_REQUESTS', 300))  # 시간당 요청 제한

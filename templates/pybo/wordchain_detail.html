@@ -3,281 +3,532 @@
 
 {% block title %}{{ game.title }} - 끝말잇기 게임{% endblock %}
 
+{% block extra_css %}
+<style>
+/* 게임 컨테이너 */
+.game-container {
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+/* 원형 타이머 */
+.circular-timer {
+  position: relative;
+  width: 200px;
+  height: 200px;
+  margin: 0 auto 30px;
+}
+
+.circular-timer svg {
+  transform: rotate(-90deg);
+}
+
+.circular-timer .circle-bg {
+  fill: none;
+  stroke: #e9ecef;
+  stroke-width: 10;
+}
+
+.circular-timer .circle-progress {
+  fill: none;
+  stroke: #28a745;
+  stroke-width: 10;
+  stroke-linecap: round;
+  transition: stroke 0.3s ease;
+  stroke-dasharray: 565.48;
+  stroke-dashoffset: 0;
+}
+
+.timer-text {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  text-align: center;
+}
+
+.timer-number {
+  font-size: 3rem;
+  font-weight: bold;
+  color: #28a745;
+  transition: color 0.3s ease;
+}
+
+/* 단어 체인 애니메이션 */
+.word-chain {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  padding: 30px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 20px;
+  box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
+  animation: glow 2s ease-in-out infinite alternate;
+}
+
+@keyframes glow {
+  from { box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3); }
+  to { box-shadow: 0 10px 50px rgba(102, 126, 234, 0.6); }
+}
+
+.word-display {
+  background: white;
+  padding: 20px 40px;
+  border-radius: 15px;
+  font-size: 2.5rem;
+  font-weight: bold;
+  color: #667eea;
+  box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+}
+
+.arrow-icon {
+  font-size: 2rem;
+  color: white;
+  animation: bounce 1s ease-in-out infinite;
+}
+
+@keyframes bounce {
+  0%, 100% { transform: translateX(0); }
+  50% { transform: translateX(10px); }
+}
+
+/* 단어 입력 폼 */
+.word-input-container {
+  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+  border-radius: 20px;
+  padding: 30px;
+  box-shadow: 0 10px 30px rgba(240, 147, 251, 0.3);
+}
+
+.word-input {
+  font-size: 1.5rem;
+  padding: 15px 20px;
+  border: 3px solid transparent;
+  border-radius: 15px;
+  transition: all 0.3s ease;
+  background: white;
+}
+
+.word-input:focus {
+  border-color: #f5576c;
+  box-shadow: 0 0 20px rgba(245, 87, 108, 0.5);
+  transform: scale(1.02);
+}
+
+.submit-btn {
+  padding: 15px 40px;
+  font-size: 1.2rem;
+  border-radius: 15px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border: none;
+  color: white;
+  font-weight: bold;
+  transition: all 0.3s ease;
+  box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+}
+
+.submit-btn:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 25px rgba(102, 126, 234, 0.6);
+}
+
+/* 단어 목록 카드 */
+.word-item {
+  background: white;
+  border-radius: 15px;
+  padding: 20px;
+  margin-bottom: 15px;
+  box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+  transition: all 0.3s ease;
+  border-left: 5px solid transparent;
+  animation: slideIn 0.5s ease-out;
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateX(-30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.word-item:hover {
+  transform: translateX(10px);
+  box-shadow: 0 5px 20px rgba(0,0,0,0.15);
+  border-left-color: #667eea;
+}
+
+.word-item.latest {
+  border-left-color: #f5576c;
+  background: linear-gradient(90deg, #fff 0%, #fff5f7 100%);
+}
+
+.word-badge {
+  display: inline-block;
+  width: 40px;
+  height: 40px;
+  line-height: 40px;
+  text-align: center;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border-radius: 50%;
+  font-weight: bold;
+  box-shadow: 0 3px 10px rgba(102, 126, 234, 0.3);
+}
+
+/* 게임 종료 오버레이 */
+.game-over-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0,0,0,0.8);
+  display: none;
+  justify-content: center;
+  align-items: center;
+  z-index: 9999;
+  animation: fadeIn 0.5s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.game-over-content {
+  background: white;
+  padding: 50px;
+  border-radius: 30px;
+  text-align: center;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+  animation: zoomIn 0.5s ease;
+}
+
+@keyframes zoomIn {
+  from { transform: scale(0.5); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+/* 채팅 */
+.chat-container {
+  background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+  border-radius: 20px;
+  padding: 20px;
+  height: 600px;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 10px 30px rgba(79, 172, 254, 0.3);
+}
+
+.chat-messages {
+  flex-grow: 1;
+  overflow-y: auto;
+  padding: 15px;
+  background: rgba(255,255,255,0.9);
+  border-radius: 15px;
+  margin-bottom: 15px;
+}
+
+.chat-message {
+  background: white;
+  padding: 12px 18px;
+  border-radius: 12px;
+  margin-bottom: 10px;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+  animation: slideIn 0.3s ease;
+}
+
+.chat-input {
+  border-radius: 15px;
+  border: none;
+  padding: 12px 20px;
+  font-size: 1rem;
+}
+
+.chat-send-btn {
+  border-radius: 15px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border: none;
+  padding: 12px 25px;
+  color: white;
+  font-weight: bold;
+}
+
+/* 반응형 */
+@media (max-width: 768px) {
+  .word-display {
+    font-size: 1.8rem;
+    padding: 15px 25px;
+  }
+
+  .circular-timer {
+    width: 150px;
+    height: 150px;
+  }
+
+  .timer-number {
+    font-size: 2rem;
+  }
+}
+
+/* 스크롤바 커스텀 */
+.chat-messages::-webkit-scrollbar,
+.word-list-container::-webkit-scrollbar {
+  width: 8px;
+}
+
+.chat-messages::-webkit-scrollbar-track,
+.word-list-container::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 10px;
+}
+
+.chat-messages::-webkit-scrollbar-thumb,
+.word-list-container::-webkit-scrollbar-thumb {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 10px;
+}
+</style>
+{% endblock %}
+
 {% block content %}
-<div class="container my-4">
-  <!-- 게임 헤더 -->
-  <div class="card mb-4">
-    <div class="card-header {% if game.status == 'active' %}bg-success text-white{% else %}bg-secondary text-white{% endif %}">
-      <div class="d-flex justify-content-between align-items-center">
-        <div>
-          <h4 class="mb-1">
-            {% if game.status == 'active' %}
-              <i class="fas fa-play-circle me-2"></i>
-            {% else %}
-              <i class="fas fa-flag-checkered me-2"></i>
-            {% endif %}
-            {{ game.title }}
-          </h4>
-          <small>
-            생성자: {{ game.creator|display_name }} · 
-            {% if game.status == 'finished' %}
-              {{ game.end_date|date:"Y.m.d H:i" }} 종료
-            {% else %}
-              {{ game.create_date|date:"Y.m.d H:i" }} 시작
-            {% endif %}
-          </small>
-        </div>
-        <div class="text-end">
-          <div class="d-flex gap-2 mb-1">
-            <span class="badge bg-light text-dark">단어 {{ total_entries }}개</span>
-            <span class="badge bg-light text-dark">참가자 {{ participants }}명</span>
-          </div>
-          {% if game.status == 'active' and user == game.creator %}
-            <button class="btn btn-warning btn-sm" onclick="finishGame()">
-              <i class="fas fa-stop me-1"></i>게임 종료
-            </button>
-          {% endif %}
-        </div>
-      </div>
+<div class="container game-container my-4">
+  <!-- 게임 상태 헤더 -->
+  <div class="text-center mb-4">
+    <h2 class="display-4 fw-bold" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">
+      {% if game.status == 'active' %}
+        <i class="fas fa-fire text-danger"></i>
+      {% else %}
+        <i class="fas fa-flag-checkered text-secondary"></i>
+      {% endif %}
+      {{ game.title }}
+    </h2>
+    <div class="d-flex justify-content-center gap-3 mt-3">
+      <span class="badge bg-primary fs-6"><i class="fas fa-hashtag me-1"></i>단어 {{ total_entries }}개</span>
+      <span class="badge bg-success fs-6"><i class="fas fa-users me-1"></i>참가자 {{ participants }}명</span>
+      <span class="badge bg-info fs-6"><i class="fas fa-user me-1"></i>{{ game.creator|display_name }}</span>
     </div>
-    
-    {% if game.status == 'active' %}
-      <div class="card-body {% if game.status == 'active' %}bg-success bg-opacity-10{% endif %}">
-        <!-- 타임 게이지 바 -->
-        <div class="mb-4">
-          <div class="d-flex justify-content-between align-items-center mb-2">
-            <span class="fw-bold">
-              <i class="fas fa-clock me-2"></i>남은 시간
-            </span>
-            <span id="timerText" class="fw-bold fs-5">
-              <span id="timeRemaining">{{ timeout_seconds }}</span>초
-            </span>
-          </div>
-          <div class="progress" style="height: 30px; border-radius: 15px;">
-            <div id="timerBar"
-                 class="progress-bar progress-bar-striped progress-bar-animated"
-                 role="progressbar"
-                 style="width: 100%; transition: width 0.1s linear, background-color 0.5s;"
-                 aria-valuenow="100"
-                 aria-valuemin="0"
-                 aria-valuemax="100">
-              <span class="fw-bold" id="timerBarText">{{ timeout_seconds }}초 남음</span>
-            </div>
-          </div>
-        </div>
-
-        {% if game.last_word %}
-          <div class="text-center">
-            <h5 class="text-success mb-2">다음 단어를 입력해주세요!</h5>
-            <div class="d-inline-flex align-items-center bg-white p-3 rounded-lg border border-success">
-              <span class="fs-4 me-2">{{ game.last_word }}</span>
-              <i class="fas fa-arrow-right text-success mx-2"></i>
-              <span class="fs-4 text-primary fw-bold">{{ game.expected_first_char }}___</span>
-            </div>
-          </div>
-        {% else %}
-          <div class="text-center">
-            <h5 class="text-success">첫 단어가 등록되었습니다! 이어서 단어를 입력해보세요.</h5>
-          </div>
-        {% endif %}
-      </div>
-    {% else %}
-      <div class="card-body bg-secondary bg-opacity-10">
-        <div class="text-center">
-          <h5 class="text-secondary">게임이 종료되었습니다</h5>
-          <p class="mb-0">총 {{ total_entries }}개의 단어로 {{ participants }}명이 참여했습니다!</p>
-        </div>
-      </div>
-    {% endif %}
   </div>
-  
-  {% if game.status == 'active' and not user.is_authenticated %}
-    <div class="alert alert-warning d-flex justify-content-between align-items-center mt-3" role="alert">
-      <div>
-        <strong class="me-2">로그인이 필요합니다.</strong>
-        끝말잇기 게임에 참여하려면 로그인 후 이용해주세요.
-      </div>
-      <div>
-        <a href="{% url 'common:login' %}?next={{ request.path }}" class="btn btn-warning btn-sm">
-          <i class="fas fa-sign-in-alt me-1"></i>로그인
-        </a>
-      </div>
-    </div>
-  {% endif %}
 
-  <div class="row">
-    <div class="col-lg-8">
-    <!-- 단어 입력 폼 (활성 게임일 때만) -->
-    {% if game.status == 'active' and user.is_authenticated %}
-      <div class="mb-4">
-        <div class="card border-primary">
-          <div class="card-header bg-primary text-white">
-            <h6 class="mb-0">
-              <i class="fas fa-keyboard me-2"></i>단어 입력
-            </h6>
+  {% if game.status == 'active' %}
+    <div class="row g-4">
+      <div class="col-lg-8">
+        <!-- 타이머 & 단어 체인 -->
+        <div class="card border-0 shadow-lg mb-4" style="border-radius: 25px; overflow: hidden;">
+          <div class="card-body p-4" style="background: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%);">
+            <!-- 원형 타이머 -->
+            <div class="circular-timer">
+              <svg width="200" height="200">
+                <circle class="circle-bg" cx="100" cy="100" r="90"></circle>
+                <circle class="circle-progress" id="circleProgress" cx="100" cy="100" r="90"></circle>
+              </svg>
+              <div class="timer-text">
+                <div class="timer-number" id="timerNumber">{{ timeout_seconds }}</div>
+                <div class="small text-muted">초 남음</div>
+              </div>
+            </div>
+
+            <!-- 단어 체인 -->
+            {% if game.last_word %}
+              <div class="word-chain">
+                <div class="word-display">
+                  {{ game.last_word }}
+                </div>
+                <i class="fas fa-long-arrow-alt-right arrow-icon"></i>
+                <div class="word-display" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white;">
+                  {{ game.expected_first_char }}___
+                </div>
+              </div>
+            {% else %}
+              <div class="text-center">
+                <h4 class="text-primary">첫 단어부터 시작해보세요!</h4>
+              </div>
+            {% endif %}
           </div>
-          <div class="card-body">
+        </div>
+
+        <!-- 단어 입력 폼 -->
+        {% if user.is_authenticated %}
+          <div class="word-input-container mb-4">
             <form id="wordForm" onsubmit="addWord(event)">
               {% csrf_token %}
-              <div class="input-group">
-                <input type="text" class="form-control form-control-lg" id="wordInput" 
-                       placeholder="{% if game.expected_first_char %}'{{ game.expected_first_char }}'로 시작하는 단어를 입력하세요{% else %}단어를 입력하세요{% endif %}" 
-                       maxlength="50" autocomplete="off">
-                <button class="btn btn-primary btn-lg" type="submit">
-                  <i class="fas fa-paper-plane me-1"></i>입력
+              <div class="d-flex gap-3">
+                <input type="text"
+                       class="form-control word-input flex-grow-1"
+                       id="wordInput"
+                       placeholder="{% if game.expected_first_char %}'{{ game.expected_first_char }}'로 시작하는 단어 입력{% else %}단어를 입력하세요{% endif %}"
+                       maxlength="50"
+                       autocomplete="off"
+                       required>
+                <button class="btn submit-btn" type="submit">
+                  <i class="fas fa-paper-plane me-2"></i>입력
                 </button>
               </div>
-              <small class="form-text text-muted mt-1">
-                한글 2글자 이상, 이전에 사용되지 않은 단어여야 합니다.
+              <small class="text-white mt-2 d-block">
+                <i class="fas fa-info-circle me-1"></i>
+                한글 2글자 이상, 사전에 등재된 단어만 가능합니다
               </small>
             </form>
           </div>
-        </div>
-      </div>
-    {% elif game.status == 'active' and not user.is_authenticated %}
-      <div class="mb-4">
-        <div class="card border-warning">
-          <div class="card-body text-center">
-            <h6 class="text-warning mb-2">
-              <i class="fas fa-sign-in-alt me-2"></i>로그인이 필요합니다
-            </h6>
-            <p class="mb-2">끝말잇기 게임에 참여하려면 로그인해주세요.</p>
-            <a href="{% url 'common:login' %}" class="btn btn-warning">
-              <i class="fas fa-sign-in-alt me-1"></i>로그인
+        {% else %}
+          <div class="alert alert-warning text-center">
+            <h5><i class="fas fa-lock me-2"></i>로그인이 필요합니다</h5>
+            <a href="{% url 'common:login' %}?next={{ request.path }}" class="btn btn-primary mt-2">
+              <i class="fas fa-sign-in-alt me-2"></i>로그인하고 참여하기
             </a>
           </div>
-        </div>
-      </div>
-    {% endif %}
+        {% endif %}
 
-  <!-- 단어 목록 -->
-  <div>
-      <div class="card">
-        <div class="card-header">
-          <h5 class="mb-0">
-            <i class="fas fa-list me-2"></i>단어 목록 ({{ total_entries }}개)
-          </h5>
-        </div>
-        <div class="card-body p-0">
-          {% if entries %}
-            <div id="wordList" class="word-chain-container" style="max-height: 500px; overflow-y: auto;">
-              {% for entry in entries %}
-                <div class="word-entry d-flex align-items-center p-3 {% if not forloop.last %}border-bottom{% endif %}" 
-                     style="transition: all 0.2s ease;">
-                  <div class="word-number me-3">
-                    <span class="badge bg-primary rounded-circle" style="width: 30px; height: 30px; display: flex; align-items: center; justify-content: center;">
-                      {{ forloop.counter }}
-                    </span>
-                  </div>
-                  <div class="word-content flex-grow-1">
-                    <div class="word-text fs-5 fw-bold text-primary mb-1">{{ entry.word }}</div>
-                    <small class="text-muted">
-                      <i class="fas fa-user me-1"></i>{{ entry.author|display_name }}
-                      <i class="fas fa-clock ms-2 me-1"></i>{{ entry.create_date|date:"m.d H:i:s" }}
-                    </small>
-                  </div>
-                  {% if forloop.last and game.status == 'active' %}
-                    <div class="next-hint text-end">
-                      <div class="text-success fw-bold">다음: "{{ entry.word|last }}"</div>
-                      <small class="text-muted">{{ entry.word|last }}로 시작</small>
-                    </div>
-                  {% endif %}
-                </div>
-              {% endfor %}
-            </div>
-          {% else %}
-            <div class="text-center py-5">
-              <i class="fas fa-comments fa-3x text-muted mb-3"></i>
-              <h6>아직 단어가 없습니다</h6>
-              <p class="text-muted">첫 번째 단어를 입력해보세요!</p>
-            </div>
-          {% endif %}
-        </div>
-      </div>
-  </div>
-  </div>
-
-  <!-- 우측 채팅 패널 -->
-    <div class="col-lg-4 mt-3 mt-lg-0">
-      <div class="card h-100">
-        <div class="card-header bg-white">
-          <h6 class="mb-0">
-            <i class="fas fa-comments me-2"></i>채팅
-          </h6>
-        </div>
-        <div class="card-body p-3 d-flex flex-column" style="height: 560px;">
-          <div id="chatList" class="mb-3 flex-grow-1 overflow-auto" style="background: #fff; border-radius:8px; padding:12px;">
-            <!-- 메시지 항목이 여기 렌더링 됩니다 -->
+        <!-- 단어 목록 -->
+        <div class="card border-0 shadow-lg" style="border-radius: 25px; overflow: hidden;">
+          <div class="card-header bg-white border-0 p-4">
+            <h4 class="mb-0">
+              <i class="fas fa-list-ul me-2" style="color: #667eea;"></i>
+              단어 목록
+            </h4>
           </div>
+          <div class="card-body p-4 word-list-container" style="max-height: 500px; overflow-y: auto;">
+            {% if entries %}
+              <div id="wordList">
+                {% for entry in entries reversed %}
+                  <div class="word-item {% if forloop.first %}latest{% endif %}">
+                    <div class="d-flex align-items-center justify-content-between">
+                      <div class="d-flex align-items-center gap-3">
+                        <div class="word-badge">{{ forloop.revcounter }}</div>
+                        <div>
+                          <div class="fs-4 fw-bold text-primary">{{ entry.word }}</div>
+                          <small class="text-muted">
+                            <i class="fas fa-user me-1"></i>{{ entry.author|display_name }}
+                            <i class="fas fa-clock ms-2 me-1"></i>{{ entry.create_date|date:"H:i:s" }}
+                          </small>
+                        </div>
+                      </div>
+                      {% if forloop.first %}
+                        <span class="badge bg-danger">최신</span>
+                      {% endif %}
+                    </div>
+                  </div>
+                {% endfor %}
+              </div>
+            {% else %}
+              <div class="text-center py-5">
+                <i class="fas fa-comment-slash fa-3x text-muted mb-3"></i>
+                <h5 class="text-muted">아직 단어가 없습니다</h5>
+              </div>
+            {% endif %}
+          </div>
+        </div>
+      </div>
 
-          {% if user.is_authenticated and game.status == 'active' %}
+      <!-- 우측 채팅 -->
+      <div class="col-lg-4">
+        <div class="chat-container">
+          <h5 class="text-white mb-3">
+            <i class="fas fa-comments me-2"></i>채팅
+          </h5>
+          <div class="chat-messages" id="chatList">
+            <!-- 채팅 메시지 -->
+          </div>
+          {% if user.is_authenticated %}
             <form id="chatForm" onsubmit="sendChat(event)" class="d-flex gap-2">
               {% csrf_token %}
-              <input id="chatInput" class="form-control" type="text" placeholder="메시지를 입력하세요" maxlength="250" autocomplete="off">
-              <button class="btn btn-primary" type="submit">전송</button>
+              <input id="chatInput" class="form-control chat-input" type="text" placeholder="메시지 입력..." maxlength="250" autocomplete="off" required>
+              <button class="btn chat-send-btn" type="submit">
+                <i class="fas fa-paper-plane"></i>
+              </button>
             </form>
-          {% elif not user.is_authenticated %}
-            <div class="text-center">
-              <a href="{% url 'common:login' %}?next={{ request.path }}" class="btn btn-outline-primary">로그인하고 채팅하기</a>
-            </div>
-          {% else %}
-            <div class="text-center text-muted">게임이 종료되어 채팅을 할 수 없습니다.</div>
           {% endif %}
+        </div>
+
+        <!-- 게임 종료 버튼 -->
+        {% if user == game.creator %}
+          <button class="btn btn-danger w-100 mt-3" style="border-radius: 15px; padding: 15px;" onclick="finishGame()">
+            <i class="fas fa-stop-circle me-2"></i>게임 종료
+          </button>
+        {% endif %}
+      </div>
+    </div>
+  {% else %}
+    <!-- 게임 종료 화면 -->
+    <div class="text-center py-5">
+      <div class="card border-0 shadow-lg mx-auto" style="max-width: 600px; border-radius: 25px;">
+        <div class="card-body p-5">
+          <i class="fas fa-trophy fa-4x text-warning mb-4"></i>
+          <h2 class="mb-3">게임 종료!</h2>
+          <p class="lead text-muted">
+            총 <strong class="text-primary">{{ total_entries }}개</strong>의 단어로<br>
+            <strong class="text-success">{{ participants }}명</strong>이 참여했습니다!
+          </p>
+          <a href="{% url 'pybo:wordchain_list' %}" class="btn btn-primary btn-lg mt-3" style="border-radius: 15px;">
+            <i class="fas fa-list me-2"></i>게임 목록으로
+          </a>
         </div>
       </div>
     </div>
-  </div>
+  {% endif %}
+</div>
 
-  <!-- 뒤로 가기 -->
-  <div class="text-center mt-4">
-    <a href="{% url 'pybo:wordchain_list' %}" class="btn btn-outline-secondary">
-      <i class="fas fa-arrow-left me-1"></i>게임 목록으로
-    </a>
+<!-- 게임 오버 오버레이 -->
+<div class="game-over-overlay" id="gameOverOverlay">
+  <div class="game-over-content">
+    <i class="fas fa-hourglass-end fa-4x text-danger mb-4"></i>
+    <h2 class="mb-3">타임 아웃!</h2>
+    <p class="lead">제한 시간이 종료되었습니다.</p>
+    <button class="btn btn-primary btn-lg mt-3" onclick="location.reload()">
+      <i class="fas fa-redo me-2"></i>새로고침
+    </button>
   </div>
 </div>
 {% endblock %}
 
 {% block script %}
 <script>
+// CSRF 토큰
+const csrfToken = '{{ csrf_token }}';
+
+// 단어 추가
 function addWord(event) {
     event.preventDefault();
-    
+
     const wordInput = document.getElementById('wordInput');
     const word = wordInput.value.trim();
-    
+
     if (!word) {
-        alert('단어를 입력해주세요.');
+        showNotification('단어를 입력해주세요.', 'warning');
         return;
     }
-    
-    // CSRF 토큰 가져오기
-    const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
-    
-    // 버튼 비활성화
+
     const submitBtn = event.target.querySelector('button[type="submit"]');
     const originalText = submitBtn.innerHTML;
-    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>입력중...';
+    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>확인중...';
     submitBtn.disabled = true;
-    
-    // AJAX 요청
+
     fetch('{% url "pybo:wordchain_add_word" game.id %}', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/x-www-form-urlencoded',
             'X-CSRFToken': csrfToken,
         },
-        body: new URLSearchParams({
-            'word': word
-        })
+        body: new URLSearchParams({ 'word': word })
     })
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            // 성공시 페이지 새로고침
-            location.reload();
+            showNotification('단어가 등록되었습니다!', 'success');
+            setTimeout(() => location.reload(), 1000);
         } else {
-            alert(data.message);
-            // 버튼 복구
+            showNotification(data.message || '오류가 발생했습니다.', 'error');
             submitBtn.innerHTML = originalText;
             submitBtn.disabled = false;
             wordInput.focus();
@@ -285,8 +536,7 @@ function addWord(event) {
     })
     .catch(error => {
         console.error('Error:', error);
-        alert('오류가 발생했습니다. 다시 시도해주세요.');
-        // 버튼 복구
+        showNotification('오류가 발생했습니다.', 'error');
         submitBtn.innerHTML = originalText;
         submitBtn.disabled = false;
     });
@@ -298,46 +548,48 @@ function finishGame() {
     }
 }
 
-// 단어 목록을 맨 아래로 스크롤
-document.addEventListener('DOMContentLoaded', function() {
-    const wordList = document.getElementById('wordList');
-    if (wordList) {
-        wordList.scrollTop = wordList.scrollHeight;
-    }
-    
-    // 입력 필드에 포커스
-    const wordInput = document.getElementById('wordInput');
-    if (wordInput) {
-        wordInput.focus();
-    }
-});
+// 알림 표시
+function showNotification(message, type) {
+    const colors = {
+        success: '#28a745',
+        warning: '#ffc107',
+        error: '#dc3545'
+    };
 
-// 단어 항목 호버 효과
-document.addEventListener('DOMContentLoaded', function() {
-    const wordEntries = document.querySelectorAll('.word-entry');
-    wordEntries.forEach(entry => {
-        entry.addEventListener('mouseenter', function() {
-            this.style.backgroundColor = '#f8f9fa';
-        });
-        entry.addEventListener('mouseleave', function() {
-            this.style.backgroundColor = '';
-        });
-    });
-});
+    const notification = document.createElement('div');
+    notification.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: ${colors[type]};
+        color: white;
+        padding: 20px 30px;
+        border-radius: 15px;
+        box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+        z-index: 10000;
+        animation: slideIn 0.5s ease;
+    `;
+    notification.textContent = message;
+    document.body.appendChild(notification);
 
-// --------- 타이머 기능 ---------
+    setTimeout(() => {
+        notification.style.animation = 'fadeOut 0.5s ease';
+        setTimeout(() => notification.remove(), 500);
+    }, 3000);
+}
+
 {% if game.status == 'active' %}
+// 타이머 기능
 (function() {
     const timeoutSeconds = {{ timeout_seconds }};
-    const timerBar = document.getElementById('timerBar');
-    const timerText = document.getElementById('timeRemaining');
-    const timerBarText = document.getElementById('timerBarText');
+    const circleProgress = document.getElementById('circleProgress');
+    const timerNumber = document.getElementById('timerNumber');
+    const radius = 90;
+    const circumference = 2 * Math.PI * radius;
 
     {% if entries %}
-    // 마지막 단어 입력 시간 (서버에서 전달)
     const lastEntryTime = new Date('{{ entries.last.create_date|date:"c" }}');
     {% else %}
-    // 게임 시작 시간
     const lastEntryTime = new Date('{{ game.create_date|date:"c" }}');
     {% endif %}
 
@@ -347,72 +599,71 @@ document.addEventListener('DOMContentLoaded', function() {
         const remainingSeconds = Math.max(0, timeoutSeconds - elapsedSeconds);
         const percentage = (remainingSeconds / timeoutSeconds) * 100;
 
-        // 진행률 업데이트
-        timerBar.style.width = percentage + '%';
-        timerBar.setAttribute('aria-valuenow', percentage);
+        // 원형 프로그레스 바 업데이트
+        const offset = circumference - (percentage / 100) * circumference;
+        circleProgress.style.strokeDashoffset = offset;
 
-        // 남은 시간 표시
+        // 숫자 업데이트
         const displaySeconds = Math.ceil(remainingSeconds);
-        timerText.textContent = displaySeconds;
-        timerBarText.textContent = displaySeconds + '초 남음';
+        timerNumber.textContent = displaySeconds;
 
-        // 색상 변경 (초록 -> 노랑 -> 빨강)
+        // 색상 변경
         if (percentage > 50) {
-            timerBar.classList.remove('bg-warning', 'bg-danger');
-            timerBar.classList.add('bg-success');
+            circleProgress.style.stroke = '#28a745';
+            timerNumber.style.color = '#28a745';
         } else if (percentage > 25) {
-            timerBar.classList.remove('bg-success', 'bg-danger');
-            timerBar.classList.add('bg-warning');
+            circleProgress.style.stroke = '#ffc107';
+            timerNumber.style.color = '#ffc107';
         } else {
-            timerBar.classList.remove('bg-success', 'bg-warning');
-            timerBar.classList.add('bg-danger');
+            circleProgress.style.stroke = '#dc3545';
+            timerNumber.style.color = '#dc3545';
         }
 
-        // 시간 초과 시
+        // 타임아웃
         if (remainingSeconds <= 0) {
-            timerBarText.textContent = '시간 초과!';
             clearInterval(timerInterval);
-
-            // 3초 후 페이지 새로고침 (게임 종료 확인)
-            setTimeout(function() {
-                alert('타임아웃! 게임이 종료되었습니다.');
-                location.reload();
-            }, 1000);
+            document.getElementById('gameOverOverlay').style.display = 'flex';
+            setTimeout(() => {
+                showNotification('타임아웃! 게임이 종료되었습니다.', 'error');
+                setTimeout(() => location.reload(), 2000);
+            }, 500);
         }
 
-        // 마지막 10초 경고음 효과 (진동)
+        // 마지막 10초 진동 효과
         if (remainingSeconds <= 10 && remainingSeconds > 0) {
-            timerBar.style.animation = 'shake 0.5s infinite';
+            timerNumber.style.animation = 'shake 0.5s infinite';
         }
     }
 
-    // 100ms마다 타이머 업데이트
+    // 초기 설정
+    circleProgress.style.strokeDasharray = circumference;
     const timerInterval = setInterval(updateTimer, 100);
-
-    // 초기 실행
     updateTimer();
 })();
-{% endif %}
-// --------- 채팅 기능 ---------
-</script>
 
-<script>
-// --------- 채팅 기능 ---------
+// Shake 애니메이션 추가
+const style = document.createElement('style');
+style.textContent = `
+    @keyframes shake {
+        0%, 100% { transform: translate(-50%, -50%) rotate(0deg); }
+        25% { transform: translate(-50%, -50%) rotate(-5deg); }
+        75% { transform: translate(-50%, -50%) rotate(5deg); }
+    }
+`;
+document.head.appendChild(style);
+{% endif %}
+
+// 채팅 기능
 let lastChatFetch = null;
-const renderedChatKeys = new Set(); // prevent duplicate rendering (author+time+msg)
+const renderedChatKeys = new Set();
 
 function formatChatDate(isoString) {
   if (!isoString) return '';
   try {
     const d = new Date(isoString);
-    if (isNaN(d.getTime())) return isoString;
-    const Y = d.getFullYear();
-    const M = String(d.getMonth() + 1).padStart(2, '0');
-    const D = String(d.getDate()).padStart(2, '0');
     const h = String(d.getHours()).padStart(2, '0');
     const m = String(d.getMinutes()).padStart(2, '0');
-    const s = String(d.getSeconds()).padStart(2, '0');
-    return `${Y}-${M}-${D} ${h}:${m}:${s}`;
+    return `${h}:${m}`;
   } catch (e) {
     return isoString;
   }
@@ -420,20 +671,19 @@ function formatChatDate(isoString) {
 
 function renderChatMessage(item) {
   const wrap = document.createElement('div');
-  wrap.className = 'chat-message mb-2 p-2';
+  wrap.className = 'chat-message';
 
-  const header = document.createElement('div');
-  header.className = 'small text-muted mb-1';
-  // use author_display when available (profile nickname), fallback to username
   const who = item.author_display || item.author || '익명';
   const pretty = formatChatDate(item.create_date);
-  header.textContent = `${who} · ${pretty}`;
 
-  const body = document.createElement('div');
-  body.textContent = item.message;
+  wrap.innerHTML = `
+    <div class="d-flex justify-content-between align-items-start mb-1">
+      <strong class="text-primary">${who}</strong>
+      <small class="text-muted">${pretty}</small>
+    </div>
+    <div>${item.message}</div>
+  `;
 
-  wrap.appendChild(header);
-  wrap.appendChild(body);
   return wrap;
 }
 
@@ -441,20 +691,19 @@ function fetchChats() {
   fetch('{% url "pybo:wordchain_get_chats" game.id %}' + (lastChatFetch ? '?since=' + encodeURIComponent(lastChatFetch) : ''))
     .then(r => r.json())
     .then(data => {
-          if (data.success && data.messages && data.messages.length) {
-            const chatList = document.getElementById('chatList');
-            data.messages.forEach(m => {
-              // composite key: author + create_date + message
-              const who = m.author_display || m.author || '익명';
-              const key = `${who}|${m.create_date}|${m.message}`;
-              if (!renderedChatKeys.has(key)) {
-                chatList.appendChild(renderChatMessage(m));
-                renderedChatKeys.add(key);
-                lastChatFetch = m.create_date; // advance since to last seen
-              }
-            });
-            chatList.scrollTop = chatList.scrollHeight;
+      if (data.success && data.messages && data.messages.length) {
+        const chatList = document.getElementById('chatList');
+        data.messages.forEach(m => {
+          const who = m.author_display || m.author || '익명';
+          const key = `${who}|${m.create_date}|${m.message}`;
+          if (!renderedChatKeys.has(key)) {
+            chatList.appendChild(renderChatMessage(m));
+            renderedChatKeys.add(key);
+            lastChatFetch = m.create_date;
           }
+        });
+        chatList.scrollTop = chatList.scrollHeight;
+      }
     }).catch(e => console.error(e));
 }
 
@@ -463,10 +712,11 @@ function sendChat(e) {
   const input = document.getElementById('chatInput');
   const text = input.value.trim();
   if (!text) return;
-  const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+
   const btn = e.target.querySelector('button[type="submit"]');
   const old = btn.innerHTML;
-  btn.innerHTML = '전송중...'; btn.disabled = true;
+  btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+  btn.disabled = true;
 
   fetch('{% url "pybo:wordchain_add_chat" game.id %}', {
     method: 'POST',
@@ -478,9 +728,8 @@ function sendChat(e) {
   }).then(r => r.json()).then(data => {
     if (data.success) {
       const chatList = document.getElementById('chatList');
-      // server returns create_date in ISO format
-  const who = data.author_display || data.author || '익명';
-  const key = `${who}|${data.create_date}|${data.message}`;
+      const who = data.author_display || data.author || '익명';
+      const key = `${who}|${data.create_date}|${data.message}`;
       if (!renderedChatKeys.has(key)) {
         chatList.appendChild(renderChatMessage(data));
         renderedChatKeys.add(key);
@@ -489,68 +738,27 @@ function sendChat(e) {
       chatList.scrollTop = chatList.scrollHeight;
       input.value = '';
     } else {
-      alert(data.message || '메시지 전송 실패');
+      showNotification(data.message || '메시지 전송 실패', 'error');
     }
   }).catch(err => {
     console.error(err);
-    alert('오류가 발생했습니다.');
-  }).finally(() => { btn.innerHTML = old; btn.disabled = false; });
+    showNotification('오류가 발생했습니다.', 'error');
+  }).finally(() => {
+    btn.innerHTML = old;
+    btn.disabled = false;
+  });
 }
 
-// 주기적 폴링
+// 페이지 로드 시
 document.addEventListener('DOMContentLoaded', function() {
   fetchChats();
   setInterval(fetchChats, 3000);
+
+  // 단어 입력 포커스
+  const wordInput = document.getElementById('wordInput');
+  if (wordInput) {
+    wordInput.focus();
+  }
 });
 </script>
-
-<style>
-.word-chain-container {
-    background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
-}
-
-.word-entry:hover {
-    background-color: #f8f9fa !important;
-}
-
-.word-number .badge {
-    font-size: 0.8rem;
-}
-
-.word-text {
-    text-shadow: 0 1px 2px rgba(0,0,0,0.1);
-}
-
-.next-hint {
-    animation: pulse 2s infinite;
-}
-
-@keyframes pulse {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.7; }
-}
-
-#wordInput:focus {
-    border-color: #0d6efd;
-    box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25);
-}
-
-/* Chat styles */
-.chat-message {
-  background: #fff;
-  border-radius: 6px;
-  box-shadow: 0 1px 2px rgba(0,0,0,0.04);
-}
-
-#chatList {
-  background: #fafafa;
-}
-
-/* Timer shake animation */
-@keyframes shake {
-  0%, 100% { transform: translateX(0); }
-  25% { transform: translateX(-5px); }
-  75% { transform: translateX(5px); }
-}
-</style>
 {% endblock %}
