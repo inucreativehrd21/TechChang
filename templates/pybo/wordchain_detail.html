@@ -928,6 +928,90 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 
+
+// === WebSocket 실시간 통신 ===
+let gameSocket = null;
+let useWebSocket = true;  // WebSocket 사용 여부
+
+function initWebSocket() {
+    if (!useWebSocket) return;
+    
+    const wsScheme = window.location.protocol === 'https:' ? 'wss' : 'ws';
+    const wsPath = `${wsScheme}://${window.location.host}/ws/wordchain/{{ game.id }}/`;
+    
+    console.log('[WebSocket] 연결 시도:', wsPath);
+    
+    try {
+        gameSocket = new WebSocket(wsPath);
+        
+        gameSocket.onopen = function(e) {
+            console.log('[WebSocket] 연결 성공!');
+            // 폴링 중지 (WebSocket이 활성화되면 폴링은 백업용으로만)
+            if (pollingInterval) {
+                clearInterval(pollingInterval);
+                pollingInterval = setInterval(fetchGameState, 5000); // 백업용 5초 폴링
+            }
+        };
+        
+        gameSocket.onmessage = function(e) {
+            const data = JSON.parse(e.data);
+            console.log('[WebSocket] 메시지 수신:', data);
+            
+            if (data.type === 'game_state') {
+                // 초기 게임 상태
+                handleGameState(data.data);
+            } else if (data.type === 'game_update') {
+                // 실시간 업데이트
+                console.log('[WebSocket] 게임 업데이트!');
+                // 즉시 상태 다시 가져오기
+                fetchGameState();
+            }
+        };
+        
+        gameSocket.onclose = function(e) {
+            console.log('[WebSocket] 연결 종료. 폴링 모드로 전환.');
+            useWebSocket = false;
+            // 폴링 재개
+            if (pollingInterval) {
+                clearInterval(pollingInterval);
+            }
+            startPolling();
+        };
+        
+        gameSocket.onerror = function(e) {
+            console.error('[WebSocket] 오류 발생:', e);
+        };
+        
+    } catch (error) {
+        console.error('[WebSocket] 초기화 실패:', error);
+        useWebSocket = false;
+    }
+}
+
+function handleGameState(gameState) {
+    if (!gameState || !gameState.game) return;
+    
+    const gameData = gameState.game;
+    
+    // 턴 업데이트
+    if (gameData.current_turn && lastCurrentTurnId !== gameData.current_turn.id) {
+        lastCurrentTurnId = gameData.current_turn.id;
+        console.log('[WebSocket] 턴 변경:', gameData.current_turn.display_name);
+        updateTurnDisplay(gameData.current_turn);
+    }
+    
+    // 새 단어 추가
+    if (gameState.last_entry) {
+        const entryKey = gameState.last_entry.word + '|' + gameState.last_entry.create_date;
+        if (lastWordKey !== entryKey) {
+            if (lastWordKey !== '') {
+                addWordToList(gameState.last_entry);
+            }
+            lastWordKey = entryKey;
+        }
+    }
+}
+
 // 게임 상태 polling - 실시간 업데이트 (500ms)
 let lastGameStatus = '{{ game.status }}';
 let lastParticipantCount = {{ participant_count }};
@@ -1076,7 +1160,7 @@ function fetchGameState() {
 {% if game.status != 'finished' %}
 function startPolling() {
     // 게임 상태에 따라 다른 간격
-    const interval = '{{ game.status }}' === 'active' ? 500 : 2000; // active: 0.5초, waiting: 2초
+    const interval = '{{ game.status }}' === 'active' ? 100 : 1000; // active: 0.1초, waiting: 1초
 
     console.log(`[실시간] Polling 시작 (간격: ${interval}ms)`);
 
@@ -1099,7 +1183,11 @@ function startPolling() {
     setTimeout(fetchGameState, 1000);
 }
 
-startPolling();
+// WebSocket 또는 폴링 시작
+if ('{{ game.status }}' !== 'finished') {
+    initWebSocket();  // WebSocket 시도
+    startPolling();   // 폴링도 시작 (백업용)
+}
 {% endif %}
 
 </script>

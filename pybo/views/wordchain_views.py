@@ -15,6 +15,8 @@ from django.db import transaction
 from django.db.models import Count
 from django.conf import settings
 import requests
+from channels.layers import get_channel_layer
+from asgiref.sync import async_to_sync
 
 from ..models import WordChainGame, WordChainEntry, WordChainChatMessage
 from django.views.decorators.http import require_POST, require_GET
@@ -406,6 +408,25 @@ def wordchain_add_word(request, game_id):
             game.save()
 
             next_turn_username = game.current_turn.username if game.current_turn else "알 수 없음"
+            
+            # WebSocket 브로드캐스트 - 즉시 알림
+            try:
+                channel_layer = get_channel_layer()
+                async_to_sync(channel_layer.group_send)(
+                    f'wordchain_{game_id}',
+                    {
+                        'type': 'game_update',
+                        'data': {
+                            'action': 'word_added',
+                            'word': word,
+                            'author': request.user.username,
+                            'next_char': word[-1],
+                            'current_turn': next_turn_username,
+                        }
+                    }
+                )
+            except Exception as e:
+                logger.error(f"WebSocket broadcast error: {e}")
 
             return JsonResponse({
                 'success': True,
