@@ -928,122 +928,178 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 
-// 게임 상태 polling
+// 게임 상태 polling - 실시간 업데이트 (500ms)
 let lastGameStatus = '{{ game.status }}';
 let lastParticipantCount = {{ participant_count }};
 let lastCurrentTurnId = {{ game.current_turn.id|default:"null" }};
+let lastWordKey = '';
+let isMyTurn = false;
+let pollingInterval = null;
+
+function updateTurnDisplay(currentTurn) {
+    const turnAlert = document.querySelector('.alert-info h5');
+    if (!turnAlert) return;
+
+    isMyTurn = currentTurn.id === {{ user.id|default:"0" }};
+    const badge = isMyTurn ? '<span class="badge bg-success ms-2 animate__animated animate__pulse animate__infinite">내 차례!</span>' : '';
+    turnAlert.innerHTML = `
+        <i class="fas fa-hand-point-right me-2"></i>
+        현재 차례: <strong>${currentTurn.display_name}</strong>
+        ${badge}
+    `;
+
+    // 입력창 제어
+    const wordInput = document.getElementById('wordInput');
+    if (wordInput) {
+        wordInput.disabled = !isMyTurn;
+        if (isMyTurn) {
+            wordInput.focus();
+        }
+    }
+}
+
+function addWordToList(entry) {
+    const wordList = document.getElementById('wordList');
+    if (!wordList) return;
+
+    const newWordItem = document.createElement('div');
+    newWordItem.className = 'word-item';
+    newWordItem.style.animation = 'slideInRight 0.5s ease';
+    newWordItem.dataset.wordKey = entry.word + '|' + entry.create_date;
+
+    const now = new Date();
+    const entryDate = new Date(entry.create_date);
+    const secondsAgo = Math.floor((now - entryDate) / 1000);
+    const timeText = secondsAgo < 5 ? '방금' : secondsAgo < 60 ? `${secondsAgo}초 전` : `${Math.floor(secondsAgo / 60)}분 전`;
+
+    newWordItem.innerHTML = `
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <span class="word-text">${entry.word}</span>
+                <small class="text-muted ms-2">by ${entry.author_display}</small>
+            </div>
+            <small class="text-muted">${timeText}</small>
+        </div>
+    `;
+    wordList.insertBefore(newWordItem, wordList.firstChild);
+
+    // 다음 글자 표시 업데이트
+    const lastChar = entry.word[entry.word.length - 1];
+    updateExpectedChar(lastChar);
+
+    console.log('[실시간] 새 단어 추가:', entry.word);
+}
+
+function updateExpectedChar(char) {
+    // 단어 체인 표시 업데이트
+    const expectedDisplays = document.querySelectorAll('.word-display');
+    if (expectedDisplays.length > 1) {
+        expectedDisplays[1].textContent = char + '___';
+    }
+
+    // 입력창 placeholder 업데이트
+    const wordInput = document.getElementById('wordInput');
+    if (wordInput) {
+        wordInput.placeholder = `'${char}'로 시작하는 단어 입력`;
+    }
+}
 
 function fetchGameState() {
     fetch('{% url "pybo:wordchain_get_state" game.id %}')
         .then(r => r.json())
         .then(data => {
             if (!data.success) return;
-            
+
             const gameData = data.game;
-            
-            // 상태 변경 감지 (waiting -> active)
+
+            // === 상태 변경 감지 ===
+
+            // waiting -> active
             if (lastGameStatus === 'waiting' && gameData.status === 'active') {
-                // 게임 시작됨! 페이지 새로고침
+                console.log('[실시간] 게임 시작!');
                 showNotification('게임이 시작되었습니다!', 'success');
-                setTimeout(() => location.reload(), 1000);
+                setTimeout(() => location.reload(), 800);
                 return;
             }
-            
-            // 상태 변경 감지 (active -> finished)
+
+            // active -> finished
             if (lastGameStatus === 'active' && gameData.status === 'finished') {
+                console.log('[실시간] 게임 종료!');
                 showNotification('게임이 종료되었습니다!', 'warning');
-                setTimeout(() => location.reload(), 1000);
+                setTimeout(() => location.reload(), 800);
                 return;
             }
-            
-            // 참가자 수 변경
+
+            // === 대기실 업데이트 ===
             if (gameData.status === 'waiting' && lastParticipantCount !== gameData.participant_count) {
+                console.log('[실시간] 참가자 변경:', lastParticipantCount, '->', gameData.participant_count);
                 lastParticipantCount = gameData.participant_count;
-                // 대기실 참가자 목록 새로고침
                 location.reload();
             }
-            
-            // 현재 턴 변경 (active 상태에서만)
-            if (gameData.status === 'active' && gameData.current_turn) {
-                if (lastCurrentTurnId !== gameData.current_turn.id) {
+
+            // === 활성 게임 업데이트 ===
+            if (gameData.status === 'active') {
+
+                // 턴 변경 감지
+                if (gameData.current_turn && lastCurrentTurnId !== gameData.current_turn.id) {
+                    const wasMyTurn = isMyTurn;
                     lastCurrentTurnId = gameData.current_turn.id;
-                    
-                    // 턴 표시 업데이트
-                    const turnAlert = document.querySelector('.alert-info h5');
-                    if (turnAlert) {
-                        const isMyTurn = gameData.current_turn.id === {{ user.id|default:"0" }};
-                        const badge = isMyTurn ? '<span class="badge bg-success ms-2">내 차례!</span>' : '';
-                        turnAlert.innerHTML = `
-                            <i class="fas fa-hand-point-right me-2"></i>
-                            현재 차례: <strong>${gameData.current_turn.display_name}</strong>
-                            ${badge}
-                        `;
+                    console.log('[실시간] 턴 변경:', gameData.current_turn.display_name);
+                    updateTurnDisplay(gameData.current_turn);
+
+                    // 내 차례가 되었을 때만 알림
+                    if (!wasMyTurn && isMyTurn) {
+                        showNotification('당신의 차례입니다!', 'success');
                     }
-                    
-                    // 입력창 활성화/비활성화
-                    const wordInput = document.getElementById('wordInput');
-                    if (wordInput) {
-                        wordInput.disabled = !isMyTurn;
-                        if (isMyTurn) {
-                            wordInput.focus();
-                            showNotification('당신의 차례입니다!', 'success');
+                }
+
+                // 새 단어 추가 감지
+                if (data.last_entry) {
+                    const entryKey = data.last_entry.word + '|' + data.last_entry.create_date;
+
+                    if (lastWordKey !== entryKey) {
+                        // 페이지 로드 직후가 아닐 때만 추가
+                        if (lastWordKey !== '') {
+                            addWordToList(data.last_entry);
                         }
+                        lastWordKey = entryKey;
                     }
                 }
             }
-            
+
             lastGameStatus = gameData.status;
-            
-            // 마지막 단어 변경 체크 (다른 사람이 단어 입력했을 때)
-            if (gameData.status === 'active' && data.last_entry) {
-                const wordList = document.getElementById('wordList');
-                if (wordList && wordList.firstChild) {
-                    const firstWord = wordList.firstChild.querySelector('.word-text');
-                    if (firstWord && firstWord.textContent !== data.last_entry.word) {
-                        // 새로운 단어가 추가됨
-                        const newWordItem = document.createElement('div');
-                        newWordItem.className = 'word-item';
-                        newWordItem.style.animation = 'slideInRight 0.5s ease';
-                        
-                        const now = new Date();
-                        const entryDate = new Date(data.last_entry.create_date);
-                        const secondsAgo = Math.floor((now - entryDate) / 1000);
-                        const timeText = secondsAgo < 60 ? '방금' : `${Math.floor(secondsAgo / 60)}분 전`;
-                        
-                        newWordItem.innerHTML = `
-                            <div class="d-flex justify-content-between align-items-center">
-                                <div>
-                                    <span class="word-text">\${data.last_entry.word}</span>
-                                    <small class="text-muted ms-2">by \${data.last_entry.author_display}</small>
-                                </div>
-                                <small class="text-muted">\${timeText}</small>
-                            </div>
-                        `;
-                        wordList.insertBefore(newWordItem, wordList.firstChild);
-                        
-                        // 다음 글자 표시 업데이트
-                        const lastWord = data.last_entry.word;
-                        const nextChar = lastWord[lastWord.length - 1];
-                        const expectedDisplay = document.querySelectorAll('.word-display')[1];
-                        if (expectedDisplay) {
-                            expectedDisplay.textContent = nextChar + '___';
-                        }
-                        
-                        // 입력창 placeholder 업데이트
-                        const wordInput = document.getElementById('wordInput');
-                        if (wordInput) {
-                            wordInput.placeholder = `'\${nextChar}'로 시작하는 단어 입력`;
-                        }
-                    }
-                }
-            }
         })
-        .catch(e => console.error('State fetch error:', e));
+        .catch(e => console.error('[실시간] State fetch error:', e));
 }
 
-// 2초마다 게임 상태 체크
+// Polling 시작
 {% if game.status != 'finished' %}
-setInterval(fetchGameState, 2000);
+function startPolling() {
+    // 게임 상태에 따라 다른 간격
+    const interval = '{{ game.status }}' === 'active' ? 500 : 2000; // active: 0.5초, waiting: 2초
+
+    console.log(`[실시간] Polling 시작 (간격: ${interval}ms)`);
+
+    if (pollingInterval) {
+        clearInterval(pollingInterval);
+    }
+
+    // 첫 실행 시 lastWordKey 초기화
+    {% if entries and game.start_date %}
+    {% for entry in entries %}
+    {% if entry.create_date >= game.start_date %}
+    lastWordKey = '{{ entry.word }}|{{ entry.create_date|date:"c" }}';
+    {% endif %}
+    {% endfor %}
+    {% endif %}
+
+    pollingInterval = setInterval(fetchGameState, interval);
+
+    // 1초 후 첫 실행 (초기화 후)
+    setTimeout(fetchGameState, 1000);
+}
+
+startPolling();
 {% endif %}
 
 </script>
