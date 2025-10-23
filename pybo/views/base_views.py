@@ -59,8 +59,12 @@ def index(request):
     except (EmptyPage, PageNotAnInteger):
         page_obj = paginator.get_page(1)
     
-    # 카테고리 목록 가져오기
+    # 카테고리 목록 및 각 카테고리별 글 개수 가져오기
     categories = Category.objects.all().order_by('name')
+    category_counts = {}
+    for cat in categories:
+        category_counts[cat.name] = Question.objects.filter(is_deleted=False, category=cat).count()
+    total_count = Question.objects.filter(is_deleted=False).count()
     
     context = {
         'question_list': page_obj, 
@@ -69,6 +73,8 @@ def index(request):
         'category': category_name,
         'sort': sort,
         'categories': categories,
+        'category_counts': category_counts,
+        'total_count': total_count,
     }
     return render(request, 'pybo/question_list.html', context)
 
@@ -80,6 +86,13 @@ def detail(request, question_id):
                         .prefetch_related('voter', 'comment_set__author'),
         pk=question_id
     )
+
+    # 잠금된 글은 로그인한 사용자만 볼 수 있음
+    if question.is_locked and not request.user.is_authenticated:
+        from django.contrib import messages
+        from django.shortcuts import redirect
+        messages.error(request, '회원 전용 글입니다. 로그인 후 이용해주세요.')
+        return redirect('common:login')
 
     # 조회수 중복 방지 (5분)
     session_key = f'viewed_question_{question_id}'

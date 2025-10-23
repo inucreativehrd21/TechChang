@@ -123,25 +123,33 @@ def check_word_exists(word):
 
 def wordchain_list(request):
     """끝말잇기 게임 목록"""
-    # 활성 게임과 종료된 게임을 분리
+    # 대기중, 활성, 종료된 게임을 분리
+    waiting_games = WordChainGame.objects.filter(status='waiting').annotate(
+        entry_count=Count('entries')
+    ).order_by('-create_date')
+
     active_games = WordChainGame.objects.filter(status='active').annotate(
         entry_count=Count('entries')
     ).order_by('-create_date')
-    
+
     finished_games = WordChainGame.objects.filter(status='finished').annotate(
         entry_count=Count('entries')
     ).order_by('-end_date')[:10]  # 최근 종료된 게임 10개만
-    
-    # 페이징 (활성 게임만)
-    paginator = Paginator(active_games, 10)
+
+    # 페이징 (대기중 + 활성 게임)
+    all_active = list(waiting_games) + list(active_games)
+    paginator = Paginator(all_active, 10)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
-    
+
     context = {
+        'waiting_games': waiting_games,
         'active_games': page_obj,
         'finished_games': finished_games,
     }
     return render(request, 'pybo/wordchain_list.html', context)
+
+
 
 
 @login_required
@@ -193,6 +201,65 @@ def wordchain_create(request):
     return redirect('pybo:wordchain_list')
 
 
+
+
+@login_required
+@require_POST
+def wordchain_join(request, game_id):
+    """게임 참가"""
+    game = get_object_or_404(WordChainGame, id=game_id)
+
+    can_join, message = game.can_join(request.user)
+    if not can_join:
+        return JsonResponse({'success': False, 'message': message})
+
+    try:
+        game.participants.add(request.user)
+        participant_count = game.participants.count()
+
+        return JsonResponse({
+            'success': True,
+            'message': '게임에 참가했습니다!',
+            'participant_count': participant_count
+        })
+    except Exception as e:
+        return JsonResponse({'success': False, 'message': '참가 중 오류가 발생했습니다.'})
+
+
+@login_required
+@require_POST
+def wordchain_start(request, game_id):
+    """게임 시작"""
+    game = get_object_or_404(WordChainGame, id=game_id)
+
+    can_start, message = game.can_start(request.user)
+    if not can_start:
+        return JsonResponse({'success': False, 'message': message})
+
+    try:
+        with transaction.atomic():
+            game.status = 'active'
+            game.start_date = timezone.now()
+
+            # 첫 번째 턴 설정 (생성자부터 시작)
+            participants_list = list(game.participants.all().order_by('id'))
+            if game.creator in participants_list:
+                game.current_turn = game.creator
+            else:
+                game.current_turn = participants_list[0]
+
+            # 참가자 수 업데이트
+            game.participant_count = game.participants.count()
+            game.save()
+
+            return JsonResponse({
+                'success': True,
+                'message': '게임이 시작되었습니다!',
+                'current_turn': game.current_turn.username if game.current_turn else None
+            })
+    except Exception as e:
+        return JsonResponse({'success': False, 'message': f'게임 시작 중 오류가 발생했습니다: {str(e)}'})
+
 def wordchain_detail(request, game_id):
     """끝말잇기 게임 상세"""
     game = get_object_or_404(WordChainGame, id=game_id)
@@ -212,11 +279,15 @@ def wordchain_detail(request, game_id):
                 game.save()
                 messages.warning(request, f'타임아웃으로 게임이 자동 종료되었습니다. (제한시간: {timeout_seconds}초)')
 
+    # 참가자 목록
+    participants_list = game.participants.all().order_by('id')
+
     context = {
         'game': game,
         'entries': entries,
         'total_entries': entries.count(),
-        'participants': entries.values('author__username').distinct().count(),
+        'participants': participants_list,
+        'participant_count': participants_list.count(),
         'timeout_seconds': settings.WORDCHAIN_TIMEOUT,  # 템플릿에 타임아웃 시간 전달
     }
     return render(request, 'pybo/wordchain_detail.html', context)
@@ -230,8 +301,19 @@ def wordchain_add_word(request, game_id):
 
     game = get_object_or_404(WordChainGame, id=game_id)
 
+    if game.status == 'waiting':
+        return JsonResponse({'success': False, 'message': '게임이 아직 시작되지 않았습니다.'})
+
     if game.status != 'active':
         return JsonResponse({'success': False, 'message': '종료된 게임입니다.'})
+
+    # 턴 검증 - 현재 턴인 사용자만 단어를 입력할 수 있음
+    if game.current_turn != request.user:
+        current_username = game.current_turn.username if game.current_turn else "알 수 없음"
+        return JsonResponse({
+            'success': False,
+            'message': f'현재 {current_username}님의 차례입니다!'
+        })
 
     word = request.POST.get('word', '').strip()
 
@@ -295,10 +377,14 @@ def wordchain_add_word(request, game_id):
                 word=word
             )
 
+            # 턴을 다음 사용자로 넘김
+            game.advance_turn()
+
             # 참가자 수 업데이트
-            unique_participants = game.entries.values('author').distinct().count()
-            game.participant_count = unique_participants
+            game.participant_count = game.participants.count()
             game.save()
+
+            next_turn_username = game.current_turn.username if game.current_turn else "알 수 없음"
 
             return JsonResponse({
                 'success': True,
@@ -308,10 +394,11 @@ def wordchain_add_word(request, game_id):
                 'next_char': word[-1],
                 'entry_count': game.entries.count(),
                 'timeout_seconds': timeout_seconds,  # 클라이언트에 타임아웃 시간 전달
+                'current_turn': next_turn_username,  # 다음 턴 사용자
             })
 
     except Exception as e:
-        return JsonResponse({'success': False, 'message': '단어 추가 중 오류가 발생했습니다.'})
+        return JsonResponse({'success': False, 'message': f'단어 추가 중 오류가 발생했습니다: {str(e)}'})
 
 
 @login_required
@@ -322,7 +409,7 @@ def wordchain_add_chat(request, game_id):
     반환: JSON {success, message, author, create_date}
     """
     game = get_object_or_404(WordChainGame, id=game_id)
-    if game.status != 'active':
+    if game.status == 'finished':
         return JsonResponse({'success': False, 'message': '종료된 게임입니다.'})
 
     text = request.POST.get('message', '').strip()

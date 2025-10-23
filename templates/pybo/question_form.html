@@ -176,6 +176,21 @@
                             </div>
                         </div>
 
+                        <!-- 회원 전용 글 설정 -->
+                        <div class="mb-4">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" 
+                                       name="is_locked" id="is_locked" 
+                                       {% if form.is_locked.value %}checked{% endif %}>
+                                <label class="form-check-label fw-semibold" for="is_locked">
+                                    <i class="fas fa-lock me-2 text-warning"></i>회원 전용 글로 설정
+                                </label>
+                            </div>
+                            <div class="form-text">
+                                <i class="fas fa-info-circle me-1"></i>
+                                로그인한 회원만 이 글을 볼 수 있습니다
+                            </div>
+                        </div>
 
                         <!-- 버튼 영역 -->
                         <div class="d-flex justify-content-between align-items-center pt-4 border-top">

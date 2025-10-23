@@ -14,27 +14,27 @@
                 <div class="list-group list-group-flush">
                     <a href="?sort={{ sort }}&kw={{ kw }}&page=1" 
                        class="list-group-item list-group-item-action {% if not category %}active{% endif %}">
-                        <i class="fas fa-list me-2"></i>전체 ({{ question_list.paginator.count }})
+                        <i class="fas fa-list me-2"></i>전체 {% if not category %}({{ total_count }}){% endif %}
                     </a>
                     <a href="?category=HRD&sort={{ sort }}&kw={{ kw }}&page=1" 
                        class="list-group-item list-group-item-action {% if category == 'HRD' %}active{% endif %}">
-                        <i class="fas fa-users me-2"></i>HRD
+                        <i class="fas fa-users me-2"></i>HRD {% if category == 'HRD' %}({{ category_counts.HRD }}){% endif %}
                     </a>
                     <a href="?category=데이터분석&sort={{ sort }}&kw={{ kw }}&page=1" 
                        class="list-group-item list-group-item-action {% if category == '데이터분석' %}active{% endif %}">
-                        <i class="fas fa-chart-bar me-2"></i>데이터분석
+                        <i class="fas fa-chart-bar me-2"></i>데이터분석 {% if category == '데이터분석' %}({{ category_counts.데이터분석 }}){% endif %}
                     </a>
                     <a href="?category=프로그래밍&sort={{ sort }}&kw={{ kw }}&page=1" 
                        class="list-group-item list-group-item-action {% if category == '프로그래밍' %}active{% endif %}">
-                        <i class="fas fa-code me-2"></i>프로그래밍
+                        <i class="fas fa-code me-2"></i>프로그래밍 {% if category == '프로그래밍' %}({{ category_counts.프로그래밍 }}){% endif %}
                     </a>
                     <a href="?category=자유게시판&sort={{ sort }}&kw={{ kw }}&page=1" 
                        class="list-group-item list-group-item-action {% if category == '자유게시판' %}active{% endif %}">
-                        <i class="fas fa-comments me-2"></i>자유게시판
+                        <i class="fas fa-comments me-2"></i>자유게시판 {% if category == '자유게시판' %}({{ category_counts.자유게시판 }}){% endif %}
                     </a>
                     <a href="?category=앨범&sort={{ sort }}&kw={{ kw }}&page=1" 
                        class="list-group-item list-group-item-action {% if category == '앨범' %}active{% endif %}">
-                        <i class="fas fa-images me-2"></i>앨범
+                        <i class="fas fa-images me-2"></i>앨범 {% if category == '앨범' %}({{ category_counts.앨범 }}){% endif %}
                     </a>
                 </div>
             </div>
@@ -152,7 +152,7 @@
                                     </td>
                                     <td>
                                         <a href="{% url 'pybo:detail' question.id %}" class="text-decoration-none">
-                                            {{ question.subject }}
+                                            {% if question.is_locked %}<i class="fas fa-lock text-warning me-1"></i>{% endif %}{{ question.subject }}
                                         </a>
                                         {% if question.answer_set.count > 0 %}
                                         <span class="text-danger small ms-2">[{{ question.answer_set.count }}]</span>
@@ -192,7 +192,7 @@
                                 <div class="flex-grow-1 me-3">
                                     <h6 class="mobile-post-title">
                                         <a href="{% url 'pybo:detail' question.id %}">
-                                            {{ question.subject }}
+                                            {% if question.is_locked %}<i class="fas fa-lock text-warning me-1"></i>{% endif %}{{ question.subject }}
                                         </a>
                                     </h6>
                                     <div class="mobile-post-meta">

@@ -62,12 +62,13 @@ class QuestionForm(forms.ModelForm):
 
     class Meta:
         model = Question  # 사용할 모델
-        fields = ['category', 'subject', 'content', 'image', 'file']  # 파일 필드 추가
+        fields = ['category', 'subject', 'content', 'image', 'file', 'is_locked']  # 파일 필드 및 잠금 필드 추가
         labels = {
             'subject': '제목',
             'content': '내용',
             'image': '이미지 첨부',
             'file': '파일 첨부',
+            'is_locked': '회원 전용 글',
         }  # 폼의 속성에 대한 한글 라벨 지정
         widgets = {
             'subject': forms.TextInput(attrs={
