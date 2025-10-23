@@ -524,6 +524,78 @@ def wordchain_get_chats(request, game_id):
     return JsonResponse({'success': True, 'messages': messages})
 
 
+
+
+@require_GET
+def wordchain_get_state(request, game_id):
+    """게임 상태 반환 (AJAX GET) - 실시간 업데이트용
+    반환: 게임 상태, 참가자 수, 현재 턴, 마지막 단어 등
+    """
+    game = get_object_or_404(WordChainGame, id=game_id)
+    
+    # 참가자 목록
+    participants_list = []
+    for p in game.participants.all().order_by('id'):
+        try:
+            display_name = p.profile.display_name
+        except:
+            display_name = p.username
+        participants_list.append({
+            'id': p.id,
+            'username': p.username,
+            'display_name': display_name,
+            'is_creator': p == game.creator
+        })
+    
+    # 현재 턴 정보
+    current_turn_info = None
+    if game.current_turn:
+        try:
+            current_turn_display = game.current_turn.profile.display_name
+        except:
+            current_turn_display = game.current_turn.username
+        current_turn_info = {
+            'id': game.current_turn.id,
+            'username': game.current_turn.username,
+            'display_name': current_turn_display
+        }
+    
+    # 게임 시작 이후의 마지막 엔트리
+    last_entry_info = None
+    if game.start_date:
+        active_entries = game.entries.filter(create_date__gte=game.start_date).order_by('-create_date')
+        last_entry = active_entries.first()
+        if last_entry:
+            try:
+                author_display = last_entry.author.profile.display_name
+            except:
+                author_display = last_entry.author.username
+            last_entry_info = {
+                'word': last_entry.word,
+                'author': last_entry.author.username,
+                'author_display': author_display,
+                'create_date': last_entry.create_date.isoformat()
+            }
+    
+    return JsonResponse({
+        'success': True,
+        'game': {
+            'id': game.id,
+            'title': game.title,
+            'status': game.status,
+            'participant_count': game.participants.count(),
+            'max_participants': game.max_participants,
+            'total_entries': game.entries.count(),
+            'last_word': game.last_word,
+            'expected_first_char': game.expected_first_char,
+            'current_turn': current_turn_info,
+            'start_date': game.start_date.isoformat() if game.start_date else None,
+        },
+        'participants': participants_list,
+        'last_entry': last_entry_info
+    })
+
+
 @login_required
 def wordchain_finish(request, game_id):
     """게임 종료"""
