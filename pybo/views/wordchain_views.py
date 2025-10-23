@@ -22,10 +22,16 @@ from django.utils import timezone
 from django.contrib.auth import get_user_model
 
 
+import logging
+logger = logging.getLogger(__name__)
+
 def check_word_exists(word):
     """한국어 사전에서 단어 검증 - 국립국어원 API 사용"""
+    logger.info(f"[단어검증] 시작: '{word}'")
+    
     if not settings.WORDCHAIN_USE_DICTIONARY_API:
         # API 사용 안 함 - 모든 단어 허용
+        logger.info(f"[단어검증] API 비활성화 - 통과")
         return True, "단어 검증 기능이 비활성화되어 있습니다."
 
     # 1. 기본 규칙 검증
@@ -64,6 +70,7 @@ def check_word_exists(word):
 
         # API 키가 없으면 기본 검증만 통과 (개발 환경)
         if not api_key:
+            logger.warning(f"[단어검증] API 키 미설정 - 기본 검증만 통과")
             return True, "기본 검증을 통과했습니다. (API 키 미설정)"
 
         params = {
@@ -72,10 +79,12 @@ def check_word_exists(word):
             'method': 'exact',  # 정확히 일치하는 단어만 검색
             'part': 'word',     # 단어만 검색 (관용구 제외)
             'start': 1,
-            'num': 1            # 결과 1개만
+            'num': 10           # 결과 개수 (최소 10 필요)
         }
 
+        logger.info(f"[단어검증] API 호출: {api_url}, params: q={word}, method=exact")
         response = requests.get(api_url, params=params, timeout=5)
+        logger.info(f"[단어검증] API 응답: status={response.status_code}")
 
         # 응답 확인
         if response.status_code != 200:
@@ -99,11 +108,14 @@ def check_word_exists(word):
             total = root.find('.//total')
             if total is not None:
                 result_count = int(total.text)
+                logger.info(f"[단어검증] API 결과: total={result_count}")
                 if result_count > 0:
                     # 사전에 등재된 단어
+                    logger.info(f"[단어검증] 성공: '{word}' - 사전에 등록됨")
                     return True, "사전에 등록된 단어입니다."
                 else:
                     # 사전에 없는 단어
+                    logger.warning(f"[단어검증] 실패: '{word}' - 사전에 없음")
                     return False, "사전에 없는 단어입니다."
             else:
                 # total 태그가 없으면 기본 검증 통과
@@ -266,8 +278,11 @@ def wordchain_detail(request, game_id):
     entries = game.entries.select_related('author').order_by('create_date')
 
     # 타임아웃 체크 - 게임이 활성 상태인 경우
-    if game.status == 'active':
-        last_entry = entries.last()
+    if game.status == 'active' and game.start_date:
+        # 게임 시작 이후의 엔트리만 체크 (대기실에서 만든 첫 단어 제외)
+        active_entries = entries.filter(create_date__gte=game.start_date)
+        last_entry = active_entries.last()
+        
         if last_entry:
             time_elapsed = (timezone.now() - last_entry.create_date).total_seconds()
             timeout_seconds = settings.WORDCHAIN_TIMEOUT
@@ -278,6 +293,7 @@ def wordchain_detail(request, game_id):
                 game.end_date = timezone.now()
                 game.save()
                 messages.warning(request, f'타임아웃으로 게임이 자동 종료되었습니다. (제한시간: {timeout_seconds}초)')
+        # 게임 시작 후 아직 단어가 입력되지 않았다면 타임아웃 없음
 
     # 참가자 목록
     participants_list = game.participants.all().order_by('id')
@@ -328,25 +344,30 @@ def wordchain_add_word(request, game_id):
     if not all('\uac00' <= char <= '\ud7a3' for char in word):
         return JsonResponse({'success': False, 'message': '한글 단어만 입력 가능합니다.'})
 
-    # 타임아웃 검증 - 마지막 단어 입력 후 설정된 시간 내에 입력해야 함
+    # 타임아웃 검증 - 게임 시작 이후의 마지막 단어부터 체크
     timeout_seconds = settings.WORDCHAIN_TIMEOUT
-    last_entry = game.entries.order_by('-create_date').first()
+    
+    if game.start_date:
+        # 게임 시작 이후의 엔트리만 체크 (대기실에서 만든 첫 단어 제외)
+        active_entries = game.entries.filter(create_date__gte=game.start_date).order_by('-create_date')
+        last_entry = active_entries.first()
 
-    if last_entry:
-        time_elapsed = (timezone.now() - last_entry.create_date).total_seconds()
+        if last_entry:
+            time_elapsed = (timezone.now() - last_entry.create_date).total_seconds()
 
-        if time_elapsed > timeout_seconds:
-            # 타임아웃 - 게임 종료
-            game.status = 'finished'
-            game.end_date = timezone.now()
-            game.save()
+            if time_elapsed > timeout_seconds:
+                # 타임아웃 - 게임 종료
+                game.status = 'finished'
+                game.end_date = timezone.now()
+                game.save()
 
-            return JsonResponse({
-                'success': False,
-                'timeout': True,
-                'message': f'타임아웃! {timeout_seconds}초 안에 입력하지 못해 게임이 종료되었습니다.',
-                'game_ended': True
-            })
+                return JsonResponse({
+                    'success': False,
+                    'timeout': True,
+                    'message': f'타임아웃! {timeout_seconds}초 안에 입력하지 못해 게임이 종료되었습니다.',
+                    'game_ended': True
+                })
+        # 게임 시작 후 첫 단어 입력이면 타임아웃 없음
 
     # 마지막 단어 확인
     last_word = game.last_word

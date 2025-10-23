@@ -734,10 +734,29 @@ function showNotification(message, type) {
     const radius = 90;
     const circumference = 2 * Math.PI * radius;
 
-    {% if entries %}
-    const lastEntryTime = new Date('{{ entries.last.create_date|date:"c" }}');
+    // 게임 시작 이후의 엔트리만 체크
+    {% if game.start_date %}
+        // 게임 시작 이후의 마지막 엔트리 시간 사용
+        const gameStartTime = new Date('{{ game.start_date|date:"c" }}');
+        let lastEntryTime = gameStartTime;
+        
+        {% if entries %}
+            // 게임 시작 이후의 엔트리 중 마지막 것
+            const allEntries = [
+                {% for entry in entries %}
+                    {% if entry.create_date >= game.start_date %}
+                        new Date('{{ entry.create_date|date:"c" }}'),
+                    {% endif %}
+                {% endfor %}
+            ].filter(Boolean);
+            
+            if (allEntries.length > 0) {
+                lastEntryTime = allEntries[allEntries.length - 1];
+            }
+        {% endif %}
     {% else %}
-    const lastEntryTime = new Date('{{ game.create_date|date:"c" }}');
+        // 게임 시작 전이면 타이머 없음
+        const lastEntryTime = new Date();
     {% endif %}
 
     function updateTimer() {
