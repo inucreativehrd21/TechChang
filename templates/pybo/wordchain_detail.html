@@ -929,9 +929,13 @@ document.addEventListener('DOMContentLoaded', function() {
 
 
 
-// === WebSocket 실시간 통신 ===
+// === WebSocket 실시간 통신 (자동 재연결 지원) ===
 let gameSocket = null;
 let useWebSocket = true;  // WebSocket 사용 여부
+let reconnectAttempts = 0;
+let maxReconnectAttempts = 5;
+let reconnectDelay = 1000;  // 1초
+let isReconnecting = false;
 
 function initWebSocket() {
     if (!useWebSocket) return;
@@ -939,51 +943,71 @@ function initWebSocket() {
     const wsScheme = window.location.protocol === 'https:' ? 'wss' : 'ws';
     const wsPath = `${wsScheme}://${window.location.host}/ws/wordchain/{{ game.id }}/`;
     
-    console.log('[WebSocket] 연결 시도:', wsPath);
+    console.log('[WebSocket] 연결 시도:', wsPath, `(시도 ${reconnectAttempts + 1}/${maxReconnectAttempts})`);
     
     try {
         gameSocket = new WebSocket(wsPath);
         
         gameSocket.onopen = function(e) {
-            console.log('[WebSocket] 연결 성공!');
+            console.log('[WebSocket] ✅ 연결 성공!');
+            reconnectAttempts = 0;  // 재연결 카운터 초기화
+            isReconnecting = false;
+            
             // 폴링 중지 (WebSocket이 활성화되면 폴링은 백업용으로만)
             if (pollingInterval) {
                 clearInterval(pollingInterval);
-                pollingInterval = setInterval(fetchGameState, 5000); // 백업용 5초 폴링
+                pollingInterval = setInterval(fetchGameState, 3000); // 백업용 3초 폴링
             }
+            
+            showNotification('실시간 연결 성공!', 'success');
         };
         
         gameSocket.onmessage = function(e) {
             const data = JSON.parse(e.data);
-            console.log('[WebSocket] 메시지 수신:', data);
+            console.log('[WebSocket] 📨 메시지 수신:', data);
             
             if (data.type === 'game_state') {
                 // 초기 게임 상태
                 handleGameState(data.data);
             } else if (data.type === 'game_update') {
-                // 실시간 업데이트
-                console.log('[WebSocket] 게임 업데이트!');
-                // 즉시 상태 다시 가져오기
+                // 실시간 업데이트 - 즉시 상태 다시 가져오기
+                console.log('[WebSocket] ⚡ 게임 업데이트!');
                 fetchGameState();
             }
         };
         
         gameSocket.onclose = function(e) {
-            console.log('[WebSocket] 연결 종료. 폴링 모드로 전환.');
-            useWebSocket = false;
-            // 폴링 재개
-            if (pollingInterval) {
-                clearInterval(pollingInterval);
+            console.log('[WebSocket] ❌ 연결 종료. Code:', e.code, 'Reason:', e.reason);
+            gameSocket = null;
+            
+            // 자동 재연결 시도
+            if (reconnectAttempts < maxReconnectAttempts && !isReconnecting) {
+                isReconnecting = true;
+                reconnectAttempts++;
+                const delay = reconnectDelay * reconnectAttempts;
+                console.log(`[WebSocket] 🔄 ${delay}ms 후 재연결 시도...`);
+                
+                setTimeout(() => {
+                    isReconnecting = false;
+                    initWebSocket();
+                }, delay);
+            } else {
+                console.log('[WebSocket] ⚠️ 폴링 모드로 완전 전환.');
+                useWebSocket = false;
+                // 폴링 재개 (더 빠른 간격)
+                if (pollingInterval) {
+                    clearInterval(pollingInterval);
+                }
+                startPolling();
             }
-            startPolling();
         };
         
         gameSocket.onerror = function(e) {
-            console.error('[WebSocket] 오류 발생:', e);
+            console.error('[WebSocket] ⛔ 오류 발생:', e);
         };
         
     } catch (error) {
-        console.error('[WebSocket] 초기화 실패:', error);
+        console.error('[WebSocket] 💥 초기화 실패:', error);
         useWebSocket = false;
     }
 }
@@ -1160,7 +1184,7 @@ function fetchGameState() {
 {% if game.status != 'finished' %}
 function startPolling() {
     // 게임 상태에 따라 다른 간격
-    const interval = '{{ game.status }}' === 'active' ? 100 : 1000; // active: 0.1초, waiting: 1초
+    const interval = '{{ game.status }}' === 'active' ? 50 : 500; // active: 0.05초, waiting: 0.5초
 
     console.log(`[실시간] Polling 시작 (간격: ${interval}ms)`);
 

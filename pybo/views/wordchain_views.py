@@ -230,6 +230,23 @@ def wordchain_join(request, game_id):
     try:
         game.participants.add(request.user)
         participant_count = game.participants.count()
+        
+        # WebSocket 브로드캐스트 - 참가자 변경 즉시 알림
+        try:
+            channel_layer = get_channel_layer()
+            async_to_sync(channel_layer.group_send)(
+                f'wordchain_{game_id}',
+                {
+                    'type': 'game_update',
+                    'data': {
+                        'action': 'player_joined',
+                        'username': request.user.username,
+                        'participant_count': participant_count
+                    }
+                }
+            )
+        except Exception as e:
+            logger.error(f"WebSocket broadcast error (join): {e}")
 
         return JsonResponse({
             'success': True,
@@ -265,6 +282,22 @@ def wordchain_start(request, game_id):
             # 참가자 수 업데이트
             game.participant_count = game.participants.count()
             game.save()
+            
+            # WebSocket 브로드캐스트 - 게임 시작 즉시 알림
+            try:
+                channel_layer = get_channel_layer()
+                async_to_sync(channel_layer.group_send)(
+                    f'wordchain_{game_id}',
+                    {
+                        'type': 'game_update',
+                        'data': {
+                            'action': 'game_started',
+                            'current_turn': game.current_turn.username if game.current_turn else None
+                        }
+                    }
+                )
+            except Exception as e:
+                logger.error(f"WebSocket broadcast error (start): {e}")
 
             return JsonResponse({
                 'success': True,

@@ -91,9 +91,15 @@ WSGI_APPLICATION = 'config.wsgi.application'
 # Channels 설정
 ASGI_APPLICATION = 'config.asgi.application'
 
+# CHANNEL_LAYERS - WebSocket 통신용
+# 개발: InMemory (단일 프로세스)
+# 프로덕션: Redis 권장 (멀티 프로세스 지원)
 CHANNEL_LAYERS = {
     'default': {
         'BACKEND': 'channels.layers.InMemoryChannelLayer'
+        # 프로덕션 환경에서는 아래 Redis 설정 사용 권장:
+        # 'BACKEND': 'channels_redis.core.RedisChannelLayer',
+        # 'CONFIG': {'hosts': [('127.0.0.1', 6379)]},
     }
 }
 
