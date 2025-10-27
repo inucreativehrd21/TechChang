@@ -5,195 +5,503 @@
 
 {% block extra_style %}
 <style>
+    /* 전체 배경 */
+    body {
+        background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+        min-height: 100vh;
+    }
+
+    /* Hero Section - 더 화려한 그라디언트 */
     .games-hero {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
         color: white;
-        padding: 4rem 0;
-        margin-bottom: 3rem;
-        border-radius: 0 0 2rem 2rem;
-        box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+        padding: 5rem 0;
+        margin: -76px 0 4rem 0;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .games-hero::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.05'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+        opacity: 0.3;
+        animation: moveBackground 20s linear infinite;
+    }
+
+    @keyframes moveBackground {
+        0% { background-position: 0 0; }
+        100% { background-position: 60px 60px; }
+    }
+
+    .games-hero-content {
+        position: relative;
+        z-index: 1;
+        padding-top: 76px;
     }
 
     .games-hero h1 {
-        font-size: 3rem;
-        font-weight: 700;
+        font-size: 4rem;
+        font-weight: 800;
         margin-bottom: 1rem;
-        text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+        text-shadow: 0 4px 20px rgba(0,0,0,0.3);
+        letter-spacing: -1px;
+        animation: fadeInDown 0.8s ease;
     }
 
     .games-hero p {
-        font-size: 1.2rem;
+        font-size: 1.4rem;
         opacity: 0.95;
+        font-weight: 300;
+        animation: fadeInUp 0.8s ease 0.2s backwards;
     }
 
+    @keyframes fadeInDown {
+        from {
+            opacity: 0;
+            transform: translateY(-30px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    @keyframes fadeInUp {
+        from {
+            opacity: 0;
+            transform: translateY(30px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    /* 통계 카드 - Glassmorphism */
     .stats-card {
-        background: white;
-        border-radius: 1rem;
-        padding: 1.5rem;
-        box-shadow: 0 4px 20px rgba(0,0,0,0.08);
-        transition: transform 0.3s ease;
+        background: rgba(255, 255, 255, 0.9);
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        border-radius: 1.5rem;
+        padding: 2rem;
+        box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+        transition: all 0.4s ease;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .stats-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+        transition: left 0.5s;
+    }
+
+    .stats-card:hover::before {
+        left: 100%;
     }
 
     .stats-card:hover {
-        transform: translateY(-5px);
+        transform: translateY(-10px) scale(1.02);
+        box-shadow: 0 15px 50px rgba(102, 126, 234, 0.3);
+    }
+
+    .stats-icon {
+        font-size: 3rem;
+        margin-bottom: 1rem;
+        display: inline-block;
+        animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+        0%, 100% { transform: scale(1); }
+        50% { transform: scale(1.1); }
     }
 
     .stats-number {
-        font-size: 2.5rem;
-        font-weight: 700;
-        color: #667eea;
+        font-size: 3rem;
+        font-weight: 800;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
     }
 
-    .game-card {
-        border: none;
-        border-radius: 1.5rem;
-        overflow: hidden;
-        transition: all 0.3s ease;
-        box-shadow: 0 4px 20px rgba(0,0,0,0.08);
-        height: 100%;
-        background: white;
-    }
-
-    .game-card:hover {
-        transform: translateY(-10px);
-        box-shadow: 0 12px 40px rgba(0,0,0,0.15);
-    }
-
-    .game-card-header {
-        padding: 2rem 1.5rem 1rem;
-        text-align: center;
-        position: relative;
-    }
-
-    .game-icon {
-        font-size: 4rem;
-        margin-bottom: 1rem;
-        display: block;
-        animation: bounce 2s infinite;
-    }
-
-    @keyframes bounce {
-        0%, 100% { transform: translateY(0); }
-        50% { transform: translateY(-10px); }
-    }
-
-    .game-card:hover .game-icon {
-        animation: spin 1s ease;
-    }
-
-    @keyframes spin {
-        0% { transform: rotate(0deg) scale(1); }
-        50% { transform: rotate(180deg) scale(1.2); }
-        100% { transform: rotate(360deg) scale(1); }
-    }
-
-    .game-title {
-        font-size: 1.5rem;
-        font-weight: 700;
-        margin-bottom: 0.5rem;
-        color: #2d3748;
-    }
-
-    .game-subtitle {
-        font-size: 0.9rem;
-        color: #718096;
-        margin-bottom: 1rem;
-    }
-
-    .game-card-body {
-        padding: 1rem 1.5rem;
-    }
-
-    .game-description {
-        color: #4a5568;
-        margin-bottom: 1.5rem;
-        min-height: 60px;
-    }
-
-    .game-stats {
-        display: flex;
-        justify-content: space-around;
-        margin-bottom: 1.5rem;
-        padding: 1rem;
-        background: #f7fafc;
-        border-radius: 0.5rem;
-    }
-
-    .game-stat {
-        text-align: center;
-    }
-
-    .game-stat-number {
-        font-size: 1.5rem;
-        font-weight: 700;
-        display: block;
-    }
-
-    .game-stat-label {
-        font-size: 0.75rem;
-        color: #718096;
-        text-transform: uppercase;
-    }
-
-    .feature-badges {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 0.5rem;
-        margin-bottom: 1.5rem;
-    }
-
-    .feature-badge {
-        background: #edf2f7;
-        color: #4a5568;
-        padding: 0.25rem 0.75rem;
-        border-radius: 1rem;
-        font-size: 0.75rem;
-        font-weight: 500;
-    }
-
-    .play-button {
-        width: 100%;
-        padding: 0.75rem;
-        font-weight: 600;
-        border-radius: 0.75rem;
-        transition: all 0.3s ease;
-        border: none;
-        font-size: 1rem;
-    }
-
-    .play-button:hover {
-        transform: scale(1.05);
-        box-shadow: 0 4px 15px rgba(0,0,0,0.2);
-    }
-
+    /* 섹션 타이틀 */
     .section-title {
-        font-size: 2rem;
-        font-weight: 700;
-        margin-bottom: 2rem;
+        font-size: 2.5rem;
+        font-weight: 800;
+        margin-bottom: 3rem;
         color: #2d3748;
         position: relative;
-        padding-bottom: 0.5rem;
+        display: inline-block;
+        animation: fadeIn 1s ease;
     }
 
     .section-title::after {
         content: '';
         position: absolute;
-        bottom: 0;
+        bottom: -10px;
         left: 0;
-        width: 60px;
-        height: 4px;
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        border-radius: 2px;
+        right: 0;
+        height: 5px;
+        background: linear-gradient(90deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
+        border-radius: 10px;
+        animation: expandWidth 1s ease;
     }
 
+    @keyframes expandWidth {
+        from { width: 0; }
+        to { width: 100%; }
+    }
+
+    /* 게임 카드 - 완전히 새로운 디자인 */
+    .game-card {
+        border: none;
+        border-radius: 2rem;
+        overflow: hidden;
+        transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        box-shadow: 0 10px 40px rgba(0,0,0,0.12);
+        height: 100%;
+        background: white;
+        position: relative;
+        animation: fadeInUp 0.6s ease backwards;
+    }
+
+    .game-card:nth-child(1) { animation-delay: 0.1s; }
+    .game-card:nth-child(2) { animation-delay: 0.2s; }
+    .game-card:nth-child(3) { animation-delay: 0.3s; }
+    .game-card:nth-child(4) { animation-delay: 0.4s; }
+    .game-card:nth-child(5) { animation-delay: 0.5s; }
+
+    .game-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: linear-gradient(135deg, transparent 0%, rgba(102, 126, 234, 0.1) 100%);
+        opacity: 0;
+        transition: opacity 0.4s;
+    }
+
+    .game-card:hover {
+        transform: translateY(-20px) scale(1.03);
+        box-shadow: 0 20px 60px rgba(102, 126, 234, 0.3);
+    }
+
+    .game-card:hover::before {
+        opacity: 1;
+    }
+
+    /* 게임 카드 헤더 - 그라디언트 배경 */
+    .game-card-header {
+        padding: 3rem 2rem 2rem;
+        text-align: center;
+        position: relative;
+        background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+    }
+
+    .game-card-header.bg-primary {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    }
+
+    .game-card-header.bg-success {
+        background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+    }
+
+    .game-card-header.bg-warning {
+        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+    }
+
+    .game-card-header.bg-info {
+        background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+    }
+
+    .game-card-header.bg-secondary {
+        background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
+    }
+
+    /* 게임 아이콘 */
+    .game-icon {
+        font-size: 5rem;
+        margin-bottom: 1rem;
+        display: block;
+        filter: drop-shadow(0 4px 10px rgba(0,0,0,0.2));
+        transition: all 0.4s ease;
+    }
+
+    .game-card:hover .game-icon {
+        animation: bounceRotate 0.8s ease;
+        transform: scale(1.2);
+    }
+
+    @keyframes bounceRotate {
+        0%, 100% { transform: rotate(0deg) scale(1); }
+        25% { transform: rotate(-10deg) scale(1.1); }
+        75% { transform: rotate(10deg) scale(1.1); }
+    }
+
+    /* 게임 타이틀 */
+    .game-title {
+        font-size: 1.8rem;
+        font-weight: 700;
+        margin-bottom: 0.5rem;
+        color: white;
+        text-shadow: 0 2px 10px rgba(0,0,0,0.2);
+    }
+
+    .game-subtitle {
+        font-size: 1rem;
+        color: rgba(255,255,255,0.9);
+        margin-bottom: 0;
+        font-weight: 300;
+    }
+
+    /* 게임 카드 본문 */
+    .game-card-body {
+        padding: 2rem;
+    }
+
+    .game-description {
+        color: #4a5568;
+        margin-bottom: 2rem;
+        min-height: 60px;
+        line-height: 1.6;
+        font-size: 0.95rem;
+    }
+
+    /* 게임 통계 - 더 화려하게 */
+    .game-stats {
+        display: flex;
+        justify-content: space-around;
+        margin-bottom: 2rem;
+        padding: 1.5rem;
+        background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+        border-radius: 1rem;
+        box-shadow: inset 0 2px 10px rgba(0,0,0,0.05);
+    }
+
+    .game-stat {
+        text-align: center;
+        position: relative;
+    }
+
+    .game-stat::before {
+        content: '';
+        position: absolute;
+        top: 50%;
+        right: -1rem;
+        transform: translateY(-50%);
+        width: 2px;
+        height: 60%;
+        background: rgba(0,0,0,0.1);
+    }
+
+    .game-stat:last-child::before {
+        display: none;
+    }
+
+    .game-stat-number {
+        font-size: 2rem;
+        font-weight: 800;
+        display: block;
+        line-height: 1;
+    }
+
+    .game-stat-label {
+        font-size: 0.7rem;
+        color: #718096;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        font-weight: 600;
+        margin-top: 0.5rem;
+    }
+
+    /* 특징 배지 */
+    .feature-badges {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.6rem;
+        margin-bottom: 2rem;
+    }
+
+    .feature-badge {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 0.4rem 1rem;
+        border-radius: 2rem;
+        font-size: 0.75rem;
+        font-weight: 600;
+        letter-spacing: 0.5px;
+        box-shadow: 0 2px 10px rgba(102, 126, 234, 0.3);
+        transition: all 0.3s;
+    }
+
+    .feature-badge:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.5);
+    }
+
+    /* 플레이 버튼 - 더 화려하게 */
+    .play-button {
+        width: 100%;
+        padding: 1rem;
+        font-weight: 700;
+        border-radius: 1rem;
+        transition: all 0.3s ease;
+        border: none;
+        font-size: 1.1rem;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        position: relative;
+        overflow: hidden;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+    }
+
+    .play-button::before {
+        content: '';
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        width: 0;
+        height: 0;
+        border-radius: 50%;
+        background: rgba(255,255,255,0.3);
+        transform: translate(-50%, -50%);
+        transition: width 0.6s, height 0.6s;
+    }
+
+    .play-button:hover::before {
+        width: 300px;
+        height: 300px;
+    }
+
+    .play-button:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 8px 25px rgba(0,0,0,0.3);
+    }
+
+    .play-button span {
+        position: relative;
+        z-index: 1;
+    }
+
+    /* 버튼 색상별 그라디언트 */
+    .btn-primary.play-button {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    }
+
+    .btn-success.play-button {
+        background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+    }
+
+    .btn-warning.play-button {
+        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+    }
+
+    .btn-info.play-button {
+        background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+    }
+
+    .btn-secondary.play-button {
+        background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
+        color: #333;
+    }
+
+    /* 안내 섹션 */
+    .info-section {
+        background: rgba(255, 255, 255, 0.9);
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        border-radius: 2rem;
+        box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+        padding: 3rem;
+        margin-top: 4rem;
+    }
+
+    .info-section h4 {
+        font-size: 2rem;
+        font-weight: 700;
+        margin-bottom: 2rem;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+    }
+
+    .info-card {
+        padding: 1.5rem;
+        border-radius: 1rem;
+        background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+        transition: all 0.3s;
+        height: 100%;
+    }
+
+    .info-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+    }
+
+    .info-card h6 {
+        font-weight: 700;
+        font-size: 1.1rem;
+        margin-bottom: 1rem;
+    }
+
+    /* 모바일 반응형 */
     @media (max-width: 768px) {
         .games-hero h1 {
-            font-size: 2rem;
+            font-size: 2.5rem;
+        }
+
+        .games-hero p {
+            font-size: 1.1rem;
         }
 
         .game-icon {
-            font-size: 3rem;
+            font-size: 4rem;
         }
+
+        .section-title {
+            font-size: 2rem;
+        }
+
+        .stats-number {
+            font-size: 2rem;
+        }
+
+        .game-card {
+            margin-bottom: 2rem;
+        }
+
+        .info-section {
+            padding: 2rem 1.5rem;
+        }
+    }
+
+    /* 스크롤 애니메이션 */
+    @keyframes fadeIn {
+        from {
+            opacity: 0;
+        }
+        to {
+            opacity: 1;
+        }
+    }
+
+    .container {
+        animation: fadeIn 0.8s ease;
     }
 </style>
 {% endblock %}
@@ -201,30 +509,36 @@
 {% block content %}
 <!-- Hero Section -->
 <div class="games-hero">
-    <div class="container text-center">
-        <h1>🎮 게임 센터</h1>
-        <p>다양한 게임을 즐기고 친구들과 실력을 겨뤄보세요!</p>
+    <div class="games-hero-content">
+        <div class="container text-center">
+            <h1>🎮 게임 센터</h1>
+            <p>다양한 게임을 즐기고 친구들과 실력을 겨뤄보세요!</p>
+        </div>
     </div>
 </div>
 
 <div class="container mb-5">
     <!-- Stats Section -->
     <div class="row mb-5">
-        <div class="col-md-6 mb-3">
+        <div class="col-md-6 mb-4">
             <div class="stats-card">
-                <h5 class="text-muted mb-2">총 플레이된 게임</h5>
+                <div class="stats-icon">🎯</div>
+                <h5 class="text-muted mb-2 fw-bold">총 플레이된 게임</h5>
                 <div class="stats-number">{{ recent_stats.total_games_played }}</div>
                 <small class="text-muted">전체 게임 기록</small>
             </div>
         </div>
-        <div class="col-md-6 mb-3">
+        <div class="col-md-6 mb-4">
             <div class="stats-card">
-                <h5 class="text-muted mb-2">현재 상태</h5>
+                <div class="stats-icon">
+                    {% if user.is_authenticated %}🟢{% else %}⚪{% endif %}
+                </div>
+                <h5 class="text-muted mb-2 fw-bold">현재 상태</h5>
                 <div class="stats-number">
                     {% if user.is_authenticated %}
-                        <span class="text-success">온라인</span>
+                        <span style="background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">온라인</span>
                     {% else %}
-                        <span class="text-secondary">오프라인</span>
+                        <span style="background: linear-gradient(135deg, #868f96 0%, #596164 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">오프라인</span>
                     {% endif %}
                 </div>
                 <small class="text-muted">
@@ -239,13 +553,15 @@
     </div>
 
     <!-- Games Section -->
-    <h2 class="section-title">모든 게임</h2>
+    <div class="text-center mb-4">
+        <h2 class="section-title">모든 게임</h2>
+    </div>
 
     <div class="row">
         {% for game in games_info %}
         <div class="col-lg-4 col-md-6 mb-4">
             <div class="card game-card">
-                <div class="game-card-header">
+                <div class="game-card-header bg-{{ game.color }}">
                     <span class="game-icon">{{ game.icon }}</span>
                     <h3 class="game-title">{{ game.name }}</h3>
                     <p class="game-subtitle">{{ game.title }}</p>
@@ -272,7 +588,7 @@
                     </div>
 
                     <a href="{% url game.url %}" class="btn btn-{{ game.color }} play-button">
-                        플레이 하기 ▶
+                        <span>플레이 하기 ▶</span>
                     </a>
                 </div>
             </div>
@@ -281,34 +597,34 @@
     </div>
 
     <!-- Info Section -->
-    <div class="row mt-5">
-        <div class="col-12">
-            <div class="card border-0 shadow-sm">
-                <div class="card-body p-4">
-                    <h4 class="mb-3">게임 센터 안내</h4>
-                    <div class="row">
-                        <div class="col-md-4 mb-3">
-                            <h6 class="text-primary">실시간 게임</h6>
-                            <p class="text-muted small">끝말잇기와 틱택토는 WebSocket을 이용한 실시간 멀티플레이어 게임입니다. 다른 플레이어의 움직임이 즉시 반영됩니다!</p>
-                        </div>
-                        <div class="col-md-4 mb-3">
-                            <h6 class="text-success">싱글 플레이</h6>
-                            <p class="text-muted small">숫자야구와 2048은 혼자서도 즐길 수 있는 게임입니다. 자신의 기록에 도전해보세요!</p>
-                        </div>
-                        <div class="col-md-4 mb-3">
-                            <h6 class="text-info">커뮤니티</h6>
-                            <p class="text-muted small">방명록에 자유롭게 메시지를 남기고 다른 사용자들과 소통하세요!</p>
-                        </div>
-                    </div>
-
-                    {% if not user.is_authenticated %}
-                    <div class="alert alert-warning mt-3 mb-0">
-                        <strong>알림:</strong> 게임을 플레이하려면 <a href="{% url 'common:login' %}" class="alert-link">로그인</a>이 필요합니다.
-                    </div>
-                    {% endif %}
+    <div class="info-section">
+        <h4 class="text-center">게임 센터 안내</h4>
+        <div class="row">
+            <div class="col-md-4 mb-3">
+                <div class="info-card">
+                    <h6 class="text-primary">⚡ 실시간 게임</h6>
+                    <p class="text-muted small mb-0">끝말잇기와 틱택토는 WebSocket을 이용한 실시간 멀티플레이어 게임입니다. 다른 플레이어의 움직임이 즉시 반영됩니다!</p>
+                </div>
+            </div>
+            <div class="col-md-4 mb-3">
+                <div class="info-card">
+                    <h6 class="text-success">🎯 싱글 플레이</h6>
+                    <p class="text-muted small mb-0">숫자야구와 2048은 혼자서도 즐길 수 있는 게임입니다. 자신의 기록에 도전해보세요!</p>
+                </div>
+            </div>
+            <div class="col-md-4 mb-3">
+                <div class="info-card">
+                    <h6 class="text-info">💬 커뮤니티</h6>
+                    <p class="text-muted small mb-0">방명록에 자유롭게 메시지를 남기고 다른 사용자들과 소통하세요!</p>
                 </div>
             </div>
         </div>
+
+        {% if not user.is_authenticated %}
+        <div class="alert alert-warning mt-4 mb-0 border-0 shadow-sm" style="border-radius: 1rem;">
+            <strong>🔔 알림:</strong> 게임을 플레이하려면 <a href="{% url 'common:login' %}" class="alert-link fw-bold">로그인</a>이 필요합니다.
+        </div>
+        {% endif %}
     </div>
 </div>
 {% endblock %}
