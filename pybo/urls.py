@@ -9,8 +9,6 @@ urlpatterns = [
     # base_views.py
     path('',
          base_views.index, name='index'),
-    path('<int:question_id>/',
-         base_views.detail, name='detail'),
     path('recent-answers/', base_views.recent_answers, name='recent_answers'),
     path('recent-comments/', base_views.recent_comments, name='recent_comments'),
     path('games/', base_views.games_index, name='games_index'),
@@ -76,9 +74,15 @@ urlpatterns = [
     path('guestbook/', guestbook_views.guestbook_list, name='guestbook_list'),
     path('guestbook/create/', guestbook_views.guestbook_create, name='guestbook_create'),
     path('guestbook/delete/<int:entry_id>/', guestbook_views.guestbook_delete, name='guestbook_delete'),
+
     # game2048_views.py - 2048 게임
     path('2048/', game2048_views.game2048_start, name='game2048_start'),
     path('2048/<int:game_id>/', game2048_views.game2048_play, name='game2048_play'),
     path('2048/<int:game_id>/move/', game2048_views.game2048_move, name='game2048_move'),
     path('2048/<int:game_id>/restart/', game2048_views.game2048_restart, name='game2048_restart'),
+
+    # *** IMPORTANT: 이 패턴은 맨 마지막에 위치해야 합니다! ***
+    # <int:question_id>/ 패턴이 숫자로 시작하는 다른 URL들(2048 등)을 가로채지 않도록
+    # 모든 구체적인 URL 패턴을 먼저 정의한 후, 마지막에 이 일반적인 패턴을 배치합니다.
+    path('<int:question_id>/', base_views.detail, name='detail'),
 ]
