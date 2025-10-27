@@ -19,13 +19,13 @@
                     {% for game in games %}
                     <div class="col-md-6 col-lg-4 mb-4">
                         <div class="card game-card h-100">
-                            <div class="card-header bg-{{ game.status == 'playing' and 'success' or game.status == 'waiting' and 'warning' or 'secondary' }} text-white">
+                            <div class="card-header {% if game.status == 'playing' %}bg-success{% elif game.status == 'waiting' %}bg-warning{% else %}bg-secondary{% endif %} text-white">
                                 <h5 class="mb-0">{{ game.title }}</h5>
                             </div>
                             <div class="card-body">
                                 <div class="mb-2">
                                     <strong>상태:</strong>
-                                    <span class="badge bg-{{ game.status == 'playing' and 'success' or game.status == 'waiting' and 'warning' or 'secondary' }}">
+                                    <span class="badge {% if game.status == 'playing' %}bg-success{% elif game.status == 'waiting' %}bg-warning{% else %}bg-secondary{% endif %}">
                                         {{ game.get_status_display }}
                                     </span>
                                 </div>
