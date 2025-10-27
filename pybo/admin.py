@@ -2,7 +2,7 @@
 from django.contrib import admin
 
 from .models import Question, Answer, Comment, Category, WordChainGame, WordChainEntry
-from .models import WordChainChatMessage
+from .models import WordChainChatMessage, TicTacToeGame, NumberBaseballGame, NumberBaseballAttempt, GuestBook
 
 class QuestionAdmin(admin.ModelAdmin):
     search_fields = ['subject']
@@ -46,6 +46,39 @@ class WordChainChatMessageAdmin(admin.ModelAdmin):
     short_message.short_description = '메시지'
 
 
+
+
+class TicTacToeGameAdmin(admin.ModelAdmin):
+    list_display = ('title', 'player_x', 'player_o', 'status', 'winner', 'create_date')
+    list_filter = ('status', 'create_date')
+    search_fields = ('title', 'player_x__username', 'player_o__username')
+    readonly_fields = ('create_date', 'start_date', 'end_date')
+
+
+class NumberBaseballGameAdmin(admin.ModelAdmin):
+    list_display = ('player', 'attempts', 'max_attempts', 'status', 'create_date')
+    list_filter = ('status', 'create_date')
+    search_fields = ('player__username',)
+    readonly_fields = ('create_date', 'end_date', 'secret_number')
+
+
+class NumberBaseballAttemptAdmin(admin.ModelAdmin):
+    list_display = ('game', 'guess_number', 'strikes', 'balls', 'create_date')
+    list_filter = ('create_date',)
+    readonly_fields = ('create_date',)
+
+
+class GuestBookAdmin(admin.ModelAdmin):
+    list_display = ('author', 'short_content', 'color', 'create_date')
+    list_filter = ('create_date', 'color')
+    search_fields = ('author__username', 'content')
+    readonly_fields = ('create_date', 'modify_date')
+    
+    def short_content(self, obj):
+        return (obj.content[:50] + '...') if len(obj.content) > 50 else obj.content
+    short_content.short_description = '내용'
+
+
 # Register your models here.
 admin.site.register(Question, QuestionAdmin)
 admin.site.register(Answer, AnswerAdmin)
@@ -54,3 +87,7 @@ admin.site.register(Category, CategoryAdmin)
 admin.site.register(WordChainGame, WordChainGameAdmin)
 admin.site.register(WordChainEntry, WordChainEntryAdmin)
 admin.site.register(WordChainChatMessage, WordChainChatMessageAdmin)
+admin.site.register(TicTacToeGame, TicTacToeGameAdmin)
+admin.site.register(NumberBaseballGame, NumberBaseballGameAdmin)
+admin.site.register(NumberBaseballAttempt, NumberBaseballAttemptAdmin)
+admin.site.register(GuestBook, GuestBookAdmin)

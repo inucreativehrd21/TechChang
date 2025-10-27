@@ -166,3 +166,111 @@ class WordChainChatMessage(models.Model):
 
     def __str__(self):
         return f"{self.game.title} - {self.author.username}: {self.message[:20]}"
+
+# ========== 틱택토 게임 ==========
+class TicTacToeGame(models.Model):
+    """틱택토 게임 (3x3 오목)"""
+    STATUS_CHOICES = [
+        ('waiting', '대기중'),
+        ('playing', '진행중'),
+        ('finished', '종료'),
+    ]
+    
+    title = models.CharField(max_length=200, verbose_name='게임 제목')
+    creator = models.ForeignKey(User, on_delete=models.CASCADE, related_name='created_tictactoe_games', verbose_name='생성자')
+    player_x = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='tictactoe_x', verbose_name='플레이어 X')
+    player_o = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='tictactoe_o', verbose_name='플레이어 O')
+    current_turn = models.CharField(max_length=1, choices=[('X', 'X'), ('O', 'O')], default='X', verbose_name='현재 턴')
+    board_state = models.JSONField(default=list, verbose_name='보드 상태')  # 3x3 배열
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='waiting', verbose_name='상태')
+    winner = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='won_tictactoe_games', verbose_name='승자')
+    create_date = models.DateTimeField(auto_now_add=True, verbose_name='생성일')
+    start_date = models.DateTimeField(null=True, blank=True, verbose_name='시작일')
+    end_date = models.DateTimeField(null=True, blank=True, verbose_name='종료일')
+    
+    def __str__(self):
+        return f"{self.title} ({self.get_status_display()})"
+    
+    def save(self, *args, **kwargs):
+        # 보드 초기화
+        if not self.board_state:
+            self.board_state = [['', '', ''], ['', '', ''], ['', '', '']]
+        super().save(*args, **kwargs)
+    
+    class Meta:
+        verbose_name = '틱택토 게임'
+        verbose_name_plural = '틱택토 게임 목록'
+        ordering = ['-create_date']
+
+
+# ========== 숫자야구 게임 ==========
+class NumberBaseballGame(models.Model):
+    """숫자야구 게임"""
+    STATUS_CHOICES = [
+        ('playing', '진행중'),
+        ('won', '성공'),
+        ('giveup', '포기'),
+    ]
+    
+    player = models.ForeignKey(User, on_delete=models.CASCADE, related_name='baseball_games', verbose_name='플레이어')
+    secret_number = models.CharField(max_length=4, verbose_name='정답 숫자')  # 4자리 숫자
+    attempts = models.IntegerField(default=0, verbose_name='시도 횟수')
+    max_attempts = models.IntegerField(default=10, verbose_name='최대 시도 횟수')
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='playing', verbose_name='상태')
+    create_date = models.DateTimeField(auto_now_add=True, verbose_name='생성일')
+    end_date = models.DateTimeField(null=True, blank=True, verbose_name='종료일')
+    
+    def __str__(self):
+        return f"{self.player.username}의 숫자야구 게임 ({self.attempts}회 시도)"
+    
+    class Meta:
+        verbose_name = '숫자야구 게임'
+        verbose_name_plural = '숫자야구 게임 목록'
+        ordering = ['-create_date']
+
+
+class NumberBaseballAttempt(models.Model):
+    """숫자야구 시도 기록"""
+    game = models.ForeignKey(NumberBaseballGame, on_delete=models.CASCADE, related_name='attempt_records', verbose_name='게임')
+    guess_number = models.CharField(max_length=4, verbose_name='추측 숫자')
+    strikes = models.IntegerField(verbose_name='스트라이크')
+    balls = models.IntegerField(verbose_name='볼')
+    create_date = models.DateTimeField(auto_now_add=True, verbose_name='시도 시간')
+    
+    def __str__(self):
+        return f"{self.guess_number} - {self.strikes}S {self.balls}B"
+    
+    class Meta:
+        verbose_name = '숫자야구 시도'
+        verbose_name_plural = '숫자야구 시도 기록'
+        ordering = ['create_date']
+
+
+# ========== 방명록 ==========
+class GuestBook(models.Model):
+    """포스트잇 스타일 방명록"""
+    COLOR_CHOICES = [
+        ('#fff475', '노란색'),
+        ('#ff7eb9', '핑크색'),
+        ('#7afcff', '하늘색'),
+        ('#c7f0bd', '연두색'),
+        ('#ffc891', '주황색'),
+        ('#d9b3ff', '보라색'),
+    ]
+    
+    author = models.ForeignKey(User, on_delete=models.CASCADE, related_name='guestbook_entries', verbose_name='작성자')
+    content = models.TextField(max_length=200, verbose_name='내용')
+    color = models.CharField(max_length=7, choices=COLOR_CHOICES, default='#fff475', verbose_name='색상')
+    position_x = models.IntegerField(default=0, verbose_name='X 위치')
+    position_y = models.IntegerField(default=0, verbose_name='Y 위치')
+    rotation = models.FloatField(default=0, verbose_name='회전 각도')  # -5 ~ 5 정도
+    create_date = models.DateTimeField(auto_now_add=True, verbose_name='작성일')
+    modify_date = models.DateTimeField(auto_now=True, verbose_name='수정일')
+    
+    def __str__(self):
+        return f"{self.author.username}의 방명록 ({self.create_date.strftime('%Y-%m-%d')})"
+    
+    class Meta:
+        verbose_name = '방명록'
+        verbose_name_plural = '방명록 목록'
+        ordering = ['-create_date']

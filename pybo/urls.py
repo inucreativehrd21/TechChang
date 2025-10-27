@@ -1,7 +1,7 @@
 
 from django.urls import path
 
-from .views import base_views, question_views, answer_views, comment_views, profile_views, wordchain_views
+from .views import base_views, question_views, answer_views, comment_views, profile_views, wordchain_views, tictactoe_views, baseball_views, guestbook_views
 
 app_name = 'pybo'
 
@@ -59,4 +59,20 @@ urlpatterns = [
      path('wordchain/<int:game_id>/chats/', wordchain_views.wordchain_get_chats, name='wordchain_get_chats'),
     path('wordchain/<int:game_id>/state/', wordchain_views.wordchain_get_state, name='wordchain_get_state'),
     path('wordchain/<int:game_id>/finish/', wordchain_views.wordchain_finish, name='wordchain_finish'),
+    # tictactoe_views.py - 틱택토 게임
+    path('tictactoe/', tictactoe_views.tictactoe_list, name='tictactoe_list'),
+    path('tictactoe/create/', tictactoe_views.tictactoe_create, name='tictactoe_create'),
+    path('tictactoe/<int:game_id>/', tictactoe_views.tictactoe_detail, name='tictactoe_detail'),
+    path('tictactoe/<int:game_id>/join/', tictactoe_views.tictactoe_join, name='tictactoe_join'),
+    path('tictactoe/<int:game_id>/move/', tictactoe_views.tictactoe_move, name='tictactoe_move'),
+    # baseball_views.py - 숫자야구 게임
+    path('baseball/', baseball_views.baseball_start, name='baseball_start'),
+    path('baseball/<int:game_id>/', baseball_views.baseball_play, name='baseball_play'),
+    path('baseball/<int:game_id>/guess/', baseball_views.baseball_guess, name='baseball_guess'),
+    path('baseball/<int:game_id>/giveup/', baseball_views.baseball_giveup, name='baseball_giveup'),
+    
+    # guestbook_views.py - 방명록
+    path('guestbook/', guestbook_views.guestbook_list, name='guestbook_list'),
+    path('guestbook/create/', guestbook_views.guestbook_create, name='guestbook_create'),
+    path('guestbook/delete/<int:entry_id>/', guestbook_views.guestbook_delete, name='guestbook_delete'),
 ]

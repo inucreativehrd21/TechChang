@@ -2,12 +2,17 @@ import json
 from channels.generic.websocket import AsyncWebsocketConsumer
 from channels.db import database_sync_to_async
 from django.contrib.auth.models import User
+from django.utils import timezone
 from .models import WordChainGame, WordChainEntry
+import logging
+
+logger = logging.getLogger(__name__)
 
 class WordChainConsumer(AsyncWebsocketConsumer):
     async def connect(self):
         self.game_id = self.scope['url_route']['kwargs']['game_id']
         self.room_group_name = f'wordchain_{self.game_id}'
+        self.user = self.scope.get('user')
 
         # Join room group
         await self.channel_layer.group_add(
@@ -16,15 +21,41 @@ class WordChainConsumer(AsyncWebsocketConsumer):
         )
 
         await self.accept()
+        
+        logger.info(f"[WebSocket] User connected to game {self.game_id}")
 
-        # Send current game state
+        # Send initial game state (한 번만)
         game_state = await self.get_game_state()
         await self.send(text_data=json.dumps({
-            'type': 'game_state',
+            'type': 'initial_state',
             'data': game_state
         }))
+        
+        # 참가자들에게 새 플레이어 접속 알림 (Delta Update)
+        if self.user and self.user.is_authenticated:
+            await self.channel_layer.group_send(
+                self.room_group_name,
+                {
+                    'type': 'player_connected',
+                    'username': self.user.username,
+                    'user_id': self.user.id
+                }
+            )
 
     async def disconnect(self, close_code):
+        logger.info(f"[WebSocket] User disconnected from game {self.game_id}")
+        
+        # 참가자들에게 플레이어 퇴장 알림
+        if self.user and self.user.is_authenticated:
+            await self.channel_layer.group_send(
+                self.room_group_name,
+                {
+                    'type': 'player_disconnected',
+                    'username': self.user.username,
+                    'user_id': self.user.id
+                }
+            )
+        
         # Leave room group
         await self.channel_layer.group_discard(
             self.room_group_name,
@@ -32,26 +63,56 @@ class WordChainConsumer(AsyncWebsocketConsumer):
         )
 
     async def receive(self, text_data):
-        data = json.loads(text_data)
-        message_type = data.get('type')
+        """클라이언트로부터 메시지 수신"""
+        try:
+            data = json.loads(text_data)
+            message_type = data.get('type')
 
-        if message_type == 'request_state':
-            game_state = await self.get_game_state()
-            await self.send(text_data=json.dumps({
-                'type': 'game_state',
-                'data': game_state
-            }))
+            if message_type == 'heartbeat':
+                # Heartbeat 응답
+                await self.send(text_data=json.dumps({
+                    'type': 'heartbeat_ack',
+                    'timestamp': timezone.now().isoformat()
+                }))
+            elif message_type == 'request_state':
+                # 전체 상태 요청 (재동기화)
+                game_state = await self.get_game_state()
+                await self.send(text_data=json.dumps({
+                    'type': 'initial_state',
+                    'data': game_state
+                }))
+        except Exception as e:
+            logger.error(f"[WebSocket] Error in receive: {e}")
 
-    # Receive message from room group
+    # === Delta Update 이벤트 핸들러들 ===
+    
     async def game_update(self, event):
-        # Send message to WebSocket
+        """일반 게임 업데이트 - Delta만 전송"""
         await self.send(text_data=json.dumps({
-            'type': 'game_update',
+            'type': 'delta_update',
+            'action': event['data'].get('action'),
             'data': event['data']
+        }))
+    
+    async def player_connected(self, event):
+        """플레이어 접속 알림"""
+        await self.send(text_data=json.dumps({
+            'type': 'player_connected',
+            'username': event['username'],
+            'user_id': event['user_id']
+        }))
+    
+    async def player_disconnected(self, event):
+        """플레이어 퇴장 알림"""
+        await self.send(text_data=json.dumps({
+            'type': 'player_disconnected',
+            'username': event['username'],
+            'user_id': event['user_id']
         }))
 
     @database_sync_to_async
     def get_game_state(self):
+        """전체 게임 상태 조회 (초기 연결 시에만)"""
         try:
             game = WordChainGame.objects.get(id=self.game_id)
             
@@ -118,3 +179,90 @@ class WordChainConsumer(AsyncWebsocketConsumer):
             }
         except WordChainGame.DoesNotExist:
             return {'success': False, 'error': 'Game not found'}
+
+
+
+class TicTacToeConsumer(AsyncWebsocketConsumer):
+    """틱택토 게임용 WebSocket Consumer"""
+    
+    async def connect(self):
+        self.game_id = self.scope['url_route']['kwargs']['game_id']
+        self.room_group_name = f'tictactoe_{self.game_id}'
+        self.user = self.scope.get('user')
+
+        # Join room group
+        await self.channel_layer.group_add(
+            self.room_group_name,
+            self.channel_name
+        )
+
+        await self.accept()
+        logger.info(f"[TicTacToe WS] User connected to game {self.game_id}")
+
+        # Send initial state
+        if self.user and self.user.is_authenticated:
+            await self.channel_layer.group_send(
+                self.room_group_name,
+                {
+                    'type': 'player_connected',
+                    'username': self.user.username,
+                    'user_id': self.user.id
+                }
+            )
+
+    async def disconnect(self, close_code):
+        logger.info(f"[TicTacToe WS] User disconnected from game {self.game_id}")
+        
+        if self.user and self.user.is_authenticated:
+            await self.channel_layer.group_send(
+                self.room_group_name,
+                {
+                    'type': 'player_disconnected',
+                    'username': self.user.username,
+                    'user_id': self.user.id
+                }
+            )
+        
+        await self.channel_layer.group_discard(
+            self.room_group_name,
+            self.channel_name
+        )
+
+    async def receive(self, text_data):
+        """클라이언트로부터 메시지 수신"""
+        try:
+            data = json.loads(text_data)
+            message_type = data.get('type')
+
+            if message_type == 'heartbeat':
+                await self.send(text_data=json.dumps({
+                    'type': 'heartbeat_ack',
+                    'timestamp': timezone.now().isoformat()
+                }))
+        except Exception as e:
+            logger.error(f"[TicTacToe WS] Error in receive: {e}")
+
+    # Delta Update 이벤트 핸들러
+    async def game_update(self, event):
+        """게임 업데이트 - Delta만 전송"""
+        await self.send(text_data=json.dumps({
+            'type': 'delta_update',
+            'action': event['data'].get('action'),
+            'data': event['data']
+        }))
+    
+    async def player_connected(self, event):
+        """플레이어 접속 알림"""
+        await self.send(text_data=json.dumps({
+            'type': 'player_connected',
+            'username': event['username'],
+            'user_id': event['user_id']
+        }))
+    
+    async def player_disconnected(self, event):
+        """플레이어 퇴장 알림"""
+        await self.send(text_data=json.dumps({
+            'type': 'player_disconnected',
+            'username': event['username'],
+            'user_id': event['user_id']
+        }))

@@ -5,6 +5,16 @@
 
 {% block extra_css %}
 <style>
+/* Optimistic UI 애니메이션 */
+@keyframes fadeOut {
+  from { opacity: 1; transform: translateX(0); }
+  to { opacity: 0; transform: translateX(-20px); }
+}
+
+.pending-word {
+  border-left: 3px solid #ffc107 !important;
+}
+
 /* 게임 컨테이너 */
 .game-container {
   max-width: 1400px;
@@ -598,6 +608,9 @@
 const csrfToken = '{{ csrf_token }}';
 
 // 단어 추가
+// === Optimistic UI - 즉시 반응하는 단어 제출 ===
+let pendingWordElement = null;  // 낙관적 업데이트로 추가한 요소
+
 function addWord(event) {
     event.preventDefault();
 
@@ -611,9 +624,50 @@ function addWord(event) {
 
     const submitBtn = event.target.querySelector('button[type="submit"]');
     const originalText = submitBtn.innerHTML;
-    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>확인중...';
+    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>전송중...';
     submitBtn.disabled = true;
+    wordInput.disabled = true;
 
+    // === OPTIMISTIC UPDATE: 서버 응답 기다리지 않고 즉시 UI 업데이트 ===
+    const now = new Date();
+    const optimisticEntry = {
+        word: word,
+        author: '{{ user.username }}',
+        author_display: '{% if user.profile %}{{ user.profile.display_name }}{% else %}{{ user.username }}{% endif %}',
+        create_date: now.toISOString(),
+        isPending: true  // 확인 대기중 표시
+    };
+    
+    console.log('[Optimistic] 즉시 UI 업데이트:', word);
+    
+    // 단어 목록에 즉시 추가 (회색으로 표시)
+    const wordList = document.getElementById('wordList');
+    const newWordItem = document.createElement('div');
+    newWordItem.className = 'word-item pending-word';
+    newWordItem.style.opacity = '0.6';
+    newWordItem.style.animation = 'slideInRight 0.3s ease';
+    newWordItem.dataset.wordKey = word + '|' + now.toISOString();
+    
+    newWordItem.innerHTML = `
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <span class="word-text">${word}</span>
+                <small class="text-muted ms-2">by ${optimisticEntry.author_display}</small>
+                <span class="badge bg-secondary ms-2">확인중...</span>
+            </div>
+            <small class="text-muted">방금</small>
+        </div>
+    `;
+    wordList.insertBefore(newWordItem, wordList.firstChild);
+    pendingWordElement = newWordItem;
+    
+    // 입력창 초기화
+    wordInput.value = '';
+    
+    // 다음 글자 미리 표시
+    updateExpectedChar(word[word.length - 1]);
+
+    // === 서버에 전송 (백그라운드) ===
     fetch('{% url "pybo:wordchain_add_word" game.id %}', {
         method: 'POST',
         headers: {
@@ -625,20 +679,62 @@ function addWord(event) {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            showNotification('단어가 등록되었습니다!', 'success');
-            setTimeout(() => location.reload(), 1000);
+            // === 서버 확인 성공: pending 표시 제거 ===
+            console.log('[Optimistic] ✅ 서버 확인 완료');
+            if (pendingWordElement) {
+                pendingWordElement.style.opacity = '1';
+                pendingWordElement.classList.remove('pending-word');
+                const badge = pendingWordElement.querySelector('.badge');
+                if (badge) badge.remove();
+                pendingWordElement = null;
+            }
+            
+            showNotification('✅ 단어가 등록되었습니다!', 'success');
+            
+            // WebSocket이 턴을 업데이트할 것임 (Delta Update)
+            // 페이지 reload 하지 않음!
         } else {
-            showNotification(data.message || '오류가 발생했습니다.', 'error');
-            submitBtn.innerHTML = originalText;
-            submitBtn.disabled = false;
-            wordInput.focus();
+            // === 서버 확인 실패: 롤백 ===
+            console.log('[Optimistic] ❌ 서버 거부, 롤백:', data.message);
+            if (pendingWordElement) {
+                pendingWordElement.style.animation = 'fadeOut 0.3s ease';
+                setTimeout(() => {
+                    if (pendingWordElement) pendingWordElement.remove();
+                    pendingWordElement = null;
+                }, 300);
+            }
+            
+            // 단어 다시 입력창에 표시
+            wordInput.value = word;
+            
+            showNotification('❌ ' + (data.message || '오류가 발생했습니다.'), 'error');
+            
+            // 게임 종료 메시지 처리
+            if (data.game_ended || data.timeout) {
+                setTimeout(() => location.reload(), 1500);
+            }
         }
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        showNotification('오류가 발생했습니다.', 'error');
+        
+        // UI 원상복구
         submitBtn.innerHTML = originalText;
         submitBtn.disabled = false;
+        wordInput.disabled = false;
+        wordInput.focus();
+    })
+    .catch(error => {
+        console.error('[Optimistic] 네트워크 오류:', error);
+        
+        // === 네트워크 오류: 롤백 ===
+        if (pendingWordElement) {
+            pendingWordElement.remove();
+            pendingWordElement = null;
+        }
+        wordInput.value = word;
+        
+        showNotification('⚠️ 네트워크 오류가 발생했습니다.', 'error');
+        submitBtn.innerHTML = originalText;
+        submitBtn.disabled = false;
+        wordInput.disabled = false;
     });
 }
 
@@ -956,7 +1052,7 @@ function initWebSocket() {
             // 폴링 중지 (WebSocket이 활성화되면 폴링은 백업용으로만)
             if (pollingInterval) {
                 clearInterval(pollingInterval);
-                pollingInterval = setInterval(fetchGameState, 3000); // 백업용 3초 폴링
+                pollingInterval = setInterval(fetchGameState, 10000); // 백업용 10초 폴링
             }
             
             showNotification('실시간 연결 성공!', 'success');
@@ -964,15 +1060,23 @@ function initWebSocket() {
         
         gameSocket.onmessage = function(e) {
             const data = JSON.parse(e.data);
-            console.log('[WebSocket] 📨 메시지 수신:', data);
+            console.log('[WebSocket] 📨 메시지:', data.type);
             
-            if (data.type === 'game_state') {
-                // 초기 게임 상태
+            if (data.type === 'initial_state') {
+                // 초기 게임 상태 (전체)
                 handleGameState(data.data);
-            } else if (data.type === 'game_update') {
-                // 실시간 업데이트 - 즉시 상태 다시 가져오기
-                console.log('[WebSocket] ⚡ 게임 업데이트!');
-                fetchGameState();
+            } else if (data.type === 'delta_update') {
+                // Delta Update - 변경사항만 처리 (DB 쿼리 없음!)
+                console.log('[WebSocket] ⚡ Delta Update:', data.action);
+                handleDeltaUpdate(data);
+            } else if (data.type === 'player_connected') {
+                console.log('[WebSocket] 👋 플레이어 접속:', data.username);
+                showNotification(`${data.username}님이 접속했습니다`, 'info');
+            } else if (data.type === 'player_disconnected') {
+                console.log('[WebSocket] 👋 플레이어 퇴장:', data.username);
+                showNotification(`${data.username}님이 나갔습니다`, 'warning');
+            } else if (data.type === 'heartbeat_ack') {
+                // Heartbeat 응답
             }
         };
         
@@ -1009,6 +1113,46 @@ function initWebSocket() {
     } catch (error) {
         console.error('[WebSocket] 💥 초기화 실패:', error);
         useWebSocket = false;
+    }
+}
+
+
+// === Delta Update 처리 (변경사항만 적용) ===
+function handleDeltaUpdate(data) {
+    const action = data.action;
+    const payload = data.data;
+    
+    if (action === 'word_added') {
+        // 새 단어 추가 (DB 쿼리 없이 즉시 UI 업데이트)
+        const entry = {
+            word: payload.word,
+            author: payload.author,
+            author_display: payload.author_display,
+            create_date: payload.create_date
+        };
+        
+        // 단어 목록에 추가
+        addWordToList(entry);
+        
+        // 턴 업데이트
+        if (payload.current_turn_id) {
+            const turnInfo = {
+                id: payload.current_turn_id,
+                username: payload.current_turn_username,
+                display_name: payload.current_turn_display
+            };
+            lastCurrentTurnId = payload.current_turn_id;
+            updateTurnDisplay(turnInfo);
+        }
+        
+        console.log('[Delta] 단어 추가 완료 (서버 쿼리 없음)');
+    } else if (action === 'player_joined') {
+        // 참가자 변경 - 부분 업데이트만
+        console.log('[Delta] 플레이어 참가:', payload.username);
+        // 필요시 참가자 수만 업데이트
+    } else if (action === 'game_started') {
+        console.log('[Delta] 게임 시작!');
+        location.reload(); // 게임 시작은 전체 새로고침
     }
 }
 
@@ -1184,7 +1328,7 @@ function fetchGameState() {
 {% if game.status != 'finished' %}
 function startPolling() {
     // 게임 상태에 따라 다른 간격
-    const interval = '{{ game.status }}' === 'active' ? 50 : 500; // active: 0.05초, waiting: 0.5초
+    const interval = '{{ game.status }}' === 'active' ? 5000 : 10000; // WebSocket이 메인이므로 폴링은 백업용만 // active: 0.05초, waiting: 0.5초
 
     console.log(`[실시간] Polling 시작 (간격: ${interval}ms)`);
 

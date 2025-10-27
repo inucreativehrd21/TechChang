@@ -442,9 +442,19 @@ def wordchain_add_word(request, game_id):
 
             next_turn_username = game.current_turn.username if game.current_turn else "알 수 없음"
             
-            # WebSocket 브로드캐스트 - 즉시 알림
+            # WebSocket Delta Update - 변경사항만 전송
             try:
                 channel_layer = get_channel_layer()
+                try:
+                    author_display = request.user.profile.display_name
+                except:
+                    author_display = request.user.username
+                
+                try:
+                    next_turn_display = game.current_turn.profile.display_name if game.current_turn else None
+                except:
+                    next_turn_display = game.current_turn.username if game.current_turn else None
+                
                 async_to_sync(channel_layer.group_send)(
                     f'wordchain_{game_id}',
                     {
@@ -453,8 +463,14 @@ def wordchain_add_word(request, game_id):
                             'action': 'word_added',
                             'word': word,
                             'author': request.user.username,
+                            'author_display': author_display,
+                            'author_id': request.user.id,
                             'next_char': word[-1],
-                            'current_turn': next_turn_username,
+                            'current_turn_id': game.current_turn.id if game.current_turn else None,
+                            'current_turn_username': next_turn_username,
+                            'current_turn_display': next_turn_display,
+                            'create_date': timezone.now().isoformat(),
+                            'entry_count': game.entries.count()
                         }
                     }
                 )

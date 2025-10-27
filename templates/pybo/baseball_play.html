@@ -1,0 +1,239 @@
+{% extends 'base.html' %}
+
+{% block title %}숫자야구 게임{% endblock %}
+
+{% block extra_css %}
+<style>
+.baseball-container {
+    max-width: 600px;
+    margin: 0 auto;
+}
+
+.number-input {
+    font-size: 2rem;
+    text-align: center;
+    letter-spacing: 1rem;
+    font-weight: bold;
+}
+
+.attempt-item {
+    padding: 15px;
+    margin-bottom: 10px;
+    border-radius: 10px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    animation: slideIn 0.3s ease;
+}
+
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateX(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+.strike {
+    color: #ff4757;
+    font-weight: bold;
+}
+
+.ball {
+    color: #ffa502;
+    font-weight: bold;
+}
+
+.game-over-banner {
+    padding: 30px;
+    border-radius: 15px;
+    text-align: center;
+    margin: 20px 0;
+}
+
+.game-won {
+    background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+    color: white;
+}
+
+.game-lost {
+    background: linear-gradient(135deg, #ee0979 0%, #ff6a00 100%);
+    color: white;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container my-5 baseball-container">
+    <div class="card">
+        <div class="card-header bg-primary text-white">
+            <h3 class="mb-0"><i class="fas fa-baseball-ball me-2"></i>숫자야구</h3>
+        </div>
+        <div class="card-body">
+            <!-- 게임 상태 -->
+            <div class="alert alert-info text-center">
+                <h5>남은 기회: <strong>{{ remaining_attempts }}</strong> / {{ game.max_attempts }}</h5>
+                <small>서로 다른 4자리 숫자를 맞춰보세요!</small>
+            </div>
+
+            {% if game.status == 'playing' %}
+            <!-- 입력 폼 -->
+            <form id="guessForm" onsubmit="makeGuess(event)" class="mb-4">
+                {% csrf_token %}
+                <div class="mb-3">
+                    <input type="text"
+                           class="form-control number-input"
+                           id="guessInput"
+                           maxlength="4"
+                           placeholder="####"
+                           pattern="[0-9]{4}"
+                           required
+                           autofocus>
+                </div>
+                <div class="d-grid gap-2">
+                    <button type="submit" class="btn btn-primary btn-lg">
+                        <i class="fas fa-check me-2"></i>확인
+                    </button>
+                    <button type="button" class="btn btn-outline-danger" onclick="giveUp()">
+                        <i class="fas fa-flag me-2"></i>포기
+                    </button>
+                </div>
+            </form>
+            {% elif game.status == 'won' %}
+            <!-- 승리 -->
+            <div class="game-over-banner game-won">
+                <h2><i class="fas fa-trophy me-2"></i>축하합니다!</h2>
+                <p class="mb-0">{{ game.attempts }}번 만에 정답을 맞췄습니다!</p>
+                <p class="mt-2"><strong>정답: {{ game.secret_number }}</strong></p>
+                <a href="{% url 'pybo:baseball_start' %}" class="btn btn-light mt-3">
+                    <i class="fas fa-redo me-2"></i>다시하기
+                </a>
+            </div>
+            {% elif game.status == 'giveup' %}
+            <!-- 포기 -->
+            <div class="game-over-banner game-lost">
+                <h2><i class="fas fa-times-circle me-2"></i>아쉽네요!</h2>
+                <p class="mb-0">다음에는 꼭 맞춰보세요!</p>
+                <p class="mt-2"><strong>정답: {{ game.secret_number }}</strong></p>
+                <a href="{% url 'pybo:baseball_start' %}" class="btn btn-light mt-3">
+                    <i class="fas fa-redo me-2"></i>다시하기
+                </a>
+            </div>
+            {% endif %}
+
+            <!-- 시도 기록 -->
+            <div class="mt-4">
+                <h5>시도 기록</h5>
+                <div id="attemptList">
+                    {% for attempt in attempts reversed %}
+                    <div class="attempt-item">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span style="font-size: 1.5rem;">{{ attempt.guess_number }}</span>
+                            <div>
+                                <span class="strike">{{ attempt.strikes }}S</span>
+                                <span class="ball ms-2">{{ attempt.balls }}B</span>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+const csrfToken = '{{ csrf_token }}';
+const gameId = {{ game.id }};
+
+function makeGuess(event) {
+    event.preventDefault();
+
+    const input = document.getElementById('guessInput');
+    const guess = input.value.trim();
+
+    // 유효성 검사
+    if (guess.length !== 4) {
+        alert('4자리 숫자를 입력해주세요.');
+        return;
+    }
+
+    if (new Set(guess).size !== 4) {
+        alert('중복되지 않은 숫자를 입력해주세요.');
+        return;
+    }
+
+    // 전송
+    fetch(`/pybo/baseball/${gameId}/guess/`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'X-CSRFToken': csrfToken
+        },
+        body: new URLSearchParams({ guess })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            // 시도 기록 추가
+            const attemptList = document.getElementById('attemptList');
+            const newAttempt = document.createElement('div');
+            newAttempt.className = 'attempt-item';
+            newAttempt.innerHTML = `
+                <div class="d-flex justify-content-between align-items-center">
+                    <span style="font-size: 1.5rem;">${guess}</span>
+                    <div>
+                        <span class="strike">${data.strikes}S</span>
+                        <span class="ball ms-2">${data.balls}B</span>
+                    </div>
+                </div>
+            `;
+            attemptList.insertBefore(newAttempt, attemptList.firstChild);
+
+            // 입력 초기화
+            input.value = '';
+            input.focus();
+
+            // 게임 종료 확인
+            if (data.game_over) {
+                alert(data.message);
+                setTimeout(() => location.reload(), 500);
+            } else {
+                // 남은 기회 업데이트
+                document.querySelector('.alert-info h5').innerHTML =
+                    `남은 기회: <strong>${data.remaining}</strong> / {{ game.max_attempts }}`;
+            }
+        } else {
+            alert(data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('오류가 발생했습니다.');
+    });
+}
+
+function giveUp() {
+    if (!confirm('정말 포기하시겠습니까?')) return;
+
+    fetch(`/pybo/baseball/${gameId}/giveup/`, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': csrfToken
+        }
+    })
+    .then(r => r.json())
+    .then(data => {
+        alert(data.message);
+        location.reload();
+    });
+}
+
+// 숫자만 입력 가능하도록
+document.getElementById('guessInput').addEventListener('input', function(e) {
+    this.value = this.value.replace(/[^0-9]/g, '');
+});
+</script>
+{% endblock %}
