@@ -1,7 +1,7 @@
 
 from django.urls import path
 
-from .views import base_views, question_views, answer_views, comment_views, profile_views, wordchain_views, tictactoe_views, baseball_views, guestbook_views
+from .views import base_views, question_views, answer_views, comment_views, profile_views, wordchain_views, tictactoe_views, baseball_views, guestbook_views, game2048_views
 
 app_name = 'pybo'
 
@@ -75,4 +75,9 @@ urlpatterns = [
     path('guestbook/', guestbook_views.guestbook_list, name='guestbook_list'),
     path('guestbook/create/', guestbook_views.guestbook_create, name='guestbook_create'),
     path('guestbook/delete/<int:entry_id>/', guestbook_views.guestbook_delete, name='guestbook_delete'),
+    # game2048_views.py - 2048 게임
+    path('2048/', game2048_views.game2048_start, name='game2048_start'),
+    path('2048/<int:game_id>/', game2048_views.game2048_play, name='game2048_play'),
+    path('2048/<int:game_id>/move/', game2048_views.game2048_move, name='game2048_move'),
+    path('2048/<int:game_id>/restart/', game2048_views.game2048_restart, name='game2048_restart'),
 ]

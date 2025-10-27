@@ -2,7 +2,7 @@
 from django.contrib import admin
 
 from .models import Question, Answer, Comment, Category, WordChainGame, WordChainEntry
-from .models import WordChainChatMessage, TicTacToeGame, NumberBaseballGame, NumberBaseballAttempt, GuestBook
+from .models import WordChainChatMessage, TicTacToeGame, NumberBaseballGame, NumberBaseballAttempt, GuestBook, Game2048
 
 class QuestionAdmin(admin.ModelAdmin):
     search_fields = ['subject']
@@ -79,6 +79,14 @@ class GuestBookAdmin(admin.ModelAdmin):
     short_content.short_description = '내용'
 
 
+
+
+class Game2048Admin(admin.ModelAdmin):
+    list_display = ('player', 'score', 'best_score', 'status', 'moves', 'create_date')
+    list_filter = ('status', 'create_date')
+    search_fields = ('player__username',)
+    readonly_fields = ('create_date', 'end_date')
+
 # Register your models here.
 admin.site.register(Question, QuestionAdmin)
 admin.site.register(Answer, AnswerAdmin)
@@ -91,3 +99,4 @@ admin.site.register(TicTacToeGame, TicTacToeGameAdmin)
 admin.site.register(NumberBaseballGame, NumberBaseballGameAdmin)
 admin.site.register(NumberBaseballAttempt, NumberBaseballAttemptAdmin)
 admin.site.register(GuestBook, GuestBookAdmin)
+admin.site.register(Game2048, Game2048Admin)

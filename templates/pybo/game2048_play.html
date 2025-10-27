@@ -1,0 +1,522 @@
+{% extends 'base.html' %}
+
+{% block title %}2048 게임{% endblock %}
+
+{% block extra_css %}
+<style>
+body {
+    background: #faf8ef;
+}
+
+.game-container {
+    max-width: 500px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+.game-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.game-title {
+    font-size: 80px;
+    font-weight: bold;
+    color: #776e65;
+    margin: 0;
+}
+
+.scores-container {
+    display: flex;
+    gap: 10px;
+}
+
+.score-box {
+    background: #bbada0;
+    padding: 15px 25px;
+    border-radius: 3px;
+    color: white;
+    text-align: center;
+    position: relative;
+}
+
+.score-title {
+    font-size: 13px;
+    text-transform: uppercase;
+    margin-bottom: 5px;
+}
+
+.score-value {
+    font-size: 25px;
+    font-weight: bold;
+}
+
+.score-addition {
+    position: absolute;
+    right: 30px;
+    color: rgba(119, 110, 101, 0.9);
+    font-weight: bold;
+    font-size: 25px;
+    line-height: 25px;
+    animation: move-up 600ms ease-in;
+    animation-fill-mode: both;
+}
+
+@keyframes move-up {
+    0% {
+        top: 25px;
+        opacity: 1;
+    }
+    100% {
+        top: -50px;
+        opacity: 0;
+    }
+}
+
+.game-intro {
+    margin-bottom: 20px;
+}
+
+.restart-button {
+    background: #8f7a66;
+    border-radius: 3px;
+    padding: 10px 20px;
+    color: #f9f6f2;
+    font-weight: bold;
+    border: none;
+    cursor: pointer;
+    transition: background 0.3s;
+}
+
+.restart-button:hover {
+    background: #9f8a76;
+}
+
+.grid-container {
+    position: relative;
+    padding: 15px;
+    background: #bbada0;
+    border-radius: 6px;
+    width: 500px;
+    height: 500px;
+    box-sizing: border-box;
+}
+
+.grid-row {
+    display: flex;
+    gap: 15px;
+    margin-bottom: 15px;
+}
+
+.grid-row:last-child {
+    margin-bottom: 0;
+}
+
+.grid-cell {
+    width: 106.25px;
+    height: 106.25px;
+    background: rgba(238, 228, 218, 0.35);
+    border-radius: 3px;
+}
+
+.tile-container {
+    position: absolute;
+    top: 15px;
+    left: 15px;
+    width: 470px;
+    height: 470px;
+}
+
+.tile {
+    position: absolute;
+    width: 106.25px;
+    height: 106.25px;
+    background: #eee4da;
+    border-radius: 3px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 55px;
+    font-weight: bold;
+    color: #776e65;
+    transition: transform 100ms ease-in-out, left 100ms ease-in-out, top 100ms ease-in-out;
+}
+
+.tile-new {
+    animation: appear 200ms ease 100ms;
+    animation-fill-mode: backwards;
+}
+
+.tile-merged {
+    animation: pop 200ms ease 100ms;
+    animation-fill-mode: backwards;
+}
+
+@keyframes appear {
+    0% {
+        opacity: 0;
+        transform: scale(0);
+    }
+    100% {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+@keyframes pop {
+    0% {
+        transform: scale(0);
+    }
+    50% {
+        transform: scale(1.2);
+    }
+    100% {
+        transform: scale(1);
+    }
+}
+
+/* 타일 색상 */
+.tile-2 { background: #eee4da; color: #776e65; }
+.tile-4 { background: #ede0c8; color: #776e65; }
+.tile-8 { background: #f2b179; color: #f9f6f2; font-size: 55px; }
+.tile-16 { background: #f59563; color: #f9f6f2; font-size: 55px; }
+.tile-32 { background: #f67c5f; color: #f9f6f2; font-size: 55px; }
+.tile-64 { background: #f65e3b; color: #f9f6f2; font-size: 55px; }
+.tile-128 { background: #edcf72; color: #f9f6f2; font-size: 45px; }
+.tile-256 { background: #edcc61; color: #f9f6f2; font-size: 45px; }
+.tile-512 { background: #edc850; color: #f9f6f2; font-size: 45px; }
+.tile-1024 { background: #edc53f; color: #f9f6f2; font-size: 35px; }
+.tile-2048 { background: #edc22e; color: #f9f6f2; font-size: 35px; }
+.tile-super { background: #3c3a32; color: #f9f6f2; font-size: 30px; }
+
+.game-message {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(238, 228, 218, 0.73);
+    z-index: 1000;
+    display: none;
+    align-items: center;
+    justify-content: center;
+}
+
+.game-message.show {
+    display: flex;
+}
+
+.game-message-content {
+    text-align: center;
+    background: white;
+    padding: 60px;
+    border-radius: 10px;
+    box-shadow: 0 0 30px rgba(0,0,0,0.3);
+}
+
+.game-message h1 {
+    font-size: 60px;
+    font-weight: bold;
+    margin-bottom: 20px;
+}
+
+.game-message.game-won h1 {
+    color: #f67c5f;
+}
+
+.game-message.game-lost h1 {
+    color: #776e65;
+}
+
+.game-instructions {
+    margin-top: 30px;
+    padding: 20px;
+    background: white;
+    border-radius: 6px;
+}
+
+.game-instructions p {
+    margin: 10px 0;
+    color: #776e65;
+}
+
+.key-hint {
+    display: inline-block;
+    padding: 5px 10px;
+    background: #8f7a66;
+    color: white;
+    border-radius: 3px;
+    font-weight: bold;
+    margin: 0 3px;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container my-5">
+    <div class="game-container">
+        <!-- 헤더 -->
+        <div class="game-header">
+            <h1 class="game-title">2048</h1>
+            <div class="scores-container">
+                <div class="score-box">
+                    <div class="score-title">Score</div>
+                    <div class="score-value" id="currentScore">{{ game.score }}</div>
+                    <div class="score-addition" id="scoreAddition"></div>
+                </div>
+                <div class="score-box">
+                    <div class="score-title">Best</div>
+                    <div class="score-value">{{ best_score }}</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 설명 및 버튼 -->
+        <div class="game-intro">
+            <p style="color: #776e65;">
+                <strong>방향키로 타일을 움직여서 2048을 만드세요!</strong>
+            </p>
+            <button class="restart-button" onclick="restartGame()">
+                <i class="fas fa-redo me-2"></i>New Game
+            </button>
+        </div>
+
+        <!-- 게임 보드 -->
+        <div class="grid-container">
+            <!-- 배경 그리드 -->
+            <div class="grid-row">
+                <div class="grid-cell"></div>
+                <div class="grid-cell"></div>
+                <div class="grid-cell"></div>
+                <div class="grid-cell"></div>
+            </div>
+            <div class="grid-row">
+                <div class="grid-cell"></div>
+                <div class="grid-cell"></div>
+                <div class="grid-cell"></div>
+                <div class="grid-cell"></div>
+            </div>
+            <div class="grid-row">
+                <div class="grid-cell"></div>
+                <div class="grid-cell"></div>
+                <div class="grid-cell"></div>
+                <div class="grid-cell"></div>
+            </div>
+            <div class="grid-row">
+                <div class="grid-cell"></div>
+                <div class="grid-cell"></div>
+                <div class="grid-cell"></div>
+                <div class="grid-cell"></div>
+            </div>
+
+            <!-- 타일 컨테이너 -->
+            <div class="tile-container" id="tileContainer"></div>
+        </div>
+
+        <!-- 조작 안내 -->
+        <div class="game-instructions">
+            <p><strong>조작 방법:</strong></p>
+            <p>
+                <span class="key-hint">↑</span>
+                <span class="key-hint">↓</span>
+                <span class="key-hint">←</span>
+                <span class="key-hint">→</span>
+                방향키로 타일을 이동하세요
+            </p>
+            <p>같은 숫자의 타일이 합쳐져서 더 큰 숫자가 됩니다!</p>
+        </div>
+
+        <div class="text-center mt-4">
+            <a href="{% url 'pybo:index' %}" class="btn btn-outline-secondary">
+                <i class="fas fa-arrow-left me-2"></i>메인으로
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- 게임 오버 메시지 -->
+<div class="game-message" id="gameMessage">
+    <div class="game-message-content">
+        <h1 id="messageTitle">You Win!</h1>
+        <p id="messageText">Final Score: <span id="finalScore"></span></p>
+        <button class="restart-button mt-3" onclick="restartGame()">
+            <i class="fas fa-redo me-2"></i>Try Again
+        </button>
+    </div>
+</div>
+
+<input type="hidden" name="csrfmiddlewaretoken" value="{{ csrf_token }}">
+
+<script>
+const csrfToken = '{{ csrf_token }}';
+const gameId = {{ game.id }};
+let board = {{ game.board_state|safe }};
+let score = {{ game.score }};
+let isAnimating = false;
+
+// 타일 위치 계산
+function getTilePosition(row, col) {
+    const tileSize = 106.25;
+    const margin = 15;
+    return {
+        left: col * (tileSize + margin),
+        top: row * (tileSize + margin)
+    };
+}
+
+// 보드 렌더링
+function renderBoard() {
+    const container = document.getElementById('tileContainer');
+    container.innerHTML = '';
+
+    for (let i = 0; i < 4; i++) {
+        for (let j = 0; j < 4; j++) {
+            const value = board[i][j];
+            if (value !== 0) {
+                const tile = document.createElement('div');
+                tile.className = `tile tile-${value}`;
+                if (value > 2048) {
+                    tile.className = 'tile tile-super';
+                }
+                tile.textContent = value;
+
+                const pos = getTilePosition(i, j);
+                tile.style.left = pos.left + 'px';
+                tile.style.top = pos.top + 'px';
+
+                container.appendChild(tile);
+            }
+        }
+    }
+}
+
+// 방향키 입력 처리
+document.addEventListener('keydown', function(e) {
+    if (isAnimating) return;
+
+    let direction = null;
+
+    switch(e.key) {
+        case 'ArrowUp':
+            direction = 'up';
+            e.preventDefault();
+            break;
+        case 'ArrowDown':
+            direction = 'down';
+            e.preventDefault();
+            break;
+        case 'ArrowLeft':
+            direction = 'left';
+            e.preventDefault();
+            break;
+        case 'ArrowRight':
+            direction = 'right';
+            e.preventDefault();
+            break;
+    }
+
+    if (direction) {
+        move(direction);
+    }
+});
+
+// 이동 처리
+function move(direction) {
+    isAnimating = true;
+
+    fetch(`/pybo/2048/${gameId}/move/`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'X-CSRFToken': csrfToken
+        },
+        body: new URLSearchParams({ direction })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            board = data.board;
+
+            // 점수 애니메이션
+            if (data.score_gained > 0) {
+                updateScore(data.score, data.score_gained);
+            }
+
+            // 보드 렌더링
+            renderBoard();
+
+            // 게임 오버 확인
+            if (data.game_over) {
+                setTimeout(() => {
+                    showGameOver(data.status);
+                }, 500);
+            }
+        }
+
+        setTimeout(() => {
+            isAnimating = false;
+        }, 100);
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        isAnimating = false;
+    });
+}
+
+// 점수 업데이트
+function updateScore(newScore, gained) {
+    score = newScore;
+    document.getElementById('currentScore').textContent = score;
+
+    if (gained > 0) {
+        const addition = document.getElementById('scoreAddition');
+        addition.textContent = '+' + gained;
+        addition.style.display = 'block';
+
+        setTimeout(() => {
+            addition.style.display = 'none';
+        }, 600);
+    }
+}
+
+// 게임 오버 표시
+function showGameOver(status) {
+    const message = document.getElementById('gameMessage');
+    const title = document.getElementById('messageTitle');
+    const text = document.getElementById('messageText');
+
+    document.getElementById('finalScore').textContent = score;
+
+    if (status === 'won') {
+        message.className = 'game-message game-won show';
+        title.textContent = 'You Win! 🎉';
+        text.innerHTML = `<strong>Final Score: ${score}</strong><br>축하합니다! 2048을 달성했습니다!`;
+    } else {
+        message.className = 'game-message game-lost show';
+        title.textContent = 'Game Over';
+        text.innerHTML = `<strong>Final Score: ${score}</strong><br>더 이상 움직일 수 없습니다.`;
+    }
+}
+
+// 게임 재시작
+function restartGame() {
+    fetch(`/pybo/2048/${gameId}/restart/`, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': csrfToken
+        }
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            location.href = data.redirect_url;
+        }
+    });
+}
+
+// 초기 렌더링
+renderBoard();
+</script>
+{% endblock %}

@@ -274,3 +274,36 @@ class GuestBook(models.Model):
         verbose_name = '방명록'
         verbose_name_plural = '방명록 목록'
         ordering = ['-create_date']
+
+
+# ========== 2048 게임 ==========
+class Game2048(models.Model):
+    """2048 게임"""
+    STATUS_CHOICES = [
+        ('playing', '진행중'),
+        ('won', '승리'),
+        ('lost', '패배'),
+    ]
+    
+    player = models.ForeignKey(User, on_delete=models.CASCADE, related_name='game2048_records', verbose_name='플레이어')
+    board_state = models.JSONField(default=list, verbose_name='보드 상태')  # 4x4 배열
+    score = models.IntegerField(default=0, verbose_name='점수')
+    best_score = models.IntegerField(default=0, verbose_name='최고 점수')
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='playing', verbose_name='상태')
+    moves = models.IntegerField(default=0, verbose_name='이동 횟수')
+    create_date = models.DateTimeField(auto_now_add=True, verbose_name='생성일')
+    end_date = models.DateTimeField(null=True, blank=True, verbose_name='종료일')
+    
+    def __str__(self):
+        return f"{self.player.username}의 2048 게임 - {self.score}점"
+    
+    def save(self, *args, **kwargs):
+        # 보드 초기화 (빈 4x4 배열)
+        if not self.board_state:
+            self.board_state = [[0]*4 for _ in range(4)]
+        super().save(*args, **kwargs)
+    
+    class Meta:
+        verbose_name = '2048 게임'
+        verbose_name_plural = '2048 게임 기록'
+        ordering = ['-create_date']
