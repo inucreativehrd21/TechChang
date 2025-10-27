@@ -1,7 +1,9 @@
 
 from django.urls import path
 
-from .views import base_views, question_views, answer_views, comment_views, profile_views, wordchain_views, tictactoe_views, baseball_views, guestbook_views, game2048_views
+# 실시간 게임 비활성화 (나중을 위해 파일은 유지)
+# from .views import wordchain_views, tictactoe_views
+from .views import base_views, question_views, answer_views, comment_views, profile_views, baseball_views, guestbook_views, game2048_views
 
 app_name = 'pybo'
 
@@ -11,7 +13,7 @@ urlpatterns = [
          base_views.index, name='index'),
     path('recent-answers/', base_views.recent_answers, name='recent_answers'),
     path('recent-comments/', base_views.recent_comments, name='recent_comments'),
-    path('games/', base_views.games_index, name='games_index'),
+    # path('games/', base_views.games_index, name='games_index'),  # 게임센터 메인 비활성화
 
     # question_views.py
     path('question/create/',
@@ -47,23 +49,13 @@ urlpatterns = [
     # file download
     path('download/<int:question_id>/', base_views.download_file, name='download_file'),
 
-    # wordchain_views.py - 끝말잇기 게임
-    path('wordchain/', wordchain_views.wordchain_list, name='wordchain_list'),
-    path('wordchain/create/', wordchain_views.wordchain_create, name='wordchain_create'),
-    path('wordchain/<int:game_id>/', wordchain_views.wordchain_detail, name='wordchain_detail'),
-    path('wordchain/<int:game_id>/join/', wordchain_views.wordchain_join, name='wordchain_join'),
-    path('wordchain/<int:game_id>/start/', wordchain_views.wordchain_start, name='wordchain_start'),
-    path('wordchain/<int:game_id>/add_word/', wordchain_views.wordchain_add_word, name='wordchain_add_word'),
-     path('wordchain/<int:game_id>/add_chat/', wordchain_views.wordchain_add_chat, name='wordchain_add_chat'),
-     path('wordchain/<int:game_id>/chats/', wordchain_views.wordchain_get_chats, name='wordchain_get_chats'),
-    path('wordchain/<int:game_id>/state/', wordchain_views.wordchain_get_state, name='wordchain_get_state'),
-    path('wordchain/<int:game_id>/finish/', wordchain_views.wordchain_finish, name='wordchain_finish'),
-    # tictactoe_views.py - 틱택토 게임
-    path('tictactoe/', tictactoe_views.tictactoe_list, name='tictactoe_list'),
-    path('tictactoe/create/', tictactoe_views.tictactoe_create, name='tictactoe_create'),
-    path('tictactoe/<int:game_id>/', tictactoe_views.tictactoe_detail, name='tictactoe_detail'),
-    path('tictactoe/<int:game_id>/join/', tictactoe_views.tictactoe_join, name='tictactoe_join'),
-    path('tictactoe/<int:game_id>/move/', tictactoe_views.tictactoe_move, name='tictactoe_move'),
+    # ==================== 실시간 게임 비활성화 ====================
+    # 끝말잇기 게임과 틱택토 게임은 WebSocket 실시간 통신이 필요하여 비활성화
+    # 파일은 유지: pybo/views/wordchain_views.py, pybo/views/tictactoe_views.py
+    # 재활성화 방법: 상단 import에서 wordchain_views, tictactoe_views 추가 후
+    #               아래 URL 패턴 추가
+    # =============================================================
+
     # baseball_views.py - 숫자야구 게임
     path('baseball/', baseball_views.baseball_start, name='baseball_start'),
     path('baseball/<int:game_id>/', baseball_views.baseball_play, name='baseball_play'),
