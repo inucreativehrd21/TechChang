@@ -13,6 +13,7 @@ urlpatterns = [
          base_views.detail, name='detail'),
     path('recent-answers/', base_views.recent_answers, name='recent_answers'),
     path('recent-comments/', base_views.recent_comments, name='recent_comments'),
+    path('games/', base_views.games_index, name='games_index'),
 
     # question_views.py
     path('question/create/',

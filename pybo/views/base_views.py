@@ -202,3 +202,86 @@ def download_file(request, question_id):
     response['Content-Disposition'] = f'attachment; filename="{filename}"'
 
     return response
+
+
+def games_index(request):
+    """게임 대시보드 - 모든 게임 목록"""
+    from ..models import WordChainGame, TicTacToeGame, NumberBaseballGame, Game2048, GuestBook
+    from django.db.models import F
+
+    # 각 게임의 통계 정보
+    games_info = [
+        {
+            'name': '끝말잇기',
+            'title': 'Word Chain Game',
+            'description': '실시간 멀티플레이어 끝말잇기 게임. 친구들과 함께 한국어 단어 실력을 겨뤄보세요!',
+            'url': 'pybo:wordchain_list',
+            'icon': '🔤',
+            'color': 'primary',
+            'total_games': WordChainGame.objects.count(),
+            'active_games': WordChainGame.objects.filter(status='playing').count(),
+            'features': ['실시간 통신', '멀티플레이어', 'WebSocket'],
+        },
+        {
+            'name': '틱택토',
+            'title': 'Tic-Tac-Toe',
+            'description': '2인용 실시간 틱택토 게임. 온라인으로 상대방과 대결하세요!',
+            'url': 'pybo:tictactoe_list',
+            'icon': '⭕',
+            'color': 'success',
+            'total_games': TicTacToeGame.objects.count(),
+            'active_games': TicTacToeGame.objects.filter(status__in=['waiting', 'playing']).count(),
+            'features': ['실시간 대전', '2인 플레이', 'WebSocket'],
+        },
+        {
+            'name': '숫자야구',
+            'title': 'Number Baseball',
+            'description': '숨겨진 3자리 숫자를 맞춰보세요. 스트라이크와 볼 힌트로 추리하는 게임!',
+            'url': 'pybo:baseball_start',
+            'icon': '⚾',
+            'color': 'warning',
+            'total_games': NumberBaseballGame.objects.count(),
+            'active_games': NumberBaseballGame.objects.filter(status='playing').count(),
+            'features': ['싱글 플레이', '논리 퍼즐', '추리 게임'],
+        },
+        {
+            'name': '2048',
+            'title': '2048 Puzzle',
+            'description': '타일을 합쳐 2048을 만드세요! 중독성 강한 퍼즐 게임.',
+            'url': 'pybo:game2048_start',
+            'icon': '🎮',
+            'color': 'info',
+            'total_games': Game2048.objects.count(),
+            'active_games': Game2048.objects.filter(status='playing').count(),
+            'features': ['퍼즐', '싱글 플레이', '키보드 조작'],
+        },
+        {
+            'name': '방명록',
+            'title': 'Guest Book',
+            'description': '포스트잇처럼 자유롭게 메시지를 남겨보세요!',
+            'url': 'pybo:guestbook_list',
+            'icon': '📝',
+            'color': 'secondary',
+            'total_games': GuestBook.objects.count(),
+            'active_games': GuestBook.objects.filter(create_date__gte=F('create_date')).count(),
+            'features': ['메시지 보드', '인터랙티브', '포스트잇 스타일'],
+        },
+    ]
+
+    # 최근 활동 통계
+    recent_stats = {
+        'total_games_played': (
+            WordChainGame.objects.count() +
+            TicTacToeGame.objects.count() +
+            NumberBaseballGame.objects.count() +
+            Game2048.objects.count()
+        ),
+        'active_players': request.user.is_authenticated,
+    }
+
+    context = {
+        'games_info': games_info,
+        'recent_stats': recent_stats,
+    }
+
+    return render(request, 'pybo/games_index.html', context)

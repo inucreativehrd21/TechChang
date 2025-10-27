@@ -1,0 +1,314 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}게임 센터 - Games Center{% endblock %}
+
+{% block extra_style %}
+<style>
+    .games-hero {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 4rem 0;
+        margin-bottom: 3rem;
+        border-radius: 0 0 2rem 2rem;
+        box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+    }
+
+    .games-hero h1 {
+        font-size: 3rem;
+        font-weight: 700;
+        margin-bottom: 1rem;
+        text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+    }
+
+    .games-hero p {
+        font-size: 1.2rem;
+        opacity: 0.95;
+    }
+
+    .stats-card {
+        background: white;
+        border-radius: 1rem;
+        padding: 1.5rem;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+        transition: transform 0.3s ease;
+    }
+
+    .stats-card:hover {
+        transform: translateY(-5px);
+    }
+
+    .stats-number {
+        font-size: 2.5rem;
+        font-weight: 700;
+        color: #667eea;
+    }
+
+    .game-card {
+        border: none;
+        border-radius: 1.5rem;
+        overflow: hidden;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+        height: 100%;
+        background: white;
+    }
+
+    .game-card:hover {
+        transform: translateY(-10px);
+        box-shadow: 0 12px 40px rgba(0,0,0,0.15);
+    }
+
+    .game-card-header {
+        padding: 2rem 1.5rem 1rem;
+        text-align: center;
+        position: relative;
+    }
+
+    .game-icon {
+        font-size: 4rem;
+        margin-bottom: 1rem;
+        display: block;
+        animation: bounce 2s infinite;
+    }
+
+    @keyframes bounce {
+        0%, 100% { transform: translateY(0); }
+        50% { transform: translateY(-10px); }
+    }
+
+    .game-card:hover .game-icon {
+        animation: spin 1s ease;
+    }
+
+    @keyframes spin {
+        0% { transform: rotate(0deg) scale(1); }
+        50% { transform: rotate(180deg) scale(1.2); }
+        100% { transform: rotate(360deg) scale(1); }
+    }
+
+    .game-title {
+        font-size: 1.5rem;
+        font-weight: 700;
+        margin-bottom: 0.5rem;
+        color: #2d3748;
+    }
+
+    .game-subtitle {
+        font-size: 0.9rem;
+        color: #718096;
+        margin-bottom: 1rem;
+    }
+
+    .game-card-body {
+        padding: 1rem 1.5rem;
+    }
+
+    .game-description {
+        color: #4a5568;
+        margin-bottom: 1.5rem;
+        min-height: 60px;
+    }
+
+    .game-stats {
+        display: flex;
+        justify-content: space-around;
+        margin-bottom: 1.5rem;
+        padding: 1rem;
+        background: #f7fafc;
+        border-radius: 0.5rem;
+    }
+
+    .game-stat {
+        text-align: center;
+    }
+
+    .game-stat-number {
+        font-size: 1.5rem;
+        font-weight: 700;
+        display: block;
+    }
+
+    .game-stat-label {
+        font-size: 0.75rem;
+        color: #718096;
+        text-transform: uppercase;
+    }
+
+    .feature-badges {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .feature-badge {
+        background: #edf2f7;
+        color: #4a5568;
+        padding: 0.25rem 0.75rem;
+        border-radius: 1rem;
+        font-size: 0.75rem;
+        font-weight: 500;
+    }
+
+    .play-button {
+        width: 100%;
+        padding: 0.75rem;
+        font-weight: 600;
+        border-radius: 0.75rem;
+        transition: all 0.3s ease;
+        border: none;
+        font-size: 1rem;
+    }
+
+    .play-button:hover {
+        transform: scale(1.05);
+        box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+    }
+
+    .section-title {
+        font-size: 2rem;
+        font-weight: 700;
+        margin-bottom: 2rem;
+        color: #2d3748;
+        position: relative;
+        padding-bottom: 0.5rem;
+    }
+
+    .section-title::after {
+        content: '';
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        width: 60px;
+        height: 4px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-radius: 2px;
+    }
+
+    @media (max-width: 768px) {
+        .games-hero h1 {
+            font-size: 2rem;
+        }
+
+        .game-icon {
+            font-size: 3rem;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Hero Section -->
+<div class="games-hero">
+    <div class="container text-center">
+        <h1>🎮 게임 센터</h1>
+        <p>다양한 게임을 즐기고 친구들과 실력을 겨뤄보세요!</p>
+    </div>
+</div>
+
+<div class="container mb-5">
+    <!-- Stats Section -->
+    <div class="row mb-5">
+        <div class="col-md-6 mb-3">
+            <div class="stats-card">
+                <h5 class="text-muted mb-2">총 플레이된 게임</h5>
+                <div class="stats-number">{{ recent_stats.total_games_played }}</div>
+                <small class="text-muted">전체 게임 기록</small>
+            </div>
+        </div>
+        <div class="col-md-6 mb-3">
+            <div class="stats-card">
+                <h5 class="text-muted mb-2">현재 상태</h5>
+                <div class="stats-number">
+                    {% if user.is_authenticated %}
+                        <span class="text-success">온라인</span>
+                    {% else %}
+                        <span class="text-secondary">오프라인</span>
+                    {% endif %}
+                </div>
+                <small class="text-muted">
+                    {% if user.is_authenticated %}
+                        게임을 시작할 수 있습니다
+                    {% else %}
+                        로그인하여 게임을 즐기세요
+                    {% endif %}
+                </small>
+            </div>
+        </div>
+    </div>
+
+    <!-- Games Section -->
+    <h2 class="section-title">모든 게임</h2>
+
+    <div class="row">
+        {% for game in games_info %}
+        <div class="col-lg-4 col-md-6 mb-4">
+            <div class="card game-card">
+                <div class="game-card-header">
+                    <span class="game-icon">{{ game.icon }}</span>
+                    <h3 class="game-title">{{ game.name }}</h3>
+                    <p class="game-subtitle">{{ game.title }}</p>
+                </div>
+
+                <div class="game-card-body">
+                    <p class="game-description">{{ game.description }}</p>
+
+                    <div class="game-stats">
+                        <div class="game-stat">
+                            <span class="game-stat-number text-{{ game.color }}">{{ game.total_games }}</span>
+                            <span class="game-stat-label">총 게임</span>
+                        </div>
+                        <div class="game-stat">
+                            <span class="game-stat-number text-success">{{ game.active_games }}</span>
+                            <span class="game-stat-label">진행 중</span>
+                        </div>
+                    </div>
+
+                    <div class="feature-badges">
+                        {% for feature in game.features %}
+                        <span class="feature-badge">{{ feature }}</span>
+                        {% endfor %}
+                    </div>
+
+                    <a href="{% url game.url %}" class="btn btn-{{ game.color }} play-button">
+                        플레이 하기 ▶
+                    </a>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- Info Section -->
+    <div class="row mt-5">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body p-4">
+                    <h4 class="mb-3">게임 센터 안내</h4>
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <h6 class="text-primary">실시간 게임</h6>
+                            <p class="text-muted small">끝말잇기와 틱택토는 WebSocket을 이용한 실시간 멀티플레이어 게임입니다. 다른 플레이어의 움직임이 즉시 반영됩니다!</p>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <h6 class="text-success">싱글 플레이</h6>
+                            <p class="text-muted small">숫자야구와 2048은 혼자서도 즐길 수 있는 게임입니다. 자신의 기록에 도전해보세요!</p>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <h6 class="text-info">커뮤니티</h6>
+                            <p class="text-muted small">방명록에 자유롭게 메시지를 남기고 다른 사용자들과 소통하세요!</p>
+                        </div>
+                    </div>
+
+                    {% if not user.is_authenticated %}
+                    <div class="alert alert-warning mt-3 mb-0">
+                        <strong>알림:</strong> 게임을 플레이하려면 <a href="{% url 'common:login' %}" class="alert-link">로그인</a>이 필요합니다.
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
