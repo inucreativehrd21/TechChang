@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
 {% load static %}
 
-{% block title %}Number Baseball Game{% endblock %}
+{% block title %}숫자야구!{% endblock %}
 
 {% block extra_css %}
 <style>
@@ -358,13 +358,13 @@
 {% block content %}
 <div class="game-container">
     <div class="game-header">
-        <h1>⚾ Number Baseball</h1>
-        <p class="subtitle">Guess the 4-digit number!</p>
+        <h1>⚾ 숫자야구!</h1>
+        <p class="subtitle">4자리 숫자를 맞춰보세요!</p>
     </div>
 
     <div class="info-panel">
         <div class="attempts-info">{{ remaining_attempts }} / {{ game.max_attempts }}</div>
-        <div class="attempts-label">Attempts Remaining</div>
+        <div class="attempts-label">남은 시도 횟수</div>
     </div>
 
     <div class="game-card">
@@ -396,7 +396,7 @@
 
         <div class="mt-4">
             <h5 class="mb-3" style="color: #495057; font-weight: 700;">
-                <i class="fas fa-history me-2"></i>Attempt History
+                <i class="fas fa-history me-2"></i>시도 기록
             </h5>
             <div class="attempts-list" id="attemptList">
                 {% if attempts %}
@@ -412,7 +412,7 @@
                 {% else %}
                     <div class="empty-state">
                         <i class="fas fa-baseball-ball"></i>
-                        <p>No attempts yet. Try your first guess!</p>
+                        <p>아직 기록이 없습니다. 첫 번째 시도 고고!</p>
                     </div>
                 {% endif %}
             </div>
@@ -421,10 +421,10 @@
 
     <div class="controls">
         <a href="{% url 'pybo:baseball_start' %}" class="btn-secondary">
-            <i class="fas fa-redo me-2"></i>New Game
+            <i class="fas fa-redo me-2"></i>새 게임
         </a>
         <a href="{% url 'pybo:index' %}" class="btn-secondary">
-            <i class="fas fa-home me-2"></i>Home
+            <i class="fas fa-home me-2"></i>홈으로 돌아가기
         </a>
     </div>
 </div>
@@ -432,17 +432,17 @@
 <div class="game-over-overlay" id="gameOverOverlay">
     <div class="game-over-card">
         <div class="game-over-icon" id="gameOverIcon">🎉</div>
-        <div class="game-over-title won" id="gameOverTitle">You Won!</div>
-        <div class="game-over-text" id="gameOverText">Congratulations!</div>
+        <div class="game-over-title won" id="gameOverTitle">ㅅㅅㅅㅅㅅㅅㅅㅅㅅ!!</div>
+        <div class="game-over-text" id="gameOverText">축하합니다!</div>
         <div class="secret-number" id="secretNumber">1234</div>
         <div class="button-group">
             <a href="{% url 'pybo:baseball_start' %}" class="btn-game btn-submit">
                 <i class="fas fa-redo"></i>
-                <span>Play Again</span>
+                <span>다시 하기</span>
             </a>
             <a href="{% url 'pybo:index' %}" class="btn-game btn-giveup">
                 <i class="fas fa-home"></i>
-                <span>Home</span>
+                <span>홈으로 돌아가기</span>
             </a>
         </div>
     </div>

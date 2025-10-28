@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
 {% load static %}
 
-{% block title %}2048 Leaderboard{% endblock %}
+{% block title %}2048 리더보드{% endblock %}
 
 {% block extra_css %}
 <style>
@@ -276,37 +276,37 @@
 {% block content %}
 <div class="leaderboard-container">
     <div class="header">
-        <h1>🏆 2048 Leaderboard</h1>
-        <p class="subtitle">Top Players Worldwide</p>
+        <h1>🏆 2048 리더보드</h1>
+        <p class="subtitle">테크창 딴짓왕은 누구일까!!</p>
     </div>
 
     <div class="stats-bar">
         <div class="stat-item">
             <div class="number">{{ total_players }}</div>
-            <div class="label">Total Players</div>
+            <div class="label">총 플레이어 수</div>
         </div>
         {% if leaderboard %}
         <div class="stat-item">
             <div class="number">{{ leaderboard.0.best_score|default:"0" }}</div>
-            <div class="label">Highest Score</div>
+            <div class="label">최고 점수</div>
         </div>
         {% endif %}
     </div>
 
     <div class="leaderboard-card">
         <div class="leaderboard-header">
-            <h2>Global Rankings</h2>
-            <p>Compete with players around the world!</p>
+            <h2>테크창 딴짓왕 랭킹</h2>
+            <p>누가 시간을 제일 잘 녹였을까요?</p>
         </div>
 
         {% if leaderboard %}
         <div class="leaderboard-table">
             <div class="table-header">
-                <div>Rank</div>
-                <div>Player</div>
-                <div>Best Score</div>
-                <div>Games</div>
-                <div>Wins</div>
+                <div>랭킹</div>
+                <div>플레이어</div>
+                <div>최고 점수</div>
+                <div>게임 수</div>
+                <div>클리어 수</div>
             </div>
 
             {% for entry in leaderboard %}
@@ -348,11 +348,11 @@
     <div class="text-center">
         <a href="{% url 'pybo:game2048_start' %}" class="back-button">
             <i class="fas fa-gamepad"></i>
-            Play 2048
+            2048 하러가기
         </a>
         <a href="{% url 'pybo:index' %}" class="back-button">
             <i class="fas fa-home"></i>
-            Back to Home
+            홈으로 돌아가기
         </a>
     </div>
 </div>
