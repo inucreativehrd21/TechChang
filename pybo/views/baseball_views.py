@@ -63,7 +63,7 @@ def baseball_play(request, game_id):
         HttpResponse: 게임 플레이 페이지
     """
     game = get_object_or_404(
-        NumberBaseballGame.select_related('player'),
+        NumberBaseballGame.objects.select_related('player'),
         id=game_id,
         player=request.user
     )
@@ -97,7 +97,7 @@ def baseball_guess(request, game_id):
         return JsonResponse({'success': False, 'message': 'POST 요청만 허용됩니다.'})
 
     game = get_object_or_404(
-        NumberBaseballGame.select_related('player'),
+        NumberBaseballGame.objects.select_related('player'),
         id=game_id,
         player=request.user
     )

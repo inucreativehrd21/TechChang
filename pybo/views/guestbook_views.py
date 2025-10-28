@@ -119,7 +119,7 @@ def guestbook_delete(request, entry_id):
         return JsonResponse({'success': False, 'message': 'POST 요청만 허용됩니다.'})
 
     entry = get_object_or_404(
-        GuestBook.select_related('author'),
+        GuestBook.objects.select_related('author'),
         id=entry_id
     )
 

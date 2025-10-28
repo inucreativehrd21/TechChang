@@ -64,7 +64,7 @@ def game2048_play(request, game_id):
         HttpResponse: 게임 플레이 페이지
     """
     game = get_object_or_404(
-        Game2048.select_related('player'),
+        Game2048.objects.select_related('player'),
         id=game_id,
         player=request.user
     )
@@ -101,7 +101,7 @@ def game2048_move(request, game_id):
         return JsonResponse({'success': False, 'message': 'POST 요청만 허용됩니다.'})
 
     game = get_object_or_404(
-        Game2048.select_related('player'),
+        Game2048.objects.select_related('player'),
         id=game_id,
         player=request.user
     )
