@@ -322,6 +322,14 @@ class Game2048(models.Model):
 
 
 # ========== 지뢰찾기 게임 ==========
+def get_default_board_state():
+    """지뢰찾기 보드 상태 기본값"""
+    return {
+        'mines': [],  # 지뢰 위치 [[row, col], ...]
+        'revealed': [],  # 공개된 칸 [[row, col], ...]
+        'flagged': [],  # 깃발 꽂은 칸 [[row, col], ...]
+    }
+
 class MinesweeperGame(models.Model):
     """지뢰찾기 게임"""
     DIFFICULTY_CHOICES = [
@@ -341,7 +349,7 @@ class MinesweeperGame(models.Model):
     rows = models.IntegerField(default=9, verbose_name='행 수')
     cols = models.IntegerField(default=9, verbose_name='열 수')
     mines_count = models.IntegerField(default=10, verbose_name='지뢰 수')
-    board_state = models.JSONField(default=dict, verbose_name='보드 상태')  # mines, revealed, flagged
+    board_state = models.JSONField(default=get_default_board_state, verbose_name='보드 상태')  # mines, revealed, flagged
     status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='playing', verbose_name='상태', db_index=True)
     time_elapsed = models.IntegerField(default=0, verbose_name='소요 시간 (초)')
     create_date = models.DateTimeField(auto_now_add=True, verbose_name='생성일', db_index=True)
@@ -351,13 +359,16 @@ class MinesweeperGame(models.Model):
         return f"{self.player.username}의 지뢰찾기 ({self.difficulty})"
 
     def save(self, *args, **kwargs):
-        # 보드 초기화
-        if not self.board_state:
-            self.board_state = {
-                'mines': [],  # 지뢰 위치 [(row, col), ...]
-                'revealed': [],  # 공개된 칸 [(row, col), ...]
-                'flagged': [],  # 깃발 꽂은 칸 [(row, col), ...]
-            }
+        # 보드 초기화 확인
+        if not self.board_state or not isinstance(self.board_state, dict):
+            self.board_state = get_default_board_state()
+        # 키가 없으면 추가
+        if 'mines' not in self.board_state:
+            self.board_state['mines'] = []
+        if 'revealed' not in self.board_state:
+            self.board_state['revealed'] = []
+        if 'flagged' not in self.board_state:
+            self.board_state['flagged'] = []
         super().save(*args, **kwargs)
 
     class Meta:

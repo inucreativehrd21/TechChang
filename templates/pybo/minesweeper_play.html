@@ -3,7 +3,7 @@
 
 {% block title %}Minesweeper - {{ game.get_difficulty_display }}{% endblock %}
 
-{% block extra_style %}
+{% block extra_css %}
 <style>
     * {
         margin: 0;
@@ -327,17 +327,30 @@
     </div>
 </div>
 
+{{ game.board_state|json_script:"board-state-data" }}
+
 <script>
 const gameId = {{ game.id }};
 const rows = {{ game.rows }};
 const cols = {{ game.cols }};
 const minesCount = {{ game.mines_count }};
-const boardState = {{ game.board_state|safe }};
+const boardState = JSON.parse(document.getElementById('board-state-data').textContent);
 
 let gameOver = false;
 let startTime = null;
 let timerInterval = null;
 let timeElapsed = 0;
+
+// 배열 비교 헬퍼 함수
+function arrayEquals(a, b) {
+    return Array.isArray(a) && Array.isArray(b) &&
+           a.length === b.length &&
+           a.every((val, index) => val === b[index]);
+}
+
+function arrayContains(arr, item) {
+    return arr.some(a => arrayEquals(a, item));
+}
 
 // 게임 보드 초기화
 function initBoard() {
@@ -408,17 +421,17 @@ function updateTimeOnServer() {
 
 // 칸이 공개되었는지 확인
 function isCellRevealed(row, col) {
-    return boardState.revealed.some(([r, c]) => r === row && c === col);
+    return arrayContains(boardState.revealed, [row, col]);
 }
 
 // 칸에 깃발이 꽂혀있는지 확인
 function isCellFlagged(row, col) {
-    return boardState.flagged.some(([r, c]) => r === row && c === col);
+    return arrayContains(boardState.flagged, [row, col]);
 }
 
 // 칸에 지뢰가 있는지 확인
 function isCellMine(row, col) {
-    return boardState.mines.some(([r, c]) => r === row && c === col);
+    return arrayContains(boardState.mines, [row, col]);
 }
 
 // 인접한 지뢰 개수 계산
@@ -535,14 +548,13 @@ function toggleFlag(row, col) {
             if (data.flagged) {
                 cell.classList.add('flagged');
                 cell.textContent = '🚩';
-                boardState.flagged.push([row, col]);
+                if (!arrayContains(boardState.flagged, [row, col])) {
+                    boardState.flagged.push([row, col]);
+                }
             } else {
                 cell.classList.remove('flagged');
                 cell.textContent = '';
-                const index = boardState.flagged.findIndex(([r, c]) => r === row && c === col);
-                if (index > -1) {
-                    boardState.flagged.splice(index, 1);
-                }
+                boardState.flagged = boardState.flagged.filter(([r, c]) => !(r === row && c === col));
             }
             updateFlagsCount();
         }
