@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
 {% load static %}
 
-{% block title %}Minesweeper - {{ game.get_difficulty_display }}{% endblock %}
+{% block title %}지뢰찾기 - {{ game.get_difficulty_display }}{% endblock %}
 
 {% block extra_css %}
 <style>
@@ -276,21 +276,21 @@
 {% block content %}
 <div class="game-container">
     <div class="game-header">
-        <h1>💣 Minesweeper</h1>
+        <h1>💣 지뢰찾기</h1>
         <p>{{ game.get_difficulty_display }}</p>
     </div>
 
     <div class="info-panel">
         <div class="info-item">
-            <div class="info-label">Time</div>
+            <div class="info-label">시간</div>
             <div class="info-value timer" id="timer">0</div>
         </div>
         <div class="info-item">
-            <div class="info-label">Mines</div>
+            <div class="info-label">지뢰</div>
             <div class="info-value">{{ game.mines_count }}</div>
         </div>
         <div class="info-item">
-            <div class="info-label">Flags</div>
+            <div class="info-label">플래그</div>
             <div class="info-value flags" id="flags-count">0</div>
         </div>
     </div>
@@ -303,10 +303,10 @@
 
     <div class="controls">
         <a href="{% url 'pybo:minesweeper_start' %}" class="btn-game btn-secondary">
-            <i class="fas fa-arrow-left me-2"></i>New Game
+            <i class="fas fa-arrow-left me-2"></i>새 게임
         </a>
         <a href="{% url 'pybo:index' %}" class="btn-game btn-secondary">
-            <i class="fas fa-home me-2"></i>Home
+            <i class="fas fa-home me-2"></i>홈으로 돌아가기
         </a>
     </div>
 </div>
@@ -314,14 +314,14 @@
 <div class="game-over-overlay" id="game-over-overlay">
     <div class="game-over-message">
         <div class="game-over-icon" id="game-over-icon">🎉</div>
-        <div class="game-over-title" id="game-over-title">You Won!</div>
-        <div class="game-over-text" id="game-over-text">Congratulations!</div>
+        <div class="game-over-title" id="game-over-title">ㅅㅅㅅㅅㅅㅅㅅㅅㅅㅅ!!!</div>
+        <div class="game-over-text" id="game-over-text">축하합니다!</div>
         <div class="button-group">
             <a href="{% url 'pybo:minesweeper_start' %}" class="btn-game btn-primary">
-                <i class="fas fa-redo me-2"></i>Play Again
+                <i class="fas fa-redo me-2"></i>다시 하기
             </a>
             <a href="{% url 'pybo:index' %}" class="btn-game btn-secondary">
-                <i class="fas fa-home me-2"></i>Home
+                <i class="fas fa-home me-2"></i>홈으로 돌아가기
             </a>
         </div>
     </div>

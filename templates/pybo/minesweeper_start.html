@@ -134,31 +134,31 @@
 {% block content %}
 <div class="container">
     <div class="game-card">
-        <h1>💣 Minesweeper</h1>
-        <p class="subtitle">Choose your difficulty level</p>
+        <h1>💣 지뢰찾기</h1>
+        <p class="subtitle">난이도를 골라주세요!</p>
 
         <div class="difficulty-grid">
             <a href="{% url 'pybo:minesweeper_create' %}?difficulty=easy" class="difficulty-card easy">
                 <div class="difficulty-icon">😊</div>
-                <div class="difficulty-name">Easy</div>
-                <div class="difficulty-info">9 × 9 grid<br>10 mines</div>
+                <div class="difficulty-name">쉬움</div>
+                <div class="difficulty-info">9 × 9 grid<br>10개 지뢰</div>
             </a>
 
             <a href="{% url 'pybo:minesweeper_create' %}?difficulty=medium" class="difficulty-card medium">
                 <div class="difficulty-icon">😐</div>
                 <div class="difficulty-name">Medium</div>
-                <div class="difficulty-info">16 × 16 grid<br>40 mines</div>
+                <div class="difficulty-info">16 × 16 grid<br>40개 지뢰</div>
             </a>
 
             <a href="{% url 'pybo:minesweeper_create' %}?difficulty=hard" class="difficulty-card hard">
                 <div class="difficulty-icon">😰</div>
                 <div class="difficulty-name">Hard</div>
-                <div class="difficulty-info">16 × 30 grid<br>99 mines</div>
+                <div class="difficulty-info">16 × 30 grid<br>99개 지뢰</div>
             </a>
         </div>
 
         <a href="{% url 'pybo:index' %}" class="back-link">
-            <i class="fas fa-arrow-left me-2"></i>Back to Home
+            <i class="fas fa-arrow-left me-2"></i>홈화면으로!
         </a>
     </div>
 </div>
