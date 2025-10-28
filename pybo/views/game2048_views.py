@@ -1,10 +1,17 @@
-"""2048 게임 뷰"""
+"""
+2048 게임 뷰
+
+2048 게임은 4x4 보드에서 타일을 움직여 2048 타일을 만드는 퍼즐 게임입니다.
+같은 숫자의 타일이 만나면 합쳐져서 두 배가 됩니다.
+"""
 
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
 from django.utils import timezone
-from django.db import transaction
+from django.db import transaction, models
+from django.db.models import Max
+from django.contrib.auth.models import User
 import random
 import logging
 
@@ -15,7 +22,15 @@ logger = logging.getLogger(__name__)
 
 @login_required
 def game2048_start(request):
-    """2048 게임 시작"""
+    """
+    2048 게임 시작
+
+    진행 중인 게임이 있으면 해당 게임으로 리다이렉트하고,
+    없으면 새 게임을 생성합니다.
+
+    Returns:
+        HttpResponse: 게임 플레이 페이지로 리다이렉트
+    """
     # 진행중인 게임이 있으면 그걸로 이동
     existing_game = Game2048.objects.filter(
         player=request.user,
@@ -33,18 +48,33 @@ def game2048_start(request):
     add_random_tile(game)
     game.save()
 
+    logger.info(f"New 2048 game created by {request.user.username} (ID: {game.id})")
     return redirect('pybo:game2048_play', game_id=game.id)
 
 
 @login_required
 def game2048_play(request, game_id):
-    """2048 게임 플레이"""
-    game = get_object_or_404(Game2048, id=game_id, player=request.user)
+    """
+    2048 게임 플레이 페이지
 
-    # 최고 점수 가져오기
-    best_score = Game2048.objects.filter(
+    Args:
+        game_id (int): 게임 ID
+
+    Returns:
+        HttpResponse: 게임 플레이 페이지
+    """
+    game = get_object_or_404(
+        Game2048.select_related('player'),
+        id=game_id,
         player=request.user
-    ).order_by('-best_score').values_list('best_score', flat=True).first() or 0
+    )
+
+    # 최고 점수 가져오기 (쿼리 최적화: aggregate 사용)
+    best_score_result = Game2048.objects.filter(
+        player=request.user
+    ).aggregate(max_score=Max('best_score'))
+
+    best_score = best_score_result['max_score'] or 0
 
     context = {
         'game': game,
@@ -55,11 +85,26 @@ def game2048_play(request, game_id):
 
 @login_required
 def game2048_move(request, game_id):
-    """2048 이동 처리"""
+    """
+    2048 게임 이동 처리
+
+    사용자의 방향 입력을 받아 보드를 이동시키고,
+    새 타일을 추가한 후 승패를 판정합니다.
+
+    Args:
+        game_id (int): 게임 ID
+
+    Returns:
+        JsonResponse: 이동 결과 (board, score, status 등)
+    """
     if request.method != 'POST':
         return JsonResponse({'success': False, 'message': 'POST 요청만 허용됩니다.'})
 
-    game = get_object_or_404(Game2048, id=game_id, player=request.user)
+    game = get_object_or_404(
+        Game2048.select_related('player'),
+        id=game_id,
+        player=request.user
+    )
 
     if game.status != 'playing':
         return JsonResponse({'success': False, 'message': '이미 종료된 게임입니다.'})
@@ -96,6 +141,8 @@ def game2048_move(request, game_id):
         if game.score > game.best_score:
             game.best_score = game.score
 
+        logger.info(f"User {request.user.username} won 2048 game {game_id} with score {game.score}")
+
     # 패배 확인 (더 이상 이동 불가능)
     elif not can_move(game.board_state):
         game.status = 'lost'
@@ -104,6 +151,8 @@ def game2048_move(request, game_id):
         # 최고 점수 업데이트
         if game.score > game.best_score:
             game.best_score = game.score
+
+        logger.info(f"User {request.user.username} lost 2048 game {game_id} with score {game.score}")
 
     game.save()
 
@@ -119,7 +168,17 @@ def game2048_move(request, game_id):
 
 @login_required
 def game2048_restart(request, game_id):
-    """2048 게임 재시작"""
+    """
+    2048 게임 재시작
+
+    현재 게임의 최고 점수를 저장하고 새 게임을 생성합니다.
+
+    Args:
+        game_id (int): 게임 ID
+
+    Returns:
+        JsonResponse: 새 게임의 URL
+    """
     if request.method != 'POST':
         return JsonResponse({'success': False, 'message': 'POST 요청만 허용됩니다.'})
 
@@ -147,10 +206,80 @@ def game2048_restart(request, game_id):
     })
 
 
+def game2048_leaderboard(request):
+    """
+    2048 게임 리더보드
+
+    전체 사용자의 최고 점수를 기준으로 랭킹을 표시합니다.
+
+    Returns:
+        HttpResponse: 리더보드 페이지
+    """
+    # 사용자별 최고 점수 서브쿼리
+    user_best_scores = Game2048.objects.filter(
+        player=models.OuterRef('pk')
+    ).order_by('-best_score').values('best_score')[:1]
+
+    # 최고 점수가 있는 사용자만 가져오기 (try-except 패턴 적용)
+    try:
+        top_players = User.objects.annotate(
+            top_score=models.Subquery(user_best_scores)
+        ).filter(
+            top_score__isnull=False,
+            top_score__gt=0
+        ).order_by('-top_score')[:100]
+    except Exception:
+        # profile이 없는 경우를 위해 select_related 제외
+        top_players = User.objects.annotate(
+            top_score=models.Subquery(user_best_scores)
+        ).filter(
+            top_score__isnull=False,
+            top_score__gt=0
+        ).order_by('-top_score')[:100]
+
+    # 각 사용자의 게임 통계 가져오기
+    leaderboard_data = []
+    for rank, user in enumerate(top_players, start=1):
+        user_games = Game2048.objects.filter(player=user)
+        total_games = user_games.count()
+        wins = user_games.filter(status='won').count()
+
+        try:
+            display_name = user.profile.display_name
+        except AttributeError:
+            display_name = user.username
+        except Exception:
+            display_name = user.username
+
+        leaderboard_data.append({
+            'rank': rank,
+            'user': user,
+            'display_name': display_name,
+            'best_score': user.top_score,
+            'total_games': total_games,
+            'wins': wins,
+        })
+
+    context = {
+        'leaderboard': leaderboard_data,
+        'total_players': len(leaderboard_data),
+    }
+
+    return render(request, 'pybo/game2048_leaderboard.html', context)
+
+
 # ========== 게임 로직 헬퍼 함수 ==========
 
 def add_random_tile(game):
-    """빈 칸에 랜덤 타일(2 또는 4) 추가"""
+    """
+    빈 칸에 랜덤 타일(2 또는 4) 추가
+
+    Args:
+        game (Game2048): 게임 인스턴스
+
+    Note:
+        90% 확률로 2, 10% 확률로 4가 생성됩니다.
+    """
     empty_cells = []
     for i in range(4):
         for j in range(4):
@@ -163,7 +292,16 @@ def add_random_tile(game):
 
 
 def move_board(board, direction):
-    """보드를 특정 방향으로 이동"""
+    """
+    보드를 특정 방향으로 이동
+
+    Args:
+        board (list): 4x4 보드 상태
+        direction (str): 이동 방향 ('up', 'down', 'left', 'right')
+
+    Returns:
+        tuple: (이동 여부, 획득한 점수)
+    """
     moved = False
     score = 0
 
@@ -211,7 +349,15 @@ def move_board(board, direction):
 
 
 def merge_row(row):
-    """한 줄을 왼쪽으로 밀고 합치기"""
+    """
+    한 줄을 왼쪽으로 밀고 합치기
+
+    Args:
+        row (list): 한 줄의 타일 값들 (길이 4)
+
+    Returns:
+        tuple: (합쳐진 줄, 획득한 점수)
+    """
     # 0이 아닌 값만 추출
     non_zero = [x for x in row if x != 0]
 
@@ -240,7 +386,17 @@ def merge_row(row):
 
 
 def can_move(board):
-    """더 이상 이동 가능한지 확인"""
+    """
+    더 이상 이동 가능한지 확인
+
+    빈 칸이 있거나 인접한 같은 숫자가 있으면 이동 가능합니다.
+
+    Args:
+        board (list): 4x4 보드 상태
+
+    Returns:
+        bool: 이동 가능 여부
+    """
     # 빈 칸이 있는지
     for row in board:
         if 0 in row:

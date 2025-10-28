@@ -211,22 +211,26 @@ class NumberBaseballGame(models.Model):
         ('won', '성공'),
         ('giveup', '포기'),
     ]
-    
+
     player = models.ForeignKey(User, on_delete=models.CASCADE, related_name='baseball_games', verbose_name='플레이어')
     secret_number = models.CharField(max_length=4, verbose_name='정답 숫자')  # 4자리 숫자
     attempts = models.IntegerField(default=0, verbose_name='시도 횟수')
     max_attempts = models.IntegerField(default=10, verbose_name='최대 시도 횟수')
-    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='playing', verbose_name='상태')
-    create_date = models.DateTimeField(auto_now_add=True, verbose_name='생성일')
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='playing', verbose_name='상태', db_index=True)
+    create_date = models.DateTimeField(auto_now_add=True, verbose_name='생성일', db_index=True)
     end_date = models.DateTimeField(null=True, blank=True, verbose_name='종료일')
-    
+
     def __str__(self):
         return f"{self.player.username}의 숫자야구 게임 ({self.attempts}회 시도)"
-    
+
     class Meta:
         verbose_name = '숫자야구 게임'
         verbose_name_plural = '숫자야구 게임 목록'
         ordering = ['-create_date']
+        indexes = [
+            models.Index(fields=['player', 'status'], name='bb_player_status_idx'),
+            models.Index(fields=['player', '-create_date'], name='bb_player_date_idx'),
+        ]
 
 
 class NumberBaseballAttempt(models.Model):
@@ -257,23 +261,26 @@ class GuestBook(models.Model):
         ('#ffc891', '주황색'),
         ('#d9b3ff', '보라색'),
     ]
-    
+
     author = models.ForeignKey(User, on_delete=models.CASCADE, related_name='guestbook_entries', verbose_name='작성자')
     content = models.TextField(max_length=200, verbose_name='내용')
     color = models.CharField(max_length=7, choices=COLOR_CHOICES, default='#fff475', verbose_name='색상')
     position_x = models.IntegerField(default=0, verbose_name='X 위치')
     position_y = models.IntegerField(default=0, verbose_name='Y 위치')
     rotation = models.FloatField(default=0, verbose_name='회전 각도')  # -5 ~ 5 정도
-    create_date = models.DateTimeField(auto_now_add=True, verbose_name='작성일')
+    create_date = models.DateTimeField(auto_now_add=True, verbose_name='작성일', db_index=True)
     modify_date = models.DateTimeField(auto_now=True, verbose_name='수정일')
-    
+
     def __str__(self):
         return f"{self.author.username}의 방명록 ({self.create_date.strftime('%Y-%m-%d')})"
-    
+
     class Meta:
         verbose_name = '방명록'
         verbose_name_plural = '방명록 목록'
         ordering = ['-create_date']
+        indexes = [
+            models.Index(fields=['-create_date'], name='gb_create_date_idx'),
+        ]
 
 
 # ========== 2048 게임 ==========
@@ -284,26 +291,80 @@ class Game2048(models.Model):
         ('won', '승리'),
         ('lost', '패배'),
     ]
-    
+
     player = models.ForeignKey(User, on_delete=models.CASCADE, related_name='game2048_records', verbose_name='플레이어')
     board_state = models.JSONField(default=list, verbose_name='보드 상태')  # 4x4 배열
     score = models.IntegerField(default=0, verbose_name='점수')
-    best_score = models.IntegerField(default=0, verbose_name='최고 점수')
-    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='playing', verbose_name='상태')
+    best_score = models.IntegerField(default=0, verbose_name='최고 점수', db_index=True)
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='playing', verbose_name='상태', db_index=True)
     moves = models.IntegerField(default=0, verbose_name='이동 횟수')
-    create_date = models.DateTimeField(auto_now_add=True, verbose_name='생성일')
+    create_date = models.DateTimeField(auto_now_add=True, verbose_name='생성일', db_index=True)
     end_date = models.DateTimeField(null=True, blank=True, verbose_name='종료일')
-    
+
     def __str__(self):
         return f"{self.player.username}의 2048 게임 - {self.score}점"
-    
+
     def save(self, *args, **kwargs):
         # 보드 초기화 (빈 4x4 배열)
         if not self.board_state:
             self.board_state = [[0]*4 for _ in range(4)]
         super().save(*args, **kwargs)
-    
+
     class Meta:
         verbose_name = '2048 게임'
         verbose_name_plural = '2048 게임 기록'
         ordering = ['-create_date']
+        indexes = [
+            models.Index(fields=['player', 'status'], name='g2048_player_status_idx'),
+            models.Index(fields=['player', '-best_score'], name='g2048_player_best_idx'),
+            models.Index(fields=['player', '-create_date'], name='g2048_player_date_idx'),
+        ]
+
+
+# ========== 지뢰찾기 게임 ==========
+class MinesweeperGame(models.Model):
+    """지뢰찾기 게임"""
+    DIFFICULTY_CHOICES = [
+        ('easy', '쉬움 (9x9, 10개)'),
+        ('medium', '보통 (16x16, 40개)'),
+        ('hard', '어려움 (16x30, 99개)'),
+    ]
+
+    STATUS_CHOICES = [
+        ('playing', '진행중'),
+        ('won', '승리'),
+        ('lost', '패배'),
+    ]
+
+    player = models.ForeignKey(User, on_delete=models.CASCADE, related_name='minesweeper_games', verbose_name='플레이어')
+    difficulty = models.CharField(max_length=10, choices=DIFFICULTY_CHOICES, default='easy', verbose_name='난이도')
+    rows = models.IntegerField(default=9, verbose_name='행 수')
+    cols = models.IntegerField(default=9, verbose_name='열 수')
+    mines_count = models.IntegerField(default=10, verbose_name='지뢰 수')
+    board_state = models.JSONField(default=dict, verbose_name='보드 상태')  # mines, revealed, flagged
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='playing', verbose_name='상태', db_index=True)
+    time_elapsed = models.IntegerField(default=0, verbose_name='소요 시간 (초)')
+    create_date = models.DateTimeField(auto_now_add=True, verbose_name='생성일', db_index=True)
+    end_date = models.DateTimeField(null=True, blank=True, verbose_name='종료일')
+
+    def __str__(self):
+        return f"{self.player.username}의 지뢰찾기 ({self.difficulty})"
+
+    def save(self, *args, **kwargs):
+        # 보드 초기화
+        if not self.board_state:
+            self.board_state = {
+                'mines': [],  # 지뢰 위치 [(row, col), ...]
+                'revealed': [],  # 공개된 칸 [(row, col), ...]
+                'flagged': [],  # 깃발 꽂은 칸 [(row, col), ...]
+            }
+        super().save(*args, **kwargs)
+
+    class Meta:
+        verbose_name = '지뢰찾기 게임'
+        verbose_name_plural = '지뢰찾기 게임 기록'
+        ordering = ['-create_date']
+        indexes = [
+            models.Index(fields=['player', 'status'], name='ms_player_status_idx'),
+            models.Index(fields=['player', 'difficulty', '-time_elapsed'], name='ms_player_diff_time_idx'),
+        ]

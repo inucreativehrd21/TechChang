@@ -179,8 +179,10 @@ DIRECTORY_PERMISSIONS = 0o755
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-# 로그인 성공후 이동하는 URL
-LOGIN_REDIRECT_URL = '/'
+# 로그인 관련 URL 설정
+LOGIN_URL = '/common/login/'  # 비로그인 사용자가 @login_required 접근 시 이동할 URL
+LOGIN_REDIRECT_URL = '/'  # 로그인 성공 후 이동하는 URL
+LOGOUT_REDIRECT_URL = '/'  # 로그아웃 후 이동하는 URL
 
 ALLOWED_HOSTS = ['43.203.93.244', 'tc.o-r.kr']
 

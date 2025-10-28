@@ -1,4 +1,9 @@
-"""숫자야구 게임 뷰"""
+"""
+숫자야구 게임 뷰
+
+숫자야구는 4자리 중복되지 않는 숫자를 맞추는 게임입니다.
+사용자는 최대 10번의 기회 안에 정답을 맞춰야 합니다.
+"""
 
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
@@ -15,8 +20,16 @@ logger = logging.getLogger(__name__)
 
 @login_required
 def baseball_start(request):
-    """숫자야구 게임 시작"""
-    # 진행중인 게임이 있으면 그걸로 이동
+    """
+    숫자야구 게임 시작
+
+    진행 중인 게임이 있으면 해당 게임으로 리다이렉트하고,
+    없으면 새 게임을 생성합니다.
+
+    Returns:
+        HttpResponse: 게임 플레이 페이지로 리다이렉트
+    """
+    # 진행중인 게임이 있으면 그걸로 이동 (쿼리 최적화: select_related 불필요 - player는 request.user)
     existing_game = NumberBaseballGame.objects.filter(
         player=request.user,
         status='playing'
@@ -34,14 +47,29 @@ def baseball_start(request):
         secret_number=secret
     )
 
+    logger.info(f"New baseball game created by {request.user.username} (ID: {game.id})")
     return redirect('pybo:baseball_play', game_id=game.id)
 
 
 @login_required
 def baseball_play(request, game_id):
-    """숫자야구 게임 플레이"""
-    game = get_object_or_404(NumberBaseballGame, id=game_id, player=request.user)
-    attempts = game.attempt_records.all()
+    """
+    숫자야구 게임 플레이 페이지
+
+    Args:
+        game_id (int): 게임 ID
+
+    Returns:
+        HttpResponse: 게임 플레이 페이지
+    """
+    game = get_object_or_404(
+        NumberBaseballGame.select_related('player'),
+        id=game_id,
+        player=request.user
+    )
+
+    # prefetch로 시도 기록을 한 번에 가져오기 (N+1 쿼리 방지)
+    attempts = game.attempt_records.all().order_by('create_date')
 
     context = {
         'game': game,
@@ -53,11 +81,26 @@ def baseball_play(request, game_id):
 
 @login_required
 def baseball_guess(request, game_id):
-    """숫자야구 추측"""
+    """
+    숫자야구 추측 처리
+
+    사용자의 추측을 받아 스트라이크/볼을 계산하고,
+    게임 진행 상태를 업데이트합니다.
+
+    Args:
+        game_id (int): 게임 ID
+
+    Returns:
+        JsonResponse: 추측 결과 (strikes, balls, game_over 등)
+    """
     if request.method != 'POST':
         return JsonResponse({'success': False, 'message': 'POST 요청만 허용됩니다.'})
 
-    game = get_object_or_404(NumberBaseballGame, id=game_id, player=request.user)
+    game = get_object_or_404(
+        NumberBaseballGame.select_related('player'),
+        id=game_id,
+        player=request.user
+    )
 
     if game.status != 'playing':
         return JsonResponse({'success': False, 'message': '이미 종료된 게임입니다.'})
@@ -141,7 +184,17 @@ def baseball_guess(request, game_id):
 
 @login_required
 def baseball_giveup(request, game_id):
-    """숫자야구 포기"""
+    """
+    숫자야구 게임 포기
+
+    사용자가 게임을 포기하면 정답을 공개하고 게임을 종료합니다.
+
+    Args:
+        game_id (int): 게임 ID
+
+    Returns:
+        JsonResponse: 포기 결과 및 정답
+    """
     if request.method != 'POST':
         return JsonResponse({'success': False, 'message': 'POST 요청만 허용됩니다.'})
 
@@ -153,6 +206,8 @@ def baseball_giveup(request, game_id):
     game.status = 'giveup'
     game.end_date = timezone.now()
     game.save()
+
+    logger.info(f"User {request.user.username} gave up on baseball game {game_id}")
 
     return JsonResponse({
         'success': True,

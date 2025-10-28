@@ -1,145 +1,449 @@
 {% extends 'base.html' %}
+{% load static %}
 
-{% block title %}숫자야구 게임{% endblock %}
+{% block title %}Number Baseball Game{% endblock %}
 
-{% block extra_css %}
+{% block extra_style %}
 <style>
-.baseball-container {
-    max-width: 600px;
-    margin: 0 auto;
-}
-
-.number-input {
-    font-size: 2rem;
-    text-align: center;
-    letter-spacing: 1rem;
-    font-weight: bold;
-}
-
-.attempt-item {
-    padding: 15px;
-    margin-bottom: 10px;
-    border-radius: 10px;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    color: white;
-    animation: slideIn 0.3s ease;
-}
-
-@keyframes slideIn {
-    from {
-        opacity: 0;
-        transform: translateX(-20px);
+    * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
     }
-    to {
-        opacity: 1;
-        transform: translateX(0);
+
+    body {
+        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        min-height: 100vh;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+        padding: 20px;
     }
-}
 
-.strike {
-    color: #ff4757;
-    font-weight: bold;
-}
+    .game-container {
+        max-width: 700px;
+        margin: 0 auto;
+    }
 
-.ball {
-    color: #ffa502;
-    font-weight: bold;
-}
+    .game-header {
+        text-align: center;
+        color: white;
+        margin-bottom: 30px;
+    }
 
-.game-over-banner {
-    padding: 30px;
-    border-radius: 15px;
-    text-align: center;
-    margin: 20px 0;
-}
+    .game-header h1 {
+        font-size: 3rem;
+        font-weight: 900;
+        margin-bottom: 10px;
+        text-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+    }
 
-.game-won {
-    background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
-    color: white;
-}
+    .game-header .subtitle {
+        font-size: 1.1rem;
+        opacity: 0.9;
+    }
 
-.game-lost {
-    background: linear-gradient(135deg, #ee0979 0%, #ff6a00 100%);
-    color: white;
-}
+    .info-panel {
+        background: rgba(255, 255, 255, 0.95);
+        backdrop-filter: blur(10px);
+        border-radius: 20px;
+        padding: 25px;
+        margin-bottom: 20px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        text-align: center;
+    }
+
+    .attempts-info {
+        font-size: 2rem;
+        font-weight: 700;
+        color: #f5576c;
+        margin-bottom: 10px;
+    }
+
+    .attempts-label {
+        font-size: 1rem;
+        color: #6c757d;
+    }
+
+    .game-card {
+        background: rgba(255, 255, 255, 0.95);
+        backdrop-filter: blur(10px);
+        border-radius: 24px;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        padding: 40px;
+        margin-bottom: 20px;
+    }
+
+    .input-section {
+        margin-bottom: 30px;
+    }
+
+    .number-input {
+        width: 100%;
+        font-size: 3rem;
+        text-align: center;
+        letter-spacing: 2rem;
+        font-weight: 800;
+        padding: 20px;
+        border: 3px solid #f5576c;
+        border-radius: 16px;
+        background: #f8f9fa;
+        transition: all 0.3s ease;
+    }
+
+    .number-input:focus {
+        outline: none;
+        border-color: #f093fb;
+        background: white;
+        box-shadow: 0 10px 30px rgba(245, 87, 108, 0.3);
+        transform: translateY(-2px);
+    }
+
+    .button-group {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 15px;
+        margin-top: 20px;
+    }
+
+    .btn-game {
+        padding: 18px;
+        border: none;
+        border-radius: 12px;
+        font-size: 1.1rem;
+        font-weight: 700;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        text-decoration: none;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+    }
+
+    .btn-submit {
+        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        color: white;
+    }
+
+    .btn-submit:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 15px 40px rgba(245, 87, 108, 0.4);
+    }
+
+    .btn-submit:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+        transform: none;
+    }
+
+    .btn-giveup {
+        background: #e9ecef;
+        color: #495057;
+    }
+
+    .btn-giveup:hover {
+        background: #dee2e6;
+        transform: translateY(-3px);
+    }
+
+    .attempts-list {
+        max-height: 400px;
+        overflow-y: auto;
+        padding: 10px;
+    }
+
+    .attempts-list::-webkit-scrollbar {
+        width: 8px;
+    }
+
+    .attempts-list::-webkit-scrollbar-thumb {
+        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        border-radius: 4px;
+    }
+
+    .attempt-item {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-radius: 16px;
+        padding: 20px;
+        margin-bottom: 12px;
+        color: white;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        animation: slideIn 0.4s ease;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
+    }
+
+    @keyframes slideIn {
+        from {
+            opacity: 0;
+            transform: translateX(-30px);
+        }
+        to {
+            opacity: 1;
+            transform: translateX(0);
+        }
+    }
+
+    .attempt-number {
+        font-size: 2rem;
+        font-weight: 800;
+        letter-spacing: 0.5rem;
+    }
+
+    .attempt-result {
+        display: flex;
+        gap: 15px;
+        align-items: center;
+    }
+
+    .result-badge {
+        padding: 8px 16px;
+        border-radius: 20px;
+        font-size: 1.2rem;
+        font-weight: 700;
+    }
+
+    .strike {
+        background: #ff4757;
+    }
+
+    .ball {
+        background: #ffa502;
+    }
+
+    .game-over-overlay {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.85);
+        z-index: 1000;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .game-over-overlay.show {
+        display: flex;
+    }
+
+    .game-over-card {
+        background: white;
+        border-radius: 24px;
+        padding: 60px;
+        text-align: center;
+        max-width: 500px;
+        animation: popIn 0.5s ease;
+    }
+
+    @keyframes popIn {
+        0% {
+            opacity: 0;
+            transform: scale(0.8);
+        }
+        100% {
+            opacity: 1;
+            transform: scale(1);
+        }
+    }
+
+    .game-over-icon {
+        font-size: 6rem;
+        margin-bottom: 20px;
+    }
+
+    .game-over-title {
+        font-size: 2.5rem;
+        font-weight: 900;
+        margin-bottom: 15px;
+    }
+
+    .game-over-title.won {
+        background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+    }
+
+    .game-over-title.lost {
+        background: linear-gradient(135deg, #ee0979 0%, #ff6a00 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+    }
+
+    .game-over-text {
+        font-size: 1.3rem;
+        color: #6c757d;
+        margin-bottom: 25px;
+    }
+
+    .secret-number {
+        font-size: 3rem;
+        font-weight: 900;
+        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        margin-bottom: 30px;
+        letter-spacing: 1rem;
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: 40px 20px;
+        color: #adb5bd;
+    }
+
+    .empty-state i {
+        font-size: 3rem;
+        margin-bottom: 15px;
+    }
+
+    .controls {
+        text-align: center;
+        margin-top: 20px;
+    }
+
+    .btn-secondary {
+        display: inline-block;
+        padding: 15px 30px;
+        background: rgba(255, 255, 255, 0.2);
+        backdrop-filter: blur(10px);
+        color: white;
+        border: 2px solid rgba(255, 255, 255, 0.3);
+        border-radius: 12px;
+        text-decoration: none;
+        font-weight: 600;
+        transition: all 0.3s ease;
+        margin: 0 5px;
+    }
+
+    .btn-secondary:hover {
+        background: rgba(255, 255, 255, 0.3);
+        border-color: rgba(255, 255, 255, 0.5);
+        transform: translateY(-2px);
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        color: white;
+    }
+
+    @media (max-width: 768px) {
+        .game-card {
+            padding: 25px;
+        }
+
+        .game-header h1 {
+            font-size: 2.2rem;
+        }
+
+        .number-input {
+            font-size: 2rem;
+            letter-spacing: 1rem;
+        }
+
+        .attempt-number {
+            font-size: 1.5rem;
+            letter-spacing: 0.3rem;
+        }
+
+        .result-badge {
+            font-size: 1rem;
+            padding: 6px 12px;
+        }
+    }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="container my-5 baseball-container">
-    <div class="card">
-        <div class="card-header bg-primary text-white">
-            <h3 class="mb-0"><i class="fas fa-baseball-ball me-2"></i>숫자야구</h3>
-        </div>
-        <div class="card-body">
-            <!-- 게임 상태 -->
-            <div class="alert alert-info text-center">
-                <h5>남은 기회: <strong>{{ remaining_attempts }}</strong> / {{ game.max_attempts }}</h5>
-                <small>서로 다른 4자리 숫자를 맞춰보세요!</small>
-            </div>
+<div class="game-container">
+    <div class="game-header">
+        <h1>⚾ Number Baseball</h1>
+        <p class="subtitle">Guess the 4-digit number!</p>
+    </div>
 
-            {% if game.status == 'playing' %}
-            <!-- 입력 폼 -->
-            <form id="guessForm" onsubmit="makeGuess(event)" class="mb-4">
+    <div class="info-panel">
+        <div class="attempts-info">{{ remaining_attempts }} / {{ game.max_attempts }}</div>
+        <div class="attempts-label">Attempts Remaining</div>
+    </div>
+
+    <div class="game-card">
+        {% if game.status == 'playing' %}
+        <div class="input-section">
+            <form id="guessForm" onsubmit="makeGuess(event)">
                 {% csrf_token %}
-                <div class="mb-3">
-                    <input type="text"
-                           class="form-control number-input"
-                           id="guessInput"
-                           maxlength="4"
-                           placeholder="####"
-                           pattern="[0-9]{4}"
-                           required
-                           autofocus>
-                </div>
-                <div class="d-grid gap-2">
-                    <button type="submit" class="btn btn-primary btn-lg">
-                        <i class="fas fa-check me-2"></i>확인
+                <input type="text"
+                       class="number-input"
+                       id="guessInput"
+                       maxlength="4"
+                       placeholder="####"
+                       pattern="[0-9]{4}"
+                       required
+                       autofocus>
+                <div class="button-group">
+                    <button type="submit" class="btn-game btn-submit">
+                        <i class="fas fa-check-circle"></i>
+                        <span>Submit</span>
                     </button>
-                    <button type="button" class="btn btn-outline-danger" onclick="giveUp()">
-                        <i class="fas fa-flag me-2"></i>포기
+                    <button type="button" class="btn-game btn-giveup" onclick="giveUp()">
+                        <i class="fas fa-flag"></i>
+                        <span>Give Up</span>
                     </button>
                 </div>
             </form>
-            {% elif game.status == 'won' %}
-            <!-- 승리 -->
-            <div class="game-over-banner game-won">
-                <h2><i class="fas fa-trophy me-2"></i>축하합니다!</h2>
-                <p class="mb-0">{{ game.attempts }}번 만에 정답을 맞췄습니다!</p>
-                <p class="mt-2"><strong>정답: {{ game.secret_number }}</strong></p>
-                <a href="{% url 'pybo:baseball_start' %}" class="btn btn-light mt-3">
-                    <i class="fas fa-redo me-2"></i>다시하기
-                </a>
-            </div>
-            {% elif game.status == 'giveup' %}
-            <!-- 포기 -->
-            <div class="game-over-banner game-lost">
-                <h2><i class="fas fa-times-circle me-2"></i>아쉽네요!</h2>
-                <p class="mb-0">다음에는 꼭 맞춰보세요!</p>
-                <p class="mt-2"><strong>정답: {{ game.secret_number }}</strong></p>
-                <a href="{% url 'pybo:baseball_start' %}" class="btn btn-light mt-3">
-                    <i class="fas fa-redo me-2"></i>다시하기
-                </a>
-            </div>
-            {% endif %}
+        </div>
+        {% endif %}
 
-            <!-- 시도 기록 -->
-            <div class="mt-4">
-                <h5>시도 기록</h5>
-                <div id="attemptList">
+        <div class="mt-4">
+            <h5 class="mb-3" style="color: #495057; font-weight: 700;">
+                <i class="fas fa-history me-2"></i>Attempt History
+            </h5>
+            <div class="attempts-list" id="attemptList">
+                {% if attempts %}
                     {% for attempt in attempts reversed %}
                     <div class="attempt-item">
-                        <div class="d-flex justify-content-between align-items-center">
-                            <span style="font-size: 1.5rem;">{{ attempt.guess_number }}</span>
-                            <div>
-                                <span class="strike">{{ attempt.strikes }}S</span>
-                                <span class="ball ms-2">{{ attempt.balls }}B</span>
-                            </div>
+                        <div class="attempt-number">{{ attempt.guess_number }}</div>
+                        <div class="attempt-result">
+                            <span class="result-badge strike">{{ attempt.strikes }}S</span>
+                            <span class="result-badge ball">{{ attempt.balls }}B</span>
                         </div>
                     </div>
                     {% endfor %}
-                </div>
+                {% else %}
+                    <div class="empty-state">
+                        <i class="fas fa-baseball-ball"></i>
+                        <p>No attempts yet. Try your first guess!</p>
+                    </div>
+                {% endif %}
             </div>
+        </div>
+    </div>
+
+    <div class="controls">
+        <a href="{% url 'pybo:baseball_start' %}" class="btn-secondary">
+            <i class="fas fa-redo me-2"></i>New Game
+        </a>
+        <a href="{% url 'pybo:index' %}" class="btn-secondary">
+            <i class="fas fa-home me-2"></i>Home
+        </a>
+    </div>
+</div>
+
+<div class="game-over-overlay" id="gameOverOverlay">
+    <div class="game-over-card">
+        <div class="game-over-icon" id="gameOverIcon">🎉</div>
+        <div class="game-over-title won" id="gameOverTitle">You Won!</div>
+        <div class="game-over-text" id="gameOverText">Congratulations!</div>
+        <div class="secret-number" id="secretNumber">1234</div>
+        <div class="button-group">
+            <a href="{% url 'pybo:baseball_start' %}" class="btn-game btn-submit">
+                <i class="fas fa-redo"></i>
+                <span>Play Again</span>
+            </a>
+            <a href="{% url 'pybo:index' %}" class="btn-game btn-giveup">
+                <i class="fas fa-home"></i>
+                <span>Home</span>
+            </a>
         </div>
     </div>
 </div>
@@ -156,14 +460,18 @@ function makeGuess(event) {
 
     // 유효성 검사
     if (guess.length !== 4) {
-        alert('4자리 숫자를 입력해주세요.');
+        alert('Please enter a 4-digit number.');
         return;
     }
 
     if (new Set(guess).size !== 4) {
-        alert('중복되지 않은 숫자를 입력해주세요.');
+        alert('Please enter 4 different digits.');
         return;
     }
+
+    // 버튼 비활성화
+    const submitBtn = event.target.querySelector('button[type="submit"]');
+    submitBtn.disabled = true;
 
     // 전송
     fetch(`/pybo/baseball/${gameId}/guess/`, {
@@ -176,18 +484,25 @@ function makeGuess(event) {
     })
     .then(r => r.json())
     .then(data => {
+        submitBtn.disabled = false;
+
         if (data.success) {
             // 시도 기록 추가
             const attemptList = document.getElementById('attemptList');
+
+            // empty state 제거
+            const emptyState = attemptList.querySelector('.empty-state');
+            if (emptyState) {
+                emptyState.remove();
+            }
+
             const newAttempt = document.createElement('div');
             newAttempt.className = 'attempt-item';
             newAttempt.innerHTML = `
-                <div class="d-flex justify-content-between align-items-center">
-                    <span style="font-size: 1.5rem;">${guess}</span>
-                    <div>
-                        <span class="strike">${data.strikes}S</span>
-                        <span class="ball ms-2">${data.balls}B</span>
-                    </div>
+                <div class="attempt-number">${guess}</div>
+                <div class="attempt-result">
+                    <span class="result-badge strike">${data.strikes}S</span>
+                    <span class="result-badge ball">${data.balls}B</span>
                 </div>
             `;
             attemptList.insertBefore(newAttempt, attemptList.firstChild);
@@ -198,25 +513,25 @@ function makeGuess(event) {
 
             // 게임 종료 확인
             if (data.game_over) {
-                alert(data.message);
-                setTimeout(() => location.reload(), 500);
+                showGameOver(data.won, data.message, data.secret);
             } else {
                 // 남은 기회 업데이트
-                document.querySelector('.alert-info h5').innerHTML =
-                    `남은 기회: <strong>${data.remaining}</strong> / {{ game.max_attempts }}`;
+                document.querySelector('.attempts-info').textContent =
+                    `${data.remaining} / {{ game.max_attempts }}`;
             }
         } else {
             alert(data.message);
         }
     })
     .catch(error => {
+        submitBtn.disabled = false;
         console.error('Error:', error);
-        alert('오류가 발생했습니다.');
+        alert('An error occurred. Please try again.');
     });
 }
 
 function giveUp() {
-    if (!confirm('정말 포기하시겠습니까?')) return;
+    if (!confirm('Are you sure you want to give up?')) return;
 
     fetch(`/pybo/baseball/${gameId}/giveup/`, {
         method: 'POST',
@@ -226,14 +541,44 @@ function giveUp() {
     })
     .then(r => r.json())
     .then(data => {
-        alert(data.message);
-        location.reload();
+        showGameOver(false, data.message, data.secret);
     });
+}
+
+function showGameOver(won, message, secret) {
+    const overlay = document.getElementById('gameOverOverlay');
+    const icon = document.getElementById('gameOverIcon');
+    const title = document.getElementById('gameOverTitle');
+    const text = document.getElementById('gameOverText');
+    const secretNumber = document.getElementById('secretNumber');
+
+    if (won) {
+        icon.textContent = '🎉';
+        title.textContent = 'You Won!';
+        title.className = 'game-over-title won';
+    } else {
+        icon.textContent = '💔';
+        title.textContent = 'Game Over!';
+        title.className = 'game-over-title lost';
+    }
+
+    text.textContent = message;
+    secretNumber.textContent = secret;
+    overlay.classList.add('show');
 }
 
 // 숫자만 입력 가능하도록
 document.getElementById('guessInput').addEventListener('input', function(e) {
     this.value = this.value.replace(/[^0-9]/g, '');
 });
+
+// 게임 종료 상태 확인
+{% if game.status != 'playing' %}
+const isWon = '{{ game.status }}' === 'won';
+const message = isWon ?
+    'Congratulations! You guessed it in {{ game.attempts }} attempts!' :
+    'Better luck next time!';
+showGameOver(isWon, message, '{{ game.secret_number }}');
+{% endif %}
 </script>
 {% endblock %}

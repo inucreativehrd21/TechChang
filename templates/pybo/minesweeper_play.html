@@ -1,0 +1,594 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Minesweeper - {{ game.get_difficulty_display }}{% endblock %}
+
+{% block extra_style %}
+<style>
+    * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+    }
+
+    body {
+        background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+        min-height: 100vh;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+        padding: 20px;
+    }
+
+    .game-container {
+        max-width: 1200px;
+        margin: 0 auto;
+    }
+
+    .game-header {
+        text-align: center;
+        color: white;
+        margin-bottom: 30px;
+    }
+
+    .game-header h1 {
+        font-size: 3rem;
+        font-weight: 900;
+        margin-bottom: 10px;
+        text-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+    }
+
+    .info-panel {
+        background: rgba(255, 255, 255, 0.95);
+        backdrop-filter: blur(10px);
+        border-radius: 20px;
+        padding: 25px;
+        margin-bottom: 20px;
+        display: flex;
+        justify-content: space-around;
+        align-items: center;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+    }
+
+    .info-item {
+        text-align: center;
+        flex: 1;
+    }
+
+    .info-label {
+        font-size: 0.85rem;
+        color: #6c757d;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        margin-bottom: 5px;
+    }
+
+    .info-value {
+        font-size: 2rem;
+        font-weight: 700;
+        color: #212529;
+    }
+
+    .info-value.timer {
+        color: #667eea;
+    }
+
+    .info-value.flags {
+        color: #e74c3c;
+    }
+
+    .board-container {
+        background: rgba(255, 255, 255, 0.95);
+        backdrop-filter: blur(10px);
+        border-radius: 20px;
+        padding: 30px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        overflow-x: auto;
+        margin-bottom: 20px;
+    }
+
+    .game-board {
+        display: inline-grid;
+        gap: 2px;
+        background: #bdc3c7;
+        padding: 2px;
+        border-radius: 8px;
+        margin: 0 auto;
+    }
+
+    .cell {
+        width: 35px;
+        height: 35px;
+        background: linear-gradient(145deg, #e0e5ec, #f5f8fa);
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-weight: 700;
+        font-size: 1.1rem;
+        transition: all 0.1s ease;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+
+    .cell:hover:not(.revealed):not(.flagged) {
+        background: linear-gradient(145deg, #d0d5dc, #e5e8ea);
+        transform: scale(1.05);
+    }
+
+    .cell.revealed {
+        background: #ecf0f1;
+        box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
+        cursor: default;
+    }
+
+    .cell.flagged {
+        background: linear-gradient(145deg, #f39c12, #f1c40f);
+        color: white;
+        font-size: 1.3rem;
+    }
+
+    .cell.mine {
+        background: linear-gradient(145deg, #e74c3c, #c0392b);
+        color: white;
+        font-size: 1.3rem;
+    }
+
+    .cell.mine-hit {
+        background: linear-gradient(145deg, #e74c3c, #c0392b);
+        animation: explode 0.5s ease;
+    }
+
+    @keyframes explode {
+        0%, 100% { transform: scale(1); }
+        50% { transform: scale(1.3); }
+    }
+
+    .cell.number-1 { color: #3498db; }
+    .cell.number-2 { color: #27ae60; }
+    .cell.number-3 { color: #e74c3c; }
+    .cell.number-4 { color: #8e44ad; }
+    .cell.number-5 { color: #d35400; }
+    .cell.number-6 { color: #16a085; }
+    .cell.number-7 { color: #2c3e50; }
+    .cell.number-8 { color: #95a5a6; }
+
+    .game-over-overlay {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.8);
+        z-index: 1000;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .game-over-overlay.show {
+        display: flex;
+    }
+
+    .game-over-message {
+        background: white;
+        border-radius: 24px;
+        padding: 50px;
+        text-align: center;
+        max-width: 500px;
+        animation: slideIn 0.5s ease;
+    }
+
+    @keyframes slideIn {
+        from {
+            transform: translateY(-50px);
+            opacity: 0;
+        }
+        to {
+            transform: translateY(0);
+            opacity: 1;
+        }
+    }
+
+    .game-over-icon {
+        font-size: 5rem;
+        margin-bottom: 20px;
+    }
+
+    .game-over-title {
+        font-size: 2.5rem;
+        font-weight: 900;
+        margin-bottom: 15px;
+        color: #212529;
+    }
+
+    .game-over-text {
+        font-size: 1.2rem;
+        color: #6c757d;
+        margin-bottom: 30px;
+    }
+
+    .button-group {
+        display: flex;
+        gap: 15px;
+        justify-content: center;
+    }
+
+    .btn-game {
+        padding: 15px 30px;
+        border: none;
+        border-radius: 12px;
+        font-size: 1rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        text-decoration: none;
+        display: inline-block;
+    }
+
+    .btn-primary {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+    }
+
+    .btn-primary:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4);
+        color: white;
+    }
+
+    .btn-secondary {
+        background: #e9ecef;
+        color: #495057;
+    }
+
+    .btn-secondary:hover {
+        background: #dee2e6;
+        color: #212529;
+    }
+
+    .controls {
+        text-align: center;
+        margin-top: 20px;
+    }
+
+    @media (max-width: 768px) {
+        .cell {
+            width: 28px;
+            height: 28px;
+            font-size: 0.9rem;
+        }
+
+        .game-header h1 {
+            font-size: 2rem;
+        }
+
+        .info-value {
+            font-size: 1.5rem;
+        }
+
+        .board-container {
+            padding: 15px;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="game-container">
+    <div class="game-header">
+        <h1>💣 Minesweeper</h1>
+        <p>{{ game.get_difficulty_display }}</p>
+    </div>
+
+    <div class="info-panel">
+        <div class="info-item">
+            <div class="info-label">Time</div>
+            <div class="info-value timer" id="timer">0</div>
+        </div>
+        <div class="info-item">
+            <div class="info-label">Mines</div>
+            <div class="info-value">{{ game.mines_count }}</div>
+        </div>
+        <div class="info-item">
+            <div class="info-label">Flags</div>
+            <div class="info-value flags" id="flags-count">0</div>
+        </div>
+    </div>
+
+    <div class="board-container">
+        <div class="game-board" id="game-board" style="grid-template-columns: repeat({{ game.cols }}, 35px);">
+            <!-- JavaScript will populate the board -->
+        </div>
+    </div>
+
+    <div class="controls">
+        <a href="{% url 'pybo:minesweeper_start' %}" class="btn-game btn-secondary">
+            <i class="fas fa-arrow-left me-2"></i>New Game
+        </a>
+        <a href="{% url 'pybo:index' %}" class="btn-game btn-secondary">
+            <i class="fas fa-home me-2"></i>Home
+        </a>
+    </div>
+</div>
+
+<div class="game-over-overlay" id="game-over-overlay">
+    <div class="game-over-message">
+        <div class="game-over-icon" id="game-over-icon">🎉</div>
+        <div class="game-over-title" id="game-over-title">You Won!</div>
+        <div class="game-over-text" id="game-over-text">Congratulations!</div>
+        <div class="button-group">
+            <a href="{% url 'pybo:minesweeper_start' %}" class="btn-game btn-primary">
+                <i class="fas fa-redo me-2"></i>Play Again
+            </a>
+            <a href="{% url 'pybo:index' %}" class="btn-game btn-secondary">
+                <i class="fas fa-home me-2"></i>Home
+            </a>
+        </div>
+    </div>
+</div>
+
+<script>
+const gameId = {{ game.id }};
+const rows = {{ game.rows }};
+const cols = {{ game.cols }};
+const minesCount = {{ game.mines_count }};
+const boardState = {{ game.board_state|safe }};
+
+let gameOver = false;
+let startTime = null;
+let timerInterval = null;
+let timeElapsed = 0;
+
+// 게임 보드 초기화
+function initBoard() {
+    const board = document.getElementById('game-board');
+    board.innerHTML = '';
+
+    for (let row = 0; row < rows; row++) {
+        for (let col = 0; col < cols; col++) {
+            const cell = document.createElement('button');
+            cell.className = 'cell';
+            cell.dataset.row = row;
+            cell.dataset.col = col;
+
+            // 좌클릭: 칸 공개
+            cell.addEventListener('click', () => revealCell(row, col));
+
+            // 우클릭: 깃발 토글
+            cell.addEventListener('contextmenu', (e) => {
+                e.preventDefault();
+                toggleFlag(row, col);
+            });
+
+            // 이미 공개된 칸이면 표시
+            if (isCellRevealed(row, col)) {
+                revealCellVisual(cell, row, col);
+            }
+
+            // 깃발이 꽂혀있으면 표시
+            if (isCellFlagged(row, col)) {
+                cell.classList.add('flagged');
+                cell.textContent = '🚩';
+            }
+
+            board.appendChild(cell);
+        }
+    }
+
+    updateFlagsCount();
+}
+
+// 타이머 시작
+function startTimer() {
+    if (!startTime) {
+        startTime = Date.now();
+        timerInterval = setInterval(() => {
+            timeElapsed = Math.floor((Date.now() - startTime) / 1000);
+            document.getElementById('timer').textContent = timeElapsed;
+
+            // 서버에 시간 업데이트 (10초마다)
+            if (timeElapsed % 10 === 0) {
+                updateTimeOnServer();
+            }
+        }, 1000);
+    }
+}
+
+// 서버에 시간 업데이트
+function updateTimeOnServer() {
+    fetch(`/pybo/minesweeper/${gameId}/update-time/`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'X-CSRFToken': '{{ csrf_token }}'
+        },
+        body: `time=${timeElapsed}`
+    });
+}
+
+// 칸이 공개되었는지 확인
+function isCellRevealed(row, col) {
+    return boardState.revealed.some(([r, c]) => r === row && c === col);
+}
+
+// 칸에 깃발이 꽂혀있는지 확인
+function isCellFlagged(row, col) {
+    return boardState.flagged.some(([r, c]) => r === row && c === col);
+}
+
+// 칸에 지뢰가 있는지 확인
+function isCellMine(row, col) {
+    return boardState.mines.some(([r, c]) => r === row && c === col);
+}
+
+// 인접한 지뢰 개수 계산
+function countAdjacentMines(row, col) {
+    let count = 0;
+    for (let dr = -1; dr <= 1; dr++) {
+        for (let dc = -1; dc <= 1; dc++) {
+            if (dr === 0 && dc === 0) continue;
+            const nr = row + dr;
+            const nc = col + dc;
+            if (nr >= 0 && nr < rows && nc >= 0 && nc < cols) {
+                if (isCellMine(nr, nc)) {
+                    count++;
+                }
+            }
+        }
+    }
+    return count;
+}
+
+// 칸 공개 (시각적)
+function revealCellVisual(cell, row, col) {
+    cell.classList.add('revealed');
+    cell.classList.remove('flagged');
+
+    if (isCellMine(row, col)) {
+        cell.classList.add('mine');
+        cell.textContent = '💣';
+    } else {
+        const adjacentMines = countAdjacentMines(row, col);
+        if (adjacentMines > 0) {
+            cell.textContent = adjacentMines;
+            cell.classList.add(`number-${adjacentMines}`);
+        }
+    }
+}
+
+// 칸 공개
+function revealCell(row, col) {
+    if (gameOver) return;
+    if (isCellRevealed(row, col)) return;
+    if (isCellFlagged(row, col)) return;
+
+    startTimer();
+
+    fetch(`/pybo/minesweeper/${gameId}/reveal/`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'X-CSRFToken': '{{ csrf_token }}'
+        },
+        body: `row=${row}&col=${col}`
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // 공개된 칸들을 boardState에 추가
+            if (data.revealed) {
+                data.revealed.forEach(([r, c]) => {
+                    if (!isCellRevealed(r, c)) {
+                        boardState.revealed.push([r, c]);
+                    }
+                });
+            }
+
+            // 보드 다시 그리기
+            initBoard();
+
+            // 게임 오버 확인
+            if (data.game_over) {
+                gameOver = true;
+                clearInterval(timerInterval);
+                updateTimeOnServer();
+
+                if (data.hit_mine) {
+                    // 지뢰를 밟았을 때
+                    boardState.mines = data.mines;
+                    showGameOver(false, data.message);
+                    setTimeout(() => initBoard(), 500);
+                } else if (data.won) {
+                    // 승리했을 때
+                    boardState.mines = data.mines;
+                    showGameOver(true, data.message);
+                }
+            }
+        } else {
+            alert(data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+    });
+}
+
+// 깃발 토글
+function toggleFlag(row, col) {
+    if (gameOver) return;
+    if (isCellRevealed(row, col)) return;
+
+    startTimer();
+
+    fetch(`/pybo/minesweeper/${gameId}/flag/`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'X-CSRFToken': '{{ csrf_token }}'
+        },
+        body: `row=${row}&col=${col}`
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            const cell = document.querySelector(`[data-row="${row}"][data-col="${col}"]`);
+            if (data.flagged) {
+                cell.classList.add('flagged');
+                cell.textContent = '🚩';
+                boardState.flagged.push([row, col]);
+            } else {
+                cell.classList.remove('flagged');
+                cell.textContent = '';
+                const index = boardState.flagged.findIndex(([r, c]) => r === row && c === col);
+                if (index > -1) {
+                    boardState.flagged.splice(index, 1);
+                }
+            }
+            updateFlagsCount();
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+    });
+}
+
+// 깃발 개수 업데이트
+function updateFlagsCount() {
+    document.getElementById('flags-count').textContent = boardState.flagged.length;
+}
+
+// 게임 오버 표시
+function showGameOver(won, message) {
+    const overlay = document.getElementById('game-over-overlay');
+    const icon = document.getElementById('game-over-icon');
+    const title = document.getElementById('game-over-title');
+    const text = document.getElementById('game-over-text');
+
+    if (won) {
+        icon.textContent = '🎉';
+        title.textContent = 'You Won!';
+        title.style.color = '#27ae60';
+    } else {
+        icon.textContent = '💥';
+        title.textContent = 'Game Over!';
+        title.style.color = '#e74c3c';
+    }
+
+    text.textContent = message + ` Time: ${timeElapsed}s`;
+    overlay.classList.add('show');
+}
+
+// 게임 초기화
+initBoard();
+
+// 게임 상태 확인
+{% if game.status != 'playing' %}
+gameOver = true;
+{% if game.status == 'won' %}
+showGameOver(true, '축하합니다! 모든 지뢰를 찾았습니다!');
+{% else %}
+showGameOver(false, '지뢰를 밟았습니다!');
+{% endif %}
+{% endif %}
+</script>
+{% endblock %}

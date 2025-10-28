@@ -3,7 +3,7 @@ from django.urls import path
 
 # 실시간 게임 비활성화 (나중을 위해 파일은 유지)
 # from .views import wordchain_views, tictactoe_views
-from .views import base_views, question_views, answer_views, comment_views, profile_views, baseball_views, guestbook_views, game2048_views
+from .views import base_views, question_views, answer_views, comment_views, profile_views, baseball_views, guestbook_views, game2048_views, minesweeper_views
 
 app_name = 'pybo'
 
@@ -69,9 +69,18 @@ urlpatterns = [
 
     # game2048_views.py - 2048 게임
     path('2048/', game2048_views.game2048_start, name='game2048_start'),
+    path('2048/leaderboard/', game2048_views.game2048_leaderboard, name='game2048_leaderboard'),
     path('2048/<int:game_id>/', game2048_views.game2048_play, name='game2048_play'),
     path('2048/<int:game_id>/move/', game2048_views.game2048_move, name='game2048_move'),
     path('2048/<int:game_id>/restart/', game2048_views.game2048_restart, name='game2048_restart'),
+
+    # minesweeper_views.py - 지뢰찾기 게임
+    path('minesweeper/', minesweeper_views.minesweeper_start, name='minesweeper_start'),
+    path('minesweeper/create/', minesweeper_views.minesweeper_create, name='minesweeper_create'),
+    path('minesweeper/<int:game_id>/', minesweeper_views.minesweeper_play, name='minesweeper_play'),
+    path('minesweeper/<int:game_id>/reveal/', minesweeper_views.minesweeper_reveal, name='minesweeper_reveal'),
+    path('minesweeper/<int:game_id>/flag/', minesweeper_views.minesweeper_flag, name='minesweeper_flag'),
+    path('minesweeper/<int:game_id>/update-time/', minesweeper_views.minesweeper_update_time, name='minesweeper_update_time'),
 
     # *** IMPORTANT: 이 패턴은 맨 마지막에 위치해야 합니다! ***
     # <int:question_id>/ 패턴이 숫자로 시작하는 다른 URL들(2048 등)을 가로채지 않도록
