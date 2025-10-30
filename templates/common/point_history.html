@@ -1,0 +1,124 @@
+{% extends 'base.html' %}
+
+{% block title %}포인트 내역 - 테크창{% endblock %}
+
+{% block content %}
+<div class="container my-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2><i class="fas fa-history me-2"></i>포인트 내역</h2>
+        <div>
+            <span class="badge bg-warning text-dark fs-5">
+                <i class="fas fa-coins me-2"></i>{{ user_points }}P
+            </span>
+            <a href="{% url 'common:emoticon_shop' %}" class="btn btn-outline-primary ms-2">
+                <i class="fas fa-store me-2"></i>상점으로
+            </a>
+        </div>
+    </div>
+
+    {% if page_obj %}
+    <div class="card">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead class="table-light">
+                        <tr>
+                            <th>날짜</th>
+                            <th>내역</th>
+                            <th>포인트</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for history in page_obj %}
+                        <tr>
+                            <td>{{ history.created_at|date:"Y-m-d H:i" }}</td>
+                            <td>
+                                {% if history.reason == 'checkin' %}
+                                <i class="fas fa-calendar-check text-success me-2"></i>
+                                {% elif history.reason == 'purchase' %}
+                                <i class="fas fa-shopping-cart text-danger me-2"></i>
+                                {% else %}
+                                <i class="fas fa-coins text-warning me-2"></i>
+                                {% endif %}
+                                {{ history.description }}
+                            </td>
+                            <td>
+                                {% if history.amount > 0 %}
+                                <span class="text-success fw-bold">+{{ history.amount }}P</span>
+                                {% else %}
+                                <span class="text-danger fw-bold">{{ history.amount }}P</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- 페이지네이션 -->
+    {% if page_obj.has_other_pages %}
+    <nav aria-label="Page navigation" class="mt-4">
+        <ul class="pagination justify-content-center">
+            {% if page_obj.has_previous %}
+            <li class="page-item">
+                <a class="page-link" href="?page=1">처음</a>
+            </li>
+            <li class="page-item">
+                <a class="page-link" href="?page={{ page_obj.previous_page_number }}">이전</a>
+            </li>
+            {% else %}
+            <li class="page-item disabled">
+                <span class="page-link">처음</span>
+            </li>
+            <li class="page-item disabled">
+                <span class="page-link">이전</span>
+            </li>
+            {% endif %}
+
+            <li class="page-item active">
+                <span class="page-link">
+                    {{ page_obj.number }} / {{ page_obj.paginator.num_pages }}
+                </span>
+            </li>
+
+            {% if page_obj.has_next %}
+            <li class="page-item">
+                <a class="page-link" href="?page={{ page_obj.next_page_number }}">다음</a>
+            </li>
+            <li class="page-item">
+                <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}">마지막</a>
+            </li>
+            {% else %}
+            <li class="page-item disabled">
+                <span class="page-link">다음</span>
+            </li>
+            <li class="page-item disabled">
+                <span class="page-link">마지막</span>
+            </li>
+            {% endif %}
+        </ul>
+    </nav>
+    {% endif %}
+
+    {% else %}
+    <div class="alert alert-info text-center">
+        <i class="fas fa-info-circle me-2"></i>포인트 내역이 없습니다.
+    </div>
+    {% endif %}
+
+    <div class="mt-4">
+        <div class="card bg-light">
+            <div class="card-body">
+                <h5 class="card-title"><i class="fas fa-question-circle me-2"></i>포인트 안내</h5>
+                <ul class="mb-0">
+                    <li><strong>출석 체크:</strong> 매일 5포인트 획득</li>
+                    <li><strong>이모티콘 구매:</strong> 상점에서 포인트로 이모티콘 구매 가능</li>
+                    <li>포인트는 누적되며, 다양한 용도로 사용할 수 있습니다.</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
