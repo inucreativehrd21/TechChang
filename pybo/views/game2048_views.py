@@ -176,6 +176,7 @@ def game2048_move(request, game_id):
             game.end_date = timezone.now()
             game.save()
             del request.session[session_key]
+            logger.info(f"User {request.user.username} timed out 2048 game {game_id} - difficulty: {game.difficulty}, score: {game_data['score']}")
             return JsonResponse({
                 'success': False,
                 'game_over': True,
@@ -231,7 +232,7 @@ def game2048_move(request, game_id):
         game.save()
 
         del request.session[session_key]
-        logger.info(f"User {request.user.username} won 2048 game {game_id} with score {game_data['score']}")
+        logger.info(f"User {request.user.username} won 2048 game {game_id} - difficulty: {game.difficulty}, score: {game_data['score']}, best_score: {game.best_score}")
 
     # 패배 확인 (더 이상 이동 불가능)
     elif not can_move(board_state):
@@ -254,7 +255,7 @@ def game2048_move(request, game_id):
         game.save()
 
         del request.session[session_key]
-        logger.info(f"User {request.user.username} lost 2048 game {game_id} with score {game_data['score']}")
+        logger.info(f"User {request.user.username} lost 2048 game {game_id} - difficulty: {game.difficulty}, score: {game_data['score']}, best_score: {game.best_score}")
     else:
         # 게임 진행 중: 세션만 업데이트 (DB 저장 안 함)
         request.session[session_key] = game_data

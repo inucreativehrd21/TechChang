@@ -210,6 +210,8 @@ def baseball_guess(request, game_id):
             if game.time_limit > 0:
                 time_bonus = f" (소요 시간: {game.time_elapsed}초)"
 
+            logger.info(f"User {request.user.username} won baseball game {game_id} - difficulty: {game.difficulty}, attempts: {game.attempts}")
+
             return JsonResponse({
                 'success': True,
                 'strikes': strikes,
@@ -225,6 +227,8 @@ def baseball_guess(request, game_id):
             game.status = 'giveup'
             game.end_date = timezone.now()
             game.save()
+
+            logger.info(f"User {request.user.username} lost baseball game {game_id} - difficulty: {game.difficulty}, attempts: {game.attempts}")
 
             return JsonResponse({
                 'success': True,
@@ -276,6 +280,8 @@ def baseball_update_time(request, game_id):
         game.end_date = timezone.now()
         game.save()
 
+        logger.info(f"User {request.user.username} timed out baseball game {game_id} - difficulty: {game.difficulty}, time_elapsed: {time_elapsed}")
+
         return JsonResponse({
             'success': True,
             'timeout': True,
@@ -290,6 +296,8 @@ def baseball_update_time(request, game_id):
             game.status = 'timeout'
             game.end_date = timezone.now()
             game.save()
+
+            logger.info(f"User {request.user.username} inactivity timeout baseball game {game_id} - difficulty: {game.difficulty}, inactive_seconds: {inactive_seconds}")
 
             return JsonResponse({
                 'success': True,

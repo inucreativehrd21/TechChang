@@ -280,9 +280,21 @@ body {
         </div>
 
         {% if game.difficulty == 'hard' %}
-        <!-- 하드모드 경고 -->
-        <div style="background: rgba(235, 51, 73, 0.1); border: 2px solid #eb3349; color: #c0392b; padding: 10px; border-radius: 8px; margin-bottom: 15px; text-align: center; font-weight: 600;">
-            🔥 Hard Mode: Move within {{ game.inactivity_limit }} seconds or Game Over!
+        <!-- 하드모드 타이머 -->
+        <div style="background: rgba(235, 51, 73, 0.1); border: 2px solid #eb3349; border-radius: 8px; margin-bottom: 15px; padding: 15px; text-align: center;">
+            <div style="color: #c0392b; font-weight: 700; font-size: 1.1rem; margin-bottom: 8px;">
+                🔥 Hard Mode: 비활동 제한
+            </div>
+            <div style="display: flex; justify-content: center; align-items: center; gap: 10px;">
+                <div style="font-size: 0.9rem; color: #6c757d;">입력까지 남은 시간:</div>
+                <div id="inactivity-timer" style="font-size: 2rem; font-weight: 900; color: #e74c3c; min-width: 80px;">
+                    {{ game.inactivity_limit }}
+                </div>
+                <div style="font-size: 0.9rem; color: #6c757d;">초</div>
+            </div>
+            <div style="margin-top: 8px; font-size: 0.85rem; color: #856404;">
+                ⚠️ {{ game.inactivity_limit }}초 이내에 움직이지 않으면 게임이 종료됩니다!
+            </div>
         </div>
         {% endif %}
 
@@ -420,15 +432,17 @@ function updateInactivityTimer() {
     inactiveSeconds++;
     const remaining = Math.max(0, inactivityLimit - inactiveSeconds);
 
-    const timerEl = document.getElementById('inactivityTimer');
+    const timerEl = document.getElementById('inactivity-timer');
     if (timerEl) {
         timerEl.textContent = remaining;
 
-        // 5초 남았을 때 빨간색으로
+        // 타이머 색상 변경
         if (remaining <= 5) {
-            timerEl.parentElement.style.background = '#e74c3c';
+            timerEl.style.color = '#e74c3c';  // 빨간색
         } else if (remaining <= 10) {
-            timerEl.parentElement.style.background = '#ffc107';
+            timerEl.style.color = '#ffc107';  // 노란색
+        } else {
+            timerEl.style.color = '#28a745';  // 초록색
         }
     }
 
@@ -442,10 +456,10 @@ function updateInactivityTimer() {
 // 비활동 타이머 리셋
 function resetInactivityTimer() {
     inactiveSeconds = 0;
-    const timerEl = document.getElementById('inactivityTimer');
+    const timerEl = document.getElementById('inactivity-timer');
     if (timerEl) {
         timerEl.textContent = inactivityLimit;
-        timerEl.parentElement.style.background = '#28a745';
+        timerEl.style.color = '#28a745';  // 초록색으로 리셋
     }
 }
 
