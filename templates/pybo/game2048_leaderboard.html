@@ -326,10 +326,10 @@
 
     <div class="difficulty-tabs">
         <a href="{% url 'pybo:game2048_leaderboard' %}?difficulty=normal" class="difficulty-tab {% if difficulty == 'normal' %}active{% endif %}">
-            😊 Normal Mode
+            😊 일반 모드
         </a>
         <a href="{% url 'pybo:game2048_leaderboard' %}?difficulty=hard" class="difficulty-tab {% if difficulty == 'hard' %}active{% endif %}">
-            🔥 Hard Mode
+            🔥 하드 모드
         </a>
     </div>
 
@@ -396,9 +396,9 @@
         {% else %}
         <div class="empty-state">
             <i class="fas fa-trophy"></i>
-            <p>No players yet. Be the first to set a record!</p>
+            <p>아직 플레이어가 없습니다. 첫 기록을 세워보세요!</p>
             <a href="{% url 'pybo:game2048_start' %}" class="btn btn-primary btn-lg">
-                <i class="fas fa-play me-2"></i>Start Playing
+                <i class="fas fa-play me-2"></i>게임 시작
             </a>
         </div>
         {% endif %}

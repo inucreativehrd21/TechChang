@@ -13,7 +13,6 @@
             <p><strong>가입일:</strong> {{ profile_user.date_joined }}</p>
             <p><strong>작성한 게시글:</strong> {{ profile_user.author_question.count }}개</p>
             <p><strong>작성한 댓글:</strong> {{ profile_user.author_answer.count }}개</p>
-            <p><strong>작성한 댓글:</strong> {{ profile_user.comment_set.count }}개</p>
         </div>
     </div>
 
@@ -78,10 +77,10 @@
         {% endif %}
     </div>
 
-    <!-- 작성한 답변 -->
+    <!-- 작성한 댓글 (원래 답변 기능) -->
     <div class="my-4">
-        <h6 class="border-bottom pb-2">작성한 답변</h6>
-        {% if answer_list %}
+        <h6 class="border-bottom pb-2">작성한 댓글</h6>
+        {% if comment_list %}
         <table class="table">
             <thead>
             <tr class="table-dark">
@@ -91,114 +90,19 @@
             </tr>
             </thead>
             <tbody>
-            {% for answer in answer_list %}
-            <tr>
-                <td>
-                    <a href="{% url 'pybo:detail' answer.question.id %}#answer_{{ answer.id }}" class="text-decoration-none">{{ answer.content|truncatewords:10 }}</a>
-                </td>
-                <td>
-                    <a href="{% url 'pybo:detail' answer.question.id %}" class="text-decoration-none">{{ answer.question.subject }}</a>
-                </td>
-                <td>{{ answer.create_date }}</td>
-            </tr>
-            {% endfor %}
-            </tbody>
-        </table>
-        <!-- 답변 페이징 -->
-        {% if answer_list.paginator.num_pages > 1 %}
-        <div class="d-flex justify-content-center mt-3">
-            <nav aria-label="답변 페이지 네비게이션">
-                <ul class="pagination pagination-sm">
-                    {% if answer_list.has_previous %}
-                    <li class="page-item">
-                        <a class="page-link" href="?answer_page=1">&laquo; 처음</a>
-                    </li>
-                    <li class="page-item">
-                        <a class="page-link" href="?answer_page={{ answer_list.previous_page_number }}">이전</a>
-                    </li>
-                    {% endif %}
-
-                    <li class="page-item active">
-                        <span class="page-link">
-                            {{ answer_list.number }} / {{ answer_list.paginator.num_pages }}
-                        </span>
-                    </li>
-
-                    {% if answer_list.has_next %}
-                    <li class="page-item">
-                        <a class="page-link" href="?answer_page={{ answer_list.next_page_number }}">다음</a>
-                    </li>
-                    <li class="page-item">
-                        <a class="page-link" href="?answer_page={{ answer_list.paginator.num_pages }}">마지막 &raquo;</a>
-                    </li>
-                    {% endif %}
-                </ul>
-            </nav>
-        </div>
-        {% endif %}
-        {% else %}
-        <p>작성한 답변이 없습니다.</p>
-        {% endif %}
-    </div>
-
-    <!-- 작성한 댓글 -->
-    <div class="my-4">
-        <h6 class="border-bottom pb-2">작성한 댓글</h6>
-        {% if comment_list %}
-        <table class="table">
-            <thead>
-            <tr class="table-dark">
-                <th>내용</th>
-                <th>작성일시</th>
-            </tr>
-            </thead>
-            <tbody>
             {% for comment in comment_list %}
             <tr>
                 <td>
-                    {% if comment.question %}
-                    <a href="{% url 'pybo:detail' comment.question.id %}#comment_{{ comment.id }}" class="text-decoration-none">{{ comment.content|truncatewords:10 }}</a>
-                    {% else %}
-                    <a href="{% url 'pybo:detail' comment.answer.question.id %}#comment_{{ comment.id }}" class="text-decoration-none">{{ comment.content|truncatewords:10 }}</a>
-                    {% endif %}
+                    <a href="{% url 'pybo:detail' comment.question.id %}#answer_{{ comment.id }}" class="text-decoration-none">{{ comment.content|truncatewords:10 }}</a>
+                </td>
+                <td>
+                    <a href="{% url 'pybo:detail' comment.question.id %}" class="text-decoration-none">{{ comment.question.subject }}</a>
                 </td>
                 <td>{{ comment.create_date }}</td>
             </tr>
             {% endfor %}
             </tbody>
         </table>
-        <!-- 댓글 페이징 -->
-        {% if comment_list.paginator.num_pages > 1 %}
-        <div class="d-flex justify-content-center mt-3">
-            <nav aria-label="댓글 페이지 네비게이션">
-                <ul class="pagination pagination-sm">
-                    {% if comment_list.has_previous %}
-                    <li class="page-item">
-                        <a class="page-link" href="?comment_page=1">&laquo; 처음</a>
-                    </li>
-                    <li class="page-item">
-                        <a class="page-link" href="?comment_page={{ comment_list.previous_page_number }}">이전</a>
-                    </li>
-                    {% endif %}
-                    
-                    <li class="page-item active">
-                        <span class="page-link">
-                            {{ comment_list.number }} / {{ comment_list.paginator.num_pages }}
-                        </span>
-                    </li>
-                    
-                    {% if comment_list.has_next %}
-                    <li class="page-item">
-                        <a class="page-link" href="?comment_page={{ comment_list.next_page_number }}">다음</a>
-                    </li>
-                    <li class="page-item">
-                        <a class="page-link" href="?comment_page={{ comment_list.paginator.num_pages }}">마지막 &raquo;</a>
-                    </li>
-                    {% endif %}
-                </ul>
-            </nav>
-        </div>
-        {% endif %}
         {% else %}
         <p>작성한 댓글이 없습니다.</p>
         {% endif %}

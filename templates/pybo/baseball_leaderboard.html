@@ -326,11 +326,11 @@
     <div class="difficulty-tabs">
         <a href="{% url 'pybo:baseball_leaderboard' %}?difficulty=normal"
            class="difficulty-tab {% if difficulty == 'normal' %}active{% endif %}">
-            😊 Normal Mode
+            😊 일반 모드
         </a>
         <a href="{% url 'pybo:baseball_leaderboard' %}?difficulty=hard"
            class="difficulty-tab {% if difficulty == 'hard' %}active{% endif %}">
-            🔥 Hard Mode
+            🔥 하드 모드
         </a>
     </div>
 
@@ -338,14 +338,14 @@
     <div class="stats-bar">
         <div class="stat-item">
             <div class="number">{{ total_players }}</div>
-            <div class="label">Players</div>
+            <div class="label">플레이어</div>
         </div>
     </div>
 
     <!-- 리더보드 -->
     <div class="leaderboard-card">
         <div class="leaderboard-header">
-            <h2>🏆 Top Players</h2>
+            <h2>🏆 상위 플레이어</h2>
             <p>최소 시도 횟수 기준 순위</p>
         </div>
 

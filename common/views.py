@@ -687,11 +687,14 @@ def admin_user_detail(request, user_id):
 @login_required
 def daily_checkin(request):
     """일일 출석 체크"""
-    from .models import DailyCheckIn, PointHistory
+    from .models import DailyCheckIn, PointHistory, Profile
     from datetime import date
 
     today = date.today()
     user = request.user
+
+    # 프로필 확인 및 생성
+    profile, _ = Profile.objects.get_or_create(user=user)
 
     # 오늘 이미 출석했는지 확인
     already_checked = DailyCheckIn.objects.filter(
@@ -710,8 +713,8 @@ def daily_checkin(request):
         )
 
         # 포인트 지급
-        user.profile.points += points_earned
-        user.profile.save()
+        profile.points += points_earned
+        profile.save()
 
         # 포인트 히스토리 기록
         PointHistory.objects.create(
@@ -729,7 +732,10 @@ def daily_checkin(request):
 @login_required
 def emoticon_shop(request):
     """이모티콘 상점"""
-    from .models import Emoticon, UserEmoticon
+    from .models import Emoticon, UserEmoticon, Profile
+
+    # 프로필 확인 및 생성
+    profile, _ = Profile.objects.get_or_create(user=request.user)
 
     # 판매 중인 이모티콘 목록
     emoticons = Emoticon.objects.filter(is_available=True).order_by('price')
@@ -742,7 +748,7 @@ def emoticon_shop(request):
     context = {
         'emoticons': emoticons,
         'owned_emoticon_ids': list(owned_emoticon_ids),
-        'user_points': request.user.profile.points,
+        'user_points': profile.points,
     }
 
     return render(request, 'common/emoticon_shop.html', context)
@@ -751,11 +757,14 @@ def emoticon_shop(request):
 @login_required
 def purchase_emoticon(request, emoticon_id):
     """이모티콘 구매"""
-    from .models import Emoticon, UserEmoticon, PointHistory
+    from .models import Emoticon, UserEmoticon, PointHistory, Profile
     from django.db import transaction
 
     emoticon = get_object_or_404(Emoticon, id=emoticon_id, is_available=True)
     user = request.user
+
+    # 프로필 확인 및 생성
+    profile, _ = Profile.objects.get_or_create(user=user)
 
     # 이미 구매했는지 확인
     if UserEmoticon.objects.filter(user=user, emoticon=emoticon).exists():
@@ -763,15 +772,15 @@ def purchase_emoticon(request, emoticon_id):
         return redirect('common:emoticon_shop')
 
     # 포인트가 충분한지 확인
-    if user.profile.points < emoticon.price:
-        messages.error(request, f'포인트가 부족합니다! (필요: {emoticon.price}P, 보유: {user.profile.points}P)')
+    if profile.points < emoticon.price:
+        messages.error(request, f'포인트가 부족합니다! (필요: {emoticon.price}P, 보유: {profile.points}P)')
         return redirect('common:emoticon_shop')
 
     # 구매 처리
     with transaction.atomic():
         # 포인트 차감
-        user.profile.points -= emoticon.price
-        user.profile.save()
+        profile.points -= emoticon.price
+        profile.save()
 
         # 이모티콘 구매 기록
         UserEmoticon.objects.create(user=user, emoticon=emoticon)
@@ -791,14 +800,17 @@ def purchase_emoticon(request, emoticon_id):
 @login_required
 def select_emoticon(request, emoticon_id):
     """이모티콘 선택 (닉네임 옆에 표시)"""
-    from .models import Emoticon, UserEmoticon
+    from .models import Emoticon, UserEmoticon, Profile
 
     user = request.user
 
+    # 프로필 확인 및 생성
+    profile, _ = Profile.objects.get_or_create(user=user)
+
     if emoticon_id == 0:
         # 이모티콘 해제
-        user.profile.selected_emoticon = None
-        user.profile.save()
+        profile.selected_emoticon = None
+        profile.save()
         messages.success(request, '이모티콘을 해제했습니다.')
     else:
         emoticon = get_object_or_404(Emoticon, id=emoticon_id)
@@ -809,8 +821,8 @@ def select_emoticon(request, emoticon_id):
             return redirect('common:emoticon_shop')
 
         # 이모티콘 선택
-        user.profile.selected_emoticon = emoticon
-        user.profile.save()
+        profile.selected_emoticon = emoticon
+        profile.save()
         messages.success(request, f'{emoticon.name} 이모티콘을 선택했습니다!')
 
     return redirect('common:emoticon_shop')
@@ -819,8 +831,11 @@ def select_emoticon(request, emoticon_id):
 @login_required
 def point_history(request):
     """포인트 히스토리"""
-    from .models import PointHistory
+    from .models import PointHistory, Profile
     from django.core.paginator import Paginator
+
+    # 프로필 확인 및 생성
+    profile, _ = Profile.objects.get_or_create(user=request.user)
 
     history_list = PointHistory.objects.filter(user=request.user).order_by('-created_at')
 
@@ -830,7 +845,7 @@ def point_history(request):
 
     context = {
         'page_obj': page_obj,
-        'user_points': request.user.profile.points,
+        'user_points': profile.points,
     }
 
     return render(request, 'common/point_history.html', context)

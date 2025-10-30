@@ -10,6 +10,8 @@ from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
 from django.utils import timezone
 from django.db import transaction
+from django.db.models import Count, Avg, Q, Min
+from django.contrib.auth.models import User
 import random
 import logging
 
@@ -350,16 +352,12 @@ def baseball_leaderboard(request):
     Returns:
         HttpResponse: 리더보드 페이지
     """
-    from django.contrib.auth.models import User
-    from django.db.models import Count, Avg, Q
-
     # 난이도 필터
     difficulty = request.GET.get('difficulty', 'normal')
     if difficulty not in ['normal', 'hard']:
         difficulty = 'normal'
 
     # Bulk 쿼리 최적화: N+1 쿼리 방지
-    from django.db.models import Min
 
     # 승리한 게임이 있는 사용자만 가져오기
     users_with_wins = NumberBaseballGame.objects.filter(

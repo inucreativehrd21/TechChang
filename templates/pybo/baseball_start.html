@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
 {% load static %}
 
-{% block title %}Number Baseball{% endblock %}
+{% block title %}숫자야구{% endblock %}
 
 {% block extra_css %}
 <style>
@@ -142,40 +142,40 @@
 {% block content %}
 <div class="container">
     <div class="game-card">
-        <h1>⚾ Number Baseball</h1>
-        <p class="subtitle">Choose your difficulty level</p>
+        <h1>⚾ 숫자야구</h1>
+        <p class="subtitle">난이도를 선택하세요</p>
 
         <div class="difficulty-grid">
             <a href="{% url 'pybo:baseball_create' %}?difficulty=normal" class="difficulty-card normal">
                 <div class="difficulty-icon">😊</div>
-                <div class="difficulty-name">Normal Mode</div>
-                <div class="difficulty-info">Perfect for beginners!</div>
+                <div class="difficulty-name">일반 모드</div>
+                <div class="difficulty-info">초보자에게 완벽해요!</div>
                 <div class="difficulty-features">
-                    <div>✓ 10 attempts</div>
-                    <div>✓ No time limit</div>
-                    <div>✓ Full hints (Strike/Ball)</div>
+                    <div>✓ 10번의 기회</div>
+                    <div>✓ 시간 제한 없음</div>
+                    <div>✓ 완전한 힌트 (스트라이크/볼)</div>
                 </div>
             </a>
 
             <a href="{% url 'pybo:baseball_create' %}?difficulty=hard" class="difficulty-card hard">
                 <div class="difficulty-icon">🔥</div>
-                <div class="difficulty-name">Hard Mode</div>
-                <div class="difficulty-info">Are you ready for the challenge?</div>
+                <div class="difficulty-name">하드 모드</div>
+                <div class="difficulty-info">도전할 준비가 되셨나요?</div>
                 <div class="difficulty-features">
-                    <div>✓ Only 7 attempts</div>
-                    <div>✓ 5 minute time limit</div>
-                    <div>✓ Full hints (Strike/Ball)</div>
-                    <div>⚠️ Penalty: 3 consecutive 0-strike = -1 attempt</div>
+                    <div>✓ 7번의 기회</div>
+                    <div>✓ 5분 시간 제한</div>
+                    <div>✓ 완전한 힌트 (스트라이크/볼)</div>
+                    <div>⚠️ 페널티: 3회 연속 0스트라이크 = 기회 -1</div>
                 </div>
             </a>
         </div>
 
         <div style="display: flex; gap: 10px; justify-content: center; align-items: center;">
             <a href="{% url 'pybo:index' %}" class="back-link">
-                <i class="fas fa-arrow-left me-2"></i>Back to Home
+                <i class="fas fa-arrow-left me-2"></i>홈으로
             </a>
             <a href="{% url 'pybo:baseball_leaderboard' %}" class="back-link" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white;">
-                <i class="fas fa-trophy me-2"></i>Leaderboard
+                <i class="fas fa-trophy me-2"></i>리더보드
             </a>
         </div>
     </div>

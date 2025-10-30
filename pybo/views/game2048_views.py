@@ -10,8 +10,9 @@ from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
 from django.utils import timezone
 from django.db import transaction, models
-from django.db.models import Max
+from django.db.models import Max, Sum, Count, Q
 from django.contrib.auth.models import User
+from datetime import datetime
 import random
 import logging
 
@@ -161,8 +162,11 @@ def game2048_move(request, game_id):
 
     # 비활동 시간 체크 (하드모드)
     if game_data['inactivity_limit'] > 0 and game_data['last_activity_time']:
-        from dateutil import parser
-        last_activity = parser.isoparse(game_data['last_activity_time'])
+        # ISO 형식 문자열을 datetime으로 변환
+        last_activity = datetime.fromisoformat(game_data['last_activity_time'])
+        # timezone aware로 만들기
+        if last_activity.tzinfo is None:
+            last_activity = timezone.make_aware(last_activity)
         inactive_seconds = (timezone.now() - last_activity).total_seconds()
         if inactive_seconds >= game_data['inactivity_limit']:
             game_data['status'] = 'timeout'
@@ -385,8 +389,6 @@ def game2048_leaderboard(request):
         ).order_by('-top_score')[:100]
 
     # 각 사용자의 게임 통계 가져오기 (난이도별) - Bulk 쿼리 최적화
-    from django.db.models import Sum, Count, Q
-
     # 모든 사용자의 통계를 한 번의 쿼리로 가져오기
     player_ids = [user.id for user in top_players]
     stats_qs = Game2048.objects.filter(
