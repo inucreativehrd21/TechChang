@@ -369,6 +369,11 @@ def game2048_leaderboard(request):
     if difficulty not in ['normal', 'hard']:
         difficulty = 'normal'
 
+    # 디버깅: 난이도별 게임 수 확인
+    total_games = Game2048.objects.filter(difficulty=difficulty).count()
+    won_games = Game2048.objects.filter(difficulty=difficulty, status='won').count()
+    logger.info(f"2048 leaderboard - difficulty: {difficulty}, total_games: {total_games}, won_games: {won_games}")
+
     # 사용자별 최고 점수 서브쿼리 (난이도별)
     user_best_scores = Game2048.objects.filter(
         player=models.OuterRef('pk'),
@@ -395,6 +400,7 @@ def game2048_leaderboard(request):
     # 각 사용자의 게임 통계 가져오기 (난이도별) - Bulk 쿼리 최적화
     # 모든 사용자의 통계를 한 번의 쿼리로 가져오기
     player_ids = [user.id for user in top_players]
+    logger.info(f"2048 leaderboard - top_players count: {len(player_ids)}, player_ids: {player_ids}")
     stats_qs = Game2048.objects.filter(
         player_id__in=player_ids,
         difficulty=difficulty
@@ -436,10 +442,18 @@ def game2048_leaderboard(request):
             'wins': stats.get('wins', 0),
         })
 
+    # 디버그 정보 추가
+    debug_info = {
+        'total_games': total_games,
+        'won_games': won_games,
+        'top_players_count': len(player_ids),
+    }
+
     context = {
         'leaderboard': leaderboard_data,
         'total_players': len(leaderboard_data),
         'difficulty': difficulty,
+        'debug_info': debug_info,
     }
 
     return render(request, 'pybo/game2048_leaderboard.html', context)

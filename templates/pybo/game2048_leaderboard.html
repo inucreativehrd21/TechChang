@@ -338,6 +338,14 @@
             <div class="number">{{ total_players }}</div>
             <div class="label">총 플레이어 수</div>
         </div>
+        <div class="stat-item">
+            <div class="number">{{ debug_info.total_games }}</div>
+            <div class="label">총 게임 수</div>
+        </div>
+        <div class="stat-item">
+            <div class="number">{{ debug_info.won_games }}</div>
+            <div class="label">승리 게임 수</div>
+        </div>
         {% if leaderboard %}
         <div class="stat-item">
             <div class="number">{{ leaderboard.0.best_score|default:"0" }}</div>
