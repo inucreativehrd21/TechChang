@@ -110,29 +110,20 @@ def detail(request, question_id):
                      .select_related('author')           \
                      .prefetch_related('voter', 'comment_set__author')
 
-    # 정렬
+    # 정렬 (오래된 댓글이 위, 최신 댓글이 아래)
     if sort == 'recommend':
         answer_qs = answer_qs.annotate(num_voter=Count('voter')) \
-                             .order_by('-num_voter', '-create_date')
+                             .order_by('-num_voter', 'create_date')
     else:
-        answer_qs = answer_qs.order_by('-create_date')
+        answer_qs = answer_qs.order_by('create_date')
 
-    # 답변 페이징
-    try:
-        answer_page = int(request.GET.get('answer_page', '1'))
-    except (ValueError, TypeError):
-        answer_page = 1
-    paginator = Paginator(answer_qs, 5)
-    try:
-        answer_page_obj = paginator.get_page(answer_page)
-    except (EmptyPage, PageNotAnInteger):
-        answer_page_obj = paginator.get_page(1)
+    # 페이지네이션 제거 - 모든 댓글을 한 페이지에 표시
+    answer_list = list(answer_qs)
 
     context = {
         'question': question,
-        'answer_list': answer_page_obj,  # 템플릿에서 for answer in answer_list
+        'answer_list': answer_list,  # 템플릿에서 for answer in answer_list
         'sort': sort,
-        'answer_page': answer_page_obj.number,
     }
     return render(request, 'pybo/question_detail.html', context)
 

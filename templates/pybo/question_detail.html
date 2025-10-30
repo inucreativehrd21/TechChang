@@ -308,45 +308,6 @@
   {% endif %}
 </div>
 
-<!-- 페이지네이션 -->
-{% if answer_list.paginator.num_pages > 1 %}
-  <nav aria-label="답변 페이지네이션">
-    <ul class="pagination justify-content-center">
-      {% if answer_list.has_previous %}
-        <li class="page-item">
-          <a class="page-link" href="?page=1{% if sort %}&sort={{ sort }}{% endif %}">처음</a>
-        </li>
-        <li class="page-item">
-          <a class="page-link" href="?page={{ answer_list.previous_page_number }}{% if sort %}&sort={{ sort }}{% endif %}">이전</a>
-        </li>
-      {% endif %}
-      
-      {% for page_number in answer_list.paginator.page_range %}
-        {% if page_number >= answer_list.number|add:-3 and page_number <= answer_list.number|add:3 %}
-          {% if page_number == answer_list.number %}
-            <li class="page-item active">
-              <span class="page-link">{{ page_number }}</span>
-            </li>
-          {% else %}
-            <li class="page-item">
-              <a class="page-link" href="?page={{ page_number }}{% if sort %}&sort={{ sort }}{% endif %}">{{ page_number }}</a>
-            </li>
-          {% endif %}
-        {% endif %}
-      {% endfor %}
-      
-      {% if answer_list.has_next %}
-        <li class="page-item">
-          <a class="page-link" href="?page={{ answer_list.next_page_number }}{% if sort %}&sort={{ sort }}{% endif %}">다음</a>
-        </li>
-        <li class="page-item">
-          <a class="page-link" href="?page={{ answer_list.paginator.num_pages }}{% if sort %}&sort={{ sort }}{% endif %}">끝</a>
-        </li>
-      {% endif %}
-    </ul>
-  </nav>
-{% endif %}
-
 <!-- 답변 작성 폼 -->
 {% if user.is_authenticated %}
   <div class="card mt-4">

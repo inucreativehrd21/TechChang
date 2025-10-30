@@ -401,6 +401,27 @@
         {% endif %}
     </div>
 
+    <!-- 순위 기준 안내 -->
+    <div class="mt-4" style="max-width: 800px; margin-left: auto; margin-right: auto;">
+        <div class="card" style="background: rgba(255, 255, 255, 0.15); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 16px;">
+            <div class="card-body" style="color: white;">
+                <h5 class="card-title mb-3">
+                    <i class="fas fa-info-circle me-2"></i>리더보드 순위 기준
+                </h5>
+                <ul class="mb-2" style="line-height: 1.8;">
+                    <li><strong>1차 기준:</strong> 베스트 기록 (최소 시도 횟수) - 적을수록 상위 랭킹</li>
+                    <li><strong>2차 기준:</strong> 승률 - 베스트 기록이 같을 경우 승률이 높은 플레이어가 상위</li>
+                    <li><strong>평균:</strong> 모든 승리 게임의 평균 시도 횟수</li>
+                    <li><strong>게임 수:</strong> 총 플레이한 게임 횟수</li>
+                </ul>
+                <p class="mb-0 text-warning" style="font-size: 0.9rem;">
+                    <i class="fas fa-lightbulb me-1"></i>
+                    최소한의 시도로 정답을 맞춘 플레이어가 리더보드 상위에 오릅니다!
+                </p>
+            </div>
+        </div>
+    </div>
+
     <div class="text-center">
         <a href="{% url 'pybo:baseball_start' %}" class="back-button">
             <i class="fas fa-arrow-left"></i>

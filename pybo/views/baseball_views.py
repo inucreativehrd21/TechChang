@@ -359,11 +359,11 @@ def baseball_leaderboard(request):
 
     # Bulk 쿼리 최적화: N+1 쿼리 방지
 
-    # 승리한 게임이 있는 사용자만 가져오기
-    users_with_wins = NumberBaseballGame.objects.filter(
+    # 승리한 게임이 있는 사용자만 가져오기 (중복 제거를 확실히 하기 위해 list로 변환)
+    users_with_wins = list(set(NumberBaseballGame.objects.filter(
         status='won',
         difficulty=difficulty
-    ).values_list('player_id', flat=True).distinct()
+    ).values_list('player_id', flat=True)))
 
     # 모든 사용자 정보를 한 번에 가져오기
     users_dict = {user.id: user for user in User.objects.select_related('profile').filter(id__in=users_with_wins)}
