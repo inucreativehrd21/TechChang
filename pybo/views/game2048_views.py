@@ -293,10 +293,13 @@ def game2048_restart(request, game_id):
         game.best_score = game.score
         game.save()
 
-    # 새 게임 생성
+    # 새 게임 생성 (이전 게임의 난이도 설정 유지)
     new_game = Game2048.objects.create(
         player=request.user,
-        best_score=game.best_score
+        best_score=game.best_score,
+        difficulty=game.difficulty,
+        inactivity_limit=game.inactivity_limit,
+        last_activity_time=timezone.now()
     )
 
     # 초기 타일 2개 추가
