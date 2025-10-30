@@ -61,8 +61,13 @@ class SecurityMiddleware:
     
     def check_security(self, request):
         """종합 보안 검사"""
+        # 게임 플레이 경로는 보안 검사 제외 (성능 최적화)
+        GAME_PATHS = ['/pybo/baseball/', '/pybo/2048/', '/pybo/minesweeper/']
+        if any(request.path.startswith(game_path) for game_path in GAME_PATHS):
+            return None
+
         client_ip = self.get_client_ip(request)
-        
+
         # 1. IP 차단 확인
         if self.is_ip_blocked(client_ip):
             logger.warning(f"Blocked IP attempted access: {client_ip}")
@@ -192,14 +197,19 @@ class RequestLoggingMiddleware:
         self.get_response = get_response
     
     def __call__(self, request):
+        # 게임 플레이 경로는 로깅 제외 (성능 최적화)
+        GAME_PATHS = ['/pybo/baseball/', '/pybo/2048/', '/pybo/minesweeper/']
+        if any(request.path.startswith(game_path) for game_path in GAME_PATHS):
+            return self.get_response(request)
+
         # 요청 시작 시간
         start_time = timezone.now()
-        
+
         # 기본 정보 수집
         client_ip = self.get_client_ip(request)
         user_agent = request.META.get('HTTP_USER_AGENT', '')
         referer = request.META.get('HTTP_REFERER', '')
-        
+
         response = self.get_response(request)
         
         # 응답 시간 계산

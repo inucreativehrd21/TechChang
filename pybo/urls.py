@@ -58,8 +58,11 @@ urlpatterns = [
 
     # baseball_views.py - 숫자야구 게임
     path('baseball/', baseball_views.baseball_start, name='baseball_start'),
+    path('baseball/create/', baseball_views.baseball_create, name='baseball_create'),
+    path('baseball/leaderboard/', baseball_views.baseball_leaderboard, name='baseball_leaderboard'),
     path('baseball/<int:game_id>/', baseball_views.baseball_play, name='baseball_play'),
     path('baseball/<int:game_id>/guess/', baseball_views.baseball_guess, name='baseball_guess'),
+    path('baseball/<int:game_id>/update-time/', baseball_views.baseball_update_time, name='baseball_update_time'),
     path('baseball/<int:game_id>/giveup/', baseball_views.baseball_giveup, name='baseball_giveup'),
     
     # guestbook_views.py - 방명록
@@ -69,9 +72,11 @@ urlpatterns = [
 
     # game2048_views.py - 2048 게임
     path('2048/', game2048_views.game2048_start, name='game2048_start'),
+    path('2048/create/', game2048_views.game2048_create, name='game2048_create'),
     path('2048/leaderboard/', game2048_views.game2048_leaderboard, name='game2048_leaderboard'),
     path('2048/<int:game_id>/', game2048_views.game2048_play, name='game2048_play'),
     path('2048/<int:game_id>/move/', game2048_views.game2048_move, name='game2048_move'),
+    path('2048/<int:game_id>/check-inactivity/', game2048_views.game2048_check_inactivity, name='game2048_check_inactivity'),
     path('2048/<int:game_id>/restart/', game2048_views.game2048_restart, name='game2048_restart'),
 
     # minesweeper_views.py - 지뢰찾기 게임

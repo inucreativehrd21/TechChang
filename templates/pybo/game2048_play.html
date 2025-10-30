@@ -270,8 +270,21 @@ body {
                     <div class="score-title">Best</div>
                     <div class="score-value">{{ best_score }}</div>
                 </div>
+                {% if game.inactivity_limit > 0 %}
+                <div class="score-box" style="background: #28a745;">
+                    <div class="score-title" style="color: white;">Timer</div>
+                    <div class="score-value" id="inactivityTimer" style="color: white;">{{ game.inactivity_limit }}</div>
+                </div>
+                {% endif %}
             </div>
         </div>
+
+        {% if game.difficulty == 'hard' %}
+        <!-- 하드모드 경고 -->
+        <div style="background: rgba(235, 51, 73, 0.1); border: 2px solid #eb3349; color: #c0392b; padding: 10px; border-radius: 8px; margin-bottom: 15px; text-align: center; font-weight: 600;">
+            🔥 Hard Mode: Move within {{ game.inactivity_limit }} seconds or Game Over!
+        </div>
+        {% endif %}
 
         <!-- 설명 및 버튼 -->
         <div class="game-intro">
@@ -352,9 +365,12 @@ body {
 <script>
 const csrfToken = '{{ csrf_token }}';
 const gameId = {{ game.id }};
+const inactivityLimit = {{ game.inactivity_limit }};
 let board = {{ game.board_state|safe }};
 let score = {{ game.score }};
 let isAnimating = false;
+let inactivityInterval = null;
+let inactiveSeconds = 0;
 
 // 타일 위치 계산
 function getTilePosition(row, col) {
@@ -392,6 +408,47 @@ function renderBoard() {
     }
 }
 
+// 비활동 타이머 시작
+function startInactivityTimer() {
+    if (inactivityLimit > 0 && !inactivityInterval) {
+        inactivityInterval = setInterval(updateInactivityTimer, 1000);
+    }
+}
+
+// 비활동 타이머 업데이트
+function updateInactivityTimer() {
+    inactiveSeconds++;
+    const remaining = Math.max(0, inactivityLimit - inactiveSeconds);
+
+    const timerEl = document.getElementById('inactivityTimer');
+    if (timerEl) {
+        timerEl.textContent = remaining;
+
+        // 5초 남았을 때 빨간색으로
+        if (remaining <= 5) {
+            timerEl.parentElement.style.background = '#e74c3c';
+        } else if (remaining <= 10) {
+            timerEl.parentElement.style.background = '#ffc107';
+        }
+    }
+
+    // 비활동 시간 초과
+    if (remaining <= 0) {
+        clearInterval(inactivityInterval);
+        showGameOver('timeout');
+    }
+}
+
+// 비활동 타이머 리셋
+function resetInactivityTimer() {
+    inactiveSeconds = 0;
+    const timerEl = document.getElementById('inactivityTimer');
+    if (timerEl) {
+        timerEl.textContent = inactivityLimit;
+        timerEl.parentElement.style.background = '#28a745';
+    }
+}
+
 // 방향키 입력 처리
 document.addEventListener('keydown', function(e) {
     if (isAnimating) return;
@@ -426,6 +483,12 @@ document.addEventListener('keydown', function(e) {
 function move(direction) {
     isAnimating = true;
 
+    // 첫 이동 시 타이머 시작
+    startInactivityTimer();
+
+    // 타이머 리셋
+    resetInactivityTimer();
+
     fetch(`/pybo/2048/${gameId}/move/`, {
         method: 'POST',
         headers: {
@@ -449,10 +512,15 @@ function move(direction) {
 
             // 게임 오버 확인
             if (data.game_over) {
+                clearInterval(inactivityInterval);
                 setTimeout(() => {
                     showGameOver(data.status);
                 }, 500);
             }
+        } else if (data.game_over && data.status === 'timeout') {
+            // 비활동 타임아웃
+            clearInterval(inactivityInterval);
+            showGameOver('timeout');
         }
 
         setTimeout(() => {
@@ -483,6 +551,8 @@ function updateScore(newScore, gained) {
 
 // 게임 오버 표시
 function showGameOver(status) {
+    clearInterval(inactivityInterval);
+
     const message = document.getElementById('gameMessage');
     const title = document.getElementById('messageTitle');
     const text = document.getElementById('messageText');
@@ -493,6 +563,10 @@ function showGameOver(status) {
         message.className = 'game-message game-won show';
         title.textContent = 'You Win! 🎉';
         text.innerHTML = `<strong>Final Score: ${score}</strong><br>축하합니다! 2048을 달성했습니다!`;
+    } else if (status === 'timeout') {
+        message.className = 'game-message game-lost show';
+        title.textContent = 'Time Out! ⏰';
+        text.innerHTML = `<strong>Final Score: ${score}</strong><br>비활동 시간 초과로 게임이 종료되었습니다.`;
     } else {
         message.className = 'game-message game-lost show';
         title.textContent = 'Game Over';

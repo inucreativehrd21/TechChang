@@ -18,6 +18,18 @@
         padding: 20px;
     }
 
+    body.difficulty-easy {
+        background: linear-gradient(135deg, #56ab2f 0%, #a8e063 100%);
+    }
+
+    body.difficulty-medium {
+        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+    }
+
+    body.difficulty-hard {
+        background: linear-gradient(135deg, #eb3349 0%, #f45c43 100%);
+    }
+
     .game-container {
         max-width: 1200px;
         margin: 0 auto;
@@ -83,13 +95,16 @@
         box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
         overflow-x: auto;
         margin-bottom: 20px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
     }
 
     .game-board {
         display: inline-grid;
-        gap: 2px;
+        gap: 3px;
         background: #bdc3c7;
-        padding: 2px;
+        padding: 5px;
         border-radius: 8px;
         margin: 0 auto;
     }
@@ -330,6 +345,9 @@
 {{ game.board_state|json_script:"board-state-data" }}
 
 <script>
+// 난이도별 배경 설정
+document.body.classList.add('difficulty-{{ game.difficulty }}');
+
 const gameId = {{ game.id }};
 const rows = {{ game.rows }};
 const cols = {{ game.cols }};

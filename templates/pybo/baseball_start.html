@@ -1,0 +1,183 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Number Baseball{% endblock %}
+
+{% block extra_css %}
+<style>
+    * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+    }
+
+    body {
+        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        min-height: 100vh;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+    }
+
+    .container {
+        max-width: 600px;
+        width: 100%;
+    }
+
+    .game-card {
+        background: rgba(255, 255, 255, 0.95);
+        backdrop-filter: blur(10px);
+        border-radius: 24px;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        padding: 50px;
+        text-align: center;
+    }
+
+    h1 {
+        font-size: 3rem;
+        font-weight: 900;
+        margin-bottom: 10px;
+        background: linear-gradient(135deg, #f093fb, #f5576c);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+    }
+
+    .subtitle {
+        color: #6c757d;
+        font-size: 1.1rem;
+        margin-bottom: 40px;
+    }
+
+    .difficulty-grid {
+        display: grid;
+        gap: 20px;
+        margin-bottom: 30px;
+    }
+
+    .difficulty-card {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border: none;
+        border-radius: 16px;
+        padding: 30px;
+        color: white;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        text-decoration: none;
+        display: block;
+    }
+
+    .difficulty-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 15px 40px rgba(102, 126, 234, 0.4);
+    }
+
+    .difficulty-card.normal {
+        background: linear-gradient(135deg, #56ab2f 0%, #a8e063 100%);
+    }
+
+    .difficulty-card.hard {
+        background: linear-gradient(135deg, #eb3349 0%, #f45c43 100%);
+    }
+
+    .difficulty-icon {
+        font-size: 3rem;
+        margin-bottom: 15px;
+    }
+
+    .difficulty-name {
+        font-size: 1.8rem;
+        font-weight: 700;
+        margin-bottom: 10px;
+    }
+
+    .difficulty-info {
+        font-size: 1rem;
+        opacity: 0.9;
+        line-height: 1.6;
+    }
+
+    .difficulty-features {
+        margin-top: 15px;
+        padding-top: 15px;
+        border-top: 1px solid rgba(255, 255, 255, 0.3);
+        font-size: 0.9rem;
+    }
+
+    .difficulty-features div {
+        margin: 5px 0;
+    }
+
+    .back-link {
+        display: inline-block;
+        margin-top: 20px;
+        padding: 12px 30px;
+        background: rgba(108, 117, 125, 0.1);
+        color: #495057;
+        text-decoration: none;
+        border-radius: 12px;
+        font-weight: 600;
+        transition: all 0.3s ease;
+    }
+
+    .back-link:hover {
+        background: rgba(108, 117, 125, 0.2);
+        color: #212529;
+    }
+
+    @media (max-width: 768px) {
+        .game-card {
+            padding: 30px 20px;
+        }
+
+        h1 {
+            font-size: 2.2rem;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="game-card">
+        <h1>⚾ Number Baseball</h1>
+        <p class="subtitle">Choose your difficulty level</p>
+
+        <div class="difficulty-grid">
+            <a href="{% url 'pybo:baseball_create' %}?difficulty=normal" class="difficulty-card normal">
+                <div class="difficulty-icon">😊</div>
+                <div class="difficulty-name">Normal Mode</div>
+                <div class="difficulty-info">Perfect for beginners!</div>
+                <div class="difficulty-features">
+                    <div>✓ 10 attempts</div>
+                    <div>✓ No time limit</div>
+                    <div>✓ Full hints (Strike/Ball)</div>
+                </div>
+            </a>
+
+            <a href="{% url 'pybo:baseball_create' %}?difficulty=hard" class="difficulty-card hard">
+                <div class="difficulty-icon">🔥</div>
+                <div class="difficulty-name">Hard Mode</div>
+                <div class="difficulty-info">Are you ready for the challenge?</div>
+                <div class="difficulty-features">
+                    <div>✓ Only 7 attempts</div>
+                    <div>✓ 5 minute time limit</div>
+                    <div>✓ Full hints (Strike/Ball)</div>
+                    <div>⚠️ Penalty: 3 consecutive 0-strike = -1 attempt</div>
+                </div>
+            </a>
+        </div>
+
+        <div style="display: flex; gap: 10px; justify-content: center; align-items: center;">
+            <a href="{% url 'pybo:index' %}" class="back-link">
+                <i class="fas fa-arrow-left me-2"></i>Back to Home
+            </a>
+            <a href="{% url 'pybo:baseball_leaderboard' %}" class="back-link" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white;">
+                <i class="fas fa-trophy me-2"></i>Leaderboard
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}

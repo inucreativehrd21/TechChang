@@ -26,4 +26,14 @@ urlpatterns = [
     path('admin/user/<int:user_id>/', views.admin_user_detail, name='admin_user_detail'),
     path('admin/user/<int:user_id>/change-rank/', views.admin_change_rank, name='admin_change_rank'),
     path('admin/user/<int:user_id>/toggle-active/', views.admin_toggle_active, name='admin_toggle_active'),
+    path('admin/ip/block/', views.admin_block_ip, name='admin_block_ip'),
+    path('admin/ip/unblock/<int:ip_id>/', views.admin_unblock_ip, name='admin_unblock_ip'),
+    path('admin/ip/list/', views.admin_blocked_ip_list, name='admin_blocked_ip_list'),
+
+    # 포인트 및 이모티콘 시스템
+    path('checkin/', views.daily_checkin, name='daily_checkin'),
+    path('emoticon/shop/', views.emoticon_shop, name='emoticon_shop'),
+    path('emoticon/purchase/<int:emoticon_id>/', views.purchase_emoticon, name='purchase_emoticon'),
+    path('emoticon/select/<int:emoticon_id>/', views.select_emoticon, name='select_emoticon'),
+    path('points/history/', views.point_history, name='point_history'),
 ]

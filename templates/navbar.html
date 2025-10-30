@@ -45,12 +45,20 @@
                         <li><a class="dropdown-item" href="{% url 'pybo:game2048_leaderboard' %}">
                             <i class="fas fa-trophy me-2 text-warning"></i>2048 리더보드
                         </a></li>
-                        <li><hr class="dropdown-divider"></li>
-                        <li><a class="dropdown-item" href="{% url 'pybo:guestbook_list' %}">
-                            <i class="fas fa-sticky-note me-2 text-secondary"></i>방명록
-                        </a></li>
                     </ul>
                 </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="{% url 'pybo:guestbook_list' %}">
+                        <i class="fas fa-sticky-note me-1"></i>방명록
+                    </a>
+                </li>
+                {% if user.is_authenticated %}
+                <li class="nav-item">
+                    <a class="nav-link" href="{% url 'common:emoticon_shop' %}">
+                        <i class="fas fa-store me-1"></i>상점
+                    </a>
+                </li>
+                {% endif %}
                 <li class="nav-item">
                     <a class="nav-link" href="#" data-bs-toggle="modal" data-bs-target="#aboutModal">
                         <i class="fas fa-info-circle me-1"></i>소개
@@ -76,6 +84,17 @@
                         {{ user|display_name }}
                     </a>
                     <ul class="dropdown-menu dropdown-menu-end">
+                        <li><div class="dropdown-item-text">
+                            <i class="fas fa-coins me-2 text-warning"></i>
+                            <strong>{{ user.profile.points }}P</strong>
+                        </div></li>
+                        <li><a class="dropdown-item" href="{% url 'common:daily_checkin' %}">
+                            <i class="fas fa-calendar-check me-2 text-success"></i>출석 체크
+                        </a></li>
+                        <li><a class="dropdown-item" href="{% url 'common:point_history' %}">
+                            <i class="fas fa-history me-2"></i>포인트 히스토리
+                        </a></li>
+                        <li><hr class="dropdown-divider"></li>
                         <li><a class="dropdown-item" href="{% url 'pybo:profile' user.id %}">
                             <i class="fas fa-user me-2"></i>내 프로필
                         </a></li>

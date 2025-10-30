@@ -48,7 +48,14 @@
         padding: 25px;
         margin-bottom: 20px;
         box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        display: flex;
+        justify-content: space-around;
+        gap: 20px;
+    }
+
+    .info-item {
         text-align: center;
+        flex: 1;
     }
 
     .attempts-info {
@@ -363,9 +370,39 @@
     </div>
 
     <div class="info-panel">
-        <div class="attempts-info">{{ remaining_attempts }} / {{ game.max_attempts }}</div>
-        <div class="attempts-label">남은 시도 횟수</div>
+        <div class="info-item">
+            <div class="attempts-info">{{ remaining_attempts }} / {{ game.max_attempts }}</div>
+            <div class="attempts-label">Attempts Remaining</div>
+        </div>
+        {% if game.time_limit > 0 %}
+        <div class="info-item">
+            <div class="attempts-info" id="timer" style="color: #667eea;">5:00</div>
+            <div class="attempts-label">Time Remaining</div>
+        </div>
+        {% endif %}
+        {% if game.inactivity_limit > 0 %}
+        <div class="info-item">
+            <div class="attempts-info" id="inactivity-timer" style="color: #28a745;">{{ game.inactivity_limit }}</div>
+            <div class="attempts-label">Inactivity Timer</div>
+        </div>
+        {% endif %}
+        {% if game.difficulty == 'hard' %}
+        <div class="info-item">
+            <div class="attempts-info" id="consecutive-misses" style="color: #e74c3c;">0</div>
+            <div class="attempts-label">Consecutive Misses</div>
+        </div>
+        {% endif %}
     </div>
+
+    {% if game.difficulty == 'hard' %}
+    <div class="alert alert-warning text-center" style="margin: 0 auto 20px; max-width: 700px; background: rgba(255, 193, 7, 0.2); border: 2px solid #ffc107; color: #856404; padding: 15px; border-radius: 12px;">
+        <strong>🔥 Hard Mode Active!</strong><br>
+        • 3 consecutive 0-strikes = -1 attempt<br>
+        {% if game.inactivity_limit > 0 %}
+        • {{ game.inactivity_limit }}초 동안 입력 없으면 게임 종료!
+        {% endif %}
+    </div>
+    {% endif %}
 
     <div class="game-card">
         {% if game.status == 'playing' %}
@@ -451,6 +488,128 @@
 <script>
 const csrfToken = '{{ csrf_token }}';
 const gameId = {{ game.id }};
+const timeLimit = {{ game.time_limit }};
+const difficulty = '{{ game.difficulty }}';
+const inactivityLimit = {{ game.inactivity_limit }};
+
+let startTime = null;
+let timerInterval = null;
+let inactivityInterval = null;
+let timeElapsed = 0;
+let inactiveSeconds = 0;
+let consecutiveMisses = 0;
+
+// 타이머 시작 (하드모드만)
+function startTimer() {
+    if (timeLimit > 0 && !startTime) {
+        startTime = Date.now();
+        updateTimer();
+        timerInterval = setInterval(updateTimer, 1000);
+    }
+
+    // 비활동 타이머 시작
+    if (inactivityLimit > 0 && !inactivityInterval) {
+        inactivityInterval = setInterval(updateInactivityTimer, 1000);
+    }
+}
+
+// 타이머 업데이트
+function updateTimer() {
+    timeElapsed = Math.floor((Date.now() - startTime) / 1000);
+    const remaining = Math.max(0, timeLimit - timeElapsed);
+
+    const minutes = Math.floor(remaining / 60);
+    const seconds = remaining % 60;
+    document.getElementById('timer').textContent =
+        `${minutes}:${seconds.toString().padStart(2, '0')}`;
+
+    // 시간 초과 체크
+    if (remaining <= 0) {
+        clearInterval(timerInterval);
+        handleTimeout();
+    } else if (remaining <= 60) {
+        // 1분 남았을 때 빨간색으로
+        document.getElementById('timer').style.color = '#e74c3c';
+    }
+
+    // 10초마다 서버에 시간 업데이트
+    if (timeElapsed % 10 === 0) {
+        updateTimeOnServer();
+    }
+}
+
+// 비활동 타이머 업데이트
+function updateInactivityTimer() {
+    inactiveSeconds++;
+    const remaining = Math.max(0, inactivityLimit - inactiveSeconds);
+
+    const inactivityTimerEl = document.getElementById('inactivity-timer');
+    if (inactivityTimerEl) {
+        inactivityTimerEl.textContent = remaining;
+
+        // 10초 남았을 때 빨간색으로
+        if (remaining <= 10) {
+            inactivityTimerEl.style.color = '#e74c3c';
+        } else if (remaining <= 20) {
+            inactivityTimerEl.style.color = '#ffc107';
+        }
+    }
+
+    // 비활동 시간 초과
+    if (remaining <= 0) {
+        clearInterval(inactivityInterval);
+        clearInterval(timerInterval);
+        showGameOver(false, `비활동 시간 초과! ${inactivityLimit}초 동안 입력이 없어 게임이 종료되었습니다.`, '????');
+    }
+}
+
+// 비활동 타이머 리셋
+function resetInactivityTimer() {
+    inactiveSeconds = 0;
+    const inactivityTimerEl = document.getElementById('inactivity-timer');
+    if (inactivityTimerEl) {
+        inactivityTimerEl.textContent = inactivityLimit;
+        inactivityTimerEl.style.color = '#28a745';
+    }
+}
+
+// 서버에 시간 업데이트
+function updateTimeOnServer() {
+    fetch(`/pybo/baseball/${gameId}/update-time/`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'X-CSRFToken': csrfToken
+        },
+        body: `time=${timeElapsed}`
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.timeout) {
+            clearInterval(timerInterval);
+            clearInterval(inactivityInterval);
+            showGameOver(false, data.message, data.secret);
+        }
+    });
+}
+
+// 시간 초과 처리
+function handleTimeout() {
+    fetch(`/pybo/baseball/${gameId}/update-time/`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'X-CSRFToken': csrfToken
+        },
+        body: `time=${timeElapsed}`
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.timeout) {
+            showGameOver(false, data.message, data.secret);
+        }
+    });
+}
 
 function makeGuess(event) {
     event.preventDefault();
@@ -468,6 +627,12 @@ function makeGuess(event) {
         alert('Please enter 4 different digits.');
         return;
     }
+
+    // 타이머 시작 (첫 시도 시)
+    startTimer();
+
+    // 비활동 타이머 리셋
+    resetInactivityTimer();
 
     // 버튼 비활성화
     const submitBtn = event.target.querySelector('button[type="submit"]');
@@ -513,11 +678,28 @@ function makeGuess(event) {
 
             // 게임 종료 확인
             if (data.game_over) {
+                clearInterval(timerInterval);
+                clearInterval(inactivityInterval);
                 showGameOver(data.won, data.message, data.secret);
             } else {
                 // 남은 기회 업데이트
-                document.querySelector('.attempts-info').textContent =
+                document.querySelector('.info-item:first-child .attempts-info').textContent =
                     `${data.remaining} / {{ game.max_attempts }}`;
+
+                // 하드모드: 연속 실패 카운터 업데이트
+                if (difficulty === 'hard') {
+                    if (data.strikes === 0) {
+                        consecutiveMisses++;
+                    } else {
+                        consecutiveMisses = 0;
+                    }
+                    document.getElementById('consecutive-misses').textContent = consecutiveMisses;
+                }
+
+                // 페널티 메시지 표시
+                if (data.penalty_message) {
+                    alert(data.penalty_message);
+                }
             }
         } else {
             alert(data.message);
@@ -533,6 +715,9 @@ function makeGuess(event) {
 function giveUp() {
     if (!confirm('Are you sure you want to give up?')) return;
 
+    clearInterval(timerInterval);
+    clearInterval(inactivityInterval);
+
     fetch(`/pybo/baseball/${gameId}/giveup/`, {
         method: 'POST',
         headers: {
@@ -546,6 +731,10 @@ function giveUp() {
 }
 
 function showGameOver(won, message, secret) {
+    // 타이머 정리
+    clearInterval(timerInterval);
+    clearInterval(inactivityInterval);
+
     const overlay = document.getElementById('gameOverOverlay');
     const icon = document.getElementById('gameOverIcon');
     const title = document.getElementById('gameOverTitle');

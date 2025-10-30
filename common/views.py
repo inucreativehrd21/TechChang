@@ -682,3 +682,249 @@ def admin_user_detail(request, user_id):
     }
 
     return render(request, 'common/admin_user_detail.html', context)
+
+
+@login_required
+def daily_checkin(request):
+    """일일 출석 체크"""
+    from .models import DailyCheckIn, PointHistory
+    from datetime import date
+
+    today = date.today()
+    user = request.user
+
+    # 오늘 이미 출석했는지 확인
+    already_checked = DailyCheckIn.objects.filter(
+        user=user,
+        check_in_date=today
+    ).exists()
+
+    if already_checked:
+        messages.warning(request, '오늘 이미 출석체크를 완료했습니다!')
+    else:
+        # 출석 체크 생성
+        points_earned = 5
+        DailyCheckIn.objects.create(
+            user=user,
+            points_earned=points_earned
+        )
+
+        # 포인트 지급
+        user.profile.points += points_earned
+        user.profile.save()
+
+        # 포인트 히스토리 기록
+        PointHistory.objects.create(
+            user=user,
+            amount=points_earned,
+            reason='checkin',
+            description='일일 출석 체크'
+        )
+
+        messages.success(request, f'출석 체크 완료! {points_earned} 포인트를 획득했습니다!')
+
+    return redirect(request.META.get('HTTP_REFERER', 'pybo:index'))
+
+
+@login_required
+def emoticon_shop(request):
+    """이모티콘 상점"""
+    from .models import Emoticon, UserEmoticon
+
+    # 판매 중인 이모티콘 목록
+    emoticons = Emoticon.objects.filter(is_available=True).order_by('price')
+
+    # 사용자가 구매한 이모티콘 목록
+    owned_emoticon_ids = UserEmoticon.objects.filter(
+        user=request.user
+    ).values_list('emoticon_id', flat=True)
+
+    context = {
+        'emoticons': emoticons,
+        'owned_emoticon_ids': list(owned_emoticon_ids),
+        'user_points': request.user.profile.points,
+    }
+
+    return render(request, 'common/emoticon_shop.html', context)
+
+
+@login_required
+def purchase_emoticon(request, emoticon_id):
+    """이모티콘 구매"""
+    from .models import Emoticon, UserEmoticon, PointHistory
+    from django.db import transaction
+
+    emoticon = get_object_or_404(Emoticon, id=emoticon_id, is_available=True)
+    user = request.user
+
+    # 이미 구매했는지 확인
+    if UserEmoticon.objects.filter(user=user, emoticon=emoticon).exists():
+        messages.warning(request, '이미 구매한 이모티콘입니다!')
+        return redirect('common:emoticon_shop')
+
+    # 포인트가 충분한지 확인
+    if user.profile.points < emoticon.price:
+        messages.error(request, f'포인트가 부족합니다! (필요: {emoticon.price}P, 보유: {user.profile.points}P)')
+        return redirect('common:emoticon_shop')
+
+    # 구매 처리
+    with transaction.atomic():
+        # 포인트 차감
+        user.profile.points -= emoticon.price
+        user.profile.save()
+
+        # 이모티콘 구매 기록
+        UserEmoticon.objects.create(user=user, emoticon=emoticon)
+
+        # 포인트 히스토리 기록
+        PointHistory.objects.create(
+            user=user,
+            amount=-emoticon.price,
+            reason='purchase',
+            description=f'이모티콘 구매: {emoticon.name}'
+        )
+
+    messages.success(request, f'{emoticon.name} 이모티콘을 구매했습니다!')
+    return redirect('common:emoticon_shop')
+
+
+@login_required
+def select_emoticon(request, emoticon_id):
+    """이모티콘 선택 (닉네임 옆에 표시)"""
+    from .models import Emoticon, UserEmoticon
+
+    user = request.user
+
+    if emoticon_id == 0:
+        # 이모티콘 해제
+        user.profile.selected_emoticon = None
+        user.profile.save()
+        messages.success(request, '이모티콘을 해제했습니다.')
+    else:
+        emoticon = get_object_or_404(Emoticon, id=emoticon_id)
+
+        # 구매한 이모티콘인지 확인
+        if not UserEmoticon.objects.filter(user=user, emoticon=emoticon).exists():
+            messages.error(request, '구매하지 않은 이모티콘입니다!')
+            return redirect('common:emoticon_shop')
+
+        # 이모티콘 선택
+        user.profile.selected_emoticon = emoticon
+        user.profile.save()
+        messages.success(request, f'{emoticon.name} 이모티콘을 선택했습니다!')
+
+    return redirect('common:emoticon_shop')
+
+
+@login_required
+def point_history(request):
+    """포인트 히스토리"""
+    from .models import PointHistory
+    from django.core.paginator import Paginator
+
+    history_list = PointHistory.objects.filter(user=request.user).order_by('-created_at')
+
+    paginator = Paginator(history_list, 20)
+    page = request.GET.get('page', 1)
+    page_obj = paginator.get_page(page)
+
+    context = {
+        'page_obj': page_obj,
+        'user_points': request.user.profile.points,
+    }
+
+    return render(request, 'common/point_history.html', context)
+
+
+# ==================== IP 차단 관리 ====================
+
+@admin_required
+def admin_blocked_ip_list(request):
+    """차단된 IP 목록"""
+    from .models import BlockedIP
+    from django.core.paginator import Paginator
+
+    # 활성 상태 필터
+    status_filter = request.GET.get('status', 'active')
+    search_query = request.GET.get('search', '')
+
+    ip_list = BlockedIP.objects.select_related('blocked_by').order_by('-created_at')
+
+    # 상태 필터
+    if status_filter == 'active':
+        ip_list = ip_list.filter(is_active=True)
+    elif status_filter == 'inactive':
+        ip_list = ip_list.filter(is_active=False)
+
+    # 검색
+    if search_query:
+        ip_list = ip_list.filter(
+            Q(ip_address__icontains=search_query) |
+            Q(reason__icontains=search_query)
+        )
+
+    paginator = Paginator(ip_list, 50)
+    page = request.GET.get('page', 1)
+    page_obj = paginator.get_page(page)
+
+    context = {
+        'page_obj': page_obj,
+        'status_filter': status_filter,
+        'search_query': search_query,
+    }
+
+    return render(request, 'common/admin_blocked_ip_list.html', context)
+
+
+@admin_required
+@require_POST
+def admin_block_ip(request):
+    """IP 차단"""
+    from .models import BlockedIP
+
+    ip_address = request.POST.get('ip_address', '').strip()
+    reason = request.POST.get('reason', '').strip()
+
+    if not ip_address:
+        messages.error(request, 'IP 주소를 입력해주세요.')
+        return redirect(request.META.get('HTTP_REFERER', 'common:admin_dashboard'))
+
+    # 이미 차단된 IP인지 확인
+    existing = BlockedIP.objects.filter(ip_address=ip_address).first()
+    if existing:
+        if existing.is_active:
+            messages.warning(request, f'{ip_address}는 이미 차단된 IP입니다.')
+        else:
+            # 비활성화된 IP를 다시 활성화
+            existing.is_active = True
+            existing.reason = reason or '관리자에 의한 재차단'
+            existing.blocked_by = request.user
+            existing.save()
+            messages.success(request, f'{ip_address}를 다시 차단했습니다.')
+        return redirect(request.META.get('HTTP_REFERER', 'common:admin_blocked_ip_list'))
+
+    # 새 IP 차단
+    BlockedIP.objects.create(
+        ip_address=ip_address,
+        reason=reason or '관리자에 의한 차단',
+        blocked_by=request.user,
+        is_active=True
+    )
+
+    messages.success(request, f'{ip_address}를 차단했습니다.')
+    return redirect(request.META.get('HTTP_REFERER', 'common:admin_blocked_ip_list'))
+
+
+@admin_required
+@require_POST
+def admin_unblock_ip(request, ip_id):
+    """IP 차단 해제"""
+    from .models import BlockedIP
+
+    blocked_ip = get_object_or_404(BlockedIP, id=ip_id)
+    ip_address = blocked_ip.ip_address
+    blocked_ip.is_active = False
+    blocked_ip.save()
+
+    messages.success(request, f'{ip_address}의 차단을 해제했습니다.')
+    return redirect(request.META.get('HTTP_REFERER', 'common:admin_blocked_ip_list'))

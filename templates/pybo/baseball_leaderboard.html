@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
 {% load static %}
 
-{% block title %}2048 리더보드{% endblock %}
+{% block title %}숫자야구 리더보드{% endblock %}
 
 {% block extra_css %}
 <style>
@@ -12,14 +12,14 @@
     }
 
     body {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
         min-height: 100vh;
         font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
         padding: 20px;
     }
 
     .leaderboard-container {
-        max-width: 900px;
+        max-width: 1000px;
         margin: 0 auto;
         padding: 40px 20px;
     }
@@ -86,7 +86,7 @@
     }
 
     .leaderboard-header {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
         padding: 30px;
         text-align: center;
         color: white;
@@ -109,7 +109,7 @@
 
     .table-header {
         display: grid;
-        grid-template-columns: 80px 1fr 140px 140px 100px 100px;
+        grid-template-columns: 80px 1fr 120px 120px 120px 120px;
         gap: 15px;
         padding: 20px 30px;
         background: #f8f9fa;
@@ -123,7 +123,7 @@
 
     .leaderboard-row {
         display: grid;
-        grid-template-columns: 80px 1fr 140px 140px 100px 100px;
+        grid-template-columns: 80px 1fr 120px 120px 120px 120px;
         gap: 15px;
         padding: 20px 30px;
         border-bottom: 1px solid #e9ecef;
@@ -175,7 +175,7 @@
         width: 40px;
         height: 40px;
         border-radius: 50%;
-        background: linear-gradient(135deg, #667eea, #764ba2);
+        background: linear-gradient(135deg, #f093fb, #f5576c);
         display: flex;
         align-items: center;
         justify-content: center;
@@ -219,7 +219,7 @@
 
     .difficulty-tab.active {
         background: white;
-        color: #667eea;
+        color: #f5576c;
         border-color: white;
     }
 
@@ -229,23 +229,21 @@
         color: #212529;
     }
 
-    .score {
-        font-size: 1.3rem;
-        font-weight: 700;
-        color: #667eea;
-        text-align: center;
-    }
-
-    .score.cumulative {
+    .stat-value {
         font-size: 1.1rem;
-        color: #764ba2;
         font-weight: 600;
+        text-align: center;
+        color: #495057;
     }
 
-    .games-count, .wins-count {
-        text-align: center;
-        color: #6c757d;
-        font-size: 1rem;
+    .stat-value.best {
+        color: #f5576c;
+        font-weight: 700;
+        font-size: 1.2rem;
+    }
+
+    .stat-value.rate {
+        color: #f093fb;
     }
 
     .back-button {
@@ -254,27 +252,25 @@
         gap: 10px;
         margin-top: 30px;
         padding: 15px 30px;
-        background: rgba(255, 255, 255, 0.2);
+        background: rgba(255, 255, 255, 0.25);
         backdrop-filter: blur(10px);
-        color: white;
         border: 2px solid rgba(255, 255, 255, 0.3);
-        border-radius: 12px;
+        border-radius: 16px;
+        color: white;
         text-decoration: none;
         font-weight: 600;
         transition: all 0.3s ease;
     }
 
     .back-button:hover {
-        background: rgba(255, 255, 255, 0.3);
-        border-color: rgba(255, 255, 255, 0.5);
+        background: rgba(255, 255, 255, 0.35);
         transform: translateY(-2px);
-        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
         color: white;
     }
 
     .empty-state {
         text-align: center;
-        padding: 60px 30px;
+        padding: 60px 20px;
         color: #6c757d;
     }
 
@@ -289,22 +285,7 @@
         margin-bottom: 30px;
     }
 
-    .medal-icon {
-        font-size: 1.5rem;
-        margin-right: 5px;
-    }
-
     @media (max-width: 768px) {
-        .table-header, .leaderboard-row {
-            grid-template-columns: 60px 1fr 100px;
-            gap: 10px;
-            padding: 15px 20px;
-        }
-
-        .games-count, .wins-count {
-            display: none;
-        }
-
         .header h1 {
             font-size: 2.5rem;
         }
@@ -313,6 +294,23 @@
             flex-direction: column;
             gap: 15px;
         }
+
+        .table-header,
+        .leaderboard-row {
+            grid-template-columns: 60px 1fr 80px 80px 80px 80px;
+            gap: 10px;
+            padding: 15px 20px;
+            font-size: 0.8rem;
+        }
+
+        .rank {
+            font-size: 1.2rem;
+        }
+
+        .player-avatar {
+            width: 35px;
+            height: 35px;
+        }
     }
 </style>
 {% endblock %}
@@ -320,36 +318,35 @@
 {% block content %}
 <div class="leaderboard-container">
     <div class="header">
-        <h1>🏆 2048 리더보드</h1>
-        <p class="subtitle">테크창 딴짓왕은 누구일까!!</p>
+        <h1>⚾ 숫자야구 리더보드</h1>
+        <p class="subtitle">최소 시도 횟수로 도전하세요!</p>
     </div>
 
+    <!-- 난이도 탭 -->
     <div class="difficulty-tabs">
-        <a href="{% url 'pybo:game2048_leaderboard' %}?difficulty=normal" class="difficulty-tab {% if difficulty == 'normal' %}active{% endif %}">
+        <a href="{% url 'pybo:baseball_leaderboard' %}?difficulty=normal"
+           class="difficulty-tab {% if difficulty == 'normal' %}active{% endif %}">
             😊 Normal Mode
         </a>
-        <a href="{% url 'pybo:game2048_leaderboard' %}?difficulty=hard" class="difficulty-tab {% if difficulty == 'hard' %}active{% endif %}">
+        <a href="{% url 'pybo:baseball_leaderboard' %}?difficulty=hard"
+           class="difficulty-tab {% if difficulty == 'hard' %}active{% endif %}">
             🔥 Hard Mode
         </a>
     </div>
 
+    <!-- 통계 바 -->
     <div class="stats-bar">
         <div class="stat-item">
             <div class="number">{{ total_players }}</div>
-            <div class="label">총 플레이어 수</div>
+            <div class="label">Players</div>
         </div>
-        {% if leaderboard %}
-        <div class="stat-item">
-            <div class="number">{{ leaderboard.0.best_score|default:"0" }}</div>
-            <div class="label">최고 점수</div>
-        </div>
-        {% endif %}
     </div>
 
+    <!-- 리더보드 -->
     <div class="leaderboard-card">
         <div class="leaderboard-header">
-            <h2>테크창 딴짓왕 랭킹</h2>
-            <p>누가 시간을 제일 잘 녹였을까요?</p>
+            <h2>🏆 Top Players</h2>
+            <p>최소 시도 횟수 기준 순위</p>
         </div>
 
         {% if leaderboard %}
@@ -357,10 +354,10 @@
             <div class="table-header">
                 <div>랭킹</div>
                 <div>플레이어</div>
-                <div>최고 점수</div>
-                <div>누적 점수</div>
+                <div>베스트</div>
+                <div>평균</div>
+                <div>승률</div>
                 <div>게임 수</div>
-                <div>클리어 수</div>
             </div>
 
             {% for entry in leaderboard %}
@@ -386,32 +383,28 @@
                     </div>
                     <div class="player-name">{{ entry.display_name }}</div>
                 </div>
-                <div class="score">{{ entry.best_score|default:"0" }}</div>
-                <div class="score cumulative">{{ entry.cumulative_score|default:"0" }}</div>
-                <div class="games-count">{{ entry.total_games }}</div>
-                <div class="wins-count">{{ entry.wins }}</div>
+                <div class="stat-value best">{{ entry.best_attempts }}회</div>
+                <div class="stat-value">{{ entry.avg_attempts }}회</div>
+                <div class="stat-value rate">{{ entry.win_rate }}%</div>
+                <div class="stat-value">{{ entry.total_games }}</div>
             </div>
             {% endfor %}
         </div>
         {% else %}
         <div class="empty-state">
             <i class="fas fa-trophy"></i>
-            <p>No players yet. Be the first to set a record!</p>
-            <a href="{% url 'pybo:game2048_start' %}" class="btn btn-primary btn-lg">
-                <i class="fas fa-play me-2"></i>Start Playing
+            <p>아직 플레이어가 없습니다. 첫 기록을 세워보세요!</p>
+            <a href="{% url 'pybo:baseball_start' %}" class="btn btn-primary btn-lg">
+                <i class="fas fa-play me-2"></i>게임 시작
             </a>
         </div>
         {% endif %}
     </div>
 
     <div class="text-center">
-        <a href="{% url 'pybo:game2048_start' %}" class="back-button">
-            <i class="fas fa-gamepad"></i>
-            2048 하러가기
-        </a>
-        <a href="{% url 'pybo:index' %}" class="back-button">
-            <i class="fas fa-home"></i>
-            홈으로 돌아가기
+        <a href="{% url 'pybo:baseball_start' %}" class="back-button">
+            <i class="fas fa-arrow-left"></i>
+            게임으로 돌아가기
         </a>
     </div>
 </div>

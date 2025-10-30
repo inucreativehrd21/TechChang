@@ -56,6 +56,9 @@ class Comment(models.Model):
     answer = models.ForeignKey(Answer, null=True, blank=True, on_delete=models.CASCADE)
     image = models.ImageField(upload_to='comments/', blank=True, null=True)  # 이미지 첨부
 
+    class Meta:
+        ordering = ['create_date']  # 오래된 댓글부터 표시 (최신 댓글이 아래로)
+
 
 # 끝말잇기 게임 모델
 class WordChainGame(models.Model):
@@ -206,16 +209,28 @@ class TicTacToeGame(models.Model):
 # ========== 숫자야구 게임 ==========
 class NumberBaseballGame(models.Model):
     """숫자야구 게임"""
+    DIFFICULTY_CHOICES = [
+        ('normal', '일반 (10회 시도, 시간 무제한)'),
+        ('hard', '하드 (7회 시도, 5분 제한)'),
+    ]
+
     STATUS_CHOICES = [
         ('playing', '진행중'),
         ('won', '성공'),
         ('giveup', '포기'),
+        ('timeout', '시간초과'),
     ]
 
     player = models.ForeignKey(User, on_delete=models.CASCADE, related_name='baseball_games', verbose_name='플레이어')
+    difficulty = models.CharField(max_length=10, choices=DIFFICULTY_CHOICES, default='normal', verbose_name='난이도')
     secret_number = models.CharField(max_length=4, verbose_name='정답 숫자')  # 4자리 숫자
     attempts = models.IntegerField(default=0, verbose_name='시도 횟수')
     max_attempts = models.IntegerField(default=10, verbose_name='최대 시도 횟수')
+    time_limit = models.IntegerField(default=0, verbose_name='시간 제한 (초)')  # 0이면 무제한
+    time_elapsed = models.IntegerField(default=0, verbose_name='경과 시간 (초)')
+    consecutive_misses = models.IntegerField(default=0, verbose_name='연속 실패 횟수')  # 하드모드 페널티용
+    inactivity_limit = models.IntegerField(default=0, verbose_name='비활동 제한 (초)')  # 0이면 무제한, 하드모드용
+    last_activity_time = models.DateTimeField(null=True, blank=True, verbose_name='마지막 활동 시간')
     status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='playing', verbose_name='상태', db_index=True)
     create_date = models.DateTimeField(auto_now_add=True, verbose_name='생성일', db_index=True)
     end_date = models.DateTimeField(null=True, blank=True, verbose_name='종료일')
@@ -262,9 +277,20 @@ class GuestBook(models.Model):
         ('#d9b3ff', '보라색'),
     ]
 
+    FONT_CHOICES = [
+        ('Gungsuh', '궁서체'),
+        ('Nanum Gothic', '나눔고딕'),
+        ('Nanum Myeongjo', '나눔명조'),
+        ('Nanum Pen Script', '나눔손글씨'),
+        ('Jua', '주아체'),
+        ('Do Hyeon', '도현체'),
+        ('Black Han Sans', '검은고딕'),
+    ]
+
     author = models.ForeignKey(User, on_delete=models.CASCADE, related_name='guestbook_entries', verbose_name='작성자')
     content = models.TextField(max_length=200, verbose_name='내용')
     color = models.CharField(max_length=7, choices=COLOR_CHOICES, default='#fff475', verbose_name='색상')
+    font_family = models.CharField(max_length=50, choices=FONT_CHOICES, default='Gungsuh', verbose_name='글꼴')
     position_x = models.IntegerField(default=0, verbose_name='X 위치')
     position_y = models.IntegerField(default=0, verbose_name='Y 위치')
     rotation = models.FloatField(default=0, verbose_name='회전 각도')  # -5 ~ 5 정도
@@ -286,18 +312,27 @@ class GuestBook(models.Model):
 # ========== 2048 게임 ==========
 class Game2048(models.Model):
     """2048 게임"""
+    DIFFICULTY_CHOICES = [
+        ('normal', '일반 (시간 무제한)'),
+        ('hard', '하드 (비활동 시간 제한)'),
+    ]
+
     STATUS_CHOICES = [
         ('playing', '진행중'),
         ('won', '승리'),
         ('lost', '패배'),
+        ('timeout', '시간초과'),
     ]
 
     player = models.ForeignKey(User, on_delete=models.CASCADE, related_name='game2048_records', verbose_name='플레이어')
+    difficulty = models.CharField(max_length=10, choices=DIFFICULTY_CHOICES, default='normal', verbose_name='난이도')
     board_state = models.JSONField(default=list, verbose_name='보드 상태')  # 4x4 배열
     score = models.IntegerField(default=0, verbose_name='점수')
     best_score = models.IntegerField(default=0, verbose_name='최고 점수', db_index=True)
     status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='playing', verbose_name='상태', db_index=True)
     moves = models.IntegerField(default=0, verbose_name='이동 횟수')
+    inactivity_limit = models.IntegerField(default=0, verbose_name='비활동 제한 (초)')  # 0이면 무제한
+    last_activity_time = models.DateTimeField(null=True, blank=True, verbose_name='마지막 활동 시간')
     create_date = models.DateTimeField(auto_now_add=True, verbose_name='생성일', db_index=True)
     end_date = models.DateTimeField(null=True, blank=True, verbose_name='종료일')
 
