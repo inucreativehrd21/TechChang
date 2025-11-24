@@ -540,6 +540,184 @@ a:hover {
 }
 
 /* ===========================================
+   Landing / Hero (Framer-inspired)
+   =========================================== */
+.neo-hero {
+  position: relative;
+  overflow: hidden;
+  padding: var(--space-16) var(--space-4) var(--space-10);
+  background: var(--gradient-mesh-1);
+}
+
+.neo-hero .noise {
+  position: absolute;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160' viewBox='0 0 160 160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.06'/%3E%3C/svg%3E");
+  mix-blend-mode: soft-light;
+  pointer-events: none;
+}
+
+.neo-hero .orb {
+  position: absolute;
+  width: 280px;
+  height: 280px;
+  border-radius: 50%;
+  filter: blur(90px);
+  opacity: 0.6;
+}
+
+.neo-hero .orb.primary { background: var(--primary-400); top: -40px; left: 5%; }
+.neo-hero .orb.secondary { background: var(--secondary-400); bottom: -60px; right: 10%; }
+.neo-hero .orb.accent { background: var(--accent-400); top: 20%; right: 30%; }
+
+.neo-hero .container {
+  position: relative;
+  z-index: 2;
+}
+
+.hero-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.45rem 0.9rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.14);
+  color: var(--text-inverse);
+  box-shadow: var(--shadow-sm);
+  backdrop-filter: blur(8px);
+}
+
+.hero-title-xl {
+  font-size: clamp(2.5rem, 5vw, 3.8rem);
+  font-weight: 900;
+  letter-spacing: -0.04em;
+  color: var(--text-inverse);
+  margin: var(--space-4) 0 var(--space-3);
+  text-shadow: var(--text-shadow-lg);
+}
+
+.hero-sub {
+  font-size: 1.1rem;
+  color: rgba(255, 255, 255, 0.85);
+  max-width: 760px;
+}
+
+.cta-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  margin-top: var(--space-5);
+}
+
+.magnet-btn {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+}
+
+.magnet-btn::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at center, rgba(255,255,255,0.35), transparent 55%);
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.magnet-btn:hover::after {
+  opacity: 1;
+}
+
+.hero-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: var(--space-3);
+  margin-top: var(--space-6);
+}
+
+.stat-chip {
+  padding: var(--space-4);
+  border-radius: var(--radius-xl);
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: var(--text-inverse);
+  box-shadow: var(--shadow-lg);
+}
+
+.stat-chip strong { font-size: 1.6rem; display: block; }
+.stat-chip span { color: rgba(255,255,255,0.8); font-weight: 600; }
+
+.feature-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: var(--space-4);
+}
+
+.feature-card {
+  position: relative;
+  overflow: hidden;
+  background: var(--surface-primary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-2xl);
+  padding: var(--space-5);
+  box-shadow: var(--shadow-lg);
+  transition: var(--transition-all);
+}
+
+.feature-card:hover {
+  transform: translateY(-6px);
+  box-shadow: var(--shadow-2xl);
+}
+
+.feature-card::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(139, 92, 246, 0.15), rgba(236, 72, 153, 0.12));
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.feature-card:hover::after {
+  opacity: 1;
+}
+
+.feature-card h4 {
+  position: relative;
+  z-index: 1;
+  font-weight: 800;
+  margin-bottom: 0.5rem;
+}
+
+.feature-card p {
+  position: relative;
+  z-index: 1;
+  color: var(--text-secondary);
+  margin-bottom: 0;
+}
+
+.glow-line {
+  width: 52px;
+  height: 4px;
+  border-radius: 99px;
+  background: linear-gradient(90deg, var(--primary-400), var(--secondary-400));
+  margin-bottom: 0.75rem;
+}
+
+.list-panel {
+  background: var(--surface-primary);
+  border-radius: var(--radius-2xl);
+  box-shadow: var(--shadow-lg);
+  border: 1px solid var(--border-color);
+  padding: var(--space-5);
+}
+
+@media (max-width: 768px) {
+  .neo-hero { padding: var(--space-12) var(--space-4) var(--space-8); }
+  .hero-stats { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); }
+}
+
+/* ===========================================
    Game center / dashboard
    =========================================== */
 .game-hero {
