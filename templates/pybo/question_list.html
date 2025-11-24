@@ -2,60 +2,7 @@
 {% load pybo_filter %}
 
 {% block content %}
-<!-- Hero -->
-<section class="neo-hero fade-in-up">
-    <span class="noise"></span>
-    <span class="orb primary"></span>
-    <span class="orb secondary"></span>
-    <span class="orb accent"></span>
-    <div class="container">
-        <div class="hero-badge">테크창 · Next-gen Community</div>
-        <h1 class="hero-title-xl">배움과 플레이가 만나는<br>인터랙티브 커뮤니티</h1>
-        <p class="hero-sub">질문하고 답하고, 게임으로 몰입하는 테크창. 프레이머 스타일의 깊이감과 부드러운 인터랙션을 더했습니다.</p>
-        <div class="cta-row">
-            <a href="{% url 'pybo:question_create' %}" class="btn btn-primary btn-lg btn-ripple magnet-btn">질문하기</a>
-            <a href="{% url 'pybo:games_index' %}" class="btn btn-outline-light btn-lg btn-ripple magnet-btn">게임 센터</a>
-        </div>
-        <div class="hero-stats">
-            <div class="stat-chip card-lift">
-                <strong>{{ total_count|default:0 }}</strong>
-                <span>누적 게시글</span>
-            </div>
-            <div class="stat-chip card-lift">
-                <strong>{{ categories|length }}</strong>
-                <span>활성 카테고리</span>
-            </div>
-            <div class="stat-chip card-lift">
-                <strong>실시간</strong>
-                <span>새 답변 · 게임</span>
-            </div>
-        </div>
-    </div>
-</section>
-
-<!-- Highlights -->
-<div class="container my-5">
-    <div class="feature-grid">
-        <div class="feature-card card-lift">
-            <div class="glow-line"></div>
-            <h4>프레이머 감성</h4>
-            <p>패럴랙스, 글로우, 메쉬 그라디언트로 입체감 있는 첫인상을 제공합니다.</p>
-        </div>
-        <div class="feature-card card-lift">
-            <div class="glow-line"></div>
-            <h4>게임 허브 연동</h4>
-            <p>2048·지뢰찾기 등 게임 페이지도 동일한 디자인 언어로 연결됩니다.</p>
-        </div>
-        <div class="feature-card card-lift">
-            <div class="glow-line"></div>
-            <h4>문의 보호</h4>
-            <p>문의 글 제목·작성자 마스킹, 관리자/작성자만 상세 열람으로 프라이버시 강화.</p>
-        </div>
-    </div>
-</div>
-
-<!-- 메인 리스트 -->
-<div class="container my-4">
+<div class="container my-3">
     <div class="row">
         <!-- 사이드바 -->
         <div class="col-12 col-lg-3 mb-4">
