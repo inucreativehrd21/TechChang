@@ -13,7 +13,7 @@ urlpatterns = [
          base_views.index, name='index'),
     path('recent-answers/', base_views.recent_answers, name='recent_answers'),
     path('recent-comments/', base_views.recent_comments, name='recent_comments'),
-    # path('games/', base_views.games_index, name='games_index'),  # 게임센터 메인 비활성화
+    path('games/', base_views.games_index, name='games_index'),  # 게임센터 메인
 
     # question_views.py
     path('question/create/',
