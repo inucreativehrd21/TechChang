@@ -123,10 +123,10 @@
                                         {{ question_list.paginator.count|sub:question_list.start_index|sub:forloop.counter0|add:1 }}
                                     </td>
                                     <td>
-                                        {% with is_inquiry=question.category.name == "문의" %}
+                                        {% with cat=question.category.name|default_if_none:"" %}
                                         <a href="{% url 'pybo:detail' question.id %}" class="text-decoration-none">
                                             {% if question.is_locked %}<i class="fas fa-lock text-warning me-1"></i>{% endif %}
-                                            {% if is_inquiry and not user.is_staff and user != question.author %}
+                                            {% if cat == "문의" and not user.is_staff and user != question.author %}
                                                 문의 드립니다.
                                             {% else %}
                                                 {{ question.subject }}
@@ -138,9 +138,9 @@
                                         {% endif %}
                                     </td>
                                     <td class="text-center">
-                                        {% with is_inquiry=question.category.name == "문의" %}
+                                        {% with cat=question.category.name|default_if_none:"" %}
                                         <small>
-                                            {% if is_inquiry and not user.is_staff and user != question.author %}
+                                            {% if cat == "문의" and not user.is_staff and user != question.author %}
                                                 사용자
                                             {% else %}
                                                 {% if question.author.profile.nickname %}{{ question.author.profile.nickname }}{% else %}{{ question.author.username }}{% endif %}
@@ -179,9 +179,9 @@
                                 <div class="flex-grow-1 me-3">
                                     <h6 class="mobile-post-title">
                                         <a href="{% url 'pybo:detail' question.id %}">
-                                            {% with is_inquiry=question.category.name == "문의" %}
+                                            {% with cat=question.category.name|default_if_none:"" %}
                                                 {% if question.is_locked %}<i class="fas fa-lock text-warning me-1"></i>{% endif %}
-                                                {% if is_inquiry and not user.is_staff and user != question.author %}
+                                                {% if cat == "문의" and not user.is_staff and user != question.author %}
                                                     문의 드립니다.
                                                 {% else %}
                                                     {{ question.subject }}
@@ -192,8 +192,8 @@
                                     <div class="mobile-post-meta">
                                         <span>
                                             <i class="fas fa-user"></i>
-                                            {% with is_inquiry=question.category.name == "문의" %}
-                                                {% if is_inquiry and not user.is_staff and user != question.author %}
+                                            {% with cat=question.category.name|default_if_none:"" %}
+                                                {% if cat == "문의" and not user.is_staff and user != question.author %}
                                                     사용자
                                                 {% else %}
                                                     {% if question.author.profile.nickname %}{{ question.author.profile.nickname }}{% else %}{{ question.author.username }}{% endif %}
