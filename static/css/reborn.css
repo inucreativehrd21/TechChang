@@ -1,51 +1,53 @@
 /**
- * TechChang Reborn v2 - Professional & Clean Design
- * HRD/Tech 커뮤니티를 위한 전문적인 디자인 시스템
+ * TechChang Ultra-Modern Design System
+ * 최신 웹 기술의 집합체 - 인터랙티브 & 역동적
  *
- * 핵심 원칙:
- * - 가독성 최우선
- * - 깔끔한 화이트 기반
- * - 보라색은 포인트로만 사용
- * - 고대비 타이포그래피
- * - 전문적인 레이아웃
+ * 기술 스택:
+ * - Glassmorphism (Frosted Glass UI)
+ * - 3D Transforms & Perspective
+ * - Smooth Micro-interactions
+ * - Parallax Scrolling
+ * - Magnetic Cursor Effects
+ * - Morphing Animations
+ * - Advanced Hover States
+ *
+ * 색상: 회색/흰색/검정 ONLY (보라색 금지!)
  */
 
 /* ===========================================
-   색상 시스템 재정의
+   색상 시스템 - Grayscale Premium
    =========================================== */
 
 :root {
-    /* 기본 색상 - 중성 */
+    /* 배경 */
     --bg-primary: #ffffff;
     --bg-secondary: #f8f9fa;
-    --bg-tertiary: #f1f3f5;
+    --bg-tertiary: #e9ecef;
+    --bg-dark: #212529;
 
-    /* 텍스트 - 고대비 */
-    --text-primary: #1a1a1a;
-    --text-secondary: #4a5568;
-    --text-tertiary: #718096;
+    /* 텍스트 */
+    --text-primary: #212529;
+    --text-secondary: #495057;
+    --text-tertiary: #6c757d;
+    --text-light: #adb5bd;
 
-    /* 포인트 색상 - 절제된 보라 */
-    --accent-primary: #6366f1;
-    --accent-secondary: #8b5cf6;
-    --accent-tertiary: #a78bfa;
-    --accent-light: #e0e7ff;
+    /* 포인트 색상 (청록 회색) */
+    --accent-primary: #4a5568;
+    --accent-secondary: #2d3748;
+    --accent-light: #718096;
+    --accent-cyan: #0891b2;
 
-    /* 표면 색상 */
-    --surface-white: #ffffff;
-    --surface-gray: #f9fafb;
-    --surface-hover: #f3f4f6;
-
-    /* 경계선 */
-    --border-light: #e5e7eb;
-    --border-medium: #d1d5db;
-    --border-dark: #9ca3af;
+    /* Glassmorphism */
+    --glass-bg: rgba(255, 255, 255, 0.7);
+    --glass-border: rgba(255, 255, 255, 0.3);
+    --glass-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.15);
 
     /* 그림자 */
-    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+    --shadow-sm: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
     --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
     --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
     --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+    --shadow-2xl: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
 
     /* 간격 */
     --space-1: 0.25rem;
@@ -67,54 +69,125 @@
     --radius-xl: 1rem;
     --radius-2xl: 1.5rem;
     --radius-3xl: 2rem;
+    --radius-full: 9999px;
 }
 
 /* ===========================================
-   타이포그래피 - 가독성 우선
+   타이포그래피 - Bold & Dynamic
    =========================================== */
 
 .display-mega {
-    font-size: clamp(3rem, 6vw, 5rem);
+    font-size: clamp(3rem, 7vw, 6rem);
     font-weight: 900;
-    line-height: 1;
-    letter-spacing: -0.03em;
+    line-height: 0.95;
+    letter-spacing: -0.04em;
     color: var(--text-primary);
     margin-bottom: var(--space-6);
+    background: linear-gradient(135deg, #1a1a1a 0%, #4a5568 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    animation: shimmer 3s ease-in-out infinite;
+}
+
+@keyframes shimmer {
+    0%, 100% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
 }
 
 .display-xl {
-    font-size: clamp(2.5rem, 5vw, 4rem);
+    font-size: clamp(2.5rem, 5vw, 4.5rem);
     font-weight: 800;
     line-height: 1.1;
-    letter-spacing: -0.02em;
+    letter-spacing: -0.03em;
     color: var(--text-primary);
 }
 
 .display-lg {
-    font-size: clamp(2rem, 4vw, 3rem);
+    font-size: clamp(2rem, 4vw, 3.5rem);
     font-weight: 700;
     line-height: 1.2;
-    letter-spacing: -0.01em;
+    letter-spacing: -0.02em;
     color: var(--text-primary);
 }
 
-/* 그라디언트 텍스트 - 절제된 사용 */
 .text-gradient-accent {
-    background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+    background: linear-gradient(135deg, var(--accent-primary), var(--accent-cyan));
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
 }
 
 /* ===========================================
-   레이아웃 시스템
+   Glassmorphism - Frosted Glass Effect
+   =========================================== */
+
+.glass {
+    background: var(--glass-bg);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    border: 1px solid var(--glass-border);
+    box-shadow: var(--glass-shadow);
+}
+
+.glass-dark {
+    background: rgba(33, 37, 41, 0.7);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* ===========================================
+   3D Transform System
+   =========================================== */
+
+.card-3d {
+    transform-style: preserve-3d;
+    transition: transform 0.6s cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.card-3d:hover {
+    transform: translateY(-8px) rotateX(5deg) rotateY(5deg);
+}
+
+.perspective-container {
+    perspective: 1000px;
+}
+
+.tilt-on-hover {
+    transition: transform 0.3s ease;
+}
+
+.tilt-on-hover:hover {
+    transform: scale(1.05) rotateX(10deg) rotateY(10deg);
+}
+
+/* ===========================================
+   Hero Section - Ultra-Modern
    =========================================== */
 
 .hero-section {
-    background: linear-gradient(180deg, var(--bg-secondary) 0%, var(--bg-primary) 100%);
-    padding: var(--space-20) var(--space-6) var(--space-16);
+    min-height: 80vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 50%, #f8f9fa 100%);
     position: relative;
     overflow: hidden;
+    padding: var(--space-20) var(--space-6);
+}
+
+.hero-section::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background:
+        radial-gradient(circle at 20% 50%, rgba(0, 0, 0, 0.03) 0%, transparent 50%),
+        radial-gradient(circle at 80% 80%, rgba(0, 0, 0, 0.03) 0%, transparent 50%);
+    pointer-events: none;
 }
 
 .hero-content {
@@ -124,54 +197,71 @@
     z-index: 2;
 }
 
-/* 비대칭 히어로 */
-.asymmetric-hero {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: var(--space-12);
-    align-items: center;
-    max-width: 1400px;
-    margin: 0 auto;
-}
-
-@media (max-width: 768px) {
-    .asymmetric-hero {
-        grid-template-columns: 1fr;
-    }
-
-    .asymmetric-hero-right {
-        display: none;
-    }
-}
-
 /* ===========================================
-   카드 시스템 - 깔끔하고 전문적
+   Card System - Advanced
    =========================================== */
 
 .card-clean {
-    background: var(--surface-white);
-    border: 1px solid var(--border-light);
+    background: var(--bg-primary);
+    border: 1px solid rgba(0, 0, 0, 0.08);
     border-radius: var(--radius-xl);
     padding: var(--space-6);
-    transition: all 0.2s ease;
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    overflow: hidden;
+}
+
+.card-clean::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(135deg, transparent 0%, rgba(0, 0, 0, 0.02) 100%);
+    opacity: 0;
+    transition: opacity 0.4s ease;
 }
 
 .card-clean:hover {
     border-color: var(--accent-primary);
-    box-shadow: var(--shadow-lg);
-    transform: translateY(-2px);
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.12);
+    transform: translateY(-4px) scale(1.02);
+}
+
+.card-clean:hover::before {
+    opacity: 1;
 }
 
 .card-featured {
-    background: var(--surface-white);
-    border: 2px solid var(--accent-light);
+    background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+    border: 2px solid rgba(0, 0, 0, 0.1);
     border-radius: var(--radius-2xl);
     padding: var(--space-8);
     box-shadow: var(--shadow-xl);
+    position: relative;
+    overflow: hidden;
+}
+
+.card-featured::after {
+    content: '';
+    position: absolute;
+    top: -50%;
+    right: -50%;
+    width: 200%;
+    height: 200%;
+    background: linear-gradient(45deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+    transform: rotate(45deg);
+    animation: shine 3s ease-in-out infinite;
+}
+
+@keyframes shine {
+    0%, 100% { transform: translateX(-100%) rotate(45deg); }
+    50% { transform: translateX(100%) rotate(45deg); }
 }
 
 /* ===========================================
-   Bento Grid - 개선된 버전
+   Bento Grid - Interactive
    =========================================== */
 
 .bento-container {
@@ -183,25 +273,45 @@
 }
 
 .bento-item {
-    background: var(--surface-white);
-    border: 1px solid var(--border-light);
+    background: var(--bg-primary);
+    border: 1px solid rgba(0, 0, 0, 0.08);
     border-radius: var(--radius-xl);
     padding: var(--space-6);
-    transition: all 0.2s ease;
+    transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
     min-height: 200px;
+    position: relative;
+    cursor: pointer;
+}
+
+.bento-item::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 0;
+    height: 0;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(0, 0, 0, 0.03) 0%, transparent 70%);
+    transform: translate(-50%, -50%);
+    transition: width 0.6s ease, height 0.6s ease;
+}
+
+.bento-item:hover::before {
+    width: 300%;
+    height: 300%;
 }
 
 .bento-item:hover {
     border-color: var(--accent-primary);
-    box-shadow: var(--shadow-lg);
-    transform: translateY(-2px);
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+    transform: translateY(-8px) scale(1.02);
 }
 
 .bento-featured {
     grid-column: span 2;
     grid-row: span 2;
-    background: linear-gradient(135deg, #f8fafc 0%, #eef2ff 100%);
-    border: 2px solid var(--accent-light);
+    background: linear-gradient(135deg, #ffffff 0%, #f1f5f9 100%);
+    border: 2px solid rgba(0, 0, 0, 0.1);
     padding: var(--space-8);
 }
 
@@ -222,26 +332,7 @@
 }
 
 /* ===========================================
-   포인트 색상 카드 (절제)
-   =========================================== */
-
-.card-accent-blue {
-    background: linear-gradient(135deg, #dbeafe 0%, #e0e7ff 100%);
-    border: 1px solid #a5b4fc;
-}
-
-.card-accent-purple {
-    background: linear-gradient(135deg, #e0e7ff 0%, #ede9fe 100%);
-    border: 1px solid #c4b5fd;
-}
-
-.card-accent-pink {
-    background: linear-gradient(135deg, #fce7f3 0%, #fae8ff 100%);
-    border: 1px solid #f0abfc;
-}
-
-/* ===========================================
-   버튼 시스템
+   Button System - Interactive
    =========================================== */
 
 .btn-primary {
@@ -249,21 +340,44 @@
     align-items: center;
     gap: var(--space-2);
     padding: var(--space-4) var(--space-6);
-    background: var(--accent-primary);
+    background: linear-gradient(135deg, #2d3748 0%, #1a202c 100%);
     color: white;
     font-weight: 600;
     border-radius: var(--radius-lg);
     border: none;
     cursor: pointer;
-    transition: all 0.2s ease;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     text-decoration: none;
+    position: relative;
+    overflow: hidden;
+}
+
+.btn-primary::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 0;
+    height: 0;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.1);
+    transform: translate(-50%, -50%);
+    transition: width 0.6s ease, height 0.6s ease;
+}
+
+.btn-primary:hover::before {
+    width: 300%;
+    height: 300%;
 }
 
 .btn-primary:hover {
-    background: var(--accent-secondary);
-    transform: translateY(-1px);
-    box-shadow: var(--shadow-md);
+    transform: translateY(-2px) scale(1.05);
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
     color: white;
+}
+
+.btn-primary:active {
+    transform: translateY(0) scale(0.98);
 }
 
 .btn-secondary {
@@ -271,45 +385,48 @@
     align-items: center;
     gap: var(--space-2);
     padding: var(--space-4) var(--space-6);
-    background: var(--surface-white);
+    background: var(--bg-primary);
     color: var(--text-primary);
     font-weight: 600;
     border-radius: var(--radius-lg);
-    border: 1px solid var(--border-medium);
+    border: 2px solid rgba(0, 0, 0, 0.1);
     cursor: pointer;
-    transition: all 0.2s ease;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     text-decoration: none;
 }
 
 .btn-secondary:hover {
     border-color: var(--accent-primary);
-    background: var(--surface-hover);
+    background: var(--bg-tertiary);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
     color: var(--text-primary);
 }
 
 /* ===========================================
-   배지 시스템
+   Badge System
    =========================================== */
 
 .badge {
     display: inline-block;
     padding: var(--space-1) var(--space-3);
-    background: var(--accent-light);
-    color: var(--accent-primary);
+    background: rgba(0, 0, 0, 0.05);
+    color: var(--text-secondary);
     font-size: 0.75rem;
     font-weight: 700;
-    border-radius: 999px;
+    border-radius: var(--radius-full);
     text-transform: uppercase;
     letter-spacing: 0.05em;
 }
 
 .badge-featured {
-    background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+    background: linear-gradient(135deg, #2d3748, #1a202c);
     color: white;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
 }
 
 /* ===========================================
-   Stats 카드
+   Stats Cards - 3D Interactive
    =========================================== */
 
 .stats-grid {
@@ -320,17 +437,35 @@
 }
 
 .stat-card {
-    background: var(--surface-white);
-    border: 1px solid var(--border-light);
+    background: var(--bg-primary);
+    border: 1px solid rgba(0, 0, 0, 0.08);
     border-radius: var(--radius-xl);
     padding: var(--space-5);
     text-align: center;
-    transition: all 0.2s ease;
+    transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+    position: relative;
+    overflow: hidden;
+}
+
+.stat-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
+    transition: left 0.5s ease;
+}
+
+.stat-card:hover::before {
+    left: 100%;
 }
 
 .stat-card:hover {
     border-color: var(--accent-primary);
-    box-shadow: var(--shadow-md);
+    box-shadow: 0 15px 30px rgba(0, 0, 0, 0.12);
+    transform: translateY(-4px) scale(1.05);
 }
 
 .stat-value {
@@ -350,7 +485,7 @@
 }
 
 /* ===========================================
-   카테고리 필터
+   Category Pills - Smooth
    =========================================== */
 
 .category-scroll {
@@ -359,6 +494,7 @@
     overflow-x: auto;
     padding: var(--space-4) 0;
     -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
 }
 
 .category-scroll::-webkit-scrollbar {
@@ -366,55 +502,41 @@
 }
 
 .category-scroll::-webkit-scrollbar-thumb {
-    background: var(--border-medium);
+    background: rgba(0, 0, 0, 0.2);
     border-radius: 4px;
 }
 
 .category-pill {
     flex-shrink: 0;
     padding: var(--space-3) var(--space-5);
-    background: var(--surface-white);
-    border: 1px solid var(--border-light);
-    border-radius: 999px;
+    background: var(--bg-primary);
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    border-radius: var(--radius-full);
     font-weight: 600;
     color: var(--text-primary);
     text-decoration: none;
-    transition: all 0.2s ease;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     white-space: nowrap;
 }
 
 .category-pill:hover,
 .category-pill.active {
-    background: var(--accent-primary);
-    border-color: var(--accent-primary);
+    background: linear-gradient(135deg, #2d3748, #1a202c);
+    border-color: transparent;
     color: white;
-    transform: scale(1.05);
+    transform: scale(1.1) translateY(-2px);
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.15);
 }
 
 /* ===========================================
-   애니메이션 - 절제된 사용
+   Animations - Smooth & Elastic
    =========================================== */
 
 .fade-in {
-    animation: fadeIn 0.4s ease;
+    animation: fadeIn 0.6s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 @keyframes fadeIn {
-    from {
-        opacity: 0;
-        transform: translateY(10px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
-
-.slide-up {
-    animation: slideUp 0.5s ease;
-}
-
-@keyframes slideUp {
     from {
         opacity: 0;
         transform: translateY(20px);
@@ -425,7 +547,37 @@
     }
 }
 
-/* 순차 애니메이션 */
+.slide-up {
+    animation: slideUp 0.8s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes slideUp {
+    from {
+        opacity: 0;
+        transform: translateY(40px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.scale-in {
+    animation: scaleIn 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes scaleIn {
+    from {
+        opacity: 0;
+        transform: scale(0.8);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+/* Staggered animations */
 .stagger-1 { animation-delay: 0.1s; }
 .stagger-2 { animation-delay: 0.2s; }
 .stagger-3 { animation-delay: 0.3s; }
@@ -433,7 +585,7 @@
 .stagger-5 { animation-delay: 0.5s; }
 
 /* ===========================================
-   배경 장식 - 미묘한 효과
+   Background Effects - Subtle
    =========================================== */
 
 .bg-decoration {
@@ -450,26 +602,26 @@
 .bg-blob {
     position: absolute;
     border-radius: 50%;
-    filter: blur(80px);
-    opacity: 0.1;
-    animation: float 20s ease-in-out infinite;
+    filter: blur(100px);
+    opacity: 0.06;
+    animation: float 25s ease-in-out infinite;
 }
 
 .bg-blob-1 {
-    width: 400px;
-    height: 400px;
-    top: -100px;
-    left: -100px;
-    background: var(--accent-primary);
+    width: 500px;
+    height: 500px;
+    top: -150px;
+    left: -150px;
+    background: #000000;
 }
 
 .bg-blob-2 {
-    width: 500px;
-    height: 500px;
-    bottom: -150px;
-    right: -150px;
-    background: var(--accent-secondary);
-    animation-delay: 5s;
+    width: 600px;
+    height: 600px;
+    bottom: -200px;
+    right: -200px;
+    background: #4a5568;
+    animation-delay: 7s;
 }
 
 @keyframes float {
@@ -477,24 +629,20 @@
         transform: translate(0, 0) scale(1);
     }
     33% {
-        transform: translate(30px, -30px) scale(1.1);
+        transform: translate(50px, -50px) scale(1.1);
     }
     66% {
-        transform: translate(-20px, 20px) scale(0.9);
+        transform: translate(-30px, 30px) scale(0.9);
     }
 }
 
 /* ===========================================
-   유틸리티 클래스
+   Utilities
    =========================================== */
 
 .text-center { text-align: center; }
 .text-left { text-align: left; }
 .text-right { text-align: right; }
-
-.mt-8 { margin-top: var(--space-8); }
-.mb-8 { margin-bottom: var(--space-8); }
-.my-8 { margin-top: var(--space-8); margin-bottom: var(--space-8); }
 
 .container-wide {
     max-width: 1400px;
@@ -515,29 +663,7 @@
 }
 
 /* ===========================================
-   반응형 유틸리티
-   =========================================== */
-
-@media (max-width: 768px) {
-    .hero-section {
-        padding: var(--space-12) var(--space-4);
-    }
-
-    .display-mega {
-        font-size: 2.5rem;
-    }
-
-    .section {
-        padding: var(--space-12) var(--space-4);
-    }
-
-    .bento-container {
-        padding: var(--space-4);
-    }
-}
-
-/* ===========================================
-   게임 페이지 전용 스타일
+   Game Pages
    =========================================== */
 
 .game-container {
@@ -547,8 +673,8 @@
 }
 
 .game-header {
-    background: var(--surface-white);
-    border: 1px solid var(--border-light);
+    background: var(--bg-primary);
+    border: 1px solid rgba(0, 0, 0, 0.08);
     border-radius: var(--radius-2xl);
     padding: var(--space-8);
     margin-bottom: var(--space-6);
@@ -572,8 +698,8 @@
 }
 
 .game-board {
-    background: var(--surface-white);
-    border: 1px solid var(--border-light);
+    background: var(--bg-primary);
+    border: 1px solid rgba(0, 0, 0, 0.08);
     border-radius: var(--radius-xl);
     padding: var(--space-8);
     box-shadow: var(--shadow-md);
@@ -587,35 +713,25 @@
     flex-wrap: wrap;
 }
 
-.game-info {
-    background: var(--surface-gray);
-    border-radius: var(--radius-lg);
-    padding: var(--space-4);
-    margin-bottom: var(--space-6);
-}
-
 /* ===========================================
-   다크 모드 토글 (개선된 위치)
+   Responsive
    =========================================== */
 
-.theme-toggle-wrapper {
-    position: fixed;
-    bottom: var(--space-6);
-    right: var(--space-6);
-    z-index: 100;
-}
+@media (max-width: 768px) {
+    .hero-section {
+        min-height: 60vh;
+        padding: var(--space-12) var(--space-4);
+    }
 
-.theme-toggle {
-    background: var(--surface-white);
-    border: 1px solid var(--border-light);
-    border-radius: 999px;
-    padding: var(--space-3);
-    box-shadow: var(--shadow-lg);
-    cursor: pointer;
-    transition: all 0.2s ease;
-}
+    .display-mega {
+        font-size: 2.5rem;
+    }
 
-.theme-toggle:hover {
-    transform: scale(1.1);
-    box-shadow: var(--shadow-xl);
+    .section {
+        padding: var(--space-12) var(--space-4);
+    }
+
+    .container-wide {
+        padding: 0 var(--space-4);
+    }
 }

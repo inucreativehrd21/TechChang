@@ -2,7 +2,7 @@
 {% load common_tags %}
 {% load static %}
 <!-- 네비게이션바 -->
-<nav class="navbar navbar-expand-lg navbar-dark bg-primary fixed-top" id="mainNavbar">
+<nav class="navbar navbar-expand-lg navbar-dark fixed-top" id="mainNavbar" style="background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);">
     <div class="container-fluid">
         <a class="navbar-brand d-flex align-items-center" href="{% url 'pybo:index' %}">
             <img src="{% static 'images/techwindow-logo.png' %}" alt="테크창 로고" 
@@ -228,9 +228,9 @@ body { padding-top: 76px; }
 }
 
 .navbar.scrolled {
-    box-shadow: var(--shadow-2xl);
-    backdrop-filter: blur(12px);
-    background: rgba(139, 92, 246, 0.95) !important;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+    backdrop-filter: blur(20px);
+    background: rgba(26, 26, 26, 0.95) !important;
 }
 
 .navbar-nav .nav-link {
@@ -269,7 +269,7 @@ body { padding-top: 76px; }
 }
 
 .dropdown-item:hover {
-    background: var(--gradient-primary);
+    background: linear-gradient(135deg, #3a3a3a, #4a4a4a);
     color: white !important;
     transform: translateX(4px);
 }
