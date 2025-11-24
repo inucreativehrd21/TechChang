@@ -1,0 +1,473 @@
+/**
+ * 테크창 레이어 & 깊이감 시스템
+ *
+ * 단색과 플랫 디자인을 피하고 깊이감 있는 UI 구현
+ * Glass Morphism, Neumorphism, 다층 그림자, 패턴 등
+ */
+
+/* ==========================================
+   Elevation System - Material Design 기반
+   ========================================== */
+
+.elevation-0 {
+  box-shadow: none;
+}
+
+.elevation-1 {
+  box-shadow: var(--shadow-xs);
+}
+
+.elevation-2 {
+  box-shadow: var(--shadow-sm);
+}
+
+.elevation-3 {
+  box-shadow: var(--shadow-md);
+}
+
+.elevation-4 {
+  box-shadow: var(--shadow-lg);
+}
+
+.elevation-5 {
+  box-shadow: var(--shadow-xl);
+}
+
+.elevation-6 {
+  box-shadow: var(--shadow-2xl);
+}
+
+.elevation-7 {
+  box-shadow: var(--shadow-3xl);
+}
+
+.elevation-8 {
+  box-shadow: var(--shadow-4xl);
+}
+
+/* ==========================================
+   Glass Morphism - 유리 효과
+   ========================================== */
+
+.glass {
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+}
+
+.glass-light {
+  background: rgba(255, 255, 255, 0.25);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.glass-dark {
+  background: rgba(0, 0, 0, 0.25);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.glass-gradient {
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.1) 0%,
+    rgba(255, 255, 255, 0.05) 100%
+  );
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+/* ==========================================
+   Neumorphism - 부드러운 그림자 효과
+   ========================================== */
+
+.neumorphism {
+  background: #e0e5ec;
+  box-shadow:
+    9px 9px 16px rgba(163, 177, 198, 0.6),
+    -9px -9px 16px rgba(255, 255, 255, 0.5);
+  border-radius: var(--radius-xl);
+}
+
+.neumorphism-inset {
+  background: #e0e5ec;
+  box-shadow:
+    inset 6px 6px 12px rgba(163, 177, 198, 0.6),
+    inset -6px -6px 12px rgba(255, 255, 255, 0.5);
+  border-radius: var(--radius-xl);
+}
+
+.neumorphism-pressed {
+  background: #e0e5ec;
+  box-shadow:
+    inset 9px 9px 16px rgba(163, 177, 198, 0.6),
+    inset -9px -9px 16px rgba(255, 255, 255, 0.5);
+  border-radius: var(--radius-xl);
+}
+
+/* ==========================================
+   Layered Shadows - 다층 그림자로 깊이감
+   ========================================== */
+
+.shadow-layered {
+  box-shadow:
+    0 2px 4px rgba(0, 0, 0, 0.07),
+    0 4px 8px rgba(0, 0, 0, 0.05),
+    0 8px 16px rgba(0, 0, 0, 0.03);
+}
+
+.shadow-layered-lg {
+  box-shadow:
+    0 4px 8px rgba(0, 0, 0, 0.1),
+    0 8px 16px rgba(0, 0, 0, 0.08),
+    0 16px 32px rgba(0, 0, 0, 0.06);
+}
+
+.shadow-layered-colored {
+  box-shadow:
+    0 4px 8px rgba(139, 92, 246, 0.15),
+    0 8px 16px rgba(139, 92, 246, 0.1),
+    0 16px 32px rgba(139, 92, 246, 0.05);
+}
+
+/* Inner + Outer Shadow */
+.shadow-inner-outer {
+  box-shadow:
+    inset 0 2px 4px rgba(0, 0, 0, 0.06),
+    0 4px 8px rgba(0, 0, 0, 0.08);
+}
+
+/* ==========================================
+   3D Effects - 입체감
+   ========================================== */
+
+.effect-3d {
+  transform-style: preserve-3d;
+  perspective: 1000px;
+}
+
+.effect-3d-hover {
+  transition: transform var(--duration-base) var(--ease-smooth);
+}
+
+.effect-3d-hover:hover {
+  transform: perspective(1000px) rotateX(5deg) translateY(-5px);
+}
+
+/* 3D Card */
+.card-3d {
+  position: relative;
+  transform-style: preserve-3d;
+  transition: transform var(--duration-base) var(--ease-smooth);
+}
+
+.card-3d::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: inherit;
+  border-radius: inherit;
+  transform: translateZ(-20px);
+  filter: brightness(0.8);
+  z-index: -1;
+}
+
+.card-3d:hover {
+  transform: translateZ(10px);
+}
+
+/* ==========================================
+   Patterns & Textures - 패턴으로 깊이 추가
+   ========================================== */
+
+/* Dot Pattern */
+.pattern-dots {
+  background-image: radial-gradient(circle, rgba(0, 0, 0, 0.05) 1px, transparent 1px);
+  background-size: 20px 20px;
+}
+
+/* Grid Pattern */
+.pattern-grid {
+  background-image:
+    linear-gradient(rgba(0, 0, 0, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 0, 0, 0.03) 1px, transparent 1px);
+  background-size: 20px 20px;
+}
+
+/* Diagonal Lines */
+.pattern-lines {
+  background-image: repeating-linear-gradient(
+    45deg,
+    transparent,
+    transparent 10px,
+    rgba(0, 0, 0, 0.03) 10px,
+    rgba(0, 0, 0, 0.03) 20px
+  );
+}
+
+/* Noise Texture */
+.texture-noise {
+  position: relative;
+}
+
+.texture-noise::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: url('data:image/svg+xml,%3Csvg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg"%3E%3Cfilter id="noise"%3E%3CfeTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="4" stitchTiles="stitch"/%3E%3C/filter%3E%3Crect width="100%25" height="100%25" filter="url(%23noise)" opacity="0.05"/%3E%3C/svg%3E');
+  pointer-events: none;
+  opacity: 0.5;
+}
+
+/* Paper Texture */
+.texture-paper {
+  background-color: #f4f4f4;
+  background-image:
+    linear-gradient(0deg, transparent 24%, rgba(255, 255, 255, .05) 25%, rgba(255, 255, 255, .05) 26%, transparent 27%, transparent 74%, rgba(255, 255, 255, .05) 75%, rgba(255, 255, 255, .05) 76%, transparent 77%, transparent),
+    linear-gradient(90deg, transparent 24%, rgba(255, 255, 255, .05) 25%, rgba(255, 255, 255, .05) 26%, transparent 27%, transparent 74%, rgba(255, 255, 255, .05) 75%, rgba(255, 255, 255, .05) 76%, transparent 77%, transparent);
+  background-size: 50px 50px;
+}
+
+/* ==========================================
+   Gradient Overlays - 그라데이션 레이어
+   ========================================== */
+
+.overlay-gradient-top {
+  position: relative;
+}
+
+.overlay-gradient-top::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 100px;
+  background: linear-gradient(to bottom, rgba(0, 0, 0, 0.3), transparent);
+  pointer-events: none;
+}
+
+.overlay-gradient-bottom {
+  position: relative;
+}
+
+.overlay-gradient-bottom::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 100px;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.3), transparent);
+  pointer-events: none;
+}
+
+.overlay-gradient-radial {
+  position: relative;
+}
+
+.overlay-gradient-radial::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at center, transparent 50%, rgba(0, 0, 0, 0.3) 100%);
+  pointer-events: none;
+}
+
+/* ==========================================
+   Mesh Gradients - 복잡한 그라데이션
+   ========================================== */
+
+.mesh-gradient-1 {
+  background:
+    radial-gradient(at 0% 0%, rgba(139, 92, 246, 0.3) 0px, transparent 50%),
+    radial-gradient(at 50% 0%, rgba(20, 184, 166, 0.3) 0px, transparent 50%),
+    radial-gradient(at 100% 0%, rgba(236, 72, 153, 0.3) 0px, transparent 50%),
+    linear-gradient(135deg, var(--gray-50) 0%, var(--gray-100) 100%);
+}
+
+.mesh-gradient-2 {
+  background:
+    radial-gradient(at 20% 30%, rgba(59, 130, 246, 0.3) 0px, transparent 50%),
+    radial-gradient(at 80% 70%, rgba(236, 72, 153, 0.3) 0px, transparent 50%),
+    radial-gradient(at 50% 50%, rgba(16, 185, 129, 0.2) 0px, transparent 50%),
+    linear-gradient(135deg, #ffffff 0%, #f9fafb 100%);
+}
+
+.mesh-gradient-animated {
+  background:
+    radial-gradient(at 40% 20%, rgba(139, 92, 246, 0.3) 0px, transparent 50%),
+    radial-gradient(at 80% 0%, rgba(236, 72, 153, 0.3) 0px, transparent 50%),
+    radial-gradient(at 0% 50%, rgba(20, 184, 166, 0.3) 0px, transparent 50%),
+    linear-gradient(135deg, #fafafa 0%, #f5f5f5 100%);
+  background-size: 200% 200%;
+  animation: gradientShift 15s ease infinite;
+}
+
+/* ==========================================
+   Floating Elements - 떠있는 효과
+   ========================================== */
+
+.floating {
+  position: relative;
+  animation: float 6s ease-in-out infinite;
+}
+
+.floating-slow {
+  animation: float 8s ease-in-out infinite;
+}
+
+.floating-delay-1 {
+  animation-delay: -2s;
+}
+
+.floating-delay-2 {
+  animation-delay: -4s;
+}
+
+.floating-delay-3 {
+  animation-delay: -6s;
+}
+
+/* ==========================================
+   Depth Layers - Z-index 관리
+   ========================================== */
+
+.layer-bg {
+  z-index: var(--z-base);
+}
+
+.layer-content {
+  z-index: calc(var(--z-base) + 10);
+}
+
+.layer-elevated {
+  z-index: calc(var(--z-base) + 20);
+}
+
+.layer-dropdown {
+  z-index: var(--z-dropdown);
+}
+
+.layer-sticky {
+  z-index: var(--z-sticky);
+}
+
+.layer-fixed {
+  z-index: var(--z-fixed);
+}
+
+.layer-modal-backdrop {
+  z-index: var(--z-modal-backdrop);
+}
+
+.layer-modal {
+  z-index: var(--z-modal);
+}
+
+.layer-popover {
+  z-index: var(--z-popover);
+}
+
+.layer-tooltip {
+  z-index: var(--z-tooltip);
+}
+
+.layer-toast {
+  z-index: var(--z-toast);
+}
+
+/* ==========================================
+   Parallax - 시차 효과
+   ========================================== */
+
+.parallax-slow {
+  transform: translateZ(-1px) scale(2);
+}
+
+.parallax-medium {
+  transform: translateZ(0);
+}
+
+.parallax-fast {
+  transform: translateZ(1px) scale(0.5);
+}
+
+/* ==========================================
+   Border Gradients - 그라데이션 테두리
+   ========================================== */
+
+.border-gradient {
+  position: relative;
+  background-clip: padding-box;
+  border: solid 2px transparent;
+}
+
+.border-gradient::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  margin: -2px;
+  border-radius: inherit;
+  background: linear-gradient(135deg, var(--primary-500), var(--secondary-500));
+}
+
+.border-gradient-animated {
+  position: relative;
+  background-clip: padding-box;
+  border: solid 2px transparent;
+}
+
+.border-gradient-animated::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  margin: -2px;
+  border-radius: inherit;
+  background: linear-gradient(135deg, var(--primary-500), var(--accent-500), var(--secondary-500));
+  background-size: 200% 200%;
+  animation: gradientShift 3s ease infinite;
+}
+
+/* ==========================================
+   Glow Effects - 빛나는 효과
+   ========================================== */
+
+.glow-soft {
+  box-shadow: 0 0 20px rgba(139, 92, 246, 0.3);
+}
+
+.glow-medium {
+  box-shadow: 0 0 40px rgba(139, 92, 246, 0.4);
+}
+
+.glow-strong {
+  box-shadow: 0 0 60px rgba(139, 92, 246, 0.5);
+}
+
+.glow-pulse {
+  animation: glow 2s ease-in-out infinite;
+}
+
+/* ==========================================
+   Frosted Glass - 서리 유리 효과
+   ========================================== */
+
+.frosted {
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(10px) saturate(180%);
+  -webkit-backdrop-filter: blur(10px) saturate(180%);
+}
+
+.frosted-dark {
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(10px) saturate(180%);
+  -webkit-backdrop-filter: blur(10px) saturate(180%);
+}

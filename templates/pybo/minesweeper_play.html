@@ -5,323 +5,186 @@
 
 {% block extra_css %}
 <style>
-    * {
-        margin: 0;
-        padding: 0;
-        box-sizing: border-box;
-    }
+.ms-hero {
+    padding: var(--space-12) 0 var(--space-8);
+}
 
-    body {
-        background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
-        min-height: 100vh;
-        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
-        padding: 20px;
-    }
+.info-panel {
+    display: flex;
+    justify-content: space-around;
+    gap: var(--space-4);
+}
 
-    body.difficulty-easy {
-        background: linear-gradient(135deg, #56ab2f 0%, #a8e063 100%);
-    }
+.info-item {
+    text-align: center;
+    flex: 1;
+}
 
-    body.difficulty-medium {
-        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
-    }
+.info-label {
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
 
-    body.difficulty-hard {
-        background: linear-gradient(135deg, #eb3349 0%, #f45c43 100%);
-    }
+.info-value {
+    font-size: 2rem;
+    font-weight: 800;
+    color: var(--text-primary);
+}
 
-    .game-container {
-        max-width: 1200px;
-        margin: 0 auto;
-    }
+.info-value.timer { color: var(--primary-500); }
+.info-value.flags { color: var(--secondary-500); }
 
-    .game-header {
-        text-align: center;
-        color: white;
-        margin-bottom: 30px;
-    }
+.board-container {
+    overflow-x: auto;
+}
 
-    .game-header h1 {
-        font-size: 3rem;
-        font-weight: 900;
-        margin-bottom: 10px;
-        text-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
-    }
+.game-board {
+    display: inline-grid;
+    gap: 3px;
+    background: var(--bg-tertiary);
+    padding: 8px;
+    border-radius: var(--radius-lg);
+    margin: 0 auto;
+}
 
-    .info-panel {
-        background: rgba(255, 255, 255, 0.95);
-        backdrop-filter: blur(10px);
-        border-radius: 20px;
-        padding: 25px;
-        margin-bottom: 20px;
-        display: flex;
-        justify-content: space-around;
-        align-items: center;
-        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
-    }
+.cell {
+    width: 35px;
+    height: 35px;
+    background: linear-gradient(145deg, #e0e5ec, #f5f8fa);
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 800;
+    font-size: 1.05rem;
+    transition: var(--transition-all);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: var(--shadow-xs);
+}
 
-    .info-item {
-        text-align: center;
-        flex: 1;
-    }
+.cell:hover:not(.revealed):not(.flagged) {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+}
 
-    .info-label {
-        font-size: 0.85rem;
-        color: #6c757d;
-        text-transform: uppercase;
-        letter-spacing: 1px;
-        margin-bottom: 5px;
-    }
+.cell.revealed {
+    background: var(--surface-secondary);
+    box-shadow: var(--shadow-inner);
+    cursor: default;
+}
 
-    .info-value {
-        font-size: 2rem;
-        font-weight: 700;
-        color: #212529;
-    }
+.cell.flagged {
+    background: linear-gradient(135deg, var(--warning) 0%, var(--warning-dark) 100%);
+    color: var(--text-inverse);
+    font-size: 1.2rem;
+}
 
-    .info-value.timer {
-        color: #667eea;
-    }
+.cell.mine,
+.cell.mine-hit {
+    background: linear-gradient(135deg, var(--error) 0%, var(--error-dark) 100%);
+    color: var(--text-inverse);
+    font-size: 1.2rem;
+    animation: explode 0.5s ease;
+}
 
-    .info-value.flags {
-        color: #e74c3c;
-    }
+@keyframes explode {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.15); }
+}
 
-    .board-container {
-        background: rgba(255, 255, 255, 0.95);
-        backdrop-filter: blur(10px);
-        border-radius: 20px;
-        padding: 30px;
-        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
-        overflow-x: auto;
-        margin-bottom: 20px;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-    }
+.cell.number-1 { color: #3498db; }
+.cell.number-2 { color: #27ae60; }
+.cell.number-3 { color: #e74c3c; }
+.cell.number-4 { color: #8e44ad; }
+.cell.number-5 { color: #d35400; }
+.cell.number-6 { color: #16a085; }
+.cell.number-7 { color: #2c3e50; }
+.cell.number-8 { color: #95a5a6; }
 
-    .game-board {
-        display: inline-grid;
-        gap: 3px;
-        background: #bdc3c7;
-        padding: 5px;
-        border-radius: 8px;
-        margin: 0 auto;
-    }
+.game-over-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.75);
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+}
 
-    .cell {
-        width: 35px;
-        height: 35px;
-        background: linear-gradient(145deg, #e0e5ec, #f5f8fa);
-        border: none;
-        border-radius: 4px;
-        cursor: pointer;
-        font-weight: 700;
-        font-size: 1.1rem;
-        transition: all 0.1s ease;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-    }
+.game-over-overlay.show {
+    display: flex;
+}
 
-    .cell:hover:not(.revealed):not(.flagged) {
-        background: linear-gradient(145deg, #d0d5dc, #e5e8ea);
-        transform: scale(1.05);
-    }
+.game-over-message {
+    background: var(--surface-primary);
+    border-radius: var(--radius-2xl);
+    padding: var(--space-6);
+    text-align: center;
+    max-width: 520px;
+    box-shadow: var(--shadow-3xl);
+    animation: fadeInUp 0.4s var(--ease-smooth);
+}
 
-    .cell.revealed {
-        background: #ecf0f1;
-        box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
-        cursor: default;
-    }
+.button-group {
+    display: flex;
+    gap: var(--space-3);
+    justify-content: center;
+}
 
-    .cell.flagged {
-        background: linear-gradient(145deg, #f39c12, #f1c40f);
-        color: white;
-        font-size: 1.3rem;
-    }
-
-    .cell.mine {
-        background: linear-gradient(145deg, #e74c3c, #c0392b);
-        color: white;
-        font-size: 1.3rem;
-    }
-
-    .cell.mine-hit {
-        background: linear-gradient(145deg, #e74c3c, #c0392b);
-        animation: explode 0.5s ease;
-    }
-
-    @keyframes explode {
-        0%, 100% { transform: scale(1); }
-        50% { transform: scale(1.3); }
-    }
-
-    .cell.number-1 { color: #3498db; }
-    .cell.number-2 { color: #27ae60; }
-    .cell.number-3 { color: #e74c3c; }
-    .cell.number-4 { color: #8e44ad; }
-    .cell.number-5 { color: #d35400; }
-    .cell.number-6 { color: #16a085; }
-    .cell.number-7 { color: #2c3e50; }
-    .cell.number-8 { color: #95a5a6; }
-
-    .game-over-overlay {
-        display: none;
-        position: fixed;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background: rgba(0, 0, 0, 0.8);
-        z-index: 1000;
-        align-items: center;
-        justify-content: center;
-    }
-
-    .game-over-overlay.show {
-        display: flex;
-    }
-
-    .game-over-message {
-        background: white;
-        border-radius: 24px;
-        padding: 50px;
-        text-align: center;
-        max-width: 500px;
-        animation: slideIn 0.5s ease;
-    }
-
-    @keyframes slideIn {
-        from {
-            transform: translateY(-50px);
-            opacity: 0;
-        }
-        to {
-            transform: translateY(0);
-            opacity: 1;
-        }
-    }
-
-    .game-over-icon {
-        font-size: 5rem;
-        margin-bottom: 20px;
-    }
-
-    .game-over-title {
-        font-size: 2.5rem;
-        font-weight: 900;
-        margin-bottom: 15px;
-        color: #212529;
-    }
-
-    .game-over-text {
-        font-size: 1.2rem;
-        color: #6c757d;
-        margin-bottom: 30px;
-    }
-
-    .button-group {
-        display: flex;
-        gap: 15px;
-        justify-content: center;
-    }
-
-    .btn-game {
-        padding: 15px 30px;
-        border: none;
-        border-radius: 12px;
-        font-size: 1rem;
-        font-weight: 600;
-        cursor: pointer;
-        transition: all 0.3s ease;
-        text-decoration: none;
-        display: inline-block;
-    }
-
-    .btn-primary {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
-    }
-
-    .btn-primary:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4);
-        color: white;
-    }
-
-    .btn-secondary {
-        background: #e9ecef;
-        color: #495057;
-    }
-
-    .btn-secondary:hover {
-        background: #dee2e6;
-        color: #212529;
-    }
-
-    .controls {
-        text-align: center;
-        margin-top: 20px;
-    }
-
-    @media (max-width: 768px) {
-        .cell {
-            width: 28px;
-            height: 28px;
-            font-size: 0.9rem;
-        }
-
-        .game-header h1 {
-            font-size: 2rem;
-        }
-
-        .info-value {
-            font-size: 1.5rem;
-        }
-
-        .board-container {
-            padding: 15px;
-        }
-    }
+@media (max-width: 768px) {
+    .cell { width: 30px; height: 30px; font-size: 0.95rem; }
+    .info-value { font-size: 1.6rem; }
+}
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="game-container">
-    <div class="game-header">
-        <h1>💣 지뢰찾기</h1>
-        <p>{{ game.get_difficulty_display }}</p>
+<section class="game-hero mesh-gradient-animated ms-hero fade-in-up">
+    <div class="hero-content container">
+        <p class="text-inverse mb-2 text-uppercase" style="letter-spacing: 0.1em;">Minesweeper</p>
+        <h1 class="hero-title">💣 지뢰찾기</h1>
+        <p class="hero-subtitle">{{ game.get_difficulty_display }}</p>
+    </div>
+</section>
+
+<div class="container my-4">
+    <div class="card card-lift card-glow surface mb-4 fade-in-up">
+        <div class="card-body info-panel">
+            <div class="info-item">
+                <div class="info-label">시간</div>
+                <div class="info-value timer" id="timer">0</div>
+            </div>
+            <div class="info-item">
+                <div class="info-label">지뢰</div>
+                <div class="info-value">{{ game.mines_count }}</div>
+            </div>
+            <div class="info-item">
+                <div class="info-label">플래그</div>
+                <div class="info-value flags" id="flags-count">0</div>
+            </div>
+        </div>
     </div>
 
-    <div class="info-panel">
-        <div class="info-item">
-            <div class="info-label">시간</div>
-            <div class="info-value timer" id="timer">0</div>
-        </div>
-        <div class="info-item">
-            <div class="info-label">지뢰</div>
-            <div class="info-value">{{ game.mines_count }}</div>
-        </div>
-        <div class="info-item">
-            <div class="info-label">플래그</div>
-            <div class="info-value flags" id="flags-count">0</div>
+    <div class="card card-lift card-glow surface mb-4 fade-in-up">
+        <div class="card-body board-container">
+            <div class="game-board" id="game-board" style="grid-template-columns: repeat({{ game.cols }}, 35px);">
+                <!-- JavaScript will populate the board -->
+            </div>
         </div>
     </div>
 
-    <div class="board-container">
-        <div class="game-board" id="game-board" style="grid-template-columns: repeat({{ game.cols }}, 35px);">
-            <!-- JavaScript will populate the board -->
-        </div>
-    </div>
-
-    <div class="controls">
-        <a href="{% url 'pybo:minesweeper_start' %}" class="btn-game btn-secondary">
+    <div class="d-flex gap-2 justify-content-center fade-in-up">
+        <a href="{% url 'pybo:minesweeper_start' %}" class="btn btn-outline-secondary btn-ripple">
             <i class="fas fa-arrow-left me-2"></i>새 게임
         </a>
-        <a href="{% url 'pybo:index' %}" class="btn-game btn-secondary">
-            <i class="fas fa-home me-2"></i>홈으로 돌아가기
+        <a href="{% url 'pybo:minesweeper_leaderboard' %}?difficulty={{ game.difficulty }}" class="btn btn-primary btn-ripple">
+            <i class="fas fa-trophy me-2"></i>리더보드
+        </a>
+        <a href="{% url 'pybo:index' %}" class="btn btn-outline-secondary btn-ripple">
+            <i class="fas fa-home me-2"></i>홈으로
         </a>
     </div>
 </div>
@@ -332,10 +195,10 @@
         <div class="game-over-title" id="game-over-title">ㅅㅅㅅㅅㅅㅅㅅㅅㅅㅅ!!!</div>
         <div class="game-over-text" id="game-over-text">축하합니다!</div>
         <div class="button-group">
-            <a href="{% url 'pybo:minesweeper_start' %}" class="btn-game btn-primary">
+            <a href="{% url 'pybo:minesweeper_start' %}" class="btn btn-primary btn-ripple">
                 <i class="fas fa-redo me-2"></i>다시 하기
             </a>
-            <a href="{% url 'pybo:index' %}" class="btn-game btn-secondary">
+            <a href="{% url 'pybo:index' %}" class="btn btn-outline-secondary btn-ripple">
                 <i class="fas fa-home me-2"></i>홈으로 돌아가기
             </a>
         </div>

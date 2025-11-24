@@ -9,6 +9,8 @@ from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
 from django.utils import timezone
 from django.core.serializers.json import DjangoJSONEncoder
+from django.db.models import Count, Avg, Min, Q
+from django.contrib.auth.models import User
 import json
 import random
 import logging
@@ -90,6 +92,106 @@ def minesweeper_play(request, game_id):
         'game': game,
     }
     return render(request, 'pybo/minesweeper_play.html', context)
+
+
+def _format_time(seconds):
+    """초 단위를 mm:ss 문자열로 변환"""
+    if seconds is None:
+        return "-"
+    try:
+        total = int(seconds)
+    except (TypeError, ValueError):
+        return "-"
+    minutes, secs = divmod(total, 60)
+    return f"{minutes:02d}:{secs:02d}"
+
+
+def minesweeper_leaderboard(request):
+    """
+    지뢰찾기 리더보드
+
+    난이도별로 최고 기록과 신뢰도 지표(승률, 평균/최고 시간, 지뢰 클릭 수)를 보여줍니다.
+    """
+    difficulty = request.GET.get('difficulty', 'easy')
+    if difficulty not in ['easy', 'medium', 'hard']:
+        difficulty = 'easy'
+
+    qs = MinesweeperGame.objects.filter(difficulty=difficulty)
+    total_games = qs.count()
+    wins_qs = qs.filter(status='won')
+    losses_qs = qs.filter(status='lost')
+
+    # 사용자별 집계 (승리 경험이 있는 사용자만 랭킹에 포함)
+    stats_qs = qs.values('player').annotate(
+        total_games=Count('id'),
+        wins=Count('id', filter=Q(status='won')),
+        losses=Count('id', filter=Q(status='lost')),
+        best_time=Min('time_elapsed', filter=Q(status='won')),
+        avg_time=Avg('time_elapsed', filter=Q(status='won')),
+    ).filter(wins__gt=0)
+
+    # 사용자 객체 한번에 로드
+    user_ids = [entry['player'] for entry in stats_qs]
+    users = {u.id: u for u in User.objects.select_related('profile').filter(id__in=user_ids)}
+
+    leaderboard = []
+    for entry in stats_qs:
+        user = users.get(entry['player'])
+        if not user:
+            continue
+
+        total = entry['total_games'] or 0
+        wins = entry['wins'] or 0
+        losses = entry['losses'] or 0
+        win_rate = (wins / total * 100) if total else 0
+
+        try:
+            display_name = user.profile.display_name
+            profile_image = user.profile.profile_image.url if user.profile.profile_image else None
+        except Exception:
+            display_name = user.username
+            profile_image = None
+
+        leaderboard.append({
+            'user': user,
+            'display_name': display_name,
+            'profile_image': profile_image,
+            'best_time': entry['best_time'],
+            'best_time_display': _format_time(entry['best_time']),
+            'avg_time': entry['avg_time'],
+            'avg_time_display': _format_time(entry['avg_time']),
+            'total_games': total,
+            'wins': wins,
+            'losses': losses,
+            'win_rate': round(win_rate, 1),
+            'mine_clicks': losses,  # 패배 횟수를 지뢰 클릭 수로 간주
+        })
+
+    # 정렬: 최고 기록 빠른 순 → 승률 높은 순 → 지뢰 클릭(패배) 적은 순
+    leaderboard.sort(key=lambda x: (
+        x['best_time'] if x['best_time'] is not None else 999999,
+        -x['win_rate'],
+        x['mine_clicks'],
+    ))
+
+    for idx, item in enumerate(leaderboard, start=1):
+        item['rank'] = idx
+
+    context = {
+        'difficulty': difficulty,
+        'leaderboard': leaderboard[:100],
+        'total_players': len(leaderboard),
+        'summary': {
+            'total_games': total_games,
+            'wins': wins_qs.count(),
+            'losses': losses_qs.count(),
+            'mine_clicks_total': losses_qs.count(),
+            'best_overall': _format_time(wins_qs.aggregate(best=Min('time_elapsed'))['best']),
+            'avg_overall': _format_time(wins_qs.aggregate(avg=Avg('time_elapsed'))['avg']),
+        }
+    }
+
+    return render(request, 'pybo/minesweeper_leaderboard.html', context)
 
 
 @login_required

@@ -12,8 +12,17 @@ import mimetypes
 
 from ..models import Question, Answer, Comment, Category
 
+DEFAULT_CATEGORIES = ['HRD', '데이터분석', '프로그래밍', '자유게시판', '앨범', '공지사항', '문의']
+
+
+def ensure_default_categories():
+    """필수 카테고리가 없으면 생성"""
+    for name in DEFAULT_CATEGORIES:
+        Category.objects.get_or_create(name=name, defaults={'description': name})
+
 def index(request):
     """메인 질문 목록 페이지 - 검색, 카테고리 필터링, 페이징 기능"""
+    ensure_default_categories()
     try:
         page = int(request.GET.get('page', '1'))
     except (ValueError, TypeError):
@@ -93,6 +102,13 @@ def detail(request, question_id):
         from django.shortcuts import redirect
         messages.error(request, '회원 전용 글입니다. 로그인 후 이용해주세요.')
         return redirect('common:login')
+
+    # 문의 게시판은 관리자/작성자만 열람 가능
+    if question.category and question.category.name == '문의':
+        if not (request.user.is_staff or request.user == question.author):
+            from django.contrib import messages
+            messages.error(request, '문의글은 관리자만 확인할 수 있습니다.')
+            return redirect('pybo:index')
 
     # 조회수 중복 방지 (5분)
     session_key = f'viewed_question_{question_id}'

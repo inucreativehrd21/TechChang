@@ -366,6 +366,15 @@
 <div class="game-container">
     <div class="game-header">
         <h1>⚾ 숫자야구!</h1>
+        {% if game.difficulty == 'hard' %}
+        <div style="margin: 10px 0;">
+            <span style="background: linear-gradient(135deg, #eb3349 0%, #f45c43 100%); color: white; padding: 10px 20px; border-radius: 16px; font-size: 1.2rem; font-weight: 700; display: inline-block;">🔥 HARD MODE</span>
+        </div>
+        {% else %}
+        <div style="margin: 10px 0;">
+            <span style="background: linear-gradient(135deg, #56ab2f 0%, #a8e063 100%); color: white; padding: 10px 20px; border-radius: 16px; font-size: 1.2rem; font-weight: 700; display: inline-block;">😊 NORMAL MODE</span>
+        </div>
+        {% endif %}
         <p class="subtitle">4자리 숫자를 맞춰보세요!</p>
     </div>
 

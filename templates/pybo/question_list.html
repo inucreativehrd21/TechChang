@@ -16,26 +16,12 @@
                        class="list-group-item list-group-item-action {% if not category %}active{% endif %}">
                         <i class="fas fa-list me-2"></i>전체 {% if not category %}({{ total_count }}){% endif %}
                     </a>
-                    <a href="?category=HRD&sort={{ sort }}&kw={{ kw }}&page=1" 
-                       class="list-group-item list-group-item-action {% if category == 'HRD' %}active{% endif %}">
-                        <i class="fas fa-users me-2"></i>HRD {% if category == 'HRD' %}({{ category_counts.HRD }}){% endif %}
+                    {% for cat in categories %}
+                    <a href="?category={{ cat.name }}&sort={{ sort }}&kw={{ kw }}&page=1" 
+                       class="list-group-item list-group-item-action {% if category == cat.name %}active{% endif %}">
+                        <i class="fas fa-tag me-2"></i>{{ cat.name }} {% if category == cat.name %}({{ category_counts|get_item:cat.name }}){% endif %}
                     </a>
-                    <a href="?category=데이터분석&sort={{ sort }}&kw={{ kw }}&page=1" 
-                       class="list-group-item list-group-item-action {% if category == '데이터분석' %}active{% endif %}">
-                        <i class="fas fa-chart-bar me-2"></i>데이터분석 {% if category == '데이터분석' %}({{ category_counts.데이터분석 }}){% endif %}
-                    </a>
-                    <a href="?category=프로그래밍&sort={{ sort }}&kw={{ kw }}&page=1" 
-                       class="list-group-item list-group-item-action {% if category == '프로그래밍' %}active{% endif %}">
-                        <i class="fas fa-code me-2"></i>프로그래밍 {% if category == '프로그래밍' %}({{ category_counts.프로그래밍 }}){% endif %}
-                    </a>
-                    <a href="?category=자유게시판&sort={{ sort }}&kw={{ kw }}&page=1" 
-                       class="list-group-item list-group-item-action {% if category == '자유게시판' %}active{% endif %}">
-                        <i class="fas fa-comments me-2"></i>자유게시판 {% if category == '자유게시판' %}({{ category_counts.자유게시판 }}){% endif %}
-                    </a>
-                    <a href="?category=앨범&sort={{ sort }}&kw={{ kw }}&page=1" 
-                       class="list-group-item list-group-item-action {% if category == '앨범' %}active{% endif %}">
-                        <i class="fas fa-images me-2"></i>앨범 {% if category == '앨범' %}({{ category_counts.앨범 }}){% endif %}
-                    </a>
+                    {% endfor %}
                 </div>
             </div>
             
@@ -46,26 +32,12 @@
                        class="mobile-category-btn btn btn-sm {% if not category %}btn-primary{% else %}btn-outline-primary{% endif %} flex-shrink-0">
                         전체
                     </a>
-                    <a href="?category=HRD&sort={{ sort }}&kw={{ kw }}&page=1" 
-                       class="mobile-category-btn btn btn-sm {% if category == 'HRD' %}btn-primary{% else %}btn-outline-primary{% endif %} flex-shrink-0">
-                        HRD
+                    {% for cat in categories %}
+                    <a href="?category={{ cat.name }}&sort={{ sort }}&kw={{ kw }}&page=1" 
+                       class="mobile-category-btn btn btn-sm {% if category == cat.name %}btn-primary{% else %}btn-outline-primary{% endif %} flex-shrink-0">
+                        {{ cat.name }}
                     </a>
-                    <a href="?category=데이터분석&sort={{ sort }}&kw={{ kw }}&page=1" 
-                       class="mobile-category-btn btn btn-sm {% if category == '데이터분석' %}btn-primary{% else %}btn-outline-primary{% endif %} flex-shrink-0">
-                        데이터분석
-                    </a>
-                    <a href="?category=프로그래밍&sort={{ sort }}&kw={{ kw }}&page=1" 
-                       class="mobile-category-btn btn btn-sm {% if category == '프로그래밍' %}btn-primary{% else %}btn-outline-primary{% endif %} flex-shrink-0">
-                        프로그래밍
-                    </a>
-                    <a href="?category=자유게시판&sort={{ sort }}&kw={{ kw }}&page=1" 
-                       class="mobile-category-btn btn btn-sm {% if category == '자유게시판' %}btn-primary{% else %}btn-outline-primary{% endif %} flex-shrink-0">
-                        자유게시판
-                    </a>
-                    <a href="?category=앨범&sort={{ sort }}&kw={{ kw }}&page=1" 
-                       class="mobile-category-btn btn btn-sm {% if category == '앨범' %}btn-primary{% else %}btn-outline-primary{% endif %} flex-shrink-0">
-                        앨범
-                    </a>
+                    {% endfor %}
                 </div>
             </div>
         </div>
@@ -151,15 +123,30 @@
                                         {{ question_list.paginator.count|sub:question_list.start_index|sub:forloop.counter0|add:1 }}
                                     </td>
                                     <td>
+                                        {% with is_inquiry=question.category.name == "문의" %}
                                         <a href="{% url 'pybo:detail' question.id %}" class="text-decoration-none">
-                                            {% if question.is_locked %}<i class="fas fa-lock text-warning me-1"></i>{% endif %}{{ question.subject }}
+                                            {% if question.is_locked %}<i class="fas fa-lock text-warning me-1"></i>{% endif %}
+                                            {% if is_inquiry and not user.is_staff and user != question.author %}
+                                                문의 드립니다.
+                                            {% else %}
+                                                {{ question.subject }}
+                                            {% endif %}
                                         </a>
+                                        {% endwith %}
                                         {% if question.answer_set.count > 0 %}
                                         <span class="text-danger small ms-2">[{{ question.answer_set.count }}]</span>
                                         {% endif %}
                                     </td>
                                     <td class="text-center">
-                                        <small>{% if question.author.profile.nickname %}{{ question.author.profile.nickname }}{% else %}{{ question.author.username }}{% endif %}</small>
+                                        {% with is_inquiry=question.category.name == "문의" %}
+                                        <small>
+                                            {% if is_inquiry and not user.is_staff and user != question.author %}
+                                                사용자
+                                            {% else %}
+                                                {% if question.author.profile.nickname %}{{ question.author.profile.nickname }}{% else %}{{ question.author.username }}{% endif %}
+                                            {% endif %}
+                                        </small>
+                                        {% endwith %}
                                     </td>
                                     <td class="text-center">
                                         <small>{{ question.create_date|date:"m-d H:i" }}</small>
@@ -192,13 +179,26 @@
                                 <div class="flex-grow-1 me-3">
                                     <h6 class="mobile-post-title">
                                         <a href="{% url 'pybo:detail' question.id %}">
-                                            {% if question.is_locked %}<i class="fas fa-lock text-warning me-1"></i>{% endif %}{{ question.subject }}
+                                            {% with is_inquiry=question.category.name == "문의" %}
+                                                {% if question.is_locked %}<i class="fas fa-lock text-warning me-1"></i>{% endif %}
+                                                {% if is_inquiry and not user.is_staff and user != question.author %}
+                                                    문의 드립니다.
+                                                {% else %}
+                                                    {{ question.subject }}
+                                                {% endif %}
+                                            {% endwith %}
                                         </a>
                                     </h6>
                                     <div class="mobile-post-meta">
                                         <span>
                                             <i class="fas fa-user"></i>
-                                            {% if question.author.profile.nickname %}{{ question.author.profile.nickname }}{% else %}{{ question.author.username }}{% endif %}
+                                            {% with is_inquiry=question.category.name == "문의" %}
+                                                {% if is_inquiry and not user.is_staff and user != question.author %}
+                                                    사용자
+                                                {% else %}
+                                                    {% if question.author.profile.nickname %}{{ question.author.profile.nickname }}{% else %}{{ question.author.username }}{% endif %}
+                                                {% endif %}
+                                            {% endwith %}
                                         </span>
                                         <span>
                                             <i class="fas fa-clock"></i>

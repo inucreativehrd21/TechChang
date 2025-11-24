@@ -43,13 +43,15 @@ def baseball_create(request):
     """
     difficulty = request.GET.get('difficulty', 'normal')
 
-    # 진행중인 게임이 있으면 그걸로 이동
+    # 진행중인 게임이 있으면 그걸로 이동 (같은 난이도만)
     existing_game = NumberBaseballGame.objects.filter(
         player=request.user,
-        status='playing'
+        status='playing',
+        difficulty=difficulty  # 같은 난이도의 게임만
     ).first()
 
     if existing_game:
+        logger.info(f"User {request.user.username} resuming existing baseball game {existing_game.id} - difficulty: {difficulty}")
         return redirect('pybo:baseball_play', game_id=existing_game.id)
 
     # 난이도별 설정

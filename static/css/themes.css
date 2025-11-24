@@ -1,0 +1,344 @@
+/**
+ * 테크창 테마 시스템
+ *
+ * 라이트 모드와 다크 모드를 지원하는 테마 시스템
+ * 동적으로 테마를 전환할 수 있습니다
+ */
+
+/* ==========================================
+   라이트 모드 (기본)
+   ========================================== */
+
+:root,
+.theme-light {
+  /* Background Colors */
+  --bg-primary: #ffffff;
+  --bg-secondary: #f9fafb;
+  --bg-tertiary: #f3f4f6;
+  --bg-hover: #f5f5f5;
+  --bg-active: #eeeeee;
+
+  /* Text Colors */
+  --text-primary: #111827;
+  --text-secondary: #6b7280;
+  --text-tertiary: #9ca3af;
+  --text-inverse: #ffffff;
+  --text-link: var(--primary-600);
+  --text-link-hover: var(--primary-700);
+
+  /* Border Colors */
+  --border-primary: #e5e7eb;
+  --border-secondary: #d1d5db;
+  --border-focus: var(--primary-500);
+
+  /* Surface Colors - 카드, 패널 등 */
+  --surface-primary: #ffffff;
+  --surface-secondary: rgba(255, 255, 255, 0.8);
+  --surface-elevated: #ffffff;
+  --surface-overlay: rgba(0, 0, 0, 0.5);
+
+  /* Semantic Colors */
+  --success-bg: #d1fae5;
+  --success-text: #065f46;
+  --success-border: #10b981;
+
+  --warning-bg: #fef3c7;
+  --warning-text: #92400e;
+  --warning-border: #f59e0b;
+
+  --error-bg: #fee2e2;
+  --error-text: #991b1b;
+  --error-border: #ef4444;
+
+  --info-bg: #dbeafe;
+  --info-text: #1e40af;
+  --info-border: #3b82f6;
+
+  /* Gradients */
+  --gradient-bg: linear-gradient(135deg, #fafafa 0%, #f5f5f5 100%);
+  --gradient-surface: linear-gradient(145deg, #ffffff 0%, #fafafa 100%);
+}
+
+/* ==========================================
+   다크 모드
+   ========================================== */
+
+.theme-dark {
+  /* Background Colors */
+  --bg-primary: #0a0a0a;
+  --bg-secondary: #1a1a1a;
+  --bg-tertiary: #2a2a2a;
+  --bg-hover: #333333;
+  --bg-active: #3d3d3d;
+
+  /* Text Colors */
+  --text-primary: #f9fafb;
+  --text-secondary: #d1d5db;
+  --text-tertiary: #9ca3af;
+  --text-inverse: #111827;
+  --text-link: var(--primary-400);
+  --text-link-hover: var(--primary-300);
+
+  /* Border Colors */
+  --border-primary: #2a2a2a;
+  --border-secondary: #3a3a3a;
+  --border-focus: var(--primary-400);
+
+  /* Surface Colors */
+  --surface-primary: #16213e;
+  --surface-secondary: rgba(30, 39, 51, 0.8);
+  --surface-elevated: #1e3a5f;
+  --surface-overlay: rgba(0, 0, 0, 0.7);
+
+  /* Semantic Colors - 다크 모드에서는 더 부드러운 색상 */
+  --success-bg: rgba(16, 185, 129, 0.15);
+  --success-text: #6ee7b7;
+  --success-border: #10b981;
+
+  --warning-bg: rgba(245, 158, 11, 0.15);
+  --warning-text: #fbbf24;
+  --warning-border: #f59e0b;
+
+  --error-bg: rgba(239, 68, 68, 0.15);
+  --error-text: #fca5a5;
+  --error-border: #ef4444;
+
+  --info-bg: rgba(59, 130, 246, 0.15);
+  --info-text: #93c5fd;
+  --info-border: #3b82f6;
+
+  /* Gradients */
+  --gradient-bg: linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 100%);
+  --gradient-surface: linear-gradient(145deg, #16213e 0%, #1e273e 100%);
+
+  /* Shadows - 다크 모드에서는 더 강한 그림자 */
+  --shadow-xs: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
+  --shadow-sm: 0 1px 3px 0 rgba(0, 0, 0, 0.4), 0 1px 2px 0 rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4), 0 2px 4px -1px rgba(0, 0, 0, 0.3);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.5), 0 4px 6px -2px rgba(0, 0, 0, 0.3);
+  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.6), 0 10px 10px -5px rgba(0, 0, 0, 0.2);
+  --shadow-2xl: 0 25px 50px -12px rgba(0, 0, 0, 0.7);
+  --shadow-3xl: 0 35px 60px -15px rgba(0, 0, 0, 0.8);
+  --shadow-4xl: 0 50px 100px -20px rgba(0, 0, 0, 0.9);
+}
+
+/* ==========================================
+   테마 전환 애니메이션
+   ========================================== */
+
+/* 부드러운 테마 전환 */
+* {
+  transition:
+    background-color 0.35s ease,
+    color 0.35s ease,
+    border-color 0.35s ease;
+}
+
+/* 애니메이션에서 제외할 요소들 */
+*,
+*::before,
+*::after {
+  transition-property: none;
+}
+
+/* 전환이 필요한 속성만 선택적으로 적용 */
+body,
+.theme-transition {
+  transition:
+    background-color 0.35s ease,
+    color 0.35s ease;
+}
+
+/* ==========================================
+   테마 적용 유틸리티 클래스
+   ========================================== */
+
+/* Background */
+.bg-primary {
+  background-color: var(--bg-primary);
+}
+
+.bg-secondary {
+  background-color: var(--bg-secondary);
+}
+
+.bg-tertiary {
+  background-color: var(--bg-tertiary);
+}
+
+/* Text */
+.text-primary {
+  color: var(--text-primary);
+}
+
+.text-secondary {
+  color: var(--text-secondary);
+}
+
+.text-tertiary {
+  color: var(--text-tertiary);
+}
+
+.text-inverse {
+  color: var(--text-inverse);
+}
+
+/* Border */
+.border-primary {
+  border-color: var(--border-primary);
+}
+
+.border-secondary {
+  border-color: var(--border-secondary);
+}
+
+/* Surface */
+.surface {
+  background-color: var(--surface-primary);
+  border: 1px solid var(--border-primary);
+  box-shadow: var(--shadow-sm);
+}
+
+.surface-elevated {
+  background-color: var(--surface-elevated);
+  border: 1px solid var(--border-primary);
+  box-shadow: var(--shadow-md);
+}
+
+/* ==========================================
+   다크 모드 자동 감지
+   ========================================== */
+
+/* 시스템 테마 자동 감지 (선호도) */
+@media (prefers-color-scheme: dark) {
+  :root:not(.theme-light):not(.theme-dark) {
+    /* Background Colors */
+    --bg-primary: #0a0a0a;
+    --bg-secondary: #1a1a1a;
+    --bg-tertiary: #2a2a2a;
+
+    /* Text Colors */
+    --text-primary: #f9fafb;
+    --text-secondary: #d1d5db;
+    --text-tertiary: #9ca3af;
+
+    /* Border Colors */
+    --border-primary: #2a2a2a;
+    --border-secondary: #3a3a3a;
+  }
+}
+
+/* ==========================================
+   테마 토글 버튼 스타일
+   ========================================== */
+
+.theme-toggle {
+  position: fixed;
+  bottom: var(--space-6);
+  right: var(--space-6);
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: var(--surface-elevated);
+  border: 1px solid var(--border-primary);
+  box-shadow: var(--shadow-lg);
+  cursor: pointer;
+  z-index: var(--z-fixed);
+  transition: var(--transition-all);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.theme-toggle:hover {
+  transform: translateY(-2px) rotate(15deg);
+  box-shadow: var(--shadow-xl);
+}
+
+.theme-toggle:active {
+  transform: translateY(0) rotate(0deg);
+}
+
+/* 아이콘 전환 */
+.theme-toggle .icon-light,
+.theme-toggle .icon-dark {
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+.theme-light .theme-toggle .icon-light {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.theme-light .theme-toggle .icon-dark {
+  opacity: 0;
+  transform: scale(0);
+  position: absolute;
+}
+
+.theme-dark .theme-toggle .icon-light {
+  opacity: 0;
+  transform: scale(0);
+  position: absolute;
+}
+
+.theme-dark .theme-toggle .icon-dark {
+  opacity: 1;
+  transform: scale(1);
+}
+
+/* ==========================================
+   커스텀 테마 (확장 가능)
+   ========================================== */
+
+/* 예시: 고대비 테마 */
+.theme-high-contrast {
+  --bg-primary: #000000;
+  --bg-secondary: #111111;
+  --text-primary: #ffffff;
+  --text-secondary: #eeeeee;
+  --border-primary: #ffffff;
+}
+
+/* 예시: 세피아 테마 */
+.theme-sepia {
+  --bg-primary: #f4ecd8;
+  --bg-secondary: #e8dcc4;
+  --text-primary: #5c4a2b;
+  --text-secondary: #8b7355;
+  --border-primary: #d4c4a8;
+}
+
+/* ==========================================
+   인쇄 스타일
+   ========================================== */
+
+@media print {
+  * {
+    background: white !important;
+    color: black !important;
+    box-shadow: none !important;
+    text-shadow: none !important;
+  }
+
+  .theme-toggle,
+  .navbar,
+  button,
+  .no-print {
+    display: none !important;
+  }
+}
+
+/* ==========================================
+   모션 감소 선호 (접근성)
+   ========================================== */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

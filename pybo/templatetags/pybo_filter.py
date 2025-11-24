@@ -14,3 +14,12 @@ def sub(value, arg):
 def mark(value):
     extensions = ["nl2br", "fenced_code"]
     return mark_safe(markdown.markdown(value, extensions=extensions))
+
+
+@register.filter
+def get_item(dictionary, key):
+    """딕셔너리에서 키로 값 조회 (없으면 0 반환)"""
+    try:
+        return dictionary.get(key, 0)
+    except Exception:
+        return 0

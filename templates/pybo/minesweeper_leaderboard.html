@@ -1,0 +1,130 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}지뢰찾기 리더보드{% endblock %}
+
+{% block extra_css %}{% endblock %}
+
+{% block content %}
+<section class="game-hero mesh-gradient-animated fade-in-up">
+    <div class="hero-content container">
+        <p class="text-inverse mb-2 text-uppercase" style="letter-spacing: 0.1em;">Minesweeper Elite</p>
+        <h1 class="hero-title">지뢰찾기 리더보드</h1>
+        <p class="hero-subtitle">시간과 정확도로 증명하는 실력. 지뢰 클릭 수까지 투명하게 공개합니다.</p>
+    </div>
+</section>
+
+<div class="container my-5">
+    <!-- Difficulty Tabs -->
+    <div class="d-flex justify-content-center gap-3 mb-4">
+        <a href="{% url 'pybo:minesweeper_leaderboard' %}?difficulty=easy"
+           class="btn {% if difficulty == 'easy' %}btn-primary{% else %}btn-outline-secondary{% endif %} btn-ripple">
+            쉬움 (9x9, 10)
+        </a>
+        <a href="{% url 'pybo:minesweeper_leaderboard' %}?difficulty=medium"
+           class="btn {% if difficulty == 'medium' %}btn-primary{% else %}btn-outline-secondary{% endif %} btn-ripple">
+            보통 (16x16, 40)
+        </a>
+        <a href="{% url 'pybo:minesweeper_leaderboard' %}?difficulty=hard"
+           class="btn {% if difficulty == 'hard' %}btn-primary{% else %}btn-outline-secondary{% endif %} btn-ripple">
+            어려움 (16x30, 99)
+        </a>
+    </div>
+
+    <!-- Summary Cards -->
+    <div class="row g-4 mb-5">
+        <div class="col-md-3">
+            <div class="card card-lift card-glow fade-in-up animate-delay-100 surface">
+                <div class="card-body">
+                    <p class="text-secondary text-uppercase mb-1" style="letter-spacing: .08em;">총 플레이</p>
+                    <h3 class="mb-1">{{ summary.total_games|default:0 }}</h3>
+                    <small class="text-secondary">기록된 전체 게임 수</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card card-lift card-glow fade-in-up animate-delay-200 surface">
+                <div class="card-body">
+                    <p class="text-secondary text-uppercase mb-1" style="letter-spacing: .08em;">승리</p>
+                    <h3 class="mb-1">{{ summary.wins|default:0 }}</h3>
+                    <small class="text-secondary">성공적으로 클리어</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card card-lift card-glow fade-in-up animate-delay-300 surface">
+                <div class="card-body">
+                    <p class="text-secondary text-uppercase mb-1" style="letter-spacing: .08em;">지뢰 클릭</p>
+                    <h3 class="mb-1">{{ summary.mine_clicks_total|default:0 }}</h3>
+                    <small class="text-secondary">총 다리 날라간 횟수</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card card-lift card-glow fade-in-up animate-delay-400 surface">
+                <div class="card-body">
+                    <p class="text-secondary text-uppercase mb-1" style="letter-spacing: .08em;">베스트 / 평균</p>
+                    <h3 class="mb-1">{{ summary.best_overall }} / {{ summary.avg_overall }}</h3>
+                    <small class="text-secondary">승리 게임 기준</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Leaderboard -->
+    <div class="card card-glow fade-in-up">
+        <div class="card-header d-flex align-items-center justify-content-between">
+            <div>
+                <h4 class="mb-1">리더보드</h4>
+                <small class="text-secondary">상위 100명 · 난이도: {{ difficulty|capfirst }}</small>
+            </div>
+            <span class="badge bg-secondary">참여자 {{ total_players }}</span>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <div class="table">
+                    <div class="table-header d-none d-md-grid" style="grid-template-columns: 80px 1.5fr 1fr 1fr 1fr 1fr;">
+                        <div>순위</div>
+                        <div>플레이어</div>
+                        <div>베스트</div>
+                        <div>평균</div>
+                        <div>승률</div>
+                        <div>지뢰 클릭</div>
+                    </div>
+                    {% if leaderboard %}
+                        {% for row in leaderboard %}
+                        <div class="leaderboard-row d-grid align-items-center fade-in-up animate-delay-{{ forloop.counter0|add:'1' }}00"
+                             style="grid-template-columns: 80px 1.5fr 1fr 1fr 1fr 1fr;">
+                            <div class="rank {% if forloop.counter == 1 %}top-1{% elif forloop.counter == 2 %}top-2{% elif forloop.counter == 3 %}top-3{% endif %}">
+                                {{ row.rank }}
+                            </div>
+                            <div class="player-info">
+                                <div class="avatar-circle">
+                                    {% if row.profile_image %}
+                                        <img src="{{ row.profile_image }}" alt="{{ row.display_name }}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">
+                                    {% else %}
+                                        {{ row.display_name|slice:":2" }}
+                                    {% endif %}
+                                </div>
+                                <div>
+                                    <div class="fw-bold">{{ row.display_name }}</div>
+                                    <small class="text-secondary">총 {{ row.total_games }}회 · 승 {{ row.wins }} · 패 {{ row.losses }}</small>
+                                </div>
+                            </div>
+                            <div><span class="badge bg-success">{{ row.best_time_display }}</span></div>
+                            <div><span class="badge bg-info text-dark">{{ row.avg_time_display }}</span></div>
+                            <div><span class="badge bg-primary">{{ row.win_rate }}%</span></div>
+                            <div><span class="badge bg-danger">{{ row.mine_clicks }}</span></div>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <div class="p-4 text-center text-secondary">
+                            아직 기록이 없습니다. 첫 번째 기록의 주인이 되어보세요!
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -3,151 +3,17 @@
 
 {% block title %}숫자야구{% endblock %}
 
-{% block extra_css %}
-<style>
-    * {
-        margin: 0;
-        padding: 0;
-        box-sizing: border-box;
-    }
-
-    body {
-        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
-        min-height: 100vh;
-        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        padding: 20px;
-    }
-
-    .container {
-        max-width: 600px;
-        width: 100%;
-    }
-
-    .game-card {
-        background: rgba(255, 255, 255, 0.95);
-        backdrop-filter: blur(10px);
-        border-radius: 24px;
-        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-        padding: 50px;
-        text-align: center;
-    }
-
-    h1 {
-        font-size: 3rem;
-        font-weight: 900;
-        margin-bottom: 10px;
-        background: linear-gradient(135deg, #f093fb, #f5576c);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        background-clip: text;
-    }
-
-    .subtitle {
-        color: #6c757d;
-        font-size: 1.1rem;
-        margin-bottom: 40px;
-    }
-
-    .difficulty-grid {
-        display: grid;
-        gap: 20px;
-        margin-bottom: 30px;
-    }
-
-    .difficulty-card {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        border: none;
-        border-radius: 16px;
-        padding: 30px;
-        color: white;
-        cursor: pointer;
-        transition: all 0.3s ease;
-        text-decoration: none;
-        display: block;
-    }
-
-    .difficulty-card:hover {
-        transform: translateY(-5px);
-        box-shadow: 0 15px 40px rgba(102, 126, 234, 0.4);
-    }
-
-    .difficulty-card.normal {
-        background: linear-gradient(135deg, #56ab2f 0%, #a8e063 100%);
-    }
-
-    .difficulty-card.hard {
-        background: linear-gradient(135deg, #eb3349 0%, #f45c43 100%);
-    }
-
-    .difficulty-icon {
-        font-size: 3rem;
-        margin-bottom: 15px;
-    }
-
-    .difficulty-name {
-        font-size: 1.8rem;
-        font-weight: 700;
-        margin-bottom: 10px;
-    }
-
-    .difficulty-info {
-        font-size: 1rem;
-        opacity: 0.9;
-        line-height: 1.6;
-    }
-
-    .difficulty-features {
-        margin-top: 15px;
-        padding-top: 15px;
-        border-top: 1px solid rgba(255, 255, 255, 0.3);
-        font-size: 0.9rem;
-    }
-
-    .difficulty-features div {
-        margin: 5px 0;
-    }
-
-    .back-link {
-        display: inline-block;
-        margin-top: 20px;
-        padding: 12px 30px;
-        background: rgba(108, 117, 125, 0.1);
-        color: #495057;
-        text-decoration: none;
-        border-radius: 12px;
-        font-weight: 600;
-        transition: all 0.3s ease;
-    }
-
-    .back-link:hover {
-        background: rgba(108, 117, 125, 0.2);
-        color: #212529;
-    }
-
-    @media (max-width: 768px) {
-        .game-card {
-            padding: 30px 20px;
-        }
-
-        h1 {
-            font-size: 2.2rem;
-        }
-    }
-</style>
-{% endblock %}
+{% block extra_css %}{% endblock %}
 
 {% block content %}
-<div class="container">
-    <div class="game-card">
-        <h1>⚾ 숫자야구</h1>
-        <p class="subtitle">난이도를 선택하세요</p>
+<section class="game-start-shell fade-in-up">
+    <div class="game-start-card card-glow card-lift fade-in-up">
+        <h1 class="game-start-title">⚾ 숫자야구</h1>
+        <p class="game-subtitle">난이도를 선택하세요</p>
 
         <div class="difficulty-grid">
-            <a href="{% url 'pybo:baseball_create' %}?difficulty=normal" class="difficulty-card normal">
-                <div class="difficulty-icon">😊</div>
+            <a href="{% url 'pybo:baseball_create' %}?difficulty=normal" class="difficulty-card normal btn-ripple">
+                <div class="difficulty-icon scale-in">😊</div>
                 <div class="difficulty-name">일반 모드</div>
                 <div class="difficulty-info">초보자에게 완벽해요!</div>
                 <div class="difficulty-features">
@@ -157,8 +23,8 @@
                 </div>
             </a>
 
-            <a href="{% url 'pybo:baseball_create' %}?difficulty=hard" class="difficulty-card hard">
-                <div class="difficulty-icon">🔥</div>
+            <a href="{% url 'pybo:baseball_create' %}?difficulty=hard" class="difficulty-card hard btn-ripple">
+                <div class="difficulty-icon scale-in">🔥</div>
                 <div class="difficulty-name">하드 모드</div>
                 <div class="difficulty-info">도전할 준비가 되셨나요?</div>
                 <div class="difficulty-features">
@@ -170,14 +36,14 @@
             </a>
         </div>
 
-        <div style="display: flex; gap: 10px; justify-content: center; align-items: center;">
-            <a href="{% url 'pybo:index' %}" class="back-link">
+        <div class="d-flex gap-2 justify-content-center mt-3">
+            <a href="{% url 'pybo:index' %}" class="btn btn-outline-secondary btn-ripple">
                 <i class="fas fa-arrow-left me-2"></i>홈으로
             </a>
-            <a href="{% url 'pybo:baseball_leaderboard' %}" class="back-link" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white;">
+            <a href="{% url 'pybo:baseball_leaderboard' %}" class="btn btn-primary btn-ripple">
                 <i class="fas fa-trophy me-2"></i>리더보드
             </a>
         </div>
     </div>
-</div>
+</section>
 {% endblock %}

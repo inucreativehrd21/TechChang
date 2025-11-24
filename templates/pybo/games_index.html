@@ -3,563 +3,14 @@
 
 {% block title %}게임 센터 - Games Center{% endblock %}
 
-{% block extra_style %}
-<style>
-    /* Reset & Base */
-    * {
-        margin: 0;
-        padding: 0;
-        box-sizing: border-box;
-    }
-
-    body {
-        background: #0a0a0a;
-        color: #ffffff;
-        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
-        overflow-x: hidden;
-    }
-
-    .container {
-        max-width: 1400px;
-    }
-
-    /* Hero Section - Premium Dark */
-    .games-hero {
-        position: relative;
-        background: linear-gradient(135deg, #1e3a8a 0%, #7c3aed 50%, #ec4899 100%);
-        padding: 180px 0 120px;
-        margin: -76px 0 80px 0;
-        overflow: hidden;
-    }
-
-    .games-hero::before {
-        content: '';
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background:
-            radial-gradient(circle at 20% 50%, rgba(124, 58, 237, 0.3) 0%, transparent 50%),
-            radial-gradient(circle at 80% 80%, rgba(236, 72, 153, 0.3) 0%, transparent 50%);
-        animation: gradientShift 15s ease infinite;
-    }
-
-    @keyframes gradientShift {
-        0%, 100% { opacity: 1; }
-        50% { opacity: 0.7; }
-    }
-
-    .games-hero::after {
-        content: '';
-        position: absolute;
-        bottom: 0;
-        left: 0;
-        right: 0;
-        height: 100px;
-        background: linear-gradient(to bottom, transparent, #0a0a0a);
-    }
-
-    .hero-content {
-        position: relative;
-        z-index: 2;
-        text-align: center;
-    }
-
-    .hero-title {
-        font-size: 5rem;
-        font-weight: 900;
-        letter-spacing: -3px;
-        margin-bottom: 1.5rem;
-        background: linear-gradient(to right, #ffffff, #e0e7ff);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        background-clip: text;
-        animation: fadeInScale 0.8s cubic-bezier(0.16, 1, 0.3, 1);
-    }
-
-    .hero-subtitle {
-        font-size: 1.25rem;
-        font-weight: 300;
-        color: rgba(255, 255, 255, 0.8);
-        letter-spacing: 0.5px;
-        animation: fadeInUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.2s backwards;
-    }
-
-    @keyframes fadeInScale {
-        from {
-            opacity: 0;
-            transform: scale(0.9);
-        }
-        to {
-            opacity: 1;
-            transform: scale(1);
-        }
-    }
-
-    @keyframes fadeInUp {
-        from {
-            opacity: 0;
-            transform: translateY(30px);
-        }
-        to {
-            opacity: 1;
-            transform: translateY(0);
-        }
-    }
-
-    /* Stats Section - Minimal & Clean */
-    .stats-section {
-        margin-bottom: 100px;
-    }
-
-    .stat-card {
-        background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
-        border: 1px solid rgba(255, 255, 255, 0.1);
-        border-radius: 24px;
-        padding: 48px 36px;
-        position: relative;
-        overflow: hidden;
-        transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-    }
-
-    .stat-card::before {
-        content: '';
-        position: absolute;
-        inset: 0;
-        background: linear-gradient(135deg, rgba(124, 58, 237, 0.1), rgba(236, 72, 153, 0.1));
-        opacity: 0;
-        transition: opacity 0.4s;
-    }
-
-    .stat-card:hover {
-        transform: translateY(-8px);
-        border-color: rgba(124, 58, 237, 0.5);
-        box-shadow: 0 24px 48px rgba(0, 0, 0, 0.5);
-    }
-
-    .stat-card:hover::before {
-        opacity: 1;
-    }
-
-    .stat-icon {
-        font-size: 3.5rem;
-        margin-bottom: 20px;
-        filter: drop-shadow(0 4px 12px rgba(124, 58, 237, 0.4));
-    }
-
-    .stat-label {
-        font-size: 0.875rem;
-        font-weight: 600;
-        text-transform: uppercase;
-        letter-spacing: 2px;
-        color: rgba(255, 255, 255, 0.5);
-        margin-bottom: 12px;
-    }
-
-    .stat-value {
-        font-size: 3.5rem;
-        font-weight: 800;
-        letter-spacing: -2px;
-        background: linear-gradient(135deg, #7c3aed, #ec4899);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        background-clip: text;
-        line-height: 1;
-    }
-
-    .stat-description {
-        font-size: 0.875rem;
-        color: rgba(255, 255, 255, 0.6);
-        margin-top: 12px;
-    }
-
-    /* Section Title */
-    .section-header {
-        margin-bottom: 60px;
-        text-align: center;
-    }
-
-    .section-title {
-        font-size: 3rem;
-        font-weight: 800;
-        letter-spacing: -2px;
-        margin-bottom: 16px;
-        background: linear-gradient(to right, #ffffff, #a78bfa);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        background-clip: text;
-    }
-
-    .section-subtitle {
-        font-size: 1.125rem;
-        color: rgba(255, 255, 255, 0.5);
-        font-weight: 300;
-    }
-
-    /* Game Cards - Premium Design */
-    .games-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
-        gap: 32px;
-        margin-bottom: 100px;
-    }
-
-    .game-card {
-        background: #16213e;
-        border: 1px solid rgba(255, 255, 255, 0.1);
-        border-radius: 24px;
-        overflow: hidden;
-        position: relative;
-        transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-        animation: fadeInUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) backwards;
-    }
-
-    .game-card:nth-child(1) { animation-delay: 0.05s; }
-    .game-card:nth-child(2) { animation-delay: 0.1s; }
-    .game-card:nth-child(3) { animation-delay: 0.15s; }
-    .game-card:nth-child(4) { animation-delay: 0.2s; }
-    .game-card:nth-child(5) { animation-delay: 0.25s; }
-
-    .game-card::before {
-        content: '';
-        position: absolute;
-        inset: 0;
-        background: linear-gradient(135deg, rgba(124, 58, 237, 0.2), rgba(236, 72, 153, 0.2));
-        opacity: 0;
-        transition: opacity 0.4s;
-    }
-
-    .game-card:hover {
-        transform: translateY(-12px);
-        border-color: rgba(124, 58, 237, 0.6);
-        box-shadow: 0 32px 64px rgba(0, 0, 0, 0.6);
-    }
-
-    .game-card:hover::before {
-        opacity: 1;
-    }
-
-    /* Game Header with Gradient */
-    .game-header {
-        padding: 48px 32px;
-        text-align: center;
-        position: relative;
-        z-index: 1;
-    }
-
-    .game-header.primary {
-        background: linear-gradient(135deg, #3b82f6, #8b5cf6);
-    }
-
-    .game-header.success {
-        background: linear-gradient(135deg, #10b981, #06b6d4);
-    }
-
-    .game-header.warning {
-        background: linear-gradient(135deg, #f59e0b, #ef4444);
-    }
-
-    .game-header.info {
-        background: linear-gradient(135deg, #06b6d4, #8b5cf6);
-    }
-
-    .game-header.secondary {
-        background: linear-gradient(135deg, #6366f1, #ec4899);
-    }
-
-    .game-icon {
-        font-size: 4.5rem;
-        margin-bottom: 20px;
-        display: inline-block;
-        filter: drop-shadow(0 8px 16px rgba(0, 0, 0, 0.3));
-        transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
-    }
-
-    .game-card:hover .game-icon {
-        transform: scale(1.15) rotate(5deg);
-    }
-
-    .game-name {
-        font-size: 2rem;
-        font-weight: 800;
-        letter-spacing: -1px;
-        margin-bottom: 8px;
-        color: #ffffff;
-        text-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
-    }
-
-    .game-title {
-        font-size: 0.875rem;
-        font-weight: 500;
-        letter-spacing: 1px;
-        text-transform: uppercase;
-        color: rgba(255, 255, 255, 0.8);
-    }
-
-    /* Game Body */
-    .game-body {
-        padding: 32px;
-        position: relative;
-        z-index: 1;
-    }
-
-    .game-description {
-        font-size: 0.9375rem;
-        line-height: 1.7;
-        color: rgba(255, 255, 255, 0.7);
-        margin-bottom: 28px;
-        min-height: 60px;
-    }
-
-    /* Game Stats - Inline */
-    .game-stats {
-        display: flex;
-        gap: 24px;
-        margin-bottom: 28px;
-        padding: 20px;
-        background: rgba(0, 0, 0, 0.3);
-        border-radius: 16px;
-        border: 1px solid rgba(255, 255, 255, 0.05);
-    }
-
-    .game-stat-item {
-        flex: 1;
-        text-align: center;
-    }
-
-    .game-stat-value {
-        display: block;
-        font-size: 2rem;
-        font-weight: 800;
-        letter-spacing: -1px;
-        margin-bottom: 4px;
-    }
-
-    .game-stat-value.primary { color: #8b5cf6; }
-    .game-stat-value.success { color: #10b981; }
-    .game-stat-value.warning { color: #f59e0b; }
-    .game-stat-value.info { color: #06b6d4; }
-    .game-stat-value.secondary { color: #ec4899; }
-
-    .game-stat-label {
-        font-size: 0.75rem;
-        font-weight: 600;
-        text-transform: uppercase;
-        letter-spacing: 1px;
-        color: rgba(255, 255, 255, 0.4);
-    }
-
-    /* Feature Tags */
-    .game-features {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 8px;
-        margin-bottom: 28px;
-    }
-
-    .feature-tag {
-        padding: 6px 14px;
-        background: rgba(124, 58, 237, 0.2);
-        border: 1px solid rgba(124, 58, 237, 0.3);
-        border-radius: 20px;
-        font-size: 0.75rem;
-        font-weight: 600;
-        letter-spacing: 0.5px;
-        color: #c4b5fd;
-        transition: all 0.3s;
-    }
-
-    .feature-tag:hover {
-        background: rgba(124, 58, 237, 0.3);
-        border-color: rgba(124, 58, 237, 0.5);
-        transform: translateY(-2px);
-    }
-
-    /* Play Button - Premium */
-    .play-btn {
-        display: block;
-        width: 100%;
-        padding: 18px 32px;
-        background: linear-gradient(135deg, #7c3aed, #ec4899);
-        border: none;
-        border-radius: 12px;
-        font-size: 1rem;
-        font-weight: 700;
-        letter-spacing: 1px;
-        text-transform: uppercase;
-        color: #ffffff;
-        text-decoration: none;
-        text-align: center;
-        position: relative;
-        overflow: hidden;
-        transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-        box-shadow: 0 8px 24px rgba(124, 58, 237, 0.3);
-    }
-
-    .play-btn::before {
-        content: '';
-        position: absolute;
-        inset: 0;
-        background: linear-gradient(135deg, rgba(255, 255, 255, 0.2), transparent);
-        opacity: 0;
-        transition: opacity 0.3s;
-    }
-
-    .play-btn:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 16px 32px rgba(124, 58, 237, 0.4);
-        color: #ffffff;
-    }
-
-    .play-btn:hover::before {
-        opacity: 1;
-    }
-
-    .play-btn.primary {
-        background: linear-gradient(135deg, #3b82f6, #8b5cf6);
-        box-shadow: 0 8px 24px rgba(59, 130, 246, 0.3);
-    }
-
-    .play-btn.success {
-        background: linear-gradient(135deg, #10b981, #06b6d4);
-        box-shadow: 0 8px 24px rgba(16, 185, 129, 0.3);
-    }
-
-    .play-btn.warning {
-        background: linear-gradient(135deg, #f59e0b, #ef4444);
-        box-shadow: 0 8px 24px rgba(245, 158, 11, 0.3);
-    }
-
-    .play-btn.info {
-        background: linear-gradient(135deg, #06b6d4, #8b5cf6);
-        box-shadow: 0 8px 24px rgba(6, 182, 212, 0.3);
-    }
-
-    .play-btn.secondary {
-        background: linear-gradient(135deg, #6366f1, #ec4899);
-        box-shadow: 0 8px 24px rgba(99, 102, 241, 0.3);
-    }
-
-    /* Info Section - Clean */
-    .info-section {
-        background: linear-gradient(135deg, #1a1a2e, #16213e);
-        border: 1px solid rgba(255, 255, 255, 0.1);
-        border-radius: 24px;
-        padding: 64px 48px;
-        margin-bottom: 80px;
-    }
-
-    .info-title {
-        font-size: 2rem;
-        font-weight: 800;
-        letter-spacing: -1px;
-        margin-bottom: 48px;
-        text-align: center;
-        background: linear-gradient(to right, #ffffff, #a78bfa);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        background-clip: text;
-    }
-
-    .info-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-        gap: 32px;
-    }
-
-    .info-card {
-        padding: 32px;
-        background: rgba(0, 0, 0, 0.3);
-        border: 1px solid rgba(255, 255, 255, 0.05);
-        border-radius: 20px;
-        transition: all 0.3s;
-    }
-
-    .info-card:hover {
-        background: rgba(0, 0, 0, 0.4);
-        border-color: rgba(124, 58, 237, 0.3);
-        transform: translateY(-4px);
-    }
-
-    .info-card-title {
-        font-size: 1.125rem;
-        font-weight: 700;
-        margin-bottom: 12px;
-        display: flex;
-        align-items: center;
-        gap: 8px;
-    }
-
-    .info-card-text {
-        font-size: 0.9375rem;
-        line-height: 1.7;
-        color: rgba(255, 255, 255, 0.6);
-    }
-
-    /* Alert */
-    .alert-custom {
-        background: rgba(245, 158, 11, 0.1);
-        border: 1px solid rgba(245, 158, 11, 0.3);
-        border-radius: 16px;
-        padding: 20px 24px;
-        margin-top: 32px;
-        font-size: 0.9375rem;
-    }
-
-    .alert-custom a {
-        color: #fbbf24;
-        font-weight: 700;
-        text-decoration: none;
-        border-bottom: 2px solid currentColor;
-    }
-
-    .alert-custom a:hover {
-        color: #f59e0b;
-    }
-
-    /* Responsive */
-    @media (max-width: 768px) {
-        .hero-title {
-            font-size: 3rem;
-        }
-
-        .section-title {
-            font-size: 2rem;
-        }
-
-        .games-grid {
-            grid-template-columns: 1fr;
-            gap: 24px;
-        }
-
-        .stat-value {
-            font-size: 2.5rem;
-        }
-
-        .info-section {
-            padding: 40px 24px;
-        }
-
-        .game-name {
-            font-size: 1.5rem;
-        }
-
-        .game-icon {
-            font-size: 3.5rem;
-        }
-    }
-</style>
-{% endblock %}
+{% block extra_css %}{% endblock %}
 
 {% block content %}
 <!-- Hero Section -->
-<section class="games-hero">
-    <div class="hero-content">
-        <div class="container">
-            <h1 class="hero-title">게임 센터</h1>
-            <p class="hero-subtitle">다양한 게임을 즐기고 친구들과 실력을 겨뤄보세요</p>
-        </div>
+<section class="game-hero fade-in-up">
+    <div class="hero-content container">
+        <h1 class="hero-title">게임 센터</h1>
+        <p class="hero-subtitle">다양한 게임을 즐기고 친구들과 실력을 겨뤄보세요</p>
     </div>
 </section>
 
@@ -569,7 +20,7 @@
     <section class="stats-section">
         <div class="row g-4">
             <div class="col-md-6">
-                <div class="stat-card">
+                <div class="stat-card card-glow card-lift fade-in-up animate-delay-100">
                     <div class="stat-icon">🎯</div>
                     <div class="stat-label">Total Games</div>
                     <div class="stat-value">{{ recent_stats.total_games_played }}</div>
@@ -577,7 +28,7 @@
                 </div>
             </div>
             <div class="col-md-6">
-                <div class="stat-card">
+                <div class="stat-card card-glow card-lift fade-in-up animate-delay-200">
                     <div class="stat-icon">{% if user.is_authenticated %}🟢{% else %}⚪{% endif %}</div>
                     <div class="stat-label">Status</div>
                     <div class="stat-value">
@@ -608,9 +59,9 @@
 
         <div class="games-grid">
             {% for game in games_info %}
-            <article class="game-card">
-                <div class="game-header {{ game.color }}">
-                    <div class="game-icon">{{ game.icon }}</div>
+            <article class="game-card card-lift card-glow fade-in-up animate-delay-{{ forloop.counter0|add:"1" }}00">
+                <div class="game-header is-{{ game.color }}">
+                    <div class="game-icon float animate-delay-100">{{ game.icon }}</div>
                     <h3 class="game-name">{{ game.name }}</h3>
                     <p class="game-title">{{ game.title }}</p>
                 </div>
@@ -635,7 +86,7 @@
                         {% endfor %}
                     </div>
 
-                    <a href="{% url game.url %}" class="play-btn {{ game.color }}">
+                    <a href="{% url game.url %}" class="play-btn {{ game.color }} btn-ripple">
                         플레이 하기 ▶
                     </a>
                 </div>
@@ -645,11 +96,11 @@
     </section>
 
     <!-- Info Section -->
-    <section class="info-section">
+    <section class="info-section fade-in-up">
         <h2 class="info-title">게임 센터 안내</h2>
 
         <div class="info-grid">
-            <div class="info-card">
+            <div class="info-card card-lift fade-in-up animate-delay-100">
                 <h3 class="info-card-title">
                     <span style="color: #8b5cf6;">⚡</span>
                     실시간 게임
@@ -660,7 +111,7 @@
                 </p>
             </div>
 
-            <div class="info-card">
+            <div class="info-card card-lift fade-in-up animate-delay-200">
                 <h3 class="info-card-title">
                     <span style="color: #10b981;">🎯</span>
                     싱글 플레이
@@ -671,7 +122,7 @@
                 </p>
             </div>
 
-            <div class="info-card">
+            <div class="info-card card-lift fade-in-up animate-delay-300">
                 <h3 class="info-card-title">
                     <span style="color: #06b6d4;">💬</span>
                     커뮤니티

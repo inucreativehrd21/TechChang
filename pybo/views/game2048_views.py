@@ -12,9 +12,11 @@ from django.utils import timezone
 from django.db import transaction, models
 from django.db.models import Max, Sum, Count, Q
 from django.contrib.auth.models import User
+from django.core.cache import cache
 from datetime import datetime
 import random
 import logging
+import json
 
 from ..models import Game2048
 
@@ -44,13 +46,15 @@ def game2048_create(request):
     """
     difficulty = request.GET.get('difficulty', 'normal')
 
-    # 진행중인 게임이 있으면 그걸로 이동
+    # 진행중인 게임이 있으면 그걸로 이동 (같은 난이도만)
     existing_game = Game2048.objects.filter(
         player=request.user,
-        status='playing'
+        status='playing',
+        difficulty=difficulty  # 같은 난이도의 게임만
     ).first()
 
     if existing_game:
+        logger.info(f"User {request.user.username} resuming existing 2048 game {existing_game.id} - difficulty: {difficulty}")
         return redirect('pybo:game2048_play', game_id=existing_game.id)
 
     # 난이도별 설정
@@ -106,9 +110,12 @@ def game2048_play(request, game_id):
         'last_activity_time': game.last_activity_time.isoformat() if game.last_activity_time else None,
     }
 
-    # 최고 점수 가져오기 (쿼리 최적화: aggregate 사용)
+    logger.info(f"User {request.user.username} playing 2048 game {game_id} - difficulty: {game.difficulty}, inactivity_limit: {game.inactivity_limit}")
+
+    # 최고 점수 가져오기 (난이도별로 분리)
     best_score_result = Game2048.objects.filter(
-        player=request.user
+        player=request.user,
+        difficulty=game.difficulty  # 같은 난이도에서만
     ).aggregate(max_score=Max('best_score'))
 
     best_score = best_score_result['max_score'] or 0
@@ -155,6 +162,7 @@ def game2048_move(request, game_id):
             'difficulty': game.difficulty,
             'inactivity_limit': game.inactivity_limit,
             'last_activity_time': game.last_activity_time.isoformat() if game.last_activity_time else None,
+            'last_request_ts': None,
         }
 
     if game_data['status'] != 'playing':
@@ -188,6 +196,35 @@ def game2048_move(request, game_id):
 
     if direction not in ['up', 'down', 'left', 'right']:
         return JsonResponse({'success': False, 'message': '잘못된 방향입니다.'})
+
+    # 서버 측 속도 제한 (초당 5회)
+    rate_key = f'g2048_rate_{request.user.id}'
+    current_count = cache.get(rate_key, 0)
+    if current_count >= 5:
+        return JsonResponse({
+            'success': False,
+            'message': '입력이 너무 빠릅니다. 잠시 후 다시 시도해주세요.',
+            'cooldown': True
+        })
+    cache.set(rate_key, current_count + 1, timeout=1)
+
+    # 요청 속도 제한 (과도한 입력 완화: 0.1초 간격)
+    now_ts = timezone.now()
+    last_ts = game_data.get('last_request_ts')
+    if last_ts:
+        try:
+            last_dt = datetime.fromisoformat(last_ts)
+            if last_dt.tzinfo is None:
+                last_dt = timezone.make_aware(last_dt)
+            if (now_ts - last_dt).total_seconds() < 0.1:
+                return JsonResponse({
+                    'success': False,
+                    'message': '입력이 너무 빠릅니다. 잠시만 기다려 주세요.',
+                    'cooldown': True
+                })
+        except Exception:
+            pass
+    game_data['last_request_ts'] = now_ts.isoformat()
 
     # 보드 복사
     board_state = game_data['board_state']
@@ -269,6 +306,67 @@ def game2048_move(request, game_id):
         'status': game_data['status'],
         'game_over': game_over
     })
+
+
+@login_required
+def game2048_submit_final(request, game_id):
+    """
+    최종 점수만 서버에 반영하는 엔드포인트 (클라이언트 배치 전송용)
+
+    클라이언트에서 게임 종료 후 최종 점수와 보드 상태를 전달할 때 사용.
+    서버는 보드 형태/점수 유효성만 검증하며, 추가 무결성 검증은 추후 강화 가능.
+    """
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'message': 'POST 요청만 허용됩니다.'})
+
+    game = get_object_or_404(Game2048, id=game_id, player=request.user)
+
+    if game.status != 'playing':
+        return JsonResponse({'success': False, 'message': '이미 종료된 게임입니다.'})
+
+    try:
+        payload = json.loads(request.body.decode('utf-8'))
+    except Exception:
+        return JsonResponse({'success': False, 'message': '잘못된 요청입니다.'})
+
+    final_score = int(payload.get('score', 0))
+    moves = int(payload.get('moves', 0))
+    status = payload.get('status', 'lost')
+    board_state = payload.get('board_state')
+
+    # 기본 검증
+    if final_score < 0 or final_score > 10_000_000:
+        return JsonResponse({'success': False, 'message': '점수 값이 비정상입니다.'})
+    if status not in ['won', 'lost', 'timeout']:
+        return JsonResponse({'success': False, 'message': '잘못된 상태입니다.'})
+
+    # 보드 형태 검증 (4x4 숫자)
+    def is_valid_board(board):
+        if not isinstance(board, list) or len(board) != 4:
+            return False
+        for row in board:
+            if not isinstance(row, list) or len(row) != 4:
+                return False
+            for cell in row:
+                if not isinstance(cell, int) or cell < 0:
+                    return False
+        return True
+
+    if not is_valid_board(board_state):
+        return JsonResponse({'success': False, 'message': '보드 상태가 올바르지 않습니다.'})
+
+    # 게임 업데이트
+    game.board_state = board_state
+    game.score = final_score
+    if final_score > game.best_score:
+        game.best_score = final_score
+    game.moves = moves if moves > game.moves else game.moves
+    game.status = status
+    game.end_date = timezone.now()
+    game.last_activity_time = timezone.now()
+    game.save()
+
+    return JsonResponse({'success': True, 'message': '최종 점수가 저장되었습니다.'})
 
 
 @login_required

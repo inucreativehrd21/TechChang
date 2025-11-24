@@ -1,0 +1,711 @@
+/**
+ * 테크창 마이크로 인터랙션 시스템
+ *
+ * 사용자 경험을 향상시키는 세밀한 인터랙션 효과
+ * hover, active, focus, disabled 상태에 대한 일관된 피드백 제공
+ */
+
+/* ==========================================
+   기본 인터랙션 토큰
+   ========================================== */
+
+/* 모든 인터랙티브 요소에 부드러운 전환 적용 */
+a, button, input, textarea, select,
+[role="button"], [role="link"],
+.interactive {
+  transition: var(--transition-all);
+}
+
+/* ==========================================
+   버튼 인터랙션
+   ========================================== */
+
+/* 기본 버튼 스타일 */
+.btn,
+button:not(.unstyled) {
+  position: relative;
+  overflow: hidden;
+  transform-origin: center;
+  cursor: pointer;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Hover - 약간의 리프트와 그림자 증가 */
+.btn:hover:not(:disabled),
+button:hover:not(:disabled):not(.unstyled) {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-lg);
+}
+
+/* Active - 눌림 효과 */
+.btn:active:not(:disabled),
+button:active:not(:disabled):not(.unstyled) {
+  transform: translateY(0) scale(0.98);
+  box-shadow: var(--shadow-sm);
+}
+
+/* Focus - 접근성을 위한 명확한 포커스 링 */
+.btn:focus-visible,
+button:focus-visible:not(.unstyled) {
+  outline: 3px solid var(--primary-400);
+  outline-offset: 2px;
+}
+
+/* Disabled - 명확한 비활성화 상태 */
+.btn:disabled,
+button:disabled:not(.unstyled) {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none !important;
+  box-shadow: none !important;
+}
+
+/* Ripple Effect - Material Design 스타일 */
+.btn-ripple {
+  position: relative;
+  overflow: hidden;
+}
+
+.btn-ripple::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.5);
+  transform: translate(-50%, -50%);
+  transition: width 0.6s, height 0.6s;
+}
+
+.btn-ripple:active::after {
+  width: 300px;
+  height: 300px;
+}
+
+/* ==========================================
+   카드 인터랙션
+   ========================================== */
+
+/* 기본 카드 hover */
+.card-interactive {
+  transition: var(--transition-all);
+  cursor: pointer;
+}
+
+.card-interactive:hover {
+  transform: translateY(-8px);
+  box-shadow: var(--shadow-xl);
+}
+
+/* 카드 Lift 효과 */
+.card-lift {
+  transition: transform var(--duration-base) var(--ease-smooth),
+              box-shadow var(--duration-base) var(--ease-smooth);
+}
+
+.card-lift:hover {
+  transform: translateY(-12px) scale(1.02);
+  box-shadow: var(--shadow-2xl);
+}
+
+/* 카드 Tilt 효과 (3D) */
+.card-tilt {
+  transform-style: preserve-3d;
+  transition: transform var(--duration-slow) var(--ease-smooth);
+}
+
+.card-tilt:hover {
+  transform: perspective(1000px) rotateX(5deg) rotateY(5deg);
+}
+
+/* 카드 Glow 효과 */
+.card-glow {
+  position: relative;
+  transition: var(--transition-all);
+}
+
+.card-glow::before {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  border-radius: inherit;
+  background: linear-gradient(135deg, var(--primary-500), var(--secondary-500));
+  opacity: 0;
+  z-index: -1;
+  transition: opacity var(--duration-base) var(--ease-smooth);
+  filter: blur(20px);
+}
+
+.card-glow:hover::before {
+  opacity: 0.7;
+}
+
+/* ==========================================
+   링크 인터랙션
+   ========================================== */
+
+/* 기본 링크 스타일 */
+a:not(.btn):not(.unstyled) {
+  position: relative;
+  color: inherit;
+  text-decoration: none;
+  transition: color var(--duration-base) var(--ease-smooth);
+}
+
+/* Underline Animation */
+.link-underline {
+  position: relative;
+}
+
+.link-underline::after {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  left: 0;
+  width: 0;
+  height: 2px;
+  background: currentColor;
+  transition: width var(--duration-base) var(--ease-smooth);
+}
+
+.link-underline:hover::after {
+  width: 100%;
+}
+
+/* Slide Animation */
+.link-slide {
+  position: relative;
+  overflow: hidden;
+}
+
+.link-slide::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: -100%;
+  width: 100%;
+  height: 2px;
+  background: currentColor;
+  transition: left var(--duration-base) var(--ease-smooth);
+}
+
+.link-slide:hover::after {
+  left: 0;
+}
+
+/* Gradient Link */
+.link-gradient {
+  background: linear-gradient(
+    to right,
+    var(--primary-500) 0%,
+    var(--secondary-500) 100%
+  );
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  transition: background-position var(--duration-base) var(--ease-smooth);
+}
+
+.link-gradient:hover {
+  background-position: 100% center;
+}
+
+/* ==========================================
+   입력 필드 인터랙션
+   ========================================== */
+
+/* 기본 입력 필드 */
+input:not([type="checkbox"]):not([type="radio"]),
+textarea,
+select {
+  transition: var(--transition-all);
+}
+
+/* Focus 상태 */
+input:focus:not([type="checkbox"]):not([type="radio"]),
+textarea:focus,
+select:focus {
+  outline: none;
+  border-color: var(--primary-500);
+  box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.1);
+  transform: translateY(-1px);
+}
+
+/* Error 상태 */
+input.error,
+textarea.error,
+select.error {
+  border-color: var(--error);
+  animation: shake 0.5s var(--ease-in-out);
+}
+
+input.error:focus,
+textarea.error:focus,
+select.error:focus {
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
+}
+
+/* Success 상태 */
+input.success,
+textarea.success,
+select.success {
+  border-color: var(--success);
+}
+
+input.success:focus,
+textarea.success:focus,
+select.success:focus {
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+}
+
+/* Floating Label */
+.input-floating {
+  position: relative;
+}
+
+.input-floating label {
+  position: absolute;
+  top: 50%;
+  left: 12px;
+  transform: translateY(-50%);
+  pointer-events: none;
+  transition: all var(--duration-base) var(--ease-smooth);
+  color: var(--gray-500);
+}
+
+.input-floating input:focus ~ label,
+.input-floating input:not(:placeholder-shown) ~ label {
+  top: 0;
+  left: 8px;
+  font-size: var(--text-xs);
+  background: white;
+  padding: 0 4px;
+  color: var(--primary-500);
+}
+
+/* ==========================================
+   체크박스 & 라디오 버튼 인터랙션
+   ========================================== */
+
+/* 커스텀 체크박스 */
+.checkbox-custom {
+  position: relative;
+  display: inline-block;
+  width: 20px;
+  height: 20px;
+}
+
+.checkbox-custom input[type="checkbox"] {
+  opacity: 0;
+  position: absolute;
+}
+
+.checkbox-custom .checkmark {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 20px;
+  width: 20px;
+  background: white;
+  border: 2px solid var(--gray-300);
+  border-radius: var(--radius-sm);
+  transition: var(--transition-all);
+}
+
+.checkbox-custom:hover .checkmark {
+  border-color: var(--primary-500);
+  transform: scale(1.1);
+}
+
+.checkbox-custom input:checked ~ .checkmark {
+  background: var(--primary-500);
+  border-color: var(--primary-500);
+}
+
+.checkbox-custom input:checked ~ .checkmark::after {
+  content: '';
+  position: absolute;
+  left: 6px;
+  top: 2px;
+  width: 5px;
+  height: 10px;
+  border: solid white;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+  animation: checkmark 0.3s var(--ease-bounce);
+}
+
+@keyframes checkmark {
+  0% {
+    transform: rotate(45deg) scale(0);
+  }
+  50% {
+    transform: rotate(45deg) scale(1.2);
+  }
+  100% {
+    transform: rotate(45deg) scale(1);
+  }
+}
+
+/* ==========================================
+   토글 스위치 인터랙션
+   ========================================== */
+
+.toggle-switch {
+  position: relative;
+  display: inline-block;
+  width: 50px;
+  height: 24px;
+}
+
+.toggle-switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.toggle-slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: var(--gray-300);
+  border-radius: var(--radius-full);
+  transition: var(--transition-all);
+}
+
+.toggle-slider::before {
+  position: absolute;
+  content: "";
+  height: 18px;
+  width: 18px;
+  left: 3px;
+  bottom: 3px;
+  background-color: white;
+  border-radius: 50%;
+  transition: var(--transition-all);
+  box-shadow: var(--shadow-sm);
+}
+
+.toggle-switch:hover .toggle-slider {
+  background-color: var(--gray-400);
+}
+
+.toggle-switch input:checked + .toggle-slider {
+  background-color: var(--primary-500);
+}
+
+.toggle-switch input:checked + .toggle-slider::before {
+  transform: translateX(26px);
+}
+
+.toggle-switch input:focus + .toggle-slider {
+  box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.2);
+}
+
+/* ==========================================
+   드롭다운 인터랙션
+   ========================================== */
+
+.dropdown-menu {
+  opacity: 0;
+  transform: translateY(-10px);
+  pointer-events: none;
+  transition: opacity var(--duration-base) var(--ease-smooth),
+              transform var(--duration-base) var(--ease-smooth);
+}
+
+.dropdown.active .dropdown-menu,
+.dropdown-menu.show {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
+.dropdown-item {
+  transition: var(--transition-colors);
+}
+
+.dropdown-item:hover {
+  background-color: var(--primary-50);
+  color: var(--primary-700);
+  padding-left: calc(var(--space-4) + 4px);
+}
+
+/* ==========================================
+   툴팁 인터랙션
+   ========================================== */
+
+[data-tooltip] {
+  position: relative;
+}
+
+[data-tooltip]::before {
+  content: attr(data-tooltip);
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%) translateY(-4px);
+  padding: var(--space-2) var(--space-3);
+  background: var(--gray-900);
+  color: white;
+  font-size: var(--text-sm);
+  border-radius: var(--radius-md);
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--duration-base) var(--ease-smooth),
+              transform var(--duration-base) var(--ease-smooth);
+  z-index: var(--z-tooltip);
+}
+
+[data-tooltip]::after {
+  content: '';
+  position: absolute;
+  bottom: calc(100% + 2px);
+  left: 50%;
+  transform: translateX(-50%);
+  border: 6px solid transparent;
+  border-top-color: var(--gray-900);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--duration-base) var(--ease-smooth);
+}
+
+[data-tooltip]:hover::before,
+[data-tooltip]:hover::after {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+/* ==========================================
+   아코디언 인터랙션
+   ========================================== */
+
+.accordion-header {
+  cursor: pointer;
+  user-select: none;
+  transition: var(--transition-colors);
+}
+
+.accordion-header:hover {
+  background-color: var(--gray-50);
+}
+
+.accordion-icon {
+  transition: transform var(--duration-base) var(--ease-smooth);
+}
+
+.accordion.active .accordion-icon {
+  transform: rotate(180deg);
+}
+
+.accordion-content {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height var(--duration-slow) var(--ease-smooth),
+              padding var(--duration-slow) var(--ease-smooth);
+}
+
+.accordion.active .accordion-content {
+  max-height: 1000px;
+}
+
+/* ==========================================
+   모달 인터랙션
+   ========================================== */
+
+.modal-backdrop {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--duration-base) var(--ease-smooth);
+}
+
+.modal-backdrop.show {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.modal-content {
+  transform: scale(0.9) translateY(-20px);
+  opacity: 0;
+  transition: transform var(--duration-base) var(--ease-smooth),
+              opacity var(--duration-base) var(--ease-smooth);
+}
+
+.modal.show .modal-content {
+  transform: scale(1) translateY(0);
+  opacity: 1;
+}
+
+/* ==========================================
+   이미지 인터랙션
+   ========================================== */
+
+/* 이미지 Zoom 효과 */
+.img-zoom {
+  overflow: hidden;
+}
+
+.img-zoom img {
+  transition: transform var(--duration-slow) var(--ease-smooth);
+}
+
+.img-zoom:hover img {
+  transform: scale(1.1);
+}
+
+/* 이미지 Overlay */
+.img-overlay {
+  position: relative;
+  overflow: hidden;
+}
+
+.img-overlay::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  opacity: 0;
+  transition: opacity var(--duration-base) var(--ease-smooth);
+}
+
+.img-overlay:hover::after {
+  opacity: 1;
+}
+
+/* ==========================================
+   스크롤바 인터랙션
+   ========================================== */
+
+/* 커스텀 스크롤바 */
+.scrollbar-custom::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.scrollbar-custom::-webkit-scrollbar-track {
+  background: var(--gray-100);
+  border-radius: var(--radius-full);
+}
+
+.scrollbar-custom::-webkit-scrollbar-thumb {
+  background: var(--gray-300);
+  border-radius: var(--radius-full);
+  transition: background var(--duration-base) var(--ease-smooth);
+}
+
+.scrollbar-custom::-webkit-scrollbar-thumb:hover {
+  background: var(--primary-500);
+}
+
+/* ==========================================
+   Progress Bar 인터랙션
+   ========================================== */
+
+.progress-bar {
+  position: relative;
+  height: 8px;
+  background: var(--gray-200);
+  border-radius: var(--radius-full);
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--primary-500), var(--secondary-500));
+  border-radius: var(--radius-full);
+  transition: width var(--duration-slow) var(--ease-smooth);
+  position: relative;
+  overflow: hidden;
+}
+
+.progress-fill::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  right: 0;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.3),
+    transparent
+  );
+  animation: shimmer 2s infinite;
+}
+
+/* ==========================================
+   Badge 인터랙션
+   ========================================== */
+
+.badge-interactive {
+  transition: var(--transition-all);
+  cursor: pointer;
+}
+
+.badge-interactive:hover {
+  transform: scale(1.1);
+  box-shadow: var(--shadow-md);
+}
+
+/* ==========================================
+   Tab 인터랙션
+   ========================================== */
+
+.tab-item {
+  position: relative;
+  transition: color var(--duration-base) var(--ease-smooth);
+}
+
+.tab-item::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 0;
+  height: 3px;
+  background: var(--primary-500);
+  transition: width var(--duration-base) var(--ease-smooth);
+}
+
+.tab-item:hover {
+  color: var(--primary-500);
+}
+
+.tab-item.active::after {
+  width: 100%;
+}
+
+/* ==========================================
+   Skeleton Shimmer
+   ========================================== */
+
+.skeleton-shimmer {
+  position: relative;
+  overflow: hidden;
+  background: var(--gray-200);
+}
+
+.skeleton-shimmer::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.5),
+    transparent
+  );
+  animation: shimmer 1.5s infinite;
+}

@@ -78,6 +78,7 @@ urlpatterns = [
     path('2048/<int:game_id>/move/', game2048_views.game2048_move, name='game2048_move'),
     path('2048/<int:game_id>/check-inactivity/', game2048_views.game2048_check_inactivity, name='game2048_check_inactivity'),
     path('2048/<int:game_id>/restart/', game2048_views.game2048_restart, name='game2048_restart'),
+    path('2048/<int:game_id>/submit/', game2048_views.game2048_submit_final, name='game2048_submit_final'),
 
     # minesweeper_views.py - 지뢰찾기 게임
     path('minesweeper/', minesweeper_views.minesweeper_start, name='minesweeper_start'),
@@ -86,6 +87,7 @@ urlpatterns = [
     path('minesweeper/<int:game_id>/reveal/', minesweeper_views.minesweeper_reveal, name='minesweeper_reveal'),
     path('minesweeper/<int:game_id>/flag/', minesweeper_views.minesweeper_flag, name='minesweeper_flag'),
     path('minesweeper/<int:game_id>/update-time/', minesweeper_views.minesweeper_update_time, name='minesweeper_update_time'),
+    path('minesweeper/leaderboard/', minesweeper_views.minesweeper_leaderboard, name='minesweeper_leaderboard'),
 
     # *** IMPORTANT: 이 패턴은 맨 마지막에 위치해야 합니다! ***
     # <int:question_id>/ 패턴이 숫자로 시작하는 다른 URL들(2048 등)을 가로채지 않도록

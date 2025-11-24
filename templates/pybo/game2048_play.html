@@ -5,26 +5,32 @@
 {% block extra_css %}
 <style>
 body {
-    background: #faf8ef;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    font-family: 'Noto Sans KR', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 }
 
 .game-container {
-    max-width: 500px;
+    max-width: 520px;
     margin: 0 auto;
-    padding: 20px;
+    padding: 24px;
+    background: var(--surface-primary);
+    border-radius: var(--radius-2xl);
+    box-shadow: var(--shadow-lg);
 }
 
-.game-header {
+.game-container .game-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 20px;
+    padding: 0 0 20px;
+    color: var(--text-primary);
 }
 
 .game-title {
-    font-size: 80px;
-    font-weight: bold;
-    color: #776e65;
+    font-size: 72px;
+    font-weight: 900;
+    color: var(--text-primary);
     margin: 0;
 }
 
@@ -80,18 +86,20 @@ body {
 }
 
 .restart-button {
-    background: #8f7a66;
-    border-radius: 3px;
+    background: var(--gradient-primary);
+    border-radius: var(--radius-md);
     padding: 10px 20px;
-    color: #f9f6f2;
-    font-weight: bold;
+    color: var(--text-inverse);
+    font-weight: 800;
     border: none;
     cursor: pointer;
-    transition: background 0.3s;
+    transition: var(--transition-all);
+    box-shadow: var(--shadow-primary);
 }
 
 .restart-button:hover {
-    background: #9f8a76;
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-strong);
 }
 
 .grid-container {
@@ -210,10 +218,10 @@ body {
 
 .game-message-content {
     text-align: center;
-    background: white;
+    background: var(--surface-primary);
     padding: 60px;
-    border-radius: 10px;
-    box-shadow: 0 0 30px rgba(0,0,0,0.3);
+    border-radius: var(--radius-2xl);
+    box-shadow: var(--shadow-3xl);
 }
 
 .game-message h1 {
@@ -233,8 +241,10 @@ body {
 .game-instructions {
     margin-top: 30px;
     padding: 20px;
-    background: white;
-    border-radius: 6px;
+    background: var(--surface-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-inner);
 }
 
 .game-instructions p {
@@ -245,21 +255,45 @@ body {
 .key-hint {
     display: inline-block;
     padding: 5px 10px;
-    background: #8f7a66;
-    color: white;
-    border-radius: 3px;
-    font-weight: bold;
+    background: var(--primary-color);
+    color: var(--text-inverse);
+    border-radius: var(--radius-sm);
+    font-weight: 800;
     margin: 0 3px;
+}
+
+.hard-timer {
+    background: rgba(235, 51, 73, 0.08);
+    border: 1px solid rgba(235, 51, 73, 0.35);
+    border-radius: var(--radius-lg);
+    margin-bottom: 15px;
+    padding: 15px;
+    text-align: center;
+    box-shadow: var(--shadow-sm);
+}
+
+.hard-timer .timer-value {
+    font-size: 2rem;
+    font-weight: 900;
+    color: #e74c3c;
+    min-width: 80px;
 }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="container my-5">
-    <div class="game-container">
+<div class="container my-5 fade-in-up">
+    <div class="game-container card-lift card-glow fade-in-up">
         <!-- 헤더 -->
         <div class="game-header">
-            <h1 class="game-title">2048</h1>
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <h1 class="game-title">2048</h1>
+                {% if game.difficulty == 'hard' %}
+                <span class="badge bg-danger shadow-sm">🔥 HARD</span>
+                {% else %}
+                <span class="badge bg-success shadow-sm">😊 NORMAL</span>
+                {% endif %}
+            </div>
             <div class="scores-container">
                 <div class="score-box">
                     <div class="score-title">Score</div>
@@ -281,13 +315,13 @@ body {
 
         {% if game.difficulty == 'hard' %}
         <!-- 하드모드 타이머 -->
-        <div style="background: rgba(235, 51, 73, 0.1); border: 2px solid #eb3349; border-radius: 8px; margin-bottom: 15px; padding: 15px; text-align: center;">
-            <div style="color: #c0392b; font-weight: 700; font-size: 1.1rem; margin-bottom: 8px;">
+        <div class="hard-timer fade-in-up">
+            <div style="color: #c0392b; font-weight: 800; font-size: 1.05rem; margin-bottom: 8px;">
                 🔥 Hard Mode: 비활동 제한
             </div>
             <div style="display: flex; justify-content: center; align-items: center; gap: 10px;">
                 <div style="font-size: 0.9rem; color: #6c757d;">입력까지 남은 시간:</div>
-                <div id="inactivity-timer" style="font-size: 2rem; font-weight: 900; color: #e74c3c; min-width: 80px;">
+                <div id="inactivity-timer" class="timer-value">
                     {{ game.inactivity_limit }}
                 </div>
                 <div style="font-size: 0.9rem; color: #6c757d;">초</div>
@@ -303,7 +337,7 @@ body {
             <p style="color: #776e65;">
                 <strong>방향키로 타일을 움직여서 2048을 만드세요!</strong>
             </p>
-            <button class="restart-button" onclick="restartGame()">
+            <button class="restart-button btn-ripple" onclick="restartGame()">
                 <i class="fas fa-redo me-2"></i>New Game
             </button>
         </div>
@@ -354,7 +388,7 @@ body {
         </div>
 
         <div class="text-center mt-4">
-            <a href="{% url 'pybo:index' %}" class="btn btn-outline-secondary">
+            <a href="{% url 'pybo:index' %}" class="btn btn-outline-secondary btn-ripple">
                 <i class="fas fa-arrow-left me-2"></i>메인으로
             </a>
         </div>
@@ -366,7 +400,7 @@ body {
     <div class="game-message-content">
         <h1 id="messageTitle">You Win!</h1>
         <p id="messageText">Final Score: <span id="finalScore"></span></p>
-        <button class="restart-button mt-3" onclick="restartGame()">
+        <button class="restart-button mt-3 btn-ripple" onclick="restartGame()">
             <i class="fas fa-redo me-2"></i>Try Again
         </button>
     </div>
@@ -381,6 +415,8 @@ const inactivityLimit = {{ game.inactivity_limit }};
 let board = {{ game.board_state|safe }};
 let score = {{ game.score }};
 let isAnimating = false;
+let lastMoveAt = 0;
+const MOVE_COOLDOWN_MS = 120; // 클라이언트 단 입력 쿨다운으로 트래픽 완화
 let inactivityInterval = null;
 let inactiveSeconds = 0;
 
@@ -489,6 +525,11 @@ document.addEventListener('keydown', function(e) {
     }
 
     if (direction) {
+        const now = Date.now();
+        if (now - lastMoveAt < MOVE_COOLDOWN_MS) {
+            return;
+        }
+        lastMoveAt = now;
         move(direction);
     }
 });
@@ -531,6 +572,10 @@ function move(direction) {
                     showGameOver(data.status);
                 }, 500);
             }
+        } else if (data.cooldown) {
+            // 서버가 쿨다운을 요구하는 경우
+            setTimeout(() => { isAnimating = false; }, MOVE_COOLDOWN_MS);
+            return;
         } else if (data.game_over && data.status === 'timeout') {
             // 비활동 타임아웃
             clearInterval(inactivityInterval);
