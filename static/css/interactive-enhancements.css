@@ -1,0 +1,466 @@
+/**
+ * Interactive Enhancements CSS
+ * Supporting styles for interactive.js
+ */
+
+/* ===========================================
+   Custom Cursor
+   =========================================== */
+.custom-cursor,
+.custom-cursor-dot {
+    position: fixed;
+    pointer-events: none;
+    z-index: 9999;
+    mix-blend-mode: difference;
+}
+
+.custom-cursor {
+    width: 40px;
+    height: 40px;
+    border: 2px solid rgba(255, 255, 255, 0.8);
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    transition: width 0.3s ease, height 0.3s ease, border-color 0.3s ease;
+}
+
+.custom-cursor-dot {
+    width: 6px;
+    height: 6px;
+    background: rgba(255, 255, 255, 0.9);
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+}
+
+.custom-cursor.cursor-hover {
+    width: 60px;
+    height: 60px;
+    border-color: rgba(139, 92, 246, 0.8);
+}
+
+.custom-cursor-dot.cursor-hover {
+    width: 8px;
+    height: 8px;
+    background: rgba(139, 92, 246, 0.9);
+}
+
+/* Hide default cursor when custom cursor is active */
+body:has(.custom-cursor) * {
+    cursor: none !important;
+}
+
+/* ===========================================
+   Scroll Reveal
+   =========================================== */
+.scroll-reveal {
+    opacity: 0;
+    transition: opacity 0.8s ease, transform 0.8s ease;
+}
+
+.scroll-reveal.is-visible {
+    opacity: 1;
+}
+
+.fade-in-up.scroll-reveal {
+    transform: translateY(40px);
+}
+
+.fade-in-up.scroll-reveal.is-visible {
+    transform: translateY(0);
+}
+
+.fade-in-down.scroll-reveal {
+    transform: translateY(-40px);
+}
+
+.fade-in-down.scroll-reveal.is-visible {
+    transform: translateY(0);
+}
+
+.fade-in-left.scroll-reveal {
+    transform: translateX(-40px);
+}
+
+.fade-in-left.scroll-reveal.is-visible {
+    transform: translateX(0);
+}
+
+.fade-in-right.scroll-reveal {
+    transform: translateX(40px);
+}
+
+.fade-in-right.scroll-reveal.is-visible {
+    transform: translateX(0);
+}
+
+/* ===========================================
+   Reveal Animations
+   =========================================== */
+[data-reveal] {
+    opacity: 0;
+    transform: translateY(30px);
+    transition: opacity 0.6s ease, transform 0.6s ease;
+}
+
+[data-reveal].revealed {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+/* ===========================================
+   Parallax Container
+   =========================================== */
+[data-parallax] {
+    will-change: transform;
+}
+
+/* ===========================================
+   Magnetic Elements
+   =========================================== */
+.magnet-btn,
+[data-magnetic] {
+    transition: transform 0.3s cubic-bezier(0.23, 1, 0.32, 1);
+    position: relative;
+    will-change: transform;
+}
+
+/* ===========================================
+   Page Transition Overlay
+   =========================================== */
+.page-transition-overlay {
+    position: fixed;
+    inset: 0;
+    background: linear-gradient(135deg,
+        var(--primary-500) 0%,
+        var(--secondary-500) 50%,
+        var(--accent-500) 100%);
+    z-index: 99999;
+    pointer-events: none;
+    opacity: 0;
+    transform: translateY(-100%);
+    transition: transform 0.5s cubic-bezier(0.76, 0, 0.24, 1),
+                opacity 0.3s ease;
+}
+
+.page-transition-overlay.active {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+/* ===========================================
+   Tilt Cards Enhancement
+   =========================================== */
+.card-tilt,
+[data-tilt] {
+    transform-style: preserve-3d;
+    will-change: transform;
+}
+
+.card-tilt > *,
+[data-tilt] > * {
+    transform: translateZ(20px);
+}
+
+/* ===========================================
+   Floating Animation
+   =========================================== */
+@keyframes float {
+    0%, 100% {
+        transform: translateY(0px);
+    }
+    50% {
+        transform: translateY(-20px);
+    }
+}
+
+.float,
+[data-float] {
+    animation: float 3s ease-in-out infinite;
+}
+
+/* Stagger delays */
+.float:nth-child(2),
+[data-float]:nth-child(2) {
+    animation-delay: 0.5s;
+}
+
+.float:nth-child(3),
+[data-float]:nth-child(3) {
+    animation-delay: 1s;
+}
+
+.float:nth-child(4),
+[data-float]:nth-child(4) {
+    animation-delay: 1.5s;
+}
+
+/* ===========================================
+   Smooth Scroll Behavior
+   =========================================== */
+html {
+    scroll-behavior: smooth;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    html {
+        scroll-behavior: auto;
+    }
+
+    .scroll-reveal,
+    [data-reveal],
+    .custom-cursor,
+    .custom-cursor-dot,
+    .page-transition-overlay {
+        transition: none !important;
+        animation: none !important;
+    }
+}
+
+/* ===========================================
+   Interactive Hover States
+   =========================================== */
+.interactive-hover {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.interactive-hover:hover {
+    transform: translateY(-4px) scale(1.02);
+    box-shadow: var(--shadow-2xl);
+}
+
+/* ===========================================
+   Glow on Hover
+   =========================================== */
+.glow-on-hover {
+    position: relative;
+    overflow: hidden;
+}
+
+.glow-on-hover::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(
+        circle at var(--mouse-x, 50%) var(--mouse-y, 50%),
+        rgba(139, 92, 246, 0.15) 0%,
+        transparent 50%
+    );
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.glow-on-hover:hover::before {
+    opacity: 1;
+}
+
+/* ===========================================
+   Spotlight Effect
+   =========================================== */
+.spotlight {
+    position: relative;
+    overflow: hidden;
+}
+
+.spotlight::before {
+    content: '';
+    position: absolute;
+    width: 200px;
+    height: 200px;
+    background: radial-gradient(circle, rgba(255, 255, 255, 0.1) 0%, transparent 70%);
+    border-radius: 50%;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    transform: translate(-50%, -50%);
+}
+
+.spotlight:hover::before {
+    opacity: 1;
+}
+
+/* ===========================================
+   Ripple Effect Enhancement
+   =========================================== */
+.ripple-effect {
+    position: relative;
+    overflow: hidden;
+}
+
+.ripple-effect::after {
+    content: '';
+    position: absolute;
+    width: 0;
+    height: 0;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.5);
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+}
+
+.ripple-effect:active::after {
+    width: 300px;
+    height: 300px;
+    transition: width 0.6s ease, height 0.6s ease, opacity 0.6s ease;
+    opacity: 0;
+}
+
+/* ===========================================
+   Gradient Border Animation
+   =========================================== */
+.gradient-border-animated {
+    position: relative;
+    border: 2px solid transparent;
+    background-clip: padding-box;
+}
+
+.gradient-border-animated::before {
+    content: '';
+    position: absolute;
+    inset: -2px;
+    background: linear-gradient(
+        45deg,
+        var(--primary-500),
+        var(--secondary-500),
+        var(--accent-500),
+        var(--primary-500)
+    );
+    background-size: 300% 300%;
+    border-radius: inherit;
+    z-index: -1;
+    animation: gradient-border 4s ease infinite;
+}
+
+@keyframes gradient-border {
+    0%, 100% {
+        background-position: 0% 50%;
+    }
+    50% {
+        background-position: 100% 50%;
+    }
+}
+
+/* ===========================================
+   Scroll Progress Indicator
+   =========================================== */
+.scroll-progress {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: var(--gradient-primary);
+    transform: scaleX(0);
+    transform-origin: left;
+    z-index: 9998;
+    transition: transform 0.1s ease;
+}
+
+/* ===========================================
+   Loading Shimmer
+   =========================================== */
+.shimmer {
+    background: linear-gradient(
+        90deg,
+        var(--surface-secondary) 0%,
+        var(--surface-primary) 50%,
+        var(--surface-secondary) 100%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 1.5s ease-in-out infinite;
+}
+
+@keyframes shimmer {
+    0% {
+        background-position: -200% 0;
+    }
+    100% {
+        background-position: 200% 0;
+    }
+}
+
+/* ===========================================
+   Micro Interactions
+   =========================================== */
+.scale-on-hover {
+    transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.scale-on-hover:hover {
+    transform: scale(1.05);
+}
+
+.rotate-on-hover {
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.rotate-on-hover:hover {
+    transform: rotate(5deg);
+}
+
+.bounce-on-hover {
+    transition: transform 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+}
+
+.bounce-on-hover:hover {
+    transform: translateY(-10px);
+}
+
+/* ===========================================
+   Text Gradient Reveal
+   =========================================== */
+.text-gradient-animated {
+    background: linear-gradient(
+        90deg,
+        var(--primary-500),
+        var(--secondary-500),
+        var(--accent-500),
+        var(--primary-500)
+    );
+    background-size: 300% 100%;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    animation: text-gradient 3s ease infinite;
+}
+
+@keyframes text-gradient {
+    0%, 100% {
+        background-position: 0% 50%;
+    }
+    50% {
+        background-position: 100% 50%;
+    }
+}
+
+/* ===========================================
+   Glassmorphism Hover
+   =========================================== */
+.glass-hover {
+    transition: all 0.3s ease;
+}
+
+.glass-hover:hover {
+    background: rgba(255, 255, 255, 0.15);
+    backdrop-filter: blur(25px);
+    border-color: rgba(255, 255, 255, 0.3);
+}
+
+/* ===========================================
+   Pulse on Load
+   =========================================== */
+.pulse-on-load {
+    animation: pulse-load 2s ease-out;
+}
+
+@keyframes pulse-load {
+    0% {
+        transform: scale(0.95);
+        opacity: 0;
+    }
+    50% {
+        transform: scale(1.05);
+    }
+    100% {
+        transform: scale(1);
+        opacity: 1;
+    }
+}

@@ -1,0 +1,585 @@
+/**
+ * TechChang Reborn - Complete Design Transformation
+ * AI/SaaS 느낌에서 완전히 탈피한 독특한 비주얼 아이덴티티
+ *
+ * 핵심 컨셉:
+ * - Bento Grid 레이아웃
+ * - Bold Typography
+ * - Maximum Color Usage
+ * - 3D Depth & Transforms
+ * - Unique Motion Language
+ */
+
+/* ===========================================
+   Typography Revolution
+   =========================================== */
+
+/* Display Font - 초대형 헤드라인 */
+.display-mega {
+    font-size: clamp(3.5rem, 8vw, 8rem);
+    font-weight: 900;
+    line-height: 0.9;
+    letter-spacing: -0.05em;
+    background: linear-gradient(135deg,
+        var(--primary-400) 0%,
+        var(--secondary-500) 35%,
+        var(--accent-500) 70%,
+        var(--primary-600) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    background-size: 300% 300%;
+    animation: gradient-shift 8s ease infinite;
+}
+
+.display-xl {
+    font-size: clamp(2.5rem, 6vw, 6rem);
+    font-weight: 900;
+    line-height: 1;
+    letter-spacing: -0.04em;
+}
+
+.display-lg {
+    font-size: clamp(2rem, 4vw, 4rem);
+    font-weight: 800;
+    line-height: 1.1;
+    letter-spacing: -0.03em;
+}
+
+/* Gradient Text - 모든 헤드라인에 적용 */
+.text-gradient-dynamic {
+    background: linear-gradient(
+        90deg,
+        var(--primary-500),
+        var(--secondary-500),
+        var(--accent-500),
+        var(--secondary-500),
+        var(--primary-500)
+    );
+    background-size: 400% 100%;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    animation: text-shimmer 6s ease-in-out infinite;
+}
+
+@keyframes text-shimmer {
+    0%, 100% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+}
+
+/* ===========================================
+   Bento Grid System
+   =========================================== */
+
+.bento-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: var(--space-6);
+    padding: var(--space-8);
+}
+
+.bento-item {
+    background: var(--surface-primary);
+    border-radius: var(--radius-2xl);
+    padding: var(--space-6);
+    position: relative;
+    overflow: hidden;
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Bento 크기 변형 */
+.bento-2x {
+    grid-column: span 2;
+}
+
+.bento-2y {
+    grid-row: span 2;
+}
+
+.bento-featured {
+    grid-column: span 2;
+    grid-row: span 2;
+    background: linear-gradient(135deg,
+        rgba(139, 92, 246, 0.1) 0%,
+        rgba(236, 72, 153, 0.1) 50%,
+        rgba(20, 184, 166, 0.1) 100%);
+}
+
+/* Bento Hover Effect - 3D */
+.bento-item:hover {
+    transform: translateY(-8px) scale(1.02);
+    box-shadow:
+        0 20px 60px -15px rgba(0, 0, 0, 0.3),
+        0 0 0 1px rgba(255, 255, 255, 0.1);
+}
+
+.bento-item::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(
+        circle at var(--mouse-x, 50%) var(--mouse-y, 50%),
+        rgba(139, 92, 246, 0.15) 0%,
+        transparent 50%
+    );
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    pointer-events: none;
+}
+
+.bento-item:hover::before {
+    opacity: 1;
+}
+
+/* ===========================================
+   Colorful Glassmorphism
+   =========================================== */
+
+.glass-purple {
+    background: linear-gradient(135deg,
+        rgba(139, 92, 246, 0.2) 0%,
+        rgba(124, 58, 237, 0.1) 100%);
+    backdrop-filter: blur(20px) saturate(180%);
+    border: 1px solid rgba(139, 92, 246, 0.3);
+    box-shadow:
+        0 8px 32px 0 rgba(139, 92, 246, 0.2),
+        inset 0 1px 0 0 rgba(255, 255, 255, 0.2);
+}
+
+.glass-pink {
+    background: linear-gradient(135deg,
+        rgba(236, 72, 153, 0.2) 0%,
+        rgba(219, 39, 119, 0.1) 100%);
+    backdrop-filter: blur(20px) saturate(180%);
+    border: 1px solid rgba(236, 72, 153, 0.3);
+    box-shadow:
+        0 8px 32px 0 rgba(236, 72, 153, 0.2),
+        inset 0 1px 0 0 rgba(255, 255, 255, 0.2);
+}
+
+.glass-teal {
+    background: linear-gradient(135deg,
+        rgba(20, 184, 166, 0.2) 0%,
+        rgba(13, 148, 136, 0.1) 100%);
+    backdrop-filter: blur(20px) saturate(180%);
+    border: 1px solid rgba(20, 184, 166, 0.3);
+    box-shadow:
+        0 8px 32px 0 rgba(20, 184, 166, 0.2),
+        inset 0 1px 0 0 rgba(255, 255, 255, 0.2);
+}
+
+.glass-rainbow {
+    background: linear-gradient(135deg,
+        rgba(139, 92, 246, 0.15) 0%,
+        rgba(236, 72, 153, 0.15) 33%,
+        rgba(20, 184, 166, 0.15) 66%,
+        rgba(139, 92, 246, 0.15) 100%);
+    background-size: 300% 300%;
+    backdrop-filter: blur(20px) saturate(180%);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    animation: gradient-rotate 10s ease infinite;
+}
+
+@keyframes gradient-rotate {
+    0%, 100% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+}
+
+/* ===========================================
+   3D Transform Cards
+   =========================================== */
+
+.card-3d {
+    transform-style: preserve-3d;
+    perspective: 1500px;
+    transition: all 0.6s cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.card-3d-inner {
+    transform-style: preserve-3d;
+    transition: transform 0.6s cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.card-3d:hover .card-3d-inner {
+    transform: rotateY(5deg) rotateX(-5deg) translateZ(20px);
+}
+
+.card-3d-layer {
+    transform: translateZ(40px);
+}
+
+.card-3d-shadow {
+    transform: translateZ(-20px);
+    filter: blur(20px);
+    opacity: 0.3;
+}
+
+/* ===========================================
+   Elastic Motion Language
+   =========================================== */
+
+.bounce-in {
+    animation: bounce-in 0.8s cubic-bezier(0.68, -0.55, 0.265, 1.55) both;
+}
+
+@keyframes bounce-in {
+    0% {
+        opacity: 0;
+        transform: scale(0.3) translateY(50px);
+    }
+    50% {
+        transform: scale(1.05);
+    }
+    70% {
+        transform: scale(0.95);
+    }
+    100% {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+    }
+}
+
+.elastic-in {
+    animation: elastic-in 1s cubic-bezier(0.68, -0.55, 0.265, 1.55) both;
+}
+
+@keyframes elastic-in {
+    0% {
+        opacity: 0;
+        transform: scale(0) rotate(-180deg);
+    }
+    50% {
+        transform: scale(1.1) rotate(5deg);
+    }
+    100% {
+        opacity: 1;
+        transform: scale(1) rotate(0deg);
+    }
+}
+
+.morph-in {
+    animation: morph-in 1.2s cubic-bezier(0.68, -0.55, 0.265, 1.55) both;
+}
+
+@keyframes morph-in {
+    0% {
+        opacity: 0;
+        border-radius: 50%;
+        transform: scale(0.5) rotate(0deg);
+    }
+    50% {
+        border-radius: 20%;
+        transform: scale(1.1) rotate(180deg);
+    }
+    100% {
+        opacity: 1;
+        border-radius: var(--radius-2xl);
+        transform: scale(1) rotate(360deg);
+    }
+}
+
+/* Stagger with unique delays */
+.stagger-1 { animation-delay: 0.1s; }
+.stagger-2 { animation-delay: 0.2s; }
+.stagger-3 { animation-delay: 0.3s; }
+.stagger-4 { animation-delay: 0.4s; }
+.stagger-5 { animation-delay: 0.5s; }
+.stagger-6 { animation-delay: 0.6s; }
+
+/* ===========================================
+   Asymmetric Layout
+   =========================================== */
+
+.asymmetric-hero {
+    display: grid;
+    grid-template-columns: 1.3fr 1fr;
+    gap: var(--space-12);
+    align-items: center;
+    min-height: 80vh;
+}
+
+.asymmetric-hero-left {
+    padding-right: var(--space-12);
+}
+
+.asymmetric-hero-right {
+    position: relative;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+@media (max-width: 768px) {
+    .asymmetric-hero {
+        grid-template-columns: 1fr;
+        gap: var(--space-8);
+    }
+}
+
+/* ===========================================
+   Floating Blobs (Organic Shapes)
+   =========================================== */
+
+.blob {
+    position: absolute;
+    border-radius: 40% 60% 70% 30% / 40% 50% 60% 50%;
+    filter: blur(40px);
+    opacity: 0.4;
+    animation: blob-morph 20s ease-in-out infinite;
+}
+
+@keyframes blob-morph {
+    0%, 100% {
+        border-radius: 40% 60% 70% 30% / 40% 50% 60% 50%;
+        transform: rotate(0deg) scale(1);
+    }
+    33% {
+        border-radius: 70% 30% 50% 50% / 30% 30% 70% 70%;
+        transform: rotate(120deg) scale(1.1);
+    }
+    66% {
+        border-radius: 100% 60% 60% 100% / 100% 100% 60% 60%;
+        transform: rotate(240deg) scale(0.9);
+    }
+}
+
+.blob-purple {
+    background: radial-gradient(circle, var(--primary-500), var(--primary-700));
+}
+
+.blob-pink {
+    background: radial-gradient(circle, var(--secondary-500), var(--secondary-700));
+}
+
+.blob-teal {
+    background: radial-gradient(circle, var(--accent-500), var(--accent-700));
+}
+
+/* ===========================================
+   Interactive Buttons - Morphing
+   =========================================== */
+
+.btn-morphing {
+    position: relative;
+    overflow: hidden;
+    border-radius: var(--radius-2xl);
+    transition: all 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+}
+
+.btn-morphing::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg,
+        var(--primary-500) 0%,
+        var(--secondary-500) 50%,
+        var(--accent-500) 100%);
+    background-size: 200% 200%;
+    opacity: 0;
+    transition: opacity 0.4s ease;
+    animation: gradient-shift 4s ease infinite;
+}
+
+.btn-morphing:hover::before {
+    opacity: 1;
+}
+
+.btn-morphing:hover {
+    transform: scale(1.05) translateY(-2px);
+    border-radius: var(--radius-lg);
+    box-shadow: 0 20px 40px -10px rgba(139, 92, 246, 0.5);
+}
+
+.btn-morphing span {
+    position: relative;
+    z-index: 1;
+}
+
+/* ===========================================
+   Neon Glow Effects
+   =========================================== */
+
+.neon-purple {
+    box-shadow:
+        0 0 10px rgba(139, 92, 246, 0.5),
+        0 0 20px rgba(139, 92, 246, 0.3),
+        0 0 30px rgba(139, 92, 246, 0.2),
+        0 0 40px rgba(139, 92, 246, 0.1);
+    animation: neon-pulse 2s ease-in-out infinite;
+}
+
+.neon-pink {
+    box-shadow:
+        0 0 10px rgba(236, 72, 153, 0.5),
+        0 0 20px rgba(236, 72, 153, 0.3),
+        0 0 30px rgba(236, 72, 153, 0.2),
+        0 0 40px rgba(236, 72, 153, 0.1);
+    animation: neon-pulse 2s ease-in-out infinite 0.5s;
+}
+
+.neon-teal {
+    box-shadow:
+        0 0 10px rgba(20, 184, 166, 0.5),
+        0 0 20px rgba(20, 184, 166, 0.3),
+        0 0 30px rgba(20, 184, 166, 0.2),
+        0 0 40px rgba(20, 184, 166, 0.1);
+    animation: neon-pulse 2s ease-in-out infinite 1s;
+}
+
+@keyframes neon-pulse {
+    0%, 100% {
+        filter: brightness(1);
+    }
+    50% {
+        filter: brightness(1.3);
+    }
+}
+
+/* ===========================================
+   Holographic Effect
+   =========================================== */
+
+.holographic {
+    background: linear-gradient(
+        135deg,
+        rgba(139, 92, 246, 0.3) 0%,
+        rgba(236, 72, 153, 0.3) 25%,
+        rgba(20, 184, 166, 0.3) 50%,
+        rgba(236, 72, 153, 0.3) 75%,
+        rgba(139, 92, 246, 0.3) 100%
+    );
+    background-size: 400% 400%;
+    animation: holographic-shift 8s ease infinite;
+    position: relative;
+}
+
+.holographic::before {
+    content: '';
+    position: absolute;
+    inset: -2px;
+    background: linear-gradient(
+        90deg,
+        transparent,
+        rgba(255, 255, 255, 0.3),
+        transparent
+    );
+    transform: translateX(-100%);
+    animation: holographic-shine 3s ease-in-out infinite;
+}
+
+@keyframes holographic-shift {
+    0%, 100% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+}
+
+@keyframes holographic-shine {
+    0% { transform: translateX(-100%); }
+    50%, 100% { transform: translateX(100%); }
+}
+
+/* ===========================================
+   Liquid Buttons
+   =========================================== */
+
+.btn-liquid {
+    position: relative;
+    overflow: hidden;
+    transition: all 0.6s cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.btn-liquid::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 0;
+    height: 0;
+    border-radius: 50%;
+    background: radial-gradient(circle,
+        rgba(255, 255, 255, 0.4) 0%,
+        rgba(255, 255, 255, 0.1) 50%,
+        transparent 100%);
+    transform: translate(-50%, -50%);
+    transition: width 0.6s ease, height 0.6s ease;
+}
+
+.btn-liquid:hover::after {
+    width: 300%;
+    height: 300%;
+}
+
+.btn-liquid:active {
+    transform: scale(0.95);
+}
+
+/* ===========================================
+   Magnetic Cursor Follower
+   =========================================== */
+
+.magnetic {
+    transition: transform 0.3s cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.magnetic:hover {
+    transform: translate(var(--magnetic-x, 0), var(--magnetic-y, 0));
+}
+
+/* ===========================================
+   Particle Background
+   =========================================== */
+
+.particle-bg {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+    pointer-events: none;
+}
+
+.particle {
+    position: absolute;
+    width: 4px;
+    height: 4px;
+    background: radial-gradient(circle, var(--primary-400), transparent);
+    border-radius: 50%;
+    animation: particle-float 20s ease-in-out infinite;
+}
+
+@keyframes particle-float {
+    0%, 100% {
+        transform: translateY(0) translateX(0);
+        opacity: 0;
+    }
+    10% {
+        opacity: 1;
+    }
+    90% {
+        opacity: 1;
+    }
+    100% {
+        transform: translateY(-100vh) translateX(100px);
+        opacity: 0;
+    }
+}
+
+/* ===========================================
+   Responsive Adjustments
+   =========================================== */
+
+@media (max-width: 768px) {
+    .display-mega {
+        font-size: clamp(2.5rem, 10vw, 4rem);
+    }
+
+    .bento-2x,
+    .bento-2y,
+    .bento-featured {
+        grid-column: span 1;
+        grid-row: span 1;
+    }
+
+    .asymmetric-hero {
+        grid-template-columns: 1fr;
+    }
+}
