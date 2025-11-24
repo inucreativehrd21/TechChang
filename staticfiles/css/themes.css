@@ -1,8 +1,6 @@
 /**
- * 테크창 테마 시스템
- *
- * 라이트 모드와 다크 모드를 지원하는 테마 시스템
- * 동적으로 테마를 전환할 수 있습니다
+ * 테크창 테마 시스템 - Grayscale Only
+ * 라이트/다크 모드 - 보라색 완전 제거
  */
 
 /* ==========================================
@@ -11,33 +9,33 @@
 
 :root,
 .theme-light {
-  /* Background Colors */
+  /* Background */
   --bg-primary: #ffffff;
   --bg-secondary: #f9fafb;
   --bg-tertiary: #f3f4f6;
   --bg-hover: #f5f5f5;
   --bg-active: #eeeeee;
 
-  /* Text Colors */
+  /* Text */
   --text-primary: #111827;
   --text-secondary: #6b7280;
   --text-tertiary: #9ca3af;
   --text-inverse: #ffffff;
-  --text-link: var(--primary-600);
-  --text-link-hover: var(--primary-700);
+  --text-link: #4a5568;
+  --text-link-hover: #2d3748;
 
-  /* Border Colors */
+  /* Border */
   --border-primary: #e5e7eb;
   --border-secondary: #d1d5db;
-  --border-focus: var(--primary-500);
+  --border-focus: #4a5568;
 
-  /* Surface Colors - 카드, 패널 등 */
+  /* Surface */
   --surface-primary: #ffffff;
   --surface-secondary: rgba(255, 255, 255, 0.8);
   --surface-elevated: #ffffff;
   --surface-overlay: rgba(0, 0, 0, 0.5);
 
-  /* Semantic Colors */
+  /* Semantic */
   --success-bg: #d1fae5;
   --success-text: #065f46;
   --success-border: #10b981;
@@ -64,33 +62,33 @@
    ========================================== */
 
 .theme-dark {
-  /* Background Colors */
+  /* Background */
   --bg-primary: #0a0a0a;
   --bg-secondary: #1a1a1a;
   --bg-tertiary: #2a2a2a;
   --bg-hover: #333333;
   --bg-active: #3d3d3d;
 
-  /* Text Colors */
+  /* Text */
   --text-primary: #f9fafb;
   --text-secondary: #d1d5db;
   --text-tertiary: #9ca3af;
   --text-inverse: #111827;
-  --text-link: var(--primary-400);
-  --text-link-hover: var(--primary-300);
+  --text-link: #9e9e9e;
+  --text-link-hover: #bdbdbd;
 
-  /* Border Colors */
+  /* Border */
   --border-primary: #2a2a2a;
   --border-secondary: #3a3a3a;
-  --border-focus: var(--primary-400);
+  --border-focus: #757575;
 
-  /* Surface Colors */
-  --surface-primary: #16213e;
-  --surface-secondary: rgba(30, 39, 51, 0.8);
-  --surface-elevated: #1e3a5f;
+  /* Surface */
+  --surface-primary: #1a1a1a;
+  --surface-secondary: rgba(26, 26, 26, 0.8);
+  --surface-elevated: #2a2a2a;
   --surface-overlay: rgba(0, 0, 0, 0.7);
 
-  /* Semantic Colors - 다크 모드에서는 더 부드러운 색상 */
+  /* Semantic */
   --success-bg: rgba(16, 185, 129, 0.15);
   --success-text: #6ee7b7;
   --success-border: #10b981;
@@ -109,9 +107,9 @@
 
   /* Gradients */
   --gradient-bg: linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 100%);
-  --gradient-surface: linear-gradient(145deg, #16213e 0%, #1e273e 100%);
+  --gradient-surface: linear-gradient(145deg, #1a1a1a 0%, #2a2a2a 100%);
 
-  /* Shadows - 다크 모드에서는 더 강한 그림자 */
+  /* Shadows */
   --shadow-xs: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
   --shadow-sm: 0 1px 3px 0 rgba(0, 0, 0, 0.4), 0 1px 2px 0 rgba(0, 0, 0, 0.3);
   --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4), 0 2px 4px -1px rgba(0, 0, 0, 0.3);
@@ -126,110 +124,14 @@
    테마 전환 애니메이션
    ========================================== */
 
-/* 부드러운 테마 전환 */
-* {
-  transition:
-    background-color 0.35s ease,
-    color 0.35s ease,
-    border-color 0.35s ease;
-}
-
-/* 애니메이션에서 제외할 요소들 */
-*,
-*::before,
-*::after {
-  transition-property: none;
-}
-
-/* 전환이 필요한 속성만 선택적으로 적용 */
-body,
-.theme-transition {
+body.theme-transition {
   transition:
     background-color 0.35s ease,
     color 0.35s ease;
 }
 
 /* ==========================================
-   테마 적용 유틸리티 클래스
-   ========================================== */
-
-/* Background */
-.bg-primary {
-  background-color: var(--bg-primary);
-}
-
-.bg-secondary {
-  background-color: var(--bg-secondary);
-}
-
-.bg-tertiary {
-  background-color: var(--bg-tertiary);
-}
-
-/* Text */
-.text-primary {
-  color: var(--text-primary);
-}
-
-.text-secondary {
-  color: var(--text-secondary);
-}
-
-.text-tertiary {
-  color: var(--text-tertiary);
-}
-
-.text-inverse {
-  color: var(--text-inverse);
-}
-
-/* Border */
-.border-primary {
-  border-color: var(--border-primary);
-}
-
-.border-secondary {
-  border-color: var(--border-secondary);
-}
-
-/* Surface */
-.surface {
-  background-color: var(--surface-primary);
-  border: 1px solid var(--border-primary);
-  box-shadow: var(--shadow-sm);
-}
-
-.surface-elevated {
-  background-color: var(--surface-elevated);
-  border: 1px solid var(--border-primary);
-  box-shadow: var(--shadow-md);
-}
-
-/* ==========================================
-   다크 모드 자동 감지
-   ========================================== */
-
-/* 시스템 테마 자동 감지 (선호도) */
-@media (prefers-color-scheme: dark) {
-  :root:not(.theme-light):not(.theme-dark) {
-    /* Background Colors */
-    --bg-primary: #0a0a0a;
-    --bg-secondary: #1a1a1a;
-    --bg-tertiary: #2a2a2a;
-
-    /* Text Colors */
-    --text-primary: #f9fafb;
-    --text-secondary: #d1d5db;
-    --text-tertiary: #9ca3af;
-
-    /* Border Colors */
-    --border-primary: #2a2a2a;
-    --border-secondary: #3a3a3a;
-  }
-}
-
-/* ==========================================
-   테마 토글 버튼 스타일
+   테마 토글 버튼
    ========================================== */
 
 .theme-toggle {
@@ -288,30 +190,70 @@ body,
 }
 
 /* ==========================================
-   커스텀 테마 (확장 가능)
+   유틸리티 클래스
    ========================================== */
 
-/* 예시: 고대비 테마 */
-.theme-high-contrast {
-  --bg-primary: #000000;
-  --bg-secondary: #111111;
-  --text-primary: #ffffff;
-  --text-secondary: #eeeeee;
-  --border-primary: #ffffff;
+.bg-primary {
+  background-color: var(--bg-primary);
 }
 
-/* 예시: 세피아 테마 */
-.theme-sepia {
-  --bg-primary: #f4ecd8;
-  --bg-secondary: #e8dcc4;
-  --text-primary: #5c4a2b;
-  --text-secondary: #8b7355;
-  --border-primary: #d4c4a8;
+.bg-secondary {
+  background-color: var(--bg-secondary);
+}
+
+.bg-tertiary {
+  background-color: var(--bg-tertiary);
+}
+
+.text-primary {
+  color: var(--text-primary);
+}
+
+.text-secondary {
+  color: var(--text-secondary);
+}
+
+.text-tertiary {
+  color: var(--text-tertiary);
+}
+
+.text-inverse {
+  color: var(--text-inverse);
+}
+
+.border-primary {
+  border-color: var(--border-primary);
+}
+
+.border-secondary {
+  border-color: var(--border-secondary);
+}
+
+.surface {
+  background-color: var(--surface-primary);
+  border: 1px solid var(--border-primary);
+  box-shadow: var(--shadow-sm);
+}
+
+.surface-elevated {
+  background-color: var(--surface-elevated);
+  border: 1px solid var(--border-primary);
+  box-shadow: var(--shadow-md);
 }
 
 /* ==========================================
-   인쇄 스타일
+   접근성
    ========================================== */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
 
 @media print {
   * {
@@ -326,19 +268,5 @@ body,
   button,
   .no-print {
     display: none !important;
-  }
-}
-
-/* ==========================================
-   모션 감소 선호 (접근성)
-   ========================================== */
-
-@media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
   }
 }
