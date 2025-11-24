@@ -1,44 +1,65 @@
 {% extends 'base.html' %}
 {% load static %}
 
-{% block title %}Minesweeper{% endblock %}
+{% block title %}지뢰찾기 - TechChang Games{% endblock %}
 
-{% block extra_css %}{% endblock %}
+{% block extra_css %}
+<link href="{% static 'css/reborn.css' %}?v={{ 'now'|date:'YmdHis' }}" rel="stylesheet">
+{% endblock %}
 
 {% block content %}
-<section class="game-start-shell fade-in-up mesh-gradient-animated">
-    <div class="game-start-card card-glow card-lift fade-in-up">
-        <h1 class="game-start-title">💣 지뢰찾기</h1>
-        <p class="game-subtitle">난이도를 골라주세요!</p>
+<div class="game-container">
+    <!-- Game Header -->
+    <div class="game-header fade-in">
+        <h1 class="game-title">
+            💣 지뢰찾기
+        </h1>
+        <p class="game-description">
+            난이도를 선택하고 지뢰를 피해 모든 칸을 열어보세요!
+        </p>
+    </div>
 
-        <div class="difficulty-grid">
-            <a href="{% url 'pybo:minesweeper_create' %}?difficulty=easy" class="difficulty-card normal btn-ripple">
-                <div class="difficulty-icon scale-in">😊</div>
-                <div class="difficulty-name">쉬움</div>
-                <div class="difficulty-info">9 × 9 grid<br>10개 지뢰</div>
+    <!-- Difficulty Selection -->
+    <div class="game-board fade-in stagger-1">
+        <h2 style="font-size: 1.5rem; font-weight: 700; color: var(--text-primary); margin-bottom: var(--space-6); text-align: center;">
+            난이도 선택
+        </h2>
+
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--space-4);">
+            <a href="{% url 'pybo:minesweeper_create' %}?difficulty=easy" class="card-clean" style="text-align: center; text-decoration: none; padding: var(--space-8);">
+                <div style="font-size: 4rem; margin-bottom: var(--space-3);">😊</div>
+                <h3 style="font-size: 1.25rem; font-weight: 700; color: var(--text-primary); margin-bottom: var(--space-2);">쉬움</h3>
+                <p style="font-size: 0.875rem; color: var(--text-secondary); line-height: 1.6;">
+                    9 × 9 grid<br>10개 지뢰
+                </p>
             </a>
 
-            <a href="{% url 'pybo:minesweeper_create' %}?difficulty=medium" class="difficulty-card btn-ripple">
-                <div class="difficulty-icon scale-in">😐</div>
-                <div class="difficulty-name">보통</div>
-                <div class="difficulty-info">16 × 16 grid<br>40개 지뢰</div>
+            <a href="{% url 'pybo:minesweeper_create' %}?difficulty=medium" class="card-clean" style="text-align: center; text-decoration: none; padding: var(--space-8);">
+                <div style="font-size: 4rem; margin-bottom: var(--space-3);">😐</div>
+                <h3 style="font-size: 1.25rem; font-weight: 700; color: var(--text-primary); margin-bottom: var(--space-2);">보통</h3>
+                <p style="font-size: 0.875rem; color: var(--text-secondary); line-height: 1.6;">
+                    16 × 16 grid<br>40개 지뢰
+                </p>
             </a>
 
-            <a href="{% url 'pybo:minesweeper_create' %}?difficulty=hard" class="difficulty-card hard btn-ripple">
-                <div class="difficulty-icon scale-in">😰</div>
-                <div class="difficulty-name">어려움</div>
-                <div class="difficulty-info">16 × 30 grid<br>99개 지뢰</div>
-            </a>
-        </div>
-
-        <div class="d-flex gap-2 justify-content-center mt-3">
-            <a href="{% url 'pybo:index' %}" class="btn btn-outline-secondary btn-ripple">
-                <i class="fas fa-arrow-left me-2"></i>홈으로
-            </a>
-            <a href="{% url 'pybo:minesweeper_leaderboard' %}?difficulty=easy" class="btn btn-primary btn-ripple">
-                <i class="fas fa-trophy me-2"></i>리더보드
+            <a href="{% url 'pybo:minesweeper_create' %}?difficulty=hard" class="card-clean" style="text-align: center; text-decoration: none; padding: var(--space-8);">
+                <div style="font-size: 4rem; margin-bottom: var(--space-3);">😰</div>
+                <h3 style="font-size: 1.25rem; font-weight: 700; color: var(--text-primary); margin-bottom: var(--space-2);">어려움</h3>
+                <p style="font-size: 0.875rem; color: var(--text-secondary); line-height: 1.6;">
+                    16 × 30 grid<br>99개 지뢰
+                </p>
             </a>
         </div>
     </div>
-</section>
+
+    <!-- Actions -->
+    <div class="game-controls fade-in stagger-2">
+        <a href="{% url 'pybo:games_index' %}" class="btn-secondary">
+            ← 홈으로
+        </a>
+        <a href="{% url 'pybo:minesweeper_leaderboard' %}?difficulty=easy" class="btn-primary">
+            🏆 리더보드
+        </a>
+    </div>
+</div>
 {% endblock %}

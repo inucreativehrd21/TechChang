@@ -7,327 +7,159 @@
 {% endblock %}
 
 {% block content %}
-<!-- Particle Background -->
-<div class="particle-bg">
-    {% for i in "123456789012345" %}
-    <div class="particle" style="
-        left: {{ forloop.counter|add:10|add:forloop.counter|mul:5 }}%;
-        animation-delay: {{ forloop.counter|mul:0.5 }}s;
-        animation-duration: {{ forloop.counter|add:15 }}s;
-    "></div>
-    {% endfor %}
-</div>
+<!-- Hero Section - Clean & Professional -->
+<section class="hero-section">
+    <!-- 미묘한 배경 장식 -->
+    <div class="bg-decoration">
+        <div class="bg-blob bg-blob-1"></div>
+        <div class="bg-blob bg-blob-2"></div>
+    </div>
 
-<!-- Hero Section - Completely Reborn -->
-<section class="asymmetric-hero container-fluid" style="position: relative; overflow: hidden; padding: var(--space-16) var(--space-6);">
-    <!-- Floating Blobs -->
-    <div class="blob blob-purple" style="width: 400px; height: 400px; top: -100px; left: -100px; animation-delay: 0s;"></div>
-    <div class="blob blob-pink" style="width: 500px; height: 500px; bottom: -150px; right: 10%; animation-delay: 5s;"></div>
-    <div class="blob blob-teal" style="width: 350px; height: 350px; top: 20%; right: -50px; animation-delay: 10s;"></div>
-
-    <!-- Left Content -->
-    <div class="asymmetric-hero-left bounce-in" style="position: relative; z-index: 2;">
-        <div class="mb-4 bounce-in stagger-1">
-            <span style="
-                display: inline-block;
-                padding: var(--space-2) var(--space-4);
-                background: var(--gradient-primary);
-                color: white;
-                border-radius: 999px;
-                font-size: 0.875rem;
-                font-weight: 700;
-                letter-spacing: 0.05em;
-                text-transform: uppercase;
-                box-shadow: 0 4px 14px rgba(139, 92, 246, 0.4);
-            ">
-                ✨ HRD × Technology × Innovation
-            </span>
+    <div class="hero-content fade-in">
+        <!-- Badge -->
+        <div style="text-align: center; margin-bottom: var(--space-4);">
+            <span class="badge badge-featured">HRD × Technology × Innovation</span>
         </div>
 
-        <h1 class="display-mega bounce-in stagger-2">
-            테크창
-        </h1>
-
-        <h2 class="display-lg text-gradient-dynamic bounce-in stagger-3" style="margin: var(--space-6) 0;">
-            지식이 성장하는<br>창조적 공간
+        <!-- Main Title -->
+        <h1 class="display-mega text-center">테크창</h1>
+        <h2 class="display-lg text-center text-gradient-accent" style="margin-bottom: var(--space-6);">
+            지식이 성장하는 창조적 공간
         </h2>
 
-        <p class="bounce-in stagger-4" style="
+        <!-- Description -->
+        <p class="fade-in stagger-2" style="
             font-size: 1.25rem;
             line-height: 1.8;
             color: var(--text-secondary);
-            max-width: 600px;
-            margin-bottom: var(--space-8);
+            max-width: 700px;
+            margin: 0 auto var(--space-8);
+            text-align: center;
         ">
             데이터 분석부터 프로그래밍까지, AI 시대의 인재개발 혁신을 함께 만들어갑니다.
         </p>
 
         <!-- CTA Buttons -->
-        <div class="bounce-in stagger-5" style="display: flex; gap: var(--space-4); flex-wrap: wrap;">
+        <div class="fade-in stagger-3" style="display: flex; gap: var(--space-4); justify-content: center; flex-wrap: wrap; margin-bottom: var(--space-12);">
             {% if user.is_authenticated %}
-                <a href="{% url 'pybo:question_create' %}" class="btn-liquid btn-morphing" style="
-                    padding: var(--space-5) var(--space-8);
-                    background: var(--gradient-primary);
-                    color: white;
-                    font-size: 1.125rem;
-                    font-weight: 700;
-                    border: none;
-                    cursor: pointer;
-                    display: inline-flex;
-                    align-items: center;
-                    gap: var(--space-2);
-                ">
-                    <span>✍️ 게시글 작성</span>
+                <a href="{% url 'pybo:question_create' %}" class="btn-primary">
+                    ✍️ 게시글 작성
                 </a>
-                <a href="{% url 'pybo:games_index' %}" class="btn-liquid glass-rainbow" style="
-                    padding: var(--space-5) var(--space-8);
-                    color: var(--text-primary);
-                    font-size: 1.125rem;
-                    font-weight: 700;
-                    border: 1px solid rgba(255, 255, 255, 0.3);
-                    cursor: pointer;
-                    display: inline-flex;
-                    align-items: center;
-                    gap: var(--space-2);
-                ">
-                    <span>🎮 게임 센터</span>
+                <a href="{% url 'pybo:games_index' %}" class="btn-secondary">
+                    🎮 게임 센터
                 </a>
             {% else %}
-                <a href="{% url 'common:login' %}" class="btn-liquid btn-morphing" style="
-                    padding: var(--space-5) var(--space-8);
-                    background: var(--gradient-primary);
-                    color: white;
-                    font-size: 1.125rem;
-                    font-weight: 700;
-                    border: none;
-                    cursor: pointer;
-                    display: inline-flex;
-                    align-items: center;
-                    gap: var(--space-2);
-                ">
-                    <span>🚀 시작하기</span>
+                <a href="{% url 'common:login' %}" class="btn-primary">
+                    🚀 시작하기
                 </a>
-                <a href="{% url 'common:signup' %}" class="btn-liquid glass-rainbow" style="
-                    padding: var(--space-5) var(--space-8);
-                    color: var(--text-primary);
-                    font-size: 1.125rem;
-                    font-weight: 700;
-                    border: 1px solid rgba(255, 255, 255, 0.3);
-                    cursor: pointer;
-                    display: inline-flex;
-                    align-items: center;
-                    gap: var(--space-2);
-                ">
-                    <span>📝 회원가입</span>
+                <a href="{% url 'common:signup' %}" class="btn-secondary">
+                    📝 회원가입
                 </a>
             {% endif %}
         </div>
 
-        <!-- Stats - Colorful Glass Cards -->
-        <div class="elastic-in stagger-6" style="
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-            gap: var(--space-4);
-            margin-top: var(--space-12);
-        ">
-            <div class="glass-purple card-3d neon-purple" style="
-                padding: var(--space-5);
-                border-radius: var(--radius-2xl);
-                text-align: center;
-            ">
-                <div style="font-size: 2.5rem; font-weight: 900; line-height: 1;">{{ total_count }}</div>
-                <div style="font-size: 0.875rem; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; margin-top: var(--space-2); opacity: 0.8;">게시글</div>
+        <!-- Stats Cards -->
+        <div class="stats-grid fade-in stagger-4" style="max-width: 800px; margin: 0 auto;">
+            <div class="stat-card">
+                <div class="stat-value">{{ total_count }}</div>
+                <div class="stat-label">게시글</div>
             </div>
-            <div class="glass-pink card-3d neon-pink" style="
-                padding: var(--space-5);
-                border-radius: var(--radius-2xl);
-                text-align: center;
-            ">
-                <div style="font-size: 2.5rem; font-weight: 900; line-height: 1;">{{ categories|length }}</div>
-                <div style="font-size: 0.875rem; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; margin-top: var(--space-2); opacity: 0.8;">카테고리</div>
+            <div class="stat-card">
+                <div class="stat-value">{{ categories|length }}</div>
+                <div class="stat-label">카테고리</div>
             </div>
-            <div class="glass-teal card-3d neon-teal" style="
-                padding: var(--space-5);
-                border-radius: var(--radius-2xl);
-                text-align: center;
-            ">
-                <div style="font-size: 2.5rem; font-weight: 900; line-height: 1;">{% if user.is_authenticated %}ON{% else %}OFF{% endif %}</div>
-                <div style="font-size: 0.875rem; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; margin-top: var(--space-2); opacity: 0.8;">상태</div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Right Visual Element -->
-    <div class="asymmetric-hero-right elastic-in stagger-3">
-        <div class="holographic card-3d" style="
-            width: 100%;
-            max-width: 500px;
-            aspect-ratio: 1;
-            border-radius: 40% 60% 70% 30% / 40% 50% 60% 50%;
-            position: relative;
-            animation: blob-morph 20s ease-in-out infinite;
-            box-shadow: 0 30px 60px -20px rgba(139, 92, 246, 0.5);
-        ">
-            <div style="
-                position: absolute;
-                inset: 20%;
-                background: white;
-                border-radius: 30% 70% 70% 30% / 30% 30% 70% 70%;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                font-size: 6rem;
-                animation: blob-morph 15s ease-in-out infinite reverse;
-            ">
-                🎯
+            <div class="stat-card">
+                <div class="stat-value">{% if user.is_authenticated %}ON{% else %}OFF{% endif %}</div>
+                <div class="stat-label">상태</div>
             </div>
         </div>
     </div>
 </section>
 
-<!-- Bento Grid Section - Content -->
-<section class="container-fluid" style="padding: var(--space-12) var(--space-6); position: relative;">
-    <h2 class="display-lg text-gradient-dynamic text-center bounce-in" style="margin-bottom: var(--space-12);">
-        최신 콘텐츠
-    </h2>
+<!-- Categories Section - 콘텐츠 위로 이동 -->
+<section class="section" style="padding-top: var(--space-8); padding-bottom: var(--space-8); background: var(--bg-primary);">
+    <div class="container-wide">
+        <h2 class="section-title" style="font-size: 1.5rem; margin-bottom: var(--space-6);">카테고리</h2>
 
-    <div class="bento-container">
-        <!-- Featured Post -->
-        {% if question_list.0 %}
-        <div class="bento-item bento-featured glass-rainbow card-3d morph-in stagger-1">
-            <div style="height: 100%; display: flex; flex-direction: column; justify-content: space-between;">
-                <div>
-                    <span style="
-                        display: inline-block;
-                        padding: var(--space-1) var(--space-3);
-                        background: rgba(139, 92, 246, 0.2);
-                        border-radius: 999px;
-                        font-size: 0.75rem;
-                        font-weight: 700;
-                        margin-bottom: var(--space-4);
-                    ">✨ FEATURED</span>
-                    <h3 style="font-size: 2rem; font-weight: 800; margin-bottom: var(--space-4); line-height: 1.2;">
-                        <a href="{% url 'pybo:detail' question_list.0.id %}" style="color: inherit; text-decoration: none;">
-                            {{ question_list.0.subject }}
-                        </a>
-                    </h3>
-                    <p style="color: var(--text-secondary); line-height: 1.6; margin-bottom: var(--space-4);">
-                        {{ question_list.0.content|striptags|truncatewords:30 }}
-                    </p>
-                </div>
-                <div style="display: flex; justify-content: space-between; align-items: center;">
+        <div class="category-scroll">
+            <a href="?page=1" class="category-pill {% if not category %}active{% endif %}">
+                🌐 전체 ({{ total_count }})
+            </a>
+
+            {% for cat in categories %}
+            <a href="?category={{ cat.name }}&page=1" class="category-pill {% if category == cat.name %}active{% endif %}">
+                {{ cat.name }} {% if category == cat.name %}({{ category_counts|get_item:cat.name }}){% endif %}
+            </a>
+            {% endfor %}
+        </div>
+    </div>
+</section>
+
+<!-- Content Section - Bento Grid -->
+<section class="section" style="background: var(--bg-secondary);">
+    <div class="container-wide">
+        <h2 class="section-title">최신 콘텐츠</h2>
+
+        <div class="bento-container">
+            <!-- Featured Post -->
+            {% if question_list.0 %}
+            <div class="bento-featured fade-in">
+                <span class="badge badge-featured">Featured</span>
+                <h3 style="font-size: 2rem; font-weight: 800; margin: var(--space-4) 0; line-height: 1.2;">
+                    <a href="{% url 'pybo:detail' question_list.0.id %}" style="color: var(--text-primary); text-decoration: none;">
+                        {{ question_list.0.subject }}
+                    </a>
+                </h3>
+                <p style="color: var(--text-secondary); line-height: 1.6; margin-bottom: var(--space-6);">
+                    {{ question_list.0.content|striptags|truncatewords:30 }}
+                </p>
+                <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.875rem; color: var(--text-tertiary);">
                     <div style="display: flex; gap: var(--space-3);">
-                        <span style="display: flex; align-items: center; gap: var(--space-1);">
-                            ❤️ {{ question_list.0.voter.count }}
-                        </span>
-                        <span style="display: flex; align-items: center; gap: var(--space-1);">
-                            💬 {{ question_list.0.answer_set.count }}
-                        </span>
+                        <span>❤️ {{ question_list.0.voter.count }}</span>
+                        <span>💬 {{ question_list.0.answer_set.count }}</span>
                     </div>
-                    <span style="font-size: 0.875rem; opacity: 0.7;">
-                        {{ question_list.0.create_date|date:"m-d H:i" }}
-                    </span>
+                    <span>{{ question_list.0.create_date|date:"m-d H:i" }}</span>
                 </div>
             </div>
+            {% endif %}
+
+            <!-- Regular Posts -->
+            {% for question in question_list|slice:"1:13" %}
+            <div class="bento-item fade-in stagger-{{ forloop.counter }}">
+                {% if question.category %}
+                <span class="badge">{{ question.category.name }}</span>
+                {% endif %}
+                <h3 style="font-size: 1.25rem; font-weight: 700; margin: var(--space-3) 0; line-height: 1.3;">
+                    <a href="{% url 'pybo:detail' question.id %}" style="color: var(--text-primary); text-decoration: none;">
+                        {{ question.subject|truncatewords:12 }}
+                    </a>
+                </h3>
+                <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.875rem; color: var(--text-tertiary); margin-top: auto;">
+                    <span>❤️ {{ question.voter.count }} 💬 {{ question.answer_set.count }}</span>
+                    <span>{{ question.create_date|date:"m-d" }}</span>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+
+        <!-- Pagination -->
+        {% if question_list.has_other_pages %}
+        <div style="display: flex; justify-content: center; gap: var(--space-2); margin-top: var(--space-12);">
+            {% if question_list.has_previous %}
+                <a href="?page=1{% if category %}&category={{ category }}{% endif %}{% if kw %}&kw={{ kw }}{% endif %}" class="btn-secondary" style="padding: var(--space-3) var(--space-4);">«</a>
+                <a href="?page={{ question_list.previous_page_number }}{% if category %}&category={{ category }}{% endif %}{% if kw %}&kw={{ kw }}{% endif %}" class="btn-secondary" style="padding: var(--space-3) var(--space-4);">‹</a>
+            {% endif %}
+
+            <span class="btn-primary" style="padding: var(--space-3) var(--space-5);">
+                {{ question_list.number }}
+            </span>
+
+            {% if question_list.has_next %}
+                <a href="?page={{ question_list.next_page_number }}{% if category %}&category={{ category }}{% endif %}{% if kw %}&kw={{ kw }}{% endif %}" class="btn-secondary" style="padding: var(--space-3) var(--space-4);">›</a>
+                <a href="?page={{ question_list.paginator.num_pages }}{% if category %}&category={{ category }}{% endif %}{% if kw %}&kw={{ kw }}{% endif %}" class="btn-secondary" style="padding: var(--space-3) var(--space-4);">»</a>
+            {% endif %}
         </div>
         {% endif %}
-
-        <!-- Regular Posts in Bento Grid -->
-        {% for question in question_list|slice:"1:9" %}
-        <div class="bento-item {% cycle 'glass-purple' 'glass-pink' 'glass-teal' %} card-3d morph-in stagger-{{ forloop.counter|add:1 }}">
-            <div style="height: 100%; display: flex; flex-direction: column; justify-content: space-between;">
-                <div>
-                    {% if question.category %}
-                    <span style="
-                        display: inline-block;
-                        padding: var(--space-1) var(--space-3);
-                        background: rgba(255, 255, 255, 0.2);
-                        border-radius: 999px;
-                        font-size: 0.75rem;
-                        font-weight: 700;
-                        margin-bottom: var(--space-3);
-                    ">{{ question.category.name }}</span>
-                    {% endif %}
-                    <h3 style="font-size: 1.25rem; font-weight: 700; margin-bottom: var(--space-3); line-height: 1.3;">
-                        <a href="{% url 'pybo:detail' question.id %}" style="color: inherit; text-decoration: none;">
-                            {{ question.subject|truncatewords:10 }}
-                        </a>
-                    </h3>
-                </div>
-                <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.875rem;">
-                    <span>❤️ {{ question.voter.count }} 💬 {{ question.answer_set.count }}</span>
-                    <span style="opacity: 0.7;">{{ question.create_date|date:"m-d" }}</span>
-                </div>
-            </div>
-        </div>
-        {% endfor %}
-
-        <!-- Call to Action Card -->
-        <div class="bento-item bento-2x glass-rainbow card-3d morph-in stagger-10" style="display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: var(--space-8);">
-            <div style="font-size: 4rem; margin-bottom: var(--space-4);">🚀</div>
-            <h3 style="font-size: 1.5rem; font-weight: 800; margin-bottom: var(--space-3);">
-                더 많은 콘텐츠 보기
-            </h3>
-            <p style="color: var(--text-secondary); margin-bottom: var(--space-4);">
-                모든 게시글을 탐색하고 지식을 공유하세요
-            </p>
-            <a href="?page=1" class="btn-liquid btn-morphing" style="
-                padding: var(--space-4) var(--space-6);
-                background: white;
-                color: var(--primary-600);
-                font-weight: 700;
-                border-radius: var(--radius-xl);
-            ">
-                <span>전체 보기</span>
-            </a>
-        </div>
-    </div>
-</section>
-
-<!-- Categories Section - Horizontal Scroll -->
-<section class="container-fluid" style="padding: var(--space-12) var(--space-6);">
-    <h2 class="display-lg text-gradient-dynamic text-center bounce-in" style="margin-bottom: var(--space-8);">
-        카테고리
-    </h2>
-
-    <div style="
-        display: flex;
-        gap: var(--space-4);
-        overflow-x: auto;
-        padding: var(--space-6) 0;
-        -webkit-overflow-scrolling: touch;
-    ">
-        <a href="?page=1" class="elastic-in stagger-1" style="
-            flex-shrink: 0;
-            padding: var(--space-5) var(--space-6);
-            background: {% if not category %}var(--gradient-primary){% else %}var(--glass-bg){% endif %};
-            backdrop-filter: blur(20px);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            border-radius: var(--radius-2xl);
-            font-weight: 700;
-            color: {% if not category %}white{% else %}var(--text-primary){% endif %};
-            text-decoration: none;
-            transition: all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
-        " class="magnetic">
-            🌐 전체 ({{ total_count }})
-        </a>
-
-        {% for cat in categories %}
-        <a href="?category={{ cat.name }}&page=1" class="elastic-in stagger-{{ forloop.counter|add:1 }}" style="
-            flex-shrink: 0;
-            padding: var(--space-5) var(--space-6);
-            background: {% if category == cat.name %}var(--gradient-primary){% else %}var(--glass-bg){% endif %};
-            backdrop-filter: blur(20px);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            border-radius: var(--radius-2xl);
-            font-weight: 700;
-            color: {% if category == cat.name %}white{% else %}var(--text-primary){% endif %};
-            text-decoration: none;
-            transition: all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
-        " class="magnetic">
-            {{ cat.name }} {% if category == cat.name %}({{ category_counts|get_item:cat.name }}){% endif %}
-        </a>
-        {% endfor %}
     </div>
 </section>
 
@@ -343,30 +175,16 @@
 
 {% block script %}
 <script>
-// Magnetic effect for buttons
-document.querySelectorAll('.magnetic').forEach(el => {
-    el.addEventListener('mousemove', (e) => {
-        const rect = el.getBoundingClientRect();
-        const x = (e.clientX - rect.left - rect.width / 2) * 0.2;
-        const y = (e.clientY - rect.top - rect.height / 2) * 0.2;
-        el.style.setProperty('--magnetic-x', `${x}px`);
-        el.style.setProperty('--magnetic-y', `${y}px`);
-    });
-
-    el.addEventListener('mouseleave', () => {
-        el.style.setProperty('--magnetic-x', '0px');
-        el.style.setProperty('--magnetic-y', '0px');
-    });
-});
-
-// Mouse follower effect for bento items
-document.querySelectorAll('.bento-item').forEach(el => {
-    el.addEventListener('mousemove', (e) => {
-        const rect = el.getBoundingClientRect();
-        const x = ((e.clientX - rect.left) / rect.width) * 100;
-        const y = ((e.clientY - rect.top) / rect.height) * 100;
-        el.style.setProperty('--mouse-x', `${x}%`);
-        el.style.setProperty('--mouse-y', `${y}%`);
+// 부드러운 스크롤
+document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+    anchor.addEventListener('click', function (e) {
+        e.preventDefault();
+        const target = document.querySelector(this.getAttribute('href'));
+        if (target) {
+            target.scrollIntoView({
+                behavior: 'smooth'
+            });
+        }
     });
 });
 </script>
