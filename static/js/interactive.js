@@ -13,6 +13,7 @@
 
 class TechChangInteractive {
     constructor() {
+        this.prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
         this.init();
     }
 
@@ -51,8 +52,8 @@ class TechChangInteractive {
             entries.forEach(entry => {
                 if (entry.isIntersecting) {
                     entry.target.classList.add('is-visible');
-                    // Optionally unobserve after animation
-                    // observer.unobserve(entry.target);
+                    // unobserve after animation to reduce observer work
+                    observer.unobserve(entry.target);
                 }
             });
         }, observerOptions);
@@ -76,6 +77,7 @@ class TechChangInteractive {
      * Elements move at different speeds on scroll
      */
     initParallax() {
+        if (this.prefersReducedMotion) return;
         const parallaxElements = document.querySelectorAll('[data-parallax]');
 
         if (parallaxElements.length === 0) return;
@@ -107,6 +109,7 @@ class TechChangInteractive {
      * Interactive cursor that follows mouse
      */
     initCustomCursor() {
+        if (this.prefersReducedMotion) return;
         // Only on desktop
         if (window.innerWidth < 768) return;
 
@@ -166,6 +169,7 @@ class TechChangInteractive {
      * Buttons that follow the mouse cursor
      */
     initMagneticButtons() {
+        if (this.prefersReducedMotion) return;
         const magneticElements = document.querySelectorAll('.magnet-btn, [data-magnetic]');
 
         magneticElements.forEach(el => {
@@ -211,6 +215,7 @@ class TechChangInteractive {
      * Advanced scroll reveal with stagger effects
      */
     initRevealOnScroll() {
+        if (this.prefersReducedMotion) return;
         const revealElements = document.querySelectorAll('[data-reveal]');
 
         const revealObserver = new IntersectionObserver((entries) => {
@@ -254,6 +259,8 @@ class TechChangInteractive {
      */
     initTiltCards() {
         const tiltCards = document.querySelectorAll('.card-tilt, [data-tilt]');
+
+        if (this.prefersReducedMotion) return;
 
         tiltCards.forEach(card => {
             card.addEventListener('mousemove', (e) => {
