@@ -254,24 +254,47 @@ body { padding-top: 76px; }
     width: 80%;
 }
 
+/* 드롭다운 화살표 색상 수정 */
+.navbar-nav .dropdown-toggle::after {
+    border-top-color: rgba(255, 255, 255, 0.5) !important;
+}
+
+.navbar-nav .dropdown-toggle:hover::after {
+    border-top-color: rgba(255, 255, 255, 0.9) !important;
+}
+
 .dropdown-menu {
     border: none;
-    box-shadow: var(--shadow-xl);
-    border-radius: var(--radius-lg);
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+    border-radius: 0.75rem;
     overflow: hidden;
     backdrop-filter: blur(10px);
+    background: rgba(26, 32, 44, 0.98) !important;
 }
 
 .dropdown-item {
     transition: all 0.2s ease;
-    border-radius: var(--radius-sm);
+    border-radius: 0.5rem;
     margin: 2px 4px;
+    color: #f7fafc !important;
 }
 
 .dropdown-item:hover {
-    background: linear-gradient(135deg, #3a3a3a, #4a4a4a);
+    background: linear-gradient(135deg, #2d3748, #4a5568);
     color: white !important;
     transform: translateX(4px);
+}
+
+.dropdown-divider {
+    border-color: rgba(255, 255, 255, 0.1);
+}
+
+.dropdown-header {
+    color: #cbd5e0 !important;
+}
+
+.dropdown-item-text {
+    color: #f7fafc !important;
 }
 
 .navbar-brand {

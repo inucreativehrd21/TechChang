@@ -246,10 +246,19 @@
 }
 </style>
 
-<!-- Categories Section - 콘텐츠 위로 이동 -->
-<section class="section" style="padding-top: var(--space-8); padding-bottom: var(--space-8); background: var(--bg-primary);">
+<!-- Categories Section - 다크 테마 -->
+<section class="section" style="
+    padding-top: 3rem;
+    padding-bottom: 3rem;
+    background: linear-gradient(180deg, #1a202c 0%, #2d3748 100%);
+">
     <div class="container-wide">
-        <h2 class="section-title" style="font-size: 1.5rem; margin-bottom: var(--space-6);">카테고리</h2>
+        <h2 class="section-title" style="
+            font-size: 1.8rem;
+            margin-bottom: 2rem;
+            color: #f7fafc;
+            font-weight: 700;
+        ">카테고리</h2>
 
         <div class="category-scroll">
             <a href="?page=1" class="category-pill {% if not category %}active{% endif %}">
@@ -265,10 +274,18 @@
     </div>
 </section>
 
-<!-- Content Section - Bento Grid -->
-<section class="section" style="background: var(--bg-secondary);">
+<!-- Content Section - Bento Grid 다크 테마 -->
+<section class="section" style="
+    background: linear-gradient(180deg, #2d3748 0%, #1a202c 100%);
+    padding: 4rem 2rem;
+">
     <div class="container-wide">
-        <h2 class="section-title">최신 콘텐츠</h2>
+        <h2 class="section-title" style="
+            font-size: 2rem;
+            margin-bottom: 3rem;
+            color: #f7fafc;
+            font-weight: 800;
+        ">최신 콘텐츠</h2>
 
         <div class="bento-container">
             <!-- Featured Post -->

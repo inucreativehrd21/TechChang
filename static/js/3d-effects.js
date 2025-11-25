@@ -11,6 +11,57 @@
         gsap.registerPlugin(ScrollTrigger);
     }
 
+    // AI & Human Hands SVG Animation
+    function initHandsAnimation() {
+        const hero = document.querySelector('.hero-section, .neo-hero, .game-hero');
+        if (!hero) return;
+
+        const handsHTML = `
+            <div id="hands-container" style="
+                position: absolute;
+                bottom: 10%;
+                right: 5%;
+                width: 350px;
+                height: 350px;
+                opacity: 0.5;
+                pointer-events: none;
+                z-index: 1;
+                transition: transform 0.3s ease;
+            ">
+                <svg viewBox="0 0 300 300" xmlns="http://www.w3.org/2000/svg" style="width: 100%; height: 100%;">
+                    <g id="robot-hand" style="transform-origin: 150px 150px;">
+                        <path d="M 80 180 Q 100 160 120 150" stroke="#0891b2" stroke-width="14" fill="none" stroke-linecap="round"/>
+                        <path d="M 120 138 L 138 133 M 120 150 L 142 150 M 120 162 L 138 167" stroke="#0891b2" stroke-width="9" fill="none" stroke-linecap="round"/>
+                        <circle cx="128" cy="150" r="17" fill="rgba(8, 145, 178, 0.3)" stroke="#0891b2" stroke-width="3"/>
+                    </g>
+                    <g id="human-hand" style="transform-origin: 150px 150px;">
+                        <path d="M 220 180 Q 200 160 180 150" stroke="#f7fafc" stroke-width="12" fill="none" stroke-linecap="round"/>
+                        <path d="M 180 138 L 162 133 M 180 150 L 158 150 M 180 162 L 162 167" stroke="#f7fafc" stroke-width="7" fill="none" stroke-linecap="round"/>
+                        <circle cx="172" cy="150" r="15" fill="rgba(247, 250, 252, 0.2)" stroke="#f7fafc" stroke-width="2"/>
+                    </g>
+                    <circle id="spark" cx="150" cy="150" r="8" fill="#0891b2" opacity="0">
+                        <animate attributeName="r" values="0;15;0" dur="2.5s" repeatCount="indefinite"/>
+                        <animate attributeName="opacity" values="0;0.8;0" dur="2.5s" repeatCount="indefinite"/>
+                    </circle>
+                </svg>
+            </div>
+        `;
+
+        hero.insertAdjacentHTML('beforeend', handsHTML);
+
+        // Cursor interaction
+        const handsContainer = document.getElementById('hands-container');
+        hero.addEventListener('mousemove', (e) => {
+            const rect = hero.getBoundingClientRect();
+            const x = (e.clientX - rect.left - rect.width / 2) / rect.width;
+            const y = (e.clientY - rect.top - rect.height / 2) / rect.height;
+
+            if (handsContainer) {
+                handsContainer.style.transform = `translate(${x * 30}px, ${y * 30}px)`;
+            }
+        });
+    }
+
     // 3D Particle Background
     function init3DBackground() {
         const hero = document.querySelector('.hero-section, .neo-hero, .game-hero');
@@ -241,6 +292,7 @@
         }
 
         setTimeout(() => {
+            initHandsAnimation();
             init3DBackground();
             initScrollAnimations();
             initMagneticButtons();
