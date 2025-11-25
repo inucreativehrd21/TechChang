@@ -7,74 +7,244 @@
 {% endblock %}
 
 {% block content %}
-<!-- Hero Section - Clean & Professional -->
-<section class="hero-section">
-    <!-- 미묘한 배경 장식 -->
-    <div class="bg-decoration">
-        <div class="bg-blob bg-blob-1"></div>
-        <div class="bg-blob bg-blob-2"></div>
-    </div>
+<!-- Hero Section - 3D Interactive Dark Design -->
+<section class="hero-section" style="
+    position: relative;
+    min-height: 80vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #0f1419 0%, #1a202c 50%, #2d3748 100%);
+    overflow: hidden;
+    padding: 4rem 2rem;
+">
+    <!-- 3D Background Orbs -->
+    <div class="orb primary" style="
+        position: absolute;
+        width: 500px;
+        height: 500px;
+        border-radius: 50%;
+        background: radial-gradient(circle, rgba(8, 145, 178, 0.3) 0%, transparent 70%);
+        filter: blur(100px);
+        top: -200px;
+        left: -100px;
+        animation: float 20s ease-in-out infinite;
+    "></div>
+    <div class="orb secondary" style="
+        position: absolute;
+        width: 400px;
+        height: 400px;
+        border-radius: 50%;
+        background: radial-gradient(circle, rgba(74, 85, 104, 0.2) 0%, transparent 70%);
+        filter: blur(90px);
+        bottom: -150px;
+        right: -50px;
+        animation: float 18s ease-in-out infinite reverse;
+    "></div>
 
-    <div class="hero-content fade-in">
+    <div class="hero-content fade-in" style="position: relative; z-index: 2; max-width: 1200px; width: 100%;">
         <!-- Badge -->
-        <div style="text-align: center; margin-bottom: var(--space-4);">
-            <span class="badge badge-featured">HRD × Technology × Innovation</span>
+        <div style="text-align: center; margin-bottom: 2rem;">
+            <span style="
+                display: inline-block;
+                padding: 0.75rem 1.5rem;
+                background: rgba(255, 255, 255, 0.05);
+                border: 1px solid rgba(255, 255, 255, 0.1);
+                border-radius: 999px;
+                color: #f7fafc;
+                font-weight: 600;
+                backdrop-filter: blur(10px);
+                font-size: 0.95rem;
+                letter-spacing: 0.5px;
+            ">🚀 HRD × Technology × Innovation</span>
         </div>
 
         <!-- Main Title -->
-        <h1 class="display-mega text-center">테크창</h1>
-        <h2 class="display-lg text-center text-gradient-accent" style="margin-bottom: var(--space-6);">
-            지식이 성장하는 창조적 공간
-        </h2>
+        <h1 class="fade-in" style="
+            font-size: clamp(3rem, 8vw, 6rem);
+            font-weight: 900;
+            text-align: center;
+            background: linear-gradient(135deg, #ffffff 0%, #cbd5e0 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 1.5rem;
+            line-height: 1.1;
+            letter-spacing: -2px;
+        ">테크창</h1>
+
+        <h2 class="fade-in stagger-1" style="
+            font-size: clamp(1.5rem, 3vw, 2.5rem);
+            font-weight: 700;
+            text-align: center;
+            color: #0891b2;
+            margin-bottom: 2rem;
+        ">지식이 성장하는 창조적 공간</h2>
 
         <!-- Description -->
         <p class="fade-in stagger-2" style="
             font-size: 1.25rem;
             line-height: 1.8;
-            color: var(--text-secondary);
+            color: #e2e8f0;
             max-width: 700px;
-            margin: 0 auto var(--space-8);
+            margin: 0 auto 3rem;
             text-align: center;
         ">
             데이터 분석부터 프로그래밍까지, AI 시대의 인재개발 혁신을 함께 만들어갑니다.
         </p>
 
         <!-- CTA Buttons -->
-        <div class="fade-in stagger-3" style="display: flex; gap: var(--space-4); justify-content: center; flex-wrap: wrap; margin-bottom: var(--space-12);">
+        <div class="fade-in stagger-3" style="
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin-bottom: 4rem;
+        ">
             {% if user.is_authenticated %}
-                <a href="{% url 'pybo:question_create' %}" class="btn-primary">
-                    ✍️ 게시글 작성
-                </a>
-                <a href="{% url 'pybo:games_index' %}" class="btn-secondary">
-                    🎮 게임 센터
-                </a>
+                <a href="{% url 'pybo:question_create' %}" class="btn-primary magnet-btn" style="
+                    padding: 1rem 2rem;
+                    font-size: 1.1rem;
+                    font-weight: 700;
+                    border-radius: 0.75rem;
+                    background: linear-gradient(135deg, #2d3748 0%, #1a202c 100%);
+                    color: #f7fafc;
+                    text-decoration: none;
+                    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+                    transition: all 0.3s ease;
+                ">✍️ 게시글 작성</a>
+                <a href="{% url 'pybo:games_index' %}" class="btn-secondary magnet-btn" style="
+                    padding: 1rem 2rem;
+                    font-size: 1.1rem;
+                    font-weight: 700;
+                    border-radius: 0.75rem;
+                    background: rgba(255, 255, 255, 0.05);
+                    color: #f7fafc;
+                    text-decoration: none;
+                    border: 2px solid rgba(255, 255, 255, 0.1);
+                    backdrop-filter: blur(10px);
+                    transition: all 0.3s ease;
+                ">🎮 게임 센터</a>
             {% else %}
-                <a href="{% url 'common:login' %}" class="btn-primary">
-                    🚀 시작하기
-                </a>
-                <a href="{% url 'common:signup' %}" class="btn-secondary">
-                    📝 회원가입
-                </a>
+                <a href="{% url 'common:login' %}" class="btn-primary magnet-btn" style="
+                    padding: 1rem 2rem;
+                    font-size: 1.1rem;
+                    font-weight: 700;
+                    border-radius: 0.75rem;
+                    background: linear-gradient(135deg, #2d3748 0%, #1a202c 100%);
+                    color: #f7fafc;
+                    text-decoration: none;
+                    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+                    transition: all 0.3s ease;
+                ">🚀 시작하기</a>
+                <a href="{% url 'common:signup' %}" class="btn-secondary magnet-btn" style="
+                    padding: 1rem 2rem;
+                    font-size: 1.1rem;
+                    font-weight: 700;
+                    border-radius: 0.75rem;
+                    background: rgba(255, 255, 255, 0.05);
+                    color: #f7fafc;
+                    text-decoration: none;
+                    border: 2px solid rgba(255, 255, 255, 0.1);
+                    backdrop-filter: blur(10px);
+                    transition: all 0.3s ease;
+                ">📝 회원가입</a>
             {% endif %}
         </div>
 
         <!-- Stats Cards -->
-        <div class="stats-grid fade-in stagger-4" style="max-width: 800px; margin: 0 auto;">
-            <div class="stat-card">
-                <div class="stat-value">{{ total_count }}</div>
-                <div class="stat-label">게시글</div>
+        <div class="fade-in stagger-4" style="
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1.5rem;
+            max-width: 900px;
+            margin: 0 auto;
+        ">
+            <div class="stat-card" style="
+                padding: 2rem;
+                background: rgba(255, 255, 255, 0.03);
+                border: 1px solid rgba(255, 255, 255, 0.1);
+                border-radius: 1.5rem;
+                text-align: center;
+                backdrop-filter: blur(10px);
+                transition: all 0.3s ease;
+            ">
+                <div style="
+                    font-size: 3rem;
+                    font-weight: 900;
+                    background: linear-gradient(135deg, #f7fafc, #cbd5e0);
+                    -webkit-background-clip: text;
+                    -webkit-text-fill-color: transparent;
+                    background-clip: text;
+                ">{{ total_count }}</div>
+                <div style="
+                    font-size: 0.9rem;
+                    font-weight: 700;
+                    text-transform: uppercase;
+                    color: #a0aec0;
+                    letter-spacing: 1px;
+                    margin-top: 0.5rem;
+                ">게시글</div>
             </div>
-            <div class="stat-card">
-                <div class="stat-value">{{ categories|length }}</div>
-                <div class="stat-label">카테고리</div>
+            <div class="stat-card" style="
+                padding: 2rem;
+                background: rgba(255, 255, 255, 0.03);
+                border: 1px solid rgba(255, 255, 255, 0.1);
+                border-radius: 1.5rem;
+                text-align: center;
+                backdrop-filter: blur(10px);
+                transition: all 0.3s ease;
+            ">
+                <div style="
+                    font-size: 3rem;
+                    font-weight: 900;
+                    background: linear-gradient(135deg, #f7fafc, #cbd5e0);
+                    -webkit-background-clip: text;
+                    -webkit-text-fill-color: transparent;
+                    background-clip: text;
+                ">{{ categories|length }}</div>
+                <div style="
+                    font-size: 0.9rem;
+                    font-weight: 700;
+                    text-transform: uppercase;
+                    color: #a0aec0;
+                    letter-spacing: 1px;
+                    margin-top: 0.5rem;
+                ">카테고리</div>
             </div>
-            <div class="stat-card">
-                <div class="stat-value">{% if user.is_authenticated %}ON{% else %}OFF{% endif %}</div>
-                <div class="stat-label">상태</div>
+            <div class="stat-card" style="
+                padding: 2rem;
+                background: rgba(255, 255, 255, 0.03);
+                border: 1px solid rgba(255, 255, 255, 0.1);
+                border-radius: 1.5rem;
+                text-align: center;
+                backdrop-filter: blur(10px);
+                transition: all 0.3s ease;
+            ">
+                <div style="
+                    font-size: 3rem;
+                    font-weight: 900;
+                    color: {% if user.is_authenticated %}#10b981{% else %}#f59e0b{% endif %};
+                ">{% if user.is_authenticated %}ON{% else %}OFF{% endif %}</div>
+                <div style="
+                    font-size: 0.9rem;
+                    font-weight: 700;
+                    text-transform: uppercase;
+                    color: #a0aec0;
+                    letter-spacing: 1px;
+                    margin-top: 0.5rem;
+                ">상태</div>
             </div>
         </div>
     </div>
 </section>
+
+<style>
+@keyframes float {
+    0%, 100% { transform: translate(0, 0) scale(1); }
+    50% { transform: translate(30px, -30px) scale(1.1); }
+}
+</style>
 
 <!-- Categories Section - 콘텐츠 위로 이동 -->
 <section class="section" style="padding-top: var(--space-8); padding-bottom: var(--space-8); background: var(--bg-primary);">

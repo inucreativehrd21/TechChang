@@ -34,13 +34,13 @@
 .custom-cursor.cursor-hover {
     width: 60px;
     height: 60px;
-    border-color: rgba(139, 92, 246, 0.8);
+    border-color: rgba(45, 55, 72, 0.8);
 }
 
 .custom-cursor-dot.cursor-hover {
     width: 8px;
     height: 8px;
-    background: rgba(139, 92, 246, 0.9);
+    background: rgba(45, 55, 72, 0.9);
 }
 
 /* Hide default cursor when custom cursor is active */
@@ -241,7 +241,7 @@ html {
     inset: 0;
     background: radial-gradient(
         circle at var(--mouse-x, 50%) var(--mouse-y, 50%),
-        rgba(139, 92, 246, 0.15) 0%,
+        rgba(45, 55, 72, 0.15) 0%,
         transparent 50%
     );
     opacity: 0;
