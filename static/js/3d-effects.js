@@ -11,124 +11,134 @@
         gsap.registerPlugin(ScrollTrigger);
     }
 
-    // AI & Human Hands SVG Animation - Professional Quality
-    function initHandsAnimation() {
+    // Interactive Particle Network - Canvas-based
+    function initParticleNetwork() {
         const hero = document.querySelector('.hero-section, .neo-hero, .game-hero');
         if (!hero) return;
 
-        const handsHTML = `
-            <div id="hands-container" style="
-                position: absolute;
-                bottom: 5%;
-                right: 5%;
-                width: 500px;
-                height: 400px;
-                opacity: 0.85;
-                pointer-events: none;
-                z-index: 1;
-            ">
-                <svg viewBox="0 0 500 400" xmlns="http://www.w3.org/2000/svg" style="width: 100%; height: 100%; filter: drop-shadow(0 10px 30px rgba(0,0,0,0.5));">
-                    <defs>
-                        <linearGradient id="robotMetal" x1="0%" y1="0%" x2="100%" y2="100%">
-                            <stop offset="0%" style="stop-color:#0ea5e9;stop-opacity:1" />
-                            <stop offset="50%" style="stop-color:#0891b2;stop-opacity:1" />
-                            <stop offset="100%" style="stop-color:#0e7490;stop-opacity:1" />
-                        </linearGradient>
-                        <linearGradient id="robotShine" x1="0%" y1="0%" x2="100%" y2="0%">
-                            <stop offset="0%" style="stop-color:#ffffff;stop-opacity:0.6" />
-                            <stop offset="50%" style="stop-color:#ffffff;stop-opacity:0.2" />
-                            <stop offset="100%" style="stop-color:#ffffff;stop-opacity:0.6" />
-                        </linearGradient>
-                        <linearGradient id="humanSkin" x1="0%" y1="0%" x2="0%" y2="100%">
-                            <stop offset="0%" style="stop-color:#fde4cf;stop-opacity:1" />
-                            <stop offset="100%" style="stop-color:#f0cba8;stop-opacity:1" />
-                        </linearGradient>
-                        <radialGradient id="energyGlow" cx="50%" cy="50%">
-                            <stop offset="0%" style="stop-color:#0ea5e9;stop-opacity:1" />
-                            <stop offset="50%" style="stop-color:#0891b2;stop-opacity:0.6" />
-                            <stop offset="100%" style="stop-color:#0891b2;stop-opacity:0" />
-                        </radialGradient>
-                    </defs>
+        // Create canvas
+        const canvas = document.createElement('canvas');
+        canvas.style.position = 'absolute';
+        canvas.style.top = '0';
+        canvas.style.left = '0';
+        canvas.style.width = '100%';
+        canvas.style.height = '100%';
+        canvas.style.zIndex = '1';
+        canvas.style.pointerEvents = 'none';
+        hero.style.position = 'relative';
+        hero.insertBefore(canvas, hero.firstChild);
 
-                    <!-- Robot Hand (Left) -->
-                    <g id="robot-hand">
-                        <rect x="80" y="180" width="80" height="100" rx="8" fill="url(#robotMetal)" stroke="#0e7490" stroke-width="2"/>
-                        <rect x="85" y="185" width="25" height="90" rx="4" fill="url(#robotShine)" opacity="0.3"/>
-                        <circle cx="100" cy="190" r="6" fill="#0e7490" stroke="#0891b2" stroke-width="2"/>
-                        <circle cx="120" cy="195" r="6" fill="#0e7490" stroke="#0891b2" stroke-width="2"/>
-                        <circle cx="140" cy="200" r="6" fill="#0e7490" stroke="#0891b2" stroke-width="2"/>
-                        <path d="M 160 200 L 180 190 L 195 185 L 205 180" stroke="url(#robotMetal)" stroke-width="16" fill="none" stroke-linecap="round"/>
-                        <circle cx="180" cy="190" r="5" fill="#0e7490"/>
-                        <circle cx="195" cy="185" r="5" fill="#0e7490"/>
-                        <path d="M 160 215 L 180 205 L 195 197 L 210 190" stroke="url(#robotMetal)" stroke-width="18" fill="none" stroke-linecap="round"/>
-                        <circle cx="180" cy="205" r="6" fill="#0e7490"/>
-                        <circle cx="195" cy="197" r="6" fill="#0e7490"/>
-                        <path d="M 160 235 L 178 228 L 192 222 L 205 216" stroke="url(#robotMetal)" stroke-width="16" fill="none" stroke-linecap="round"/>
-                        <circle cx="178" cy="228" r="5" fill="#0e7490"/>
-                        <path d="M 160 255 L 175 250 L 188 245 L 198 240" stroke="url(#robotMetal)" stroke-width="14" fill="none" stroke-linecap="round"/>
-                        <circle cx="175" cy="250" r="4" fill="#0e7490"/>
-                        <path d="M 95 270 L 108 260 L 125 250 L 145 240" stroke="url(#robotMetal)" stroke-width="18" fill="none" stroke-linecap="round"/>
-                        <circle cx="108" cy="260" r="7" fill="#0e7490"/>
-                        <circle cx="125" cy="250" r="7" fill="#0e7490"/>
-                    </g>
+        const ctx = canvas.getContext('2d');
+        let width = hero.clientWidth;
+        let height = hero.clientHeight;
+        canvas.width = width;
+        canvas.height = height;
 
-                    <!-- Human Hand (Right) -->
-                    <g id="human-hand">
-                        <ellipse cx="380" cy="230" rx="45" ry="55" fill="url(#humanSkin)" stroke="#d4a373" stroke-width="1.5"/>
-                        <path d="M 340 200 L 320 190 L 305 185 L 295 180" stroke="url(#humanSkin)" stroke-width="14" fill="none" stroke-linecap="round"/>
-                        <ellipse cx="320" cy="190" rx="5" ry="6" fill="#d4a373" opacity="0.3"/>
-                        <path d="M 293 178 Q 291 180 293 182" stroke="#f0cba8" stroke-width="7" fill="none" stroke-linecap="round"/>
-                        <path d="M 340 215 L 318 205 L 302 197 L 290 190" stroke="url(#humanSkin)" stroke-width="16" fill="none" stroke-linecap="round"/>
-                        <ellipse cx="318" cy="205" rx="6" ry="7" fill="#d4a373" opacity="0.3"/>
-                        <path d="M 287 188 Q 285 190 287 192" stroke="#f0cba8" stroke-width="8" fill="none" stroke-linecap="round"/>
-                        <path d="M 340 235 L 320 228 L 305 222 L 295 216" stroke="url(#humanSkin)" stroke-width="14" fill="none" stroke-linecap="round"/>
-                        <ellipse cx="320" cy="228" rx="5" ry="6" fill="#d4a373" opacity="0.3"/>
-                        <path d="M 340 255 L 323 250 L 310 245 L 302 240" stroke="url(#humanSkin)" stroke-width="12" fill="none" stroke-linecap="round"/>
-                        <ellipse cx="323" cy="250" rx="4" ry="5" fill="#d4a373" opacity="0.3"/>
-                        <path d="M 405 270 L 390 260 L 372 250 L 355 240" stroke="url(#humanSkin)" stroke-width="16" fill="none" stroke-linecap="round"/>
-                        <ellipse cx="390" cy="260" rx="7" ry="8" fill="#d4a373" opacity="0.3"/>
-                    </g>
+        // Particle settings
+        const particles = [];
+        const particleCount = 80;
+        const maxDistance = 150;
+        const mouse = { x: width / 2, y: height / 2 };
 
-                    <!-- Energy Connection -->
-                    <g id="connection-point">
-                        <circle cx="250" cy="200" r="40" fill="url(#energyGlow)" opacity="0.3">
-                            <animate attributeName="r" values="35;45;35" dur="3s" repeatCount="indefinite"/>
-                        </circle>
-                        <circle cx="250" cy="200" r="8" fill="#0ea5e9" opacity="0.9">
-                            <animate attributeName="r" values="6;12;6" dur="2.5s" repeatCount="indefinite"/>
-                        </circle>
-                        <circle cx="245" cy="195" r="2" fill="#ffffff" opacity="0.8">
-                            <animate attributeName="cy" values="195;185;195" dur="2s" repeatCount="indefinite"/>
-                        </circle>
-                        <circle cx="255" cy="205" r="2" fill="#ffffff" opacity="0.8">
-                            <animate attributeName="cy" values="205;215;205" dur="1.8s" repeatCount="indefinite"/>
-                        </circle>
-                    </g>
-                </svg>
-            </div>
-        `;
+        // Particle class
+        class Particle {
+            constructor() {
+                this.x = Math.random() * width;
+                this.y = Math.random() * height;
+                this.vx = (Math.random() - 0.5) * 0.5;
+                this.vy = (Math.random() - 0.5) * 0.5;
+                this.radius = Math.random() * 2 + 1;
+            }
 
-        hero.insertAdjacentHTML('beforeend', handsHTML);
+            update() {
+                // Move particle
+                this.x += this.vx;
+                this.y += this.vy;
 
-        // Enhanced smooth cursor interaction
-        const handsContainer = document.getElementById('hands-container');
-        let targetX = 0, targetY = 0, currentX = 0, currentY = 0;
+                // Bounce off edges
+                if (this.x < 0 || this.x > width) this.vx *= -1;
+                if (this.y < 0 || this.y > height) this.vy *= -1;
 
+                // Mouse attraction
+                const dx = mouse.x - this.x;
+                const dy = mouse.y - this.y;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+
+                if (distance < 200) {
+                    const force = (200 - distance) / 200;
+                    this.vx += (dx / distance) * force * 0.03;
+                    this.vy += (dy / distance) * force * 0.03;
+                }
+
+                // Limit velocity
+                const speed = Math.sqrt(this.vx * this.vx + this.vy * this.vy);
+                if (speed > 2) {
+                    this.vx = (this.vx / speed) * 2;
+                    this.vy = (this.vy / speed) * 2;
+                }
+            }
+
+            draw() {
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                ctx.fillStyle = 'rgba(8, 145, 178, 0.6)';
+                ctx.fill();
+            }
+        }
+
+        // Initialize particles
+        for (let i = 0; i < particleCount; i++) {
+            particles.push(new Particle());
+        }
+
+        // Track mouse
         hero.addEventListener('mousemove', (e) => {
             const rect = hero.getBoundingClientRect();
-            targetX = ((e.clientX - rect.left - rect.width / 2) / rect.width) * 40;
-            targetY = ((e.clientY - rect.top - rect.height / 2) / rect.height) * 40;
+            mouse.x = e.clientX - rect.left;
+            mouse.y = e.clientY - rect.top;
         });
 
-        function animateHands() {
-            currentX += (targetX - currentX) * 0.1;
-            currentY += (targetY - currentY) * 0.1;
-            if (handsContainer) {
-                handsContainer.style.transform = `translate(${currentX}px, ${currentY}px)`;
+        // Animation loop
+        function animate() {
+            ctx.clearRect(0, 0, width, height);
+
+            // Update and draw particles
+            particles.forEach(particle => {
+                particle.update();
+                particle.draw();
+            });
+
+            // Draw connections
+            for (let i = 0; i < particles.length; i++) {
+                for (let j = i + 1; j < particles.length; j++) {
+                    const dx = particles[i].x - particles[j].x;
+                    const dy = particles[i].y - particles[j].y;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+
+                    if (distance < maxDistance) {
+                        const opacity = (1 - distance / maxDistance) * 0.3;
+                        ctx.beginPath();
+                        ctx.strokeStyle = `rgba(8, 145, 178, ${opacity})`;
+                        ctx.lineWidth = 1;
+                        ctx.moveTo(particles[i].x, particles[i].y);
+                        ctx.lineTo(particles[j].x, particles[j].y);
+                        ctx.stroke();
+                    }
+                }
             }
-            requestAnimationFrame(animateHands);
+
+            requestAnimationFrame(animate);
         }
-        animateHands();
+
+        animate();
+
+        // Handle resize
+        window.addEventListener('resize', () => {
+            width = hero.clientWidth;
+            height = hero.clientHeight;
+            canvas.width = width;
+            canvas.height = height;
+        });
     }
 
     // 3D Particle Background
@@ -361,7 +371,7 @@
         }
 
         setTimeout(() => {
-            initHandsAnimation();
+            initParticleNetwork();
             init3DBackground();
             initScrollAnimations();
             initMagneticButtons();
