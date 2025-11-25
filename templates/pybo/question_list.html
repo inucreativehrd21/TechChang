@@ -43,7 +43,7 @@
         animation: float 18s ease-in-out infinite reverse;
     "></div>
 
-    <div class="hero-content fade-in" style="position: relative; z-index: 2; max-width: 1200px; width: 100%;">
+    <div class="hero-content" style="position: relative; z-index: 2; max-width: 1200px; width: 100%;">
         <!-- Badge -->
         <div style="text-align: center; margin-bottom: 2rem;">
             <span style="
@@ -61,7 +61,7 @@
         </div>
 
         <!-- Main Title -->
-        <h1 class="fade-in" style="
+        <h1 style="
             font-size: clamp(3rem, 8vw, 6rem);
             font-weight: 900;
             text-align: center;
@@ -72,7 +72,7 @@
             text-shadow: 0 4px 20px rgba(0, 0, 0, 0.7), 0 0 40px rgba(8, 145, 178, 0.5);
         ">테크창</h1>
 
-        <h2 class="fade-in stagger-1" style="
+        <h2 style="
             font-size: clamp(1.5rem, 3vw, 2.5rem);
             font-weight: 700;
             text-align: center;
@@ -82,7 +82,7 @@
         ">지식이 성장하는 창조적 공간</h2>
 
         <!-- Description -->
-        <p class="fade-in stagger-2" style="
+        <p style="
             font-size: 1.25rem;
             line-height: 1.8;
             color: #ffffff;
@@ -95,7 +95,7 @@
         </p>
 
         <!-- CTA Buttons -->
-        <div class="fade-in stagger-3" style="
+        <div style="
             display: flex;
             gap: 1rem;
             justify-content: center;
@@ -154,7 +154,7 @@
         </div>
 
         <!-- Stats Cards -->
-        <div class="fade-in stagger-4" style="
+        <div style="
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
             gap: 1.5rem;
@@ -232,88 +232,8 @@
             </div>
         </div>
 
-        <!-- Interactive Target Design -->
-        <div id="target-container" style="
-            position: absolute;
-            bottom: 10%;
-            right: 8%;
-            width: 400px;
-            height: 400px;
-            pointer-events: none;
-            z-index: 1;
-            opacity: 0.9;
-        ">
-            <svg viewBox="0 0 400 400" xmlns="http://www.w3.org/2000/svg" style="width: 100%; height: 100%; filter: drop-shadow(0 20px 60px rgba(0,0,0,0.5));">
-                <defs>
-                    <radialGradient id="targetGradient1" cx="50%" cy="50%">
-                        <stop offset="0%" style="stop-color:#ffffff;stop-opacity:0.95" />
-                        <stop offset="100%" style="stop-color:#e2e8f0;stop-opacity:0.85" />
-                    </radialGradient>
-                    <radialGradient id="targetGradient2" cx="50%" cy="50%">
-                        <stop offset="0%" style="stop-color:#f472b6;stop-opacity:0.9" />
-                        <stop offset="100%" style="stop-color:#ec4899;stop-opacity:0.7" />
-                    </radialGradient>
-                    <radialGradient id="targetGradient3" cx="50%" cy="50%">
-                        <stop offset="0%" style="stop-color:#60a5fa;stop-opacity:0.9" />
-                        <stop offset="100%" style="stop-color:#3b82f6;stop-opacity:0.7" />
-                    </radialGradient>
-                    <radialGradient id="targetCenter" cx="50%" cy="50%">
-                        <stop offset="0%" style="stop-color:#fbbf24;stop-opacity:1" />
-                        <stop offset="70%" style="stop-color:#f59e0b;stop-opacity:0.9" />
-                        <stop offset="100%" style="stop-color:#d97706;stop-opacity:0.8" />
-                    </radialGradient>
-                    <linearGradient id="dartGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-                        <stop offset="0%" style="stop-color:#0891b2;stop-opacity:1" />
-                        <stop offset="100%" style="stop-color:#06b6d4;stop-opacity:1" />
-                    </linearGradient>
-                </defs>
-
-                <!-- Outer circles with animation -->
-                <circle cx="200" cy="200" r="180" fill="url(#targetGradient1)" opacity="0.3">
-                    <animate attributeName="r" values="180;185;180" dur="4s" repeatCount="indefinite"/>
-                </circle>
-                <circle cx="200" cy="200" r="140" fill="url(#targetGradient2)" opacity="0.4">
-                    <animate attributeName="r" values="140;145;140" dur="3.5s" repeatCount="indefinite"/>
-                </circle>
-                <circle cx="200" cy="200" r="100" fill="url(#targetGradient3)" opacity="0.5">
-                    <animate attributeName="r" values="100;105;100" dur="3s" repeatCount="indefinite"/>
-                </circle>
-                <circle cx="200" cy="200" r="60" fill="url(#targetCenter)" opacity="0.8">
-                    <animate attributeName="r" values="60;65;60" dur="2.5s" repeatCount="indefinite"/>
-                </circle>
-
-                <!-- Dart/Arrow -->
-                <g id="dart" transform="translate(200, 200)">
-                    <!-- Arrow body -->
-                    <path d="M -5,-80 L 0,-100 L 5,-80 Z" fill="url(#dartGradient)" stroke="#0891b2" stroke-width="1">
-                        <animateTransform attributeName="transform" type="rotate" values="0;5;-5;0" dur="2s" repeatCount="indefinite"/>
-                    </path>
-                    <rect x="-2" y="-80" width="4" height="80" fill="url(#dartGradient)"/>
-                    <path d="M -8,0 L -2,0 L -2,-5 Z" fill="#f59e0b" opacity="0.8"/>
-                    <path d="M 8,0 L 2,0 L 2,-5 Z" fill="#f59e0b" opacity="0.8"/>
-                    <circle cx="0" cy="2" r="4" fill="#0891b2" opacity="0.9"/>
-                </g>
-
-                <!-- Accent rings -->
-                <circle cx="200" cy="200" r="180" fill="none" stroke="rgba(255, 255, 255, 0.2)" stroke-width="2"/>
-                <circle cx="200" cy="200" r="140" fill="none" stroke="rgba(255, 255, 255, 0.2)" stroke-width="2"/>
-                <circle cx="200" cy="200" r="100" fill="none" stroke="rgba(255, 255, 255, 0.2)" stroke-width="2"/>
-                <circle cx="200" cy="200" r="60" fill="none" stroke="rgba(255, 255, 255, 0.3)" stroke-width="2"/>
-            </svg>
-        </div>
     </div>
 </section>
-
-<style>
-@keyframes float {
-    0%, 100% { transform: translate(0, 0) scale(1); }
-    50% { transform: translate(30px, -30px) scale(1.1); }
-}
-
-#target-container {
-    animation: float 20s ease-in-out infinite;
-}
-</style>
 
 <!-- Categories Section - 다크 테마 -->
 <section class="section" style="
