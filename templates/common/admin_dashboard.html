@@ -3,7 +3,7 @@
 {% block title %}관리자 대시보드 - 테크창{% endblock %}
 
 {% block content %}
-<div class="container my-4">
+<div class="container my-4" style="color:#e5e7eb;">
   <!-- 페이지 헤더 -->
   <div class="d-flex justify-content-between align-items-center mb-4">
     <h2>
@@ -23,15 +23,15 @@
   <div class="row g-3 mb-4">
     <!-- 전체 사용자 -->
     <div class="col-md-4">
-      <div class="card border-primary">
+      <div class="card border-0" style="background:#0f172a; border:1px solid rgba(255,255,255,0.08);">
         <div class="card-body">
           <div class="d-flex justify-content-between align-items-center">
             <div>
-              <h6 class="text-muted mb-1">전체 사용자</h6>
-              <h3 class="mb-0">{{ total_users }}</h3>
+              <h6 class="mb-1" style="color:#cbd5e0;">전체 사용자</h6>
+              <h3 class="mb-0 text-light">{{ total_users }}</h3>
             </div>
-            <div class="bg-primary bg-opacity-10 rounded p-3">
-              <i class="fas fa-users fa-2x text-primary"></i>
+            <div class="rounded p-3" style="background:rgba(14,165,233,0.14);">
+              <i class="fas fa-users fa-2x" style="color:#0ea5e9;"></i>
             </div>
           </div>
         </div>
@@ -40,15 +40,15 @@
 
     <!-- 활성 사용자 -->
     <div class="col-md-4">
-      <div class="card border-success">
+      <div class="card border-0" style="background:#0f172a; border:1px solid rgba(255,255,255,0.08);">
         <div class="card-body">
           <div class="d-flex justify-content-between align-items-center">
             <div>
-              <h6 class="text-muted mb-1">활성 사용자</h6>
-              <h3 class="mb-0 text-success">{{ active_users }}</h3>
+              <h6 class="mb-1" style="color:#cbd5e0;">활성 사용자</h6>
+              <h3 class="mb-0" style="color:#22c55e;">{{ active_users }}</h3>
             </div>
-            <div class="bg-success bg-opacity-10 rounded p-3">
-              <i class="fas fa-user-check fa-2x text-success"></i>
+            <div class="rounded p-3" style="background:rgba(34,197,94,0.14);">
+              <i class="fas fa-user-check fa-2x" style="color:#22c55e;"></i>
             </div>
           </div>
         </div>
@@ -57,15 +57,15 @@
 
     <!-- 비활성 사용자 -->
     <div class="col-md-4">
-      <div class="card border-danger">
+      <div class="card border-0" style="background:#0f172a; border:1px solid rgba(255,255,255,0.08);">
         <div class="card-body">
           <div class="d-flex justify-content-between align-items-center">
             <div>
-              <h6 class="text-muted mb-1">비활성 사용자</h6>
-              <h3 class="mb-0 text-danger">{{ inactive_users }}</h3>
+              <h6 class="mb-1" style="color:#cbd5e0;">비활성 사용자</h6>
+              <h3 class="mb-0" style="color:#f87171;">{{ inactive_users }}</h3>
             </div>
-            <div class="bg-danger bg-opacity-10 rounded p-3">
-              <i class="fas fa-user-times fa-2x text-danger"></i>
+            <div class="rounded p-3" style="background:rgba(248,113,113,0.14);">
+              <i class="fas fa-user-times fa-2x" style="color:#f87171;"></i>
             </div>
           </div>
         </div>
@@ -74,8 +74,8 @@
   </div>
 
   <!-- 회원 등급별 통계 -->
-  <div class="card mb-4">
-    <div class="card-header bg-white">
+  <div class="card mb-4" style="background:#0f172a; border:1px solid rgba(255,255,255,0.08); color:#e5e7eb;">
+    <div class="card-header" style="background: rgba(255,255,255,0.06);">
       <h5 class="mb-0">
         <i class="fas fa-chart-pie me-2"></i>회원 등급별 통계
       </h5>
@@ -84,7 +84,7 @@
       <div class="row">
         {% for stat in rank_stats %}
           <div class="col-md-4 mb-3">
-            <div class="text-center p-3 border rounded">
+            <div class="text-center p-3 rounded" style="background: rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08); color:#e5e7eb;">
               {% if stat.rank == 'regular' %}
                 <div class="badge bg-secondary mb-2" style="font-size: 1rem;">일반회원</div>
               {% elif stat.rank == 'member' %}
@@ -101,15 +101,15 @@
   </div>
 
   <!-- 최근 가입 사용자 -->
-  <div class="card">
-    <div class="card-header bg-white">
+  <div class="card" style="background:#0f172a; border:1px solid rgba(255,255,255,0.08); color:#e5e7eb;">
+    <div class="card-header" style="background: rgba(255,255,255,0.06);">
       <h5 class="mb-0">
         <i class="fas fa-user-plus me-2"></i>최근 가입 사용자
       </h5>
     </div>
     <div class="card-body">
       <div class="table-responsive">
-        <table class="table table-hover">
+        <table class="table table-hover" style="color:#e5e7eb;">
           <thead>
             <tr>
               <th>사용자명</th>
@@ -148,7 +148,7 @@
               </tr>
             {% empty %}
               <tr>
-                <td colspan="7" class="text-center text-muted">등록된 사용자가 없습니다.</td>
+                <td colspan="7" class="text-center" style="color:#94a3b8;">등록된 사용자가 없습니다.</td>
               </tr>
             {% endfor %}
           </tbody>

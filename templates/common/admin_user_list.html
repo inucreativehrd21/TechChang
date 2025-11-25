@@ -3,7 +3,7 @@
 {% block title %}사용자 관리 - 테크창{% endblock %}
 
 {% block content %}
-<div class="container my-4">
+<div class="container my-4" style="color:#e5e7eb;">
   <!-- 페이지 헤더 -->
   <div class="d-flex justify-content-between align-items-center mb-4">
     <h2>
@@ -15,7 +15,7 @@
   </div>
 
   <!-- 검색 및 필터 -->
-  <div class="card mb-4">
+  <div class="card mb-4" style="background:#0f172a; border:1px solid rgba(255,255,255,0.08);">
     <div class="card-body">
       <form method="get" class="row g-3">
         <div class="col-md-4">
@@ -44,7 +44,7 @@
           </select>
         </div>
         <div class="col-md-2 d-flex align-items-end">
-          <button type="submit" class="btn btn-primary w-100">
+          <button type="submit" class="btn btn-primary w-100" style="background: linear-gradient(135deg,#0ea5e9,#0ea5e9); border:none; color:#0b1220; font-weight:700;">
             <i class="fas fa-search me-2"></i>검색
           </button>
         </div>
@@ -53,14 +53,14 @@
   </div>
 
   <!-- 사용자 목록 -->
-  <div class="card">
-    <div class="card-header bg-white d-flex justify-content-between align-items-center">
+  <div class="card" style="background:#0f172a; border:1px solid rgba(255,255,255,0.08);">
+    <div class="card-header d-flex justify-content-between align-items-center" style="background: rgba(255,255,255,0.06); color:#e5e7eb;">
       <h5 class="mb-0">사용자 목록 ({{ page_obj.paginator.count }}명)</h5>
     </div>
     <div class="card-body p-0">
       <div class="table-responsive">
-        <table class="table table-hover mb-0">
-          <thead class="table-light">
+        <table class="table table-hover mb-0" style="color:#e5e7eb;">
+          <thead style="background: rgba(255,255,255,0.08);">
             <tr>
               <th>ID</th>
               <th>사용자명</th>
@@ -86,9 +86,9 @@
                 <td>{{ user.profile.nickname|default:"-" }}</td>
                 <td>{{ user.email|default:"-" }}</td>
                 <td>
-                  <select class="form-select form-select-sm rank-selector"
-                          data-user-id="{{ user.id }}"
-                          style="width: 140px;">
+              <select class="form-select form-select-sm rank-selector"
+                      data-user-id="{{ user.id }}"
+                      style="width: 140px; background: rgba(255,255,255,0.06); color:#e5e7eb; border-color: rgba(255,255,255,0.08);">
                     {% for value, label in rank_choices %}
                       <option value="{{ value }}"
                               {% if user.profile.rank == value %}selected{% endif %}>
@@ -116,8 +116,8 @@
                 </td>
                 <td>
                   <div class="btn-group">
-                    <a href="{% url 'common:admin_user_detail' user.id %}"
-                       class="btn btn-sm btn-outline-primary">
+                  <a href="{% url 'common:admin_user_detail' user.id %}"
+                       class="btn btn-sm btn-outline-primary" style="border-color: rgba(14,165,233,0.6); color:#7dd3fc;">
                       <i class="fas fa-eye"></i>
                     </a>
                     {% if not user.is_superuser %}
@@ -132,7 +132,7 @@
               </tr>
             {% empty %}
               <tr>
-                <td colspan="9" class="text-center text-muted py-4">
+                <td colspan="9" class="text-center py-4" style="color:#94a3b8;">
                   검색 결과가 없습니다.
                 </td>
               </tr>

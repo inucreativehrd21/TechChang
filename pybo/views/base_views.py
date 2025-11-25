@@ -74,6 +74,12 @@ def index(request):
     for cat in categories:
         category_counts[cat.name] = Question.objects.filter(is_deleted=False, category=cat).count()
     total_count = Question.objects.filter(is_deleted=False).count()
+    # 서비스 런칭일 기준 경과 일수 (2025-10-01)
+    from datetime import date
+    launch_date = date(2025, 10, 1)
+    launch_days = (date.today() - launch_date).days
+    if launch_days < 0:
+        launch_days = 0
     
     context = {
         'question_list': page_obj, 
@@ -84,6 +90,7 @@ def index(request):
         'categories': categories,
         'category_counts': category_counts,
         'total_count': total_count,
+        'launch_days': launch_days,
     }
     return render(request, 'pybo/question_list.html', context)
 
