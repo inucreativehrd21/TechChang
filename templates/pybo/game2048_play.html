@@ -7,7 +7,8 @@
 :root {
     --cell-gap: 12px;
     --board-size: min(472px, 92vw);
-    --cell-size: calc((var(--board-size) - (var(--cell-gap) * 3)) / 4);
+    /* (board - padding*2 - gap*3) / 4 */
+    --cell-size: calc((var(--board-size) - (var(--cell-gap) * 5)) / 4);
 }
 
 .game-stage {
