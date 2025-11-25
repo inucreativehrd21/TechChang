@@ -197,6 +197,39 @@
     z-index: 2;
 }
 
+/* Hero layout clarity */
+.asymmetric-hero {
+    display: grid;
+    grid-template-columns: minmax(300px, 1fr) minmax(240px, 440px);
+    gap: clamp(24px, 4vw, 48px);
+    align-items: center;
+}
+
+.asymmetric-hero-right {
+    display: flex;
+    justify-content: flex-end;
+    pointer-events: none;
+    z-index: 1;
+}
+
+.asymmetric-hero-right .holographic {
+    max-width: 420px;
+    opacity: 0.9;
+}
+
+@media (max-width: 992px) {
+    .asymmetric-hero {
+        grid-template-columns: 1fr;
+        gap: var(--space-8);
+    }
+    .asymmetric-hero-right {
+        justify-content: center;
+    }
+    .asymmetric-hero-right .holographic {
+        max-width: 320px;
+    }
+}
+
 /* ===========================================
    Card System - Advanced
    =========================================== */
