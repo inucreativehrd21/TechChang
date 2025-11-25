@@ -749,6 +749,16 @@
     opacity: 1;
 }
 
+.home-clarity .hero-section *,
+.home-clarity .section *,
+.home-clarity .bento-item *,
+.home-clarity .bento-featured * {
+    filter: none !important;
+    opacity: 1 !important;
+    text-shadow: none !important;
+    color: #e2e8f0 !important;
+}
+
 .home-clarity .hero-section .stat-card {
     backdrop-filter: none;
     background: rgba(255, 255, 255, 0.06);
