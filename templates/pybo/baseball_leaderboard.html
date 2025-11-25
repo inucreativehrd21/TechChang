@@ -78,11 +78,12 @@
     }
 
     .leaderboard-card {
-        background: rgba(255, 255, 255, 0.95);
+        background: linear-gradient(135deg, #1a202c 0%, #2d3748 100%);
         backdrop-filter: blur(10px);
         border-radius: 24px;
-        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
         overflow: hidden;
+        border: 1px solid rgba(255, 255, 255, 0.1);
     }
 
     .leaderboard-header {
@@ -113,11 +114,11 @@
         grid-template-columns: 80px 1fr 120px 120px 120px 120px;
         gap: 15px;
         padding: 20px 30px;
-        background: #f8f9fa;
-        border-bottom: 2px solid #e9ecef;
+        background: linear-gradient(135deg, #2d3748 0%, #1a202c 100%);
+        border-bottom: 2px solid rgba(255, 255, 255, 0.1);
         font-weight: 600;
         font-size: 0.85rem;
-        color: #6c757d;
+        color: #cbd5e0;
         text-transform: uppercase;
         letter-spacing: 0.5px;
     }
@@ -127,13 +128,14 @@
         grid-template-columns: 80px 1fr 120px 120px 120px 120px;
         gap: 15px;
         padding: 20px 30px;
-        border-bottom: 1px solid #e9ecef;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
         align-items: center;
         transition: all 0.3s ease;
+        background: transparent;
     }
 
     .leaderboard-row:hover {
-        background: #f8f9fa;
+        background: linear-gradient(135deg, rgba(45, 55, 72, 0.3) 0%, rgba(74, 85, 104, 0.3) 100%);
         transform: translateX(5px);
     }
 
@@ -145,7 +147,7 @@
         font-size: 1.5rem;
         font-weight: 700;
         text-align: center;
-        color: #495057;
+        color: #e2e8f0;
     }
 
     .rank.top-1 {
@@ -272,18 +274,20 @@
     .empty-state {
         text-align: center;
         padding: 60px 20px;
-        color: #6c757d;
+        color: #cbd5e0;
     }
 
     .empty-state i {
         font-size: 4rem;
         margin-bottom: 20px;
         opacity: 0.3;
+        color: #a0aec0;
     }
 
     .empty-state p {
         font-size: 1.2rem;
         margin-bottom: 30px;
+        color: #cbd5e0;
     }
 
     @media (max-width: 768px) {

@@ -40,12 +40,14 @@ body {
 }
 
 .score-box {
-    background: #bbada0;
+    background: linear-gradient(135deg, #2d3748 0%, #1a202c 100%);
     padding: 15px 25px;
-    border-radius: 3px;
+    border-radius: 8px;
     color: white;
     text-align: center;
     position: relative;
+    border: 1px solid rgba(8, 145, 178, 0.3);
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
 }
 
 .score-title {
@@ -105,11 +107,13 @@ body {
 .grid-container {
     position: relative;
     padding: 15px;
-    background: #bbada0;
-    border-radius: 6px;
+    background: linear-gradient(135deg, #1a202c 0%, #2d3748 100%);
+    border-radius: 12px;
     width: 500px;
     height: 500px;
     box-sizing: border-box;
+    border: 2px solid rgba(8, 145, 178, 0.3);
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.4);
 }
 
 .grid-row {
@@ -125,8 +129,9 @@ body {
 .grid-cell {
     width: 106.25px;
     height: 106.25px;
-    background: rgba(238, 228, 218, 0.35);
-    border-radius: 3px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 6px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .tile-container {
@@ -141,15 +146,16 @@ body {
     position: absolute;
     width: 106.25px;
     height: 106.25px;
-    background: #eee4da;
-    border-radius: 3px;
+    background: #2d3748;
+    border-radius: 6px;
     display: flex;
     align-items: center;
     justify-content: center;
     font-size: 55px;
     font-weight: bold;
-    color: #776e65;
+    color: #f7fafc;
     transition: transform 100ms ease-in-out, left 100ms ease-in-out, top 100ms ease-in-out;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
 }
 
 .tile-new {
@@ -185,19 +191,19 @@ body {
     }
 }
 
-/* 타일 색상 */
-.tile-2 { background: #eee4da; color: #776e65; }
-.tile-4 { background: #ede0c8; color: #776e65; }
-.tile-8 { background: #f2b179; color: #f9f6f2; font-size: 55px; }
-.tile-16 { background: #f59563; color: #f9f6f2; font-size: 55px; }
-.tile-32 { background: #f67c5f; color: #f9f6f2; font-size: 55px; }
-.tile-64 { background: #f65e3b; color: #f9f6f2; font-size: 55px; }
-.tile-128 { background: #edcf72; color: #f9f6f2; font-size: 45px; }
-.tile-256 { background: #edcc61; color: #f9f6f2; font-size: 45px; }
-.tile-512 { background: #edc850; color: #f9f6f2; font-size: 45px; }
-.tile-1024 { background: #edc53f; color: #f9f6f2; font-size: 35px; }
-.tile-2048 { background: #edc22e; color: #f9f6f2; font-size: 35px; }
-.tile-super { background: #3c3a32; color: #f9f6f2; font-size: 30px; }
+/* 타일 색상 - Dark Theme */
+.tile-2 { background: linear-gradient(135deg, #374151, #4b5563); color: #f7fafc; }
+.tile-4 { background: linear-gradient(135deg, #4b5563, #6b7280); color: #f7fafc; }
+.tile-8 { background: linear-gradient(135deg, #0891b2, #0e7490); color: #ffffff; font-size: 55px; }
+.tile-16 { background: linear-gradient(135deg, #0e7490, #155e75); color: #ffffff; font-size: 55px; }
+.tile-32 { background: linear-gradient(135deg, #06b6d4, #0891b2); color: #ffffff; font-size: 55px; }
+.tile-64 { background: linear-gradient(135deg, #14b8a6, #0d9488); color: #ffffff; font-size: 55px; }
+.tile-128 { background: linear-gradient(135deg, #10b981, #059669); color: #ffffff; font-size: 45px; }
+.tile-256 { background: linear-gradient(135deg, #059669, #047857); color: #ffffff; font-size: 45px; }
+.tile-512 { background: linear-gradient(135deg, #f59e0b, #d97706); color: #ffffff; font-size: 45px; }
+.tile-1024 { background: linear-gradient(135deg, #d97706, #b45309); color: #ffffff; font-size: 35px; }
+.tile-2048 { background: linear-gradient(135deg, #ef4444, #dc2626); color: #ffffff; font-size: 35px; }
+.tile-super { background: linear-gradient(135deg, #8b5cf6, #7c3aed); color: #ffffff; font-size: 30px; }
 
 .game-message {
     position: fixed;
@@ -205,7 +211,8 @@ body {
     left: 0;
     width: 100%;
     height: 100%;
-    background: rgba(238, 228, 218, 0.73);
+    background: rgba(0, 0, 0, 0.85);
+    backdrop-filter: blur(10px);
     z-index: 1000;
     display: none;
     align-items: center;
@@ -235,21 +242,25 @@ body {
 }
 
 .game-message.game-lost h1 {
-    color: #776e65;
+    color: #cbd5e0;
 }
 
 .game-instructions {
     margin-top: 30px;
     padding: 20px;
-    background: var(--surface-secondary);
-    border: 1px solid var(--border-color);
+    background: rgba(45, 55, 72, 0.5);
+    border: 1px solid rgba(8, 145, 178, 0.3);
     border-radius: var(--radius-lg);
-    box-shadow: var(--shadow-inner);
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
 }
 
 .game-instructions p {
     margin: 10px 0;
-    color: #776e65;
+    color: #cbd5e0;
+}
+
+.game-instructions strong {
+    color: #f7fafc;
 }
 
 .key-hint {
@@ -320,11 +331,11 @@ body {
                 🔥 Hard Mode: 비활동 제한
             </div>
             <div style="display: flex; justify-content: center; align-items: center; gap: 10px;">
-                <div style="font-size: 0.9rem; color: #6c757d;">입력까지 남은 시간:</div>
+                <div style="font-size: 0.9rem; color: #cbd5e0;">입력까지 남은 시간:</div>
                 <div id="inactivity-timer" class="timer-value">
                     {{ game.inactivity_limit }}
                 </div>
-                <div style="font-size: 0.9rem; color: #6c757d;">초</div>
+                <div style="font-size: 0.9rem; color: #cbd5e0;">초</div>
             </div>
             <div style="margin-top: 8px; font-size: 0.85rem; color: #856404;">
                 ⚠️ {{ game.inactivity_limit }}초 이내에 움직이지 않으면 게임이 종료됩니다!
@@ -334,8 +345,8 @@ body {
 
         <!-- 설명 및 버튼 -->
         <div class="game-intro">
-            <p style="color: #776e65;">
-                <strong>방향키로 타일을 움직여서 2048을 만드세요!</strong>
+            <p style="color: #cbd5e0;">
+                <strong style="color: #f7fafc;">방향키로 타일을 움직여서 2048을 만드세요!</strong>
             </p>
             <button class="restart-button btn-ripple" onclick="restartGame()">
                 <i class="fas fa-redo me-2"></i>New Game
