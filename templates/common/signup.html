@@ -6,12 +6,12 @@
 <div class="container mt-5">
     <div class="row justify-content-center">
         <div class="col-md-8 col-lg-6">
-            <div class="card shadow-lg border-0" style="border-radius: 20px;">
+            <div class="card shadow-lg border-0" style="border-radius: 20px; background: #0f172a; color: #e2e8f0; border: 1px solid rgba(255,255,255,0.05);">
                 <!-- 헤더 -->
-                <div class="card-header bg-success text-white text-center py-4" style="border-radius: 20px 20px 0 0;">
+                <div class="card-header text-white text-center py-4" style="border-radius: 20px 20px 0 0; background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%); color: #0b1220;">
                     <i class="fas fa-user-plus fa-3x mb-3"></i>
                     <h2 class="mb-1">회원가입</h2>
-                    <p class="mb-0 opacity-75">테크창 커뮤니티의 새로운 멤버가 되어보세요</p>
+                    <p class="mb-0" style="color: #0b1220; opacity: 0.9;">테크창 커뮤니티의 새로운 멤버가 되어보세요</p>
                 </div>
                 
                 <!-- 본문 -->
@@ -42,11 +42,11 @@
                             <!-- 사용자명 -->
                             <div class="col-md-6 mb-4">
                                 <label for="username" class="form-label fw-semibold">
-                                    <i class="fas fa-user me-2 text-success"></i>사용자 이름 <span class="text-danger">*</span>
+                                    <i class="fas fa-user me-2" style="color:#22c55e;"></i>사용자 이름 <span class="text-danger">*</span>
                                 </label>
                                 <div class="input-group">
-                                    <span class="input-group-text bg-light border-end-0">
-                                        <i class="fas fa-user text-muted"></i>
+                                    <span class="input-group-text border-end-0" style="background: rgba(255,255,255,0.06); border-color: rgba(255,255,255,0.08); color: #cbd5e0;">
+                                        <i class="fas fa-user"></i>
                                     </span>
                                     <input type="text" 
                                            class="form-control border-start-0 ps-0" 
@@ -54,7 +54,7 @@
                                            id="username"
                                            value="{{ form.username.value|default_if_none:'' }}"
                                            placeholder="영문, 숫자, 특수문자"
-                                           style="border-radius: 0 10px 10px 0;"
+                                           style="border-radius: 0 10px 10px 0; background: rgba(255,255,255,0.04); color: #e5e7eb; border-color: rgba(255,255,255,0.08);"
                                            required>
                                 </div>
                             </div>
@@ -62,11 +62,11 @@
                             <!-- 이메일 -->
                             <div class="col-md-6 mb-4">
                                 <label for="email" class="form-label fw-semibold">
-                                    <i class="fas fa-envelope me-2 text-success"></i>이메일 <span class="text-danger">*</span>
+                                    <i class="fas fa-envelope me-2" style="color:#22c55e;"></i>이메일 <span class="text-danger">*</span>
                                 </label>
                                 <div class="input-group">
-                                    <span class="input-group-text bg-light border-end-0">
-                                        <i class="fas fa-envelope text-muted"></i>
+                                    <span class="input-group-text border-end-0" style="background: rgba(255,255,255,0.06); border-color: rgba(255,255,255,0.08); color: #cbd5e0;">
+                                        <i class="fas fa-envelope"></i>
                                     </span>
                                     <input type="email" 
                                            class="form-control border-start-0 ps-0" 
@@ -74,7 +74,7 @@
                                            id="email"
                                            value="{{ form.email.value|default_if_none:'' }}"
                                            placeholder="example@email.com"
-                                           style="border-radius: 0 10px 10px 0;"
+                                           style="border-radius: 0 10px 10px 0; background: rgba(255,255,255,0.04); color: #e5e7eb; border-color: rgba(255,255,255,0.08);"
                                            required>
                                 </div>
                             </div>
@@ -84,18 +84,18 @@
                             <!-- 비밀번호 -->
                             <div class="col-md-6 mb-4">
                                 <label for="password1" class="form-label fw-semibold">
-                                    <i class="fas fa-lock me-2 text-success"></i>비밀번호 <span class="text-danger">*</span>
+                                    <i class="fas fa-lock me-2" style="color:#22c55e;"></i>비밀번호 <span class="text-danger">*</span>
                                 </label>
                                 <div class="input-group">
-                                    <span class="input-group-text bg-light border-end-0">
-                                        <i class="fas fa-lock text-muted"></i>
+                                    <span class="input-group-text border-end-0" style="background: rgba(255,255,255,0.06); border-color: rgba(255,255,255,0.08); color: #cbd5e0;">
+                                        <i class="fas fa-lock"></i>
                                     </span>
                                     <input type="password" 
                                            class="form-control border-start-0 ps-0" 
                                            name="password1" 
                                            id="password1"
                                            placeholder="8자리 이상"
-                                           style="border-radius: 0 10px 10px 0;"
+                                           style="border-radius: 0 10px 10px 0; background: rgba(255,255,255,0.04); color: #e5e7eb; border-color: rgba(255,255,255,0.08);"
                                            required>
                                 </div>
                             </div>
@@ -103,18 +103,18 @@
                             <!-- 비밀번호 확인 -->
                             <div class="col-md-6 mb-4">
                                 <label for="password2" class="form-label fw-semibold">
-                                    <i class="fas fa-shield-alt me-2 text-success"></i>비밀번호 확인 <span class="text-danger">*</span>
+                                    <i class="fas fa-shield-alt me-2" style="color:#22c55e;"></i>비밀번호 확인 <span class="text-danger">*</span>
                                 </label>
                                 <div class="input-group">
-                                    <span class="input-group-text bg-light border-end-0">
-                                        <i class="fas fa-shield-alt text-muted"></i>
+                                    <span class="input-group-text border-end-0" style="background: rgba(255,255,255,0.06); border-color: rgba(255,255,255,0.08); color: #cbd5e0;">
+                                        <i class="fas fa-shield-alt"></i>
                                     </span>
                                     <input type="password" 
                                            class="form-control border-start-0 ps-0" 
                                            name="password2" 
                                            id="password2"
                                            placeholder="비밀번호 재입력"
-                                           style="border-radius: 0 10px 10px 0;"
+                                           style="border-radius: 0 10px 10px 0; background: rgba(255,255,255,0.04); color: #e5e7eb; border-color: rgba(255,255,255,0.08);"
                                            required>
                                 </div>
                             </div>
@@ -123,11 +123,11 @@
                         <!-- 닉네임 -->
                         <div class="mb-4">
                             <label for="nickname" class="form-label fw-semibold">
-                                <i class="fas fa-tag me-2 text-success"></i>닉네임 <span class="text-muted">(선택사항)</span>
+                                <i class="fas fa-tag me-2" style="color:#22c55e;"></i>닉네임 <span class="text-muted">(선택사항)</span>
                             </label>
                             <div class="input-group">
-                                <span class="input-group-text bg-light border-end-0">
-                                    <i class="fas fa-tag text-muted"></i>
+                                <span class="input-group-text border-end-0" style="background: rgba(255,255,255,0.06); border-color: rgba(255,255,255,0.08); color: #cbd5e0;">
+                                    <i class="fas fa-tag"></i>
                                 </span>
                                 <input type="text" 
                                        class="form-control border-start-0 ps-0" 
@@ -135,9 +135,9 @@
                                        id="nickname"
                                        value="{{ form.nickname.value|default_if_none:'' }}"
                                        placeholder="커뮤니티에서 표시될 이름"
-                                       style="border-radius: 0 10px 10px 0;">
+                                       style="border-radius: 0 10px 10px 0; background: rgba(255,255,255,0.04); color: #e5e7eb; border-color: rgba(255,255,255,0.08);">
                             </div>
-                            <div class="form-text text-muted">
+                            <div class="form-text" style="color:#94a3b8;">
                                 <i class="fas fa-info-circle me-1"></i>
                                 닉네임을 설정하지 않으면 사용자명이 표시됩니다.
                             </div>
@@ -145,12 +145,12 @@
 
                         <!-- 약관 동의 -->
                         <div class="mb-4">
-                            <div class="card bg-light">
+                            <div class="card" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08);">
                                 <div class="card-body py-3">
-                                    <div class="form-check">
+                                    <div class="form-check" style="color:#e5e7eb;">
                                         <input class="form-check-input" type="checkbox" id="agreeTerms" required>
                                         <label class="form-check-label" for="agreeTerms">
-                                            <i class="fas fa-check-circle me-1 text-success"></i>
+                                            <i class="fas fa-check-circle me-1" style="color:#22c55e;"></i>
                                             <strong>테크창 이용약관</strong> 및 <strong>개인정보처리방침</strong>에 동의합니다 <span class="text-danger">*</span>
                                         </label>
                                     </div>
@@ -160,15 +160,15 @@
 
                         <!-- 회원가입 버튼 -->
                         <div class="d-grid mb-4">
-                            <button type="submit" class="btn btn-success btn-lg" style="border-radius: 10px;">
+                            <button type="submit" class="btn btn-success btn-lg" style="border-radius: 10px; background: linear-gradient(135deg,#22c55e,#16a34a); border: none; color:#0b1220; font-weight:700;">
                                 <i class="fas fa-user-plus me-2"></i>계정 생성하기
                             </button>
                         </div>
 
                         <!-- 로그인 링크 -->
                         <div class="text-center">
-                            <p class="text-muted mb-2">이미 계정이 있으신가요?</p>
-                            <a href="{% url 'common:login' %}" class="btn btn-outline-success" style="border-radius: 10px;">
+                            <p class="mb-2" style="color:#cbd5e0;">이미 계정이 있으신가요?</p>
+                            <a href="{% url 'common:login' %}" class="btn btn-outline-success" style="border-radius: 10px; color:#e5e7eb; border-color: rgba(255,255,255,0.1);">
                                 <i class="fas fa-sign-in-alt me-2"></i>로그인하기
                             </a>
                         </div>
