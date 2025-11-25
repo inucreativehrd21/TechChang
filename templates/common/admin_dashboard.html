@@ -108,9 +108,22 @@
       </h5>
     </div>
     <div class="card-body">
+      <style>
+        .admin-dark-table > :not(caption) > * > * {
+          background-color: transparent !important;
+          color: #e5e7eb !important;
+          border-color: rgba(255,255,255,0.08) !important;
+        }
+        .admin-dark-table thead {
+          background: rgba(255,255,255,0.08);
+        }
+        .admin-dark-table tbody tr:nth-child(even) {
+          background-color: rgba(255,255,255,0.02) !important;
+        }
+      </style>
       <div class="table-responsive">
-        <table class="table table-hover mb-0" style="color:#e5e7eb; background:#0f172a;">
-          <thead style="background: rgba(255,255,255,0.08);">
+        <table class="table table-hover mb-0 admin-dark-table" style="color:#e5e7eb; background:#0f172a;">
+          <thead>
             <tr>
               <th>사용자명</th>
               <th>닉네임</th>
@@ -121,7 +134,7 @@
               <th>관리</th>
             </tr>
           </thead>
-          <tbody style="background: rgba(255,255,255,0.02);">
+          <tbody>
             {% for user in recent_users %}
               <tr>
                 <td>{{ user.username }}</td>
