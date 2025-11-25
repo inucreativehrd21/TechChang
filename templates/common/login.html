@@ -4,10 +4,56 @@
 {% block title %}로그인 - 테크창{% endblock %}
 
 {% block content %}
+<style>
+.login-dark-card {
+    background: #0f172a;
+    color: #e2e8f0;
+    border: 1px solid rgba(255,255,255,0.06);
+}
+.login-dark-card .form-control,
+.login-dark-card .form-select {
+    background: rgba(255,255,255,0.05);
+    color: #e5e7eb;
+    border-color: rgba(255,255,255,0.08);
+}
+.login-dark-card .form-control:focus,
+.login-dark-card .form-select:focus {
+    background: rgba(255,255,255,0.07);
+    color: #e5e7eb;
+    border-color: #0ea5e9;
+    box-shadow: 0 0 0 0.1rem rgba(14,165,233,0.35);
+}
+.login-dark-card .input-group-text {
+    background: rgba(255,255,255,0.07);
+    color: #cbd5e0;
+    border-color: rgba(255,255,255,0.08);
+}
+.login-dark-accordion .accordion-button {
+    background: rgba(255,255,255,0.08);
+    color: #e5e7eb;
+    border: 1px solid rgba(255,255,255,0.08);
+    box-shadow: none;
+}
+.login-dark-accordion .accordion-button:not(.collapsed) {
+    color: #e5e7eb;
+    background: rgba(14,165,233,0.15);
+}
+.login-dark-accordion .accordion-body {
+    background: rgba(255,255,255,0.03);
+    color: #e5e7eb;
+}
+.login-separator hr {
+    border-top: 1px solid rgba(255,255,255,0.1);
+}
+.login-separator span {
+    background: #0f172a;
+    color: #cbd5e0;
+}
+</style>
 <div class="container mt-5">
     <div class="row justify-content-center">
         <div class="col-md-6 col-lg-5">
-            <div class="card shadow-lg border-0" style="border-radius: 20px; background: #0f172a; color: #e2e8f0; border: 1px solid rgba(255,255,255,0.05);">
+            <div class="card shadow-lg border-0 login-dark-card" style="border-radius: 20px;">
                 <!-- 헤더 -->
                 <div class="card-header text-white text-center py-4" style="border-radius: 20px 20px 0 0; background: linear-gradient(135deg, #0ea5e9 0%, #0ea5e9 100%); color: #0b1220;">
                     <i class="fas fa-sign-in-alt fa-3x mb-3"></i>
@@ -32,24 +78,24 @@
                     </div>
 
                     <!-- 구분선 -->
-                    <div class="position-relative my-4">
-                        <hr style="border-top: 1px solid rgba(255,255,255,0.08);">
-                        <span class="position-absolute top-50 start-50 translate-middle px-3 small" style="background: #0f172a; color: #cbd5e0;">
+                    <div class="position-relative my-4 login-separator">
+                        <hr>
+                        <span class="position-absolute top-50 start-50 translate-middle px-3 small">
                             일반/관리자 로그인
                         </span>
                     </div>
 
                     <!-- 일반/관리자 로그인 (접을 수 있는 형태) -->
-                    <div class="accordion" id="adminLoginAccordion">
+                    <div class="accordion login-dark-accordion" id="adminLoginAccordion">
                         <div class="accordion-item border-0">
                             <h2 class="accordion-header">
-                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#adminLoginForm" style="border-radius: 10px; background: rgba(255,255,255,0.04); color: #e2e8f0; border: 1px solid rgba(255,255,255,0.08);">
+                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#adminLoginForm" style="border-radius: 10px;">
                                     <i class="fas fa-user-shield me-2"></i>
                                     일반/관리자 로그인 (ID/PW)
                                 </button>
                             </h2>
                             <div id="adminLoginForm" class="accordion-collapse collapse" data-bs-parent="#adminLoginAccordion">
-                                <div class="accordion-body" style="background: rgba(255,255,255,0.02); color: #e2e8f0;">
+                                <div class="accordion-body">
                                     <form method="post" action="{% url 'common:login' %}">
                                         {% csrf_token %}
                                         <input type="hidden" name="next" value="{{ next }}">
