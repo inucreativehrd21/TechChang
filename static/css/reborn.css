@@ -20,16 +20,16 @@
 
 :root {
     /* 배경 */
-    --bg-primary: #ffffff;
-    --bg-secondary: #f8f9fa;
-    --bg-tertiary: #e9ecef;
-    --bg-dark: #212529;
+    --bg-primary: #1a202c;
+    --bg-secondary: #2d3748;
+    --bg-tertiary: #4a5568;
+    --bg-dark: #0f1419;
 
     /* 텍스트 */
-    --text-primary: #212529;
-    --text-secondary: #495057;
-    --text-tertiary: #6c757d;
-    --text-light: #adb5bd;
+    --text-primary: #f7fafc;
+    --text-secondary: #e2e8f0;
+    --text-tertiary: #cbd5e0;
+    --text-light: #a0aec0;
 
     /* 포인트 색상 (청록 회색) */
     --accent-primary: #4a5568;
@@ -38,9 +38,9 @@
     --accent-cyan: #0891b2;
 
     /* Glassmorphism */
-    --glass-bg: rgba(255, 255, 255, 0.7);
-    --glass-border: rgba(255, 255, 255, 0.3);
-    --glass-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.15);
+    --glass-bg: rgba(45, 55, 72, 0.5);
+    --glass-border: rgba(255, 255, 255, 0.1);
+    --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
 
     /* 그림자 */
     --shadow-sm: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
@@ -171,7 +171,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 50%, #f8f9fa 100%);
+    background: linear-gradient(135deg, #0f1419 0%, #1a202c 50%, #2d3748 100%);
     position: relative;
     overflow: hidden;
     padding: var(--space-20) var(--space-6);
@@ -234,8 +234,8 @@
 }
 
 .card-featured {
-    background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
-    border: 2px solid rgba(255, 255, 255, 0.15);
+    background: linear-gradient(135deg, rgba(45, 55, 72, 0.3) 0%, rgba(26, 32, 44, 0.3) 100%);
+    border: 2px solid rgba(255, 255, 255, 0.1);
     border-radius: var(--radius-2xl);
     padding: var(--space-8);
     box-shadow: var(--shadow-xl);
