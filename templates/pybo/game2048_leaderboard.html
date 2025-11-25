@@ -61,6 +61,19 @@
         border-bottom: 1px solid rgba(255, 255, 255, 0.08);
     }
 
+    .lb-header > div {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+    }
+
+    .lb-header > div:nth-child(2) {
+        justify-content: flex-start;
+        text-align: left;
+        padding-left: 6px;
+    }
+
     .lb-body {
         padding-bottom: 6px;
     }
@@ -74,6 +87,10 @@
         border-bottom: 1px solid rgba(255, 255, 255, 0.05);
         background: rgba(255, 255, 255, 0.01);
         transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease, border-color 0.2s ease;
+    }
+
+    .lb-row > div:nth-child(2) {
+        align-self: stretch;
     }
 
     .lb-row:nth-child(even) {

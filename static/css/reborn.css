@@ -722,6 +722,8 @@
     -webkit-filter: none;
     background: linear-gradient(135deg, #0b1220 0%, #111827 50%, #1f2937 100%);
     box-shadow: inset 0 -40px 80px rgba(0, 0, 0, 0.35);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
 }
 
 .home-clarity .hero-section .orb {
@@ -733,6 +735,18 @@
 .home-clarity .hero-section h2,
 .home-clarity .hero-section p {
     text-shadow: none;
+    color: #e5e7eb;
+    filter: none;
+    opacity: 1;
+}
+
+.home-clarity .hero-section .hero-content,
+.home-clarity .section,
+.home-clarity .bento-container,
+.home-clarity .bento-item,
+.home-clarity .bento-featured {
+    filter: none !important;
+    opacity: 1;
 }
 
 .home-clarity .hero-section .stat-card {
@@ -751,6 +765,16 @@
     border: 1px solid rgba(255, 255, 255, 0.08);
     box-shadow: 0 22px 60px rgba(0, 0, 0, 0.35);
     backdrop-filter: none;
+}
+
+.home-clarity .asymmetric-hero,
+.home-clarity .asymmetric-hero .blob,
+.home-clarity .asymmetric-hero .blob::before,
+.home-clarity .asymmetric-hero .blob::after {
+    filter: none;
+    -webkit-filter: none;
+    backdrop-filter: none;
+    opacity: 1;
 }
 
 .home-clarity .bento-featured h3,
