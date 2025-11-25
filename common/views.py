@@ -641,6 +641,20 @@ def admin_user_detail(request, user_id):
     profile, created = Profile.objects.get_or_create(user=user)
 
     if request.method == 'POST':
+        # 비밀번호 재설정 (선택적)
+        pwd1 = request.POST.get('new_password', '').strip()
+        pwd2 = request.POST.get('new_password_confirm', '').strip()
+
+        if pwd1 or pwd2:
+            if pwd1 != pwd2:
+                messages.error(request, '새 비밀번호가 일치하지 않습니다.')
+                return redirect('common:admin_user_detail', user_id=user.id)
+            if len(pwd1) < 8:
+                messages.error(request, '비밀번호는 8자 이상이어야 합니다.')
+                return redirect('common:admin_user_detail', user_id=user.id)
+            user.set_password(pwd1)
+            messages.success(request, f'{user.username}님의 비밀번호가 재설정되었습니다.')
+
         # 닉네임 수정
         nickname = request.POST.get('nickname', '').strip()
         profile.nickname = nickname

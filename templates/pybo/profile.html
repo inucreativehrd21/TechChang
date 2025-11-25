@@ -1,12 +1,39 @@
 {% extends 'base.html' %}
 {% block content %}
+<style>
+.profile-card {
+    background: #0f172a;
+    border: 1px solid rgba(255,255,255,0.08);
+    color: #e5e7eb;
+    border-radius: 16px;
+}
+.profile-table {
+    background: rgba(255,255,255,0.04);
+    color: #e5e7eb;
+    border-radius: 12px;
+    overflow: hidden;
+}
+.profile-table th,
+.profile-table td {
+    color: #e5e7eb !important;
+    background: rgba(255,255,255,0.02);
+}
+.profile-table thead th {
+    background: rgba(255,255,255,0.06) !important;
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+}
+.profile-table tbody tr:nth-child(every) {
+    background: rgba(255,255,255,0.02);
+}
+.profile-table a { color: #7dd3fc; }
+</style>
 <div class="container my-3">
-    <h5 class="border-bottom pb-2">{{ profile_user.username }}님의 프로필</h5>
+    <h5 class="border-bottom pb-2 text-light">{{ profile_user.username }}님의 프로필</h5>
     
     <!-- 사용자 정보 -->
-    <div class="card my-3">
-        <div class="card-header">
-            <h6>사용자 정보</h6>
+    <div class="card my-3 profile-card">
+        <div class="card-header" style="background: rgba(255,255,255,0.06); color:#e5e7eb;">
+            <h6 class="mb-0">사용자 정보</h6>
         </div>
         <div class="card-body">
             <p><strong>사용자명:</strong> {{ profile_user.username }}</p>
@@ -18,11 +45,12 @@
 
     <!-- 작성한 게시글 -->
     <div class="my-4">
-        <h6 class="border-bottom pb-2">작성한 게시글</h6>
+        <h6 class="border-bottom pb-2 text-light">작성한 게시글</h6>
         {% if question_list %}
-        <table class="table">
+        <div class="profile-table">
+        <table class="table mb-0">
             <thead>
-            <tr class="table-dark">
+            <tr>
                 <th>제목</th>
                 <th>작성일시</th>
                 <th>조회수</th>
@@ -40,6 +68,7 @@
             {% endfor %}
             </tbody>
         </table>
+        </div>
         <!-- 게시글 페이징 -->
         {% if question_list.paginator.num_pages > 1 %}
         <div class="d-flex justify-content-center mt-3">
@@ -73,17 +102,18 @@
         </div>
         {% endif %}
         {% else %}
-        <p>작성한 게시글이 없습니다.</p>
+        <p class="text-light">작성한 게시글이 없습니다.</p>
         {% endif %}
     </div>
 
     <!-- 작성한 댓글 (원래 답변 기능) -->
     <div class="my-4">
-        <h6 class="border-bottom pb-2">작성한 댓글</h6>
+        <h6 class="border-bottom pb-2 text-light">작성한 댓글</h6>
         {% if comment_list %}
-        <table class="table">
+        <div class="profile-table">
+        <table class="table mb-0">
             <thead>
-            <tr class="table-dark">
+            <tr>
                 <th>내용</th>
                 <th>게시글</th>
                 <th>작성일시</th>
@@ -103,8 +133,9 @@
             {% endfor %}
             </tbody>
         </table>
+        </div>
         {% else %}
-        <p>작성한 댓글이 없습니다.</p>
+        <p class="text-light">작성한 댓글이 없습니다.</p>
         {% endif %}
     </div>
 </div>

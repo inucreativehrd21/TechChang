@@ -218,9 +218,9 @@
                 <div style="
                     font-size: 3rem;
                     font-weight: 900;
-                    color: {% if user.is_authenticated %}#10b981{% else %}#f59e0b{% endif %};
+                    color: #ffffff;
                     text-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
-                ">{% if user.is_authenticated %}ON{% else %}OFF{% endif %}</div>
+                ">{{ total_count }}</div>
                 <div style="
                     font-size: 0.9rem;
                     font-weight: 700;
@@ -228,7 +228,7 @@
                     color: #cbd5e0;
                     letter-spacing: 1px;
                     margin-top: 0.5rem;
-                ">상태</div>
+                ">총 게시글</div>
             </div>
         </div>
 
