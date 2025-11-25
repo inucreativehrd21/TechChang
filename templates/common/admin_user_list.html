@@ -59,7 +59,7 @@
     </div>
     <div class="card-body p-0">
       <div class="table-responsive">
-        <table class="table table-hover mb-0" style="color:#e5e7eb;">
+        <table class="table table-hover mb-0" style="color:#e5e7eb; background:#0f172a;">
           <thead style="background: rgba(255,255,255,0.08);">
             <tr>
               <th>ID</th>
@@ -73,7 +73,7 @@
               <th>관리</th>
             </tr>
           </thead>
-          <tbody>
+          <tbody style="background: rgba(255,255,255,0.02);">
             {% for user in page_obj %}
               <tr id="user-row-{{ user.id }}">
                 <td>{{ user.id }}</td>

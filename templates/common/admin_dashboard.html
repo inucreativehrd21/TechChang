@@ -109,8 +109,8 @@
     </div>
     <div class="card-body">
       <div class="table-responsive">
-        <table class="table table-hover" style="color:#e5e7eb;">
-          <thead>
+        <table class="table table-hover mb-0" style="color:#e5e7eb; background:#0f172a;">
+          <thead style="background: rgba(255,255,255,0.08);">
             <tr>
               <th>사용자명</th>
               <th>닉네임</th>
@@ -121,7 +121,7 @@
               <th>관리</th>
             </tr>
           </thead>
-          <tbody>
+          <tbody style="background: rgba(255,255,255,0.02);">
             {% for user in recent_users %}
               <tr>
                 <td>{{ user.username }}</td>
