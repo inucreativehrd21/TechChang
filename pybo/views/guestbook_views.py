@@ -30,7 +30,8 @@ def guestbook_list(request):
     entries = GuestBook.objects.all().select_related('author').order_by('-create_date')
 
     context = {
-        'entries': entries
+        'entries': entries,
+        'font_choices': GuestBook.FONT_CHOICES,
     }
     return render(request, 'pybo/guestbook_list.html', context)
 
@@ -51,6 +52,11 @@ def guestbook_create(request):
 
     content = request.POST.get('content', '').strip()
     color = request.POST.get('color', '#fff475')
+    font_family = request.POST.get('font_family', GuestBook.FONT_CHOICES[0][0])
+
+    allowed_fonts = {choice[0] for choice in GuestBook.FONT_CHOICES}
+    if font_family not in allowed_fonts:
+        font_family = GuestBook.FONT_CHOICES[0][0]
 
     # 입력 검증
     if not content:
@@ -68,6 +74,7 @@ def guestbook_create(request):
         author=request.user,
         content=content,
         color=color,
+        font_family=font_family,
         position_x=position_x,
         position_y=position_y,
         rotation=rotation
@@ -93,6 +100,7 @@ def guestbook_create(request):
             'id': entry.id,
             'content': entry.content,
             'color': entry.color,
+            'font_family': entry.font_family,
             'position_x': entry.position_x,
             'position_y': entry.position_y,
             'rotation': entry.rotation,

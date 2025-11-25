@@ -5,160 +5,284 @@
 
 {% block extra_css %}
 <style>
-    /* Dark theme leaderboard styles */
-    .table-header {
-        display: grid;
-        padding: 20px 30px;
-        background: linear-gradient(135deg, #2d3748 0%, #1a202c 100%);
-        color: #f7fafc;
-        font-weight: 700;
-        border-radius: 0.75rem 0.75rem 0 0;
-        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    .surface {
+        background: linear-gradient(145deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.02));
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        box-shadow: 0 18px 45px rgba(0, 0, 0, 0.35);
+        border-radius: 14px;
     }
 
-    .table-header div {
-        color: #f7fafc;
-        font-weight: 700;
-        text-align: center;
+    .surface h3 {
+        color: #f8fafc;
     }
 
-    .leaderboard-row {
-        display: grid;
-        padding: 20px 30px;
-        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-        transition: all 0.3s ease;
-        background: transparent;
+    .leaderboard-shell {
+        background:
+            radial-gradient(circle at 20% 20%, rgba(8, 145, 178, 0.08), transparent 30%),
+            radial-gradient(circle at 80% 0%, rgba(255, 255, 255, 0.03), transparent 25%),
+            linear-gradient(135deg, #0b1220 0%, #0f172a 50%, #0b1324 100%);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 18px;
+        box-shadow: 0 26px 70px rgba(0, 0, 0, 0.45);
+        overflow: hidden;
     }
 
-    .leaderboard-row:hover {
-        background: linear-gradient(135deg, rgba(45, 55, 72, 0.3) 0%, rgba(74, 85, 104, 0.3) 100%);
-        transform: translateX(5px);
-    }
-
-    .leaderboard-row:last-child {
-        border-bottom: none;
-    }
-
-    .rank {
-        font-size: 1.5rem;
-        font-weight: 700;
-        text-align: center;
-        color: #e2e8f0;
-    }
-
-    .rank.top-1 {
-        color: #FFD700;
-        font-size: 2rem;
-        text-shadow: 0 2px 10px rgba(255, 215, 0, 0.5);
-    }
-
-    .rank.top-2 {
-        color: #C0C0C0;
-        font-size: 1.8rem;
-        text-shadow: 0 2px 10px rgba(192, 192, 192, 0.5);
-    }
-
-    .rank.top-3 {
-        color: #CD7F32;
-        font-size: 1.6rem;
-        text-shadow: 0 2px 10px rgba(205, 127, 50, 0.5);
-    }
-
-    .player-info {
+    .leaderboard-top {
         display: flex;
         align-items: center;
-        gap: 15px;
-        color: #f7fafc;
+        justify-content: space-between;
+        gap: 1rem;
+        padding: 18px 24px;
+        background: rgba(255, 255, 255, 0.03);
+        border-bottom: 1px solid rgba(255, 255, 255, 0.06);
     }
 
-    .avatar-circle {
-        width: 48px;
-        height: 48px;
-        border-radius: 50%;
-        background: linear-gradient(135deg, #2d3748, #4a5568);
-        color: #f7fafc;
+    .leaderboard-chip {
+        padding: 0.45rem 0.9rem;
+        border-radius: 999px;
+        background: rgba(8, 145, 178, 0.16);
+        color: #e0f2fe;
+        border: 1px solid rgba(8, 145, 178, 0.35);
+        font-weight: 700;
+        letter-spacing: 0.02em;
+    }
+
+    .lb-header {
+        display: grid;
+        grid-template-columns: 90px 1.6fr repeat(4, 1fr);
+        gap: 12px;
+        padding: 14px 24px;
+        background: rgba(255, 255, 255, 0.02);
+        color: #cbd5e1;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        font-size: 0.75rem;
+        font-weight: 700;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .lb-body {
+        padding-bottom: 6px;
+    }
+
+    .lb-row {
+        display: grid;
+        grid-template-columns: 90px 1.6fr repeat(4, 1fr);
+        gap: 12px;
+        align-items: center;
+        padding: 16px 24px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        background: rgba(255, 255, 255, 0.01);
+        transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease, border-color 0.2s ease;
+    }
+
+    .lb-row:nth-child(even) {
+        background: rgba(255, 255, 255, 0.02);
+    }
+
+    .lb-row:hover {
+        background: rgba(8, 145, 178, 0.12);
+        transform: translateY(-2px);
+        box-shadow: 0 16px 40px rgba(0, 0, 0, 0.35);
+        border-color: rgba(8, 145, 178, 0.24);
+    }
+
+    .lb-rank {
+        justify-self: center;
+        width: 58px;
+        height: 58px;
+        border-radius: 14px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.4rem;
+        font-weight: 800;
+        color: #e5e7eb;
+        background: linear-gradient(145deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.02));
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+    }
+
+    .lb-rank.medal-1 {
+        background: linear-gradient(145deg, #facc15, #eab308);
+        color: #111827;
+        box-shadow: 0 15px 30px rgba(234, 179, 8, 0.35);
+    }
+
+    .lb-rank.medal-2 {
+        background: linear-gradient(145deg, #e5e7eb, #cbd5e1);
+        color: #0f172a;
+        box-shadow: 0 15px 30px rgba(203, 213, 225, 0.35);
+    }
+
+    .lb-rank.medal-3 {
+        background: linear-gradient(145deg, #f59e0b, #d97706);
+        color: #0f172a;
+        box-shadow: 0 15px 30px rgba(217, 119, 6, 0.35);
+    }
+
+    .lb-player {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+    }
+
+    .lb-avatar {
+        width: 52px;
+        height: 52px;
+        border-radius: 16px;
+        background: linear-gradient(145deg, #1f2937, #0f172a);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        overflow: hidden;
         display: flex;
         align-items: center;
         justify-content: center;
         font-weight: 800;
-        font-size: 1.1rem;
+        color: #e2e8f0;
+        box-shadow: 0 10px 18px rgba(0, 0, 0, 0.35);
         text-transform: uppercase;
-        border: 3px solid rgba(8, 145, 178, 0.3);
-        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
     }
 
-    .player-info .fw-bold {
-        color: #f7fafc;
-        font-size: 1.1rem;
+    .lb-avatar img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
     }
 
-    .player-info .text-secondary {
-        color: #cbd5e0 !important;
-    }
-
-    /* Fix badge colors for dark theme */
-    .badge.bg-success {
-        background: linear-gradient(135deg, #10b981 0%, #047857 100%) !important;
-        color: #ffffff !important;
+    .lb-player .name {
         font-weight: 700;
+        color: #f8fafc;
+        font-size: 1.05rem;
+        letter-spacing: -0.01em;
     }
 
-    .badge.bg-info {
-        background: linear-gradient(135deg, #0891b2 0%, #0e7490 100%) !important;
-        color: #ffffff !important;
+    .lb-player .meta {
+        color: #94a3b8;
+        font-size: 0.85rem;
+    }
+
+    .lb-stat {
+        display: flex;
+        justify-content: center;
+    }
+
+    .stat-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 0.55rem 0.9rem;
+        border-radius: 12px;
+        background: rgba(255, 255, 255, 0.06);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        color: #e2e8f0;
         font-weight: 700;
+        min-width: 96px;
+        justify-content: center;
     }
 
-    .badge.bg-primary {
-        background: linear-gradient(135deg, #2d3748 0%, #1a202c 100%) !important;
-        color: #f7fafc !important;
-        font-weight: 700;
+    .stat-pill.success {
+        background: rgba(16, 185, 129, 0.16);
+        border-color: rgba(16, 185, 129, 0.4);
+        color: #bbf7d0;
     }
 
-    .badge.bg-danger {
-        background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%) !important;
-        color: #ffffff !important;
-        font-weight: 700;
+    .stat-pill.info {
+        background: rgba(6, 182, 212, 0.16);
+        border-color: rgba(6, 182, 212, 0.4);
+        color: #a5f3fc;
     }
 
-    .badge.bg-secondary {
-        background: linear-gradient(135deg, #4a5568 0%, #2d3748 100%) !important;
-        color: #f7fafc !important;
+    .stat-pill.primary {
+        background: rgba(59, 130, 246, 0.12);
+        border-color: rgba(59, 130, 246, 0.35);
+        color: #bfdbfe;
     }
 
-    /* Mobile responsive */
-    @media (max-width: 768px) {
-        .table-header {
-            padding: 15px 20px;
-            font-size: 0.85rem;
+    .stat-pill.danger {
+        background: rgba(239, 68, 68, 0.14);
+        border-color: rgba(239, 68, 68, 0.4);
+        color: #fecdd3;
+    }
+
+    @media (max-width: 992px) {
+        .lb-header,
+        .lb-row {
+            grid-template-columns: 70px 1.4fr repeat(4, 1fr);
         }
 
-        .leaderboard-row {
-            padding: 15px 20px;
-            font-size: 0.85rem;
-        }
-
-        .rank {
+        .lb-rank {
+            width: 50px;
+            height: 50px;
             font-size: 1.2rem;
         }
 
-        .rank.top-1 { font-size: 1.5rem; }
-        .rank.top-2 { font-size: 1.4rem; }
-        .rank.top-3 { font-size: 1.3rem; }
+        .lb-avatar {
+            width: 46px;
+            height: 46px;
+        }
+    }
 
-        .avatar-circle {
-            width: 36px;
-            height: 36px;
-            font-size: 0.9rem;
+    @media (max-width: 768px) {
+        .leaderboard-top {
+            flex-direction: column;
+            align-items: flex-start;
         }
 
-        .player-info .fw-bold {
-            font-size: 0.95rem;
+        .lb-header {
+            display: none;
         }
 
-        .badge {
-            font-size: 0.75rem;
-            padding: 0.35rem 0.7rem;
+        .lb-row {
+            grid-template-columns: 70px 1fr;
+            grid-template-areas:
+                "rank player"
+                "best best"
+                "avg avg"
+                "win win"
+                "mine mine";
+            row-gap: 12px;
+        }
+
+        .lb-row .lb-rank {
+            grid-area: rank;
+        }
+
+        .lb-row .lb-player {
+            grid-area: player;
+        }
+
+        .lb-row .lb-stat {
+            justify-content: flex-start;
+        }
+
+        .lb-row .lb-stat::before {
+            content: attr(data-label);
+            display: block;
+            color: #94a3b8;
+            font-size: 0.78rem;
+            letter-spacing: 0.02em;
+            margin-bottom: 6px;
+        }
+
+        .lb-row .lb-stat[data-label="베스트"] {
+            grid-area: best;
+        }
+
+        .lb-row .lb-stat[data-label="평균"] {
+            grid-area: avg;
+        }
+
+        .lb-row .lb-stat[data-label="승률"] {
+            grid-area: win;
+        }
+
+        .lb-row .lb-stat[data-label="지뢰 클릭"] {
+            grid-area: mine;
+        }
+
+        .stat-pill {
+            width: 100%;
+            justify-content: space-between;
         }
     }
 </style>
@@ -231,58 +355,61 @@
     </div>
 
     <!-- Leaderboard -->
-    <div class="card card-glow fade-in-up">
-        <div class="card-header d-flex align-items-center justify-content-between">
+    <div class="leaderboard-shell fade-in-up">
+        <div class="leaderboard-top">
             <div>
                 <h4 class="mb-1">리더보드</h4>
                 <small class="text-secondary">상위 100명 · 난이도: {{ difficulty|capfirst }}</small>
             </div>
-            <span class="badge bg-secondary">참여자 {{ total_players }}</span>
+            <span class="leaderboard-chip">참여자 {{ total_players }}</span>
         </div>
-        <div class="card-body p-0">
-            <div class="table-responsive">
-                <div class="table">
-                    <div class="table-header d-none d-md-grid" style="grid-template-columns: 80px 1.5fr 1fr 1fr 1fr 1fr;">
-                        <div>순위</div>
-                        <div>플레이어</div>
-                        <div>베스트</div>
-                        <div>평균</div>
-                        <div>승률</div>
-                        <div>지뢰 클릭</div>
+        <div class="lb-header d-none d-md-grid">
+            <div>순위</div>
+            <div>플레이어</div>
+            <div>베스트</div>
+            <div>평균</div>
+            <div>승률</div>
+            <div>지뢰 클릭</div>
+        </div>
+        <div class="lb-body">
+            {% if leaderboard %}
+                {% for row in leaderboard %}
+                <div class="lb-row d-grid align-items-center fade-in-up animate-delay-{{ forloop.counter0|add:'1' }}00">
+                    <div class="lb-rank {% if forloop.counter == 1 %}medal-1{% elif forloop.counter == 2 %}medal-2{% elif forloop.counter == 3 %}medal-3{% endif %}">
+                        {{ row.rank }}
                     </div>
-                    {% if leaderboard %}
-                        {% for row in leaderboard %}
-                        <div class="leaderboard-row d-grid align-items-center fade-in-up animate-delay-{{ forloop.counter0|add:'1' }}00"
-                             style="grid-template-columns: 80px 1.5fr 1fr 1fr 1fr 1fr;">
-                            <div class="rank {% if forloop.counter == 1 %}top-1{% elif forloop.counter == 2 %}top-2{% elif forloop.counter == 3 %}top-3{% endif %}">
-                                {{ row.rank }}
-                            </div>
-                            <div class="player-info">
-                                <div class="avatar-circle">
-                                    {% if row.profile_image %}
-                                        <img src="{{ row.profile_image }}" alt="{{ row.display_name }}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">
-                                    {% else %}
-                                        {{ row.display_name|slice:":2" }}
-                                    {% endif %}
-                                </div>
-                                <div>
-                                    <div class="fw-bold">{{ row.display_name }}</div>
-                                    <small class="text-secondary">총 {{ row.total_games }}회 · 승 {{ row.wins }} · 패 {{ row.losses }}</small>
-                                </div>
-                            </div>
-                            <div><span class="badge bg-success">{{ row.best_time_display }}</span></div>
-                            <div><span class="badge bg-info">{{ row.avg_time_display }}</span></div>
-                            <div><span class="badge bg-primary">{{ row.win_rate }}%</span></div>
-                            <div><span class="badge bg-danger">{{ row.mine_clicks }}</span></div>
+                    <div class="lb-player">
+                        <div class="lb-avatar">
+                            {% if row.profile_image %}
+                                <img src="{{ row.profile_image }}" alt="{{ row.display_name }}">
+                            {% else %}
+                                {{ row.display_name|slice:":2" }}
+                            {% endif %}
                         </div>
-                        {% endfor %}
-                    {% else %}
-                        <div class="p-4 text-center text-secondary">
-                            아직 기록이 없습니다. 첫 번째 기록의 주인이 되어보세요!
+                        <div>
+                            <div class="name">{{ row.display_name }}</div>
+                            <div class="meta">총 {{ row.total_games }}회 · 승 {{ row.wins }} · 패 {{ row.losses }}</div>
                         </div>
-                    {% endif %}
+                    </div>
+                    <div class="lb-stat" data-label="베스트">
+                        <span class="stat-pill success">{{ row.best_time_display }}</span>
+                    </div>
+                    <div class="lb-stat" data-label="평균">
+                        <span class="stat-pill info">{{ row.avg_time_display }}</span>
+                    </div>
+                    <div class="lb-stat" data-label="승률">
+                        <span class="stat-pill primary">{{ row.win_rate }}%</span>
+                    </div>
+                    <div class="lb-stat" data-label="지뢰 클릭">
+                        <span class="stat-pill danger">{{ row.mine_clicks }}</span>
+                    </div>
                 </div>
-            </div>
+                {% endfor %}
+            {% else %}
+                <div class="p-4 text-center text-secondary">
+                    아직 기록이 없습니다. 첫 번째 기록의 주인이 되어보세요!
+                </div>
+            {% endif %}
         </div>
     </div>
 </div>

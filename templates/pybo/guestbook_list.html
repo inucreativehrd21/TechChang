@@ -5,6 +5,8 @@
 
 {% block extra_css %}
 <style>
+@import url('https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Do+Hyeon&family=Jua&family=Nanum+Gothic&family=Nanum+Myeongjo&family=Nanum+Pen+Script&display=swap');
+
 body {
     background: linear-gradient(135deg, #0f1419 0%, #1a202c 50%, #2d3748 100%);
     min-height: 100vh;
@@ -23,11 +25,16 @@ body {
     padding: 20px;
     background: #fff475;
     box-shadow: 5px 5px 15px rgba(0,0,0,0.3);
-    font-family: 'Comic Sans MS', cursive, sans-serif;
+    font-family: 'Nanum Gothic', 'Noto Sans KR', sans-serif;
     cursor: pointer;
     transition: all 0.3s ease;
     word-wrap: break-word;
     color: #2d3748;
+}
+
+.postit, .postit * {
+    color: #111827 !important;
+    text-shadow: none !important;
 }
 
 .postit:hover {
@@ -52,6 +59,7 @@ body {
     line-height: 1.5;
     max-height: 120px;
     overflow-y: auto;
+    white-space: pre-line;
 }
 
 .postit-footer {
@@ -168,6 +176,8 @@ body {
                     left: {{ entry.position_x }}%;
                     top: {{ entry.position_y }}%;
                     transform: rotate({{ entry.rotation }}deg);
+                    font-family: '{{ entry.font_family }}', 'Nanum Gothic', 'Noto Sans KR', sans-serif;
+                    color: #111827;
                     z-index: {{ forloop.counter }};">
             {% if entry.author == user %}
             <button class="delete-btn" onclick="deletePostit({{ entry.id }})">
@@ -225,6 +235,17 @@ body {
                                   placeholder="메시지를 입력하세요 (최대 200자)"
                                   required></textarea>
                         <div class="form-text"><span id="charCount">0</span> / 200</div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">글꼴</label>
+                        <select class="form-select" id="fontFamily" name="font_family">
+                            {% for value, label in font_choices %}
+                            <option value="{{ value }}" style="font-family: '{{ value }}', 'Nanum Gothic', 'Noto Sans KR', sans-serif;">
+                                {{ label }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                        <div class="form-text">작성자만 선택할 수 있는 글꼴 옵션입니다.</div>
                     </div>
                     <div class="d-grid">
                         <button type="submit" class="btn btn-dark">
@@ -301,6 +322,8 @@ function addPostit(event) {
             postit.style.left = entry.position_x + '%';
             postit.style.top = entry.position_y + '%';
             postit.style.transform = `rotate(${entry.rotation}deg)`;
+            postit.style.fontFamily = `${entry.font_family}, 'Nanum Gothic', 'Noto Sans KR', sans-serif`;
+            postit.style.color = '#111827';
             postit.style.zIndex = wall.children.length + 1;
             postit.style.animation = 'popIn 0.5s ease';
 

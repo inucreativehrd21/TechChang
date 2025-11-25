@@ -30,6 +30,7 @@
                 <li class="nav-item dropdown">
                     <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" data-magnetic data-magnetic-strength="0.2">
                         <i class="fas fa-gamepad me-1"></i>게임
+                        <span class="nav-caret" aria-hidden="true">⌄</span>
                     </a>
                     <ul class="dropdown-menu fade-in-up">
                         <li><a class="dropdown-item" href="{% url 'pybo:baseball_start' %}">
@@ -88,6 +89,7 @@
                         </div>
                         {% endif %}
                         {{ user|display_name }}
+                        <span class="nav-caret" aria-hidden="true">⌄</span>
                     </a>
                     <ul class="dropdown-menu dropdown-menu-end">
                         <li><div class="dropdown-item-text">
@@ -257,13 +259,33 @@ body { padding-top: 76px; }
     width: 80%;
 }
 
-/* 드롭다운 화살표 색상 수정 */
-.navbar-nav .dropdown-toggle::after {
-    border-top-color: rgba(255, 255, 255, 0.5) !important;
+.navbar .dropdown-toggle::after {
+    display: none !important;
 }
 
-.navbar-nav .dropdown-toggle:hover::after {
-    border-top-color: rgba(255, 255, 255, 0.9) !important;
+.nav-caret {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin-left: 6px;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.06);
+    color: #cbd5e1;
+    font-size: 0.7rem;
+    transition: transform 0.25s ease, background 0.25s ease, color 0.25s ease;
+}
+
+.dropdown.show .nav-caret,
+.nav-link[aria-expanded="true"] .nav-caret {
+    transform: rotate(180deg);
+    background: rgba(8, 145, 178, 0.24);
+    color: #e0f2fe;
+}
+
+.nav-link:hover .nav-caret {
+    background: rgba(255, 255, 255, 0.12);
 }
 
 .dropdown-menu {
