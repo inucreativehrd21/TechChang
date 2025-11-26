@@ -24,6 +24,7 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('pybo/', include('pybo.urls')),
     path('common/', include('common.urls')),
+    path('accounts/', include('allauth.urls')),  # django-allauth URLs
     path('', base_views.index, name='index'),  # '/' 에 해당되는 path
 ]
 

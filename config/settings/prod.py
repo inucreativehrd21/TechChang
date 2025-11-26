@@ -38,6 +38,36 @@ SECURE_HSTS_SECONDS = 31536000
 SECURE_HSTS_INCLUDE_SUBDOMAINS = True
 SECURE_HSTS_PRELOAD = True
 
+# HTTPS 리다이렉트 (프로덕션 필수)
+SECURE_SSL_REDIRECT = True
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+
+# Referrer 정책
+SECURE_REFERRER_POLICY = 'same-origin'
+
+# Content Security Policy (CSP)
+CSP_DEFAULT_SRC = ("'self'",)
+CSP_SCRIPT_SRC = (
+    "'self'",
+    "'unsafe-inline'",  # GSAP 및 인라인 스크립트용
+    "cdn.jsdelivr.net",
+    "cdnjs.cloudflare.com",
+)
+CSP_STYLE_SRC = (
+    "'self'",
+    "'unsafe-inline'",  # Bootstrap 및 인라인 스타일용
+    "cdn.jsdelivr.net",
+    "fonts.googleapis.com",
+)
+CSP_FONT_SRC = (
+    "'self'",
+    "fonts.gstatic.com",
+    "cdn.jsdelivr.net",
+)
+CSP_IMG_SRC = ("'self'", "data:", "https:")
+CSP_CONNECT_SRC = ("'self'",)
+CSP_FRAME_ANCESTORS = ("'none'",)
+
 # ===== 세션·CSRF 보안 =====
 SESSION_COOKIE_SECURE = True
 CSRF_COOKIE_SECURE = True

@@ -51,16 +51,23 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'django.contrib.sites',  # django-allauth 필수
     'pybo.apps.PyboConfig',
     'channels',
+    # django-allauth
+    'allauth',
+    'allauth.account',
+    'allauth.socialaccount',
 ]
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'csp.middleware.CSPMiddleware',  # Content Security Policy
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'allauth.account.middleware.AccountMiddleware',  # django-allauth
     'common.middleware.SecurityMiddleware',  # 보안 미들웨어
     'common.middleware.RequestLoggingMiddleware',  # 요청 로깅 미들웨어
     'django.contrib.messages.middleware.MessageMiddleware',
@@ -124,6 +131,9 @@ AUTH_PASSWORD_VALIDATORS = [
     },
     {
         'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
+        'OPTIONS': {
+            'min_length': 10,  # 8자에서 10자로 강화
+        }
     },
     {
         'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',
@@ -293,5 +303,35 @@ DEFAULT_FROM_EMAIL = 'noreply@techchang.kr'
 SECURE_BROWSER_XSS_FILTER = True
 SECURE_CONTENT_TYPE_NOSNIFF = True
 X_FRAME_OPTIONS = 'DENY'
+
+# django-allauth 설정
+SITE_ID = 1
+
+# 인증 백엔드
+AUTHENTICATION_BACKENDS = [
+    'django.contrib.auth.backends.ModelBackend',  # 기본 Django 인증
+    'allauth.account.auth_backends.AuthenticationBackend',  # allauth 인증
+]
+
+# allauth 계정 설정 (최신 버전 형식)
+ACCOUNT_LOGIN_METHODS = {'username', 'email'}  # username 또는 email로 로그인
+ACCOUNT_EMAIL_VERIFICATION = 'mandatory'  # 이메일 인증 필수
+ACCOUNT_UNIQUE_EMAIL = True  # 이메일 중복 방지
+ACCOUNT_EMAIL_CONFIRMATION_EXPIRE_DAYS = 3  # 이메일 인증 링크 유효기간 3일
+ACCOUNT_LOGIN_ON_EMAIL_CONFIRMATION = True  # 이메일 인증 후 자동 로그인
+
+# allauth 회원가입 필드 설정
+ACCOUNT_SIGNUP_FIELDS = [
+    'email*',      # 이메일 필수
+    'email2*',     # 이메일 확인 필수
+    'username*',   # username 필수
+    'password1*',  # 비밀번호 필수
+    'password2*',  # 비밀번호 확인 필수
+]
+
+# allauth Rate Limiting
+ACCOUNT_RATE_LIMITS = {
+    'login_failed': '5/5m',  # 로그인 5회 실패 시 5분 잠금
+}
 
 # (중복 설정 제거됨)

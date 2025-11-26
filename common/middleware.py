@@ -21,7 +21,7 @@ class SecurityMiddleware:
     
     def __init__(self, get_response):
         self.get_response = get_response
-        
+
         # 설정값들 (환경 설정 우선)
         self.RATE_LIMIT_REQUESTS = getattr(settings, 'RATE_LIMIT_REQUESTS', 300)  # 시간당 요청 수
         self.RATE_LIMIT_WINDOW = getattr(settings, 'RATE_LIMIT_WINDOW', 3600)  # 1시간 윈도우
@@ -30,6 +30,17 @@ class SecurityMiddleware:
         self.SUSPICION_SCORE_THRESHOLD = getattr(settings, 'SUSPICION_SCORE_THRESHOLD', 10)
         self.PROTECTED_PATH_ATTEMPTS_LIMIT = getattr(settings, 'PROTECTED_PATH_ATTEMPTS_LIMIT', 20)
         self.TRUSTED_PATHS = getattr(settings, 'TRUSTED_HEALTHCHECK_PATHS', ['/health', '/status'])
+
+        # 게임 경로 (relaxed rate limit - 2048는 키보드 입력마다 요청)
+        self.GAME_EXEMPT_PATHS = [
+            '/pybo/baseball/',
+            '/pybo/2048/',
+            '/pybo/minesweeper/',
+            '/pybo/wordchain/',
+        ]
+        # 게임용 relaxed rate limits (일반보다 2배 관대)
+        self.GAME_DDOS_THRESHOLD = 200  # 1분에 200회까지 허용 (일반 120회의 1.67배)
+        self.GAME_RATE_LIMIT_REQUESTS = 600  # 시간당 600회 (일반 300회의 2배)
 
         suspicious_patterns = getattr(settings, 'SUSPICIOUS_USER_AGENT_PATTERNS', [
             r'bot', r'crawler', r'spider', r'scraper'
@@ -61,40 +72,48 @@ class SecurityMiddleware:
     
     def check_security(self, request):
         """종합 보안 검사"""
-        # 게임 플레이 경로는 보안 검사 제외 (성능 최적화)
-        GAME_PATHS = ['/pybo/baseball/', '/pybo/2048/', '/pybo/minesweeper/']
-        if any(request.path.startswith(game_path) for game_path in GAME_PATHS):
-            return None
-
         client_ip = self.get_client_ip(request)
+        is_game_path = self.is_game_path(request.path)
 
-        # 1. IP 차단 확인
+        # 1. IP 차단 확인 (모든 경로 적용)
         if self.is_ip_blocked(client_ip):
             logger.warning(f"Blocked IP attempted access: {client_ip}")
             return HttpResponse("Access Denied", status=403)
-        
-        # 2. Rate Limiting 확인
-        if self.is_rate_limited(client_ip):
-            self.block_ip(client_ip, "Rate limit exceeded")
-            logger.warning(f"Rate limit exceeded for IP: {client_ip}")
-            return HttpResponse("Rate limit exceeded. Please try again later.", status=429)
-        
-        # 3. DDoS 패턴 감지
-        if self.detect_ddos_pattern(client_ip):
-            self.block_ip(client_ip, "DDoS pattern detected")
-            logger.error(f"DDoS pattern detected from IP: {client_ip}")
-            return HttpResponse("Suspicious activity detected", status=403)
-        
-        # 4. 의심스러운 User-Agent 확인 (신뢰 경로 제외)
-        if not self.is_trusted_path(request.path) and self.is_suspicious_user_agent(request):
+
+        # 2. Rate Limiting 확인 (게임 경로는 더 관대한 제한)
+        if is_game_path:
+            if self.is_game_rate_limited(client_ip):
+                self.block_ip(client_ip, "Game rate limit exceeded")
+                logger.warning(f"Game rate limit exceeded for IP: {client_ip}")
+                return HttpResponse("너무 빠르게 플레이하고 있습니다. 잠시 후 다시 시도해주세요.", status=429)
+        else:
+            if self.is_rate_limited(client_ip):
+                self.block_ip(client_ip, "Rate limit exceeded")
+                logger.warning(f"Rate limit exceeded for IP: {client_ip}")
+                return HttpResponse("Rate limit exceeded. Please try again later.", status=429)
+
+        # 3. DDoS 패턴 감지 (게임 경로는 더 관대한 임계값)
+        if is_game_path:
+            if self.detect_game_ddos_pattern(client_ip):
+                self.block_ip(client_ip, "Game DDoS pattern detected")
+                logger.error(f"Game DDoS pattern detected from IP: {client_ip}")
+                return HttpResponse("비정상적인 게임 플레이가 감지되었습니다.", status=403)
+        else:
+            if self.detect_ddos_pattern(client_ip):
+                self.block_ip(client_ip, "DDoS pattern detected")
+                logger.error(f"DDoS pattern detected from IP: {client_ip}")
+                return HttpResponse("Suspicious activity detected", status=403)
+
+        # 4. 의심스러운 User-Agent 확인 (신뢰 경로와 게임 경로 제외)
+        if not self.is_trusted_path(request.path) and not is_game_path and self.is_suspicious_user_agent(request):
             self.increase_suspicion_score(client_ip)
             logger.info(f"Suspicious User-Agent from IP {client_ip}: {request.META.get('HTTP_USER_AGENT', '')}")
-        
+
         # 5. 보호된 경로에 대한 추가 검사
         if self.is_protected_path(request.path):
             if not self.check_protected_path_access(request, client_ip):
                 return HttpResponse("Access Denied", status=403)
-        
+
         return None
     
     def get_client_ip(self, request):
@@ -120,22 +139,46 @@ class SecurityMiddleware:
         """Rate Limiting 확인"""
         cache_key = f"rate_limit:{ip}"
         requests = cache.get(cache_key, 0)
-        
+
         if requests >= self.RATE_LIMIT_REQUESTS:
             return True
-        
+
         # 요청 카운트 증가
         cache.set(cache_key, requests + 1, self.RATE_LIMIT_WINDOW)
         return False
-    
+
+    def is_game_rate_limited(self, ip):
+        """게임 경로용 Rate Limiting (더 관대한 제한)"""
+        cache_key = f"game_rate_limit:{ip}"
+        requests = cache.get(cache_key, 0)
+
+        if requests >= self.GAME_RATE_LIMIT_REQUESTS:
+            return True
+
+        # 요청 카운트 증가
+        cache.set(cache_key, requests + 1, self.RATE_LIMIT_WINDOW)
+        return False
+
     def detect_ddos_pattern(self, ip):
         """DDoS 패턴 감지 (1분 윈도우)"""
         cache_key = f"ddos_detection:{ip}"
         requests_per_minute = cache.get(cache_key, 0)
-        
+
         if requests_per_minute >= self.DDOS_THRESHOLD:
             return True
-        
+
+        # 1분간 요청 카운트
+        cache.set(cache_key, requests_per_minute + 1, 60)
+        return False
+
+    def detect_game_ddos_pattern(self, ip):
+        """게임 경로용 DDoS 패턴 감지 (더 관대한 임계값)"""
+        cache_key = f"game_ddos_detection:{ip}"
+        requests_per_minute = cache.get(cache_key, 0)
+
+        if requests_per_minute >= self.GAME_DDOS_THRESHOLD:
+            return True
+
         # 1분간 요청 카운트
         cache.set(cache_key, requests_per_minute + 1, 60)
         return False
@@ -164,10 +207,14 @@ class SecurityMiddleware:
         if new_score >= self.SUSPICION_SCORE_THRESHOLD:
             self.block_ip(ip, "High suspicion score")
 
+    def is_game_path(self, path):
+        """게임 경로인지 확인"""
+        return any(path.startswith(game_path) for game_path in self.GAME_EXEMPT_PATHS)
+
     def is_trusted_path(self, path):
         """신뢰된 경로(헬스체크 등)인지 확인"""
         return any(path.startswith(trusted) for trusted in self.TRUSTED_PATHS)
-    
+
     def is_protected_path(self, path):
         """보호된 경로인지 확인"""
         return any(path.startswith(protected) for protected in self.PROTECTED_PATHS)
