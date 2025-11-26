@@ -1,6 +1,6 @@
 /**
- * TechChang 3D Interactive Effects
- * Framer-inspired 3D backgrounds and animations
+ * TechChang 3D Interactive Effects - OPTIMIZED
+ * Performance-optimized particle system with spatial partitioning
  */
 
 (function() {
@@ -11,10 +11,56 @@
         gsap.registerPlugin(ScrollTrigger);
     }
 
-    // Interactive Particle Network - Canvas-based
+    // ============================================
+    // Spatial Grid for O(n) particle connection optimization
+    // ============================================
+    class SpatialGrid {
+        constructor(cellSize) {
+            this.cellSize = cellSize;
+            this.grid = new Map();
+        }
+
+        clear() {
+            this.grid.clear();
+        }
+
+        insert(particle) {
+            const cellX = Math.floor(particle.x / this.cellSize);
+            const cellY = Math.floor(particle.y / this.cellSize);
+            const key = `${cellX},${cellY}`;
+
+            if (!this.grid.has(key)) this.grid.set(key, []);
+            this.grid.get(key).push(particle);
+        }
+
+        getNearby(particle) {
+            const cellX = Math.floor(particle.x / this.cellSize);
+            const cellY = Math.floor(particle.y / this.cellSize);
+            const nearby = [];
+
+            // Check 9 surrounding cells (including current)
+            for (let dx = -1; dx <= 1; dx++) {
+                for (let dy = -1; dy <= 1; dy++) {
+                    const key = `${cellX + dx},${cellY + dy}`;
+                    if (this.grid.has(key)) {
+                        nearby.push(...this.grid.get(key));
+                    }
+                }
+            }
+            return nearby;
+        }
+    }
+
+    // ============================================
+    // Interactive Particle Network - OPTIMIZED
+    // ============================================
     function initParticleNetwork() {
         const hero = document.querySelector('.hero-section, .neo-hero, .game-hero');
         if (!hero) return;
+
+        // GPU optimization hint
+        hero.style.willChange = 'transform';
+        hero.style.transform = 'translateZ(0)';
 
         // Create canvas
         const canvas = document.createElement('canvas');
@@ -28,17 +74,27 @@
         hero.style.position = 'relative';
         hero.insertBefore(canvas, hero.firstChild);
 
-        const ctx = canvas.getContext('2d');
+        const ctx = canvas.getContext('2d', { alpha: true });
         let width = hero.clientWidth;
         let height = hero.clientHeight;
         canvas.width = width;
         canvas.height = height;
 
-        // Particle settings
+        // Particle settings - OPTIMIZED (80 → 50)
         const particles = [];
-        const particleCount = 80;
+        const particleCount = 50;
         const maxDistance = 150;
-        const mouse = { x: width / 2, y: height / 2 };
+        const mouse = { x: width / 2, y: height / 2, active: false };
+        const spatialGrid = new SpatialGrid(maxDistance);
+
+        // FPS limiter variables
+        const targetFPS = 30; // 60fps → 30fps for better performance
+        const frameInterval = 1000 / targetFPS;
+        let lastFrameTime = 0;
+
+        // Viewport visibility tracking
+        let isVisible = false;
+        let animationId = null;
 
         // Particle class
         class Particle {
@@ -59,20 +115,24 @@
                 if (this.x < 0 || this.x > width) this.vx *= -1;
                 if (this.y < 0 || this.y > height) this.vy *= -1;
 
-                // Mouse attraction
-                const dx = mouse.x - this.x;
-                const dy = mouse.y - this.y;
-                const distance = Math.sqrt(dx * dx + dy * dy);
+                // Mouse attraction - only if mouse is active
+                if (mouse.active) {
+                    const dx = mouse.x - this.x;
+                    const dy = mouse.y - this.y;
+                    const distSquared = dx * dx + dy * dy;
 
-                if (distance < 200) {
-                    const force = (200 - distance) / 200;
-                    this.vx += (dx / distance) * force * 0.03;
-                    this.vy += (dy / distance) * force * 0.03;
+                    if (distSquared < 40000) { // 200px squared
+                        const dist = Math.sqrt(distSquared);
+                        const force = (200 - dist) / 200;
+                        this.vx += (dx / dist) * force * 0.03;
+                        this.vy += (dy / dist) * force * 0.03;
+                    }
                 }
 
                 // Limit velocity
-                const speed = Math.sqrt(this.vx * this.vx + this.vy * this.vy);
-                if (speed > 2) {
+                const speedSquared = this.vx * this.vx + this.vy * this.vy;
+                if (speedSquared > 4) { // 2 squared
+                    const speed = Math.sqrt(speedSquared);
                     this.vx = (this.vx / speed) * 2;
                     this.vy = (this.vy / speed) * 2;
                 }
@@ -91,178 +151,173 @@
             particles.push(new Particle());
         }
 
-        // Track mouse
+        // Throttled mouse tracking
+        let mouseMoveTimeout = null;
         hero.addEventListener('mousemove', (e) => {
+            if (mouseMoveTimeout) return;
+            mouseMoveTimeout = setTimeout(() => mouseMoveTimeout = null, 16); // ~60fps throttle
+
             const rect = hero.getBoundingClientRect();
             mouse.x = e.clientX - rect.left;
             mouse.y = e.clientY - rect.top;
+            mouse.active = true;
         });
 
-        // Animation loop
-        function animate() {
+        hero.addEventListener('mouseleave', () => {
+            mouse.active = false;
+        });
+
+        // Animation loop with FPS limiter
+        function animate(currentTime) {
+            if (!isVisible) return;
+
+            animationId = requestAnimationFrame(animate);
+
+            // FPS limiter
+            const deltaTime = currentTime - lastFrameTime;
+            if (deltaTime < frameInterval) return;
+
+            lastFrameTime = currentTime - (deltaTime % frameInterval);
+
+            // Clear canvas
             ctx.clearRect(0, 0, width, height);
 
-            // Update and draw particles
+            // Clear spatial grid
+            spatialGrid.clear();
+
+            // Update and insert into grid
             particles.forEach(particle => {
                 particle.update();
-                particle.draw();
+                spatialGrid.insert(particle);
             });
 
-            // Draw connections
-            for (let i = 0; i < particles.length; i++) {
-                for (let j = i + 1; j < particles.length; j++) {
-                    const dx = particles[i].x - particles[j].x;
-                    const dy = particles[i].y - particles[j].y;
-                    const distance = Math.sqrt(dx * dx + dy * dy);
+            // Draw particles
+            particles.forEach(particle => particle.draw());
 
-                    if (distance < maxDistance) {
-                        const opacity = (1 - distance / maxDistance) * 0.3;
-                        ctx.beginPath();
+            // Draw connections using spatial grid (O(n) instead of O(n²))
+            const drawnConnections = new Set();
+
+            particles.forEach(particle => {
+                const nearby = spatialGrid.getNearby(particle);
+
+                nearby.forEach(other => {
+                    if (particle === other) return;
+
+                    // Avoid drawing same connection twice
+                    const connectionKey = particle.x < other.x
+                        ? `${particle.x},${particle.y}-${other.x},${other.y}`
+                        : `${other.x},${other.y}-${particle.x},${particle.y}`;
+
+                    if (drawnConnections.has(connectionKey)) return;
+                    drawnConnections.add(connectionKey);
+
+                    const dx = particle.x - other.x;
+                    const dy = particle.y - other.y;
+                    const distSquared = dx * dx + dy * dy;
+
+                    if (distSquared < maxDistance * maxDistance) {
+                        const dist = Math.sqrt(distSquared);
+                        const opacity = (1 - dist / maxDistance) * 0.3;
                         ctx.strokeStyle = `rgba(8, 145, 178, ${opacity})`;
                         ctx.lineWidth = 1;
-                        ctx.moveTo(particles[i].x, particles[i].y);
-                        ctx.lineTo(particles[j].x, particles[j].y);
+                        ctx.beginPath();
+                        ctx.moveTo(particle.x, particle.y);
+                        ctx.lineTo(other.x, other.y);
                         ctx.stroke();
                     }
-                }
-            }
-
-            requestAnimationFrame(animate);
-        }
-
-        animate();
-
-        // Handle resize
-        window.addEventListener('resize', () => {
-            width = hero.clientWidth;
-            height = hero.clientHeight;
-            canvas.width = width;
-            canvas.height = height;
-        });
-    }
-
-    // 3D Particle Background
-    function init3DBackground() {
-        const hero = document.querySelector('.hero-section, .neo-hero, .game-hero');
-        if (!hero || typeof THREE === 'undefined') return;
-
-        // Create canvas
-        const canvas = document.createElement('canvas');
-        canvas.style.position = 'absolute';
-        canvas.style.top = '0';
-        canvas.style.left = '0';
-        canvas.style.width = '100%';
-        canvas.style.height = '100%';
-        canvas.style.zIndex = '0';
-        canvas.style.pointerEvents = 'none';
-        hero.style.position = 'relative';
-        hero.insertBefore(canvas, hero.firstChild);
-
-        // Setup Three.js
-        const scene = new THREE.Scene();
-        const camera = new THREE.PerspectiveCamera(75, hero.clientWidth / hero.clientHeight, 0.1, 1000);
-        const renderer = new THREE.WebGLRenderer({
-            canvas,
-            alpha: true,
-            antialias: true
-        });
-
-        renderer.setSize(hero.clientWidth, hero.clientHeight);
-        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-        camera.position.z = 5;
-
-        // Create particles
-        const particlesGeometry = new THREE.BufferGeometry();
-        const particlesCount = 1000;
-        const posArray = new Float32Array(particlesCount * 3);
-
-        for (let i = 0; i < particlesCount * 3; i++) {
-            posArray[i] = (Math.random() - 0.5) * 10;
-        }
-
-        particlesGeometry.setAttribute('position', new THREE.BufferAttribute(posArray, 3));
-
-        const particlesMaterial = new THREE.PointsMaterial({
-            size: 0.02,
-            color: 0x0891b2,
-            transparent: true,
-            opacity: 0.6,
-            blending: THREE.AdditiveBlending
-        });
-
-        const particlesMesh = new THREE.Points(particlesGeometry, particlesMaterial);
-        scene.add(particlesMesh);
-
-        // Animation
-        let mouseX = 0;
-        let mouseY = 0;
-
-        document.addEventListener('mousemove', (e) => {
-            mouseX = (e.clientX / window.innerWidth) * 2 - 1;
-            mouseY = -(e.clientY / window.innerHeight) * 2 + 1;
-        });
-
-        function animate() {
-            requestAnimationFrame(animate);
-
-            // Rotate particles
-            particlesMesh.rotation.y += 0.0005;
-            particlesMesh.rotation.x = mouseY * 0.1;
-            particlesMesh.rotation.y = mouseX * 0.1;
-
-            renderer.render(scene, camera);
-        }
-
-        animate();
-
-        // Handle resize
-        window.addEventListener('resize', () => {
-            camera.aspect = hero.clientWidth / hero.clientHeight;
-            camera.updateProjectionMatrix();
-            renderer.setSize(hero.clientWidth, hero.clientHeight);
-        });
-    }
-
-    // Scroll Animations
-    function initScrollAnimations() {
-        if (typeof gsap === 'undefined') return;
-
-        // Fade in elements
-        gsap.utils.toArray('.fade-in').forEach((elem) => {
-            gsap.from(elem, {
-                scrollTrigger: {
-                    trigger: elem,
-                    start: 'top 80%',
-                    end: 'bottom 20%',
-                    toggleActions: 'play none none reverse'
-                },
-                opacity: 0,
-                y: 50,
-                duration: 1,
-                ease: 'power3.out'
-            });
-        });
-
-        // Stagger animations
-        for (let i = 1; i <= 10; i++) {
-            gsap.utils.toArray(`.stagger-${i}`).forEach((elem) => {
-                gsap.from(elem, {
-                    scrollTrigger: {
-                        trigger: elem,
-                        start: 'top 80%'
-                    },
-                    opacity: 0,
-                    y: 30,
-                    duration: 0.8,
-                    delay: i * 0.1,
-                    ease: 'power2.out'
                 });
             });
         }
 
-        // 3D card tilts
-        gsap.utils.toArray('.bento-item, .stat-card, .game-card').forEach((card) => {
+        // Intersection Observer for viewport detection
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                isVisible = entry.isIntersecting;
+                if (isVisible && !animationId) {
+                    lastFrameTime = performance.now();
+                    animationId = requestAnimationFrame(animate);
+                } else if (!isVisible && animationId) {
+                    cancelAnimationFrame(animationId);
+                    animationId = null;
+                }
+            });
+        }, { threshold: 0.1 });
+
+        observer.observe(hero);
+
+        // Debounced resize handler
+        let resizeTimeout = null;
+        window.addEventListener('resize', () => {
+            clearTimeout(resizeTimeout);
+            resizeTimeout = setTimeout(() => {
+                width = hero.clientWidth;
+                height = hero.clientHeight;
+                canvas.width = width;
+                canvas.height = height;
+            }, 250);
+        });
+
+        // Start animation if visible
+        if (isVisible) {
+            lastFrameTime = performance.now();
+            animationId = requestAnimationFrame(animate);
+        }
+    }
+
+    // ============================================
+    // Scroll Animations - OPTIMIZED
+    // ============================================
+    function initScrollAnimations() {
+        if (typeof gsap === 'undefined') return;
+
+        // Batch process fade-in elements
+        const fadeElements = gsap.utils.toArray('.fade-in');
+        if (fadeElements.length > 0) {
+            fadeElements.forEach((elem) => {
+                gsap.from(elem, {
+                    scrollTrigger: {
+                        trigger: elem,
+                        start: 'top 80%',
+                        end: 'bottom 20%',
+                        toggleActions: 'play none none reverse'
+                    },
+                    opacity: 0,
+                    y: 50,
+                    duration: 1,
+                    ease: 'power3.out'
+                });
+            });
+        }
+
+        // Stagger animations
+        for (let i = 1; i <= 10; i++) {
+            const staggerElements = gsap.utils.toArray(`.stagger-${i}`);
+            if (staggerElements.length > 0) {
+                staggerElements.forEach((elem) => {
+                    gsap.from(elem, {
+                        scrollTrigger: {
+                            trigger: elem,
+                            start: 'top 80%'
+                        },
+                        opacity: 0,
+                        y: 30,
+                        duration: 0.8,
+                        delay: i * 0.1,
+                        ease: 'power2.out'
+                    });
+                });
+            }
+        }
+
+        // 3D card tilts with throttling
+        const cards = gsap.utils.toArray('.bento-item, .stat-card, .game-card');
+        cards.forEach((card) => {
+            let tiltTimeout = null;
+
             card.addEventListener('mousemove', (e) => {
+                if (tiltTimeout) return;
+                tiltTimeout = setTimeout(() => tiltTimeout = null, 50);
+
                 const rect = card.getBoundingClientRect();
                 const x = e.clientX - rect.left;
                 const y = e.clientY - rect.top;
@@ -293,12 +348,20 @@
         });
     }
 
-    // Magnetic buttons
+    // ============================================
+    // Magnetic Buttons - OPTIMIZED
+    // ============================================
     function initMagneticButtons() {
         if (typeof gsap === 'undefined') return;
 
-        document.querySelectorAll('.btn-primary, .magnet-btn').forEach((btn) => {
+        const buttons = document.querySelectorAll('.btn-primary, .magnet-btn');
+        buttons.forEach((btn) => {
+            let magnetTimeout = null;
+
             btn.addEventListener('mousemove', (e) => {
+                if (magnetTimeout) return;
+                magnetTimeout = setTimeout(() => magnetTimeout = null, 50);
+
                 const rect = btn.getBoundingClientRect();
                 const x = e.clientX - rect.left - rect.width / 2;
                 const y = e.clientY - rect.top - rect.height / 2;
@@ -322,13 +385,17 @@
         });
     }
 
-    // Parallax effect
+    // ============================================
+    // Parallax Effect - OPTIMIZED with throttling
+    // ============================================
     function initParallax() {
         const parallaxElements = document.querySelectorAll('.bg-blob, .orb');
+        if (parallaxElements.length === 0) return;
 
+        let parallaxTimeout = null;
         window.addEventListener('mousemove', (e) => {
-            const mouseX = e.clientX / window.innerWidth;
-            const mouseY = e.clientY / window.innerHeight;
+            if (parallaxTimeout) return;
+            parallaxTimeout = setTimeout(() => parallaxTimeout = null, 50);
 
             parallaxElements.forEach((el, index) => {
                 const speed = (index + 1) * 0.02;
@@ -340,9 +407,13 @@
         });
     }
 
-    // Ripple effect
+    // ============================================
+    // Ripple Effect - OPTIMIZED
+    // ============================================
     function initRippleEffect() {
-        document.querySelectorAll('.btn-primary, .category-pill, .bento-item').forEach((elem) => {
+        const rippleElements = document.querySelectorAll('.btn-primary, .category-pill, .bento-item');
+
+        rippleElements.forEach((elem) => {
             elem.addEventListener('click', function(e) {
                 const ripple = document.createElement('span');
                 ripple.classList.add('ripple');
@@ -362,7 +433,9 @@
         });
     }
 
+    // ============================================
     // Initialize all effects
+    // ============================================
     function init() {
         // Wait for DOM to be ready
         if (document.readyState === 'loading') {
@@ -370,9 +443,10 @@
             return;
         }
 
+        // Delayed initialization to prevent blocking page load
         setTimeout(() => {
             initParticleNetwork();
-            init3DBackground();
+            // Three.js removed - was causing duplicate rendering overhead
             initScrollAnimations();
             initMagneticButtons();
             initParallax();
