@@ -4,6 +4,15 @@ Django==5.2.6
 # 프로덕션 WSGI 서버 (Gunicorn 서비스 유닛에서 사용)
 gunicorn>=21.2,<22
 
+# WebSocket 지원 (실시간 게임용)
+channels==4.3.1
+channels-redis==4.3.0
+daphne==4.2.1
+
+# 보안 강화
+django-csp==4.0  # Content Security Policy
+django-allauth==65.13.1  # 이메일 인증 및 소셜 로그인
+
 # OpenAI API (AI 답변 생성 커맨드용)
 openai>=1.3.0,<2.0.0
 
