@@ -124,16 +124,16 @@
 
 .glass {
     background: var(--glass-bg);
-    backdrop-filter: blur(20px) saturate(180%);
-    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    backdrop-filter: blur(4px) saturate(120%);
+    -webkit-backdrop-filter: blur(4px) saturate(120%);
     border: 1px solid var(--glass-border);
     box-shadow: var(--glass-shadow);
 }
 
 .glass-dark {
     background: rgba(33, 37, 41, 0.7);
-    backdrop-filter: blur(20px) saturate(180%);
-    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    backdrop-filter: blur(4px) saturate(120%);
+    -webkit-backdrop-filter: blur(4px) saturate(120%);
     border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
@@ -336,6 +336,7 @@
     gap: var(--space-6);
     max-width: 1400px;
     margin: 0 auto;
+    isolation: isolate;
 }
 
 .bento-item {
@@ -343,10 +344,11 @@
     border: 1px solid rgba(255, 255, 255, 0.1);
     border-radius: var(--radius-xl);
     padding: var(--space-6);
-    transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     min-height: 200px;
     position: relative;
     cursor: pointer;
+    will-change: box-shadow, border-color;
 }
 
 .bento-item::before {
@@ -370,7 +372,7 @@
 .bento-item:hover {
     border-color: var(--accent-primary);
     box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
-    transform: translateY(-8px) scale(1.02);
+    z-index: 1;
 }
 
 .bento-featured {
@@ -869,8 +871,8 @@
 
 .home-clarity .bento-item:hover,
 .home-clarity .bento-featured:hover {
-    transform: translateY(-4px);
     box-shadow: 0 26px 70px rgba(0, 0, 0, 0.4);
+    z-index: 1;
 }
 
 /* ===========================================
