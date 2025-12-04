@@ -13,6 +13,7 @@
 
 class TechChangInteractive {
     constructor() {
+        this.prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
         this.init();
     }
 
@@ -51,8 +52,8 @@ class TechChangInteractive {
             entries.forEach(entry => {
                 if (entry.isIntersecting) {
                     entry.target.classList.add('is-visible');
-                    // Optionally unobserve after animation
-                    // observer.unobserve(entry.target);
+                    // unobserve after animation to reduce observer work
+                    observer.unobserve(entry.target);
                 }
             });
         }, observerOptions);
@@ -76,6 +77,7 @@ class TechChangInteractive {
      * Elements move at different speeds on scroll
      */
     initParallax() {
+        if (this.prefersReducedMotion) return;
         const parallaxElements = document.querySelectorAll('[data-parallax]');
 
         if (parallaxElements.length === 0) return;
@@ -105,60 +107,11 @@ class TechChangInteractive {
     /**
      * Custom Cursor
      * Interactive cursor that follows mouse
+     * DISABLED: Using default browser cursor for better UX
      */
     initCustomCursor() {
-        // Only on desktop
-        if (window.innerWidth < 768) return;
-
-        // Create cursor elements
-        const cursor = document.createElement('div');
-        cursor.className = 'custom-cursor';
-        const cursorDot = document.createElement('div');
-        cursorDot.className = 'custom-cursor-dot';
-
-        document.body.appendChild(cursor);
-        document.body.appendChild(cursorDot);
-
-        let mouseX = 0, mouseY = 0;
-        let cursorX = 0, cursorY = 0;
-        let dotX = 0, dotY = 0;
-
-        // Track mouse position
-        document.addEventListener('mousemove', (e) => {
-            mouseX = e.clientX;
-            mouseY = e.clientY;
-        });
-
-        // Smooth cursor animation
-        const animateCursor = () => {
-            // Smooth follow for main cursor
-            cursorX += (mouseX - cursorX) * 0.15;
-            cursorY += (mouseY - cursorY) * 0.15;
-            cursor.style.left = cursorX + 'px';
-            cursor.style.top = cursorY + 'px';
-
-            // Faster follow for dot
-            dotX += (mouseX - dotX) * 0.25;
-            dotY += (mouseY - dotY) * 0.25;
-            cursorDot.style.left = dotX + 'px';
-            cursorDot.style.top = dotY + 'px';
-
-            requestAnimationFrame(animateCursor);
-        };
-        animateCursor();
-
-        // Hover effects
-        const hoverElements = document.querySelectorAll('a, button, .btn, .card, [data-cursor="pointer"]');
-        hoverElements.forEach(el => {
-            el.addEventListener('mouseenter', () => {
-                cursor.classList.add('cursor-hover');
-                cursorDot.classList.add('cursor-hover');
-            });
-            el.addEventListener('mouseleave', () => {
-                cursor.classList.remove('cursor-hover');
-                cursorDot.classList.remove('cursor-hover');
-            });
-        });
+        // Custom cursor disabled - using default browser cursor
+        return;
     }
 
     /**
@@ -166,6 +119,7 @@ class TechChangInteractive {
      * Buttons that follow the mouse cursor
      */
     initMagneticButtons() {
+        if (this.prefersReducedMotion) return;
         const magneticElements = document.querySelectorAll('.magnet-btn, [data-magnetic]');
 
         magneticElements.forEach(el => {
@@ -211,6 +165,7 @@ class TechChangInteractive {
      * Advanced scroll reveal with stagger effects
      */
     initRevealOnScroll() {
+        if (this.prefersReducedMotion) return;
         const revealElements = document.querySelectorAll('[data-reveal]');
 
         const revealObserver = new IntersectionObserver((entries) => {
@@ -255,6 +210,8 @@ class TechChangInteractive {
     initTiltCards() {
         const tiltCards = document.querySelectorAll('.card-tilt, [data-tilt]');
 
+        if (this.prefersReducedMotion) return;
+
         tiltCards.forEach(card => {
             card.addEventListener('mousemove', (e) => {
                 const rect = card.getBoundingClientRect();
@@ -281,7 +238,7 @@ class TechChangInteractive {
 
     /**
      * Page Transitions
-     * Smooth transitions between pages
+     * Smooth fade transitions between pages for natural UX
      */
     initPageTransitions() {
         // Create overlay
@@ -303,18 +260,18 @@ class TechChangInteractive {
 
                     e.preventDefault();
 
-                    // Animate overlay
+                    // Animate overlay with smooth fade
                     overlay.classList.add('active');
 
-                    // Navigate after animation
+                    // Navigate after short fade animation
                     setTimeout(() => {
                         window.location.href = href;
-                    }, 400);
+                    }, 250);
                 });
             }
         });
 
-        // Fade in on page load
+        // Smooth fade in on page load
         window.addEventListener('load', () => {
             overlay.classList.remove('active');
         });

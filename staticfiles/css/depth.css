@@ -130,9 +130,9 @@
 
 .shadow-layered-colored {
   box-shadow:
-    0 4px 8px rgba(139, 92, 246, 0.15),
-    0 8px 16px rgba(139, 92, 246, 0.1),
-    0 16px 32px rgba(139, 92, 246, 0.05);
+    0 4px 8px rgba(45, 55, 72, 0.15),
+    0 8px 16px rgba(45, 55, 72, 0.1),
+    0 16px 32px rgba(45, 55, 72, 0.05);
 }
 
 /* Inner + Outer Shadow */
@@ -285,24 +285,24 @@
 
 .mesh-gradient-1 {
   background:
-    radial-gradient(at 0% 0%, rgba(139, 92, 246, 0.3) 0px, transparent 50%),
+    radial-gradient(at 0% 0%, rgba(45, 55, 72, 0.3) 0px, transparent 50%),
     radial-gradient(at 50% 0%, rgba(20, 184, 166, 0.3) 0px, transparent 50%),
-    radial-gradient(at 100% 0%, rgba(236, 72, 153, 0.3) 0px, transparent 50%),
+    radial-gradient(at 100% 0%, rgba(113, 128, 150, 0.3) 0px, transparent 50%),
     linear-gradient(135deg, var(--gray-50) 0%, var(--gray-100) 100%);
 }
 
 .mesh-gradient-2 {
   background:
     radial-gradient(at 20% 30%, rgba(59, 130, 246, 0.3) 0px, transparent 50%),
-    radial-gradient(at 80% 70%, rgba(236, 72, 153, 0.3) 0px, transparent 50%),
+    radial-gradient(at 80% 70%, rgba(113, 128, 150, 0.3) 0px, transparent 50%),
     radial-gradient(at 50% 50%, rgba(16, 185, 129, 0.2) 0px, transparent 50%),
     linear-gradient(135deg, #ffffff 0%, #f9fafb 100%);
 }
 
 .mesh-gradient-animated {
   background:
-    radial-gradient(at 40% 20%, rgba(139, 92, 246, 0.3) 0px, transparent 50%),
-    radial-gradient(at 80% 0%, rgba(236, 72, 153, 0.3) 0px, transparent 50%),
+    radial-gradient(at 40% 20%, rgba(45, 55, 72, 0.3) 0px, transparent 50%),
+    radial-gradient(at 80% 0%, rgba(113, 128, 150, 0.3) 0px, transparent 50%),
     radial-gradient(at 0% 50%, rgba(20, 184, 166, 0.3) 0px, transparent 50%),
     linear-gradient(135deg, #fafafa 0%, #f5f5f5 100%);
   background-size: 200% 200%;
@@ -441,15 +441,15 @@
    ========================================== */
 
 .glow-soft {
-  box-shadow: 0 0 20px rgba(139, 92, 246, 0.3);
+  box-shadow: 0 0 20px rgba(45, 55, 72, 0.3);
 }
 
 .glow-medium {
-  box-shadow: 0 0 40px rgba(139, 92, 246, 0.4);
+  box-shadow: 0 0 40px rgba(45, 55, 72, 0.4);
 }
 
 .glow-strong {
-  box-shadow: 0 0 60px rgba(139, 92, 246, 0.5);
+  box-shadow: 0 0 60px rgba(45, 55, 72, 0.5);
 }
 
 .glow-pulse {

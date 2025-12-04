@@ -231,7 +231,7 @@ textarea:focus,
 select:focus {
   outline: none;
   border-color: var(--primary-500);
-  box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.1);
+  box-shadow: 0 0 0 3px rgba(45, 55, 72, 0.1);
   transform: translateY(-1px);
 }
 
@@ -406,7 +406,7 @@ select.success:focus {
 }
 
 .toggle-switch input:focus + .toggle-slider {
-  box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.2);
+  box-shadow: 0 0 0 3px rgba(45, 55, 72, 0.2);
 }
 
 /* ==========================================

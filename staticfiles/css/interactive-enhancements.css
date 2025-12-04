@@ -34,19 +34,20 @@
 .custom-cursor.cursor-hover {
     width: 60px;
     height: 60px;
-    border-color: rgba(139, 92, 246, 0.8);
+    border-color: rgba(45, 55, 72, 0.8);
 }
 
 .custom-cursor-dot.cursor-hover {
     width: 8px;
     height: 8px;
-    background: rgba(139, 92, 246, 0.9);
+    background: rgba(45, 55, 72, 0.9);
 }
 
 /* Hide default cursor when custom cursor is active */
-body:has(.custom-cursor) * {
+/* DISABLED: Using default browser cursor for better UX */
+/* body:has(.custom-cursor) * {
     cursor: none !important;
-}
+} */
 
 /* ===========================================
    Scroll Reveal
@@ -129,21 +130,15 @@ body:has(.custom-cursor) * {
 .page-transition-overlay {
     position: fixed;
     inset: 0;
-    background: linear-gradient(135deg,
-        var(--primary-500) 0%,
-        var(--secondary-500) 50%,
-        var(--accent-500) 100%);
+    background: rgba(26, 32, 44, 0.95);
     z-index: 99999;
     pointer-events: none;
     opacity: 0;
-    transform: translateY(-100%);
-    transition: transform 0.5s cubic-bezier(0.76, 0, 0.24, 1),
-                opacity 0.3s ease;
+    transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .page-transition-overlay.active {
     opacity: 1;
-    transform: translateY(0);
 }
 
 /* ===========================================
@@ -241,7 +236,7 @@ html {
     inset: 0;
     background: radial-gradient(
         circle at var(--mouse-x, 50%) var(--mouse-y, 50%),
-        rgba(139, 92, 246, 0.15) 0%,
+        rgba(45, 55, 72, 0.15) 0%,
         transparent 50%
     );
     opacity: 0;
