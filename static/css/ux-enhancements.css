@@ -1,0 +1,307 @@
+/**
+ * UX Enhancements CSS
+ * 로딩 인디케이터 & 토스트 알림 스타일
+ */
+
+/* ===========================================
+   전역 로딩 인디케이터
+   =========================================== */
+.global-loading {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(4px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 999999;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease;
+}
+
+.global-loading.active {
+    opacity: 1;
+    pointer-events: all;
+}
+
+.loading-spinner {
+    position: relative;
+    width: 100px;
+    height: 100px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+.spinner-ring {
+    position: absolute;
+    width: 80px;
+    height: 80px;
+    border: 3px solid transparent;
+    border-top-color: #3b82f6;
+    border-radius: 50%;
+    animation: spin 1.5s cubic-bezier(0.68, -0.55, 0.265, 1.55) infinite;
+}
+
+.spinner-ring:nth-child(2) {
+    width: 60px;
+    height: 60px;
+    border-top-color: #06b6d4;
+    animation-delay: 0.15s;
+}
+
+.spinner-ring:nth-child(3) {
+    width: 40px;
+    height: 40px;
+    border-top-color: #8b5cf6;
+    animation-delay: 0.3s;
+}
+
+@keyframes spin {
+    0% {
+        transform: rotate(0deg);
+    }
+    100% {
+        transform: rotate(360deg);
+    }
+}
+
+.loading-text {
+    margin-top: 110px;
+    color: white;
+    font-weight: 600;
+    font-size: 14px;
+    text-align: center;
+    animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+    0%, 100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.5;
+    }
+}
+
+/* ===========================================
+   토스트 알림
+   =========================================== */
+.toast-container {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 999998;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    pointer-events: none;
+}
+
+.toast {
+    min-width: 300px;
+    max-width: 500px;
+    padding: 16px 20px;
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1),
+                0 4px 6px rgba(0, 0, 0, 0.05);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    pointer-events: all;
+    opacity: 0;
+    transform: translateX(400px);
+    transition: all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+}
+
+.toast.show {
+    opacity: 1;
+    transform: translateX(0);
+}
+
+.toast-icon {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    font-weight: bold;
+    flex-shrink: 0;
+}
+
+.toast-message {
+    flex: 1;
+    color: #1e293b;
+    font-size: 14px;
+    line-height: 1.5;
+}
+
+.toast-close {
+    background: none;
+    border: none;
+    font-size: 24px;
+    line-height: 1;
+    color: #94a3b8;
+    cursor: pointer;
+    padding: 0;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
+    transition: all 0.2s ease;
+}
+
+.toast-close:hover {
+    background: rgba(0, 0, 0, 0.05);
+    color: #475569;
+}
+
+/* 토스트 타입별 스타일 */
+.toast-success {
+    border-left: 4px solid #10b981;
+}
+
+.toast-success .toast-icon {
+    background: #d1fae5;
+    color: #059669;
+}
+
+.toast-error {
+    border-left: 4px solid #ef4444;
+}
+
+.toast-error .toast-icon {
+    background: #fee2e2;
+    color: #dc2626;
+}
+
+.toast-warning {
+    border-left: 4px solid #f59e0b;
+}
+
+.toast-warning .toast-icon {
+    background: #fef3c7;
+    color: #d97706;
+}
+
+.toast-info {
+    border-left: 4px solid #3b82f6;
+}
+
+.toast-info .toast-icon {
+    background: #dbeafe;
+    color: #2563eb;
+}
+
+/* ===========================================
+   이미지 Lazy Loading 효과
+   =========================================== */
+img[data-src] {
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+img.lazy-loaded {
+    opacity: 1;
+}
+
+/* 로딩 중 플레이스홀더 */
+img[data-src]:not(.lazy-loaded) {
+    background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+    background-size: 200% 100%;
+    animation: loading 1.5s infinite;
+}
+
+@keyframes loading {
+    0% {
+        background-position: 200% 0;
+    }
+    100% {
+        background-position: -200% 0;
+    }
+}
+
+/* ===========================================
+   폼 제출 중 상태
+   =========================================== */
+form.submitting {
+    pointer-events: none;
+    opacity: 0.7;
+}
+
+form.submitting button[type="submit"] {
+    cursor: not-allowed;
+}
+
+/* ===========================================
+   반응형
+   =========================================== */
+@media (max-width: 640px) {
+    .toast-container {
+        top: 10px;
+        right: 10px;
+        left: 10px;
+    }
+
+    .toast {
+        min-width: auto;
+        width: 100%;
+    }
+
+    .loading-spinner {
+        width: 80px;
+        height: 80px;
+    }
+
+    .spinner-ring {
+        width: 60px;
+        height: 60px;
+    }
+
+    .spinner-ring:nth-child(2) {
+        width: 45px;
+        height: 45px;
+    }
+
+    .spinner-ring:nth-child(3) {
+        width: 30px;
+        height: 30px;
+    }
+
+    .loading-text {
+        margin-top: 90px;
+        font-size: 13px;
+    }
+}
+
+/* ===========================================
+   다크모드 대응
+   =========================================== */
+.theme-dark .toast {
+    background: #1e293b;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3),
+                0 4px 6px rgba(0, 0, 0, 0.2);
+}
+
+.theme-dark .toast-message {
+    color: #f1f5f9;
+}
+
+.theme-dark .toast-close {
+    color: #64748b;
+}
+
+.theme-dark .toast-close:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: #94a3b8;
+}

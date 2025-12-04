@@ -27,6 +27,7 @@
 
     <!-- Custom CSS -->
     <link href="{% static 'style.css' %}?v={{ 'now'|date:'YmdHis' }}" rel="stylesheet">
+    <link href="{% static 'css/ux-enhancements.css' %}?v={{ 'now'|date:'YmdHis' }}" rel="stylesheet">
 
     <!-- 테마 초기화 스크립트 (FOUC 방지) -->
     <script>
@@ -74,6 +75,9 @@
     <!-- GSAP for advanced animations -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/ScrollTrigger.min.js"></script>
+
+    <!-- UX Enhancements: 로딩 & 토스트 알림 -->
+    <script src="{% static 'js/ux-enhancements.js' %}?v={{ 'now'|date:'YmdHis' }}"></script>
 
     <!-- 인터랙티브 라이브러리 -->
     <script src="{% static 'js/interactive.js' %}?v={{ 'now'|date:'YmdHis' }}"></script>
