@@ -2,194 +2,196 @@
 {% load static %}
 {% load pybo_filter %}
 
-{% block title %}게임 센터 - TechChang Games{% endblock %}
+{% block title %}게임 센터 - 테크창{% endblock %}
 
 {% block extra_css %}
-<link href="{% static 'css/reborn.css' %}?v={{ 'now'|date:'YmdHis' }}" rel="stylesheet">
+<style>
+.games-hero {
+    background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
+    color: white;
+    padding: 4rem 2rem;
+    text-align: center;
+    margin-bottom: 3rem;
+}
+
+.games-hero h1 {
+    font-size: 3rem;
+    font-weight: 900;
+    margin-bottom: 1rem;
+}
+
+.games-hero p {
+    font-size: 1.25rem;
+    opacity: 0.9;
+    max-width: 600px;
+    margin: 0 auto;
+}
+
+.game-card {
+    background: white;
+    border-radius: 16px;
+    padding: 2rem;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    transition: all 0.3s ease;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+.game-card:hover {
+    transform: translateY(-8px);
+    box-shadow: 0 12px 24px rgba(0,0,0,0.15);
+}
+
+.game-icon {
+    font-size: 4rem;
+    margin-bottom: 1.5rem;
+    text-align: center;
+}
+
+.game-title {
+    font-size: 1.75rem;
+    font-weight: 800;
+    margin-bottom: 1rem;
+    color: #1e293b;
+}
+
+.game-description {
+    color: #64748b;
+    line-height: 1.6;
+    margin-bottom: 1.5rem;
+    flex-grow: 1;
+}
+
+.game-stats {
+    display: flex;
+    gap: 1.5rem;
+    margin-bottom: 1.5rem;
+    padding: 1rem;
+    background: #f8fafc;
+    border-radius: 8px;
+}
+
+.game-stat {
+    text-align: center;
+}
+
+.game-stat-value {
+    font-size: 1.5rem;
+    font-weight: 800;
+    color: #3b82f6;
+}
+
+.game-stat-label {
+    font-size: 0.875rem;
+    color: #64748b;
+}
+
+.game-button {
+    display: block;
+    width: 100%;
+    padding: 1rem;
+    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+    color: white;
+    text-align: center;
+    border-radius: 8px;
+    text-decoration: none;
+    font-weight: 700;
+    transition: all 0.3s ease;
+}
+
+.game-button:hover {
+    background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%);
+    color: white;
+    transform: scale(1.02);
+}
+
+.stats-overview {
+    display: flex;
+    justify-content: center;
+    gap: 3rem;
+    margin: 2rem 0;
+}
+
+.stat-box {
+    text-align: center;
+}
+
+.stat-number {
+    font-size: 2.5rem;
+    font-weight: 900;
+    color: white;
+}
+
+.stat-text {
+    font-size: 0.875rem;
+    opacity: 0.8;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+</style>
 {% endblock %}
 
 {% block content %}
-<!-- Hero Section - Clean & Professional -->
-<section class="hero-section">
-    <!-- 미묘한 배경 장식 -->
-    <div class="bg-decoration">
-        <div class="bg-blob bg-blob-1"></div>
-        <div class="bg-blob bg-blob-2"></div>
-    </div>
+<!-- Hero Section -->
+<div class="games-hero">
+    <h1>🎮 게임 센터</h1>
+    <p>두뇌를 자극하는 퍼즐 게임과 즐거운 방명록</p>
 
-    <div class="hero-content fade-in">
-        <!-- Badge -->
-        <div style="text-align: center; margin-bottom: var(--space-4);">
-            <span class="badge badge-featured">🎮 PLAY & WIN</span>
+    <div class="stats-overview">
+        <div class="stat-box">
+            <div class="stat-number">{{ recent_stats.total_games_played }}</div>
+            <div class="stat-text">총 게임 플레이</div>
         </div>
-
-        <!-- Main Title -->
-        <h1 class="display-mega text-center">게임 센터</h1>
-        <p class="fade-in stagger-2" style="
-            font-size: 1.25rem;
-            line-height: 1.8;
-            color: var(--text-secondary);
-            max-width: 700px;
-            margin: 0 auto var(--space-8);
-            text-align: center;
-        ">
-            실시간 멀티플레이어부터 퍼즐까지,<br>
-            다양한 게임으로 실력을 겨뤄보세요
-        </p>
-
-        <!-- Stats Cards -->
-        <div class="stats-grid fade-in stagger-3" style="max-width: 600px; margin: 0 auto;">
-            <div class="stat-card">
-                <div class="stat-value">{{ recent_stats.total_games_played }}</div>
-                <div class="stat-label">Total Games</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-value">{% if user.is_authenticated %}ON{% else %}OFF{% endif %}</div>
-                <div class="stat-label">Status</div>
-            </div>
+        <div class="stat-box">
+            <div class="stat-number">{{ games_info|length }}</div>
+            <div class="stat-text">게임 종류</div>
         </div>
     </div>
-</section>
+</div>
 
-<!-- Games Grid Section -->
-<section class="section" style="background: var(--bg-secondary);">
-    <div class="container-wide">
-        <h2 class="section-title">모든 게임</h2>
+<!-- Games Grid -->
+<div class="container" style="max-width: 1200px; margin: 0 auto 4rem; padding: 0 2rem;">
+    <div class="row g-4">
+        {% for game in games_info %}
+        <div class="col-md-6">
+            <div class="game-card">
+                <div class="game-icon">{{ game.icon }}</div>
+                <h3 class="game-title">{{ game.name }}</h3>
+                <p class="game-description">{{ game.description }}</p>
 
-        <div class="bento-container">
-            {% for game in games_info %}
-            {% if forloop.first %}
-            <!-- Featured Game -->
-            <div class="bento-featured fade-in">
-                <div style="text-align: center; margin-bottom: var(--space-4);">
-                    <div style="font-size: 5rem;">{{ game.icon }}</div>
-                </div>
-                <h3 style="font-size: 2rem; font-weight: 800; text-align: center; margin-bottom: var(--space-3); color: var(--text-primary);">
-                    {{ game.name }}
-                </h3>
-                <p style="font-size: 1rem; color: var(--text-secondary); text-align: center; margin-bottom: var(--space-6);">
-                    {{ game.description }}
-                </p>
-
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-3); margin-bottom: var(--space-6);">
-                    <div class="stat-card">
-                        <div class="stat-value" style="font-size: 2rem;">{{ game.total_games }}</div>
-                        <div class="stat-label">총 게임</div>
+                <div class="game-stats">
+                    <div class="game-stat">
+                        <div class="game-stat-value">{{ game.total_games }}</div>
+                        <div class="game-stat-label">총 게임</div>
                     </div>
-                    <div class="stat-card">
-                        <div class="stat-value" style="font-size: 2rem;">{{ game.active_games }}</div>
-                        <div class="stat-label">진행 중</div>
+                    <div class="game-stat">
+                        <div class="game-stat-value">{{ game.active_games }}</div>
+                        <div class="game-stat-label">진행 중</div>
                     </div>
                 </div>
 
-                <a href="{% url game.url %}" class="btn-primary" style="width: 100%; justify-content: center; font-size: 1.125rem;">
-                    플레이 하기 ▶
+                <a href="{% url game.url %}" class="game-button">
+                    플레이하기 ▶
                 </a>
             </div>
-            {% else %}
-            <!-- Regular Games -->
-            <div class="bento-item fade-in stagger-{{ forloop.counter }}">
-                <div style="text-align: center; margin-bottom: var(--space-3);">
-                    <div style="font-size: 3rem;">{{ game.icon }}</div>
-                </div>
-                <h3 style="font-size: 1.5rem; font-weight: 800; margin-bottom: var(--space-2); color: var(--text-primary);">
-                    {{ game.name }}
-                </h3>
-                <p style="font-size: 0.875rem; color: var(--text-tertiary); text-transform: uppercase; margin-bottom: var(--space-3);">
-                    {{ game.title }}
-                </p>
-                <p style="font-size: 0.9rem; line-height: 1.6; color: var(--text-secondary); margin-bottom: var(--space-4);">
-                    {{ game.description|truncatewords:15 }}
-                </p>
-
-                <div style="display: flex; gap: var(--space-3); margin-bottom: var(--space-4); font-size: 0.875rem; color: var(--text-tertiary);">
-                    <span>🎯 {{ game.total_games }}</span>
-                    <span>🔥 {{ game.active_games }}</span>
-                </div>
-
-                <a href="{% url game.url %}" class="btn-secondary" style="width: 100%; justify-content: center;">
-                    플레이 ▶
-                </a>
-            </div>
-            {% endif %}
-            {% endfor %}
         </div>
+        {% endfor %}
     </div>
-</section>
+</div>
 
-<!-- Features Section -->
-<section class="section" style="background: var(--bg-primary);">
-    <div class="container-wide">
-        <h2 class="section-title">게임 특징</h2>
-
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: var(--space-6); max-width: 1200px; margin: 0 auto;">
-            <div class="card-clean fade-in stagger-1" style="text-align: center;">
-                <div style="font-size: 4rem; margin-bottom: var(--space-4);">⚡</div>
-                <h3 style="font-size: 1.5rem; font-weight: 800; margin-bottom: var(--space-3); color: var(--text-primary);">실시간 게임</h3>
-                <p style="line-height: 1.6; color: var(--text-secondary);">
-                    WebSocket 기술로 구현된 실시간 멀티플레이어 게임. 끝말잇기와 틱택토에서 다른 플레이어와 즉시 대결하세요!
-                </p>
-            </div>
-
-            <div class="card-clean fade-in stagger-2" style="text-align: center;">
-                <div style="font-size: 4rem; margin-bottom: var(--space-4);">🎯</div>
-                <h3 style="font-size: 1.5rem; font-weight: 800; margin-bottom: var(--space-3); color: var(--text-primary);">싱글 플레이</h3>
-                <p style="line-height: 1.6; color: var(--text-secondary);">
-                    숫자야구, 2048, 지뢰찾기 등 혼자서도 즐길 수 있는 퍼즐 게임. 자신의 최고 기록에 도전하세요!
-                </p>
-            </div>
-
-            <div class="card-clean fade-in stagger-3" style="text-align: center;">
-                <div style="font-size: 4rem; margin-bottom: var(--space-4);">🏆</div>
-                <h3 style="font-size: 1.5rem; font-weight: 800; margin-bottom: var(--space-3); color: var(--text-primary);">리더보드</h3>
-                <p style="line-height: 1.6; color: var(--text-secondary);">
-                    전체 플레이어와 점수를 비교하고 랭킹에 도전하세요. 최고 점수를 달성하고 명예의 전당에 이름을 올려보세요!
-                </p>
-            </div>
-        </div>
-    </div>
-</section>
-
-<!-- Login CTA (if not authenticated) -->
+<!-- Login CTA -->
 {% if not user.is_authenticated %}
-<section class="section" style="background: var(--bg-secondary);">
-    <div class="container-wide">
-        <div class="card-featured fade-in" style="
-            max-width: 800px;
-            margin: 0 auto;
-            text-align: center;
-        ">
-            <div style="font-size: 5rem; margin-bottom: var(--space-6);">🔔</div>
-            <h2 style="font-size: 2rem; font-weight: 800; margin-bottom: var(--space-4); color: var(--text-primary);">
-                로그인하고 게임 시작!
-            </h2>
-            <p style="font-size: 1.125rem; color: var(--text-secondary); margin-bottom: var(--space-8);">
-                게임을 플레이하고 점수를 기록하려면 로그인이 필요합니다
-            </p>
-            <div style="display: flex; gap: var(--space-4); justify-content: center; flex-wrap: wrap;">
-                <a href="{% url 'common:login' %}" class="btn-primary">
-                    로그인
-                </a>
-                <a href="{% url 'common:signup' %}" class="btn-secondary">
-                    회원가입
-                </a>
-            </div>
+<div class="container" style="max-width: 800px; margin: 0 auto 4rem; padding: 0 2rem;">
+    <div style="background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%); padding: 3rem; border-radius: 16px; text-align: center;">
+        <div style="font-size: 4rem; margin-bottom: 1.5rem;">🔐</div>
+        <h2 style="font-size: 2rem; font-weight: 800; margin-bottom: 1rem; color: #1e293b;">로그인하고 게임 시작!</h2>
+        <p style="color: #64748b; margin-bottom: 2rem;">게임을 플레이하고 기록을 저장하려면 로그인이 필요합니다</p>
+        <div style="display: flex; gap: 1rem; justify-content: center;">
+            <a href="{% url 'common:login' %}" class="btn btn-primary btn-lg">로그인</a>
+            <a href="{% url 'common:signup' %}" class="btn btn-outline-primary btn-lg">회원가입</a>
         </div>
     </div>
-</section>
+</div>
 {% endif %}
-{% endblock %}
-
-{% block script %}
-<script>
-// 카드 호버 효과
-document.querySelectorAll('.bento-item, .card-clean').forEach(card => {
-    card.addEventListener('mouseenter', () => {
-        card.style.transform = 'translateY(-4px)';
-    });
-    card.addEventListener('mouseleave', () => {
-        card.style.transform = 'translateY(0)';
-    });
-});
-</script>
 {% endblock %}
