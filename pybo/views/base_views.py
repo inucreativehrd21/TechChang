@@ -220,37 +220,15 @@ def download_file(request, question_id):
 
 def games_index(request):
     """게임 대시보드 - 모든 게임 목록"""
-    from ..models import WordChainGame, TicTacToeGame, NumberBaseballGame, Game2048, GuestBook
+    from ..models import NumberBaseballGame, Game2048, GuestBook, MinesweeperGame
     from django.db.models import F
 
     # 각 게임의 통계 정보
     games_info = [
         {
-            'name': '끝말잇기',
-            'title': 'Word Chain Game',
-            'description': '실시간 멀티플레이어 끝말잇기 게임. 친구들과 함께 한국어 단어 실력을 겨뤄보세요!',
-            'url': 'pybo:wordchain_list',
-            'icon': '🔤',
-            'color': 'primary',
-            'total_games': WordChainGame.objects.count(),
-            'active_games': WordChainGame.objects.filter(status='playing').count(),
-            'features': ['실시간 통신', '멀티플레이어', 'WebSocket'],
-        },
-        {
-            'name': '틱택토',
-            'title': 'Tic-Tac-Toe',
-            'description': '2인용 실시간 틱택토 게임. 온라인으로 상대방과 대결하세요!',
-            'url': 'pybo:tictactoe_list',
-            'icon': '⭕',
-            'color': 'success',
-            'total_games': TicTacToeGame.objects.count(),
-            'active_games': TicTacToeGame.objects.filter(status__in=['waiting', 'playing']).count(),
-            'features': ['실시간 대전', '2인 플레이', 'WebSocket'],
-        },
-        {
             'name': '숫자야구',
             'title': 'Number Baseball',
-            'description': '숨겨진 3자리 숫자를 맞춰보세요. 스트라이크와 볼 힌트로 추리하는 게임!',
+            'description': '숨겨진 4자리 숫자를 맞춰보세요. 스트라이크와 볼 힌트로 추리하는 게임!',
             'url': 'pybo:baseball_start',
             'icon': '⚾',
             'color': 'warning',
@@ -270,6 +248,17 @@ def games_index(request):
             'features': ['퍼즐', '싱글 플레이', '키보드 조작'],
         },
         {
+            'name': '지뢰찾기',
+            'title': 'Minesweeper',
+            'description': '클래식 지뢰찾기 게임. 숫자 힌트를 보고 지뢰를 피하세요!',
+            'url': 'pybo:minesweeper_start',
+            'icon': '💣',
+            'color': 'danger',
+            'total_games': MinesweeperGame.objects.count(),
+            'active_games': MinesweeperGame.objects.filter(status='playing').count(),
+            'features': ['논리 퍼즐', '싱글 플레이', '3가지 난이도'],
+        },
+        {
             'name': '방명록',
             'title': 'Guest Book',
             'description': '포스트잇처럼 자유롭게 메시지를 남겨보세요!',
@@ -277,7 +266,7 @@ def games_index(request):
             'icon': '📝',
             'color': 'secondary',
             'total_games': GuestBook.objects.count(),
-            'active_games': GuestBook.objects.filter(create_date__gte=F('create_date')).count(),
+            'active_games': 0,
             'features': ['메시지 보드', '인터랙티브', '포스트잇 스타일'],
         },
     ]
@@ -285,10 +274,9 @@ def games_index(request):
     # 최근 활동 통계
     recent_stats = {
         'total_games_played': (
-            WordChainGame.objects.count() +
-            TicTacToeGame.objects.count() +
             NumberBaseballGame.objects.count() +
-            Game2048.objects.count()
+            Game2048.objects.count() +
+            MinesweeperGame.objects.count()
         ),
         'active_players': request.user.is_authenticated,
     }
