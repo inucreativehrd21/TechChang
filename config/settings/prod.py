@@ -16,6 +16,7 @@ SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', SECRET_KEY)
 ALLOWED_HOSTS = [
     '43.203.93.244',
     'techchang.com',
+    'www.techchang.com',
     '127.0.0.1',
     'localhost',
 ]
