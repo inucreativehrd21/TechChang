@@ -194,7 +194,7 @@ LOGIN_URL = '/common/login/'  # 비로그인 사용자가 @login_required 접근
 LOGIN_REDIRECT_URL = '/'  # 로그인 성공 후 이동하는 URL
 LOGOUT_REDIRECT_URL = '/'  # 로그아웃 후 이동하는 URL
 
-ALLOWED_HOSTS = ['43.203.93.244', 'tc.o-r.kr']
+ALLOWED_HOSTS = ['43.203.93.244', 'techchang.com']
 
 # OpenAI API 설정
 OPENAI_API_KEY = os.environ.get('OPENAI_API_KEY', '')
@@ -297,7 +297,7 @@ LOGGING = {
 
 # 이메일 설정 (개발용)
 EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
-DEFAULT_FROM_EMAIL = 'noreply@techchang.kr'
+DEFAULT_FROM_EMAIL = 'noreply@techchang.com'
 
 # 추가 보안 설정
 SECURE_BROWSER_XSS_FILTER = True

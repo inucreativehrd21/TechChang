@@ -15,7 +15,7 @@ SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', SECRET_KEY)
 # 허용 호스트 (기존 IP·도메인 유지)
 ALLOWED_HOSTS = [
     '43.203.93.244',
-    'tc.o-r.kr',
+    'techchang.com',
     '127.0.0.1',
     'localhost',
 ]
@@ -131,7 +131,7 @@ if EMAIL_USE_SSL:
 
 DEFAULT_FROM_EMAIL = os.environ.get(
     'DJANGO_DEFAULT_FROM_EMAIL',
-    EMAIL_HOST_USER or 'noreply@tc.o-r.kr'
+    EMAIL_HOST_USER or 'noreply@techchang.com'
 )
 SERVER_EMAIL = os.environ.get(
     'DJANGO_SERVER_EMAIL',
