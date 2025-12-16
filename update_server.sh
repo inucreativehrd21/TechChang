@@ -31,6 +31,19 @@ show_step() {
     echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 }
 
+# 서비스 이름 자동 감지
+detect_service_name() {
+    if systemctl list-units --type=service --all | grep -q "mysite.service"; then
+        echo "mysite"
+    elif systemctl list-units --type=service --all | grep -q "gunicorn.service"; then
+        echo "gunicorn"
+    else
+        echo "gunicorn"  # 기본값
+    fi
+}
+
+SERVICE_NAME=$(detect_service_name)
+
 # 에러 핸들러
 error_exit() {
     echo -e "${RED}❌ 오류 발생: $1${NC}" >&2
@@ -46,8 +59,8 @@ error_exit() {
 rollback() {
     echo -e "${YELLOW}🔄 롤백 시작...${NC}"
 
-    # Gunicorn 중지
-    sudo systemctl stop gunicorn 2>/dev/null || true
+    # 서비스 중지
+    sudo systemctl stop $SERVICE_NAME 2>/dev/null || true
 
     # 기존 코드로 복원
     if [ -d "$PROJECT_DIR"_old ]; then
@@ -57,12 +70,12 @@ rollback() {
     fi
 
     # 서비스 재시작
-    sudo systemctl start gunicorn
+    sudo systemctl start $SERVICE_NAME
     sudo systemctl restart nginx
 
     echo -e "${GREEN}✅ 롤백 완료${NC}"
     echo "서비스 상태:"
-    sudo systemctl status gunicorn --no-pager -l
+    sudo systemctl status $SERVICE_NAME --no-pager -l
 }
 
 # 배너
@@ -151,14 +164,14 @@ ls -lh $BACKUP_DIR
 # ============================================
 show_step "서비스 중지"
 
-echo "Gunicorn 중지 중..."
-sudo systemctl stop gunicorn
+echo "Django 서비스($SERVICE_NAME) 중지 중..."
+sudo systemctl stop $SERVICE_NAME
 sleep 2
 
-if sudo systemctl is-active --quiet gunicorn; then
-    error_exit "Gunicorn 중지 실패"
+if sudo systemctl is-active --quiet $SERVICE_NAME; then
+    error_exit "서비스 중지 실패"
 fi
-echo "✓ Gunicorn 중지 완료"
+echo "✓ 서비스 중지 완료"
 
 # ============================================
 # Step 4: 코드 준비
@@ -371,22 +384,23 @@ fi
 echo "✓ Nginx 설정 업데이트 완료"
 
 # ============================================
-# Step 11: Gunicorn 설정 확인
+# Step 11: Django 서비스 설정 확인
 # ============================================
-show_step "Gunicorn 설정 확인"
+show_step "Django 서비스($SERVICE_NAME) 설정 확인"
 
-# Gunicorn 서비스 파일 확인
-if [ -f "/etc/systemd/system/gunicorn.service" ]; then
-    echo "✓ Gunicorn 서비스 파일 존재"
+# 서비스 파일 확인
+SERVICE_FILE="/etc/systemd/system/${SERVICE_NAME}.service"
+if [ -f "$SERVICE_FILE" ]; then
+    echo "✓ 서비스 파일 존재: $SERVICE_FILE"
 
     # WorkingDirectory 확인
-    if grep -q "WorkingDirectory=$PROJECT_DIR" /etc/systemd/system/gunicorn.service; then
+    if grep -q "WorkingDirectory=$PROJECT_DIR" $SERVICE_FILE; then
         echo "✓ WorkingDirectory 설정 올바름"
     else
-        echo -e "${YELLOW}⚠️ Gunicorn 서비스 파일의 WorkingDirectory를 확인하세요${NC}"
+        echo -e "${YELLOW}⚠️ 서비스 파일의 WorkingDirectory를 확인하세요${NC}"
     fi
 else
-    echo -e "${YELLOW}⚠️ Gunicorn 서비스 파일이 없습니다${NC}"
+    echo -e "${YELLOW}⚠️ 서비스 파일이 없습니다: $SERVICE_FILE${NC}"
 fi
 
 # ============================================
@@ -397,10 +411,10 @@ show_step "서비스 재시작"
 # systemd 재로드
 sudo systemctl daemon-reload
 
-# Gunicorn 시작
-echo "Gunicorn 시작 중..."
-sudo systemctl start gunicorn
-sudo systemctl enable gunicorn
+# Django 서비스 시작
+echo "Django 서비스($SERVICE_NAME) 시작 중..."
+sudo systemctl start $SERVICE_NAME
+sudo systemctl enable $SERVICE_NAME
 sleep 3
 
 # Nginx 재시작
@@ -419,13 +433,13 @@ echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━�
 
 # 서비스 상태 확인
 echo ""
-echo "=== Gunicorn 상태 ==="
-if sudo systemctl is-active --quiet gunicorn; then
-    echo -e "${GREEN}✓ Gunicorn 실행 중${NC}"
+echo "=== Django 서비스($SERVICE_NAME) 상태 ==="
+if sudo systemctl is-active --quiet $SERVICE_NAME; then
+    echo -e "${GREEN}✓ Django 서비스 실행 중${NC}"
 else
-    echo -e "${RED}✗ Gunicorn 실행 안됨${NC}"
-    sudo systemctl status gunicorn --no-pager -l | tail -20
-    error_exit "Gunicorn이 실행되지 않았습니다"
+    echo -e "${RED}✗ Django 서비스 실행 안됨${NC}"
+    sudo systemctl status $SERVICE_NAME --no-pager -l | tail -20
+    error_exit "Django 서비스가 실행되지 않았습니다"
 fi
 
 echo ""
@@ -441,7 +455,7 @@ fi
 echo ""
 echo "=== 포트 확인 ==="
 if sudo netstat -tulpn | grep -q ":8000"; then
-    echo -e "${GREEN}✓ 포트 8000 사용 중 (Gunicorn)${NC}"
+    echo -e "${GREEN}✓ 포트 8000 사용 중 (Django)${NC}"
 else
     echo -e "${RED}✗ 포트 8000 사용 안됨${NC}"
 fi
@@ -470,13 +484,13 @@ echo "  3. 24-48시간 모니터링"
 echo ""
 echo "문제 발생 시 롤백:"
 echo "  cd /home/ubuntu/projects"
-echo "  sudo systemctl stop gunicorn"
+echo "  sudo systemctl stop $SERVICE_NAME"
 echo "  sudo rm -rf mysite"
 echo "  sudo mv mysite_old mysite"
-echo "  sudo systemctl start gunicorn"
+echo "  sudo systemctl start $SERVICE_NAME"
 echo ""
 echo "로그 확인:"
-echo "  sudo tail -f /var/log/gunicorn/error.log"
+echo "  sudo journalctl -u $SERVICE_NAME -f"
 echo "  sudo tail -f /var/log/nginx/techchang_error.log"
 echo ""
 
