@@ -10,7 +10,7 @@ except ImportError:
 
 # ===== 보안 및 기본 설정 =====
 DEBUG = False
-SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY')
+SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', 'temporary-secret-key-change-in-production')
 
 # 허용 호스트
 # 환경변수로 설정 가능 (쉼표로 구분)
@@ -18,6 +18,7 @@ SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY')
 ALLOWED_HOSTS = os.environ.get('DJANGO_ALLOWED_HOSTS', '').split(',') if os.environ.get('DJANGO_ALLOWED_HOSTS') else [
     'techchang.com',
     'www.techchang.com',
+    '43.203.93.244',  # 서버 IP 주소
 ]
 
 # ===== 정적 파일 =====
@@ -38,8 +39,8 @@ SECURE_HSTS_SECONDS = 31536000
 SECURE_HSTS_INCLUDE_SUBDOMAINS = True
 SECURE_HSTS_PRELOAD = True
 
-# HTTPS 리다이렉트 (프로덕션 필수)
-SECURE_SSL_REDIRECT = True
+# HTTPS 리다이렉트 (SSL 인증서 발급 후 True로 변경)
+SECURE_SSL_REDIRECT = False
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
 # Referrer 정책
@@ -69,8 +70,9 @@ CSP_CONNECT_SRC = ("'self'",)
 CSP_FRAME_ANCESTORS = ("'none'",)
 
 # ===== 세션·CSRF 보안 =====
-SESSION_COOKIE_SECURE = True
-CSRF_COOKIE_SECURE = True
+# SSL 인증서 발급 후 True로 변경
+SESSION_COOKIE_SECURE = False
+CSRF_COOKIE_SECURE = False
 SESSION_COOKIE_HTTPONLY = True
 CSRF_COOKIE_HTTPONLY = True
 
