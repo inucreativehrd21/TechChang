@@ -1,0 +1,1362 @@
+{% extends 'base.html' %}
+{% load common_tags %}
+
+{% block title %}{{ game.title }} - 끝말잇기 게임{% endblock %}
+
+{% block extra_css %}
+<style>
+/* Optimistic UI 애니메이션 */
+@keyframes fadeOut {
+  from { opacity: 1; transform: translateX(0); }
+  to { opacity: 0; transform: translateX(-20px); }
+}
+
+.pending-word {
+  border-left: 3px solid #ffc107 !important;
+}
+
+/* 게임 컨테이너 */
+.game-container {
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+/* 원형 타이머 */
+.circular-timer {
+  position: relative;
+  width: 200px;
+  height: 200px;
+  margin: 0 auto 30px;
+}
+
+.circular-timer svg {
+  transform: rotate(-90deg);
+}
+
+.circular-timer .circle-bg {
+  fill: none;
+  stroke: #e9ecef;
+  stroke-width: 10;
+}
+
+.circular-timer .circle-progress {
+  fill: none;
+  stroke: #28a745;
+  stroke-width: 10;
+  stroke-linecap: round;
+  transition: stroke 0.3s ease;
+  stroke-dasharray: 565.48;
+  stroke-dashoffset: 0;
+}
+
+.timer-text {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  text-align: center;
+}
+
+.timer-number {
+  font-size: 3rem;
+  font-weight: bold;
+  color: #28a745;
+  transition: color 0.3s ease;
+}
+
+/* 단어 체인 애니메이션 */
+.word-chain {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  padding: 30px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 20px;
+  box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
+  animation: glow 2s ease-in-out infinite alternate;
+}
+
+@keyframes glow {
+  from { box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3); }
+  to { box-shadow: 0 10px 50px rgba(102, 126, 234, 0.6); }
+}
+
+.word-display {
+  background: white;
+  padding: 20px 40px;
+  border-radius: 15px;
+  font-size: 2.5rem;
+  font-weight: bold;
+  color: #667eea;
+  box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+}
+
+.arrow-icon {
+  font-size: 2rem;
+  color: white;
+  animation: bounce 1s ease-in-out infinite;
+}
+
+@keyframes bounce {
+  0%, 100% { transform: translateX(0); }
+  50% { transform: translateX(10px); }
+}
+
+/* 단어 입력 폼 */
+.word-input-container {
+  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+  border-radius: 20px;
+  padding: 30px;
+  box-shadow: 0 10px 30px rgba(240, 147, 251, 0.3);
+}
+
+.word-input {
+  font-size: 1.5rem;
+  padding: 15px 20px;
+  border: 3px solid transparent;
+  border-radius: 15px;
+  transition: all 0.3s ease;
+  background: white;
+}
+
+.word-input:focus {
+  border-color: #f5576c;
+  box-shadow: 0 0 20px rgba(245, 87, 108, 0.5);
+  transform: scale(1.02);
+}
+
+.submit-btn {
+  padding: 15px 40px;
+  font-size: 1.2rem;
+  border-radius: 15px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border: none;
+  color: white;
+  font-weight: bold;
+  transition: all 0.3s ease;
+  box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+}
+
+.submit-btn:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 25px rgba(102, 126, 234, 0.6);
+}
+
+/* 단어 목록 카드 */
+.word-item {
+  background: white;
+  border-radius: 15px;
+  padding: 20px;
+  margin-bottom: 15px;
+  box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+  transition: all 0.3s ease;
+  border-left: 5px solid transparent;
+  animation: slideIn 0.5s ease-out;
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateX(-30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.word-item:hover {
+  transform: translateX(10px);
+  box-shadow: 0 5px 20px rgba(0,0,0,0.15);
+  border-left-color: #667eea;
+}
+
+.word-item.latest {
+  border-left-color: #f5576c;
+  background: linear-gradient(90deg, #fff 0%, #fff5f7 100%);
+}
+
+.word-badge {
+  display: inline-block;
+  width: 40px;
+  height: 40px;
+  line-height: 40px;
+  text-align: center;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border-radius: 50%;
+  font-weight: bold;
+  box-shadow: 0 3px 10px rgba(102, 126, 234, 0.3);
+}
+
+/* 게임 종료 오버레이 */
+.game-over-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0,0,0,0.8);
+  display: none;
+  justify-content: center;
+  align-items: center;
+  z-index: 9999;
+  animation: fadeIn 0.5s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.game-over-content {
+  background: white;
+  padding: 50px;
+  border-radius: 30px;
+  text-align: center;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+  animation: zoomIn 0.5s ease;
+}
+
+@keyframes zoomIn {
+  from { transform: scale(0.5); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+/* 채팅 */
+.chat-container {
+  background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+  border-radius: 20px;
+  padding: 20px;
+  height: 600px;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 10px 30px rgba(79, 172, 254, 0.3);
+}
+
+.chat-messages {
+  flex-grow: 1;
+  overflow-y: auto;
+  padding: 15px;
+  background: rgba(255,255,255,0.9);
+  border-radius: 15px;
+  margin-bottom: 15px;
+}
+
+.chat-message {
+  background: white;
+  padding: 12px 18px;
+  border-radius: 12px;
+  margin-bottom: 10px;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+  animation: slideIn 0.3s ease;
+}
+
+.chat-input {
+  border-radius: 15px;
+  border: none;
+  padding: 12px 20px;
+  font-size: 1rem;
+}
+
+.chat-send-btn {
+  border-radius: 15px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border: none;
+  padding: 12px 25px;
+  color: white;
+  font-weight: bold;
+}
+
+/* 반응형 */
+@media (max-width: 768px) {
+  .word-display {
+    font-size: 1.8rem;
+    padding: 15px 25px;
+  }
+
+  .circular-timer {
+    width: 150px;
+    height: 150px;
+  }
+
+  .timer-number {
+    font-size: 2rem;
+  }
+}
+
+/* 스크롤바 커스텀 */
+.chat-messages::-webkit-scrollbar,
+.word-list-container::-webkit-scrollbar {
+  width: 8px;
+}
+
+.chat-messages::-webkit-scrollbar-track,
+.word-list-container::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 10px;
+}
+
+.chat-messages::-webkit-scrollbar-thumb,
+.word-list-container::-webkit-scrollbar-thumb {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 10px;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container game-container my-4">
+  <!-- 게임 타이틀 헤더 -->
+  <div class="card border-0 shadow-sm mb-4" style="border-radius: 20px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+    <div class="card-body text-center text-white py-4">
+      <h2 class="display-5 fw-bold mb-3">
+        {% if game.status == 'waiting' %}
+          <i class="fas fa-hourglass-half me-2"></i>
+        {% elif game.status == 'active' %}
+          <i class="fas fa-fire me-2"></i>
+        {% else %}
+          <i class="fas fa-flag-checkered me-2"></i>
+        {% endif %}
+        {{ game.title }}
+      </h2>
+      <div class="d-flex flex-wrap justify-content-center gap-3">
+        <span class="badge bg-white text-primary fs-6 px-3 py-2" style="border-radius: 12px;">
+          <i class="fas fa-hashtag me-1"></i>단어 {{ total_entries }}개
+        </span>
+        <span class="badge bg-white text-success fs-6 px-3 py-2" style="border-radius: 12px;">
+          <i class="fas fa-users me-1"></i>참가자 {{ participant_count }}/{{ game.max_participants }}명
+        </span>
+        <span class="badge bg-white text-info fs-6 px-3 py-2" style="border-radius: 12px;">
+          <i class="fas fa-crown me-1"></i>{{ game.creator|display_name }}
+        </span>
+        <span class="badge bg-white text-{% if game.status == 'waiting' %}warning{% elif game.status == 'active' %}success{% else %}secondary{% endif %} fs-6 px-3 py-2" style="border-radius: 12px;">
+          <i class="fas fa-circle me-1" style="font-size: 0.6em;"></i>{{ game.get_status_display }}
+        </span>
+      </div>
+    </div>
+  </div>
+
+  {% if game.status == 'waiting' %}
+    <!-- 대기실 UI -->
+    <div class="row g-4 justify-content-center">
+      <div class="col-lg-8">
+        <div class="card border-0 shadow-lg" style="border-radius: 25px; overflow: hidden;">
+          <div class="card-header text-white text-center py-4" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+            <h3><i class="fas fa-hourglass-half me-2"></i>게임 대기 중</h3>
+            <p class="mb-0">최소 2명 이상의 참가자가 필요합니다</p>
+          </div>
+          <div class="card-body p-4">
+            <!-- 참가자 목록 -->
+            <h5 class="mb-3"><i class="fas fa-users me-2"></i>참가자 ({{ participant_count }}/{{ game.max_participants }})</h5>
+            <div class="row g-3 mb-4">
+              {% for participant in participants %}
+              <div class="col-md-6">
+                <div class="d-flex align-items-center p-3 bg-light rounded">
+                  <i class="fas fa-user-circle fa-2x text-primary me-3"></i>
+                  <div>
+                    <strong>{{ participant|display_name }}</strong>
+                    {% if participant == game.creator %}
+                    <span class="badge bg-warning text-dark ms-2">방장</span>
+                    {% endif %}
+                  </div>
+                </div>
+              </div>
+              {% endfor %}
+            </div>
+
+            <!-- 버튼 영역 -->
+            <div class="d-flex gap-3 justify-content-center">
+              {% if user.is_authenticated %}
+                {% if user in participants.all %}
+                  {% if user == game.creator %}
+                    <button class="btn btn-success btn-lg" onclick="startGame()">
+                      <i class="fas fa-play me-2"></i>게임 시작
+                    </button>
+                  {% else %}
+                    <div class="alert alert-info mb-0">
+                      <i class="fas fa-info-circle me-2"></i>방장이 게임을 시작할 때까지 기다려주세요
+                    </div>
+                  {% endif %}
+                {% else %}
+                  {% if participant_count < game.max_participants %}
+                    <button class="btn btn-primary btn-lg" onclick="joinGame()">
+                      <i class="fas fa-sign-in-alt me-2"></i>게임 참가
+                    </button>
+                  {% else %}
+                    <div class="alert alert-warning mb-0">
+                      <i class="fas fa-users-slash me-2"></i>참가자가 꽉 찼습니다
+                    </div>
+                  {% endif %}
+                {% endif %}
+              {% else %}
+                <a href="{% url 'common:login' %}?next={{ request.path }}" class="btn btn-primary btn-lg">
+                  <i class="fas fa-sign-in-alt me-2"></i>로그인하고 참여하기
+                </a>
+              {% endif %}
+            </div>
+
+            <!-- 첫 단어 표시 -->
+            {% if game.last_word %}
+            <div class="mt-4 text-center">
+              <h5 class="text-muted">시작 단어</h5>
+              <div class="display-4 fw-bold text-primary">{{ game.last_word }}</div>
+            </div>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    </div>
+
+
+  {% elif game.status == 'active' %}
+    <div class="row g-4">
+      <div class="col-lg-8">
+        <!-- 타이머 & 단어 체인 -->
+        <div class="card border-0 shadow-lg mb-4" style="border-radius: 25px; overflow: hidden;">
+          <div class="card-body p-4" style="background: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%);">
+            <!-- 원형 타이머 -->
+            <div class="circular-timer">
+              <svg width="200" height="200">
+                <circle class="circle-bg" cx="100" cy="100" r="90"></circle>
+                <circle class="circle-progress" id="circleProgress" cx="100" cy="100" r="90"></circle>
+              </svg>
+              <div class="timer-text">
+                <div class="timer-number" id="timerNumber">{{ timeout_seconds }}</div>
+                <div class="small text-muted">초 남음</div>
+              </div>
+            </div>
+
+            <!-- 단어 체인 -->
+            {% if game.last_word %}
+              <div class="word-chain">
+                <div class="word-display">
+                  {{ game.last_word }}
+                </div>
+                <i class="fas fa-long-arrow-alt-right arrow-icon"></i>
+                <div class="word-display" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white;">
+                  {{ game.expected_first_char }}___
+                </div>
+              </div>
+            {% else %}
+              <div class="text-center">
+                <h4 class="text-primary">첫 단어부터 시작해보세요!</h4>
+              </div>
+            {% endif %}
+          </div>
+        </div>
+
+
+        <!-- 현재 턴 표시 -->
+        {% if game.current_turn %}
+        <div class="alert alert-info text-center mb-4" style="border-radius: 20px;">
+          <h5 class="mb-0">
+            <i class="fas fa-hand-point-right me-2"></i>
+            현재 차례: <strong>{{ game.current_turn|display_name }}</strong>
+            {% if game.current_turn == user %}
+              <span class="badge bg-success ms-2">내 차례!</span>
+            {% endif %}
+          </h5>
+        </div>
+        {% endif %}
+
+        <!-- 단어 입력 폼 -->
+        {% if user.is_authenticated %}
+          <div class="word-input-container mb-4">
+            <form id="wordForm" onsubmit="addWord(event)">
+              {% csrf_token %}
+              <div class="d-flex gap-3">
+                <input type="text"
+                       class="form-control word-input flex-grow-1"
+                       id="wordInput"
+                       placeholder="{% if game.expected_first_char %}'{{ game.expected_first_char }}'로 시작하는 단어 입력{% else %}단어를 입력하세요{% endif %}"
+                       maxlength="50"
+                       autocomplete="off"
+                       {% if game.current_turn and game.current_turn != user %}disabled{% endif %}
+                       required>
+                <button class="btn submit-btn" type="submit">
+                  <i class="fas fa-paper-plane me-2"></i>입력
+                </button>
+              </div>
+              <small class="text-white mt-2 d-block">
+                <i class="fas fa-info-circle me-1"></i>
+                한글 2글자 이상, 사전에 등재된 단어만 가능합니다
+              </small>
+            </form>
+          </div>
+        {% else %}
+          <div class="alert alert-warning text-center">
+            <h5><i class="fas fa-lock me-2"></i>로그인이 필요합니다</h5>
+            <a href="{% url 'common:login' %}?next={{ request.path }}" class="btn btn-primary mt-2">
+              <i class="fas fa-sign-in-alt me-2"></i>로그인하고 참여하기
+            </a>
+          </div>
+        {% endif %}
+
+        <!-- 단어 목록 -->
+        <div class="card border-0 shadow-lg" style="border-radius: 25px; overflow: hidden;">
+          <div class="card-header bg-white border-0 p-4">
+            <h4 class="mb-0">
+              <i class="fas fa-list-ul me-2" style="color: #667eea;"></i>
+              단어 목록
+            </h4>
+          </div>
+          <div class="card-body p-4 word-list-container" style="max-height: 500px; overflow-y: auto;">
+            {% if entries %}
+              <div id="wordList">
+                {% for entry in entries reversed %}
+                  <div class="word-item {% if forloop.first %}latest{% endif %}">
+                    <div class="d-flex align-items-center justify-content-between">
+                      <div class="d-flex align-items-center gap-3">
+                        <div class="word-badge">{{ forloop.revcounter }}</div>
+                        <div>
+                          <div class="fs-4 fw-bold text-primary">{{ entry.word }}</div>
+                          <small class="text-muted">
+                            <i class="fas fa-user me-1"></i>{{ entry.author|display_name }}
+                            <i class="fas fa-clock ms-2 me-1"></i>{{ entry.create_date|date:"H:i:s" }}
+                          </small>
+                        </div>
+                      </div>
+                      {% if forloop.first %}
+                        <span class="badge bg-danger">최신</span>
+                      {% endif %}
+                    </div>
+                  </div>
+                {% endfor %}
+              </div>
+            {% else %}
+              <div class="text-center py-5">
+                <i class="fas fa-comment-slash fa-3x text-muted mb-3"></i>
+                <h5 class="text-muted">아직 단어가 없습니다</h5>
+              </div>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+
+      <!-- 우측 채팅 -->
+      <div class="col-lg-4">
+        <div class="chat-container">
+          <h5 class="text-white mb-3">
+            <i class="fas fa-comments me-2"></i>채팅
+          </h5>
+          <div class="chat-messages" id="chatList">
+            <!-- 채팅 메시지 -->
+          </div>
+          {% if user.is_authenticated %}
+            <form id="chatForm" onsubmit="sendChat(event)" class="d-flex gap-2">
+              {% csrf_token %}
+              <input id="chatInput" class="form-control chat-input" type="text" placeholder="메시지 입력..." maxlength="250" autocomplete="off" required>
+              <button class="btn chat-send-btn" type="submit">
+                <i class="fas fa-paper-plane"></i>
+              </button>
+            </form>
+          {% endif %}
+        </div>
+
+        <!-- 게임 종료 버튼 -->
+        {% if user == game.creator %}
+          <button class="btn btn-danger w-100 mt-3" style="border-radius: 15px; padding: 15px;" onclick="finishGame()">
+            <i class="fas fa-stop-circle me-2"></i>게임 종료
+          </button>
+        {% endif %}
+      </div>
+    </div>
+  {% else %}
+    <!-- 게임 종료 화면 -->
+    <div class="text-center py-5">
+      <div class="card border-0 shadow-lg mx-auto" style="max-width: 600px; border-radius: 25px;">
+        <div class="card-body p-5">
+          <i class="fas fa-trophy fa-4x text-warning mb-4"></i>
+          <h2 class="mb-3">게임 종료!</h2>
+          <p class="lead text-muted">
+            총 <strong class="text-primary">{{ total_entries }}개</strong>의 단어로<br>
+            <strong class="text-success">{{ participant_count }}명</strong>이 참여했습니다!
+          </p>
+          <a href="{% url 'community:wordchain_list' %}" class="btn btn-primary btn-lg mt-3" style="border-radius: 15px;">
+            <i class="fas fa-list me-2"></i>게임 목록으로
+          </a>
+        </div>
+      </div>
+    </div>
+  {% endif %}
+</div>
+
+<!-- 게임 오버 오버레이 -->
+<div class="game-over-overlay" id="gameOverOverlay">
+  <div class="game-over-content">
+    <i class="fas fa-hourglass-end fa-4x text-danger mb-4"></i>
+    <h2 class="mb-3">타임 아웃!</h2>
+    <p class="lead">제한 시간이 종료되었습니다.</p>
+    <button class="btn btn-primary btn-lg mt-3" onclick="location.reload()">
+      <i class="fas fa-redo me-2"></i>새로고침
+    </button>
+  </div>
+</div>
+{% endblock %}
+
+{% block script %}
+<script>
+// CSRF 토큰
+const csrfToken = '{{ csrf_token }}';
+
+// 단어 추가
+// === Optimistic UI - 즉시 반응하는 단어 제출 ===
+let pendingWordElement = null;  // 낙관적 업데이트로 추가한 요소
+
+function addWord(event) {
+    event.preventDefault();
+
+    const wordInput = document.getElementById('wordInput');
+    const word = wordInput.value.trim();
+
+    if (!word) {
+        showNotification('단어를 입력해주세요.', 'warning');
+        return;
+    }
+
+    const submitBtn = event.target.querySelector('button[type="submit"]');
+    const originalText = submitBtn.innerHTML;
+    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>전송중...';
+    submitBtn.disabled = true;
+    wordInput.disabled = true;
+
+    // === OPTIMISTIC UPDATE: 서버 응답 기다리지 않고 즉시 UI 업데이트 ===
+    const now = new Date();
+    const optimisticEntry = {
+        word: word,
+        author: '{{ user.username }}',
+        author_display: '{% if user.profile %}{{ user.profile.display_name }}{% else %}{{ user.username }}{% endif %}',
+        create_date: now.toISOString(),
+        isPending: true  // 확인 대기중 표시
+    };
+    
+    console.log('[Optimistic] 즉시 UI 업데이트:', word);
+    
+    // 단어 목록에 즉시 추가 (회색으로 표시)
+    const wordList = document.getElementById('wordList');
+    const newWordItem = document.createElement('div');
+    newWordItem.className = 'word-item pending-word';
+    newWordItem.style.opacity = '0.6';
+    newWordItem.style.animation = 'slideInRight 0.3s ease';
+    newWordItem.dataset.wordKey = word + '|' + now.toISOString();
+    
+    newWordItem.innerHTML = `
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <span class="word-text">${word}</span>
+                <small class="text-muted ms-2">by ${optimisticEntry.author_display}</small>
+                <span class="badge bg-secondary ms-2">확인중...</span>
+            </div>
+            <small class="text-muted">방금</small>
+        </div>
+    `;
+    wordList.insertBefore(newWordItem, wordList.firstChild);
+    pendingWordElement = newWordItem;
+    
+    // 입력창 초기화
+    wordInput.value = '';
+    
+    // 다음 글자 미리 표시
+    updateExpectedChar(word[word.length - 1]);
+
+    // === 서버에 전송 (백그라운드) ===
+    fetch('{% url "pybo:wordchain_add_word" game.id %}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'X-CSRFToken': csrfToken,
+        },
+        body: new URLSearchParams({ 'word': word })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // === 서버 확인 성공: pending 표시 제거 ===
+            console.log('[Optimistic] ✅ 서버 확인 완료');
+            if (pendingWordElement) {
+                pendingWordElement.style.opacity = '1';
+                pendingWordElement.classList.remove('pending-word');
+                const badge = pendingWordElement.querySelector('.badge');
+                if (badge) badge.remove();
+                pendingWordElement = null;
+            }
+            
+            showNotification('✅ 단어가 등록되었습니다!', 'success');
+            
+            // WebSocket이 턴을 업데이트할 것임 (Delta Update)
+            // 페이지 reload 하지 않음!
+        } else {
+            // === 서버 확인 실패: 롤백 ===
+            console.log('[Optimistic] ❌ 서버 거부, 롤백:', data.message);
+            if (pendingWordElement) {
+                pendingWordElement.style.animation = 'fadeOut 0.3s ease';
+                setTimeout(() => {
+                    if (pendingWordElement) pendingWordElement.remove();
+                    pendingWordElement = null;
+                }, 300);
+            }
+            
+            // 단어 다시 입력창에 표시
+            wordInput.value = word;
+            
+            showNotification('❌ ' + (data.message || '오류가 발생했습니다.'), 'error');
+            
+            // 게임 종료 메시지 처리
+            if (data.game_ended || data.timeout) {
+                setTimeout(() => location.reload(), 1500);
+            }
+        }
+        
+        // UI 원상복구
+        submitBtn.innerHTML = originalText;
+        submitBtn.disabled = false;
+        wordInput.disabled = false;
+        wordInput.focus();
+    })
+    .catch(error => {
+        console.error('[Optimistic] 네트워크 오류:', error);
+        
+        // === 네트워크 오류: 롤백 ===
+        if (pendingWordElement) {
+            pendingWordElement.remove();
+            pendingWordElement = null;
+        }
+        wordInput.value = word;
+        
+        showNotification('⚠️ 네트워크 오류가 발생했습니다.', 'error');
+        submitBtn.innerHTML = originalText;
+        submitBtn.disabled = false;
+        wordInput.disabled = false;
+    });
+}
+
+function finishGame() {
+    if (confirm('정말로 게임을 종료하시겠습니까?')) {
+        location.href = '{% url "pybo:wordchain_finish" game.id %}';
+    }
+}
+
+function joinGame() {
+    fetch('{% url "pybo:wordchain_join" game.id %}', {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+            'Content-Type': 'application/json'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showNotification(data.message, 'success');
+            setTimeout(() => location.reload(), 1000);
+        } else {
+            showNotification(data.message, 'error');
+        }
+    })
+    .catch(error => {
+        showNotification('참가 중 오류가 발생했습니다', 'error');
+        console.error('Error:', error);
+    });
+}
+
+function startGame() {
+    fetch('{% url "pybo:wordchain_start" game.id %}', {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+            'Content-Type': 'application/json'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showNotification(data.message, 'success');
+            setTimeout(() => location.reload(), 1000);
+        } else {
+            showNotification(data.message, 'error');
+        }
+    })
+    .catch(error => {
+        showNotification('게임 시작 중 오류가 발생했습니다', 'error');
+        console.error('Error:', error);
+    });
+}
+
+
+// 알림 표시
+function showNotification(message, type) {
+    const colors = {
+        success: '#28a745',
+        warning: '#ffc107',
+        error: '#dc3545'
+    };
+
+    const notification = document.createElement('div');
+    notification.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: ${colors[type]};
+        color: white;
+        padding: 20px 30px;
+        border-radius: 15px;
+        box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+        z-index: 10000;
+        animation: slideIn 0.5s ease;
+    `;
+    notification.textContent = message;
+    document.body.appendChild(notification);
+
+    setTimeout(() => {
+        notification.style.animation = 'fadeOut 0.5s ease';
+        setTimeout(() => notification.remove(), 500);
+    }, 3000);
+}
+
+{% if game.status == 'active' %}
+// 타이머 기능
+(function() {
+    const timeoutSeconds = {{ timeout_seconds }};
+    const circleProgress = document.getElementById('circleProgress');
+    const timerNumber = document.getElementById('timerNumber');
+    const radius = 90;
+    const circumference = 2 * Math.PI * radius;
+
+    // 게임 시작 이후의 엔트리만 체크
+    {% if game.start_date %}
+        // 게임 시작 이후의 마지막 엔트리 시간 사용
+        const gameStartTime = new Date('{{ game.start_date|date:"c" }}');
+        let lastEntryTime = gameStartTime;
+        
+        {% if entries %}
+            // 게임 시작 이후의 엔트리 중 마지막 것
+            const allEntries = [
+                {% for entry in entries %}
+                    {% if entry.create_date >= game.start_date %}
+                        new Date('{{ entry.create_date|date:"c" }}'),
+                    {% endif %}
+                {% endfor %}
+            ].filter(Boolean);
+            
+            if (allEntries.length > 0) {
+                lastEntryTime = allEntries[allEntries.length - 1];
+            }
+        {% endif %}
+    {% else %}
+        // 게임 시작 전이면 타이머 없음
+        const lastEntryTime = new Date();
+    {% endif %}
+
+    function updateTimer() {
+        const now = new Date();
+        const elapsedSeconds = (now - lastEntryTime) / 1000;
+        const remainingSeconds = Math.max(0, timeoutSeconds - elapsedSeconds);
+        const percentage = (remainingSeconds / timeoutSeconds) * 100;
+
+        // 원형 프로그레스 바 업데이트
+        const offset = circumference - (percentage / 100) * circumference;
+        circleProgress.style.strokeDashoffset = offset;
+
+        // 숫자 업데이트
+        const displaySeconds = Math.ceil(remainingSeconds);
+        timerNumber.textContent = displaySeconds;
+
+        // 색상 변경
+        if (percentage > 50) {
+            circleProgress.style.stroke = '#28a745';
+            timerNumber.style.color = '#28a745';
+        } else if (percentage > 25) {
+            circleProgress.style.stroke = '#ffc107';
+            timerNumber.style.color = '#ffc107';
+        } else {
+            circleProgress.style.stroke = '#dc3545';
+            timerNumber.style.color = '#dc3545';
+        }
+
+        // 타임아웃
+        if (remainingSeconds <= 0) {
+            clearInterval(timerInterval);
+            document.getElementById('gameOverOverlay').style.display = 'flex';
+            setTimeout(() => {
+                showNotification('타임아웃! 게임이 종료되었습니다.', 'error');
+                setTimeout(() => location.reload(), 2000);
+            }, 500);
+        }
+
+        // 마지막 10초 진동 효과
+        if (remainingSeconds <= 10 && remainingSeconds > 0) {
+            timerNumber.style.animation = 'shake 0.5s infinite';
+        }
+    }
+
+    // 초기 설정
+    circleProgress.style.strokeDasharray = circumference;
+    const timerInterval = setInterval(updateTimer, 100);
+    updateTimer();
+})();
+
+// Shake 애니메이션 추가
+const style = document.createElement('style');
+style.textContent = `
+    @keyframes shake {
+        0%, 100% { transform: translate(-50%, -50%) rotate(0deg); }
+        25% { transform: translate(-50%, -50%) rotate(-5deg); }
+        75% { transform: translate(-50%, -50%) rotate(5deg); }
+    }
+`;
+document.head.appendChild(style);
+{% endif %}
+
+// 채팅 기능
+let lastChatFetch = null;
+const renderedChatKeys = new Set();
+
+function formatChatDate(isoString) {
+  if (!isoString) return '';
+  try {
+    const d = new Date(isoString);
+    const h = String(d.getHours()).padStart(2, '0');
+    const m = String(d.getMinutes()).padStart(2, '0');
+    return `${h}:${m}`;
+  } catch (e) {
+    return isoString;
+  }
+}
+
+function renderChatMessage(item) {
+  const wrap = document.createElement('div');
+  wrap.className = 'chat-message';
+
+  const who = item.author_display || item.author || '익명';
+  const pretty = formatChatDate(item.create_date);
+
+  wrap.innerHTML = `
+    <div class="d-flex justify-content-between align-items-start mb-1">
+      <strong class="text-primary">${who}</strong>
+      <small class="text-muted">${pretty}</small>
+    </div>
+    <div>${item.message}</div>
+  `;
+
+  return wrap;
+}
+
+function fetchChats() {
+  fetch('{% url "pybo:wordchain_get_chats" game.id %}' + (lastChatFetch ? '?since=' + encodeURIComponent(lastChatFetch) : ''))
+    .then(r => r.json())
+    .then(data => {
+      if (data.success && data.messages && data.messages.length) {
+        const chatList = document.getElementById('chatList');
+        data.messages.forEach(m => {
+          const who = m.author_display || m.author || '익명';
+          const key = `${who}|${m.create_date}|${m.message}`;
+          if (!renderedChatKeys.has(key)) {
+            chatList.appendChild(renderChatMessage(m));
+            renderedChatKeys.add(key);
+            lastChatFetch = m.create_date;
+          }
+        });
+        chatList.scrollTop = chatList.scrollHeight;
+      }
+    }).catch(e => console.error(e));
+}
+
+function sendChat(e) {
+  e.preventDefault();
+  const input = document.getElementById('chatInput');
+  const text = input.value.trim();
+  if (!text) return;
+
+  const btn = e.target.querySelector('button[type="submit"]');
+  const old = btn.innerHTML;
+  btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+  btn.disabled = true;
+
+  fetch('{% url "pybo:wordchain_add_chat" game.id %}', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+      'X-CSRFToken': csrfToken
+    },
+    body: new URLSearchParams({message: text})
+  }).then(r => r.json()).then(data => {
+    if (data.success) {
+      const chatList = document.getElementById('chatList');
+      const who = data.author_display || data.author || '익명';
+      const key = `${who}|${data.create_date}|${data.message}`;
+      if (!renderedChatKeys.has(key)) {
+        chatList.appendChild(renderChatMessage(data));
+        renderedChatKeys.add(key);
+        lastChatFetch = data.create_date;
+      }
+      chatList.scrollTop = chatList.scrollHeight;
+      input.value = '';
+    } else {
+      showNotification(data.message || '메시지 전송 실패', 'error');
+    }
+  }).catch(err => {
+    console.error(err);
+    showNotification('오류가 발생했습니다.', 'error');
+  }).finally(() => {
+    btn.innerHTML = old;
+    btn.disabled = false;
+  });
+}
+
+// 페이지 로드 시
+document.addEventListener('DOMContentLoaded', function() {
+  fetchChats();
+  setInterval(fetchChats, 3000);
+
+  // 단어 입력 포커스
+  const wordInput = document.getElementById('wordInput');
+  if (wordInput) {
+    wordInput.focus();
+  }
+});
+
+
+
+// === WebSocket 실시간 통신 (자동 재연결 지원) ===
+let gameSocket = null;
+let useWebSocket = true;  // WebSocket 사용 여부
+let reconnectAttempts = 0;
+let maxReconnectAttempts = 5;
+let reconnectDelay = 1000;  // 1초
+let isReconnecting = false;
+
+function initWebSocket() {
+    if (!useWebSocket) return;
+    
+    const wsScheme = window.location.protocol === 'https:' ? 'wss' : 'ws';
+    const wsPath = `${wsScheme}://${window.location.host}/ws/wordchain/{{ game.id }}/`;
+    
+    console.log('[WebSocket] 연결 시도:', wsPath, `(시도 ${reconnectAttempts + 1}/${maxReconnectAttempts})`);
+    
+    try {
+        gameSocket = new WebSocket(wsPath);
+        
+        gameSocket.onopen = function(e) {
+            console.log('[WebSocket] ✅ 연결 성공!');
+            reconnectAttempts = 0;  // 재연결 카운터 초기화
+            isReconnecting = false;
+            
+            // 폴링 중지 (WebSocket이 활성화되면 폴링은 백업용으로만)
+            if (pollingInterval) {
+                clearInterval(pollingInterval);
+                pollingInterval = setInterval(fetchGameState, 10000); // 백업용 10초 폴링
+            }
+            
+            showNotification('실시간 연결 성공!', 'success');
+        };
+        
+        gameSocket.onmessage = function(e) {
+            const data = JSON.parse(e.data);
+            console.log('[WebSocket] 📨 메시지:', data.type);
+            
+            if (data.type === 'initial_state') {
+                // 초기 게임 상태 (전체)
+                handleGameState(data.data);
+            } else if (data.type === 'delta_update') {
+                // Delta Update - 변경사항만 처리 (DB 쿼리 없음!)
+                console.log('[WebSocket] ⚡ Delta Update:', data.action);
+                handleDeltaUpdate(data);
+            } else if (data.type === 'player_connected') {
+                console.log('[WebSocket] 👋 플레이어 접속:', data.username);
+                showNotification(`${data.username}님이 접속했습니다`, 'info');
+            } else if (data.type === 'player_disconnected') {
+                console.log('[WebSocket] 👋 플레이어 퇴장:', data.username);
+                showNotification(`${data.username}님이 나갔습니다`, 'warning');
+            } else if (data.type === 'heartbeat_ack') {
+                // Heartbeat 응답
+            }
+        };
+        
+        gameSocket.onclose = function(e) {
+            console.log('[WebSocket] ❌ 연결 종료. Code:', e.code, 'Reason:', e.reason);
+            gameSocket = null;
+            
+            // 자동 재연결 시도
+            if (reconnectAttempts < maxReconnectAttempts && !isReconnecting) {
+                isReconnecting = true;
+                reconnectAttempts++;
+                const delay = reconnectDelay * reconnectAttempts;
+                console.log(`[WebSocket] 🔄 ${delay}ms 후 재연결 시도...`);
+                
+                setTimeout(() => {
+                    isReconnecting = false;
+                    initWebSocket();
+                }, delay);
+            } else {
+                console.log('[WebSocket] ⚠️ 폴링 모드로 완전 전환.');
+                useWebSocket = false;
+                // 폴링 재개 (더 빠른 간격)
+                if (pollingInterval) {
+                    clearInterval(pollingInterval);
+                }
+                startPolling();
+            }
+        };
+        
+        gameSocket.onerror = function(e) {
+            console.error('[WebSocket] ⛔ 오류 발생:', e);
+        };
+        
+    } catch (error) {
+        console.error('[WebSocket] 💥 초기화 실패:', error);
+        useWebSocket = false;
+    }
+}
+
+
+// === Delta Update 처리 (변경사항만 적용) ===
+function handleDeltaUpdate(data) {
+    const action = data.action;
+    const payload = data.data;
+    
+    if (action === 'word_added') {
+        // 새 단어 추가 (DB 쿼리 없이 즉시 UI 업데이트)
+        const entry = {
+            word: payload.word,
+            author: payload.author,
+            author_display: payload.author_display,
+            create_date: payload.create_date
+        };
+        
+        // 단어 목록에 추가
+        addWordToList(entry);
+        
+        // 턴 업데이트
+        if (payload.current_turn_id) {
+            const turnInfo = {
+                id: payload.current_turn_id,
+                username: payload.current_turn_username,
+                display_name: payload.current_turn_display
+            };
+            lastCurrentTurnId = payload.current_turn_id;
+            updateTurnDisplay(turnInfo);
+        }
+        
+        console.log('[Delta] 단어 추가 완료 (서버 쿼리 없음)');
+    } else if (action === 'player_joined') {
+        // 참가자 변경 - 부분 업데이트만
+        console.log('[Delta] 플레이어 참가:', payload.username);
+        // 필요시 참가자 수만 업데이트
+    } else if (action === 'game_started') {
+        console.log('[Delta] 게임 시작!');
+        location.reload(); // 게임 시작은 전체 새로고침
+    }
+}
+
+function handleGameState(gameState) {
+    if (!gameState || !gameState.game) return;
+    
+    const gameData = gameState.game;
+    
+    // 턴 업데이트
+    if (gameData.current_turn && lastCurrentTurnId !== gameData.current_turn.id) {
+        lastCurrentTurnId = gameData.current_turn.id;
+        console.log('[WebSocket] 턴 변경:', gameData.current_turn.display_name);
+        updateTurnDisplay(gameData.current_turn);
+    }
+    
+    // 새 단어 추가
+    if (gameState.last_entry) {
+        const entryKey = gameState.last_entry.word + '|' + gameState.last_entry.create_date;
+        if (lastWordKey !== entryKey) {
+            if (lastWordKey !== '') {
+                addWordToList(gameState.last_entry);
+            }
+            lastWordKey = entryKey;
+        }
+    }
+}
+
+// 게임 상태 polling - 실시간 업데이트 (500ms)
+let lastGameStatus = '{{ game.status }}';
+let lastParticipantCount = {{ participant_count }};
+let lastCurrentTurnId = {{ game.current_turn.id|default:"null" }};
+let lastWordKey = '';
+let isMyTurn = false;
+let pollingInterval = null;
+
+function updateTurnDisplay(currentTurn) {
+    const turnAlert = document.querySelector('.alert-info h5');
+    if (!turnAlert) return;
+
+    isMyTurn = currentTurn.id === {{ user.id|default:"0" }};
+    const badge = isMyTurn ? '<span class="badge bg-success ms-2 animate__animated animate__pulse animate__infinite">내 차례!</span>' : '';
+    turnAlert.innerHTML = `
+        <i class="fas fa-hand-point-right me-2"></i>
+        현재 차례: <strong>${currentTurn.display_name}</strong>
+        ${badge}
+    `;
+
+    // 입력창 제어
+    const wordInput = document.getElementById('wordInput');
+    if (wordInput) {
+        wordInput.disabled = !isMyTurn;
+        if (isMyTurn) {
+            wordInput.focus();
+        }
+    }
+}
+
+function addWordToList(entry) {
+    const wordList = document.getElementById('wordList');
+    if (!wordList) return;
+
+    const newWordItem = document.createElement('div');
+    newWordItem.className = 'word-item';
+    newWordItem.style.animation = 'slideInRight 0.5s ease';
+    newWordItem.dataset.wordKey = entry.word + '|' + entry.create_date;
+
+    const now = new Date();
+    const entryDate = new Date(entry.create_date);
+    const secondsAgo = Math.floor((now - entryDate) / 1000);
+    const timeText = secondsAgo < 5 ? '방금' : secondsAgo < 60 ? `${secondsAgo}초 전` : `${Math.floor(secondsAgo / 60)}분 전`;
+
+    newWordItem.innerHTML = `
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <span class="word-text">${entry.word}</span>
+                <small class="text-muted ms-2">by ${entry.author_display}</small>
+            </div>
+            <small class="text-muted">${timeText}</small>
+        </div>
+    `;
+    wordList.insertBefore(newWordItem, wordList.firstChild);
+
+    // 다음 글자 표시 업데이트
+    const lastChar = entry.word[entry.word.length - 1];
+    updateExpectedChar(lastChar);
+
+    console.log('[실시간] 새 단어 추가:', entry.word);
+}
+
+function updateExpectedChar(char) {
+    // 단어 체인 표시 업데이트
+    const expectedDisplays = document.querySelectorAll('.word-display');
+    if (expectedDisplays.length > 1) {
+        expectedDisplays[1].textContent = char + '___';
+    }
+
+    // 입력창 placeholder 업데이트
+    const wordInput = document.getElementById('wordInput');
+    if (wordInput) {
+        wordInput.placeholder = `'${char}'로 시작하는 단어 입력`;
+    }
+}
+
+function fetchGameState() {
+    fetch('{% url "pybo:wordchain_get_state" game.id %}')
+        .then(r => r.json())
+        .then(data => {
+            if (!data.success) return;
+
+            const gameData = data.game;
+
+            // === 상태 변경 감지 ===
+
+            // waiting -> active
+            if (lastGameStatus === 'waiting' && gameData.status === 'active') {
+                console.log('[실시간] 게임 시작!');
+                showNotification('게임이 시작되었습니다!', 'success');
+                setTimeout(() => location.reload(), 800);
+                return;
+            }
+
+            // active -> finished
+            if (lastGameStatus === 'active' && gameData.status === 'finished') {
+                console.log('[실시간] 게임 종료!');
+                showNotification('게임이 종료되었습니다!', 'warning');
+                setTimeout(() => location.reload(), 800);
+                return;
+            }
+
+            // === 대기실 업데이트 ===
+            if (gameData.status === 'waiting' && lastParticipantCount !== gameData.participant_count) {
+                console.log('[실시간] 참가자 변경:', lastParticipantCount, '->', gameData.participant_count);
+                lastParticipantCount = gameData.participant_count;
+                location.reload();
+            }
+
+            // === 활성 게임 업데이트 ===
+            if (gameData.status === 'active') {
+
+                // 턴 변경 감지
+                if (gameData.current_turn && lastCurrentTurnId !== gameData.current_turn.id) {
+                    const wasMyTurn = isMyTurn;
+                    lastCurrentTurnId = gameData.current_turn.id;
+                    console.log('[실시간] 턴 변경:', gameData.current_turn.display_name);
+                    updateTurnDisplay(gameData.current_turn);
+
+                    // 내 차례가 되었을 때만 알림
+                    if (!wasMyTurn && isMyTurn) {
+                        showNotification('당신의 차례입니다!', 'success');
+                    }
+                }
+
+                // 새 단어 추가 감지
+                if (data.last_entry) {
+                    const entryKey = data.last_entry.word + '|' + data.last_entry.create_date;
+
+                    if (lastWordKey !== entryKey) {
+                        // 페이지 로드 직후가 아닐 때만 추가
+                        if (lastWordKey !== '') {
+                            addWordToList(data.last_entry);
+                        }
+                        lastWordKey = entryKey;
+                    }
+                }
+            }
+
+            lastGameStatus = gameData.status;
+        })
+        .catch(e => console.error('[실시간] State fetch error:', e));
+}
+
+// Polling 시작
+{% if game.status != 'finished' %}
+function startPolling() {
+    // 게임 상태에 따라 다른 간격
+    const interval = '{{ game.status }}' === 'active' ? 5000 : 10000; // WebSocket이 메인이므로 폴링은 백업용만 // active: 0.05초, waiting: 0.5초
+
+    console.log(`[실시간] Polling 시작 (간격: ${interval}ms)`);
+
+    if (pollingInterval) {
+        clearInterval(pollingInterval);
+    }
+
+    // 첫 실행 시 lastWordKey 초기화
+    {% if entries and game.start_date %}
+    {% for entry in entries %}
+    {% if entry.create_date >= game.start_date %}
+    lastWordKey = '{{ entry.word }}|{{ entry.create_date|date:"c" }}';
+    {% endif %}
+    {% endfor %}
+    {% endif %}
+
+    pollingInterval = setInterval(fetchGameState, interval);
+
+    // 1초 후 첫 실행 (초기화 후)
+    setTimeout(fetchGameState, 1000);
+}
+
+// WebSocket 또는 폴링 시작
+if ('{{ game.status }}' !== 'finished') {
+    initWebSocket();  // WebSocket 시도
+    startPolling();   // 폴링도 시작 (백업용)
+}
+{% endif %}
+
+</script>
+{% endblock %}

@@ -121,7 +121,7 @@ def account_delete(request):
                 pass  # 이미지 삭제 실패해도 계속 진행
             
             # 작성한 질문들을 삭제로 마킹 (soft delete)
-            from pybo.models import Question, Answer
+            from community.models import Question, Answer
             
             user.author_question.filter(is_deleted=False).update(
                 is_deleted=True, 
@@ -681,7 +681,7 @@ def admin_user_detail(request, user_id):
         return redirect('common:admin_user_detail', user_id=user.id)
 
     # 사용자 활동 통계
-    from pybo.models import Question, Answer, Comment
+    from community.models import Question, Answer, Comment
     question_count = Question.objects.filter(author=user).count()
     answer_count = Answer.objects.filter(author=user).count()
     comment_count = Comment.objects.filter(author=user).count()

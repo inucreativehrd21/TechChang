@@ -18,14 +18,19 @@ from django.contrib import admin
 from django.urls import include, path
 from django.conf import settings
 from django.conf.urls.static import static
-from pybo.views import base_views
+from django.views.generic import RedirectView
+from community.views import base_views
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('pybo/', include('pybo.urls')),
+
+    # 기존 pybo URL 리다이렉트 (하위 호환성)
+    path('pybo/', RedirectView.as_view(url='/', permanent=True)),
+    path('pybo/<path:remaining_path>/', RedirectView.as_view(url='/%(remaining_path)s/', permanent=True)),
+
+    path('', include('community.urls')),  # 커뮤니티 메인 (루트 경로)
     path('common/', include('common.urls')),
     path('accounts/', include('allauth.urls')),  # django-allauth URLs
-    path('', base_views.index, name='index'),  # '/' 에 해당되는 path
 ]
 
 # 개발 환경에서 미디어 파일 서빙

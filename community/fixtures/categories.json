@@ -1,0 +1,34 @@
+[
+  {
+    "model": "pybo.category",
+    "pk": 1,
+    "fields": {
+      "name": "HRD",
+      "description": "인적자원개발, 교육, 훈련 관련 질문"
+    }
+  },
+  {
+    "model": "pybo.category",
+    "pk": 2,
+    "fields": {
+      "name": "데이터분석",
+      "description": "데이터 분석, 통계, 머신러닝 관련 질문"
+    }
+  },
+  {
+    "model": "pybo.category",
+    "pk": 3,
+    "fields": {
+      "name": "프로그래밍",
+      "description": "프로그래밍 언어, 개발, 코딩 관련 질문"
+    }
+  },
+  {
+    "model": "pybo.category",
+    "pk": 4,
+    "fields": {
+      "name": "기타",
+      "description": "기타 질문"
+    }
+  }
+]

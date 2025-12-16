@@ -1,0 +1,800 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}숫자야구!{% endblock %}
+
+{% block extra_css %}
+<style>
+    :root {
+        --game-surface: rgba(15, 23, 42, 0.92);
+    }
+
+    .game-stage {
+        position: relative;
+        padding: 80px 16px;
+        background:
+            radial-gradient(circle at 20% 20%, rgba(8, 145, 178, 0.12), transparent 30%),
+            radial-gradient(circle at 80% 0%, rgba(255, 255, 255, 0.04), transparent 25%),
+            linear-gradient(135deg, #0b1220 0%, #0f172a 50%, #0b1324 100%);
+        overflow: hidden;
+        min-height: 100vh;
+    }
+
+    .game-stage::after {
+        content: '';
+        position: absolute;
+        inset: 0;
+        background: radial-gradient(circle at 50% 50%, rgba(255,255,255,0.05), transparent 50%);
+        opacity: 0.35;
+        pointer-events: none;
+    }
+
+    .game-container {
+        max-width: 760px;
+        margin: 0 auto;
+        position: relative;
+        z-index: 1;
+    }
+
+    .game-header {
+        text-align: center;
+        color: #e2e8f0;
+        margin-bottom: 30px;
+    }
+
+    .game-header h1 {
+        font-size: 3rem;
+        font-weight: 900;
+        margin-bottom: 10px;
+        text-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+    }
+
+    .game-header .subtitle {
+        font-size: 1.1rem;
+        opacity: 0.9;
+    }
+
+    .info-panel {
+        background: var(--game-surface);
+        border: 1px solid rgba(255,255,255,0.08);
+        border-radius: 20px;
+        padding: 25px;
+        margin-bottom: 20px;
+        box-shadow: 0 18px 40px rgba(0, 0, 0, 0.35);
+        display: flex;
+        justify-content: space-around;
+        gap: 20px;
+    }
+
+    .info-item {
+        text-align: center;
+        flex: 1;
+    }
+
+    .attempts-info {
+        font-size: 2rem;
+        font-weight: 700;
+        color: #38bdf8;
+        margin-bottom: 10px;
+    }
+
+    .attempts-label {
+        font-size: 1rem;
+        color: #94a3b8;
+    }
+
+    .game-card {
+        background: var(--game-surface);
+        border: 1px solid rgba(255,255,255,0.08);
+        border-radius: 24px;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.45);
+        padding: 40px;
+        margin-bottom: 20px;
+        color: #e2e8f0;
+    }
+
+    .input-section {
+        margin-bottom: 30px;
+    }
+
+    .number-input {
+        width: 100%;
+        font-size: 3rem;
+        text-align: center;
+        letter-spacing: 2rem;
+        font-weight: 800;
+        padding: 20px;
+        border: 3px solid #0891b2;
+        border-radius: 16px;
+        background: rgba(255,255,255,0.05);
+        color: #e2e8f0;
+        transition: all 0.3s ease;
+    }
+
+    .number-input:focus {
+        outline: none;
+        border-color: #0e7490;
+        background: white;
+        box-shadow: 0 10px 30px rgba(8, 145, 178, 0.3);
+        transform: translateY(-2px);
+    }
+
+    .button-group {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 15px;
+        margin-top: 20px;
+    }
+
+    .btn-game {
+        padding: 18px;
+        border: none;
+        border-radius: 12px;
+        font-size: 1.1rem;
+        font-weight: 700;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        text-decoration: none;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+    }
+
+    .btn-submit {
+        background: linear-gradient(135deg, #0891b2 0%, #0e7490 100%);
+        color: white;
+    }
+
+    .btn-submit:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 15px 40px rgba(8, 145, 178, 0.4);
+    }
+
+    .btn-submit:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+        transform: none;
+    }
+
+    .btn-giveup {
+        background: #e9ecef;
+        color: #495057;
+    }
+
+    .btn-giveup:hover {
+        background: #dee2e6;
+        transform: translateY(-3px);
+    }
+
+    .attempts-list {
+        max-height: 400px;
+        overflow-y: auto;
+        padding: 10px;
+    }
+
+    .attempts-list::-webkit-scrollbar {
+        width: 8px;
+    }
+
+    .attempts-list::-webkit-scrollbar-thumb {
+        background: linear-gradient(135deg, #0891b2 0%, #0e7490 100%);
+        border-radius: 4px;
+    }
+
+    .attempt-item {
+        background: linear-gradient(145deg, rgba(255,255,255,0.06), rgba(255,255,255,0.03));
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 16px;
+        padding: 20px;
+        margin-bottom: 12px;
+        color: #e2e8f0;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        animation: slideIn 0.4s ease;
+        box-shadow: 0 8px 22px rgba(0, 0, 0, 0.35);
+    }
+
+    @keyframes slideIn {
+        from {
+            opacity: 0;
+            transform: translateX(-30px);
+        }
+        to {
+            opacity: 1;
+            transform: translateX(0);
+        }
+    }
+
+    .attempt-number {
+        font-size: 2rem;
+        font-weight: 800;
+        letter-spacing: 0.5rem;
+    }
+
+    .attempt-result {
+        display: flex;
+        gap: 15px;
+        align-items: center;
+    }
+
+    .result-badge {
+        padding: 8px 16px;
+        border-radius: 20px;
+        font-size: 1.2rem;
+        font-weight: 700;
+    }
+
+    .strike {
+        background: #ff4757;
+    }
+
+    .ball {
+        background: #ffa502;
+    }
+
+    .game-over-overlay {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.85);
+        z-index: 1000;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .game-over-overlay.show {
+        display: flex;
+    }
+
+    .game-over-card {
+        background: white;
+        border-radius: 24px;
+        padding: 60px;
+        text-align: center;
+        max-width: 500px;
+        animation: popIn 0.5s ease;
+    }
+
+    @keyframes popIn {
+        0% {
+            opacity: 0;
+            transform: scale(0.8);
+        }
+        100% {
+            opacity: 1;
+            transform: scale(1);
+        }
+    }
+
+    .game-over-icon {
+        font-size: 6rem;
+        margin-bottom: 20px;
+    }
+
+    .game-over-title {
+        font-size: 2.5rem;
+        font-weight: 900;
+        margin-bottom: 15px;
+    }
+
+    .game-over-title.won {
+        background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+    }
+
+    .game-over-title.lost {
+        background: linear-gradient(135deg, #ee0979 0%, #ff6a00 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+    }
+
+    .game-over-text {
+        font-size: 1.3rem;
+        color: #6c757d;
+        margin-bottom: 25px;
+    }
+
+    .secret-number {
+        font-size: 3rem;
+        font-weight: 900;
+        background: linear-gradient(135deg, #0891b2 0%, #0e7490 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        margin-bottom: 30px;
+        letter-spacing: 1rem;
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: 40px 20px;
+        color: #adb5bd;
+    }
+
+    .empty-state i {
+        font-size: 3rem;
+        margin-bottom: 15px;
+    }
+
+    .controls {
+        text-align: center;
+        margin-top: 20px;
+    }
+
+    .btn-secondary {
+        display: inline-block;
+        padding: 15px 30px;
+        background: rgba(255, 255, 255, 0.2);
+        backdrop-filter: blur(10px);
+        color: white;
+        border: 2px solid rgba(255, 255, 255, 0.3);
+        border-radius: 12px;
+        text-decoration: none;
+        font-weight: 600;
+        transition: all 0.3s ease;
+        margin: 0 5px;
+    }
+
+    .btn-secondary:hover {
+        background: rgba(255, 255, 255, 0.3);
+        border-color: rgba(255, 255, 255, 0.5);
+        transform: translateY(-2px);
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        color: white;
+    }
+
+    @media (max-width: 768px) {
+        .game-card {
+            padding: 25px;
+        }
+
+        .game-header h1 {
+            font-size: 2.2rem;
+        }
+
+        .number-input {
+            font-size: 2rem;
+            letter-spacing: 1rem;
+        }
+
+        .attempt-number {
+            font-size: 1.5rem;
+            letter-spacing: 0.3rem;
+        }
+
+        .result-badge {
+            font-size: 1rem;
+            padding: 6px 12px;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<section class="game-stage mesh-gradient-animated fade-in-up">
+<div class="game-container">
+    <div class="game-header">
+        <h1>⚾ 숫자야구!</h1>
+        {% if game.difficulty == 'hard' %}
+        <div style="margin: 10px 0;">
+            <span style="background: linear-gradient(135deg, #eb3349 0%, #f45c43 100%); color: white; padding: 10px 20px; border-radius: 16px; font-size: 1.2rem; font-weight: 700; display: inline-block;">🔥 HARD MODE</span>
+        </div>
+        {% else %}
+        <div style="margin: 10px 0;">
+            <span style="background: linear-gradient(135deg, #56ab2f 0%, #a8e063 100%); color: white; padding: 10px 20px; border-radius: 16px; font-size: 1.2rem; font-weight: 700; display: inline-block;">😊 NORMAL MODE</span>
+        </div>
+        {% endif %}
+        <p class="subtitle">4자리 숫자를 맞춰보세요!</p>
+    </div>
+
+    <div class="info-panel">
+        <div class="info-item">
+            <div class="attempts-info">{{ remaining_attempts }} / {{ game.max_attempts }}</div>
+            <div class="attempts-label">Attempts Remaining</div>
+        </div>
+        {% if game.time_limit > 0 %}
+        <div class="info-item">
+            <div class="attempts-info" id="timer" style="color: #667eea;">5:00</div>
+            <div class="attempts-label">Time Remaining</div>
+        </div>
+        {% endif %}
+        {% if game.inactivity_limit > 0 %}
+        <div class="info-item">
+            <div class="attempts-info" id="inactivity-timer" style="color: #28a745;">{{ game.inactivity_limit }}</div>
+            <div class="attempts-label">Inactivity Timer</div>
+        </div>
+        {% endif %}
+        {% if game.difficulty == 'hard' %}
+        <div class="info-item">
+            <div class="attempts-info" id="consecutive-misses" style="color: #e74c3c;">0</div>
+            <div class="attempts-label">Consecutive Misses</div>
+        </div>
+        {% endif %}
+    </div>
+
+    {% if game.difficulty == 'hard' %}
+    <div class="alert alert-warning text-center" style="margin: 0 auto 20px; max-width: 700px; background: rgba(255, 193, 7, 0.2); border: 2px solid #ffc107; color: #856404; padding: 15px; border-radius: 12px;">
+        <strong>🔥 Hard Mode Active!</strong><br>
+        • 3 consecutive 0-strikes = -1 attempt<br>
+        {% if game.inactivity_limit > 0 %}
+        • {{ game.inactivity_limit }}초 동안 입력 없으면 게임 종료!
+        {% endif %}
+    </div>
+    {% endif %}
+
+    <div class="game-card">
+        {% if game.status == 'playing' %}
+        <div class="input-section">
+            <form id="guessForm" onsubmit="makeGuess(event)">
+                {% csrf_token %}
+                <input type="text"
+                       class="number-input"
+                       id="guessInput"
+                       maxlength="4"
+                       placeholder="####"
+                       pattern="[0-9]{4}"
+                       required
+                       autofocus>
+                <div class="button-group">
+                    <button type="submit" class="btn-game btn-submit">
+                        <i class="fas fa-check-circle"></i>
+                        <span>Submit</span>
+                    </button>
+                    <button type="button" class="btn-game btn-giveup" onclick="giveUp()">
+                        <i class="fas fa-flag"></i>
+                        <span>Give Up</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+        {% endif %}
+
+        <div class="mt-4">
+            <h5 class="mb-3" style="color: #495057; font-weight: 700;">
+                <i class="fas fa-history me-2"></i>시도 기록
+            </h5>
+            <div class="attempts-list" id="attemptList">
+                {% if attempts %}
+                    {% for attempt in attempts reversed %}
+                    <div class="attempt-item">
+                        <div class="attempt-number">{{ attempt.guess_number }}</div>
+                        <div class="attempt-result">
+                            <span class="result-badge strike">{{ attempt.strikes }}S</span>
+                            <span class="result-badge ball">{{ attempt.balls }}B</span>
+                        </div>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <div class="empty-state">
+                        <i class="fas fa-baseball-ball"></i>
+                        <p>아직 기록이 없습니다. 첫 번째 시도 고고!</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <div class="controls">
+        <a href="{% url 'community:baseball_start' %}" class="btn-secondary">
+            <i class="fas fa-redo me-2"></i>새 게임
+        </a>
+        <a href="{% url 'community:index' %}" class="btn-secondary">
+            <i class="fas fa-home me-2"></i>홈으로 돌아가기
+        </a>
+    </div>
+<div class="game-over-overlay" id="gameOverOverlay">
+    <div class="game-over-card">
+        <div class="game-over-icon" id="gameOverIcon">🎉</div>
+        <div class="game-over-title won" id="gameOverTitle">ㅅㅅㅅㅅㅅㅅㅅㅅㅅ!!</div>
+        <div class="game-over-text" id="gameOverText">축하합니다!</div>
+        <div class="secret-number" id="secretNumber">1234</div>
+        <div class="button-group">
+            <a href="{% url 'community:baseball_start' %}" class="btn-game btn-submit">
+                <i class="fas fa-redo"></i>
+                <span>다시 하기</span>
+            </a>
+            <a href="{% url 'community:index' %}" class="btn-game btn-giveup">
+                <i class="fas fa-home"></i>
+                <span>홈으로 돌아가기</span>
+            </a>
+        </div>
+    </div>
+</div>
+
+</div>
+</section>
+
+<script>
+const csrfToken = '{{ csrf_token }}';
+const gameId = {{ game.id }};
+const timeLimit = {{ game.time_limit }};
+const difficulty = '{{ game.difficulty }}';
+const inactivityLimit = {{ game.inactivity_limit }};
+
+let startTime = null;
+let timerInterval = null;
+let inactivityInterval = null;
+let timeElapsed = 0;
+let inactiveSeconds = 0;
+let consecutiveMisses = 0;
+
+// 타이머 시작 (하드모드만)
+function startTimer() {
+    if (timeLimit > 0 && !startTime) {
+        startTime = Date.now();
+        updateTimer();
+        timerInterval = setInterval(updateTimer, 1000);
+    }
+
+    // 비활동 타이머 시작
+    if (inactivityLimit > 0 && !inactivityInterval) {
+        inactivityInterval = setInterval(updateInactivityTimer, 1000);
+    }
+}
+
+// 타이머 업데이트
+function updateTimer() {
+    timeElapsed = Math.floor((Date.now() - startTime) / 1000);
+    const remaining = Math.max(0, timeLimit - timeElapsed);
+
+    const minutes = Math.floor(remaining / 60);
+    const seconds = remaining % 60;
+    document.getElementById('timer').textContent =
+        `${minutes}:${seconds.toString().padStart(2, '0')}`;
+
+    // 시간 초과 체크
+    if (remaining <= 0) {
+        clearInterval(timerInterval);
+        handleTimeout();
+    } else if (remaining <= 60) {
+        // 1분 남았을 때 빨간색으로
+        document.getElementById('timer').style.color = '#e74c3c';
+    }
+
+    // 10초마다 서버에 시간 업데이트
+    if (timeElapsed % 10 === 0) {
+        updateTimeOnServer();
+    }
+}
+
+// 비활동 타이머 업데이트
+function updateInactivityTimer() {
+    inactiveSeconds++;
+    const remaining = Math.max(0, inactivityLimit - inactiveSeconds);
+
+    const inactivityTimerEl = document.getElementById('inactivity-timer');
+    if (inactivityTimerEl) {
+        inactivityTimerEl.textContent = remaining;
+
+        // 10초 남았을 때 빨간색으로
+        if (remaining <= 10) {
+            inactivityTimerEl.style.color = '#e74c3c';
+        } else if (remaining <= 20) {
+            inactivityTimerEl.style.color = '#ffc107';
+        }
+    }
+
+    // 비활동 시간 초과
+    if (remaining <= 0) {
+        clearInterval(inactivityInterval);
+        clearInterval(timerInterval);
+        showGameOver(false, `비활동 시간 초과! ${inactivityLimit}초 동안 입력이 없어 게임이 종료되었습니다.`, '????');
+    }
+}
+
+// 비활동 타이머 리셋
+function resetInactivityTimer() {
+    inactiveSeconds = 0;
+    const inactivityTimerEl = document.getElementById('inactivity-timer');
+    if (inactivityTimerEl) {
+        inactivityTimerEl.textContent = inactivityLimit;
+        inactivityTimerEl.style.color = '#28a745';
+    }
+}
+
+// 서버에 시간 업데이트
+function updateTimeOnServer() {
+    fetch(`/pybo/baseball/${gameId}/update-time/`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'X-CSRFToken': csrfToken
+        },
+        body: `time=${timeElapsed}`
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.timeout) {
+            clearInterval(timerInterval);
+            clearInterval(inactivityInterval);
+            showGameOver(false, data.message, data.secret);
+        }
+    });
+}
+
+// 시간 초과 처리
+function handleTimeout() {
+    fetch(`/pybo/baseball/${gameId}/update-time/`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'X-CSRFToken': csrfToken
+        },
+        body: `time=${timeElapsed}`
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.timeout) {
+            showGameOver(false, data.message, data.secret);
+        }
+    });
+}
+
+function makeGuess(event) {
+    event.preventDefault();
+
+    const input = document.getElementById('guessInput');
+    const guess = input.value.trim();
+
+    // 유효성 검사
+    if (guess.length !== 4) {
+        alert('Please enter a 4-digit number.');
+        return;
+    }
+
+    if (new Set(guess).size !== 4) {
+        alert('Please enter 4 different digits.');
+        return;
+    }
+
+    // 타이머 시작 (첫 시도 시)
+    startTimer();
+
+    // 비활동 타이머 리셋
+    resetInactivityTimer();
+
+    // 버튼 비활성화
+    const submitBtn = event.target.querySelector('button[type="submit"]');
+    submitBtn.disabled = true;
+
+    // 전송
+    fetch(`/pybo/baseball/${gameId}/guess/`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'X-CSRFToken': csrfToken
+        },
+        body: new URLSearchParams({ guess })
+    })
+    .then(r => r.json())
+    .then(data => {
+        submitBtn.disabled = false;
+
+        if (data.success) {
+            // 시도 기록 추가
+            const attemptList = document.getElementById('attemptList');
+
+            // empty state 제거
+            const emptyState = attemptList.querySelector('.empty-state');
+            if (emptyState) {
+                emptyState.remove();
+            }
+
+            const newAttempt = document.createElement('div');
+            newAttempt.className = 'attempt-item';
+            newAttempt.innerHTML = `
+                <div class="attempt-number">${guess}</div>
+                <div class="attempt-result">
+                    <span class="result-badge strike">${data.strikes}S</span>
+                    <span class="result-badge ball">${data.balls}B</span>
+                </div>
+            `;
+            attemptList.insertBefore(newAttempt, attemptList.firstChild);
+
+            // 입력 초기화
+            input.value = '';
+            input.focus();
+
+            // 게임 종료 확인
+            if (data.game_over) {
+                clearInterval(timerInterval);
+                clearInterval(inactivityInterval);
+                showGameOver(data.won, data.message, data.secret);
+            } else {
+                // 남은 기회 업데이트
+                document.querySelector('.info-item:first-child .attempts-info').textContent =
+                    `${data.remaining} / {{ game.max_attempts }}`;
+
+                // 하드모드: 연속 실패 카운터 업데이트
+                if (difficulty === 'hard') {
+                    if (data.strikes === 0) {
+                        consecutiveMisses++;
+                    } else {
+                        consecutiveMisses = 0;
+                    }
+                    document.getElementById('consecutive-misses').textContent = consecutiveMisses;
+                }
+
+                // 페널티 메시지 표시
+                if (data.penalty_message) {
+                    alert(data.penalty_message);
+                }
+            }
+        } else {
+            alert(data.message);
+        }
+    })
+    .catch(error => {
+        submitBtn.disabled = false;
+        console.error('Error:', error);
+        alert('An error occurred. Please try again.');
+    });
+}
+
+function giveUp() {
+    if (!confirm('Are you sure you want to give up?')) return;
+
+    clearInterval(timerInterval);
+    clearInterval(inactivityInterval);
+
+    fetch(`/pybo/baseball/${gameId}/giveup/`, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': csrfToken
+        }
+    })
+    .then(r => r.json())
+    .then(data => {
+        showGameOver(false, data.message, data.secret);
+    });
+}
+
+function showGameOver(won, message, secret) {
+    // 타이머 정리
+    clearInterval(timerInterval);
+    clearInterval(inactivityInterval);
+
+    const overlay = document.getElementById('gameOverOverlay');
+    const icon = document.getElementById('gameOverIcon');
+    const title = document.getElementById('gameOverTitle');
+    const text = document.getElementById('gameOverText');
+    const secretNumber = document.getElementById('secretNumber');
+
+    if (won) {
+        icon.textContent = '🎉';
+        title.textContent = 'You Won!';
+        title.className = 'game-over-title won';
+    } else {
+        icon.textContent = '💔';
+        title.textContent = 'Game Over!';
+        title.className = 'game-over-title lost';
+    }
+
+    text.textContent = message;
+    secretNumber.textContent = secret;
+    overlay.classList.add('show');
+}
+
+// 숫자만 입력 가능하도록
+document.getElementById('guessInput').addEventListener('input', function(e) {
+    this.value = this.value.replace(/[^0-9]/g, '');
+});
+
+// 게임 종료 상태 확인
+{% if game.status != 'playing' %}
+const isWon = '{{ game.status }}' === 'won';
+const message = isWon ?
+    'Congratulations! You guessed it in {{ game.attempts }} attempts!' :
+    'Better luck next time!';
+showGameOver(isWon, message, '{{ game.secret_number }}');
+{% endif %}
+</script>
+{% endblock %}

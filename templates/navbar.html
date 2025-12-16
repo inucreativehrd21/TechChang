@@ -4,7 +4,7 @@
 <!-- 네비게이션바 -->
 <nav class="navbar navbar-expand-lg navbar-dark fixed-top" id="mainNavbar" style="background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);">
     <div class="container-fluid">
-        <a class="navbar-brand d-flex align-items-center" href="{% url 'pybo:index' %}">
+        <a class="navbar-brand d-flex align-items-center" href="{% url 'community:index' %}">
             <img src="{% static 'images/techwindow-logo.png' %}" alt="테크창 로고" 
                  style="height: 32px; width: auto; margin-right: 8px;">
             <span>테크창</span>
@@ -23,7 +23,7 @@
             <!-- 메인 메뉴 -->
             <ul class="navbar-nav me-auto mb-2 mb-lg-0">
                 <li class="nav-item">
-                    <a class="nav-link" href="{% url 'pybo:index' %}">
+                    <a class="nav-link" href="{% url 'community:index' %}">
                         <i class="fas fa-home me-1"></i>홈
                     </a>
                 </li>
@@ -33,29 +33,29 @@
                         <span class="nav-caret" aria-hidden="true">⌄</span>
                     </a>
                     <ul class="dropdown-menu fade-in-up">
-                        <li><a class="dropdown-item" href="{% url 'pybo:baseball_start' %}">
+                        <li><a class="dropdown-item" href="{% url 'community:baseball_start' %}">
                             <i class="fas fa-baseball-ball me-2 text-success"></i>숫자야구
                         </a></li>
-                        <li><a class="dropdown-item" href="{% url 'pybo:game2048_start' %}">
+                        <li><a class="dropdown-item" href="{% url 'community:game2048_start' %}">
                             <i class="fas fa-th me-2 text-info"></i>2048
                         </a></li>
-                        <li><a class="dropdown-item" href="{% url 'pybo:minesweeper_start' %}">
+                        <li><a class="dropdown-item" href="{% url 'community:minesweeper_start' %}">
                             <i class="fas fa-bomb me-2 text-danger"></i>지뢰찾기
                         </a></li>
                         <li><hr class="dropdown-divider"></li>
-                        <li><a class="dropdown-item" href="{% url 'pybo:baseball_leaderboard' %}">
+                        <li><a class="dropdown-item" href="{% url 'community:baseball_leaderboard' %}">
                             <i class="fas fa-trophy me-2 text-success"></i>숫자야구 리더보드
                         </a></li>
-                        <li><a class="dropdown-item" href="{% url 'pybo:game2048_leaderboard' %}">
+                        <li><a class="dropdown-item" href="{% url 'community:game2048_leaderboard' %}">
                             <i class="fas fa-trophy me-2 text-info"></i>2048 리더보드
                         </a></li>
-                        <li><a class="dropdown-item" href="{% url 'pybo:minesweeper_leaderboard' %}">
+                        <li><a class="dropdown-item" href="{% url 'community:minesweeper_leaderboard' %}">
                             <i class="fas fa-trophy me-2 text-danger"></i>지뢰찾기 리더보드
                         </a></li>
                     </ul>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link" href="{% url 'pybo:guestbook_list' %}">
+                    <a class="nav-link" href="{% url 'community:guestbook_list' %}">
                         <i class="fas fa-sticky-note me-1"></i>방명록
                     </a>
                 </li>
@@ -103,7 +103,7 @@
                             <i class="fas fa-history me-2"></i>포인트 히스토리
                         </a></li>
                         <li><hr class="dropdown-divider"></li>
-                        <li><a class="dropdown-item" href="{% url 'pybo:profile' user.id %}">
+                        <li><a class="dropdown-item" href="{% url 'community:profile' user.id %}">
                             <i class="fas fa-user me-2"></i>내 프로필
                         </a></li>
                         <li><a class="dropdown-item" href="{% url 'common:profile_edit' %}">

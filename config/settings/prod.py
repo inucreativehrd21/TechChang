@@ -10,15 +10,14 @@ except ImportError:
 
 # ===== 보안 및 기본 설정 =====
 DEBUG = False
-SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', SECRET_KEY)
+SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY')
 
-# 허용 호스트 (기존 IP·도메인 유지)
-ALLOWED_HOSTS = [
-    '43.203.93.244',
+# 허용 호스트
+# 환경변수로 설정 가능 (쉼표로 구분)
+# 예: DJANGO_ALLOWED_HOSTS=techchang.com,www.techchang.com,your-ip
+ALLOWED_HOSTS = os.environ.get('DJANGO_ALLOWED_HOSTS', '').split(',') if os.environ.get('DJANGO_ALLOWED_HOSTS') else [
     'techchang.com',
     'www.techchang.com',
-    '127.0.0.1',
-    'localhost',
 ]
 
 # ===== 정적 파일 =====

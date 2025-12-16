@@ -1,0 +1,277 @@
+{% extends 'base.html' %}
+{% load common_tags %}
+
+{% block title %}{{ game.title }} - 틱택토{% endblock %}
+
+{% block extra_css %}{% endblock %}
+
+{% block content %}
+<div class="container my-5">
+    <div class="row justify-content-center">
+        <div class="col-md-10">
+            <!-- 게임 헤더 -->
+            <div class="card mb-4 card-glow card-lift fade-in-up">
+                <div class="card-header bg-primary text-white">
+                    <h3 class="mb-0"><i class="fas fa-gamepad me-2"></i>{{ game.title }}</h3>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="player-info {% if game.status == 'playing' and game.current_turn == 'X' %}active{% endif %}" id="playerXInfo">
+                                <h5>
+                                    <span class="badge bg-danger me-2">X</span>
+                                    {{ game.player_x.username }}
+                                    {% if is_player_x %}<small class="text-muted">(나)</small>{% endif %}
+                                </h5>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="player-info {% if game.status == 'playing' and game.current_turn == 'O' %}active{% endif %}" id="playerOInfo">
+                                <h5>
+                                    <span class="badge bg-info me-2">O</span>
+                                    {% if game.player_o %}
+                                        {{ game.player_o.username }}
+                                        {% if is_player_o %}<small class="text-muted">(나)</small>{% endif %}
+                                    {% else %}
+                                        <span class="text-muted">대기중...</span>
+                                    {% endif %}
+                                </h5>
+                            </div>
+                        </div>
+                    </div>
+
+                    {% if game.status == 'waiting' and can_join %}
+                    <div class="text-center mt-3">
+                        <button class="btn btn-success btn-lg btn-ripple" onclick="joinGame()">
+                            <i class="fas fa-user-plus me-2"></i>게임 참가하기
+                        </button>
+                    </div>
+                    {% endif %}
+
+                    {% if game.status == 'waiting' and not can_join and not game.player_o %}
+                    <div class="alert alert-info text-center mt-3">
+                        <i class="fas fa-clock me-2"></i>상대방을 기다리는 중...
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- 게임 보드 -->
+            <div class="card mb-4 card-lift fade-in-up animate-delay-200">
+                <div class="card-body">
+                    <div class="tictactoe-board" id="gameBoard">
+                        {% for row in game.board_state %}
+                            {% for cell in row %}
+                                <button class="tictactoe-cell
+                                    {% if cell == 'X' %}cell-x{% elif cell == 'O' %}cell-o{% endif %}"
+                                    data-row="{{ forloop.parentloop.counter0 }}"
+                                    data-col="{{ forloop.counter0 }}"
+                                    onclick="makeMove({{ forloop.parentloop.counter0 }}, {{ forloop.counter0 }})"
+                                    {% if game.status != 'playing' or cell %}disabled{% endif %}>
+                                    {{ cell }}
+                                </button>
+                            {% endfor %}
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+
+            <div class="text-center">
+                <a href="{% url 'community:tictactoe_list' %}" class="btn btn-outline-secondary btn-ripple">
+                    <i class="fas fa-arrow-left me-2"></i>목록으로
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 승자 배너 -->
+<div class="overlay" id="overlay"></div>
+<div class="winner-banner scale-in-center" id="winnerBanner" style="display: none;">
+    <div class="text-center">
+        <h1 id="winnerText"></h1>
+        <button class="btn btn-primary mt-3" onclick="location.reload()">
+            <i class="fas fa-redo me-2"></i>다시하기
+        </button>
+    </div>
+</div>
+
+<input type="hidden" name="csrfmiddlewaretoken" value="{{ csrf_token }}">
+
+<script>
+const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+const gameId = {{ game.id }};
+const isPlayerX = {{ is_player_x|yesno:"true,false" }};
+const isPlayerO = {{ is_player_o|yesno:"true,false" }};
+let currentTurn = '{{ game.current_turn }}';
+let gameStatus = '{{ game.status }}';
+
+// === WebSocket 연결 ===
+let gameSocket = null;
+
+function initWebSocket() {
+    const wsScheme = window.location.protocol === 'https:' ? 'wss' : 'ws';
+    const wsPath = `${wsScheme}://${window.location.host}/ws/tictactoe/${gameId}/`;
+
+    console.log('[TicTacToe WS] 연결 시도:', wsPath);
+
+    gameSocket = new WebSocket(wsPath);
+
+    gameSocket.onopen = function(e) {
+        console.log('[TicTacToe WS] ✅ 연결 성공!');
+    };
+
+    gameSocket.onmessage = function(e) {
+        const data = JSON.parse(e.data);
+        console.log('[TicTacToe WS] 📨 메시지:', data);
+
+        if (data.type === 'delta_update') {
+            handleDeltaUpdate(data);
+        } else if (data.type === 'player_connected') {
+            showNotification(`${data.username}님이 접속했습니다`, 'info');
+        }
+    };
+
+    gameSocket.onclose = function(e) {
+        console.log('[TicTacToe WS] 연결 종료');
+    };
+
+    gameSocket.onerror = function(e) {
+        console.error('[TicTacToe WS] 오류:', e);
+    };
+}
+
+// === Delta Update 처리 ===
+function handleDeltaUpdate(data) {
+    const action = data.action;
+    const payload = data.data;
+
+    if (action === 'move') {
+        // 수 두기 - 즉시 UI 업데이트
+        const cell = document.querySelector(`[data-row="${payload.row}"][data-col="${payload.col}"]`);
+        if (cell) {
+            cell.textContent = payload.mark;
+            cell.classList.add(payload.mark === 'X' ? 'cell-x' : 'cell-o');
+            cell.disabled = true;
+        }
+
+        // 턴 변경
+        currentTurn = payload.next_turn;
+        updateTurnDisplay();
+        updateBoardState();
+
+    } else if (action === 'game_over') {
+        // 게임 종료
+        const cell = document.querySelector(`[data-row="${payload.row}"][data-col="${payload.col}"]`);
+        if (cell) {
+            cell.textContent = payload.mark;
+            cell.classList.add(payload.mark === 'X' ? 'cell-x' : 'cell-o');
+            cell.disabled = true;
+        }
+
+        // 모든 셀 비활성화
+        document.querySelectorAll('.tictactoe-cell').forEach(c => c.disabled = true);
+
+        if (payload.draw) {
+            showWinner('무승부!', '#95a5a6');
+        } else {
+            const winnerMark = payload.winner;
+            showWinner(`${winnerMark} 승리!`, winnerMark === 'X' ? '#e74c3c' : '#3498db');
+        }
+
+    } else if (action === 'game_started') {
+        showNotification('게임이 시작되었습니다!', 'success');
+        setTimeout(() => location.reload(), 1000);
+    }
+}
+
+function updateTurnDisplay() {
+    const playerXInfo = document.getElementById('playerXInfo');
+    const playerOInfo = document.getElementById('playerOInfo');
+
+    if (currentTurn === 'X') {
+        playerXInfo.classList.add('active');
+        playerOInfo.classList.remove('active');
+    } else {
+        playerXInfo.classList.remove('active');
+        playerOInfo.classList.add('active');
+    }
+}
+
+function updateBoardState() {
+    const myTurn = (currentTurn === 'X' && isPlayerX) || (currentTurn === 'O' && isPlayerO);
+
+    document.querySelectorAll('.tictactoe-cell').forEach(cell => {
+        if (!cell.textContent && gameStatus === 'playing') {
+            cell.disabled = !myTurn;
+        }
+    });
+}
+
+function joinGame() {
+    fetch(`/pybo/tictactoe/${gameId}/join/`, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': csrfToken,
+            'Content-Type': 'application/json'
+        }
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            showNotification(data.message, 'success');
+            setTimeout(() => location.reload(), 1000);
+        } else {
+            showNotification(data.message, 'error');
+        }
+    });
+}
+
+function makeMove(row, col) {
+    // 내 턴인지 확인
+    const myTurn = (currentTurn === 'X' && isPlayerX) || (currentTurn === 'O' && isPlayerO);
+    if (!myTurn) {
+        showNotification('당신의 턴이 아닙니다!', 'warning');
+        return;
+    }
+
+    fetch(`/pybo/tictactoe/${gameId}/move/`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'X-CSRFToken': csrfToken
+        },
+        body: new URLSearchParams({ row, col })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (!data.success) {
+            showNotification(data.message, 'error');
+        }
+        // 성공 시 WebSocket이 UI를 업데이트함
+    });
+}
+
+function showWinner(text, color) {
+    const banner = document.getElementById('winnerBanner');
+    const overlay = document.getElementById('overlay');
+    const winnerText = document.getElementById('winnerText');
+
+    winnerText.textContent = text;
+    winnerText.style.color = color;
+    banner.style.display = 'block';
+    overlay.classList.add('show');
+}
+
+function showNotification(message, type) {
+    // 간단한 알림 (기존 함수 활용)
+    alert(message);
+}
+
+// 초기화
+if (gameStatus === 'playing') {
+    initWebSocket();
+    updateBoardState();
+}
+</script>
+{% endblock %}

@@ -32,10 +32,10 @@ except (ImportError, UnicodeDecodeError) as e:
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-wrbo2a^s+@pdkacjiv@c)*&dwu(go=!4^&ib1p-udl$cvkep-h'
+SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', 'django-insecure-dev-key-only-for-local-development')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = os.environ.get('DEBUG', 'False').lower() == 'true'
 
 ALLOWED_HOSTS = []
 
@@ -52,7 +52,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'django.contrib.sites',  # django-allauth 필수
-    'pybo.apps.PyboConfig',
+    'community.apps.CommunityConfig',
     'channels',
     # django-allauth
     'allauth',
@@ -193,8 +193,6 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 LOGIN_URL = '/common/login/'  # 비로그인 사용자가 @login_required 접근 시 이동할 URL
 LOGIN_REDIRECT_URL = '/'  # 로그인 성공 후 이동하는 URL
 LOGOUT_REDIRECT_URL = '/'  # 로그아웃 후 이동하는 URL
-
-ALLOWED_HOSTS = ['43.203.93.244', 'techchang.com', 'www.techchang.com']
 
 # OpenAI API 설정
 OPENAI_API_KEY = os.environ.get('OPENAI_API_KEY', '')

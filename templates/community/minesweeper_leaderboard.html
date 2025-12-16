@@ -1,0 +1,433 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}지뢰찾기 리더보드{% endblock %}
+
+{% block extra_css %}
+<style>
+    .surface {
+        background: linear-gradient(145deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.02));
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        box-shadow: 0 18px 45px rgba(0, 0, 0, 0.35);
+        border-radius: 14px;
+    }
+
+    .surface h3 {
+        color: #f8fafc;
+    }
+
+    .leaderboard-shell {
+        background:
+            radial-gradient(circle at 20% 20%, rgba(8, 145, 178, 0.08), transparent 30%),
+            radial-gradient(circle at 80% 0%, rgba(255, 255, 255, 0.03), transparent 25%),
+            linear-gradient(135deg, #0b1220 0%, #0f172a 50%, #0b1324 100%);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 18px;
+        box-shadow: 0 26px 70px rgba(0, 0, 0, 0.45);
+        overflow: hidden;
+    }
+
+    .leaderboard-top {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+        padding: 18px 24px;
+        background: rgba(255, 255, 255, 0.03);
+        border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .leaderboard-chip {
+        padding: 0.45rem 0.9rem;
+        border-radius: 999px;
+        background: rgba(8, 145, 178, 0.16);
+        color: #e0f2fe;
+        border: 1px solid rgba(8, 145, 178, 0.35);
+        font-weight: 700;
+        letter-spacing: 0.02em;
+    }
+
+    .lb-header {
+        display: grid;
+        grid-template-columns: 90px 1.6fr repeat(4, 1fr);
+        gap: 12px;
+        padding: 14px 24px;
+        background: rgba(255, 255, 255, 0.02);
+        color: #cbd5e1;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        font-size: 0.75rem;
+        font-weight: 700;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .lb-header > div {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+    }
+
+    .lb-header > div:nth-child(2) {
+        justify-content: flex-start;
+        text-align: left;
+        padding-left: 6px;
+    }
+
+    .lb-body {
+        padding-bottom: 6px;
+    }
+
+    .lb-row {
+        display: grid;
+        grid-template-columns: 90px 1.6fr repeat(4, 1fr);
+        gap: 12px;
+        align-items: center;
+        padding: 16px 24px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        background: rgba(255, 255, 255, 0.01);
+        transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease, border-color 0.2s ease;
+    }
+
+    .lb-row > div:nth-child(2) {
+        align-self: stretch;
+    }
+
+    .lb-row:nth-child(even) {
+        background: rgba(255, 255, 255, 0.02);
+    }
+
+    .lb-row:hover {
+        background: rgba(8, 145, 178, 0.12);
+        transform: translateY(-2px);
+        box-shadow: 0 16px 40px rgba(0, 0, 0, 0.35);
+        border-color: rgba(8, 145, 178, 0.24);
+    }
+
+    .lb-rank {
+        justify-self: center;
+        width: 58px;
+        height: 58px;
+        border-radius: 14px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.4rem;
+        font-weight: 800;
+        color: #e5e7eb;
+        background: linear-gradient(145deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.02));
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+    }
+
+    .lb-rank.medal-1 {
+        background: linear-gradient(145deg, #facc15, #eab308);
+        color: #111827;
+        box-shadow: 0 15px 30px rgba(234, 179, 8, 0.35);
+    }
+
+    .lb-rank.medal-2 {
+        background: linear-gradient(145deg, #e5e7eb, #cbd5e1);
+        color: #0f172a;
+        box-shadow: 0 15px 30px rgba(203, 213, 225, 0.35);
+    }
+
+    .lb-rank.medal-3 {
+        background: linear-gradient(145deg, #f59e0b, #d97706);
+        color: #0f172a;
+        box-shadow: 0 15px 30px rgba(217, 119, 6, 0.35);
+    }
+
+    .lb-player {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+    }
+
+    .lb-avatar {
+        width: 52px;
+        height: 52px;
+        border-radius: 16px;
+        background: linear-gradient(145deg, #1f2937, #0f172a);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        overflow: hidden;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 800;
+        color: #e2e8f0;
+        box-shadow: 0 10px 18px rgba(0, 0, 0, 0.35);
+        text-transform: uppercase;
+    }
+
+    .lb-avatar img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+
+    .lb-player .name {
+        font-weight: 700;
+        color: #f8fafc;
+        font-size: 1.05rem;
+        letter-spacing: -0.01em;
+    }
+
+    .lb-player .meta {
+        color: #94a3b8;
+        font-size: 0.85rem;
+    }
+
+    .lb-stat {
+        display: flex;
+        justify-content: center;
+    }
+
+    .stat-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 0.55rem 0.9rem;
+        border-radius: 12px;
+        background: rgba(255, 255, 255, 0.06);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        color: #e2e8f0;
+        font-weight: 700;
+        min-width: 96px;
+        justify-content: center;
+    }
+
+    .stat-pill.success {
+        background: rgba(16, 185, 129, 0.16);
+        border-color: rgba(16, 185, 129, 0.4);
+        color: #bbf7d0;
+    }
+
+    .stat-pill.info {
+        background: rgba(6, 182, 212, 0.16);
+        border-color: rgba(6, 182, 212, 0.4);
+        color: #a5f3fc;
+    }
+
+    .stat-pill.primary {
+        background: rgba(59, 130, 246, 0.12);
+        border-color: rgba(59, 130, 246, 0.35);
+        color: #bfdbfe;
+    }
+
+    .stat-pill.danger {
+        background: rgba(239, 68, 68, 0.14);
+        border-color: rgba(239, 68, 68, 0.4);
+        color: #fecdd3;
+    }
+
+    @media (max-width: 992px) {
+        .lb-header,
+        .lb-row {
+            grid-template-columns: 70px 1.4fr repeat(4, 1fr);
+        }
+
+        .lb-rank {
+            width: 50px;
+            height: 50px;
+            font-size: 1.2rem;
+        }
+
+        .lb-avatar {
+            width: 46px;
+            height: 46px;
+        }
+    }
+
+    @media (max-width: 768px) {
+        .leaderboard-top {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+
+        .lb-header {
+            display: none;
+        }
+
+        .lb-row {
+            grid-template-columns: 70px 1fr;
+            grid-template-areas:
+                "rank player"
+                "best best"
+                "avg avg"
+                "win win"
+                "mine mine";
+            row-gap: 12px;
+        }
+
+        .lb-row .lb-rank {
+            grid-area: rank;
+        }
+
+        .lb-row .lb-player {
+            grid-area: player;
+        }
+
+        .lb-row .lb-stat {
+            justify-content: flex-start;
+        }
+
+        .lb-row .lb-stat::before {
+            content: attr(data-label);
+            display: block;
+            color: #94a3b8;
+            font-size: 0.78rem;
+            letter-spacing: 0.02em;
+            margin-bottom: 6px;
+        }
+
+        .lb-row .lb-stat[data-label="베스트"] {
+            grid-area: best;
+        }
+
+        .lb-row .lb-stat[data-label="평균"] {
+            grid-area: avg;
+        }
+
+        .lb-row .lb-stat[data-label="승률"] {
+            grid-area: win;
+        }
+
+        .lb-row .lb-stat[data-label="지뢰 클릭"] {
+            grid-area: mine;
+        }
+
+        .stat-pill {
+            width: 100%;
+            justify-content: space-between;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<section class="game-hero mesh-gradient-animated fade-in-up">
+    <div class="hero-content container">
+        <p class="text-inverse mb-2 text-uppercase" style="letter-spacing: 0.1em;">Minesweeper Elite</p>
+        <h1 class="hero-title">지뢰찾기 리더보드</h1>
+        <p class="hero-subtitle">시간과 정확도로 증명하는 실력. 지뢰 클릭 수까지 투명하게 공개합니다.</p>
+    </div>
+</section>
+
+<div class="container my-5">
+    <!-- Difficulty Tabs -->
+    <div class="d-flex justify-content-center gap-3 mb-4">
+        <a href="{% url 'community:minesweeper_leaderboard' %}?difficulty=easy"
+           class="btn {% if difficulty == 'easy' %}btn-primary{% else %}btn-outline-secondary{% endif %} btn-ripple">
+            쉬움 (9x9, 10)
+        </a>
+        <a href="{% url 'community:minesweeper_leaderboard' %}?difficulty=medium"
+           class="btn {% if difficulty == 'medium' %}btn-primary{% else %}btn-outline-secondary{% endif %} btn-ripple">
+            보통 (16x16, 40)
+        </a>
+        <a href="{% url 'community:minesweeper_leaderboard' %}?difficulty=hard"
+           class="btn {% if difficulty == 'hard' %}btn-primary{% else %}btn-outline-secondary{% endif %} btn-ripple">
+            어려움 (16x30, 99)
+        </a>
+    </div>
+
+    <!-- Summary Cards -->
+    <div class="row g-4 mb-5">
+        <div class="col-md-3">
+            <div class="card card-lift card-glow fade-in-up animate-delay-100 surface">
+                <div class="card-body">
+                    <p class="text-secondary text-uppercase mb-1" style="letter-spacing: .08em;">총 플레이</p>
+                    <h3 class="mb-1">{{ summary.total_games|default:0 }}</h3>
+                    <small class="text-secondary">기록된 전체 게임 수</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card card-lift card-glow fade-in-up animate-delay-200 surface">
+                <div class="card-body">
+                    <p class="text-secondary text-uppercase mb-1" style="letter-spacing: .08em;">승리</p>
+                    <h3 class="mb-1">{{ summary.wins|default:0 }}</h3>
+                    <small class="text-secondary">성공적으로 클리어</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card card-lift card-glow fade-in-up animate-delay-300 surface">
+                <div class="card-body">
+                    <p class="text-secondary text-uppercase mb-1" style="letter-spacing: .08em;">지뢰 클릭</p>
+                    <h3 class="mb-1">{{ summary.mine_clicks_total|default:0 }}</h3>
+                    <small class="text-secondary">총 다리 날라간 횟수</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card card-lift card-glow fade-in-up animate-delay-400 surface">
+                <div class="card-body">
+                    <p class="text-secondary text-uppercase mb-1" style="letter-spacing: .08em;">베스트 / 평균</p>
+                    <h3 class="mb-1">{{ summary.best_overall }} / {{ summary.avg_overall }}</h3>
+                    <small class="text-secondary">승리 게임 기준</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Leaderboard -->
+    <div class="leaderboard-shell fade-in-up">
+        <div class="leaderboard-top">
+            <div>
+                <h4 class="mb-1">리더보드</h4>
+                <small class="text-secondary">상위 100명 · 난이도: {{ difficulty|capfirst }}</small>
+            </div>
+            <span class="leaderboard-chip">참여자 {{ total_players }}</span>
+        </div>
+        <div class="lb-header d-none d-md-grid">
+            <div>순위</div>
+            <div>플레이어</div>
+            <div>베스트</div>
+            <div>평균</div>
+            <div>승률</div>
+            <div>지뢰 클릭</div>
+        </div>
+        <div class="lb-body">
+            {% if leaderboard %}
+                {% for row in leaderboard %}
+                <div class="lb-row d-grid align-items-center fade-in-up animate-delay-{{ forloop.counter0|add:'1' }}00">
+                    <div class="lb-rank {% if forloop.counter == 1 %}medal-1{% elif forloop.counter == 2 %}medal-2{% elif forloop.counter == 3 %}medal-3{% endif %}">
+                        {{ row.rank }}
+                    </div>
+                    <div class="lb-player">
+                        <div class="lb-avatar">
+                            {% if row.profile_image %}
+                                <img src="{{ row.profile_image }}" alt="{{ row.display_name }}">
+                            {% else %}
+                                {{ row.display_name|slice:":2" }}
+                            {% endif %}
+                        </div>
+                        <div>
+                            <div class="name">{{ row.display_name }}</div>
+                            <div class="meta">총 {{ row.total_games }}회 · 승 {{ row.wins }} · 패 {{ row.losses }}</div>
+                        </div>
+                    </div>
+                    <div class="lb-stat" data-label="베스트">
+                        <span class="stat-pill success">{{ row.best_time_display }}</span>
+                    </div>
+                    <div class="lb-stat" data-label="평균">
+                        <span class="stat-pill info">{{ row.avg_time_display }}</span>
+                    </div>
+                    <div class="lb-stat" data-label="승률">
+                        <span class="stat-pill primary">{{ row.win_rate }}%</span>
+                    </div>
+                    <div class="lb-stat" data-label="지뢰 클릭">
+                        <span class="stat-pill danger">{{ row.mine_clicks }}</span>
+                    </div>
+                </div>
+                {% endfor %}
+            {% else %}
+                <div class="p-4 text-center text-secondary">
+                    아직 기록이 없습니다. 첫 번째 기록의 주인이 되어보세요!
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
