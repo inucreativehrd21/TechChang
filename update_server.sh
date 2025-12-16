@@ -20,7 +20,7 @@ BACKUP_DIR="$HOME/backups/$BACKUP_DATE"
 TEMP_DIR="$HOME/temp_update"
 
 # 진행률 표시
-TOTAL_STEPS=15
+TOTAL_STEPS=17
 CURRENT_STEP=0
 
 show_step() {
@@ -280,7 +280,60 @@ sudo chmod -R 755 media/
 echo "✓ 데이터 복원 완료"
 
 # ============================================
-# Step 7: 가상환경 및 패키지
+# Step 7: 필수 디렉토리 및 환경 설정 확인
+# ============================================
+show_step "필수 디렉토리 및 환경 설정"
+
+# 로그 디렉토리 생성
+if [ ! -d "logs" ]; then
+    echo "logs 디렉토리 생성 중..."
+    mkdir -p logs
+    sudo chown ubuntu:www-data logs
+    sudo chmod 755 logs
+    echo "✓ logs 디렉토리 생성"
+else
+    echo "✓ logs 디렉토리 존재"
+fi
+
+# .env 파일 확인 및 생성
+if [ ! -f ".env" ]; then
+    echo "⚠️ .env 파일이 없습니다. 기본 템플릿으로 생성 중..."
+    cp .env.example .env
+
+    # 필수 환경 변수 설정
+    SECRET_KEY=$(python3 -c 'from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())')
+    sed -i "s/your-secret-key-here/$SECRET_KEY/" .env
+
+    echo "✓ .env 파일 생성 완료"
+    echo -e "${YELLOW}⚠️ .env 파일의 다른 설정들도 확인하세요!${NC}"
+else
+    echo "✓ .env 파일 존재"
+
+    # SECRET_KEY 확인
+    if ! grep -q "^DJANGO_SECRET_KEY=" .env || grep -q "^DJANGO_SECRET_KEY=your-secret-key-here" .env; then
+        echo "⚠️ SECRET_KEY가 설정되지 않았습니다. 자동 생성 중..."
+        SECRET_KEY=$(python3 -c 'from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())')
+
+        if grep -q "^DJANGO_SECRET_KEY=" .env; then
+            sed -i "s/^DJANGO_SECRET_KEY=.*/DJANGO_SECRET_KEY=$SECRET_KEY/" .env
+        else
+            echo "DJANGO_SECRET_KEY=$SECRET_KEY" >> .env
+        fi
+        echo "✓ SECRET_KEY 자동 생성 완료"
+    fi
+fi
+
+# staticfiles 디렉토리 확인
+if [ ! -d "staticfiles" ]; then
+    echo "staticfiles 디렉토리 생성 중..."
+    mkdir -p staticfiles
+    echo "✓ staticfiles 디렉토리 생성"
+fi
+
+echo "✓ 환경 설정 완료"
+
+# ============================================
+# Step 8: 가상환경 및 패키지
 # ============================================
 show_step "가상환경 및 패키지 업데이트"
 
@@ -306,7 +359,7 @@ pip install -r requirements.txt -q
 echo "✓ 패키지 업데이트 완료"
 
 # ============================================
-# Step 8: 마이그레이션 파일 수정 (pybo → community)
+# Step 9: 마이그레이션 파일 수정 (pybo → community)
 # ============================================
 show_step "마이그레이션 참조 수정"
 
@@ -358,7 +411,7 @@ if [ -f "$PROJECT_DIR/db.sqlite3" ]; then
 fi
 
 # ============================================
-# Step 9: 정적 파일 수집
+# Step 10: 정적 파일 수집
 # ============================================
 show_step "정적 파일 수집"
 
@@ -366,7 +419,7 @@ python manage.py collectstatic --noinput
 echo "✓ 정적 파일 수집 완료"
 
 # ============================================
-# Step 10: 마이그레이션 확인
+# Step 11: 마이그레이션 확인
 # ============================================
 show_step "마이그레이션 확인"
 
@@ -412,7 +465,7 @@ print(f"  Answer: {Answer._meta.db_table}")
 PYEOF
 
 # ============================================
-# Step 11: SSL 인증서 확인 및 발급
+# Step 12: SSL 인증서 확인 및 발급
 # ============================================
 show_step "SSL 인증서 확인"
 
@@ -437,7 +490,7 @@ else
 fi
 
 # ============================================
-# Step 12: Nginx 초기 설정
+# Step 13: Nginx 초기 설정
 # ============================================
 show_step "Nginx 초기 설정"
 
@@ -511,7 +564,7 @@ fi
 echo "✓ Nginx 설정 적용 완료"
 
 # ============================================
-# Step 13: 서비스 임시 시작 (SSL 발급용)
+# Step 14: 서비스 임시 시작 (SSL 발급용)
 # ============================================
 if [ "$HAS_SSL" = false ]; then
     show_step "서비스 임시 시작 (SSL 발급)"
@@ -537,7 +590,7 @@ if [ "$HAS_SSL" = false ]; then
     echo "✓ 서비스 임시 시작 완료"
 
     # ============================================
-    # Step 14: SSL 인증서 자동 발급
+    # Step 15: SSL 인증서 자동 발급
     # ============================================
     show_step "SSL 인증서 자동 발급"
 
@@ -584,12 +637,12 @@ if [ "$HAS_SSL" = false ]; then
         HAS_SSL=false
     fi
 else
-    # SSL이 이미 있으면 Step 13, 14 건너뜀
+    # SSL이 이미 있으면 Step 14, 15 건너뜀
     CURRENT_STEP=$((CURRENT_STEP + 2))
 fi
 
 # ============================================
-# Step 15: Django 서비스 설정 확인
+# Step 16: Django 서비스 설정 확인
 # ============================================
 show_step "Django 서비스($SERVICE_NAME) 설정 확인"
 
@@ -609,7 +662,7 @@ else
 fi
 
 # ============================================
-# Step 16: 서비스 최종 재시작
+# Step 17: 서비스 최종 재시작
 # ============================================
 show_step "서비스 최종 재시작"
 
