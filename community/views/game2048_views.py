@@ -55,7 +55,7 @@ def game2048_create(request):
 
     if existing_game:
         logger.info(f"User {request.user.username} resuming existing 2048 game {existing_game.id} - difficulty: {difficulty}")
-        return redirect('pybo:game2048_play', game_id=existing_game.id)
+        return redirect('community:game2048_play', game_id=existing_game.id)
 
     # 난이도별 설정
     if difficulty == 'hard':
@@ -77,7 +77,7 @@ def game2048_create(request):
     game.save()
 
     logger.info(f"New 2048 game created by {request.user.username} (ID: {game.id}, difficulty: {difficulty})")
-    return redirect('pybo:game2048_play', game_id=game.id)
+    return redirect('community:game2048_play', game_id=game.id)
 
 
 @login_required

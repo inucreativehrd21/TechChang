@@ -115,7 +115,7 @@ def detail(request, question_id):
         if not (request.user.is_staff or request.user == question.author):
             from django.contrib import messages
             messages.error(request, '문의글은 관리자만 확인할 수 있습니다.')
-            return redirect('pybo:index')
+            return redirect('community:index')
 
     # 조회수 중복 방지 (5분)
     session_key = f'viewed_question_{question_id}'
@@ -229,7 +229,7 @@ def games_index(request):
             'name': '숫자야구',
             'title': 'Number Baseball',
             'description': '숨겨진 4자리 숫자를 맞춰보세요. 스트라이크와 볼 힌트로 추리하는 게임!',
-            'url': 'pybo:baseball_start',
+            'url': 'community:baseball_start',
             'icon': '⚾',
             'color': 'warning',
             'total_games': NumberBaseballGame.objects.count(),
@@ -240,7 +240,7 @@ def games_index(request):
             'name': '2048',
             'title': '2048 Puzzle',
             'description': '타일을 합쳐 2048을 만드세요! 중독성 강한 퍼즐 게임.',
-            'url': 'pybo:game2048_start',
+            'url': 'community:game2048_start',
             'icon': '🎮',
             'color': 'info',
             'total_games': Game2048.objects.count(),
@@ -251,7 +251,7 @@ def games_index(request):
             'name': '지뢰찾기',
             'title': 'Minesweeper',
             'description': '클래식 지뢰찾기 게임. 숫자 힌트를 보고 지뢰를 피하세요!',
-            'url': 'pybo:minesweeper_start',
+            'url': 'community:minesweeper_start',
             'icon': '💣',
             'color': 'danger',
             'total_games': MinesweeperGame.objects.count(),
@@ -262,7 +262,7 @@ def games_index(request):
             'name': '방명록',
             'title': 'Guest Book',
             'description': '포스트잇처럼 자유롭게 메시지를 남겨보세요!',
-            'url': 'pybo:guestbook_list',
+            'url': 'community:guestbook_list',
             'icon': '📝',
             'color': 'secondary',
             'total_games': GuestBook.objects.count(),

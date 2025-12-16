@@ -36,7 +36,7 @@ def tictactoe_create(request):
             player_x=request.user
         )
 
-        return redirect('pybo:tictactoe_detail', game_id=game.id)
+        return redirect('community:tictactoe_detail', game_id=game.id)
 
     return render(request, 'community/tictactoe_create.html')
 

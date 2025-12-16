@@ -52,7 +52,7 @@ def baseball_create(request):
 
     if existing_game:
         logger.info(f"User {request.user.username} resuming existing baseball game {existing_game.id} - difficulty: {difficulty}")
-        return redirect('pybo:baseball_play', game_id=existing_game.id)
+        return redirect('community:baseball_play', game_id=existing_game.id)
 
     # 난이도별 설정
     if difficulty == 'hard':
@@ -79,7 +79,7 @@ def baseball_create(request):
     )
 
     logger.info(f"New baseball game created by {request.user.username} (ID: {game.id}, difficulty: {difficulty})")
-    return redirect('pybo:baseball_play', game_id=game.id)
+    return redirect('community:baseball_play', game_id=game.id)
 
 
 @login_required

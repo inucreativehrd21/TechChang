@@ -68,7 +68,7 @@ def minesweeper_create(request):
     game.save()
 
     logger.info(f"New minesweeper game created by {request.user.username} (ID: {game.id}, difficulty: {difficulty})")
-    return redirect('pybo:minesweeper_play', game_id=game.id)
+    return redirect('community:minesweeper_play', game_id=game.id)
 
 
 @login_required
