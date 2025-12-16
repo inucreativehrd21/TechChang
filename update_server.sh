@@ -20,7 +20,7 @@ BACKUP_DIR="$HOME/backups/$BACKUP_DATE"
 TEMP_DIR="$HOME/temp_update"
 
 # 진행률 표시
-TOTAL_STEPS=13
+TOTAL_STEPS=15
 CURRENT_STEP=0
 
 show_step() {
@@ -412,13 +412,88 @@ print(f"  Answer: {Answer._meta.db_table}")
 PYEOF
 
 # ============================================
-# Step 10: Nginx 설정 업데이트
+# Step 11: SSL 인증서 확인 및 발급
 # ============================================
-show_step "Nginx 설정 업데이트"
+show_step "SSL 인증서 확인"
 
-# Nginx 설정 파일 복사
-echo "Nginx 설정 업데이트 중..."
-sudo cp nginx.conf /etc/nginx/sites-available/techchang
+SSL_CERT_PATH="/etc/letsencrypt/live/techchang.com/fullchain.pem"
+HAS_SSL=false
+
+if [ -f "$SSL_CERT_PATH" ]; then
+    echo "✓ SSL 인증서 존재: $SSL_CERT_PATH"
+    HAS_SSL=true
+else
+    echo "⚠️ SSL 인증서 없음 - 자동 발급을 시도합니다"
+
+    # Certbot 설치 확인
+    if ! command -v certbot &> /dev/null; then
+        echo "Certbot 설치 중..."
+        sudo apt update -qq
+        sudo apt install -y certbot python3-certbot-nginx -qq
+        echo "✓ Certbot 설치 완료"
+    else
+        echo "✓ Certbot 이미 설치됨"
+    fi
+fi
+
+# ============================================
+# Step 12: Nginx 초기 설정
+# ============================================
+show_step "Nginx 초기 설정"
+
+if [ "$HAS_SSL" = false ]; then
+    echo "HTTP-only 설정으로 임시 시작..."
+
+    # HTTP-only 설정 생성
+    sudo tee /etc/nginx/sites-available/techchang > /dev/null <<'NGINX_HTTP'
+upstream django {
+    server 127.0.0.1:8000;
+}
+
+server {
+    listen 80;
+    server_name techchang.com www.techchang.com 43.203.93.244;
+
+    charset utf-8;
+    client_max_body_size 75M;
+
+    location /static/ {
+        alias /home/ubuntu/projects/mysite/staticfiles/;
+        expires 30d;
+        add_header Cache-Control "public, immutable";
+    }
+
+    location /media/ {
+        alias /home/ubuntu/projects/mysite/media/;
+        expires 7d;
+        add_header Cache-Control "public";
+    }
+
+    location / {
+        proxy_pass http://django;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_connect_timeout 60s;
+        proxy_send_timeout 60s;
+        proxy_read_timeout 60s;
+    }
+
+    access_log /var/log/nginx/techchang_access.log;
+    error_log /var/log/nginx/techchang_error.log;
+}
+NGINX_HTTP
+
+    echo "✓ HTTP-only Nginx 설정 생성"
+else
+    echo "SSL 인증서 존재 - HTTPS 설정 적용..."
+    sudo cp nginx.conf /etc/nginx/sites-available/techchang
+    echo "✓ HTTPS Nginx 설정 복사"
+fi
 
 # 기본 사이트 비활성화
 sudo rm -f /etc/nginx/sites-enabled/default
@@ -433,10 +508,88 @@ if ! sudo nginx -t; then
     error_exit "Nginx 설정 오류"
 fi
 
-echo "✓ Nginx 설정 업데이트 완료"
+echo "✓ Nginx 설정 적용 완료"
 
 # ============================================
-# Step 12: Django 서비스 설정 확인
+# Step 13: 서비스 임시 시작 (SSL 발급용)
+# ============================================
+if [ "$HAS_SSL" = false ]; then
+    show_step "서비스 임시 시작 (SSL 발급)"
+
+    echo "Django 서비스 시작 중..."
+    sudo systemctl daemon-reload
+    sudo systemctl start $SERVICE_NAME
+    sleep 3
+
+    echo "Nginx 재시작 중..."
+    sudo systemctl restart nginx
+    sleep 2
+
+    # 서비스 확인
+    if ! sudo systemctl is-active --quiet $SERVICE_NAME; then
+        error_exit "Django 서비스 시작 실패"
+    fi
+
+    if ! sudo systemctl is-active --quiet nginx; then
+        error_exit "Nginx 시작 실패"
+    fi
+
+    echo "✓ 서비스 임시 시작 완료"
+
+    # ============================================
+    # Step 14: SSL 인증서 자동 발급
+    # ============================================
+    show_step "SSL 인증서 자동 발급"
+
+    echo "Let's Encrypt SSL 인증서 발급 중..."
+    echo "도메인: techchang.com, www.techchang.com"
+
+    # Certbot으로 SSL 인증서 발급
+    sudo certbot certonly --webroot \
+        -w /home/ubuntu/projects/mysite/staticfiles \
+        -d techchang.com \
+        -d www.techchang.com \
+        --non-interactive \
+        --agree-tos \
+        --email admin@techchang.com \
+        --keep-until-expiring \
+        2>&1 | tee /tmp/certbot_output.log
+
+    if [ $? -eq 0 ] && [ -f "$SSL_CERT_PATH" ]; then
+        echo "✓ SSL 인증서 발급 성공!"
+        HAS_SSL=true
+
+        # HTTPS 설정으로 교체
+        echo "HTTPS 설정으로 업그레이드 중..."
+        sudo cp nginx.conf /etc/nginx/sites-available/techchang
+
+        # Nginx 설정 테스트
+        if sudo nginx -t; then
+            sudo systemctl reload nginx
+            echo "✓ HTTPS 설정 적용 완료"
+        else
+            echo "⚠️ HTTPS 설정 테스트 실패 - HTTP로 유지됩니다"
+            HAS_SSL=false
+        fi
+
+        # SSL 자동 갱신 설정
+        echo "SSL 자동 갱신 cron 설정 중..."
+        (crontab -l 2>/dev/null | grep -v certbot; echo "0 3 * * * certbot renew --quiet --deploy-hook 'systemctl reload nginx'") | crontab -
+        echo "✓ SSL 자동 갱신 설정 완료"
+
+    else
+        echo "⚠️ SSL 인증서 발급 실패 - HTTP로 계속 진행합니다"
+        echo "수동 발급 명령어:"
+        echo "  sudo certbot --nginx -d techchang.com -d www.techchang.com"
+        HAS_SSL=false
+    fi
+else
+    # SSL이 이미 있으면 Step 13, 14 건너뜀
+    CURRENT_STEP=$((CURRENT_STEP + 2))
+fi
+
+# ============================================
+# Step 15: Django 서비스 설정 확인
 # ============================================
 show_step "Django 서비스($SERVICE_NAME) 설정 확인"
 
@@ -456,16 +609,16 @@ else
 fi
 
 # ============================================
-# Step 13: 서비스 재시작
+# Step 16: 서비스 최종 재시작
 # ============================================
-show_step "서비스 재시작"
+show_step "서비스 최종 재시작"
 
 # systemd 재로드
 sudo systemctl daemon-reload
 
-# Django 서비스 시작
-echo "Django 서비스($SERVICE_NAME) 시작 중..."
-sudo systemctl start $SERVICE_NAME
+# Django 서비스 재시작 (SSL 발급 과정에서 이미 시작되었을 수 있음)
+echo "Django 서비스($SERVICE_NAME) 재시작 중..."
+sudo systemctl restart $SERVICE_NAME
 sudo systemctl enable $SERVICE_NAME
 sleep 3
 
@@ -530,7 +683,12 @@ echo ""
 echo "백업 위치: $BACKUP_DIR"
 echo ""
 echo "다음 단계:"
-echo "  1. 웹사이트 접속: https://techchang.com"
+if [ "$HAS_SSL" = true ]; then
+    echo "  1. 웹사이트 접속: https://techchang.com (HTTPS ✓)"
+else
+    echo "  1. 웹사이트 접속: http://techchang.com (HTTP only)"
+    echo "     SSL 수동 발급: sudo certbot --nginx -d techchang.com -d www.techchang.com"
+fi
 echo "  2. 모든 기능 테스트 (로그인, 게시글, 게임 등)"
 echo "  3. 24-48시간 모니터링"
 echo ""
