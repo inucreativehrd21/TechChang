@@ -20,7 +20,7 @@ BACKUP_DIR="$HOME/backups/$BACKUP_DATE"
 TEMP_DIR="$HOME/temp_update"
 
 # 진행률 표시
-TOTAL_STEPS=12
+TOTAL_STEPS=13
 CURRENT_STEP=0
 
 show_step() {
@@ -306,7 +306,38 @@ pip install -r requirements.txt -q
 echo "✓ 패키지 업데이트 완료"
 
 # ============================================
-# Step 8: 정적 파일 수집
+# Step 8: 마이그레이션 파일 수정 (pybo → community)
+# ============================================
+show_step "마이그레이션 참조 수정"
+
+echo "마이그레이션 파일에서 pybo 참조를 community로 변경 중..."
+
+# community/migrations/ 디렉토리의 모든 마이그레이션 파일 수정
+MIGRATION_DIR="$PROJECT_DIR/community/migrations"
+if [ -d "$MIGRATION_DIR" ]; then
+    COUNT=0
+    for file in $MIGRATION_DIR/*.py; do
+        if [ "$(basename $file)" != "__init__.py" ]; then
+            if grep -q "('pybo'," "$file" 2>/dev/null; then
+                sed -i "s/('pybo',/('community',/g" "$file"
+                COUNT=$((COUNT + 1))
+            fi
+        fi
+    done
+    echo "✓ $COUNT 개의 마이그레이션 파일 수정 완료"
+else
+    echo "⚠️ 마이그레이션 디렉토리를 찾을 수 없습니다"
+fi
+
+# django_migrations 테이블 업데이트
+echo "데이터베이스 마이그레이션 히스토리 업데이트 중..."
+if [ -f "$PROJECT_DIR/db.sqlite3" ]; then
+    sqlite3 "$PROJECT_DIR/db.sqlite3" "UPDATE django_migrations SET app = 'community' WHERE app = 'pybo';" 2>/dev/null || true
+    echo "✓ 데이터베이스 마이그레이션 히스토리 업데이트 완료"
+fi
+
+# ============================================
+# Step 9: 정적 파일 수집
 # ============================================
 show_step "정적 파일 수집"
 
@@ -314,7 +345,7 @@ python manage.py collectstatic --noinput
 echo "✓ 정적 파일 수집 완료"
 
 # ============================================
-# Step 9: 마이그레이션 확인
+# Step 10: 마이그레이션 확인
 # ============================================
 show_step "마이그레이션 확인"
 
@@ -384,7 +415,7 @@ fi
 echo "✓ Nginx 설정 업데이트 완료"
 
 # ============================================
-# Step 11: Django 서비스 설정 확인
+# Step 12: Django 서비스 설정 확인
 # ============================================
 show_step "Django 서비스($SERVICE_NAME) 설정 확인"
 
@@ -404,7 +435,7 @@ else
 fi
 
 # ============================================
-# Step 12: 서비스 재시작
+# Step 13: 서비스 재시작
 # ============================================
 show_step "서비스 재시작"
 
