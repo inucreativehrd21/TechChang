@@ -35,9 +35,27 @@ COUNT=0
 # __init__.py 제외하고 모든 .py 파일 수정
 for file in $MIGRATION_DIR/*.py; do
     if [ "$(basename $file)" != "__init__.py" ]; then
-        # dependencies에서 'pybo' → 'community' 변경
+        MODIFIED=0
+
+        # 1. dependencies에서 ('pybo', → ('community', 변경
         if grep -q "('pybo'," "$file" 2>/dev/null; then
             sed -i "s/('pybo',/('community',/g" "$file"
+            MODIFIED=1
+        fi
+
+        # 2. lazy references에서 'pybo.xxx' → 'community.xxx' 변경
+        if grep -q "'pybo\." "$file" 2>/dev/null; then
+            sed -i "s/'pybo\./'community./g" "$file"
+            MODIFIED=1
+        fi
+
+        # 3. swappable에서 "pybo.xxx" → "community.xxx" 변경
+        if grep -q '"pybo\.' "$file" 2>/dev/null; then
+            sed -i 's/"pybo\./"community./g' "$file"
+            MODIFIED=1
+        fi
+
+        if [ $MODIFIED -eq 1 ]; then
             echo "  ✓ $(basename $file)"
             COUNT=$((COUNT + 1))
         fi

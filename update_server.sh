@@ -318,12 +318,33 @@ if [ -d "$MIGRATION_DIR" ]; then
     COUNT=0
     for file in $MIGRATION_DIR/*.py; do
         if [ "$(basename $file)" != "__init__.py" ]; then
+            MODIFIED=0
+
+            # dependencies에서 ('pybo', → ('community', 변경
             if grep -q "('pybo'," "$file" 2>/dev/null; then
                 sed -i "s/('pybo',/('community',/g" "$file"
+                MODIFIED=1
+            fi
+
+            # lazy references에서 'pybo.xxx' → 'community.xxx' 변경
+            if grep -q "'pybo\." "$file" 2>/dev/null; then
+                sed -i "s/'pybo\./'community./g" "$file"
+                MODIFIED=1
+            fi
+
+            # swappable에서 'pybo.xxx' → 'community.xxx' 변경 (혹시 모를 케이스)
+            if grep -q '"pybo\.' "$file" 2>/dev/null; then
+                sed -i 's/"pybo\./"community./g' "$file"
+                MODIFIED=1
+            fi
+
+            if [ $MODIFIED -eq 1 ]; then
                 COUNT=$((COUNT + 1))
+                echo "  ✓ $(basename $file)"
             fi
         fi
     done
+    echo ""
     echo "✓ $COUNT 개의 마이그레이션 파일 수정 완료"
 else
     echo "⚠️ 마이그레이션 디렉토리를 찾을 수 없습니다"
