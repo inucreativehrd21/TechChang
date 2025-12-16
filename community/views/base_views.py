@@ -92,7 +92,7 @@ def index(request):
         'total_count': total_count,
         'launch_days': launch_days,
     }
-    return render(request, 'pybo/question_list.html', context)
+    return render(request, 'community/question_list.html', context)
 
 def detail(request, question_id):
     # 질문 객체 조회 (삭제되지 않은 것만)
@@ -148,7 +148,7 @@ def detail(request, question_id):
         'answer_list': answer_list,  # 템플릿에서 for answer in answer_list
         'sort': sort,
     }
-    return render(request, 'pybo/question_detail.html', context)
+    return render(request, 'community/question_detail.html', context)
 
 def recent_answers(request):
     """최근 답변 목록 - 성능 최적화된 버전"""
@@ -167,7 +167,7 @@ def recent_answers(request):
         page_obj = paginator.get_page(1)
         
     context = {'answer_list': page_obj, 'page': page}
-    return render(request, 'pybo/recent_answers.html', context)
+    return render(request, 'community/recent_answers.html', context)
 
 def recent_comments(request):
     """최근 댓글 목록 - 성능 최적화된 버전"""
@@ -188,7 +188,7 @@ def recent_comments(request):
         page_obj = paginator.get_page(1)
         
     context = {'comment_list': page_obj, 'page': page}
-    return render(request, 'pybo/recent_comments.html', context)
+    return render(request, 'community/recent_comments.html', context)
 
 
 def download_file(request, question_id):
@@ -286,4 +286,4 @@ def games_index(request):
         'recent_stats': recent_stats,
     }
 
-    return render(request, 'pybo/games_index.html', context)
+    return render(request, 'community/games_index.html', context)

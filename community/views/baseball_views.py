@@ -28,7 +28,7 @@ def baseball_start(request):
     Returns:
         HttpResponse: 난이도 선택 페이지
     """
-    return render(request, 'pybo/baseball_start.html')
+    return render(request, 'community/baseball_start.html')
 
 
 @login_required
@@ -107,7 +107,7 @@ def baseball_play(request, game_id):
         'attempts': attempts,
         'remaining_attempts': game.max_attempts - game.attempts
     }
-    return render(request, 'pybo/baseball_play.html', context)
+    return render(request, 'community/baseball_play.html', context)
 
 
 @login_required
@@ -456,4 +456,4 @@ def baseball_leaderboard(request):
         'debug_info': debug_info,
     }
 
-    return render(request, 'pybo/baseball_leaderboard.html', context)
+    return render(request, 'community/baseball_leaderboard.html', context)

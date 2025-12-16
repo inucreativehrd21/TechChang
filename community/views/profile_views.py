@@ -27,4 +27,4 @@ def profile(request, user_id):
         'comment_list': comment_list,
         'question_page': question_page,
     }
-    return render(request, 'pybo/profile.html', context)
+    return render(request, 'community/profile.html', context)

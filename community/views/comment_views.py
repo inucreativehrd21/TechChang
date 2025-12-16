@@ -26,7 +26,7 @@ def comment_create_question(request, question_id):
     else:
         form = CommentForm()
     context = {'form': form}
-    return render(request, 'pybo/comment_form.html', context)
+    return render(request, 'community/comment_form.html', context)
 
 
 @login_required(login_url='common:login')
@@ -50,7 +50,7 @@ def comment_modify_question(request, comment_id):
     else:
         form = CommentForm(instance=comment)
     context = {'form': form}
-    return render(request, 'pybo/comment_form.html', context)
+    return render(request, 'community/comment_form.html', context)
 
 
 @login_required(login_url='common:login')
@@ -86,7 +86,7 @@ def comment_create_answer(request, answer_id):
     else:
         form = CommentForm()
     context = {'form': form}
-    return render(request, 'pybo/comment_form.html', context)
+    return render(request, 'community/comment_form.html', context)
 
 
 @login_required(login_url='common:login')
@@ -110,7 +110,7 @@ def comment_modify_answer(request, comment_id):
     else:
         form = CommentForm(instance=comment)
     context = {'form': form}
-    return render(request, 'pybo/comment_form.html', context)
+    return render(request, 'community/comment_form.html', context)
 
 
 @login_required(login_url='common:login')

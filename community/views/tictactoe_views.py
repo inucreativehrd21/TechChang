@@ -21,7 +21,7 @@ def tictactoe_list(request):
     context = {
         'games': games
     }
-    return render(request, 'pybo/tictactoe_list.html', context)
+    return render(request, 'community/tictactoe_list.html', context)
 
 
 @login_required
@@ -38,7 +38,7 @@ def tictactoe_create(request):
 
         return redirect('pybo:tictactoe_detail', game_id=game.id)
 
-    return render(request, 'pybo/tictactoe_create.html')
+    return render(request, 'community/tictactoe_create.html')
 
 
 @login_required
@@ -57,7 +57,7 @@ def tictactoe_detail(request, game_id):
         'is_player_o': is_player_o,
         'can_join': can_join
     }
-    return render(request, 'pybo/tictactoe_detail.html', context)
+    return render(request, 'community/tictactoe_detail.html', context)
 
 
 @login_required

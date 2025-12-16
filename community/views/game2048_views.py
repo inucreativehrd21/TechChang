@@ -31,7 +31,7 @@ def game2048_start(request):
     Returns:
         HttpResponse: 난이도 선택 페이지
     """
-    return render(request, 'pybo/game2048_start.html')
+    return render(request, 'community/game2048_start.html')
 
 
 @login_required
@@ -124,7 +124,7 @@ def game2048_play(request, game_id):
         'game': game,
         'best_score': best_score
     }
-    return render(request, 'pybo/game2048_play.html', context)
+    return render(request, 'community/game2048_play.html', context)
 
 
 @login_required
@@ -554,7 +554,7 @@ def game2048_leaderboard(request):
         'debug_info': debug_info,
     }
 
-    return render(request, 'pybo/game2048_leaderboard.html', context)
+    return render(request, 'community/game2048_leaderboard.html', context)
 
 
 # ========== 게임 로직 헬퍼 함수 ==========

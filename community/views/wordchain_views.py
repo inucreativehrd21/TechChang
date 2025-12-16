@@ -161,7 +161,7 @@ def wordchain_list(request):
         'active_games': page_obj,
         'finished_games': finished_games,
     }
-    return render(request, 'pybo/wordchain_list.html', context)
+    return render(request, 'community/wordchain_list.html', context)
 
 
 
@@ -341,7 +341,7 @@ def wordchain_detail(request, game_id):
         'participant_count': participants_list.count(),
         'timeout_seconds': settings.WORDCHAIN_TIMEOUT,  # 템플릿에 타임아웃 시간 전달
     }
-    return render(request, 'pybo/wordchain_detail.html', context)
+    return render(request, 'community/wordchain_detail.html', context)
 
 
 @login_required

@@ -30,7 +30,7 @@ def minesweeper_start(request):
     Returns:
         HttpResponse: 난이도 선택 페이지
     """
-    return render(request, 'pybo/minesweeper_start.html')
+    return render(request, 'community/minesweeper_start.html')
 
 
 @login_required
@@ -91,7 +91,7 @@ def minesweeper_play(request, game_id):
     context = {
         'game': game,
     }
-    return render(request, 'pybo/minesweeper_play.html', context)
+    return render(request, 'community/minesweeper_play.html', context)
 
 
 def _format_time(seconds):
@@ -191,7 +191,7 @@ def minesweeper_leaderboard(request):
         }
     }
 
-    return render(request, 'pybo/minesweeper_leaderboard.html', context)
+    return render(request, 'community/minesweeper_leaderboard.html', context)
 
 
 @login_required

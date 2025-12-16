@@ -33,7 +33,7 @@ def guestbook_list(request):
         'entries': entries,
         'font_choices': GuestBook.FONT_CHOICES,
     }
-    return render(request, 'pybo/guestbook_list.html', context)
+    return render(request, 'community/guestbook_list.html', context)
 
 
 @login_required
