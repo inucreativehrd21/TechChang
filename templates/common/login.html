@@ -5,77 +5,65 @@
 
 {% block content %}
 <style>
-.login-dark-card {
-    background: #0f172a;
-    color: #e2e8f0;
-    border: 1px solid rgba(255,255,255,0.06);
-    box-shadow: 0 18px 36px rgba(0,0,0,0.45);
+.login-premium-card {
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(0, 0, 0, 0.06);
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.08);
 }
-.login-dark-card .card-body { background: #0f172a; }
-.login-dark-card .card-header { border-bottom: 1px solid rgba(255,255,255,0.08); }
-.login-dark-card .form-control,
-.login-dark-card .form-select {
-    background: rgba(255,255,255,0.05) !important;
-    color: #e5e7eb !important;
-    border-color: rgba(255,255,255,0.08) !important;
-    box-shadow: none;
+.login-premium-card .form-control,
+.login-premium-card .form-select {
+    background: #ffffff;
+    color: var(--text-primary);
+    border: 1px solid var(--border-color);
+    transition: all 0.3s ease;
 }
-.login-dark-card .form-control:focus,
-.login-dark-card .form-select:focus {
-    background: rgba(255,255,255,0.07) !important;
-    color: #e5e7eb !important;
-    border-color: #0ea5e9 !important;
-    box-shadow: 0 0 0 0.1rem rgba(14,165,233,0.35) !important;
+.login-premium-card .form-control:focus,
+.login-premium-card .form-select:focus {
+    background: #ffffff;
+    color: var(--text-primary);
+    border-color: var(--accent-blue);
+    box-shadow: 0 0 0 0.2rem rgba(59, 130, 246, 0.15);
 }
-.login-dark-card .input-group-text {
-    background: rgba(255,255,255,0.07) !important;
-    color: #cbd5e0 !important;
-    border-color: rgba(255,255,255,0.08) !important;
+.login-premium-card .input-group-text {
+    background: #f8f9fa;
+    color: var(--text-secondary);
+    border: 1px solid var(--border-color);
 }
-.login-dark-card .btn-outline-secondary {
-    color: #e5e7eb;
-    border-color: rgba(255,255,255,0.1);
+.login-premium-accordion .accordion-button {
+    background: #f8f9fa;
+    color: var(--text-primary);
+    border: 1px solid var(--border-color);
 }
-.login-dark-card .btn-outline-secondary:hover {
-    background: rgba(255,255,255,0.08);
-    color: #e5e7eb;
+.login-premium-accordion .accordion-button:not(.collapsed) {
+    background: rgba(59, 130, 246, 0.08);
+    color: var(--accent-blue);
 }
-.login-dark-accordion .accordion-button {
-    background: rgba(255,255,255,0.08) !important;
-    color: #e5e7eb !important;
-    border: 1px solid rgba(255,255,255,0.08) !important;
-    box-shadow: none;
+.login-premium-accordion .accordion-body {
+    background: #ffffff;
 }
-.login-dark-accordion .accordion-button:not(.collapsed) {
-    color: #e5e7eb !important;
-    background: rgba(14,165,233,0.15) !important;
-}
-.login-dark-accordion .accordion-body {
-    background: rgba(255,255,255,0.03) !important;
-    color: #e5e7eb !important;
-}
-.login-dark-accordion .accordion-item {
-    background: transparent !important;
+.login-premium-accordion .accordion-item {
+    border: 1px solid var(--border-color);
 }
 .login-separator hr {
-    border-top: 1px solid rgba(255,255,255,0.1);
+    border-top: 1px solid var(--border-color);
 }
 .login-separator span {
-    background: #0f172a;
-    color: #cbd5e0;
+    background: rgba(255, 255, 255, 0.95);
+    color: var(--text-secondary);
 }
 </style>
 <div class="container mt-5">
     <div class="row justify-content-center">
         <div class="col-md-6 col-lg-5">
-            <div class="card shadow-lg border-0 login-dark-card" style="border-radius: 20px;">
+            <div class="card border-0 login-premium-card" style="border-radius: 20px;">
                 <!-- 헤더 -->
-                <div class="card-header text-white text-center py-4" style="border-radius: 20px 20px 0 0; background: linear-gradient(135deg, #0ea5e9 0%, #0ea5e9 100%); color: #0b1220;">
+                <div class="card-header text-white text-center py-4" style="border-radius: 20px 20px 0 0; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
                     <i class="fas fa-sign-in-alt fa-3x mb-3"></i>
                     <h2 class="mb-1">로그인</h2>
-                    <p class="mb-0" style="color: #0b1220; opacity: 0.9;">테크창 커뮤니티에 오신 것을 환영합니다</p>
+                    <p class="mb-0" style="opacity: 0.95;">테크창 커뮤니티에 오신 것을 환영합니다</p>
                 </div>
-                
+
                 <!-- 본문 -->
                 <div class="card-body p-5">
                     <!-- 카카오 로그인 (메인) -->
@@ -86,7 +74,7 @@
                                 <span style="font-weight: 600; font-size: 16px;">카카오 로그인</span>
                             </a>
                         </div>
-                        <p class="text-center small mt-3 mb-0" style="color: #cbd5e0;">
+                        <p class="text-center small mt-3 mb-0 text-muted">
                             <i class="fas fa-info-circle me-1"></i>
                             카카오 계정으로 간편하게 로그인하세요
                         </p>
@@ -101,8 +89,8 @@
                     </div>
 
                     <!-- 일반/관리자 로그인 (접을 수 있는 형태) -->
-                    <div class="accordion login-dark-accordion" id="adminLoginAccordion">
-                        <div class="accordion-item border-0">
+                    <div class="accordion login-premium-accordion" id="adminLoginAccordion">
+                        <div class="accordion-item">
                             <h2 class="accordion-header">
                                 <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#adminLoginForm" style="border-radius: 10px;">
                                     <i class="fas fa-user-shield me-2"></i>
@@ -137,10 +125,10 @@
                                         <!-- 사용자명 입력 -->
                                         <div class="mb-3">
                                             <label for="username" class="form-label fw-semibold small">
-                                                <i class="fas fa-user me-2" style="color:#38bdf8;"></i>사용자 이름
+                                                <i class="fas fa-user me-2 text-primary"></i>사용자 이름
                                             </label>
                                             <div class="input-group">
-                                                <span class="input-group-text border-end-0" style="background: rgba(255,255,255,0.06); border-color: rgba(255,255,255,0.08); color: #cbd5e0;">
+                                                <span class="input-group-text border-end-0">
                                                     <i class="fas fa-user"></i>
                                                 </span>
                                                 <input type="text"
@@ -149,7 +137,7 @@
                                                        id="username"
                                                        value="{{ form.username.value|default_if_none:'' }}"
                                                        placeholder="관리자 계정"
-                                                       style="border-radius: 0 8px 8px 0; background: rgba(255,255,255,0.04); color: #e5e7eb; border-color: rgba(255,255,255,0.08);"
+                                                       style="border-radius: 0 8px 8px 0;"
                                                        required>
                                             </div>
                                         </div>
@@ -157,10 +145,10 @@
                                         <!-- 비밀번호 입력 -->
                                         <div class="mb-3">
                                             <label for="password" class="form-label fw-semibold small">
-                                                <i class="fas fa-lock me-2" style="color:#38bdf8;"></i>비밀번호
+                                                <i class="fas fa-lock me-2 text-primary"></i>비밀번호
                                             </label>
                                             <div class="input-group">
-                                                <span class="input-group-text border-end-0" style="background: rgba(255,255,255,0.06); border-color: rgba(255,255,255,0.08); color: #cbd5e0;">
+                                                <span class="input-group-text border-end-0">
                                                     <i class="fas fa-lock"></i>
                                                 </span>
                                                 <input type="password"
@@ -168,7 +156,7 @@
                                                        name="password"
                                                        id="password"
                                                        placeholder="비밀번호"
-                                                       style="border-radius: 0 8px 8px 0; background: rgba(255,255,255,0.04); color: #e5e7eb; border-color: rgba(255,255,255,0.08);"
+                                                       style="border-radius: 0 8px 8px 0;"
                                                        required>
                                             </div>
                                         </div>
@@ -187,17 +175,17 @@
 
                     <!-- 회원가입 링크 -->
                     <div class="text-center mt-4">
-                        <p class="mb-2 small" style="color:#cbd5e0;">일반 계정으로 가입하시겠어요?</p>
-                        <a href="{% url 'common:signup' %}" class="btn btn-outline-secondary btn-sm" style="border-radius: 8px; color:#e5e7eb; border-color: rgba(255,255,255,0.1);">
+                        <p class="mb-2 small text-muted">일반 계정으로 가입하시겠어요?</p>
+                        <a href="{% url 'common:signup' %}" class="btn btn-outline-primary btn-sm" style="border-radius: 8px;">
                             <i class="fas fa-user-plus me-2"></i>회원가입하기
                         </a>
                     </div>
                 </div>
             </div>
-            
+
             <!-- 하단 정보 -->
             <div class="text-center mt-4">
-                <p class="small" style="color:#94a3b8;">
+                <p class="small text-muted">
                     <i class="fas fa-shield-alt me-1"></i>
                     안전하고 신뢰할 수 있는 테크창 커뮤니티
                 </p>
