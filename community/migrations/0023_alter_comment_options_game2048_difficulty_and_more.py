@@ -6,7 +6,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('pybo', '0022_alter_minesweepergame_board_state'),
+        ('community', '0022_alter_minesweepergame_board_state'),
     ]
 
     operations = [

@@ -8,7 +8,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('pybo', '0018_guestbook_numberbaseballgame_numberbaseballattempt_and_more'),
+        ('community', '0018_guestbook_numberbaseballgame_numberbaseballattempt_and_more'),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
 

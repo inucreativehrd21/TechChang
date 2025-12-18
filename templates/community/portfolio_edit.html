@@ -1,0 +1,241 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}포트폴리오 편집{% endblock %}
+
+{% block content %}
+<section style="padding: var(--space-16) var(--space-6); background: var(--bg-secondary); min-height: 100vh;">
+    <div style="max-width: 800px; margin: 0 auto;">
+        <h1 style="font-size: 2.5rem; font-weight: 900; margin-bottom: var(--space-8); color: var(--text-primary);">
+            포트폴리오 편집
+        </h1>
+
+        <form method="post" enctype="multipart/form-data" style="background: white; padding: var(--space-8); border-radius: var(--radius-2xl); box-shadow: var(--shadow-xl);">
+            {% csrf_token %}
+
+            <!-- Display Name -->
+            <div style="margin-bottom: var(--space-6);">
+                <label style="display: block; font-weight: 700; margin-bottom: var(--space-3); color: var(--text-primary);">
+                    표시 이름
+                </label>
+                <input type="text" name="display_name" value="{{ portfolio.display_name }}" placeholder="포트폴리오에 표시될 이름 (비워두면 사용자명 사용)" style="width: 100%; padding: var(--space-4); border: 1px solid var(--border-light); border-radius: var(--radius-md); font-size: 1rem;">
+                <small style="color: var(--text-tertiary); margin-top: var(--space-2); display: block;">현재 사용자명: {{ user.username }}</small>
+            </div>
+
+            <!-- Profile Image -->
+            <div style="margin-bottom: var(--space-8);">
+                <label style="display: block; font-weight: 700; margin-bottom: var(--space-3); color: var(--text-primary);">
+                    프로필 이미지
+                </label>
+                {% if portfolio.profile_image %}
+                <img src="{{ portfolio.profile_image.url }}" alt="Current" style="width: 120px; height: 120px; border-radius: 50%; object-fit: cover; margin-bottom: var(--space-4); border: 2px solid var(--border-light);">
+                {% endif %}
+                <input type="file" name="profile_image" accept="image/*" style="width: 100%; padding: var(--space-3); border: 1px solid var(--border-light); border-radius: var(--radius-md);">
+            </div>
+
+            <!-- Title -->
+            <div style="margin-bottom: var(--space-6);">
+                <label style="display: block; font-weight: 700; margin-bottom: var(--space-3); color: var(--text-primary);">
+                    직업/역할
+                </label>
+                <input type="text" name="title" value="{{ portfolio.title }}" placeholder="예: Full-stack Developer" style="width: 100%; padding: var(--space-4); border: 1px solid var(--border-light); border-radius: var(--radius-md); font-size: 1rem;">
+            </div>
+
+            <!-- Bio -->
+            <div style="margin-bottom: var(--space-6);">
+                <label style="display: block; font-weight: 700; margin-bottom: var(--space-3); color: var(--text-primary);">
+                    자기소개
+                </label>
+                <textarea name="bio" rows="4" placeholder="간단한 소개를 작성해주세요" style="width: 100%; padding: var(--space-4); border: 1px solid var(--border-light); border-radius: var(--radius-md); font-size: 1rem; resize: vertical;">{{ portfolio.bio }}</textarea>
+            </div>
+
+            <!-- Location -->
+            <div style="margin-bottom: var(--space-6);">
+                <label style="display: block; font-weight: 700; margin-bottom: var(--space-3); color: var(--text-primary);">
+                    위치
+                </label>
+                <input type="text" name="location" value="{{ portfolio.location }}" placeholder="예: Seoul, Korea" style="width: 100%; padding: var(--space-4); border: 1px solid var(--border-light); border-radius: var(--radius-md); font-size: 1rem;">
+            </div>
+
+            <!-- Email -->
+            <div style="margin-bottom: var(--space-6);">
+                <label style="display: block; font-weight: 700; margin-bottom: var(--space-3); color: var(--text-primary);">
+                    이메일
+                </label>
+                <input type="email" name="email" value="{{ portfolio.email }}" placeholder="your@email.com" style="width: 100%; padding: var(--space-4); border: 1px solid var(--border-light); border-radius: var(--radius-md); font-size: 1rem;">
+            </div>
+
+            <!-- Skills -->
+            <div style="margin-bottom: var(--space-6);">
+                <label style="display: block; font-weight: 700; margin-bottom: var(--space-3); color: var(--text-primary);">
+                    기술 스택 (쉼표로 구분)
+                </label>
+                <input type="text" name="skills" value="{{ skills_str }}" placeholder="Python, Django, JavaScript, React" style="width: 100%; padding: var(--space-4); border: 1px solid var(--border-light); border-radius: var(--radius-md); font-size: 1rem;">
+                <small style="color: var(--text-tertiary); margin-top: var(--space-2); display: block;">예: Python, Django, JavaScript, React</small>
+            </div>
+
+            <!-- Social Links -->
+            <div style="margin-bottom: var(--space-6);">
+                <label style="display: block; font-weight: 700; margin-bottom: var(--space-3); color: var(--text-primary);">
+                    GitHub URL
+                </label>
+                <input type="url" name="github_url" value="{{ portfolio.github_url }}" placeholder="https://github.com/username" style="width: 100%; padding: var(--space-4); border: 1px solid var(--border-light); border-radius: var(--radius-md); font-size: 1rem;">
+            </div>
+
+            <div style="margin-bottom: var(--space-6);">
+                <label style="display: block; font-weight: 700; margin-bottom: var(--space-3); color: var(--text-primary);">
+                    LinkedIn URL
+                </label>
+                <input type="url" name="linkedin_url" value="{{ portfolio.linkedin_url }}" placeholder="https://linkedin.com/in/username" style="width: 100%; padding: var(--space-4); border: 1px solid var(--border-light); border-radius: var(--radius-md); font-size: 1rem;">
+            </div>
+
+            <div style="margin-bottom: var(--space-6);">
+                <label style="display: block; font-weight: 700; margin-bottom: var(--space-3); color: var(--text-primary);">
+                    개인 웹사이트
+                </label>
+                <input type="url" name="website_url" value="{{ portfolio.website_url }}" placeholder="https://yourwebsite.com" style="width: 100%; padding: var(--space-4); border: 1px solid var(--border-light); border-radius: var(--radius-md); font-size: 1rem;">
+            </div>
+
+            <!-- Background Gradients -->
+            <div style="margin-bottom: var(--space-8); padding: var(--space-6); background: var(--bg-secondary); border-radius: var(--radius-lg);">
+                <h3 style="font-size: 1.125rem; font-weight: 700; margin-bottom: var(--space-4); color: var(--text-primary);">배경 그라데이션</h3>
+
+                <!-- Hero Gradient -->
+                <div style="margin-bottom: var(--space-6);">
+                    <label style="display: block; font-weight: 600; margin-bottom: var(--space-3); color: var(--text-primary);">
+                        히어로 슬라이드 배경
+                    </label>
+                    <select name="hero_gradient" id="hero_gradient" style="width: 100%; padding: var(--space-4); border: 1px solid var(--border-light); border-radius: var(--radius-md); font-size: 1rem;">
+                        <option value="linear-gradient(135deg, #667eea 0%, #764ba2 100%)" {% if portfolio.hero_gradient == 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' %}selected{% endif %}>보라 그라데이션</option>
+                        <option value="linear-gradient(135deg, #f093fb 0%, #f5576c 100%)" {% if portfolio.hero_gradient == 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)' %}selected{% endif %}>핑크 그라데이션</option>
+                        <option value="linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)" {% if portfolio.hero_gradient == 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)' %}selected{% endif %}>파랑 그라데이션</option>
+                        <option value="linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)" {% if portfolio.hero_gradient == 'linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)' %}selected{% endif %}>초록 그라데이션</option>
+                        <option value="linear-gradient(135deg, #fa709a 0%, #fee140 100%)" {% if portfolio.hero_gradient == 'linear-gradient(135deg, #fa709a 0%, #fee140 100%)' %}selected{% endif %}>노랑 그라데이션</option>
+                        <option value="linear-gradient(135deg, #30cfd0 0%, #330867 100%)" {% if portfolio.hero_gradient == 'linear-gradient(135deg, #30cfd0 0%, #330867 100%)' %}selected{% endif %}>다크 블루 그라데이션</option>
+                        <option value="linear-gradient(135deg, #a8edea 0%, #fed6e3 100%)" {% if portfolio.hero_gradient == 'linear-gradient(135deg, #a8edea 0%, #fed6e3 100%)' %}selected{% endif %}>파스텔 그라데이션</option>
+                        <option value="linear-gradient(135deg, #ff9a9e 0%, #fecfef 100%)" {% if portfolio.hero_gradient == 'linear-gradient(135deg, #ff9a9e 0%, #fecfef 100%)' %}selected{% endif %}>로즈 그라데이션</option>
+                        <option value="linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%)" {% if portfolio.hero_gradient == 'linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%)' %}selected{% endif %}>복숭아 그라데이션</option>
+                        <option value="linear-gradient(135deg, #ff6e7f 0%, #bfe9ff 100%)" {% if portfolio.hero_gradient == 'linear-gradient(135deg, #ff6e7f 0%, #bfe9ff 100%)' %}selected{% endif %}>선셋 그라데이션</option>
+                    </select>
+                    <div id="hero_preview" style="margin-top: var(--space-3); height: 80px; border-radius: var(--radius-md); background: {{ portfolio.hero_gradient }};"></div>
+                </div>
+
+                <!-- Skills Gradient -->
+                <div>
+                    <label style="display: block; font-weight: 600; margin-bottom: var(--space-3); color: var(--text-primary);">
+                        스킬 슬라이드 배경
+                    </label>
+                    <select name="skills_gradient" id="skills_gradient" style="width: 100%; padding: var(--space-4); border: 1px solid var(--border-light); border-radius: var(--radius-md); font-size: 1rem;">
+                        <option value="linear-gradient(135deg, #667eea 0%, #764ba2 100%)" {% if portfolio.skills_gradient == 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' %}selected{% endif %}>보라 그라데이션</option>
+                        <option value="linear-gradient(135deg, #f093fb 0%, #f5576c 100%)" {% if portfolio.skills_gradient == 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)' %}selected{% endif %}>핑크 그라데이션</option>
+                        <option value="linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)" {% if portfolio.skills_gradient == 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)' %}selected{% endif %}>파랑 그라데이션</option>
+                        <option value="linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)" {% if portfolio.skills_gradient == 'linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)' %}selected{% endif %}>초록 그라데이션</option>
+                        <option value="linear-gradient(135deg, #fa709a 0%, #fee140 100%)" {% if portfolio.skills_gradient == 'linear-gradient(135deg, #fa709a 0%, #fee140 100%)' %}selected{% endif %}>노랑 그라데이션</option>
+                        <option value="linear-gradient(135deg, #30cfd0 0%, #330867 100%)" {% if portfolio.skills_gradient == 'linear-gradient(135deg, #30cfd0 0%, #330867 100%)' %}selected{% endif %}>다크 블루 그라데이션</option>
+                        <option value="linear-gradient(135deg, #a8edea 0%, #fed6e3 100%)" {% if portfolio.skills_gradient == 'linear-gradient(135deg, #a8edea 0%, #fed6e3 100%)' %}selected{% endif %}>파스텔 그라데이션</option>
+                        <option value="linear-gradient(135deg, #ff9a9e 0%, #fecfef 100%)" {% if portfolio.skills_gradient == 'linear-gradient(135deg, #ff9a9e 0%, #fecfef 100%)' %}selected{% endif %}>로즈 그라데이션</option>
+                        <option value="linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%)" {% if portfolio.skills_gradient == 'linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%)' %}selected{% endif %}>복숭아 그라데이션</option>
+                        <option value="linear-gradient(135deg, #ff6e7f 0%, #bfe9ff 100%)" {% if portfolio.skills_gradient == 'linear-gradient(135deg, #ff6e7f 0%, #bfe9ff 100%)' %}selected{% endif %}>선셋 그라데이션</option>
+                    </select>
+                    <div id="skills_preview" style="margin-top: var(--space-3); height: 80px; border-radius: var(--radius-md); background: {{ portfolio.skills_gradient }};"></div>
+                </div>
+            </div>
+
+            <!-- Settings -->
+            <div style="margin-bottom: var(--space-6); padding: var(--space-6); background: var(--bg-secondary); border-radius: var(--radius-lg);">
+                <div style="margin-bottom: var(--space-4);">
+                    <label style="display: flex; align-items: center; gap: var(--space-3); cursor: pointer;">
+                        <input type="checkbox" name="is_public" {% if portfolio.is_public %}checked{% endif %} style="width: 20px; height: 20px; cursor: pointer;">
+                        <span style="font-weight: 600;">포트폴리오 공개</span>
+                    </label>
+                </div>
+            </div>
+
+            <!-- Actions -->
+            <div style="display: flex; gap: var(--space-4); justify-content: flex-end; flex-wrap: wrap;">
+                <a href="{% url 'community:portfolio_view' user.id %}" class="btn-premium btn-premium-secondary">
+                    취소
+                </a>
+                <button type="submit" class="btn-premium btn-premium-primary">
+                    저장
+                </button>
+            </div>
+        </form>
+
+        <!-- Projects Section -->
+        <div style="margin-top: var(--space-12);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-6);">
+                <h2 style="font-size: 1.75rem; font-weight: 800; color: var(--text-primary);">프로젝트 관리</h2>
+                <a href="{% url 'community:project_create' %}" class="btn-premium btn-premium-primary">
+                    <i class="fas fa-plus"></i> 프로젝트 추가
+                </a>
+            </div>
+
+            {% if portfolio.projects.all %}
+            <div style="display: grid; gap: var(--space-4);">
+                {% for project in portfolio.projects.all %}
+                <div style="background: white; padding: var(--space-6); border-radius: var(--radius-lg); box-shadow: var(--shadow-md); border: 1px solid var(--border-light);">
+                    <div style="display: flex; justify-content: space-between; align-items: start; gap: var(--space-4);">
+                        <div style="flex: 1;">
+                            <h3 style="font-size: 1.25rem; font-weight: 700; margin-bottom: var(--space-2); color: var(--text-primary);">
+                                {{ project.title }}
+                                {% if project.is_featured %}
+                                <span style="background: var(--accent-primary); color: white; padding: var(--space-1) var(--space-3); border-radius: var(--radius-full); font-size: 0.75rem; margin-left: var(--space-2);">Featured</span>
+                                {% endif %}
+                            </h3>
+                            <p style="color: var(--text-secondary); margin-bottom: var(--space-4);">{{ project.description|truncatewords:20 }}</p>
+                            {% if project.tech_stack %}
+                            <div style="display: flex; flex-wrap: wrap; gap: var(--space-2);">
+                                {% for tech in project.tech_stack %}
+                                <span style="padding: var(--space-1) var(--space-3); background: var(--bg-secondary); border-radius: var(--radius-md); font-size: 0.8125rem; font-weight: 600;">{{ tech }}</span>
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+                        </div>
+                        <div style="display: flex; gap: var(--space-2);">
+                            <a href="{% url 'community:project_edit' project.id %}" class="btn-premium btn-premium-secondary" style="padding: var(--space-2) var(--space-4);">
+                                <i class="fas fa-edit"></i>
+                            </a>
+                            <form method="post" action="{% url 'community:project_delete' project.id %}" style="display: inline;" onsubmit="return confirm('이 프로젝트를 삭제하시겠습니까?');">
+                                {% csrf_token %}
+                                <button type="submit" class="btn-premium btn-premium-secondary" style="padding: var(--space-2) var(--space-4); background: #fee; color: #c33;">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div style="text-align: center; padding: var(--space-12); background: white; border-radius: var(--radius-lg); color: var(--text-tertiary);">
+                <i class="fas fa-folder-open" style="font-size: 3rem; margin-bottom: var(--space-4);"></i>
+                <p>아직 프로젝트가 없습니다.</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</section>
+
+<script>
+// Update gradient previews when selection changes
+document.addEventListener('DOMContentLoaded', function() {
+    const heroGradient = document.getElementById('hero_gradient');
+    const heroPreview = document.getElementById('hero_preview');
+    const skillsGradient = document.getElementById('skills_gradient');
+    const skillsPreview = document.getElementById('skills_preview');
+
+    if (heroGradient && heroPreview) {
+        heroGradient.addEventListener('change', function() {
+            heroPreview.style.background = this.value;
+        });
+    }
+
+    if (skillsGradient && skillsPreview) {
+        skillsGradient.addEventListener('change', function() {
+            skillsPreview.style.background = this.value;
+        });
+    }
+});
+</script>
+{% endblock %}

@@ -6,7 +6,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('pybo', '0016_wordchaingame_current_turn_and_more'),
+        ('community', '0016_wordchaingame_current_turn_and_more'),
     ]
 
     operations = [

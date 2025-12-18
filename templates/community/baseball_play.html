@@ -12,21 +12,9 @@
     .game-stage {
         position: relative;
         padding: 80px 16px;
-        background:
-            radial-gradient(circle at 20% 20%, rgba(8, 145, 178, 0.12), transparent 30%),
-            radial-gradient(circle at 80% 0%, rgba(255, 255, 255, 0.04), transparent 25%),
-            linear-gradient(135deg, #0b1220 0%, #0f172a 50%, #0b1324 100%);
+        background: var(--bg-secondary);
         overflow: hidden;
         min-height: 100vh;
-    }
-
-    .game-stage::after {
-        content: '';
-        position: absolute;
-        inset: 0;
-        background: radial-gradient(circle at 50% 50%, rgba(255,255,255,0.05), transparent 50%);
-        opacity: 0.35;
-        pointer-events: none;
     }
 
     .game-container {
@@ -38,7 +26,7 @@
 
     .game-header {
         text-align: center;
-        color: #e2e8f0;
+        color: var(--text-primary);
         margin-bottom: 30px;
     }
 
@@ -46,7 +34,6 @@
         font-size: 3rem;
         font-weight: 900;
         margin-bottom: 10px;
-        text-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
     }
 
     .game-header .subtitle {
@@ -55,12 +42,12 @@
     }
 
     .info-panel {
-        background: var(--game-surface);
-        border: 1px solid rgba(255,255,255,0.08);
+        background: white;
+        border: 1px solid var(--border-light);
         border-radius: 20px;
         padding: 25px;
         margin-bottom: 20px;
-        box-shadow: 0 18px 40px rgba(0, 0, 0, 0.35);
+        box-shadow: var(--shadow-lg);
         display: flex;
         justify-content: space-around;
         gap: 20px;
@@ -74,23 +61,23 @@
     .attempts-info {
         font-size: 2rem;
         font-weight: 700;
-        color: #38bdf8;
+        color: var(--accent-primary);
         margin-bottom: 10px;
     }
 
     .attempts-label {
         font-size: 1rem;
-        color: #94a3b8;
+        color: var(--text-secondary);
     }
 
     .game-card {
-        background: var(--game-surface);
-        border: 1px solid rgba(255,255,255,0.08);
+        background: white;
+        border: 1px solid var(--border-light);
         border-radius: 24px;
-        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.45);
+        box-shadow: var(--shadow-xl);
         padding: 40px;
         margin-bottom: 20px;
-        color: #e2e8f0;
+        color: var(--text-primary);
     }
 
     .input-section {
@@ -104,10 +91,10 @@
         letter-spacing: 2rem;
         font-weight: 800;
         padding: 20px;
-        border: 3px solid #0891b2;
+        border: 3px solid var(--accent-primary);
         border-radius: 16px;
-        background: rgba(255,255,255,0.05);
-        color: #e2e8f0;
+        background: var(--bg-secondary);
+        color: var(--text-primary);
         transition: all 0.3s ease;
     }
 
@@ -183,17 +170,17 @@
     }
 
     .attempt-item {
-        background: linear-gradient(145deg, rgba(255,255,255,0.06), rgba(255,255,255,0.03));
-        border: 1px solid rgba(255, 255, 255, 0.08);
+        background: var(--bg-secondary);
+        border: 1px solid var(--border-light);
         border-radius: 16px;
         padding: 20px;
         margin-bottom: 12px;
-        color: #e2e8f0;
+        color: var(--text-primary);
         display: flex;
         justify-content: space-between;
         align-items: center;
         animation: slideIn 0.4s ease;
-        box-shadow: 0 8px 22px rgba(0, 0, 0, 0.35);
+        box-shadow: var(--shadow-sm);
     }
 
     @keyframes slideIn {
@@ -382,14 +369,14 @@
 <section class="game-stage mesh-gradient-animated fade-in-up">
 <div class="game-container">
     <div class="game-header">
-        <h1>⚾ 숫자야구!</h1>
+        <h1>숫자야구</h1>
         {% if game.difficulty == 'hard' %}
         <div style="margin: 10px 0;">
-            <span style="background: linear-gradient(135deg, #eb3349 0%, #f45c43 100%); color: white; padding: 10px 20px; border-radius: 16px; font-size: 1.2rem; font-weight: 700; display: inline-block;">🔥 HARD MODE</span>
+            <span style="background: linear-gradient(135deg, #eb3349 0%, #f45c43 100%); color: white; padding: 10px 20px; border-radius: 16px; font-size: 1.2rem; font-weight: 700; display: inline-block;">HARD MODE</span>
         </div>
         {% else %}
         <div style="margin: 10px 0;">
-            <span style="background: linear-gradient(135deg, #56ab2f 0%, #a8e063 100%); color: white; padding: 10px 20px; border-radius: 16px; font-size: 1.2rem; font-weight: 700; display: inline-block;">😊 NORMAL MODE</span>
+            <span style="background: linear-gradient(135deg, #56ab2f 0%, #a8e063 100%); color: white; padding: 10px 20px; border-radius: 16px; font-size: 1.2rem; font-weight: 700; display: inline-block;">NORMAL MODE</span>
         </div>
         {% endif %}
         <p class="subtitle">4자리 숫자를 맞춰보세요!</p>
@@ -422,7 +409,7 @@
 
     {% if game.difficulty == 'hard' %}
     <div class="alert alert-warning text-center" style="margin: 0 auto 20px; max-width: 700px; background: rgba(255, 193, 7, 0.2); border: 2px solid #ffc107; color: #856404; padding: 15px; border-radius: 12px;">
-        <strong>🔥 Hard Mode Active!</strong><br>
+        <strong>Hard Mode Active</strong><br>
         • 3 consecutive 0-strikes = -1 attempt<br>
         {% if game.inactivity_limit > 0 %}
         • {{ game.inactivity_limit }}초 동안 입력 없으면 게임 종료!
@@ -602,7 +589,7 @@ function resetInactivityTimer() {
 
 // 서버에 시간 업데이트
 function updateTimeOnServer() {
-    fetch(`/pybo/baseball/${gameId}/update-time/`, {
+    fetch(`/baseball/${gameId}/update-time/`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/x-www-form-urlencoded',
@@ -622,7 +609,7 @@ function updateTimeOnServer() {
 
 // 시간 초과 처리
 function handleTimeout() {
-    fetch(`/pybo/baseball/${gameId}/update-time/`, {
+    fetch(`/baseball/${gameId}/update-time/`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/x-www-form-urlencoded',
@@ -666,7 +653,7 @@ function makeGuess(event) {
     submitBtn.disabled = true;
 
     // 전송
-    fetch(`/pybo/baseball/${gameId}/guess/`, {
+    fetch(`/baseball/${gameId}/guess/`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/x-www-form-urlencoded',
@@ -745,7 +732,7 @@ function giveUp() {
     clearInterval(timerInterval);
     clearInterval(inactivityInterval);
 
-    fetch(`/pybo/baseball/${gameId}/giveup/`, {
+    fetch(`/baseball/${gameId}/giveup/`, {
         method: 'POST',
         headers: {
             'X-CSRFToken': csrfToken

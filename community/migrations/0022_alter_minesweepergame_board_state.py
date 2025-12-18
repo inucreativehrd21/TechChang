@@ -7,7 +7,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('pybo', '0021_minesweepergame'),
+        ('community', '0021_minesweepergame'),
     ]
 
     operations = [

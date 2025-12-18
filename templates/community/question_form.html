@@ -1,240 +1,697 @@
 {% extends 'base.html' %}
+{% load static %}
 
-{% block title %}게시글 등록 - 테크창{% endblock %}
+{% block title %}게시글 작성 - 테크창{% endblock %}
+
+{% block extra_css %}
+<style>
+/* Premium Form Styles */
+.form-premium {
+    max-width: 1000px;
+    margin: 0 auto;
+    padding: var(--space-16) var(--space-8);
+}
+
+.form-premium-header {
+    text-align: center;
+    margin-bottom: var(--space-12);
+    animation: fadeInUp 0.6s ease;
+}
+
+.form-premium-title {
+    font-size: clamp(2rem, 5vw, 2.5rem);
+    font-weight: 800;
+    margin-bottom: var(--space-3);
+    background: var(--gradient-blue);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.form-premium-subtitle {
+    font-size: 1.125rem;
+    color: var(--text-secondary);
+}
+
+.form-card {
+    background: white;
+    border-radius: var(--radius-2xl);
+    padding: var(--space-8);
+    box-shadow: var(--shadow-lg);
+    margin-bottom: var(--space-6);
+    animation: fadeInUp 0.6s ease 0.2s both;
+}
+
+.form-group-premium {
+    margin-bottom: var(--space-6);
+}
+
+.form-label-premium {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    font-weight: 700;
+    font-size: 1rem;
+    color: var(--text-primary);
+    margin-bottom: var(--space-3);
+}
+
+.form-label-premium .required {
+    color: #ef4444;
+    font-size: 0.875rem;
+}
+
+.form-label-premium .optional {
+    color: var(--text-tertiary);
+    font-size: 0.875rem;
+    font-weight: 500;
+}
+
+.form-control-premium {
+    width: 100%;
+    padding: var(--space-4);
+    border: 2px solid var(--border-light);
+    border-radius: var(--radius-lg);
+    font-size: 1rem;
+    color: var(--text-primary);
+    background: var(--bg-primary);
+    transition: all 0.3s ease;
+}
+
+.form-control-premium:focus {
+    outline: none;
+    border-color: var(--accent-blue);
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.form-control-premium.large {
+    font-size: 1.125rem;
+    font-weight: 600;
+    padding: var(--space-5);
+}
+
+.form-control-premium::placeholder {
+    color: var(--text-muted);
+}
+
+.form-textarea-premium {
+    min-height: 300px;
+    font-family: var(--font-sans);
+    line-height: 1.6;
+    resize: vertical;
+}
+
+.form-hint {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    font-size: 0.875rem;
+    color: var(--text-tertiary);
+    margin-top: var(--space-2);
+}
+
+.form-hint i {
+    color: var(--accent-blue);
+}
+
+/* File Upload Zone */
+.file-upload-zone {
+    border: 2px dashed var(--border-light);
+    border-radius: var(--radius-lg);
+    padding: var(--space-8);
+    text-align: center;
+    transition: all 0.3s ease;
+    cursor: pointer;
+    background: var(--bg-secondary);
+}
+
+.file-upload-zone:hover {
+    border-color: var(--accent-blue);
+    background: rgba(59, 130, 246, 0.05);
+}
+
+.file-upload-zone.dragover {
+    border-color: var(--accent-blue);
+    background: rgba(59, 130, 246, 0.1);
+    transform: scale(1.02);
+}
+
+.file-upload-icon {
+    font-size: 3rem;
+    color: var(--text-tertiary);
+    margin-bottom: var(--space-4);
+}
+
+.file-upload-text {
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: var(--space-2);
+}
+
+.file-upload-hint {
+    font-size: 0.875rem;
+    color: var(--text-tertiary);
+}
+
+/* Preview Areas */
+.image-preview {
+    margin-top: var(--space-4);
+    display: none;
+}
+
+.image-preview.active {
+    display: block;
+    animation: fadeIn 0.3s ease;
+}
+
+.image-preview img {
+    max-width: 100%;
+    max-height: 300px;
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-md);
+}
+
+.file-preview {
+    margin-top: var(--space-4);
+    padding: var(--space-4);
+    background: var(--bg-secondary);
+    border-radius: var(--radius-lg);
+    display: none;
+    align-items: center;
+    gap: var(--space-3);
+}
+
+.file-preview.active {
+    display: flex;
+    animation: fadeIn 0.3s ease;
+}
+
+/* Character Counter */
+.char-counter {
+    text-align: right;
+    font-size: 0.875rem;
+    color: var(--text-tertiary);
+    margin-top: var(--space-2);
+}
+
+.char-counter.warning {
+    color: #f97316;
+}
+
+.char-counter.error {
+    color: #ef4444;
+}
+
+/* Switch Toggle */
+.switch-premium {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    padding: var(--space-4);
+    background: var(--bg-secondary);
+    border-radius: var(--radius-lg);
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.switch-premium:hover {
+    background: rgba(59, 130, 246, 0.05);
+}
+
+.switch-premium input[type="checkbox"] {
+    width: 48px;
+    height: 24px;
+    cursor: pointer;
+}
+
+/* Form Actions */
+.form-actions {
+    display: flex;
+    gap: var(--space-4);
+    justify-content: flex-end;
+    padding-top: var(--space-6);
+    border-top: 2px solid var(--border-light);
+}
+
+/* Error Alert */
+.alert-premium {
+    padding: var(--space-6);
+    background: rgba(239, 68, 68, 0.1);
+    border: 2px solid rgba(239, 68, 68, 0.2);
+    border-radius: var(--radius-lg);
+    margin-bottom: var(--space-6);
+    animation: shake 0.5s ease;
+}
+
+@keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-10px); }
+    75% { transform: translateX(10px); }
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Grid Layout for Split Sections */
+.form-grid-2 {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: var(--space-6);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .form-premium {
+        padding: var(--space-8) var(--space-4);
+    }
+
+    .form-card {
+        padding: var(--space-6);
+    }
+
+    .form-actions {
+        flex-direction: column-reverse;
+    }
+
+    .form-actions .btn-premium {
+        width: 100%;
+    }
+}
+</style>
+{% endblock %}
 
 {% block content %}
-<div class="container mt-4">
-    <div class="row justify-content-center">
-        <div class="col-lg-10">
-            <!-- 페이지 헤더 -->
-            <div class="card shadow-lg border-0 mb-4" style="border-radius: 20px;">
-                <div class="card-header bg-info text-white text-center py-4" style="border-radius: 20px 20px 0 0;">
-                    <i class="fas fa-question-circle fa-3x mb-3"></i>
-                    <h1 class="mb-1">게시글 등록</h1>
-                    <p class="mb-0 opacity-75">궁금한 것을 자유롭게 게시해보세요</p>
+<div class="form-premium">
+    <!-- Header -->
+    <div class="form-premium-header">
+        <h1 class="form-premium-title">
+            <i class="fas fa-pen-fancy"></i> 새 게시글 작성
+        </h1>
+        <p class="form-premium-subtitle">
+            궁금한 것을 자유롭게 질문하고 지식을 공유해보세요
+        </p>
+    </div>
+
+    <form method="post" enctype="multipart/form-data" id="questionForm">
+        {% csrf_token %}
+
+        <!-- Error Messages -->
+        {% if form.errors %}
+        <div class="alert-premium">
+            <div style="display: flex; align-items: center; gap: var(--space-3); margin-bottom: var(--space-3);">
+                <i class="fas fa-exclamation-triangle" style="font-size: 1.5rem; color: #ef4444;"></i>
+                <strong style="font-size: 1.125rem; color: #ef4444;">입력 오류가 발생했습니다</strong>
+            </div>
+            <ul style="list-style: none; padding: 0; margin: 0;">
+                {% for field in form %}
+                    {% for error in field.errors %}
+                        <li style="padding: var(--space-2) 0; color: #991b1b;">
+                            <strong>{{ field.label }}:</strong> {{ error }}
+                        </li>
+                    {% endfor %}
+                {% endfor %}
+            </ul>
+        </div>
+        {% endif %}
+
+        <!-- Basic Info Card -->
+        <div class="form-card">
+            <div class="form-grid-2">
+                <!-- Category -->
+                <div class="form-group-premium">
+                    <label for="{{ form.category.id_for_label }}" class="form-label-premium">
+                        <i class="fas fa-folder"></i>
+                        <span>카테고리</span>
+                        <span class="required">*</span>
+                    </label>
+                    <select name="category"
+                            id="{{ form.category.id_for_label }}"
+                            class="form-control-premium"
+                            required>
+                        <option value="">카테고리를 선택하세요</option>
+                        {% for value, label in form.category.field.choices %}
+                            {% if value %}
+                                <option value="{{ value }}" {% if form.category.value == value %}selected{% endif %}>
+                                    {{ label }}
+                                </option>
+                            {% endif %}
+                        {% endfor %}
+                    </select>
+                    <div class="form-hint">
+                        <i class="fas fa-lightbulb"></i>
+                        게시글에 가장 적합한 카테고리를 선택해주세요
+                    </div>
                 </div>
-                
-                <div class="card-body p-5">
-                    <form method="post" enctype="multipart/form-data">
-                        {% csrf_token %}
-                        
-                        <!-- 에러 메시지 -->
-                        {% if form.errors %}
-                        <div class="alert alert-danger alert-dismissible fade show" role="alert">
-                            <i class="fas fa-exclamation-triangle me-2"></i>
-                            <strong>입력 오류가 있습니다:</strong>
-                            <ul class="mb-0 mt-2">
-                                {% for field in form %}
-                                    {% for error in field.errors %}
-                                        <li><strong>{{ field.label }}:</strong> {{ error }}</li>
-                                    {% endfor %}
-                                {% endfor %}
-                            </ul>
-                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                        </div>
-                        {% endif %}
-                        
-                        <div class="row">
-                            <!-- 카테고리 선택 -->
-                            <div class="col-md-6 mb-4">
-                                <label for="{{ form.category.id_for_label }}" class="form-label fw-semibold">
-                                    <i class="fas fa-folder me-2 text-info"></i>카테고리 <span class="text-danger">*</span>
-                                </label>
-                                <div class="input-group">
-                                    <span class="input-group-text bg-light border-end-0">
-                                        <i class="fas fa-folder text-muted"></i>
-                                    </span>
-                                    {{ form.category }}
-                                </div>
-                                <div class="form-text">
-                                    <i class="fas fa-info-circle me-1"></i>
-                                    게시글에 가장 적합한 카테고리를 선택해주세요
-                                </div>
-                            </div>
 
-                            <!-- 작성자 정보 -->
-                            <div class="col-md-6 mb-4">
-                                <label class="form-label fw-semibold">
-                                    <i class="fas fa-user me-2 text-info"></i>작성자
-                                </label>
-                                <div class="input-group">
-                                    <span class="input-group-text bg-light">
-                                        <i class="fas fa-user text-muted"></i>
-                                    </span>
-                                    <input type="text" 
-                                           class="form-control form-control-lg" 
-                                           value="{{ user.username }}"
-                                           readonly
-                                           style="background-color: #f8f9fa;">
-                                </div>
-                                <div class="form-text">
-                                    <i class="fas fa-check-circle me-1 text-success"></i>
-                                    현재 로그인된 계정으로 작성됩니다
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <!-- 제목 입력 -->
-                        <div class="mb-4">
-                            <label for="{{ form.subject.id_for_label }}" class="form-label fw-semibold">
-                                <i class="fas fa-heading me-2 text-info"></i>게시글 제목 <span class="text-danger">*</span>
-                            </label>
-                            <div class="input-group">
-                                <span class="input-group-text bg-light border-end-0">
-                                    <i class="fas fa-heading text-muted"></i>
-                                </span>
-                                <input type="text" 
-                                       class="form-control form-control-lg border-start-0 ps-0" 
-                                       name="subject" 
-                                       id="{{ form.subject.id_for_label }}"
-                                       style="border-radius: 0 10px 10px 0;"
-                                       value="{{ form.subject.value|default_if_none:'' }}"
-                                       required>
-                            </div>
-                        </div>
-                        
-                        <!-- 내용 입력 -->
-                        <div class="mb-4">
-                            <label for="{{ form.content.id_for_label }}" class="form-label fw-semibold">
-                                <i class="fas fa-edit me-2 text-info"></i>게시글 내용 <span class="text-danger">*</span>
-                            </label>
-                            <textarea name="content" 
-                                      class="form-control" 
-                                      id="{{ form.content.id_for_label }}"
-                                      rows="12" 
-                                      style="border-radius: 10px; min-height: 250px;"
-                                      required>{{ form.content.value|default_if_none:'' }}</textarea>
-                            <div class="form-text">
-                                <i class="fab fa-markdown me-1"></i>
-                                <strong>마크다운 문법 지원:</strong> **굵게**, *기울임*, `코드`, ```블록코드``` 등을 사용할 수 있습니다
-                            </div>
-                        </div>
-
-                        <!-- 이미지 업로드 -->
-                        <div class="mb-4">
-                            <label for="{{ form.image.id_for_label }}" class="form-label fw-semibold">
-                                <i class="fas fa-image me-2 text-info"></i>이미지 첨부 <span class="text-muted">(선택사항)</span>
-                            </label>
-                            <div class="input-group">
-                                <span class="input-group-text bg-light border-end-0">
-                                    <i class="fas fa-image text-muted"></i>
-                                </span>
-                                <input type="file"
-                                       class="form-control border-start-0 ps-0"
-                                       name="image"
-                                       id="{{ form.image.id_for_label }}"
-                                       accept="image/*"
-                                       style="border-radius: 0 10px 10px 0;">
-                            </div>
-                            <div class="form-text">
-                                <i class="fas fa-info-circle me-1"></i>
-                                JPG, PNG, GIF 파일을 업로드할 수 있습니다 (최대 10MB)
-                            </div>
-                        </div>
-
-                        <!-- 파일 업로드 -->
-                        <div class="mb-4">
-                            <label for="{{ form.file.id_for_label }}" class="form-label fw-semibold">
-                                <i class="fas fa-file me-2 text-info"></i>파일 첨부 <span class="text-muted">(선택사항)</span>
-                            </label>
-                            <div class="input-group">
-                                <span class="input-group-text bg-light border-end-0">
-                                    <i class="fas fa-paperclip text-muted"></i>
-                                </span>
-                                <input type="file"
-                                       class="form-control border-start-0 ps-0"
-                                       name="file"
-                                       id="{{ form.file.id_for_label }}"
-                                       style="border-radius: 0 10px 10px 0;">
-                            </div>
-                            <div class="form-text">
-                                <i class="fas fa-info-circle me-1"></i>
-                                PDF, 문서, 압축파일 등을 첨부할 수 있습니다 (최대 20MB)
-                            </div>
-                        </div>
-
-                        <!-- 회원 전용 글 설정 -->
-                        <div class="mb-4">
-                            <div class="form-check form-switch">
-                                <input class="form-check-input" type="checkbox" 
-                                       name="is_locked" id="is_locked" 
-                                       {% if form.is_locked.value %}checked{% endif %}>
-                                <label class="form-check-label fw-semibold" for="is_locked">
-                                    <i class="fas fa-lock me-2 text-warning"></i>회원 전용 글로 설정
-                                </label>
-                            </div>
-                            <div class="form-text">
-                                <i class="fas fa-info-circle me-1"></i>
-                                로그인한 회원만 이 글을 볼 수 있습니다
-                            </div>
-                        </div>
-
-                        <!-- 버튼 영역 -->
-                        <div class="d-flex justify-content-end align-items-center pt-4 border-top">
-                            <a href="{% url 'community:index' %}" class="btn btn-outline-secondary me-3" style="border-radius: 10px;">
-                                <i class="fas fa-times me-2"></i>취소
-                            </a>
-                            <button type="submit" class="btn btn-info btn-lg px-5" style="border-radius: 10px;">
-                                <i class="fas fa-paper-plane me-2"></i>게시글 등록하기
-                            </button>
-                        </div>
-                    </form>
+                <!-- Author Info -->
+                <div class="form-group-premium">
+                    <label class="form-label-premium">
+                        <i class="fas fa-user"></i>
+                        <span>작성자</span>
+                    </label>
+                    <input type="text"
+                           class="form-control-premium"
+                           value="{{ user.username }}"
+                           readonly
+                           style="background: var(--bg-secondary); cursor: not-allowed;">
+                    <div class="form-hint">
+                        <i class="fas fa-check-circle" style="color: #10b981;"></i>
+                        현재 로그인된 계정으로 작성됩니다
+                    </div>
                 </div>
             </div>
         </div>
-    </div>
-</div>
 
+        <!-- Subject Card -->
+        <div class="form-card">
+            <div class="form-group-premium">
+                <label for="{{ form.subject.id_for_label }}" class="form-label-premium">
+                    <i class="fas fa-heading"></i>
+                    <span>제목</span>
+                    <span class="required">*</span>
+                </label>
+                <input type="text"
+                       name="subject"
+                       id="{{ form.subject.id_for_label }}"
+                       class="form-control-premium large"
+                       placeholder="게시글 제목을 입력하세요 (최소 5자)"
+                       value="{{ form.subject.value|default_if_none:'' }}"
+                       maxlength="200"
+                       required>
+                <div class="char-counter" id="subjectCounter">0 / 200자</div>
+            </div>
+        </div>
+
+        <!-- Content Card -->
+        <div class="form-card">
+            <div class="form-group-premium">
+                <label for="{{ form.content.id_for_label }}" class="form-label-premium">
+                    <i class="fas fa-align-left"></i>
+                    <span>내용</span>
+                    <span class="required">*</span>
+                </label>
+                <textarea name="content"
+                          id="{{ form.content.id_for_label }}"
+                          class="form-control-premium form-textarea-premium"
+                          placeholder="게시글 내용을 작성하세요. 마크다운 문법을 사용할 수 있습니다.&#10;&#10;예시:&#10;**굵은 글씨**&#10;*기울임체*&#10;`코드`&#10;```&#10;코드 블록&#10;```"
+                          required>{{ form.content.value|default_if_none:'' }}</textarea>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-top: var(--space-2);">
+                    <div class="form-hint">
+                        <i class="fab fa-markdown"></i>
+                        마크다운 문법 지원: **굵게**, *기울임*, `코드` 등
+                    </div>
+                    <div class="char-counter" id="contentCounter">0자</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Media Upload Card -->
+        <div class="form-card">
+            <h3 style="font-size: 1.25rem; font-weight: 700; margin-bottom: var(--space-6); display: flex; align-items: center; gap: var(--space-2);">
+                <i class="fas fa-paperclip"></i>
+                첨부 파일
+                <span class="optional">선택사항</span>
+            </h3>
+
+            <!-- Image Upload -->
+            <div class="form-group-premium">
+                <label for="{{ form.image.id_for_label }}" class="form-label-premium">
+                    <i class="fas fa-image"></i>
+                    <span>이미지</span>
+                </label>
+                <div class="file-upload-zone" id="imageUploadZone">
+                    <div class="file-upload-icon">
+                        <i class="fas fa-cloud-upload-alt"></i>
+                    </div>
+                    <div class="file-upload-text">클릭하거나 이미지를 드래그하세요</div>
+                    <div class="file-upload-hint">JPG, PNG, GIF (최대 10MB)</div>
+                </div>
+                <input type="file"
+                       name="image"
+                       id="{{ form.image.id_for_label }}"
+                       accept="image/*"
+                       style="display: none;">
+                <div class="image-preview" id="imagePreview">
+                    <img src="" alt="미리보기">
+                </div>
+            </div>
+
+            <!-- File Upload -->
+            <div class="form-group-premium">
+                <label for="{{ form.file.id_for_label }}" class="form-label-premium">
+                    <i class="fas fa-file"></i>
+                    <span>파일</span>
+                </label>
+                <div class="file-upload-zone" id="fileUploadZone">
+                    <div class="file-upload-icon">
+                        <i class="fas fa-file-upload"></i>
+                    </div>
+                    <div class="file-upload-text">클릭하거나 파일을 드래그하세요</div>
+                    <div class="file-upload-hint">PDF, 문서, 압축파일 등 (최대 20MB)</div>
+                </div>
+                <input type="file"
+                       name="file"
+                       id="{{ form.file.id_for_label }}"
+                       style="display: none;">
+                <div class="file-preview" id="filePreview">
+                    <i class="fas fa-file-alt" style="font-size: 2rem; color: var(--accent-blue);"></i>
+                    <div style="flex: 1;">
+                        <div style="font-weight: 600; color: var(--text-primary);" id="fileName"></div>
+                        <div style="font-size: 0.875rem; color: var(--text-tertiary);" id="fileSize"></div>
+                    </div>
+                    <button type="button" class="btn-premium btn-premium-secondary" onclick="removeFile()">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Settings Card -->
+        <div class="form-card">
+            <div class="switch-premium">
+                <input type="checkbox"
+                       name="is_locked"
+                       id="is_locked"
+                       {% if form.is_locked.value %}checked{% endif %}>
+                <div style="flex: 1;">
+                    <label for="is_locked" style="font-weight: 700; color: var(--text-primary); cursor: pointer; margin-bottom: var(--space-1); display: flex; align-items: center; gap: var(--space-2);">
+                        <i class="fas fa-lock"></i>
+                        회원 전용 게시글
+                    </label>
+                    <div style="font-size: 0.875rem; color: var(--text-tertiary);">
+                        로그인한 회원만 이 글을 볼 수 있습니다
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Form Actions -->
+        <div class="form-actions">
+            <a href="{% url 'community:index' %}" class="btn-premium btn-premium-secondary">
+                <i class="fas fa-times"></i> 취소
+            </a>
+            <button type="submit" class="btn-premium btn-premium-primary" id="submitBtn">
+                <i class="fas fa-paper-plane"></i> 게시글 등록
+            </button>
+        </div>
+    </form>
+</div>
 {% endblock %}
 
 {% block script %}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    const categorySelect = document.querySelector('select[name="category"]');
-    const form = document.querySelector('form');
-    
-    // 카테고리 선택 시 스타일 변경
-    if (categorySelect) {
-        categorySelect.addEventListener('change', function() {
-            if (this.value) {
-                this.style.color = '#0891b2';
-                this.style.fontWeight = '600';
+    const form = document.getElementById('questionForm');
+    const subjectInput = document.getElementById('{{ form.subject.id_for_label }}');
+    const contentTextarea = document.getElementById('{{ form.content.id_for_label }}');
+    const imageInput = document.getElementById('{{ form.image.id_for_label }}');
+    const fileInput = document.getElementById('{{ form.file.id_for_label }}');
+    const submitBtn = document.getElementById('submitBtn');
+
+    // Character counters
+    function updateCharCounter(input, counterId, maxLength) {
+        const counter = document.getElementById(counterId);
+        const length = input.value.length;
+
+        if (maxLength) {
+            counter.textContent = `${length} / ${maxLength}자`;
+            if (length > maxLength * 0.9) {
+                counter.classList.add('warning');
+            } else {
+                counter.classList.remove('warning');
+            }
+        } else {
+            counter.textContent = `${length}자`;
+        }
+    }
+
+    if (subjectInput) {
+        subjectInput.addEventListener('input', () => updateCharCounter(subjectInput, 'subjectCounter', 200));
+        updateCharCounter(subjectInput, 'subjectCounter', 200);
+    }
+
+    if (contentTextarea) {
+        contentTextarea.addEventListener('input', () => updateCharCounter(contentTextarea, 'contentCounter'));
+        updateCharCounter(contentTextarea, 'contentCounter');
+    }
+
+    // Image upload with drag & drop
+    const imageZone = document.getElementById('imageUploadZone');
+    const imagePreview = document.getElementById('imagePreview');
+
+    if (imageZone && imageInput) {
+        imageZone.addEventListener('click', () => imageInput.click());
+
+        imageZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            imageZone.classList.add('dragover');
+        });
+
+        imageZone.addEventListener('dragleave', () => {
+            imageZone.classList.remove('dragover');
+        });
+
+        imageZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            imageZone.classList.remove('dragover');
+
+            const files = e.dataTransfer.files;
+            if (files.length > 0 && files[0].type.startsWith('image/')) {
+                imageInput.files = files;
+                handleImagePreview(files[0]);
+            }
+        });
+
+        imageInput.addEventListener('change', function() {
+            if (this.files && this.files[0]) {
+                handleImagePreview(this.files[0]);
             }
         });
     }
-    
-    // 폼 제출 시 검증 및 로딩 상태
-    if (form) {
-        form.addEventListener('submit', function(e) {
-            const category = categorySelect?.value;
-            const subject = form.querySelector('input[name="subject"]')?.value.trim();
-            const content = form.querySelector('textarea[name="content"]')?.value.trim();
-            
-            // 기본 검증
-            if (!category) {
-                alert('카테고리를 선택해주세요.');
-                e.preventDefault();
-                return;
+
+    function handleImagePreview(file) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            imagePreview.querySelector('img').src = e.target.result;
+            imagePreview.classList.add('active');
+            imageZone.style.display = 'none';
+        };
+        reader.readAsDataURL(file);
+    }
+
+    // File upload with drag & drop
+    const fileZone = document.getElementById('fileUploadZone');
+    const filePreview = document.getElementById('filePreview');
+
+    if (fileZone && fileInput) {
+        fileZone.addEventListener('click', () => fileInput.click());
+
+        fileZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            fileZone.classList.add('dragover');
+        });
+
+        fileZone.addEventListener('dragleave', () => {
+            fileZone.classList.remove('dragover');
+        });
+
+        fileZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            fileZone.classList.remove('dragover');
+
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                fileInput.files = files;
+                handleFilePreview(files[0]);
             }
-            
-            if (!subject || subject.length < 5) {
-                alert('제목은 5자 이상 입력해주세요.');
-                e.preventDefault();
-                return;
+        });
+
+        fileInput.addEventListener('change', function() {
+            if (this.files && this.files[0]) {
+                handleFilePreview(this.files[0]);
             }
-            
-            if (!content || content.length < 20) {
-                alert('내용은 20자 이상 입력해주세요.');
-                e.preventDefault();
-                return;
-            }
-            
-            // 로딩 상태 표시
-            const submitBtn = form.querySelector('button[type="submit"]');
-            if (submitBtn) {
-                const originalText = submitBtn.innerHTML;
-                submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>등록 중...';
-                submitBtn.disabled = true;
+        });
+    }
+
+    function handleFilePreview(file) {
+        document.getElementById('fileName').textContent = file.name;
+        document.getElementById('fileSize').textContent = formatFileSize(file.size);
+        filePreview.classList.add('active');
+        fileZone.style.display = 'none';
+    }
+
+    window.removeFile = function() {
+        fileInput.value = '';
+        filePreview.classList.remove('active');
+        fileZone.style.display = 'block';
+    };
+
+    function formatFileSize(bytes) {
+        if (bytes === 0) return '0 Bytes';
+        const k = 1024;
+        const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+    }
+
+    // Form validation
+    form.addEventListener('submit', function(e) {
+        const category = form.querySelector('select[name="category"]').value;
+        const subject = subjectInput.value.trim();
+        const content = contentTextarea.value.trim();
+
+        let errors = [];
+
+        if (!category) {
+            errors.push('카테고리를 선택해주세요.');
+        }
+
+        if (!subject || subject.length < 5) {
+            errors.push('제목은 5자 이상 입력해주세요.');
+        }
+
+        if (!content || content.length < 20) {
+            errors.push('내용은 20자 이상 입력해주세요.');
+        }
+
+        if (errors.length > 0) {
+            e.preventDefault();
+            alert(errors.join('\n'));
+            return;
+        }
+
+        // Loading state
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 등록 중...';
+        submitBtn.disabled = true;
+        submitBtn.style.opacity = '0.7';
+    });
+
+    // Category select styling
+    const categorySelect = form.querySelector('select[name="category"]');
+    if (categorySelect) {
+        categorySelect.addEventListener('change', function() {
+            if (this.value) {
+                this.style.fontWeight = '600';
+                this.style.color = 'var(--accent-blue)';
             }
         });
     }

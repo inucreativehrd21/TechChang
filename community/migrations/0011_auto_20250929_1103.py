@@ -6,7 +6,7 @@ from django.db import migrations
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('pybo', '0010_question_image'),
+        ('community', '0010_question_image'),
     ]
 
     operations = [

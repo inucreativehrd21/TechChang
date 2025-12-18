@@ -1,142 +1,511 @@
 {% extends 'base.html' %}
-{% block content %}
+{% load common_tags %}
+{% load static %}
+
+{% block title %}{{ profile_user|display_name }}님의 프로필 - 테크창{% endblock %}
+
+{% block extra_css %}
 <style>
+.profile-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: var(--space-16) var(--space-8);
+}
+
+/* Profile Header */
+.profile-header {
+    background: white;
+    border-radius: var(--radius-2xl);
+    box-shadow: var(--shadow-xl);
+    padding: var(--space-8);
+    margin-bottom: var(--space-8);
+    display: flex;
+    align-items: center;
+    gap: var(--space-6);
+    flex-wrap: wrap;
+}
+
+.profile-avatar {
+    width: 120px;
+    height: 120px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 4px solid var(--accent-blue);
+    box-shadow: var(--shadow-lg);
+}
+
+.profile-avatar-placeholder {
+    width: 120px;
+    height: 120px;
+    border-radius: 50%;
+    background: var(--gradient-blue);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 3rem;
+    font-weight: 800;
+    border: 4px solid white;
+    box-shadow: var(--shadow-lg);
+}
+
+.profile-info {
+    flex: 1;
+    min-width: 250px;
+}
+
+.profile-name {
+    font-size: 2rem;
+    font-weight: 800;
+    color: var(--text-primary);
+    margin-bottom: var(--space-2);
+}
+
+.profile-username {
+    font-size: 1rem;
+    color: var(--text-tertiary);
+    margin-bottom: var(--space-4);
+}
+
+.profile-stats {
+    display: flex;
+    gap: var(--space-6);
+    flex-wrap: wrap;
+}
+
+.profile-stat {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: var(--space-3) var(--space-5);
+    background: var(--bg-secondary);
+    border-radius: var(--radius-lg);
+}
+
+.profile-stat-value {
+    font-size: 1.5rem;
+    font-weight: 800;
+    color: var(--accent-blue);
+}
+
+.profile-stat-label {
+    font-size: 0.875rem;
+    color: var(--text-tertiary);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.profile-actions {
+    display: flex;
+    gap: var(--space-3);
+    flex-wrap: wrap;
+}
+
+/* Tabs */
+.profile-tabs {
+    display: flex;
+    gap: var(--space-2);
+    margin-bottom: var(--space-8);
+    border-bottom: 2px solid var(--border-light);
+    overflow-x: auto;
+}
+
+.profile-tab {
+    padding: var(--space-4) var(--space-6);
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text-tertiary);
+    background: none;
+    border: none;
+    border-bottom: 3px solid transparent;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    white-space: nowrap;
+}
+
+.profile-tab:hover {
+    color: var(--accent-blue);
+}
+
+.profile-tab.active {
+    color: var(--accent-blue);
+    border-bottom-color: var(--accent-blue);
+}
+
+.profile-tab-content {
+    display: none;
+}
+
+.profile-tab-content.active {
+    display: block;
+}
+
+/* Cards */
 .profile-card {
-    background: #0f172a;
-    border: 1px solid rgba(255,255,255,0.08);
-    color: #e5e7eb;
-    border-radius: 16px;
+    background: white;
+    border-radius: var(--radius-2xl);
+    box-shadow: var(--shadow-lg);
+    padding: var(--space-8);
+    margin-bottom: var(--space-6);
 }
-.profile-table {
-    background: rgba(255,255,255,0.04);
-    color: #e5e7eb;
-    border-radius: 12px;
-    overflow: hidden;
+
+.profile-card-title {
+    font-size: 1.5rem;
+    font-weight: 800;
+    color: var(--text-primary);
+    margin-bottom: var(--space-6);
+    padding-bottom: var(--space-4);
+    border-bottom: 2px solid var(--border-light);
 }
-.profile-table th,
-.profile-table td {
-    color: #e5e7eb !important;
-    background: rgba(255,255,255,0.02);
+
+/* Form Styles */
+.form-group {
+    margin-bottom: var(--space-6);
 }
-.profile-table thead th {
-    background: rgba(255,255,255,0.06) !important;
-    border-bottom: 1px solid rgba(255,255,255,0.1);
+
+.form-label {
+    display: block;
+    font-weight: 700;
+    margin-bottom: var(--space-3);
+    color: var(--text-primary);
 }
-.profile-table tbody tr:nth-child(every) {
-    background: rgba(255,255,255,0.02);
+
+.form-input {
+    width: 100%;
+    padding: var(--space-4);
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-md);
+    font-size: 1rem;
+    transition: all 0.3s ease;
 }
-.profile-table a { color: #7dd3fc; }
+
+.form-input:focus {
+    outline: none;
+    border-color: var(--accent-blue);
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.form-help {
+    font-size: 0.875rem;
+    color: var(--text-tertiary);
+    margin-top: var(--space-2);
+    display: block;
+}
+
+/* Activity Items */
+.activity-item {
+    padding: var(--space-4);
+    border-radius: var(--radius-lg);
+    margin-bottom: var(--space-3);
+    background: var(--bg-secondary);
+    transition: all 0.3s ease;
+}
+
+.activity-item:hover {
+    background: white;
+    box-shadow: var(--shadow-md);
+    transform: translateX(4px);
+}
+
+.activity-item-title {
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: var(--space-2);
+}
+
+.activity-item-meta {
+    display: flex;
+    gap: var(--space-4);
+    font-size: 0.875rem;
+    color: var(--text-tertiary);
+}
+
+.activity-item a {
+    color: var(--accent-blue);
+    text-decoration: none;
+}
+
+.activity-item a:hover {
+    text-decoration: underline;
+}
+
+/* Empty State */
+.empty-state {
+    text-align: center;
+    padding: var(--space-16);
+    color: var(--text-tertiary);
+}
+
+.empty-icon {
+    font-size: 4rem;
+    margin-bottom: var(--space-4);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .profile-header {
+        flex-direction: column;
+        text-align: center;
+    }
+
+    .profile-info {
+        text-align: center;
+    }
+
+    .profile-stats {
+        justify-content: center;
+    }
+
+    .profile-actions {
+        width: 100%;
+        justify-content: center;
+    }
+}
 </style>
-<div class="container my-3">
-    <h5 class="border-bottom pb-2 text-light">{{ profile_user.username }}님의 프로필</h5>
-    
-    <!-- 사용자 정보 -->
-    <div class="card my-3 profile-card">
-        <div class="card-header" style="background: rgba(255,255,255,0.06); color:#e5e7eb;">
-            <h6 class="mb-0">사용자 정보</h6>
+{% endblock %}
+
+{% block content %}
+<div class="profile-container">
+    <!-- Profile Header -->
+    <div class="profile-header">
+        <!-- Avatar -->
+        {% if profile_user.profile.profile_image %}
+        <img src="{{ profile_user.profile.profile_image.url }}" alt="{{ profile_user|display_name }}" class="profile-avatar">
+        {% else %}
+        <div class="profile-avatar-placeholder">
+            {{ profile_user|display_name|slice:":1"|upper }}
         </div>
-        <div class="card-body">
-            <p><strong>사용자명:</strong> {{ profile_user.username }}</p>
-            <p><strong>가입일:</strong> {{ profile_user.date_joined }}</p>
-            <p><strong>작성한 게시글:</strong> {{ profile_user.author_question.count }}개</p>
-            <p><strong>작성한 댓글:</strong> {{ profile_user.author_answer.count }}개</p>
+        {% endif %}
+
+        <!-- Info -->
+        <div class="profile-info">
+            <h1 class="profile-name">{{ profile_user|display_name }}</h1>
+            <div class="profile-username">@{{ profile_user.username }}</div>
+
+            <div class="profile-stats">
+                <div class="profile-stat">
+                    <div class="profile-stat-value">{{ profile_user.author_question.count }}</div>
+                    <div class="profile-stat-label">게시글</div>
+                </div>
+                <div class="profile-stat">
+                    <div class="profile-stat-value">{{ profile_user.author_answer.count }}</div>
+                    <div class="profile-stat-label">댓글</div>
+                </div>
+                <div class="profile-stat">
+                    <div class="profile-stat-value">{{ profile_user.profile.points }}</div>
+                    <div class="profile-stat-label">포인트</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Actions -->
+        <div class="profile-actions">
+            <a href="{% url 'community:portfolio_view' profile_user.id %}" class="btn-premium btn-premium-primary">
+                <i class="fas fa-briefcase"></i> 포트폴리오
+            </a>
+            {% if user == profile_user %}
+            <a href="{% url 'community:portfolio_edit' %}" class="btn-premium btn-premium-secondary">
+                <i class="fas fa-edit"></i> 포트폴리오 편집
+            </a>
+            {% endif %}
         </div>
     </div>
 
-    <!-- 작성한 게시글 -->
-    <div class="my-4">
-        <h6 class="border-bottom pb-2 text-light">작성한 게시글</h6>
-        {% if question_list %}
-        <div class="profile-table">
-        <table class="table mb-0">
-            <thead>
-            <tr>
-                <th>제목</th>
-                <th>작성일시</th>
-                <th>조회수</th>
-            </tr>
-            </thead>
-            <tbody>
-            {% for question in question_list %}
-            <tr>
-                <td>
-                    <a href="{% url 'community:detail' question.id %}" class="text-decoration-none">{{ question.subject }}</a>
-                </td>
-                <td>{{ question.create_date }}</td>
-                <td>{{ question.view_count }}</td>
-            </tr>
-            {% endfor %}
-            </tbody>
-        </table>
-        </div>
-        <!-- 게시글 페이징 -->
-        {% if question_list.paginator.num_pages > 1 %}
-        <div class="d-flex justify-content-center mt-3">
-            <nav aria-label="게시글 페이지 네비게이션">
-                <ul class="pagination pagination-sm">
+    {% if user == profile_user %}
+    <!-- Tabs (자신의 프로필인 경우만) -->
+    <div class="profile-tabs">
+        <button class="profile-tab active" data-tab="activity">
+            <i class="fas fa-history"></i> 활동 내역
+        </button>
+        <button class="profile-tab" data-tab="edit">
+            <i class="fas fa-user-edit"></i> 개인정보 수정
+        </button>
+        <button class="profile-tab" data-tab="password">
+            <i class="fas fa-key"></i> 비밀번호 변경
+        </button>
+    </div>
+
+    <!-- Tab Content: Activity -->
+    <div class="profile-tab-content active" id="activity-tab">
+        <!-- 작성한 게시글 -->
+        <div class="profile-card">
+            <h2 class="profile-card-title">작성한 게시글</h2>
+            {% if question_list %}
+                {% for question in question_list %}
+                <div class="activity-item">
+                    <div class="activity-item-title">
+                        <a href="{% url 'community:detail' question.id %}">{{ question.subject }}</a>
+                    </div>
+                    <div class="activity-item-meta">
+                        <span><i class="fas fa-eye"></i> {{ question.view_count }}회</span>
+                        <span><i class="fas fa-calendar"></i> {{ question.create_date|date:"Y-m-d H:i" }}</span>
+                    </div>
+                </div>
+                {% endfor %}
+
+                <!-- Pagination -->
+                {% if question_list.paginator.num_pages > 1 %}
+                <div style="display: flex; justify-content: center; margin-top: var(--space-6); gap: var(--space-2);">
                     {% if question_list.has_previous %}
-                    <li class="page-item">
-                        <a class="page-link" href="?question_page=1">&laquo; 처음</a>
-                    </li>
-                    <li class="page-item">
-                        <a class="page-link" href="?question_page={{ question_list.previous_page_number }}">이전</a>
-                    </li>
+                    <a href="?question_page=1" class="btn-premium btn-premium-secondary" style="padding: var(--space-2) var(--space-4);">처음</a>
+                    <a href="?question_page={{ question_list.previous_page_number }}" class="btn-premium btn-premium-secondary" style="padding: var(--space-2) var(--space-4);">이전</a>
                     {% endif %}
-                    
-                    <li class="page-item active">
-                        <span class="page-link">
-                            {{ question_list.number }} / {{ question_list.paginator.num_pages }}
-                        </span>
-                    </li>
-                    
+
+                    <span class="btn-premium btn-premium-primary" style="padding: var(--space-2) var(--space-4);">
+                        {{ question_list.number }} / {{ question_list.paginator.num_pages }}
+                    </span>
+
                     {% if question_list.has_next %}
-                    <li class="page-item">
-                        <a class="page-link" href="?question_page={{ question_list.next_page_number }}">다음</a>
-                    </li>
-                    <li class="page-item">
-                        <a class="page-link" href="?question_page={{ question_list.paginator.num_pages }}">마지막 &raquo;</a>
-                    </li>
+                    <a href="?question_page={{ question_list.next_page_number }}" class="btn-premium btn-premium-secondary" style="padding: var(--space-2) var(--space-4);">다음</a>
+                    <a href="?question_page={{ question_list.paginator.num_pages }}" class="btn-premium btn-premium-secondary" style="padding: var(--space-2) var(--space-4);">마지막</a>
                     {% endif %}
-                </ul>
-            </nav>
+                </div>
+                {% endif %}
+            {% else %}
+                <div class="empty-state">
+                    <div class="empty-icon"><i class="fas fa-file-alt"></i></div>
+                    <p>작성한 게시글이 없습니다.</p>
+                </div>
+            {% endif %}
         </div>
-        {% endif %}
-        {% else %}
-        <p class="text-light">작성한 게시글이 없습니다.</p>
-        {% endif %}
+
+        <!-- 작성한 댓글 -->
+        <div class="profile-card">
+            <h2 class="profile-card-title">작성한 댓글</h2>
+            {% if comment_list %}
+                {% for comment in comment_list %}
+                <div class="activity-item">
+                    <div class="activity-item-title">
+                        <a href="{% url 'community:detail' comment.question.id %}#answer_{{ comment.id }}">{{ comment.content|truncatewords:10 }}</a>
+                    </div>
+                    <div class="activity-item-meta">
+                        <span><i class="fas fa-file"></i> <a href="{% url 'community:detail' comment.question.id %}">{{ comment.question.subject }}</a></span>
+                        <span><i class="fas fa-calendar"></i> {{ comment.create_date|date:"Y-m-d H:i" }}</span>
+                    </div>
+                </div>
+                {% endfor %}
+            {% else %}
+                <div class="empty-state">
+                    <div class="empty-icon"><i class="fas fa-comment"></i></div>
+                    <p>작성한 댓글이 없습니다.</p>
+                </div>
+            {% endif %}
+        </div>
     </div>
 
-    <!-- 작성한 댓글 (원래 답변 기능) -->
-    <div class="my-4">
-        <h6 class="border-bottom pb-2 text-light">작성한 댓글</h6>
-        {% if comment_list %}
-        <div class="profile-table">
-        <table class="table mb-0">
-            <thead>
-            <tr>
-                <th>내용</th>
-                <th>게시글</th>
-                <th>작성일시</th>
-            </tr>
-            </thead>
-            <tbody>
-            {% for comment in comment_list %}
-            <tr>
-                <td>
-                    <a href="{% url 'community:detail' comment.question.id %}#answer_{{ comment.id }}" class="text-decoration-none">{{ comment.content|truncatewords:10 }}</a>
-                </td>
-                <td>
-                    <a href="{% url 'community:detail' comment.question.id %}" class="text-decoration-none">{{ comment.question.subject }}</a>
-                </td>
-                <td>{{ comment.create_date }}</td>
-            </tr>
-            {% endfor %}
-            </tbody>
-        </table>
+    <!-- Tab Content: Edit Profile -->
+    <div class="profile-tab-content" id="edit-tab">
+        <div class="profile-card">
+            <h2 class="profile-card-title">개인정보 수정</h2>
+            <form method="post" action="{% url 'community:profile_update' %}" enctype="multipart/form-data">
+                {% csrf_token %}
+
+                <div class="form-group">
+                    <label class="form-label">이메일</label>
+                    <input type="email" name="email" value="{{ user.email }}" class="form-input" required>
+                    <small class="form-help">이메일 주소는 로그인에 사용됩니다.</small>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">닉네임</label>
+                    <input type="text" name="nickname" value="{{ user.profile.nickname }}" class="form-input" placeholder="닉네임을 입력하세요 (선택사항)">
+                    <small class="form-help">닉네임을 설정하지 않으면 사용자명이 표시됩니다.</small>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">프로필 이미지</label>
+                    {% if user.profile.profile_image %}
+                    <div style="margin-bottom: var(--space-4);">
+                        <img src="{{ user.profile.profile_image.url }}" alt="Current" style="width: 100px; height: 100px; border-radius: 50%; object-fit: cover;">
+                    </div>
+                    {% endif %}
+                    <input type="file" name="profile_image" accept="image/*" class="form-input">
+                    <small class="form-help">JPG, PNG, GIF 형식 (최대 5MB)</small>
+                </div>
+
+                <div style="display: flex; gap: var(--space-4); justify-content: flex-end;">
+                    <button type="button" class="btn-premium btn-premium-secondary" onclick="document.getElementById('activity-tab').querySelector('button').click();">취소</button>
+                    <button type="submit" class="btn-premium btn-premium-primary">저장</button>
+                </div>
+            </form>
         </div>
+    </div>
+
+    <!-- Tab Content: Change Password -->
+    <div class="profile-tab-content" id="password-tab">
+        <div class="profile-card">
+            <h2 class="profile-card-title">비밀번호 변경</h2>
+            <form method="post" action="{% url 'community:password_change' %}">
+                {% csrf_token %}
+
+                <div class="form-group">
+                    <label class="form-label">현재 비밀번호</label>
+                    <input type="password" name="old_password" class="form-input" required>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">새 비밀번호</label>
+                    <input type="password" name="new_password1" class="form-input" required>
+                    <small class="form-help">최소 8자 이상, 문자와 숫자를 포함해야 합니다.</small>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">새 비밀번호 확인</label>
+                    <input type="password" name="new_password2" class="form-input" required>
+                </div>
+
+                <div style="display: flex; gap: var(--space-4); justify-content: flex-end;">
+                    <button type="button" class="btn-premium btn-premium-secondary" onclick="document.querySelector('[data-tab=activity]').click();">취소</button>
+                    <button type="submit" class="btn-premium btn-premium-primary">변경</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    {% else %}
+    <!-- 다른 사용자의 프로필을 볼 때 -->
+    <div class="profile-card">
+        <h2 class="profile-card-title">작성한 게시글</h2>
+        {% if question_list %}
+            {% for question in question_list %}
+            <div class="activity-item">
+                <div class="activity-item-title">
+                    <a href="{% url 'community:detail' question.id %}">{{ question.subject }}</a>
+                </div>
+                <div class="activity-item-meta">
+                    <span><i class="fas fa-eye"></i> {{ question.view_count }}회</span>
+                    <span><i class="fas fa-calendar"></i> {{ question.create_date|date:"Y-m-d H:i" }}</span>
+                </div>
+            </div>
+            {% endfor %}
         {% else %}
-        <p class="text-light">작성한 댓글이 없습니다.</p>
+            <div class="empty-state">
+                <div class="empty-icon"><i class="fas fa-file-alt"></i></div>
+                <p>작성한 게시글이 없습니다.</p>
+            </div>
         {% endif %}
     </div>
+    {% endif %}
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Tab switching
+    const tabs = document.querySelectorAll('.profile-tab');
+    const tabContents = document.querySelectorAll('.profile-tab-content');
+
+    tabs.forEach(tab => {
+        tab.addEventListener('click', function() {
+            const tabName = this.dataset.tab;
+
+            // Remove active class from all tabs and contents
+            tabs.forEach(t => t.classList.remove('active'));
+            tabContents.forEach(tc => tc.classList.remove('active'));
+
+            // Add active class to clicked tab and corresponding content
+            this.classList.add('active');
+            document.getElementById(tabName + '-tab').classList.add('active');
+        });
+    });
+});
+</script>
 {% endblock %}

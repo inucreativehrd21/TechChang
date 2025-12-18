@@ -6,7 +6,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('pybo', '0023_alter_comment_options_game2048_difficulty_and_more'),
+        ('community', '0023_alter_comment_options_game2048_difficulty_and_more'),
     ]
 
     operations = [

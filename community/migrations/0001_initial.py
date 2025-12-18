@@ -27,7 +27,7 @@ class Migration(migrations.Migration):
                 ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
                 ('content', models.TextField()),
                 ('create_date', models.DateTimeField()),
-                ('question', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='pybo.question')),
+                ('question', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='community.question')),
             ],
         ),
     ]

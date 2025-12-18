@@ -6,7 +6,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('pybo', '0014_wordchaingame_wordchainchatmessage_wordchainentry'),
+        ('community', '0014_wordchaingame_wordchainchatmessage_wordchainentry'),
     ]
 
     operations = [

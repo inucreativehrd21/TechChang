@@ -5,414 +5,831 @@
 
 {% block title %}{{ question.subject }} - 테크창{% endblock %}
 
+{% block extra_css %}
+<style>
+/* Premium Detail Page Styles */
+.detail-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: var(--space-12) var(--space-8);
+}
+
+/* Question Card */
+.question-card {
+    background: white;
+    border-radius: var(--radius-2xl);
+    box-shadow: var(--shadow-xl);
+    margin-bottom: var(--space-8);
+    overflow: hidden;
+    animation: fadeInUp 0.6s ease;
+}
+
+.question-header {
+    padding: var(--space-8);
+    background: linear-gradient(135deg, rgba(102, 126, 234, 0.05) 0%, rgba(118, 75, 162, 0.05) 100%);
+    border-bottom: 2px solid var(--border-light);
+}
+
+.question-title {
+    font-size: clamp(1.5rem, 4vw, 2rem);
+    font-weight: 800;
+    color: var(--text-primary);
+    margin-bottom: var(--space-4);
+    line-height: 1.3;
+}
+
+.question-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-4);
+    align-items: center;
+    font-size: 0.9375rem;
+    color: var(--text-secondary);
+}
+
+.meta-item {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+}
+
+.question-body {
+    padding: var(--space-8);
+}
+
+.question-content {
+    font-size: 1.0625rem;
+    line-height: 1.8;
+    color: var(--text-primary);
+    margin-bottom: var(--space-6);
+}
+
+.question-content img {
+    max-width: 100%;
+    border-radius: var(--radius-lg);
+    margin: var(--space-4) 0;
+}
+
+/* Media Attachments */
+.attachment-box {
+    background: var(--bg-secondary);
+    border: 2px solid var(--border-light);
+    border-radius: var(--radius-lg);
+    padding: var(--space-4);
+    margin: var(--space-6) 0;
+    display: flex;
+    align-items: center;
+    gap: var(--space-4);
+}
+
+.attachment-icon {
+    font-size: 2rem;
+    color: var(--accent-blue);
+}
+
+/* Author Info */
+.author-section {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: var(--space-6);
+    background: var(--bg-secondary);
+    border-radius: var(--radius-lg);
+    margin-top: var(--space-6);
+}
+
+.author-info {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+}
+
+.author-avatar {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    object-fit: cover;
+}
+
+.author-avatar-placeholder {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: var(--gradient-blue);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: 700;
+    font-size: 1.25rem;
+}
+
+.author-details {
+    display: flex;
+    flex-direction: column;
+}
+
+.author-name {
+    font-weight: 700;
+    font-size: 1rem;
+    color: var(--text-primary);
+    text-decoration: none;
+}
+
+.author-date {
+    font-size: 0.875rem;
+    color: var(--text-tertiary);
+}
+
+/* Action Buttons */
+.action-buttons {
+    display: flex;
+    gap: var(--space-2);
+}
+
+/* Vote Button */
+.vote-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding: var(--space-3) var(--space-5);
+    border: 2px solid var(--border-light);
+    border-radius: var(--radius-lg);
+    background: white;
+    color: var(--text-secondary);
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.vote-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+}
+
+.vote-btn.voted {
+    background: var(--gradient-blue);
+    color: white;
+    border-color: transparent;
+    box-shadow: var(--shadow-blue);
+}
+
+/* Comments Section */
+.comments-section {
+    background: white;
+    border-radius: var(--radius-2xl);
+    padding: var(--space-8);
+    box-shadow: var(--shadow-lg);
+    margin-bottom: var(--space-8);
+    animation: fadeInUp 0.6s ease 0.1s both;
+}
+
+.section-title {
+    font-size: 1.5rem;
+    font-weight: 800;
+    margin-bottom: var(--space-6);
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+}
+
+.comment-item {
+    padding: var(--space-4);
+    background: var(--bg-secondary);
+    border-radius: var(--radius-lg);
+    margin-bottom: var(--space-3);
+    transition: all 0.3s ease;
+}
+
+.comment-item:hover {
+    background: rgba(59, 130, 246, 0.05);
+    transform: translateX(4px);
+}
+
+.comment-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--space-2);
+}
+
+.comment-author {
+    font-weight: 700;
+    color: var(--accent-blue);
+}
+
+.comment-date {
+    font-size: 0.8125rem;
+    color: var(--text-tertiary);
+}
+
+.comment-content {
+    color: var(--text-primary);
+    line-height: 1.6;
+}
+
+/* Answers Section */
+.answers-section {
+    background: white;
+    border-radius: var(--radius-2xl);
+    padding: var(--space-8);
+    box-shadow: var(--shadow-lg);
+    margin-bottom: var(--space-8);
+    animation: fadeInUp 0.6s ease 0.2s both;
+}
+
+.answers-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--space-8);
+    padding-bottom: var(--space-6);
+    border-bottom: 2px solid var(--border-light);
+}
+
+.sort-buttons {
+    display: flex;
+    gap: var(--space-2);
+}
+
+.sort-btn {
+    padding: var(--space-2) var(--space-4);
+    border: 2px solid var(--border-light);
+    border-radius: var(--radius-md);
+    background: white;
+    color: var(--text-secondary);
+    font-weight: 600;
+    font-size: 0.875rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-decoration: none;
+}
+
+.sort-btn:hover {
+    border-color: var(--accent-blue);
+    color: var(--accent-blue);
+}
+
+.sort-btn.active {
+    background: var(--gradient-blue);
+    color: white;
+    border-color: transparent;
+}
+
+.answer-card {
+    padding: var(--space-6);
+    background: var(--bg-secondary);
+    border-radius: var(--radius-xl);
+    margin-bottom: var(--space-6);
+    border: 2px solid var(--border-light);
+    transition: all 0.3s ease;
+}
+
+.answer-card:hover {
+    border-color: var(--accent-blue);
+    box-shadow: var(--shadow-md);
+}
+
+.empty-state {
+    text-align: center;
+    padding: var(--space-16);
+    color: var(--text-tertiary);
+}
+
+.empty-icon {
+    font-size: 4rem;
+    margin-bottom: var(--space-4);
+    color: var(--text-muted);
+}
+
+/* Answer Form */
+.answer-form-section {
+    background: white;
+    border-radius: var(--radius-2xl);
+    padding: var(--space-8);
+    box-shadow: var(--shadow-lg);
+    animation: fadeInUp 0.6s ease 0.3s both;
+}
+
+.form-control-detail {
+    width: 100%;
+    padding: var(--space-4);
+    border: 2px solid var(--border-light);
+    border-radius: var(--radius-lg);
+    font-size: 1rem;
+    font-family: var(--font-sans);
+    line-height: 1.6;
+    transition: all 0.3s ease;
+    min-height: 200px;
+    resize: vertical;
+}
+
+.form-control-detail:focus {
+    outline: none;
+    border-color: var(--accent-blue);
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.form-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: var(--space-4);
+}
+
+.form-hint-text {
+    font-size: 0.875rem;
+    color: var(--text-tertiary);
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+}
+
+/* Badge */
+.category-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.375rem 0.75rem;
+    border-radius: var(--radius-sm);
+    font-size: 0.8125rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.025em;
+}
+
+.badge-hrd {
+    background: rgba(59, 130, 246, 0.1);
+    color: var(--game-baseball);
+}
+
+.badge-data {
+    background: rgba(249, 115, 22, 0.1);
+    color: var(--game-2048);
+}
+
+.badge-programming {
+    background: rgba(16, 185, 129, 0.1);
+    color: var(--game-tictactoe);
+}
+
+.badge-free {
+    background: rgba(139, 92, 246, 0.1);
+    color: var(--game-wordchain);
+}
+
+.badge-notice {
+    background: rgba(239, 68, 68, 0.1);
+    color: var(--game-minesweeper);
+}
+
+/* Animations */
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .detail-container {
+        padding: var(--space-8) var(--space-4);
+    }
+
+    .question-header,
+    .question-body {
+        padding: var(--space-6);
+    }
+
+    .author-section {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: var(--space-4);
+    }
+
+    .action-buttons {
+        width: 100%;
+        justify-content: flex-end;
+    }
+
+    .answers-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: var(--space-4);
+    }
+}
+</style>
+{% endblock %}
+
 {% block content %}
-<!-- 메시지 표시 -->
-{% if messages %}
-  {% for message in messages %}
-    <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
-      {{ message }}
-      <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-    </div>
-  {% endfor %}
-{% endif %}
-
-<!-- 질문 상세 카드 -->
-<div class="card shadow-sm mb-4">
-  <div class="card-header d-flex justify-content-between align-items-center" id="questionHeader">
-    <div class="d-flex align-items-center">
-      <span class="badge bg-primary me-2">{{ question.category.name }}</span>
-      <h1 class="h4 mb-0">{{ question.subject }}</h1>
-    </div>
-    <div class="text-muted small d-flex align-items-center">
-        조회 {{ question.view_count }}회
-        {% if user.is_authenticated %}
-            <form method="post"
-                    action="{% url 'community:question_vote' question.id %}"
-                    class="d-inline ms-3">
-                {% csrf_token %}
-                <button type="submit"
-                    class="btn btn-sm btn-outline-{% if user in question.voter.all %}success{% else %}secondary{% endif %}">
-                    <i class="fas fa-thumbs-up"></i> {{ question.voter.count }}
-                </button>
-            </form>
-        {% else %}
-            <span class="ms-3"><i class="fas fa-thumbs-up"></i> {{ question.voter.count }}</span>
-        {% endif %}
-    </div>
-</div>
-
-  
-  <div class="card-body">
-    <!-- 질문 내용 -->
-    <div class="question-content mb-3">
-      {{ question.content|mark }}
-    </div>
-    
-    <!-- 질문 이미지 -->
-    {% if question.image %}
-      <div class="mb-3">
-        <img src="{{ question.image.url }}" alt="질문 이미지" class="img-fluid rounded" style="max-height: 400px;">
-      </div>
-    {% endif %}
-
-    <!-- 첨부 파일 다운로드 -->
-    {% if question.file %}
-      <div class="mb-3">
-        <div class="alert alert-info d-flex align-items-center" role="alert">
-          <i class="fas fa-paperclip me-2"></i>
-          <span class="me-auto">첨부 파일: <strong>{{ question.filename }}</strong></span>
-          <a href="{% url 'community:download_file' question.id %}" class="btn btn-sm btn-primary">
-            <i class="fas fa-download me-1"></i>다운로드
-          </a>
-        </div>
-      </div>
-    {% endif %}
-
-    <!-- 질문 작성자 정보 -->
-    <div class="d-flex justify-content-between align-items-center">
-      <div class="d-flex align-items-center">
-        {% if question.author.profile.profile_image %}
-          <img src="{{ question.author.profile.profile_image.url }}" alt="프로필" 
-               class="rounded-circle me-2" style="width: 32px; height: 32px; object-fit: cover;">
-        {% else %}
-          <div class="bg-secondary rounded-circle d-flex align-items-center justify-content-center me-2 text-white"
-               style="width: 32px; height: 32px; font-size: 0.9rem;">
-            {{ question.author.username|slice:":1"|upper }}
-          </div>
-        {% endif %}
-        <div>
-          <a href="#" class="text-decoration-none">{{ question.author|display_name }}</a>
-          <div class="small text-muted">
-            {{ question.create_date|date:"Y-m-d H:i" }}
-            {% if question.modify_date %}
-              · 수정됨: {{ question.modify_date|date:"Y-m-d H:i" }}
-            {% endif %}
-          </div>
-        </div>
-      </div>
-      
-      <!-- 질문 액션 버튼 -->
-      {% if user.is_authenticated %}
-        <div class="btn-group" role="group">
-          {% if request.user == question.author %}
-            <a href="{% url 'community:question_modify' question.id %}" class="btn btn-sm btn-outline-secondary">수정</a>
-            <a href="{% url 'community:question_delete' question.id %}" class="btn btn-sm btn-outline-danger">삭제</a>
-          {% endif %}
-        </div>
-      {% endif %}
-    </div>
-  </div>
-</div>
-
-<!-- 질문 댓글 (커뮤니티 스타일) -->
-{% if question.comment_set.count > 0 %}
-  <div class="card mb-4" style="background-color: #fafafa;">
-    <div class="card-body">
-      <h6 class="mb-3 text-secondary">
-        <i class="fas fa-comments me-2"></i>질문에 대한 댓글 {{ question.comment_set.count }}개
-      </h6>
-      <div class="comments-list">
-        {% for comment in question.comment_set.all %}
-          <div class="comment-row py-3 {% if not forloop.last %}border-bottom{% endif %}" style="background: white; margin-bottom: 1px;">
-            <div class="d-flex">
-              <!-- 작성자 정보 -->
-              <div class="comment-author me-3" style="min-width: 120px;">
-                <div class="fw-bold text-primary small">
-                  {% if comment.author.profile.nickname %}
-                    {{ comment.author.profile.nickname }}
-                  {% else %}
-                    {{ comment.author.username }}
-                  {% endif %}
-                  <span class="badge {{ comment.author.profile.rank_badge_class }} ms-1" style="font-size: 0.65rem;">
-                    {{ comment.author.profile.rank_display }}
-                  </span>
-                </div>
-                <div class="text-muted" style="font-size: 0.75rem;">
-                  {{ comment.create_date|date:"Y.m.d H:i" }}
-                </div>
-              </div>
-
-              <!-- 댓글 내용 -->
-              <div class="comment-content flex-grow-1">
-                <div class="comment-text mb-1">
-                  {{ comment.content|linebreaksbr }}
-                </div>
-                {% if comment.modify_date %}
-                  <small class="text-warning">(수정됨)</small>
+<div class="detail-container">
+    <!-- Question Card -->
+    <article class="question-card">
+        <header class="question-header">
+            <div style="display: flex; align-items: center; gap: var(--space-3); margin-bottom: var(--space-4);">
+                {% if question.category %}
+                <span class="category-badge badge-{{ question.category.name|lower|cut:' ' }}">
+                    {{ question.category.name }}
+                </span>
                 {% endif %}
-              </div>
-
-              <!-- 액션 버튼 -->
-              {% if request.user == comment.author %}
-                <div class="comment-actions ms-2">
-                  <a href="{% url 'community:comment_modify_question' comment.id %}"
-                     class="btn btn-sm btn-outline-secondary me-1"
-                     style="font-size: 0.75rem;">수정</a>
-                  <a href="{% url 'community:comment_delete_question' comment.id %}"
-                     class="btn btn-sm btn-outline-danger"
-                     style="font-size: 0.75rem;">삭제</a>
-                </div>
-              {% endif %}
             </div>
-          </div>
-        {% endfor %}
-      </div>
-    </div>
-  </div>
-{% endif %}
 
-<!-- 답변 목록 -->
-<div class="answers-section">
-  <div class="d-flex justify-content-between align-items-center mb-3">
-    <h5 class="mb-0">
-      <i class="fas fa-comments text-primary me-2"></i>
-      댓글 {{ question.answer_set.count }}개
-    </h5>
-    <div class="btn-group" role="group">
-      <a href="?sort=recent" class="btn btn-outline-primary btn-sm {% if sort == 'recent' or not sort %}active{% endif %}">
-        최신순
-      </a>
-      <a href="?sort=recommend" class="btn btn-outline-primary btn-sm {% if sort == 'recommend' %}active{% endif %}">
-        추천순
-      </a>
-    </div>
-  </div>
+            <h1 class="question-title">{{ question.subject }}</h1>
 
-  {% if question.answer_set.count > 0 %}
-    {% for answer in answer_list %}
-      <div class="card mb-3">
-        <div class="card-body">
-          <!-- 답변 내용 -->
-          <div class="answer-content mb-3">
-            {{ answer.content|mark }}
-          </div>
-          
-          <!-- 답변 이미지 -->
-          {% if answer.image %}
-            <div class="mb-3">
-              <img src="{{ answer.image.url }}" alt="답변 이미지" class="img-fluid rounded" style="max-height: 300px;">
-            </div>
-          {% endif %}
-          
-          <!-- 답변 작성자 정보 -->
-          <div class="d-flex justify-content-between align-items-center">
-            <div class="d-flex align-items-center">
-                {% if answer.author.profile.profile_image %}
-                <img src="{{ answer.author.profile.profile_image.url }}" alt="프로필"
-                    class="rounded-circle me-2" style="width: 32px; height: 32px; object-fit: cover;">
-                {% else %}
-                <div class="bg-secondary rounded-circle d-flex align-items-center justify-content-center me-2 text-white"
-                    style="width: 32px; height: 32px; font-size: 0.9rem;">
-                    {{ answer.author.username|slice:":1"|upper }}
+            <div class="question-meta">
+                <div class="meta-item">
+                    <i class="fas fa-eye"></i>
+                    <span>조회 {{ question.view_count }}회</span>
                 </div>
-                {% endif %}
-                <div>
-                <a href="#" class="text-decoration-none">{{ answer.author|display_name }}</a>
-                <div class="small text-muted">
-                    {{ answer.create_date|date:"Y-m-d H:i" }}
-                    {% if answer.modify_date %}
-                    · 수정됨: {{ answer.modify_date|date:"Y-m-d H:i" }}
+                <div class="meta-item">
+                    <i class="fas fa-comment"></i>
+                    <span>답변 {{ question.answer_set.count }}개</span>
+                </div>
+                <div class="meta-item">
+                    {% if user.is_authenticated %}
+                    <form method="post" action="{% url 'community:question_vote' question.id %}" style="margin: 0;">
+                        {% csrf_token %}
+                        <button type="submit" class="vote-btn {% if user in question.voter.all %}voted{% endif %}">
+                            <i class="fas fa-thumbs-up"></i>
+                            <span>{{ question.voter.count }}</span>
+                        </button>
+                    </form>
+                    {% else %}
+                    <div class="vote-btn">
+                        <i class="fas fa-thumbs-up"></i>
+                        <span>{{ question.voter.count }}</span>
+                    </div>
                     {% endif %}
                 </div>
+            </div>
+        </header>
+
+        <div class="question-body">
+            <!-- Content -->
+            <div class="question-content">
+                {{ question.content|mark }}
+            </div>
+
+            <!-- Image Attachment -->
+            {% if question.image %}
+            <div class="attachment-box">
+                <div class="attachment-icon">
+                    <i class="fas fa-image"></i>
+                </div>
+                <div style="flex: 1;">
+                    <img src="{{ question.image.url }}" alt="첨부 이미지"
+                         style="max-width: 100%; border-radius: var(--radius-lg); box-shadow: var(--shadow-md);">
                 </div>
             </div>
-            
-            <!-- 추천 버튼 -->
-            {% if user.is_authenticated %}
-                <form method="post"
-                    action="{% url 'community:answer_vote' answer.id %}"
-                    class="d-inline me-2">
-                {% csrf_token %}
-                <button type="submit"
-                        class="btn btn-sm btn-outline-{% if user in answer.voter.all %}success{% else %}secondary{% endif %}">
-                    <i class="fas fa-thumbs-up"></i> {{ answer.voter.count }}
-                </button>
-                </form>
-            {% else %}
-                <span class="me-2"><i class="fas fa-thumbs-up"></i> {{ answer.voter.count }}</span>
             {% endif %}
 
-            <!-- 답변 액션 버튼 -->
-            {% if user.is_authenticated and request.user == answer.author %}
-                <div class="btn-group" role="group">
-                    <a href="{% url 'community:answer_modify' answer.id %}" class="btn btn-sm btn-outline-secondary">수정</a>
-                    <a href="{% url 'community:answer_delete' answer.id %}" class="btn btn-sm btn-outline-danger">삭제</a>
+            <!-- File Attachment -->
+            {% if question.file %}
+            <div class="attachment-box">
+                <div class="attachment-icon">
+                    <i class="fas fa-file-download"></i>
                 </div>
+                <div style="flex: 1;">
+                    <div style="font-weight: 700; margin-bottom: var(--space-1);">첨부 파일</div>
+                    <div style="color: var(--text-tertiary); font-size: 0.875rem;">{{ question.filename }}</div>
+                </div>
+                <a href="{% url 'community:download_file' question.id %}" class="btn-premium btn-premium-primary">
+                    <i class="fas fa-download"></i> 다운로드
+                </a>
+            </div>
             {% endif %}
-          </div>
 
-          <!-- 이 답변에 대한 댓글 표시 (커뮤니티 스타일) -->
-          {% if answer.comment_set.count > 0 %}
-            <div class="answer-comments mt-4 pt-3 border-top" style="background-color: #fafafa;">
-              <div class="px-3 py-2">
-                <h6 class="mb-3 text-secondary">
-                  <i class="fas fa-comments me-2"></i>댓글 {{ answer.comment_set.count }}개
-                </h6>
-                <div class="comments-list">
-                  {% for comment in answer.comment_set.all %}
-                    <div class="comment-row py-3 {% if not forloop.last %}border-bottom{% endif %}" style="background: white; margin-bottom: 1px;">
-                      <div class="d-flex">
-                        <!-- 작성자 정보 -->
-                        <div class="comment-author me-3" style="min-width: 120px;">
-                          <div class="fw-bold text-primary small">
-                            {% if comment.author.profile.nickname %}
-                              {{ comment.author.profile.nickname }}
-                            {% else %}
-                              {{ comment.author.username }}
-                            {% endif %}
-                            <span class="badge {{ comment.author.profile.rank_badge_class }} ms-1" style="font-size: 0.65rem;">
-                              {{ comment.author.profile.rank_display }}
-                            </span>
-                          </div>
-                          <div class="text-muted" style="font-size: 0.75rem;">
-                            {{ comment.create_date|date:"Y.m.d H:i" }}
-                          </div>
-                        </div>
-
-                        <!-- 댓글 내용 -->
-                        <div class="comment-content flex-grow-1">
-                          <div class="comment-text mb-1">
-                            {{ comment.content|linebreaksbr }}
-                          </div>
-                          {% if comment.modify_date %}
-                            <small class="text-warning">(수정됨)</small>
-                          {% endif %}
-                        </div>
-
-                        <!-- 액션 버튼 -->
-                        {% if request.user == comment.author %}
-                          <div class="comment-actions ms-2">
-                            <a href="{% url 'community:comment_modify_answer' comment.id %}"
-                               class="btn btn-sm btn-outline-secondary me-1"
-                               style="font-size: 0.75rem;">수정</a>
-                            <a href="{% url 'community:comment_delete_answer' comment.id %}"
-                               class="btn btn-sm btn-outline-danger"
-                               style="font-size: 0.75rem;">삭제</a>
-                          </div>
-                        {% endif %}
-                      </div>
+            <!-- Author Section -->
+            <div class="author-section">
+                <div class="author-info">
+                    {% if question.author.profile.profile_image %}
+                    <img src="{{ question.author.profile.profile_image.url }}" alt="프로필" class="author-avatar">
+                    {% else %}
+                    <div class="author-avatar-placeholder">
+                        {{ question.author.username|slice:":1"|upper }}
                     </div>
-                  {% endfor %}
+                    {% endif %}
+                    <div class="author-details">
+                        <a href="{% url 'community:profile' question.author.id %}" class="author-name">
+                            {{ question.author|display_name }}
+                        </a>
+                        <div class="author-date">
+                            {{ question.create_date|date:"Y년 m월 d일 H:i" }}
+                            {% if question.modify_date %}
+                            <span style="color: #f97316;">· 수정됨</span>
+                            {% endif %}
+                        </div>
+                    </div>
                 </div>
-              </div>
-            </div>
-          {% endif %}
-        </div>
-      </div>
-    {% endfor %}
-  {% else %}
-    <div class="text-center py-5 text-muted">
-      <h6>아직 답변이 없습니다</h6>
-      <p>첫 번째 답변을 작성해보세요!</p>
-    </div>
-  {% endif %}
-</div>
 
-<!-- 답변 작성 폼 -->
-{% if user.is_authenticated %}
-  <div class="card mt-4">
-    <div class="card-header">
-      <h5 class="mb-0">
-        <i class="fas fa-edit text-primary me-2"></i>
-        댓글 작성
-      </h5>
-    </div>
-    <div class="card-body">
-      <form method="post" action="{% url 'community:answer_create' question.id %}" enctype="multipart/form-data">
-        {% csrf_token %}
-        {% include "form_errors.html" %}
-        
-        <div class="mb-3">
-          <label for="{{ form.content.id_for_label }}" class="form-label">댓글 내용</label>
-          <textarea name="content" id="{{ form.content.id_for_label }}" class="form-control"
-                    rows="6" placeholder="댓글을 작성하세요. 마크다운 문법을 사용할 수 있습니다."
-                    required>{{ form.content.value|default_if_none:"" }}</textarea>
+                {% if user.is_authenticated and request.user == question.author %}
+                <div class="action-buttons">
+                    <a href="{% url 'community:question_modify' question.id %}" class="btn-premium btn-premium-secondary">
+                        <i class="fas fa-edit"></i> 수정
+                    </a>
+                    <a href="{% url 'community:question_delete' question.id %}" class="btn-premium btn-premium-secondary"
+                       onclick="return confirm('정말 삭제하시겠습니까?');">
+                        <i class="fas fa-trash"></i> 삭제
+                    </a>
+                </div>
+                {% endif %}
+            </div>
         </div>
-        
-        <div class="mb-3">
-          <label for="{{ form.image.id_for_label }}" class="form-label">이미지 첨부 (선택사항)</label>
-          <input type="file" name="image" id="{{ form.image.id_for_label }}" class="form-control" 
-                 accept="image/*">
-          <div class="form-text">JPG, PNG, GIF 파일만 업로드 가능합니다. (최대 10MB)</div>
+    </article>
+
+    <!-- Question Comments -->
+    {% if question.comment_set.count > 0 %}
+    <section class="comments-section">
+        <h2 class="section-title">
+            <i class="fas fa-comment-dots"></i>
+            질문에 대한 댓글 ({{ question.comment_set.count }})
+        </h2>
+
+        {% for comment in question.comment_set.all %}
+        <div class="comment-item">
+            <div class="comment-header">
+                <div style="display: flex; align-items: center; gap: var(--space-3);">
+                    <span class="comment-author">{{ comment.author|display_name }}</span>
+                    {% if comment.modify_date %}
+                    <span style="font-size: 0.75rem; color: #f97316;">수정됨</span>
+                    {% endif %}
+                </div>
+                <div style="display: flex; align-items: center; gap: var(--space-2);">
+                    <span class="comment-date">{{ comment.create_date|date:"Y.m.d H:i" }}</span>
+                    {% if request.user == comment.author %}
+                    <a href="{% url 'community:comment_modify_question' comment.id %}"
+                       style="color: var(--accent-blue); font-size: 0.875rem; text-decoration: none;">
+                        수정
+                    </a>
+                    <a href="{% url 'community:comment_delete_question' comment.id %}"
+                       style="color: #ef4444; font-size: 0.875rem; text-decoration: none;"
+                       onclick="return confirm('삭제하시겠습니까?');">
+                        삭제
+                    </a>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="comment-content">{{ comment.content|linebreaksbr }}</div>
         </div>
-        
-        <div class="d-flex justify-content-between align-items-center">
-          <div class="text-muted">
-            <i class="fas fa-user me-1"></i>
-            {{ user|display_name }}님으로 댓글 작성
-          </div>
-          <button type="submit" class="btn btn-primary">
-            <i class="fas fa-paper-plane me-1"></i>
-            댓글 등록
-          </button>
+        {% endfor %}
+    </section>
+    {% endif %}
+
+    <!-- Answers Section -->
+    <section class="answers-section">
+        <div class="answers-header">
+            <h2 class="section-title" style="margin: 0;">
+                <i class="fas fa-comments"></i>
+                답변 ({{ question.answer_set.count }})
+            </h2>
+
+            <div class="sort-buttons">
+                <a href="?sort=recent" class="sort-btn {% if sort == 'recent' or not sort %}active{% endif %}">
+                    <i class="fas fa-clock"></i> 최신순
+                </a>
+                <a href="?sort=recommend" class="sort-btn {% if sort == 'recommend' %}active{% endif %}">
+                    <i class="fas fa-fire"></i> 추천순
+                </a>
+            </div>
         </div>
-      </form>
-    </div>
-  </div>
-{% else %}
-  <div class="card mt-4 bg-light">
-    <div class="card-body text-center">
-      <h6>댓글을 작성하려면 로그인이 필요합니다</h6>
-      <a href="{% url 'common:login' %}" class="btn btn-primary">로그인</a>
-    </div>
-  </div>
-{% endif %}
+
+        {% if question.answer_set.count > 0 %}
+            {% for answer in answer_list %}
+            <article class="answer-card">
+                <!-- Answer Content -->
+                <div class="question-content">
+                    {{ answer.content|mark }}
+                </div>
+
+                <!-- Answer Image -->
+                {% if answer.image %}
+                <div style="margin: var(--space-4) 0;">
+                    <img src="{{ answer.image.url }}" alt="답변 이미지"
+                         style="max-width: 100%; border-radius: var(--radius-lg); box-shadow: var(--shadow-md);">
+                </div>
+                {% endif %}
+
+                <!-- Answer Author -->
+                <div class="author-section">
+                    <div class="author-info">
+                        {% if answer.author.profile.profile_image %}
+                        <img src="{{ answer.author.profile.profile_image.url }}" alt="프로필" class="author-avatar">
+                        {% else %}
+                        <div class="author-avatar-placeholder">
+                            {{ answer.author.username|slice:":1"|upper }}
+                        </div>
+                        {% endif %}
+                        <div class="author-details">
+                            <a href="{% url 'community:profile' answer.author.id %}" class="author-name">
+                                {{ answer.author|display_name }}
+                            </a>
+                            <div class="author-date">
+                                {{ answer.create_date|date:"Y년 m월 d일 H:i" }}
+                                {% if answer.modify_date %}
+                                <span style="color: #f97316;">· 수정됨</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="action-buttons">
+                        {% if user.is_authenticated %}
+                        <form method="post" action="{% url 'community:answer_vote' answer.id %}" style="margin: 0;">
+                            {% csrf_token %}
+                            <button type="submit" class="vote-btn {% if user in answer.voter.all %}voted{% endif %}">
+                                <i class="fas fa-thumbs-up"></i>
+                                <span>{{ answer.voter.count }}</span>
+                            </button>
+                        </form>
+                        {% endif %}
+
+                        {% if request.user == answer.author %}
+                        <a href="{% url 'community:answer_modify' answer.id %}" class="btn-premium btn-premium-secondary">
+                            <i class="fas fa-edit"></i> 수정
+                        </a>
+                        <a href="{% url 'community:answer_delete' answer.id %}" class="btn-premium btn-premium-secondary"
+                           onclick="return confirm('삭제하시겠습니까?');">
+                            <i class="fas fa-trash"></i> 삭제
+                        </a>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Answer Comments -->
+                {% if answer.comment_set.count > 0 %}
+                <div style="margin-top: var(--space-6); padding-top: var(--space-6); border-top: 2px solid var(--border-light);">
+                    <h3 style="font-size: 1rem; font-weight: 700; margin-bottom: var(--space-4); color: var(--text-secondary);">
+                        <i class="fas fa-comment-dots"></i> 답변에 대한 댓글 ({{ answer.comment_set.count }})
+                    </h3>
+
+                    {% for comment in answer.comment_set.all %}
+                    <div class="comment-item">
+                        <div class="comment-header">
+                            <div style="display: flex; align-items: center; gap: var(--space-3);">
+                                <span class="comment-author">{{ comment.author|display_name }}</span>
+                                {% if comment.modify_date %}
+                                <span style="font-size: 0.75rem; color: #f97316;">수정됨</span>
+                                {% endif %}
+                            </div>
+                            <div style="display: flex; align-items: center; gap: var(--space-2);">
+                                <span class="comment-date">{{ comment.create_date|date:"Y.m.d H:i" }}</span>
+                                {% if request.user == comment.author %}
+                                <a href="{% url 'community:comment_modify_answer' comment.id %}"
+                                   style="color: var(--accent-blue); font-size: 0.875rem; text-decoration: none;">
+                                    수정
+                                </a>
+                                <a href="{% url 'community:comment_delete_answer' comment.id %}"
+                                   style="color: #ef4444; font-size: 0.875rem; text-decoration: none;"
+                                   onclick="return confirm('삭제하시겠습니까?');">
+                                    삭제
+                                </a>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="comment-content">{{ comment.content|linebreaksbr }}</div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+            </article>
+            {% endfor %}
+        {% else %}
+        <div class="empty-state">
+            <div class="empty-icon">
+                <i class="fas fa-comment-slash"></i>
+            </div>
+            <h3 style="font-size: 1.5rem; font-weight: 700; margin-bottom: var(--space-2);">
+                아직 답변이 없습니다
+            </h3>
+            <p style="color: var(--text-secondary);">첫 번째 답변을 작성해보세요!</p>
+        </div>
+        {% endif %}
+    </section>
+
+    <!-- Answer Form -->
+    {% if user.is_authenticated %}
+    <section class="answer-form-section">
+        <h2 class="section-title">
+            <i class="fas fa-pen"></i>
+            답변 작성
+        </h2>
+
+        <form method="post" action="{% url 'community:answer_create' question.id %}" enctype="multipart/form-data">
+            {% csrf_token %}
+            {% include "form_errors.html" %}
+
+            <div style="margin-bottom: var(--space-6);">
+                <label for="{{ form.content.id_for_label }}"
+                       style="font-weight: 700; margin-bottom: var(--space-3); display: block; color: var(--text-primary);">
+                    답변 내용
+                </label>
+                <textarea name="content"
+                          id="{{ form.content.id_for_label }}"
+                          class="form-control-detail"
+                          placeholder="답변을 작성하세요. 마크다운 문법을 사용할 수 있습니다."
+                          required>{{ form.content.value|default_if_none:"" }}</textarea>
+            </div>
+
+            <div style="margin-bottom: var(--space-6);">
+                <label for="{{ form.image.id_for_label }}"
+                       style="font-weight: 700; margin-bottom: var(--space-3); display: block; color: var(--text-primary);">
+                    이미지 첨부 (선택사항)
+                </label>
+                <input type="file"
+                       name="image"
+                       id="{{ form.image.id_for_label }}"
+                       accept="image/*"
+                       style="width: 100%; padding: var(--space-4); border: 2px dashed var(--border-light); border-radius: var(--radius-lg); cursor: pointer;">
+                <div style="font-size: 0.875rem; color: var(--text-tertiary); margin-top: var(--space-2);">
+                    JPG, PNG, GIF 파일 (최대 10MB)
+                </div>
+            </div>
+
+            <div class="form-footer">
+                <div class="form-hint-text">
+                    <i class="fab fa-markdown"></i>
+                    마크다운 문법 지원
+                </div>
+                <button type="submit" class="btn-premium btn-premium-primary">
+                    <i class="fas fa-paper-plane"></i> 답변 등록
+                </button>
+            </div>
+        </form>
+    </section>
+    {% else %}
+    <section class="answer-form-section">
+        <div class="empty-state">
+            <div class="empty-icon">
+                <i class="fas fa-lock"></i>
+            </div>
+            <h3 style="font-size: 1.5rem; font-weight: 700; margin-bottom: var(--space-4);">
+                로그인이 필요합니다
+            </h3>
+            <p style="color: var(--text-secondary); margin-bottom: var(--space-6);">
+                답변을 작성하려면 로그인해주세요
+            </p>
+            <a href="{% url 'common:login' %}" class="btn-premium btn-premium-primary">
+                <i class="fas fa-sign-in-alt"></i> 로그인
+            </a>
+        </div>
+    </section>
+    {% endif %}
+</div>
 {% endblock %}
 
 {% block script %}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-  // 스크롤 기반 헤더 스타일링
-  let lastScrollY = window.scrollY;
-  const questionHeader = document.getElementById('questionHeader');
-  
-  window.addEventListener('scroll', () => {
-    if (window.scrollY > 100) {
-      questionHeader.style.background = 'rgba(255, 255, 255, 0.95)';
-      questionHeader.style.backdropFilter = 'blur(10px)';
-      questionHeader.style.borderColor = 'rgba(0, 0, 0, 0.1)';
-    } else {
-      questionHeader.style.background = '';
-      questionHeader.style.backdropFilter = '';
-      questionHeader.style.borderColor = '';
+    // Smooth scroll animations
+    const cards = document.querySelectorAll('.question-card, .comments-section, .answers-section, .answer-form-section');
+
+    const observer = new IntersectionObserver((entries) => {
+        entries.forEach((entry, index) => {
+            if (entry.isIntersecting) {
+                setTimeout(() => {
+                    entry.target.style.opacity = '1';
+                    entry.target.style.transform = 'translateY(0)';
+                }, index * 100);
+                observer.unobserve(entry.target);
+            }
+        });
+    }, {
+        threshold: 0.1
+    });
+
+    cards.forEach(card => {
+        card.style.opacity = '0';
+        card.style.transform = 'translateY(30px)';
+        card.style.transition = 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)';
+        observer.observe(card);
+    });
+
+    // Auto-resize textarea
+    const textarea = document.querySelector('.form-control-detail');
+    if (textarea) {
+        textarea.addEventListener('input', function() {
+            this.style.height = 'auto';
+            this.style.height = Math.max(200, this.scrollHeight) + 'px';
+        });
     }
-    lastScrollY = window.scrollY;
-  });
-  
-  // 페이지 로드 애니메이션
-  const animateElements = document.querySelectorAll('.card, .comment-item');
-  
-  const observer = new IntersectionObserver((entries) => {
-    entries.forEach((entry, index) => {
-      if (entry.isIntersecting) {
-        setTimeout(() => {
-          entry.target.style.opacity = '1';
-          entry.target.style.transform = 'translateY(0)';
-        }, index * 100);
-        observer.unobserve(entry.target);
-      }
+
+    // Vote button feedback
+    const voteForms = document.querySelectorAll('form[action*="vote"]');
+    voteForms.forEach(form => {
+        form.addEventListener('submit', function() {
+            const btn = this.querySelector('.vote-btn');
+            if (btn) {
+                btn.style.transform = 'scale(0.95)';
+                setTimeout(() => {
+                    btn.style.transform = '';
+                }, 150);
+            }
+        });
     });
-  }, { threshold: 0.1 });
-  
-  animateElements.forEach(el => {
-    el.style.opacity = '0';
-    el.style.transform = 'translateY(30px)';
-    el.style.transition = 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)';
-    observer.observe(el);
-  });
-  
-  // 댓글 호버 효과
-  document.querySelectorAll('.comment-item').forEach(comment => {
-    comment.addEventListener('mouseenter', function() {
-      this.style.borderColor = 'var(--primary-color)';
-      this.style.transform = 'translateX(8px)';
-    });
-    
-    comment.addEventListener('mouseleave', function() {
-      this.style.borderColor = '';
-      this.style.transform = 'translateX(0)';
-    });
-  });
 });
 </script>
 {% endblock %}

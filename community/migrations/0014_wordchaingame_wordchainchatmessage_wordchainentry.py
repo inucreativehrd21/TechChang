@@ -8,7 +8,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('pybo', '0013_auto_20250930_1018'),
+        ('community', '0013_auto_20250930_1018'),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
 
@@ -35,7 +35,7 @@ class Migration(migrations.Migration):
                 ('message', models.TextField()),
                 ('create_date', models.DateTimeField(auto_now_add=True)),
                 ('author', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to=settings.AUTH_USER_MODEL)),
-                ('game', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='chat_messages', to='pybo.wordchaingame')),
+                ('game', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='chat_messages', to='community.wordchaingame')),
             ],
             options={
                 'ordering': ['create_date'],
@@ -49,7 +49,7 @@ class Migration(migrations.Migration):
                 ('create_date', models.DateTimeField(auto_now_add=True)),
                 ('is_valid', models.BooleanField(default=True)),
                 ('author', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to=settings.AUTH_USER_MODEL)),
-                ('game', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='entries', to='pybo.wordchaingame')),
+                ('game', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='entries', to='community.wordchaingame')),
             ],
             options={
                 'ordering': ['create_date'],

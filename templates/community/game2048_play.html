@@ -14,20 +14,9 @@
 .game-stage {
     position: relative;
     padding: 72px 16px 40px;
-    background:
-        radial-gradient(circle at 20% 20%, rgba(8, 145, 178, 0.12), transparent 30%),
-        radial-gradient(circle at 80% 0%, rgba(255, 255, 255, 0.04), transparent 25%),
-        linear-gradient(135deg, #0b1220 0%, #0f172a 50%, #0b1324 100%);
+    background: var(--bg-secondary);
     overflow: hidden;
-}
-
-.game-stage::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: radial-gradient(circle at 50% 50%, rgba(255,255,255,0.05), transparent 50%);
-    opacity: 0.35;
-    pointer-events: none;
+    min-height: 100vh;
 }
 
 .game-container {
@@ -35,10 +24,10 @@
     max-width: 680px;
     margin: 0 auto;
     padding: 28px;
-    background: rgba(15, 23, 42, 0.9);
+    background: white;
     border-radius: var(--radius-2xl);
-    box-shadow: 0 24px 60px rgba(0,0,0,0.45);
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow: var(--shadow-xl);
+    border: 1px solid var(--border-light);
 }
 
 .game-container .game-header {
@@ -63,14 +52,15 @@
 }
 
 .score-box {
-    background: linear-gradient(135deg, #2d3748 0%, #1a202c 100%);
+    background: #bbada0;
     padding: 15px 25px;
     border-radius: 12px;
     color: white;
     text-align: center;
     position: relative;
-    border: 1px solid rgba(8, 145, 178, 0.3);
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+    border: 1px solid #a89f94;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    min-width: 80px;
 }
 
 .score-title {
@@ -122,13 +112,13 @@
 .grid-container {
     position: relative;
     padding: var(--cell-gap);
-    background: linear-gradient(135deg, #111827 0%, #1f2937 100%);
+    background: #bbada0;
     border-radius: 16px;
     width: var(--board-size);
     height: var(--board-size);
     box-sizing: border-box;
-    border: 1px solid rgba(255, 255, 255, 0.12);
-    box-shadow: 0 18px 40px rgba(0, 0, 0, 0.45);
+    border: 1px solid #a89f94;
+    box-shadow: var(--shadow-lg);
     margin: 0 auto;
 }
 
@@ -143,9 +133,9 @@
 .grid-cell {
     width: var(--cell-size);
     height: var(--cell-size);
-    background: rgba(255, 255, 255, 0.05);
+    background: rgba(238, 228, 218, 0.35);
     border-radius: 10px;
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    border: none;
 }
 
 .tile-container {
@@ -160,16 +150,16 @@
     position: absolute;
     width: var(--cell-size);
     height: var(--cell-size);
-    background: #2d3748;
+    background: #eee4da;
     border-radius: 10px;
     display: flex;
     align-items: center;
     justify-content: center;
     font-size: 55px;
     font-weight: bold;
-    color: #f7fafc;
+    color: #776e65;
     transition: transform 100ms ease-in-out, left 100ms ease-in-out, top 100ms ease-in-out;
-    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.35);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 .tile-new { animation: appear 200ms ease 100ms; animation-fill-mode: backwards; }
@@ -178,19 +168,19 @@
 @keyframes appear { 0% { opacity: 0; transform: scale(0); } 100% { opacity: 1; transform: scale(1); } }
 @keyframes pop { 0% { transform: scale(0); } 50% { transform: scale(1.2); } 100% { transform: scale(1); } }
 
-/* 타일 색상 - Dark Theme */
-.tile-2 { background: linear-gradient(135deg, #374151, #4b5563); color: #f7fafc; }
-.tile-4 { background: linear-gradient(135deg, #4b5563, #6b7280); color: #f7fafc; }
-.tile-8 { background: linear-gradient(135deg, #0891b2, #0e7490); color: #ffffff; font-size: 55px; }
-.tile-16 { background: linear-gradient(135deg, #0e7490, #155e75); color: #ffffff; font-size: 55px; }
-.tile-32 { background: linear-gradient(135deg, #06b6d4, #0891b2); color: #ffffff; font-size: 55px; }
-.tile-64 { background: linear-gradient(135deg, #14b8a6, #0d9488); color: #ffffff; font-size: 55px; }
-.tile-128 { background: linear-gradient(135deg, #10b981, #059669); color: #ffffff; font-size: 45px; }
-.tile-256 { background: linear-gradient(135deg, #059669, #047857); color: #ffffff; font-size: 45px; }
-.tile-512 { background: linear-gradient(135deg, #f59e0b, #d97706); color: #ffffff; font-size: 45px; }
-.tile-1024 { background: linear-gradient(135deg, #d97706, #b45309); color: #ffffff; font-size: 35px; }
-.tile-2048 { background: linear-gradient(135deg, #ef4444, #dc2626); color: #ffffff; font-size: 35px; }
-.tile-super { background: linear-gradient(135deg, #8b5cf6, #7c3aed); color: #ffffff; font-size: 30px; }
+/* 타일 색상 - Classic 2048 Light Theme */
+.tile-2 { background: #eee4da; color: #776e65; }
+.tile-4 { background: #ede0c8; color: #776e65; }
+.tile-8 { background: #f2b179; color: #f9f6f2; font-size: 55px; }
+.tile-16 { background: #f59563; color: #f9f6f2; font-size: 55px; }
+.tile-32 { background: #f67c5f; color: #f9f6f2; font-size: 55px; }
+.tile-64 { background: #f65e3b; color: #f9f6f2; font-size: 55px; }
+.tile-128 { background: #edcf72; color: #f9f6f2; font-size: 45px; }
+.tile-256 { background: #edcc61; color: #f9f6f2; font-size: 45px; }
+.tile-512 { background: #edc850; color: #f9f6f2; font-size: 45px; }
+.tile-1024 { background: #edc53f; color: #f9f6f2; font-size: 35px; }
+.tile-2048 { background: #edc22e; color: #f9f6f2; font-size: 35px; font-weight: 900; }
+.tile-super { background: #3c3a32; color: #f9f6f2; font-size: 30px; }
 
 .game-message {
     position: fixed;
@@ -207,11 +197,11 @@
 
 .game-message-content {
     text-align: center;
-    background: rgba(15, 23, 42, 0.95);
+    background: white;
     padding: 48px;
     border-radius: var(--radius-2xl);
-    box-shadow: 0 24px 60px rgba(0,0,0,0.45);
-    border: 1px solid rgba(255,255,255,0.08);
+    box-shadow: var(--shadow-xl);
+    border: 1px solid var(--border-light);
 }
 
 .game-message h1 {
@@ -220,20 +210,20 @@
     margin-bottom: 20px;
 }
 
-.game-message.game-won h1 { color: #f67c5f; }
-.game-message.game-lost h1 { color: #cbd5e0; }
+.game-message.game-won h1 { color: #edc22e; }
+.game-message.game-lost h1 { color: #8f7a66; }
 
 .game-instructions {
     margin-top: 30px;
     padding: 20px;
-    background: rgba(255, 255, 255, 0.04);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-light);
     border-radius: var(--radius-lg);
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+    box-shadow: var(--shadow-sm);
 }
 
-.game-instructions p { margin: 10px 0; color: #cbd5e0; }
-.game-instructions strong { color: #f7fafc; }
+.game-instructions p { margin: 10px 0; color: var(--text-secondary); }
+.game-instructions strong { color: var(--text-primary); }
 
 .key-hint {
     display: inline-block;
@@ -281,9 +271,9 @@
             <div style="display: flex; align-items: center; gap: 10px;">
                 <h1 class="game-title">2048</h1>
                 {% if game.difficulty == 'hard' %}
-                <span class="badge bg-danger shadow-sm">🔥 HARD</span>
+                <span class="badge bg-danger shadow-sm">HARD</span>
                 {% else %}
-                <span class="badge bg-success shadow-sm">😊 NORMAL</span>
+                <span class="badge bg-success shadow-sm">NORMAL</span>
                 {% endif %}
             </div>
             <div class="scores-container">
@@ -309,7 +299,7 @@
         <!-- 하드모드 타이머 -->
         <div class="hard-timer fade-in-up">
             <div style="color: #c0392b; font-weight: 800; font-size: 1.05rem; margin-bottom: 8px;">
-                🔥 Hard Mode: 비활동 제한
+                Hard Mode: 비활동 제한
             </div>
             <div style="display: flex; justify-content: center; align-items: center; gap: 10px;">
                 <div style="font-size: 0.9rem; color: #cbd5e0;">입력까지 남은 시간:</div>
@@ -319,15 +309,15 @@
                 <div style="font-size: 0.9rem; color: #cbd5e0;">초</div>
             </div>
             <div style="margin-top: 8px; font-size: 0.85rem; color: #856404;">
-                ⚠️ {{ game.inactivity_limit }}초 이내에 움직이지 않으면 게임이 종료됩니다!
+                {{ game.inactivity_limit }}초 이내에 움직이지 않으면 게임이 종료됩니다!
             </div>
         </div>
         {% endif %}
 
         <!-- 설명 및 버튼 -->
         <div class="game-intro">
-            <p style="color: #cbd5e0;">
-                <strong style="color: #f7fafc;">방향키로 타일을 움직여서 2048을 만드세요!</strong>
+            <p style="color: var(--text-secondary);">
+                <strong style="color: var(--text-primary);">방향키로 타일을 움직여서 2048을 만드세요!</strong>
             </p>
             <button class="restart-button btn-ripple" onclick="restartGame()">
                 <i class="fas fa-redo me-2"></i>New Game
@@ -538,7 +528,7 @@ function move(direction) {
     // 타이머 리셋
     resetInactivityTimer();
 
-    fetch(`/pybo/2048/${gameId}/move/`, {
+    fetch(`/2048/${gameId}/move/`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/x-www-form-urlencoded',
@@ -629,7 +619,7 @@ function showGameOver(status) {
 
 // 게임 재시작
 function restartGame() {
-    fetch(`/pybo/2048/${gameId}/restart/`, {
+    fetch(`/2048/${gameId}/restart/`, {
         method: 'POST',
         headers: {
             'X-CSRFToken': csrfToken

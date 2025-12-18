@@ -7,7 +7,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('pybo', '0019_game2048'),
+        ('community', '0019_game2048'),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
 

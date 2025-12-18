@@ -145,7 +145,7 @@
 <section class="game-hero mesh-gradient-animated ms-hero fade-in-up">
     <div class="hero-content container">
         <p class="text-inverse mb-2 text-uppercase" style="letter-spacing: 0.1em;">Minesweeper</p>
-        <h1 class="hero-title">💣 지뢰찾기</h1>
+        <h1 class="hero-title">지뢰찾기</h1>
         <p class="hero-subtitle">{{ game.get_difficulty_display }}</p>
     </div>
 </section>
@@ -241,12 +241,17 @@ function initBoard() {
     for (let row = 0; row < rows; row++) {
         for (let col = 0; col < cols; col++) {
             const cell = document.createElement('button');
+            cell.type = 'button';
             cell.className = 'cell';
             cell.dataset.row = row;
             cell.dataset.col = col;
 
             // 좌클릭: 칸 공개
-            cell.addEventListener('click', () => revealCell(row, col));
+            cell.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                revealCell(row, col);
+            });
 
             // 우클릭: 깃발 토글
             cell.addEventListener('contextmenu', (e) => {
@@ -290,7 +295,7 @@ function startTimer() {
 
 // 서버에 시간 업데이트
 function updateTimeOnServer() {
-    fetch(`/pybo/minesweeper/${gameId}/update-time/`, {
+    fetch(`/minesweeper/${gameId}/update-time/`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/x-www-form-urlencoded',
@@ -340,7 +345,7 @@ function revealCellVisual(cell, row, col) {
 
     if (isCellMine(row, col)) {
         cell.classList.add('mine');
-        cell.textContent = '💣';
+        cell.textContent = '★';
     } else {
         const adjacentMines = countAdjacentMines(row, col);
         if (adjacentMines > 0) {
@@ -358,7 +363,7 @@ function revealCell(row, col) {
 
     startTimer();
 
-    fetch(`/pybo/minesweeper/${gameId}/reveal/`, {
+    fetch(`/minesweeper/${gameId}/reveal/`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/x-www-form-urlencoded',
@@ -414,7 +419,7 @@ function toggleFlag(row, col) {
 
     startTimer();
 
-    fetch(`/pybo/minesweeper/${gameId}/flag/`, {
+    fetch(`/minesweeper/${gameId}/flag/`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/x-www-form-urlencoded',

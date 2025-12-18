@@ -433,3 +433,138 @@ class MinesweeperGame(models.Model):
             models.Index(fields=['player', 'status'], name='ms_player_status_idx'),
             models.Index(fields=['player', 'difficulty', '-time_elapsed'], name='ms_player_diff_time_idx'),
         ]
+
+
+# ========== 포트폴리오 ==========
+class Portfolio(models.Model):
+    """사용자 포트폴리오"""
+    THEME_CHOICES = [
+        ('light', '라이트 모드'),
+        ('dark', '다크 모드'),
+    ]
+
+    GRADIENT_CHOICES = [
+        ('linear-gradient(135deg, #667eea 0%, #764ba2 100%)', '보라 그라데이션'),
+        ('linear-gradient(135deg, #f093fb 0%, #f5576c 100%)', '핑크 그라데이션'),
+        ('linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)', '파랑 그라데이션'),
+        ('linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)', '초록 그라데이션'),
+        ('linear-gradient(135deg, #fa709a 0%, #fee140 100%)', '노랑 그라데이션'),
+        ('linear-gradient(135deg, #30cfd0 0%, #330867 100%)', '다크 블루 그라데이션'),
+        ('linear-gradient(135deg, #a8edea 0%, #fed6e3 100%)', '파스텔 그라데이션'),
+        ('linear-gradient(135deg, #ff9a9e 0%, #fecfef 100%)', '로즈 그라데이션'),
+        ('linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%)', '복숭아 그라데이션'),
+        ('linear-gradient(135deg, #ff6e7f 0%, #bfe9ff 100%)', '선셋 그라데이션'),
+    ]
+
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='portfolio', verbose_name='사용자')
+    display_name = models.CharField(max_length=100, default='', blank=True, verbose_name='표시 이름', help_text='포트폴리오에 표시될 이름 (비워두면 사용자명 사용)')
+    title = models.CharField(max_length=100, default='', blank=True, verbose_name='직업/역할')
+    bio = models.TextField(max_length=500, default='', blank=True, verbose_name='자기소개')
+    location = models.CharField(max_length=100, default='', blank=True, verbose_name='위치')
+    email = models.EmailField(max_length=100, default='', blank=True, verbose_name='이메일')
+
+    # 소셜 링크
+    github_url = models.URLField(max_length=200, default='', blank=True, verbose_name='GitHub URL')
+    linkedin_url = models.URLField(max_length=200, default='', blank=True, verbose_name='LinkedIn URL')
+    website_url = models.URLField(max_length=200, default='', blank=True, verbose_name='개인 웹사이트')
+
+    # 기술 스택 (JSON 배열)
+    skills = models.JSONField(default=list, blank=True, verbose_name='기술 스택')
+
+    # 프로필 이미지
+    profile_image = models.ImageField(upload_to='portfolio/profiles/', blank=True, null=True, verbose_name='프로필 이미지')
+
+    # 배경 그라데이션
+    hero_gradient = models.CharField(max_length=200, default='linear-gradient(135deg, #667eea 0%, #764ba2 100%)', verbose_name='히어로 배경')
+    skills_gradient = models.CharField(max_length=200, default='linear-gradient(135deg, #f093fb 0%, #f5576c 100%)', verbose_name='스킬 배경')
+
+    # 설정
+    is_public = models.BooleanField(default=True, verbose_name='공개 여부')
+    theme = models.CharField(max_length=10, choices=THEME_CHOICES, default='light', verbose_name='테마')
+
+    # 메타 정보
+    create_date = models.DateTimeField(auto_now_add=True, verbose_name='생성일')
+    modify_date = models.DateTimeField(auto_now=True, verbose_name='수정일')
+    view_count = models.PositiveIntegerField(default=0, verbose_name='조회수')
+
+    def get_display_name(self):
+        """포트폴리오 표시 이름 반환 (설정된 display_name이 있으면 사용, 없으면 사용자명)"""
+        return self.display_name if self.display_name else self.user.username
+
+    def __str__(self):
+        return f"{self.user.username}의 포트폴리오"
+
+    class Meta:
+        db_table = 'pybo_portfolio'
+        verbose_name = '포트폴리오'
+        verbose_name_plural = '포트폴리오 목록'
+        ordering = ['-create_date']
+
+
+class Project(models.Model):
+    """프로젝트"""
+
+    # 프로젝트 타입 선택지
+    PROJECT_TYPE_CHOICES = [
+        ('dev', '개발 프로젝트'),
+        ('work', '업무 경력'),
+        ('education', '교육'),
+        ('certificate', '자격증'),
+        ('award', '수상'),
+        ('activity', '활동'),
+        ('other', '기타'),
+    ]
+
+    GRADIENT_CHOICES = [
+        ('linear-gradient(135deg, #667eea 0%, #764ba2 100%)', '보라 그라데이션'),
+        ('linear-gradient(135deg, #f093fb 0%, #f5576c 100%)', '핑크 그라데이션'),
+        ('linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)', '파랑 그라데이션'),
+        ('linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)', '초록 그라데이션'),
+        ('linear-gradient(135deg, #fa709a 0%, #fee140 100%)', '노랑 그라데이션'),
+        ('linear-gradient(135deg, #30cfd0 0%, #330867 100%)', '다크 블루 그라데이션'),
+        ('linear-gradient(135deg, #a8edea 0%, #fed6e3 100%)', '파스텔 그라데이션'),
+        ('linear-gradient(135deg, #ff9a9e 0%, #fecfef 100%)', '로즈 그라데이션'),
+        ('linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%)', '복숭아 그라데이션'),
+        ('linear-gradient(135deg, #ff6e7f 0%, #bfe9ff 100%)', '선셋 그라데이션'),
+    ]
+
+    portfolio = models.ForeignKey(Portfolio, on_delete=models.CASCADE, related_name='projects', verbose_name='포트폴리오')
+    title = models.CharField(max_length=200, verbose_name='프로젝트 제목')
+    description = models.TextField(verbose_name='프로젝트 설명')
+
+    # 프로젝트 타입
+    project_type = models.CharField(max_length=20, choices=PROJECT_TYPE_CHOICES, default='dev', verbose_name='타입')
+
+    # 프로젝트 이미지
+    image = models.ImageField(upload_to='portfolio/projects/', blank=True, null=True, verbose_name='프로젝트 이미지')
+
+    # 기술 스택 (JSON 배열)
+    tech_stack = models.JSONField(default=list, blank=True, verbose_name='기술 스택')
+
+    # 링크
+    project_url = models.URLField(max_length=200, default='', blank=True, verbose_name='프로젝트 URL')
+    github_url = models.URLField(max_length=200, default='', blank=True, verbose_name='GitHub URL')
+
+    # 기간
+    start_date = models.DateField(null=True, blank=True, verbose_name='시작일')
+    end_date = models.DateField(null=True, blank=True, verbose_name='종료일')
+
+    # 배경 그라데이션
+    background_gradient = models.CharField(max_length=200, default='linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)', verbose_name='배경 그라데이션')
+
+    # 정렬 및 표시
+    order = models.IntegerField(default=0, verbose_name='순서')
+    is_featured = models.BooleanField(default=False, verbose_name='추천 프로젝트')
+
+    # 메타 정보
+    create_date = models.DateTimeField(auto_now_add=True, verbose_name='생성일')
+    modify_date = models.DateTimeField(auto_now=True, verbose_name='수정일')
+
+    def __str__(self):
+        return f"{self.portfolio.user.username} - {self.title}"
+
+    class Meta:
+        db_table = 'pybo_project'
+        verbose_name = '프로젝트'
+        verbose_name_plural = '프로젝트 목록'
+        ordering = ['order', '-create_date']

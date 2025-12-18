@@ -3,7 +3,7 @@ from django.urls import path
 
 # 실시간 게임 비활성화 (나중을 위해 파일은 유지)
 # from .views import wordchain_views, tictactoe_views
-from .views import base_views, question_views, answer_views, comment_views, profile_views, baseball_views, guestbook_views, game2048_views, minesweeper_views
+from .views import base_views, question_views, answer_views, comment_views, profile_views, baseball_views, guestbook_views, game2048_views, minesweeper_views, portfolio_views
 
 app_name = 'community'
 
@@ -45,6 +45,8 @@ urlpatterns = [
     
     # profile_views.py
     path('profile/<int:user_id>/', profile_views.profile, name='profile'),
+    path('profile/update/', profile_views.profile_update, name='profile_update'),
+    path('profile/password-change/', profile_views.password_change, name='password_change'),
 
     # file download
     path('download/<int:question_id>/', base_views.download_file, name='download_file'),
@@ -88,6 +90,15 @@ urlpatterns = [
     path('minesweeper/<int:game_id>/flag/', minesweeper_views.minesweeper_flag, name='minesweeper_flag'),
     path('minesweeper/<int:game_id>/update-time/', minesweeper_views.minesweeper_update_time, name='minesweeper_update_time'),
     path('minesweeper/leaderboard/', minesweeper_views.minesweeper_leaderboard, name='minesweeper_leaderboard'),
+
+    # portfolio_views.py - 포트폴리오
+    path('members/', portfolio_views.members_list, name='members_list'),
+    path('portfolio/<int:user_id>/', portfolio_views.portfolio_view, name='portfolio_view'),
+    path('portfolio/edit/', portfolio_views.portfolio_edit, name='portfolio_edit'),
+    path('portfolio/project/create/', portfolio_views.project_create, name='project_create'),
+    path('portfolio/project/<int:project_id>/edit/', portfolio_views.project_edit, name='project_edit'),
+    path('portfolio/project/<int:project_id>/delete/', portfolio_views.project_delete, name='project_delete'),
+    path('portfolio/project/reorder/', portfolio_views.project_reorder, name='project_reorder'),
 
     # *** IMPORTANT: 이 패턴은 맨 마지막에 위치해야 합니다! ***
     # <int:question_id>/ 패턴이 숫자로 시작하는 다른 URL들(2048 등)을 가로채지 않도록

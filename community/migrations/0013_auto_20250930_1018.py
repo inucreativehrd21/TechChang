@@ -6,7 +6,7 @@ from django.db import migrations
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('pybo', '0012_answer_deleted_date_answer_is_deleted_and_more'),
+        ('community', '0012_answer_deleted_date_answer_is_deleted_and_more'),
     ]
 
     operations = [

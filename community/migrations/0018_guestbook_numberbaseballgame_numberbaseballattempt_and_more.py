@@ -8,7 +8,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('pybo', '0017_question_is_locked'),
+        ('community', '0017_question_is_locked'),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
 
@@ -58,7 +58,7 @@ class Migration(migrations.Migration):
                 ('strikes', models.IntegerField(verbose_name='스트라이크')),
                 ('balls', models.IntegerField(verbose_name='볼')),
                 ('create_date', models.DateTimeField(auto_now_add=True, verbose_name='시도 시간')),
-                ('game', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='attempt_records', to='pybo.numberbaseballgame', verbose_name='게임')),
+                ('game', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='attempt_records', to='community.numberbaseballgame', verbose_name='게임')),
             ],
             options={
                 'verbose_name': '숫자야구 시도',

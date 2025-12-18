@@ -7,14 +7,14 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('pybo', '0007_auto_20250925_1615'),
+        ('community', '0007_auto_20250925_1615'),
     ]
 
     operations = [
         migrations.AlterField(
             model_name='question',
             name='category',
-            field=models.ForeignKey(default=1, on_delete=django.db.models.deletion.PROTECT, to='pybo.category'),
+            field=models.ForeignKey(default=1, on_delete=django.db.models.deletion.PROTECT, to='community.category'),
             preserve_default=False,
         ),
     ]

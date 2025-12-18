@@ -1,0 +1,33 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}프로젝트 삭제{% endblock %}
+
+{% block content %}
+<section style="padding: var(--space-16) var(--space-6); background: var(--bg-secondary); min-height: 100vh; display: flex; align-items: center; justify-content: center;">
+    <div style="max-width: 500px; width: 100%; background: white; padding: var(--space-8); border-radius: var(--radius-2xl); box-shadow: var(--shadow-xl); text-align: center;">
+        <div style="width: 80px; height: 80px; background: #fee; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto var(--space-6);">
+            <i class="fas fa-trash-alt" style="font-size: 2rem; color: #c33;"></i>
+        </div>
+
+        <h1 style="font-size: 1.75rem; font-weight: 800; margin-bottom: var(--space-4); color: var(--text-primary);">
+            프로젝트 삭제
+        </h1>
+
+        <p style="color: var(--text-secondary); margin-bottom: var(--space-6); line-height: 1.6;">
+            <strong>{{ project.title }}</strong> 프로젝트를 삭제하시겠습니까?<br>
+            이 작업은 되돌릴 수 없습니다.
+        </p>
+
+        <form method="post" style="display: flex; gap: var(--space-4); justify-content: center; flex-wrap: wrap;">
+            {% csrf_token %}
+            <a href="{% url 'community:portfolio_view' user.id %}" class="btn-premium btn-premium-secondary">
+                취소
+            </a>
+            <button type="submit" class="btn-premium btn-premium-primary" style="background: #c33; border-color: #c33;">
+                삭제
+            </button>
+        </form>
+    </div>
+</section>
+{% endblock %}

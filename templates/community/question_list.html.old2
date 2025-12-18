@@ -1,0 +1,125 @@
+{% extends 'base.html' %}
+{% load pybo_filter %}
+{% load static %}
+
+{% block extra_css %}
+<link href="{% static 'css/modern.css' %}?v={{ 'now'|date:'YmdHis' }}" rel="stylesheet">
+{% endblock %}
+
+{% block content %}
+<!-- Hero Section -->
+<section class="hero-modern pt-16">
+    <div class="container-modern">
+        <h1 class="hero-modern-title">테크창</h1>
+        <p class="hero-modern-subtitle">
+            HRD와 테크놀로지 지식을 공유하는 커뮤니티
+        </p>
+
+        <div class="hero-modern-actions">
+            {% if user.is_authenticated %}
+                <a href="{% url 'community:question_create' %}" class="btn-modern btn-primary-modern">
+                    게시글 작성
+                </a>
+                <a href="{% url 'community:games_index' %}" class="btn-modern btn-secondary-modern">
+                    게임 센터
+                </a>
+            {% else %}
+                <a href="{% url 'common:login' %}" class="btn-modern btn-primary-modern">
+                    시작하기
+                </a>
+                <a href="{% url 'common:signup' %}" class="btn-modern btn-ghost">
+                    회원가입
+                </a>
+            {% endif %}
+        </div>
+
+        <!-- Stats -->
+        <div class="stats-modern">
+            <div class="stat-modern">
+                <div class="stat-modern-value">{{ total_count }}</div>
+                <div class="stat-modern-label">게시글</div>
+            </div>
+            <div class="stat-modern">
+                <div class="stat-modern-value">{{ categories|length }}</div>
+                <div class="stat-modern-label">카테고리</div>
+            </div>
+            <div class="stat-modern">
+                <div class="stat-modern-value">{{ launch_days }}</div>
+                <div class="stat-modern-label">일수</div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Categories -->
+<section class="section-modern" style="padding-top: var(--space-12); padding-bottom: var(--space-8); background: var(--bg-secondary);">
+    <div class="container-modern">
+        <h2 style="font-size: 1.5rem; font-weight: 600; margin-bottom: var(--space-6);">카테고리</h2>
+
+        <div class="category-pills">
+            <a href="?page=1" class="category-pill {% if not category %}active{% endif %}">
+                전체 ({{ total_count }})
+            </a>
+            {% for cat in categories %}
+            <a href="?category={{ cat.name }}&page=1" class="category-pill {% if category == cat.name %}active{% endif %}">
+                {{ cat.name }}
+            </a>
+            {% endfor %}
+        </div>
+    </div>
+</section>
+
+<!-- Question List -->
+<section class="section-modern">
+    <div class="container-modern">
+        <h2 style="font-size: 1.5rem; font-weight: 600; margin-bottom: var(--space-8);">최신 게시글</h2>
+
+        <div class="grid-modern">
+            {% for question in question_list %}
+            <a href="{% url 'community:detail' question.id %}" class="card-modern" style="text-decoration: none;">
+                {% if question.category %}
+                <span class="card-modern-badge">{{ question.category.name }}</span>
+                {% endif %}
+
+                <h3 class="card-modern-title">{{ question.subject }}</h3>
+
+                <div class="card-modern-meta">
+                    <span>{{ question.voter.count }} 추천</span>
+                    <span>{{ question.answer_set.count }} 답변</span>
+                    <span>{{ question.create_date|date:"m-d" }}</span>
+                </div>
+            </a>
+            {% empty %}
+            <div style="grid-column: 1 / -1; text-align: center; padding: var(--space-16); color: var(--text-tertiary);">
+                게시글이 없습니다.
+            </div>
+            {% endfor %}
+        </div>
+
+        <!-- Pagination -->
+        {% if question_list.has_other_pages %}
+        <div class="pagination-modern">
+            {% if question_list.has_previous %}
+                <a href="?page=1{% if category %}&category={{ category }}{% endif %}{% if kw %}&kw={{ kw }}{% endif %}">«</a>
+                <a href="?page={{ question_list.previous_page_number }}{% if category %}&category={{ category }}{% endif %}{% if kw %}&kw={{ kw }}{% endif %}">‹</a>
+            {% endif %}
+
+            <span class="active">{{ question_list.number }}</span>
+
+            {% if question_list.has_next %}
+                <a href="?page={{ question_list.next_page_number }}{% if category %}&category={{ category }}{% endif %}{% if kw %}&kw={{ kw }}{% endif %}">›</a>
+                <a href="?page={{ question_list.paginator.num_pages }}{% if category %}&category={{ category }}{% endif %}{% if kw %}&kw={{ kw }}{% endif %}">»</a>
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
+</section>
+
+<!-- Search Form (Hidden) -->
+<form id="searchForm" method="get" action="{% url 'community:index' %}" style="display: none;">
+    <input type="hidden" id="kw" name="kw" value="{{ kw|default_if_none:'' }}">
+    <input type="hidden" id="page" name="page" value="{{ page }}">
+    <input type="hidden" id="category" name="category" value="{{ category }}">
+</form>
+
+{% endblock %}

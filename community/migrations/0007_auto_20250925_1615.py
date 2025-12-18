@@ -3,8 +3,8 @@
 from django.db import migrations
 
 def create_categories(apps, schema_editor):
-    Category = apps.get_model('pybo', 'Category')
-    Question = apps.get_model('pybo', 'Question')
+    Category = apps.get_model('community', 'Category')
+    Question = apps.get_model('community', 'Question')
     
     # 기본 카테고리 생성
     categories = [
@@ -29,13 +29,13 @@ def create_categories(apps, schema_editor):
         Question.objects.filter(category__isnull=True).update(category=default_category)
 
 def reverse_categories(apps, schema_editor):
-    Category = apps.get_model('pybo', 'Category')
+    Category = apps.get_model('community', 'Category')
     Category.objects.all().delete()
 
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('pybo', '0006_category_question_view_count_question_category_and_more'),
+        ('community', '0006_category_question_view_count_question_category_and_more'),
     ]
 
     operations = [

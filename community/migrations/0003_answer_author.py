@@ -8,7 +8,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('pybo', '0002_question_author'),
+        ('community', '0002_question_author'),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
 

@@ -703,6 +703,10 @@ def daily_checkin(request):
     """일일 출석 체크"""
     from .models import DailyCheckIn, PointHistory, Profile
     from datetime import date
+    from django.http import JsonResponse
+
+    # AJAX 요청인지 확인
+    is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest' or request.content_type == 'application/json'
 
     today = date.today()
     user = request.user
@@ -717,6 +721,11 @@ def daily_checkin(request):
     ).exists()
 
     if already_checked:
+        if is_ajax:
+            return JsonResponse({
+                'success': False,
+                'message': '오늘 이미 출석체크를 완료했습니다!'
+            })
         messages.warning(request, '오늘 이미 출석체크를 완료했습니다!')
     else:
         # 출석 체크 생성
@@ -738,9 +747,15 @@ def daily_checkin(request):
             description='일일 출석 체크'
         )
 
+        if is_ajax:
+            return JsonResponse({
+                'success': True,
+                'message': '출석 체크 완료!',
+                'points': points_earned
+            })
         messages.success(request, f'출석 체크 완료! {points_earned} 포인트를 획득했습니다!')
 
-    return redirect(request.META.get('HTTP_REFERER', 'pybo:index'))
+    return redirect(request.META.get('HTTP_REFERER', 'community:index'))
 
 
 @login_required

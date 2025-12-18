@@ -1,0 +1,479 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load common_tags %}
+
+{% block title %}구성원 - 테크창{% endblock %}
+
+{% block extra_css %}
+<style>
+/* Members Page Premium Styles */
+.members-container {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: var(--space-16) var(--space-8);
+}
+
+/* Hero Section */
+.members-hero {
+    text-align: center;
+    margin-bottom: var(--space-16);
+    animation: fadeInUp 0.6s ease;
+}
+
+.members-hero-title {
+    font-size: clamp(2.5rem, 6vw, 3.5rem);
+    font-weight: 800;
+    margin-bottom: var(--space-4);
+    background: var(--gradient-blue);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.members-hero-subtitle {
+    font-size: 1.25rem;
+    color: var(--text-secondary);
+    max-width: 700px;
+    margin: 0 auto var(--space-8);
+    line-height: 1.6;
+}
+
+.members-stats {
+    display: flex;
+    justify-content: center;
+    gap: var(--space-6);
+    flex-wrap: wrap;
+}
+
+.stat-item {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding: var(--space-3) var(--space-5);
+    background: rgba(255, 255, 255, 0.7);
+    backdrop-filter: blur(10px);
+    border-radius: var(--radius-xl);
+    box-shadow: var(--shadow-sm);
+}
+
+.stat-icon {
+    font-size: 1.5rem;
+    color: var(--accent-blue);
+}
+
+.stat-value {
+    font-size: 1.5rem;
+    font-weight: 800;
+    color: var(--text-primary);
+}
+
+.stat-label {
+    font-size: 0.875rem;
+    color: var(--text-tertiary);
+}
+
+/* Members Grid */
+.members-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: var(--space-8);
+    animation: fadeInUp 0.6s ease 0.2s both;
+}
+
+/* Member Card */
+.member-card {
+    background: white;
+    border-radius: var(--radius-2xl);
+    padding: var(--space-8);
+    box-shadow: var(--shadow-lg);
+    border: 2px solid var(--border-light);
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    text-decoration: none;
+    color: inherit;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    overflow: hidden;
+}
+
+.member-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 6px;
+    background: var(--gradient-blue);
+    transform: scaleX(0);
+    transform-origin: left;
+    transition: transform 0.4s ease;
+}
+
+.member-card:hover::before {
+    transform: scaleX(1);
+}
+
+.member-card:hover {
+    transform: translateY(-8px);
+    box-shadow: var(--shadow-xl);
+    border-color: var(--accent-blue);
+}
+
+/* Member Avatar */
+.member-avatar-section {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-bottom: var(--space-6);
+}
+
+.member-avatar {
+    width: 120px;
+    height: 120px;
+    border-radius: 50%;
+    object-fit: cover;
+    box-shadow: var(--shadow-lg);
+    margin-bottom: var(--space-4);
+    border: 4px solid white;
+}
+
+.member-avatar-placeholder {
+    width: 120px;
+    height: 120px;
+    border-radius: 50%;
+    background: var(--gradient-blue);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 3rem;
+    font-weight: 800;
+    box-shadow: var(--shadow-lg);
+    margin-bottom: var(--space-4);
+    border: 4px solid white;
+}
+
+.member-name {
+    font-size: 1.5rem;
+    font-weight: 800;
+    color: var(--text-primary);
+    margin-bottom: var(--space-2);
+    text-align: center;
+}
+
+.member-title {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--accent-blue);
+    text-align: center;
+    margin-bottom: var(--space-1);
+}
+
+.member-location {
+    font-size: 0.875rem;
+    color: var(--text-tertiary);
+    display: flex;
+    align-items: center;
+    gap: var(--space-1);
+}
+
+/* Member Bio */
+.member-bio {
+    font-size: 0.9375rem;
+    color: var(--text-secondary);
+    line-height: 1.6;
+    margin-bottom: var(--space-6);
+    text-align: center;
+    min-height: 60px;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+/* Skills Tags */
+.member-skills {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+    justify-content: center;
+    margin-bottom: var(--space-6);
+}
+
+.skill-tag {
+    padding: 0.375rem 0.75rem;
+    background: rgba(59, 130, 246, 0.1);
+    color: var(--accent-blue);
+    border-radius: var(--radius-sm);
+    font-size: 0.8125rem;
+    font-weight: 600;
+}
+
+/* Member Footer */
+.member-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-top: var(--space-4);
+    border-top: 2px solid var(--border-light);
+    margin-top: auto;
+}
+
+.member-stats {
+    display: flex;
+    gap: var(--space-4);
+}
+
+.member-stat {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.member-stat-value {
+    font-size: 1.125rem;
+    font-weight: 800;
+    color: var(--text-primary);
+}
+
+.member-stat-label {
+    font-size: 0.75rem;
+    color: var(--text-tertiary);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.view-portfolio-btn {
+    padding: var(--space-2) var(--space-4);
+    background: var(--gradient-blue);
+    color: white;
+    border-radius: var(--radius-md);
+    font-size: 0.875rem;
+    font-weight: 600;
+    border: none;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.view-portfolio-btn:hover {
+    transform: scale(1.05);
+    box-shadow: var(--shadow-blue);
+}
+
+/* Empty State */
+.empty-state {
+    text-align: center;
+    padding: var(--space-24);
+    background: white;
+    border-radius: var(--radius-2xl);
+    box-shadow: var(--shadow-lg);
+}
+
+.empty-icon {
+    font-size: 5rem;
+    color: var(--text-muted);
+    margin-bottom: var(--space-6);
+}
+
+.empty-title {
+    font-size: 2rem;
+    font-weight: 800;
+    margin-bottom: var(--space-4);
+    color: var(--text-primary);
+}
+
+.empty-text {
+    font-size: 1.125rem;
+    color: var(--text-secondary);
+    margin-bottom: var(--space-8);
+}
+
+/* Animations */
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .members-container {
+        padding: var(--space-12) var(--space-4);
+    }
+
+    .members-grid {
+        grid-template-columns: 1fr;
+        gap: var(--space-6);
+    }
+
+    .member-card {
+        padding: var(--space-6);
+    }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="members-container">
+    <!-- Hero Section -->
+    <div class="members-hero">
+        <h1 class="members-hero-title">
+            <i class="fas fa-users"></i> 구성원
+        </h1>
+        <p class="members-hero-subtitle">
+            테크창에서 활동하는 멤버들을 소개합니다.<br>
+            각 구성원의 포트폴리오를 확인해보세요.
+        </p>
+
+        <div class="members-stats">
+            <div class="stat-item">
+                <div class="stat-icon">
+                    <i class="fas fa-user-friends"></i>
+                </div>
+                <div>
+                    <div class="stat-value">{{ portfolios.count }}</div>
+                    <div class="stat-label">공개 포트폴리오</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Members Grid -->
+    {% if portfolios %}
+    <div class="members-grid">
+        {% for portfolio in portfolios %}
+        <a href="{% url 'community:portfolio_view' portfolio.user.id %}" class="member-card">
+            <!-- Avatar Section -->
+            <div class="member-avatar-section">
+                {% if portfolio.profile_image %}
+                <img src="{{ portfolio.profile_image.url }}" alt="{{ portfolio.get_display_name }}" class="member-avatar">
+                {% else %}
+                <div class="member-avatar-placeholder">
+                    {{ portfolio.get_display_name|slice:":1"|upper }}
+                </div>
+                {% endif %}
+
+                <h2 class="member-name">{{ portfolio.get_display_name }}</h2>
+
+                {% if portfolio.title %}
+                <div class="member-title">{{ portfolio.title }}</div>
+                {% endif %}
+
+                {% if portfolio.location %}
+                <div class="member-location">
+                    <i class="fas fa-map-marker-alt"></i>
+                    <span>{{ portfolio.location }}</span>
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Bio -->
+            {% if portfolio.bio %}
+            <p class="member-bio">{{ portfolio.bio|linebreaksbr }}</p>
+            {% else %}
+            <p class="member-bio" style="color: var(--text-muted); font-style: italic;">
+                아직 자기소개가 없습니다.
+            </p>
+            {% endif %}
+
+            <!-- Skills -->
+            {% if portfolio.skills %}
+            <div class="member-skills">
+                {% for skill in portfolio.skills|slice:":5" %}
+                <span class="skill-tag">{{ skill }}</span>
+                {% endfor %}
+                {% if portfolio.skills|length > 5 %}
+                <span class="skill-tag">+{{ portfolio.skills|length|add:"-5" }}</span>
+                {% endif %}
+            </div>
+            {% endif %}
+
+            <!-- Footer -->
+            <div class="member-footer">
+                <div class="member-stats">
+                    <div class="member-stat">
+                        <div class="member-stat-value">{{ portfolio.projects.count }}</div>
+                        <div class="member-stat-label">프로젝트</div>
+                    </div>
+                    <div class="member-stat">
+                        <div class="member-stat-value">{{ portfolio.view_count }}</div>
+                        <div class="member-stat-label">조회</div>
+                    </div>
+                </div>
+
+                <button class="view-portfolio-btn">
+                    포트폴리오 보기 <i class="fas fa-arrow-right"></i>
+                </button>
+            </div>
+        </a>
+        {% endfor %}
+    </div>
+    {% else %}
+    <!-- Empty State -->
+    <div class="empty-state">
+        <div class="empty-icon">
+            <i class="fas fa-users-slash"></i>
+        </div>
+        <h2 class="empty-title">아직 공개된 포트폴리오가 없습니다</h2>
+        <p class="empty-text">
+            포트폴리오를 공개하여 첫 번째 구성원이 되어보세요!
+        </p>
+        {% if user.is_authenticated %}
+        <a href="{% url 'community:portfolio_edit' %}" class="btn-premium btn-premium-primary">
+            <i class="fas fa-plus"></i> 포트폴리오 만들기
+        </a>
+        {% else %}
+        <a href="{% url 'common:login' %}" class="btn-premium btn-premium-primary">
+            <i class="fas fa-sign-in-alt"></i> 로그인
+        </a>
+        {% endif %}
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block script %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Animate cards on scroll
+    const cards = document.querySelectorAll('.member-card');
+
+    const observer = new IntersectionObserver((entries) => {
+        entries.forEach((entry, index) => {
+            if (entry.isIntersecting) {
+                setTimeout(() => {
+                    entry.target.style.opacity = '1';
+                    entry.target.style.transform = 'translateY(0)';
+                }, index * 100);
+                observer.unobserve(entry.target);
+            }
+        });
+    }, {
+        threshold: 0.1
+    });
+
+    cards.forEach(card => {
+        card.style.opacity = '0';
+        card.style.transform = 'translateY(30px)';
+        card.style.transition = 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)';
+        observer.observe(card);
+    });
+
+    // Button click feedback
+    const buttons = document.querySelectorAll('.view-portfolio-btn');
+    buttons.forEach(btn => {
+        btn.addEventListener('click', function(e) {
+            this.style.transform = 'scale(0.95)';
+            setTimeout(() => {
+                this.style.transform = 'scale(1.05)';
+            }, 100);
+        });
+    });
+});
+</script>
+{% endblock %}

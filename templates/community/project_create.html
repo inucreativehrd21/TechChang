@@ -1,0 +1,157 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}프로젝트 추가{% endblock %}
+
+{% block content %}
+<section style="padding: var(--space-16) var(--space-6); background: var(--bg-secondary); min-height: 100vh;">
+    <div style="max-width: 800px; margin: 0 auto;">
+        <h1 style="font-size: 2.5rem; font-weight: 900; margin-bottom: var(--space-8); color: var(--text-primary);">
+            프로젝트 추가
+        </h1>
+
+        <form method="post" enctype="multipart/form-data" style="background: white; padding: var(--space-8); border-radius: var(--radius-2xl); box-shadow: var(--shadow-xl);">
+            {% csrf_token %}
+
+            <!-- Project Image -->
+            <div style="margin-bottom: var(--space-6);">
+                <label style="display: block; font-weight: 700; margin-bottom: var(--space-3); color: var(--text-primary);">
+                    프로젝트 이미지
+                </label>
+                <input type="file" name="image" accept="image/*" style="width: 100%; padding: var(--space-3); border: 1px solid var(--border-light); border-radius: var(--radius-md);">
+                <small style="color: var(--text-tertiary); margin-top: var(--space-2); display: block;">16:9 비율 권장 (예: 1920x1080)</small>
+            </div>
+
+            <!-- Title -->
+            <div style="margin-bottom: var(--space-6);">
+                <label style="display: block; font-weight: 700; margin-bottom: var(--space-3); color: var(--text-primary);">
+                    프로젝트 제목 <span style="color: red;">*</span>
+                </label>
+                <input type="text" name="title" required placeholder="예: 테크창 커뮤니티 플랫폼" style="width: 100%; padding: var(--space-4); border: 1px solid var(--border-light); border-radius: var(--radius-md); font-size: 1rem;">
+            </div>
+
+            <!-- Project Type -->
+            <div style="margin-bottom: var(--space-6);">
+                <label style="display: block; font-weight: 700; margin-bottom: var(--space-3); color: var(--text-primary);">
+                    타입 <span style="color: red;">*</span>
+                </label>
+                <select name="project_type" required style="width: 100%; padding: var(--space-4); border: 1px solid var(--border-light); border-radius: var(--radius-md); font-size: 1rem;">
+                    <option value="dev">개발 프로젝트</option>
+                    <option value="work">업무 경력</option>
+                    <option value="education">교육</option>
+                    <option value="certificate">자격증</option>
+                    <option value="award">수상</option>
+                    <option value="activity">활동</option>
+                    <option value="other">기타</option>
+                </select>
+                <small style="color: var(--text-tertiary); margin-top: var(--space-2); display: block;">프로젝트 유형을 선택하세요</small>
+            </div>
+
+            <!-- Description -->
+            <div style="margin-bottom: var(--space-6);">
+                <label style="display: block; font-weight: 700; margin-bottom: var(--space-3); color: var(--text-primary);">
+                    프로젝트 설명 <span style="color: red;">*</span>
+                </label>
+                <textarea name="description" rows="6" required placeholder="프로젝트에 대한 상세한 설명을 작성해주세요" style="width: 100%; padding: var(--space-4); border: 1px solid var(--border-light); border-radius: var(--radius-md); font-size: 1rem; resize: vertical;"></textarea>
+            </div>
+
+            <!-- Tech Stack -->
+            <div style="margin-bottom: var(--space-6);">
+                <label style="display: block; font-weight: 700; margin-bottom: var(--space-3); color: var(--text-primary);">
+                    기술 스택 (쉼표로 구분)
+                </label>
+                <input type="text" name="tech_stack" placeholder="Django, Python, PostgreSQL, Docker" style="width: 100%; padding: var(--space-4); border: 1px solid var(--border-light); border-radius: var(--radius-md); font-size: 1rem;">
+                <small style="color: var(--text-tertiary); margin-top: var(--space-2); display: block;">사용된 기술들을 쉼표로 구분하여 입력하세요</small>
+            </div>
+
+            <!-- Dates -->
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-4); margin-bottom: var(--space-6);">
+                <div>
+                    <label style="display: block; font-weight: 700; margin-bottom: var(--space-3); color: var(--text-primary);">
+                        시작일
+                    </label>
+                    <input type="date" name="start_date" style="width: 100%; padding: var(--space-4); border: 1px solid var(--border-light); border-radius: var(--radius-md); font-size: 1rem;">
+                </div>
+                <div>
+                    <label style="display: block; font-weight: 700; margin-bottom: var(--space-3); color: var(--text-primary);">
+                        종료일
+                    </label>
+                    <input type="date" name="end_date" style="width: 100%; padding: var(--space-4); border: 1px solid var(--border-light); border-radius: var(--radius-md); font-size: 1rem;">
+                    <small style="color: var(--text-tertiary); margin-top: var(--space-2); display: block;">진행 중이면 비워두세요</small>
+                </div>
+            </div>
+
+            <!-- Links -->
+            <div style="margin-bottom: var(--space-6);">
+                <label style="display: block; font-weight: 700; margin-bottom: var(--space-3); color: var(--text-primary);">
+                    프로젝트 URL
+                </label>
+                <input type="url" name="project_url" placeholder="https://yourproject.com" style="width: 100%; padding: var(--space-4); border: 1px solid var(--border-light); border-radius: var(--radius-md); font-size: 1rem;">
+            </div>
+
+            <div style="margin-bottom: var(--space-6);">
+                <label style="display: block; font-weight: 700; margin-bottom: var(--space-3); color: var(--text-primary);">
+                    GitHub URL
+                </label>
+                <input type="url" name="github_url" placeholder="https://github.com/username/repo" style="width: 100%; padding: var(--space-4); border: 1px solid var(--border-light); border-radius: var(--radius-md); font-size: 1rem;">
+            </div>
+
+            <!-- Background Gradient -->
+            <div style="margin-bottom: var(--space-6);">
+                <label style="display: block; font-weight: 700; margin-bottom: var(--space-3); color: var(--text-primary);">
+                    배경 그라데이션
+                </label>
+                <select name="background_gradient" id="background_gradient" style="width: 100%; padding: var(--space-4); border: 1px solid var(--border-light); border-radius: var(--radius-md); font-size: 1rem;">
+                    <option value="linear-gradient(135deg, #667eea 0%, #764ba2 100%)">보라 그라데이션</option>
+                    <option value="linear-gradient(135deg, #f093fb 0%, #f5576c 100%)">핑크 그라데이션</option>
+                    <option value="linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)" selected>파랑 그라데이션</option>
+                    <option value="linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)">초록 그라데이션</option>
+                    <option value="linear-gradient(135deg, #fa709a 0%, #fee140 100%)">노랑 그라데이션</option>
+                    <option value="linear-gradient(135deg, #30cfd0 0%, #330867 100%)">다크 블루 그라데이션</option>
+                    <option value="linear-gradient(135deg, #a8edea 0%, #fed6e3 100%)">파스텔 그라데이션</option>
+                    <option value="linear-gradient(135deg, #ff9a9e 0%, #fecfef 100%)">로즈 그라데이션</option>
+                    <option value="linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%)">복숭아 그라데이션</option>
+                    <option value="linear-gradient(135deg, #ff6e7f 0%, #bfe9ff 100%)">선셋 그라데이션</option>
+                </select>
+                <div id="gradient_preview" style="margin-top: var(--space-3); height: 80px; border-radius: var(--radius-md); background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);"></div>
+                <small style="color: var(--text-tertiary); margin-top: var(--space-2); display: block;">프로젝트 슬라이드의 배경색을 선택하세요</small>
+            </div>
+
+            <!-- Featured -->
+            <div style="margin-bottom: var(--space-8); padding: var(--space-6); background: var(--bg-secondary); border-radius: var(--radius-lg);">
+                <label style="display: flex; align-items: center; gap: var(--space-3); cursor: pointer;">
+                    <input type="checkbox" name="is_featured" style="width: 20px; height: 20px; cursor: pointer;">
+                    <div>
+                        <span style="font-weight: 600; display: block;">추천 프로젝트로 표시</span>
+                        <small style="color: var(--text-tertiary);">포트폴리오에서 눈에 띄게 표시됩니다</small>
+                    </div>
+                </label>
+            </div>
+
+            <!-- Actions -->
+            <div style="display: flex; gap: var(--space-4); justify-content: flex-end; flex-wrap: wrap;">
+                <a href="{% url 'community:portfolio_view' user.id %}" class="btn-premium btn-premium-secondary">
+                    취소
+                </a>
+                <button type="submit" class="btn-premium btn-premium-primary">
+                    프로젝트 추가
+                </button>
+            </div>
+        </form>
+    </div>
+</section>
+
+<script>
+// Update gradient preview when selection changes
+document.addEventListener('DOMContentLoaded', function() {
+    const gradientSelect = document.getElementById('background_gradient');
+    const gradientPreview = document.getElementById('gradient_preview');
+
+    if (gradientSelect && gradientPreview) {
+        gradientSelect.addEventListener('change', function() {
+            gradientPreview.style.background = this.value;
+        });
+    }
+});
+</script>
+{% endblock %}

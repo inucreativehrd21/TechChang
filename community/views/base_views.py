@@ -258,17 +258,6 @@ def games_index(request):
             'active_games': MinesweeperGame.objects.filter(status='playing').count(),
             'features': ['논리 퍼즐', '싱글 플레이', '3가지 난이도'],
         },
-        {
-            'name': '방명록',
-            'title': 'Guest Book',
-            'description': '포스트잇처럼 자유롭게 메시지를 남겨보세요!',
-            'url': 'community:guestbook_list',
-            'icon': '📝',
-            'color': 'secondary',
-            'total_games': GuestBook.objects.count(),
-            'active_games': 0,
-            'features': ['메시지 보드', '인터랙티브', '포스트잇 스타일'],
-        },
     ]
 
     # 최근 활동 통계

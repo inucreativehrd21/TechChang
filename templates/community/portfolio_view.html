@@ -1,0 +1,746 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ portfolio.user|default:"Portfolio" }}의 포트폴리오{% endblock %}
+
+{% block extra_css %}
+<style>
+/* ============================================
+   Fullpage Portfolio Design System 2025
+   Inspired by Apple, Stripe, and Awwwards
+   ============================================ */
+
+:root {
+    --nav-height: 104px;
+    --slide-padding: clamp(2rem, 5vw, 4rem);
+}
+
+/* Remove default body padding for fullpage */
+body {
+    padding-top: var(--nav-height) !important;
+}
+
+/* Portfolio Container - Fullpage Scroll */
+.portfolio-fullpage {
+    height: calc(100vh - var(--nav-height));
+    overflow-y: scroll;
+    scroll-snap-type: y mandatory;
+    scroll-behavior: smooth;
+    position: relative;
+}
+
+/* Hide scrollbar but keep functionality */
+.portfolio-fullpage::-webkit-scrollbar {
+    display: none;
+}
+
+.portfolio-fullpage {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}
+
+/* Each Slide/Section */
+.portfolio-slide {
+    min-height: calc(100vh - var(--nav-height));
+    scroll-snap-align: start;
+    scroll-snap-stop: always;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    padding: var(--slide-padding);
+    overflow: hidden;
+}
+
+/* Slide Backgrounds */
+.slide-light {
+    background: var(--bg-primary);
+}
+
+/* Hero Slide (Intro) */
+.hero-slide {
+    color: white;
+    text-align: center;
+}
+
+.hero-content {
+    max-width: 900px;
+    animation: fadeInUp 1s ease;
+}
+
+.hero-avatar {
+    width: 180px;
+    height: 180px;
+    border-radius: 50%;
+    object-fit: cover;
+    margin: 0 auto 2rem;
+    border: 6px solid rgba(255, 255, 255, 0.3);
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    animation: float 3s ease-in-out infinite;
+}
+
+.hero-avatar-placeholder {
+    width: 180px;
+    height: 180px;
+    border-radius: 50%;
+    margin: 0 auto 2rem;
+    background: rgba(255, 255, 255, 0.2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 5rem;
+    font-weight: 900;
+    color: white;
+    border: 6px solid rgba(255, 255, 255, 0.3);
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    animation: float 3s ease-in-out infinite;
+}
+
+@keyframes float {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-10px); }
+}
+
+.hero-name {
+    font-size: clamp(3rem, 8vw, 6rem);
+    font-weight: 900;
+    margin-bottom: 1rem;
+    line-height: 1.1;
+    letter-spacing: -0.02em;
+    animation: fadeInUp 1s ease 0.2s backwards;
+}
+
+.hero-title {
+    font-size: clamp(1.5rem, 4vw, 2.5rem);
+    font-weight: 300;
+    margin-bottom: 2rem;
+    opacity: 0.95;
+    animation: fadeInUp 1s ease 0.4s backwards;
+}
+
+.hero-bio {
+    font-size: clamp(1.125rem, 2vw, 1.5rem);
+    line-height: 1.8;
+    max-width: 700px;
+    margin: 0 auto 3rem;
+    opacity: 0.9;
+    animation: fadeInUp 1s ease 0.6s backwards;
+}
+
+.hero-social {
+    display: flex;
+    gap: 1.5rem;
+    justify-content: center;
+    flex-wrap: wrap;
+    animation: fadeInUp 1s ease 0.8s backwards;
+}
+
+.social-link-hero {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 1rem 2rem;
+    background: rgba(255, 255, 255, 0.2);
+    backdrop-filter: blur(10px);
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-radius: 50px;
+    color: white;
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 1.125rem;
+    transition: all 0.3s ease;
+}
+
+.social-link-hero:hover {
+    background: rgba(255, 255, 255, 0.3);
+    transform: translateY(-3px);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+    color: white;
+}
+
+/* Skills Slide */
+.skills-slide {
+    background: var(--bg-primary);
+}
+
+.skills-content {
+    max-width: 1200px;
+    width: 100%;
+    text-align: center;
+}
+
+.slide-title {
+    font-size: clamp(3rem, 7vw, 5rem);
+    font-weight: 900;
+    margin-bottom: 4rem;
+    color: var(--text-primary);
+    animation: fadeInUp 1s ease;
+}
+
+.skills-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 1.5rem;
+    animation: fadeIn 1s ease 0.3s backwards;
+}
+
+.skill-card {
+    padding: 2rem 1.5rem;
+    background: white;
+    border-radius: 1.5rem;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+    transition: all 0.3s ease;
+    border: 2px solid transparent;
+}
+
+.skill-card:hover {
+    transform: translateY(-10px);
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+    border-color: var(--accent-blue);
+}
+
+.skill-name {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+/* Project Slides */
+.project-slide {
+    color: white;
+}
+
+.project-content {
+    max-width: 1200px;
+    width: 100%;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 4rem;
+    align-items: center;
+}
+
+.project-info {
+    animation: slideInLeft 1s ease;
+}
+
+.project-badges {
+    display: flex;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+    margin-bottom: 1.5rem;
+}
+
+.project-type-badge {
+    display: inline-block;
+    padding: 0.5rem 1.5rem;
+    background: rgba(255, 255, 255, 0.2);
+    backdrop-filter: blur(10px);
+    border-radius: 50px;
+    font-size: 0.875rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.project-featured-badge {
+    background: rgba(255, 215, 0, 0.3);
+}
+
+.project-title {
+    font-size: clamp(2.5rem, 5vw, 4rem);
+    font-weight: 900;
+    margin-bottom: 1rem;
+    line-height: 1.2;
+}
+
+.project-date {
+    font-size: 1.125rem;
+    opacity: 0.8;
+    margin-bottom: 2rem;
+}
+
+.project-description {
+    font-size: 1.25rem;
+    line-height: 1.8;
+    opacity: 0.95;
+    margin-bottom: 2rem;
+}
+
+.project-tech {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    margin-bottom: 2.5rem;
+}
+
+.tech-tag {
+    padding: 0.75rem 1.5rem;
+    background: rgba(255, 255, 255, 0.15);
+    backdrop-filter: blur(10px);
+    border-radius: 50px;
+    font-size: 0.9375rem;
+    font-weight: 600;
+}
+
+.project-links {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.project-btn {
+    padding: 1rem 2.5rem;
+    background: white;
+    color: #667eea;
+    border: none;
+    border-radius: 50px;
+    font-size: 1.125rem;
+    font-weight: 700;
+    text-decoration: none;
+    transition: all 0.3s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.project-btn:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.3);
+    color: #667eea;
+}
+
+.project-btn-secondary {
+    background: rgba(255, 255, 255, 0.15);
+    backdrop-filter: blur(10px);
+    color: white;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+}
+
+.project-btn-secondary:hover {
+    background: rgba(255, 255, 255, 0.25);
+    color: white;
+}
+
+.project-visual {
+    position: relative;
+    animation: slideInRight 1s ease;
+}
+
+.project-image {
+    width: 100%;
+    border-radius: 2rem;
+    box-shadow: 0 30px 60px rgba(0, 0, 0, 0.4);
+    transition: transform 0.5s ease;
+}
+
+.project-image:hover {
+    transform: scale(1.05) rotate(2deg);
+}
+
+.project-image-placeholder {
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(20px);
+    border-radius: 2rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 30px 60px rgba(0, 0, 0, 0.4);
+}
+
+.project-image-placeholder i {
+    font-size: 6rem;
+    opacity: 0.3;
+}
+
+/* Navigation Dots */
+.portfolio-nav {
+    position: fixed;
+    right: 2rem;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 100;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.nav-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.3);
+    border: 2px solid rgba(255, 255, 255, 0.5);
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.nav-dot.active {
+    background: white;
+    transform: scale(1.5);
+}
+
+.nav-dot:hover {
+    background: rgba(255, 255, 255, 0.6);
+    transform: scale(1.2);
+}
+
+/* Scroll Hint */
+.scroll-hint {
+    position: absolute;
+    bottom: 2rem;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+    color: white;
+    font-size: 0.875rem;
+    opacity: 0.7;
+    animation: bounce 2s ease-in-out infinite;
+}
+
+@keyframes bounce {
+    0%, 100% { transform: translateX(-50%) translateY(0); }
+    50% { transform: translateX(-50%) translateY(-10px); }
+}
+
+/* Animations */
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes slideInLeft {
+    from {
+        opacity: 0;
+        transform: translateX(-50px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+@keyframes slideInRight {
+    from {
+        opacity: 0;
+        transform: translateX(50px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+/* Responsive Design */
+@media (max-width: 1024px) {
+    .project-content {
+        grid-template-columns: 1fr;
+        gap: 2rem;
+    }
+
+    .project-visual {
+        order: -1;
+    }
+}
+
+@media (max-width: 768px) {
+    :root {
+        --slide-padding: 2rem 1.5rem;
+    }
+
+    .hero-social {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .skills-grid {
+        grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+        gap: 1rem;
+    }
+
+    .portfolio-nav {
+        right: 1rem;
+    }
+}
+
+/* Edit Button for Owner */
+.edit-button {
+    position: fixed;
+    top: calc(var(--nav-height) + 2rem);
+    right: 2rem;
+    z-index: 100;
+    padding: 1rem 2rem;
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(10px);
+    border-radius: 50px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+    text-decoration: none;
+    color: var(--text-primary);
+    font-weight: 700;
+    transition: all 0.3s ease;
+}
+
+.edit-button:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2);
+    color: var(--text-primary);
+}
+
+@media (max-width: 768px) {
+    .edit-button {
+        top: calc(var(--nav-height) + 1rem);
+        right: 1rem;
+        padding: 0.75rem 1.5rem;
+        font-size: 0.875rem;
+    }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Edit Button (Owner Only) -->
+{% if is_owner %}
+<a href="{% url 'community:portfolio_edit' %}" class="edit-button">
+    <i class="fas fa-edit"></i> 편집
+</a>
+{% endif %}
+
+<!-- Navigation Dots -->
+<div class="portfolio-nav" id="portfolioNav">
+    <!-- Dots will be generated by JavaScript -->
+</div>
+
+<!-- Fullpage Portfolio Container -->
+<div class="portfolio-fullpage" id="portfolioFullpage">
+
+    <!-- Slide 1: Hero/Intro -->
+    <section class="portfolio-slide hero-slide" data-slide="0" style="background: {{ portfolio.hero_gradient }}">
+        <div class="hero-content">
+            {% if portfolio.profile_image %}
+            <img src="{{ portfolio.profile_image.url }}" alt="{{ portfolio.get_display_name }}" class="hero-avatar">
+            {% else %}
+            <div class="hero-avatar-placeholder">
+                {{ portfolio.get_display_name|first|upper }}
+            </div>
+            {% endif %}
+
+            <h1 class="hero-name">{{ portfolio.get_display_name }}</h1>
+
+            {% if portfolio.title %}
+            <p class="hero-title">{{ portfolio.title }}</p>
+            {% endif %}
+
+            {% if portfolio.bio %}
+            <p class="hero-bio">{{ portfolio.bio|linebreaksbr }}</p>
+            {% endif %}
+
+            <!-- Social Links -->
+            {% if portfolio.email or portfolio.github_url or portfolio.linkedin_url or portfolio.website_url %}
+            <div class="hero-social">
+                {% if portfolio.email %}
+                <a href="mailto:{{ portfolio.email }}" class="social-link-hero">
+                    <i class="fas fa-envelope"></i>
+                    <span>Email</span>
+                </a>
+                {% endif %}
+
+                {% if portfolio.github_url %}
+                <a href="{{ portfolio.github_url }}" target="_blank" class="social-link-hero">
+                    <i class="fab fa-github"></i>
+                    <span>GitHub</span>
+                </a>
+                {% endif %}
+
+                {% if portfolio.linkedin_url %}
+                <a href="{{ portfolio.linkedin_url }}" target="_blank" class="social-link-hero">
+                    <i class="fab fa-linkedin"></i>
+                    <span>LinkedIn</span>
+                </a>
+                {% endif %}
+
+                {% if portfolio.website_url %}
+                <a href="{{ portfolio.website_url }}" target="_blank" class="social-link-hero">
+                    <i class="fas fa-globe"></i>
+                    <span>Website</span>
+                </a>
+                {% endif %}
+            </div>
+            {% endif %}
+        </div>
+
+        <div class="scroll-hint">
+            <span>스크롤하여 포트폴리오 보기</span>
+            <i class="fas fa-chevron-down"></i>
+        </div>
+    </section>
+
+    <!-- Slide 2: Skills -->
+    {% if portfolio.skills %}
+    <section class="portfolio-slide skills-slide" data-slide="1" style="background: {{ portfolio.skills_gradient }}">
+        <div class="skills-content">
+            <h2 class="slide-title">Skills</h2>
+            <div class="skills-grid">
+                {% for skill in portfolio.skills %}
+                <div class="skill-card">
+                    <div class="skill-name">{{ skill }}</div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </section>
+    {% endif %}
+
+    <!-- Slides 3+: Projects -->
+    {% for project in projects %}
+    <section class="portfolio-slide project-slide" data-slide="{{ forloop.counter|add:1 }}" style="background: {{ project.background_gradient }}">
+        <div class="project-content">
+            <div class="project-info">
+                <div class="project-badges">
+                    <span class="project-type-badge">{{ project.get_project_type_display }}</span>
+                    {% if project.is_featured %}
+                    <span class="project-type-badge project-featured-badge">Featured</span>
+                    {% endif %}
+                </div>
+
+                <h2 class="project-title">{{ project.title }}</h2>
+
+                {% if project.start_date or project.end_date %}
+                <p class="project-date">
+                    {% if project.start_date %}{{ project.start_date|date:"Y.m" }}{% endif %}
+                    {% if project.end_date %}
+                        - {{ project.end_date|date:"Y.m" }}
+                    {% elif project.start_date %}
+                        - Present
+                    {% endif %}
+                </p>
+                {% endif %}
+
+                <p class="project-description">{{ project.description|linebreaksbr }}</p>
+
+                {% if project.tech_stack %}
+                <div class="project-tech">
+                    {% for tech in project.tech_stack %}
+                    <span class="tech-tag">{{ tech }}</span>
+                    {% endfor %}
+                </div>
+                {% endif %}
+
+                <div class="project-links">
+                    {% if project.project_url %}
+                    <a href="{{ project.project_url }}" target="_blank" class="project-btn">
+                        <i class="fas fa-external-link-alt"></i>
+                        <span>View Project</span>
+                    </a>
+                    {% endif %}
+
+                    {% if project.github_url %}
+                    <a href="{{ project.github_url }}" target="_blank" class="project-btn project-btn-secondary">
+                        <i class="fab fa-github"></i>
+                        <span>Source Code</span>
+                    </a>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="project-visual">
+                {% if project.image %}
+                <img src="{{ project.image.url }}" alt="{{ project.title }}" class="project-image">
+                {% else %}
+                <div class="project-image-placeholder">
+                    <i class="fas fa-image"></i>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </section>
+    {% endfor %}
+
+</div>
+
+<script>
+// Fullpage Portfolio Navigation
+document.addEventListener('DOMContentLoaded', function() {
+    const fullpage = document.getElementById('portfolioFullpage');
+    const slides = document.querySelectorAll('.portfolio-slide');
+    const nav = document.getElementById('portfolioNav');
+
+    // Create navigation dots
+    slides.forEach((slide, index) => {
+        const dot = document.createElement('div');
+        dot.className = 'nav-dot';
+        if (index === 0) dot.classList.add('active');
+        dot.addEventListener('click', () => {
+            slide.scrollIntoView({ behavior: 'smooth' });
+        });
+        nav.appendChild(dot);
+    });
+
+    const dots = document.querySelectorAll('.nav-dot');
+
+    // Update active dot on scroll
+    let isScrolling;
+    fullpage.addEventListener('scroll', function() {
+        clearTimeout(isScrolling);
+
+        isScrolling = setTimeout(function() {
+            let currentIndex = 0;
+            let minDistance = Infinity;
+
+            slides.forEach((slide, index) => {
+                const rect = slide.getBoundingClientRect();
+                const distance = Math.abs(rect.top);
+
+                if (distance < minDistance) {
+                    minDistance = distance;
+                    currentIndex = index;
+                }
+            });
+
+            dots.forEach((dot, index) => {
+                dot.classList.toggle('active', index === currentIndex);
+            });
+        }, 100);
+    });
+
+    // Keyboard navigation
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'ArrowDown' || e.key === 'PageDown') {
+            e.preventDefault();
+            const currentSlide = Array.from(slides).find(slide => {
+                const rect = slide.getBoundingClientRect();
+                return rect.top >= 0 && rect.top < 100;
+            });
+            const currentIndex = Array.from(slides).indexOf(currentSlide);
+            if (currentIndex < slides.length - 1) {
+                slides[currentIndex + 1].scrollIntoView({ behavior: 'smooth' });
+            }
+        } else if (e.key === 'ArrowUp' || e.key === 'PageUp') {
+            e.preventDefault();
+            const currentSlide = Array.from(slides).find(slide => {
+                const rect = slide.getBoundingClientRect();
+                return rect.top >= 0 && rect.top < 100;
+            });
+            const currentIndex = Array.from(slides).indexOf(currentSlide);
+            if (currentIndex > 0) {
+                slides[currentIndex - 1].scrollIntoView({ behavior: 'smooth' });
+            }
+        }
+    });
+});
+</script>
+{% endblock %}

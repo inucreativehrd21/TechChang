@@ -1,0 +1,215 @@
+{% load common_tags %}
+{% load static %}
+
+<!-- Premium Navigation -->
+<nav class="premium-nav">
+    <div class="premium-nav-inner">
+        <!-- Brand -->
+        <a class="premium-nav-brand" href="{% url 'community:index' %}">
+            <img src="{% static 'images/techwindow-logo.png' %}" alt="테크창" style="height: 36px; width: auto;">
+            <span>테크창</span>
+        </a>
+
+        <!-- Desktop Links -->
+        <div class="premium-nav-links d-none d-lg-flex">
+            <a href="{% url 'community:index' %}" class="premium-nav-link">홈</a>
+            <a href="#" class="premium-nav-link" data-bs-toggle="modal" data-bs-target="#aboutModal">소개</a>
+            <a href="{% url 'community:members_list' %}" class="premium-nav-link">구성원</a>
+            <a href="{% url 'community:games_index' %}" class="premium-nav-link">게임</a>
+            <a href="{% url 'community:guestbook_list' %}" class="premium-nav-link">방명록</a>
+
+            {% if user.is_authenticated %}
+                <a href="{% url 'community:question_create' %}" class="btn-premium btn-premium-primary" style="padding: 0.625rem 1.25rem; font-size: 0.9375rem;">
+                    글쓰기
+                </a>
+                <div style="position: relative;" class="user-menu">
+                    <button class="btn-premium btn-premium-secondary user-menu-btn" style="padding: 0.625rem 1.25rem; font-size: 0.9375rem;">
+                        {{ user|display_name }}
+                    </button>
+                    <div class="user-dropdown" style="position: absolute; right: 0; top: 100%; margin-top: var(--space-2); background: white; border-radius: var(--radius-lg); box-shadow: var(--shadow-xl); min-width: 200px; display: none; z-index: 100;">
+                        <a href="{% url 'community:profile' user.id %}" style="display: block; padding: var(--space-4); color: var(--text-primary); text-decoration: none; border-bottom: 1px solid var(--border-light);">
+                            <i class="fas fa-user"></i> 마이페이지
+                        </a>
+                        <a href="{% url 'community:portfolio_view' user.id %}" style="display: block; padding: var(--space-4); color: var(--text-primary); text-decoration: none; border-bottom: 1px solid var(--border-light);">
+                            <i class="fas fa-briefcase"></i> 포트폴리오
+                        </a>
+                        <a href="#" onclick="checkAttendance(); return false;" style="display: block; padding: var(--space-4); color: var(--text-primary); text-decoration: none; border-bottom: 1px solid var(--border-light);">
+                            <i class="fas fa-check-circle"></i> 출석체크
+                        </a>
+                        <a href="{% url 'common:logout' %}" style="display: block; padding: var(--space-4); color: var(--text-primary); text-decoration: none;">
+                            <i class="fas fa-sign-out-alt"></i> 로그아웃
+                        </a>
+                    </div>
+                </div>
+            {% else %}
+                <a href="{% url 'common:login' %}" class="premium-nav-link">로그인</a>
+                <a href="{% url 'common:signup' %}" class="btn-premium btn-premium-primary" style="padding: 0.625rem 1.25rem; font-size: 0.9375rem;">
+                    회원가입
+                </a>
+            {% endif %}
+        </div>
+
+        <!-- Mobile Menu Button -->
+        <button class="navbar-toggler d-lg-none" type="button" data-bs-toggle="collapse" data-bs-target="#mobileNav" style="background: none; border: none; padding: var(--space-2);">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="3" y1="12" x2="21" y2="12"></line>
+                <line x1="3" y1="6" x2="21" y2="6"></line>
+                <line x1="3" y1="18" x2="21" y2="18"></line>
+            </svg>
+        </button>
+    </div>
+
+    <!-- Mobile Nav -->
+    <div class="collapse d-lg-none" id="mobileNav" style="padding: var(--space-4) 0; border-top: 1px solid rgba(226, 232, 240, 0.5);">
+        <a href="{% url 'community:index' %}" style="display: block; padding: var(--space-3) var(--space-6); color: var(--text-secondary); text-decoration: none;">홈</a>
+        <a href="#" data-bs-toggle="modal" data-bs-target="#aboutModal" style="display: block; padding: var(--space-3) var(--space-6); color: var(--text-secondary); text-decoration: none;">소개</a>
+        <a href="{% url 'community:members_list' %}" style="display: block; padding: var(--space-3) var(--space-6); color: var(--text-secondary); text-decoration: none;">구성원</a>
+        <a href="{% url 'community:games_index' %}" style="display: block; padding: var(--space-3) var(--space-6); color: var(--text-secondary); text-decoration: none;">게임</a>
+        <a href="{% url 'community:guestbook_list' %}" style="display: block; padding: var(--space-3) var(--space-6); color: var(--text-secondary); text-decoration: none;">방명록</a>
+        {% if user.is_authenticated %}
+            <a href="{% url 'community:question_create' %}" style="display: block; padding: var(--space-3) var(--space-6); color: var(--text-secondary); text-decoration: none;">글쓰기</a>
+            <a href="{% url 'community:profile' user.id %}" style="display: block; padding: var(--space-3) var(--space-6); color: var(--text-secondary); text-decoration: none;">마이페이지</a>
+            <a href="{% url 'community:portfolio_view' user.id %}" style="display: block; padding: var(--space-3) var(--space-6); color: var(--text-secondary); text-decoration: none;">포트폴리오</a>
+            <a href="#" onclick="checkAttendance(); return false;" style="display: block; padding: var(--space-3) var(--space-6); color: var(--text-secondary); text-decoration: none;">출석체크</a>
+            <a href="{% url 'common:logout' %}" style="display: block; padding: var(--space-3) var(--space-6); color: var(--text-secondary); text-decoration: none;">로그아웃</a>
+        {% else %}
+            <a href="{% url 'common:login' %}" style="display: block; padding: var(--space-3) var(--space-6); color: var(--text-secondary); text-decoration: none;">로그인</a>
+            <a href="{% url 'common:signup' %}" style="display: block; padding: var(--space-3) var(--space-6); color: var(--text-secondary); text-decoration: none;">회원가입</a>
+        {% endif %}
+    </div>
+</nav>
+
+<!-- About Modal -->
+<div class="modal fade" id="aboutModal" tabindex="-1" aria-labelledby="aboutModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable modal-dialog-centered">
+        <div class="modal-content" style="border: none; border-radius: var(--radius-2xl); overflow: hidden;">
+            <div class="modal-header" style="background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%); border-bottom: 1px solid var(--border-light);">
+                <h5 class="modal-title" id="aboutModalLabel" style="font-size: 1.5rem; font-weight: 700; color: var(--text-primary);">
+                    <i class="fas fa-info-circle" style="margin-right: var(--space-2); color: #0891b2;"></i>테크창 소개
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" style="padding: var(--space-8); background: linear-gradient(135deg, rgba(102, 126, 234, 0.05) 0%, rgba(118, 75, 162, 0.05) 100%);">
+                <!-- 단체사진 -->
+                <div style="text-align: center; margin-bottom: var(--space-12);">
+                    <img src="{% static 'images/group.jpg' %}" alt="테크창 단체사진"
+                         style="max-height: 320px; border-radius: var(--radius-2xl); box-shadow: var(--shadow-xl); object-fit: cover; margin-bottom: var(--space-8);">
+                </div>
+
+                <div style="text-align: center; margin-bottom: var(--space-16);">
+                    <h2 style="font-size: clamp(2rem, 5vw, 3rem); font-weight: 800; margin-bottom: var(--space-4); color: var(--text-primary);">
+                        테크창
+                    </h2>
+                    <p style="font-size: 1.5rem; color: var(--text-secondary); line-height: 1.8; max-width: 800px; margin: 0 auto; font-weight: 600;">
+                        HRD와 테크놀로지 지식을 공유하는 플랫폼
+                    </p>
+                </div>
+
+                <!-- 소속 정보 -->
+                <div style="text-align: center; padding: var(--space-8); background: white; border-radius: var(--radius-2xl); box-shadow: var(--shadow-lg); margin-bottom: var(--space-12);">
+                    <h3 style="font-size: 1.75rem; font-weight: 700; margin-bottom: var(--space-3); color: #0891b2;">
+                        <i class="fas fa-graduation-cap" style="margin-right: var(--space-2);"></i>인천대학교 창의인재개발학과
+                    </h3>
+                    <h5 style="font-size: 1.25rem; font-weight: 600; margin-bottom: var(--space-4); color: var(--text-secondary);">전공심화연구모임</h5>
+                    <p style="font-size: 1.125rem; color: var(--text-secondary); line-height: 1.6; max-width: 700px; margin: 0 auto;">
+                        HRD(인적자원개발)와 첨단 기술이 만나는 혁신적인 학습 공간
+                    </p>
+                </div>
+
+                <!-- 우리의 미션 -->
+                <div style="text-align: center; margin-bottom: var(--space-8);">
+                    <h4 style="font-size: 1.5rem; font-weight: 700; margin-bottom: var(--space-8); color: var(--text-primary);">
+                        <i class="fas fa-lightbulb" style="margin-right: var(--space-2); color: #f59e0b;"></i>우리의 미션
+                    </h4>
+                </div>
+
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: var(--space-6);">
+                    <!-- Mission 1 -->
+                    <div style="background: white; padding: var(--space-6); border-radius: var(--radius-xl); box-shadow: var(--shadow-lg); text-align: center;">
+                        <div style="width: 60px; height: 60px; margin: 0 auto var(--space-4); background: rgba(8, 145, 178, 0.1); border-radius: var(--radius-lg); display: flex; align-items: center; justify-content: center;">
+                            <i class="fas fa-users" style="font-size: 1.5rem; color: #0891b2;"></i>
+                        </div>
+                        <h3 style="font-size: 1.125rem; font-weight: 700; margin-bottom: var(--space-2); color: var(--text-primary);">인재개발 연구</h3>
+                        <p style="color: var(--text-secondary); line-height: 1.6; font-size: 0.875rem;">
+                            창의적 인재양성을 위한 체계적 연구와 실무 적용
+                        </p>
+                    </div>
+
+                    <!-- Mission 2 -->
+                    <div style="background: white; padding: var(--space-6); border-radius: var(--radius-xl); box-shadow: var(--shadow-lg); text-align: center;">
+                        <div style="width: 60px; height: 60px; margin: 0 auto var(--space-4); background: rgba(16, 185, 129, 0.1); border-radius: var(--radius-lg); display: flex; align-items: center; justify-content: center;">
+                            <i class="fas fa-laptop-code" style="font-size: 1.5rem; color: #10b981;"></i>
+                        </div>
+                        <h3 style="font-size: 1.125rem; font-weight: 700; margin-bottom: var(--space-2); color: var(--text-primary);">기술 융합</h3>
+                        <p style="color: var(--text-secondary); line-height: 1.6; font-size: 0.875rem;">
+                            데이터분석, AI, 프로그래밍 등 첨단기술과 HRD의 만남
+                        </p>
+                    </div>
+
+                    <!-- Mission 3 -->
+                    <div style="background: white; padding: var(--space-6); border-radius: var(--radius-xl); box-shadow: var(--shadow-lg); text-align: center;">
+                        <div style="width: 60px; height: 60px; margin: 0 auto var(--space-4); background: rgba(6, 182, 212, 0.1); border-radius: var(--radius-lg); display: flex; align-items: center; justify-content: center;">
+                            <i class="fas fa-share-alt" style="font-size: 1.5rem; color: #06b6d4;"></i>
+                        </div>
+                        <h3 style="font-size: 1.125rem; font-weight: 700; margin-bottom: var(--space-2); color: var(--text-primary);">지식 공유</h3>
+                        <p style="color: var(--text-secondary); line-height: 1.6; font-size: 0.875rem;">
+                            전공 지식과 실무 경험의 활발한 교류와 협력
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+body { padding-top: 112px; }
+.user-dropdown.show { display: block !important; }
+.user-dropdown a:hover { background-color: var(--bg-secondary); }
+</style>
+
+<script>
+// 유저 메뉴 드롭다운 토글
+document.addEventListener('DOMContentLoaded', function() {
+    const userMenuBtn = document.querySelector('.user-menu-btn');
+    const userDropdown = document.querySelector('.user-dropdown');
+
+    if (userMenuBtn && userDropdown) {
+        // 버튼 클릭 시 토글
+        userMenuBtn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            userDropdown.classList.toggle('show');
+        });
+
+        // 외부 클릭 시 닫기
+        document.addEventListener('click', function(e) {
+            if (!userDropdown.contains(e.target) && !userMenuBtn.contains(e.target)) {
+                userDropdown.classList.remove('show');
+            }
+        });
+    }
+});
+
+// 출석체크 함수
+function checkAttendance() {
+    fetch("{% url 'common:daily_checkin' %}", {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': window.CSRF_TOKEN,
+            'Content-Type': 'application/json'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert(data.message + '\n획득 포인트: ' + data.points + 'P');
+        } else {
+            alert(data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('출석체크 중 오류가 발생했습니다.');
+    });
+}
+</script>
