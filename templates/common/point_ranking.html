@@ -1,0 +1,232 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}포인트 랭킹 - 테크창{% endblock %}
+
+{% block content %}
+<style>
+.ranking-hero {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    padding: var(--space-16) 0 var(--space-12);
+    color: white;
+    text-align: center;
+    margin-bottom: var(--space-8);
+}
+
+.ranking-hero h1 {
+    font-size: clamp(2rem, 5vw, 3rem);
+    font-weight: 800;
+    margin-bottom: var(--space-4);
+}
+
+.ranking-hero p {
+    font-size: 1.125rem;
+    opacity: 0.95;
+}
+
+.ranking-container {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 0 var(--space-4);
+}
+
+.current-user-card {
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(20px);
+    border-radius: var(--radius-2xl);
+    padding: var(--space-6);
+    box-shadow: var(--shadow-xl);
+    border: 2px solid var(--accent-blue);
+    margin-bottom: var(--space-8);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.rank-card {
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(20px);
+    border-radius: var(--radius-xl);
+    padding: var(--space-4);
+    margin-bottom: var(--space-3);
+    box-shadow: var(--shadow-md);
+    display: flex;
+    align-items: center;
+    gap: var(--space-4);
+    transition: all 0.3s ease;
+}
+
+.rank-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-lg);
+}
+
+.rank-badge {
+    min-width: 60px;
+    height: 60px;
+    border-radius: var(--radius-lg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 800;
+    font-size: 1.5rem;
+}
+
+.rank-1 .rank-badge {
+    background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%);
+    color: white;
+}
+
+.rank-2 .rank-badge {
+    background: linear-gradient(135deg, #C0C0C0 0%, #808080 100%);
+    color: white;
+}
+
+.rank-3 .rank-badge {
+    background: linear-gradient(135deg, #CD7F32 0%, #8B4513 100%);
+    color: white;
+}
+
+.rank-other .rank-badge {
+    background: var(--bg-secondary);
+    color: var(--text-secondary);
+    font-size: 1.25rem;
+}
+
+.user-info {
+    flex: 1;
+}
+
+.user-name {
+    font-weight: 700;
+    font-size: 1.125rem;
+    color: var(--text-primary);
+    margin-bottom: 0.25rem;
+}
+
+.user-stats {
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+}
+
+.points-badge {
+    background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
+    color: white;
+    padding: var(--space-3) var(--space-6);
+    border-radius: var(--radius-lg);
+    font-weight: 700;
+    font-size: 1.125rem;
+}
+
+.medal-icon {
+    font-size: 1.5rem;
+}
+
+.empty-state {
+    text-align: center;
+    padding: var(--space-16) var(--space-4);
+    color: var(--text-secondary);
+}
+
+.ranking-info {
+    background: rgba(59, 130, 246, 0.1);
+    border-left: 4px solid var(--accent-blue);
+    padding: var(--space-4);
+    border-radius: var(--radius-md);
+    margin-bottom: var(--space-6);
+}
+
+.ranking-info h3 {
+    color: var(--accent-blue);
+    font-size: 1rem;
+    font-weight: 700;
+    margin-bottom: var(--space-2);
+}
+
+.ranking-info ul {
+    margin: 0;
+    padding-left: var(--space-6);
+    color: var(--text-secondary);
+}
+</style>
+
+<div class="ranking-hero">
+    <div class="container">
+        <h1>🏆 포인트 랭킹</h1>
+        <p>활동량으로 겨루는 테크창 랭킹 시스템</p>
+    </div>
+</div>
+
+<div class="ranking-container">
+    <!-- 포인트 획득 안내 -->
+    <div class="ranking-info">
+        <h3>💡 포인트 획득 방법</h3>
+        <ul>
+            <li><strong>출석체크:</strong> 5포인트 (1일 1회)</li>
+            <li><strong>댓글 작성:</strong> 5포인트</li>
+            <li><strong>질문 작성:</strong> 50포인트</li>
+        </ul>
+    </div>
+
+    {% if current_user_profile %}
+    <!-- 현재 사용자 카드 -->
+    <div class="current-user-card">
+        <div>
+            <div style="color: var(--text-secondary); font-size: 0.875rem; margin-bottom: 0.25rem;">내 순위</div>
+            <div style="font-size: 2rem; font-weight: 800; color: var(--accent-blue);">{{ current_user_rank }}위</div>
+        </div>
+        <div>
+            <div style="color: var(--text-secondary); font-size: 0.875rem; margin-bottom: 0.25rem;">내 포인트</div>
+            <div style="font-size: 2rem; font-weight: 800; color: var(--accent-purple);">{{ current_user_profile.points }}P</div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- 랭킹 리스트 -->
+    {% if top_users %}
+        {% for profile in top_users %}
+        <div class="rank-card rank-{% if forloop.counter <= 3 %}{{ forloop.counter }}{% else %}other{% endif %}">
+            <div class="rank-badge">
+                {% if forloop.counter == 1 %}
+                    🥇
+                {% elif forloop.counter == 2 %}
+                    🥈
+                {% elif forloop.counter == 3 %}
+                    🥉
+                {% else %}
+                    {{ forloop.counter }}
+                {% endif %}
+            </div>
+            <div class="user-info">
+                <div class="user-name">
+                    {% if profile.nickname %}
+                        {{ profile.nickname }}
+                        <span style="color: var(--text-tertiary); font-size: 0.875rem; font-weight: 400;">(@{{ profile.user.username }})</span>
+                    {% else %}
+                        {{ profile.user.username }}
+                    {% endif %}
+                </div>
+                <div class="user-stats">
+                    {% if profile.user == request.user %}
+                        <span style="color: var(--accent-blue); font-weight: 600;">👤 나</span>
+                    {% else %}
+                        활동 회원
+                    {% endif %}
+                </div>
+            </div>
+            <div class="points-badge">
+                {{ profile.points }}P
+            </div>
+        </div>
+        {% endfor %}
+    {% else %}
+    <div class="empty-state">
+        <i class="fas fa-trophy" style="font-size: 4rem; color: var(--text-tertiary); margin-bottom: var(--space-4);"></i>
+        <h3>아직 랭킹 데이터가 없습니다</h3>
+        <p>활동을 시작하고 첫 번째 랭커가 되어보세요!</p>
+    </div>
+    {% endif %}
+</div>
+
+<div style="height: var(--space-16);"></div>
+{% endblock %}

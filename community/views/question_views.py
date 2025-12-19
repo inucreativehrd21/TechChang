@@ -6,6 +6,7 @@ from django.utils import timezone
 
 from ..forms import QuestionForm
 from ..models import Question
+from common.models import Profile, PointHistory
 
 @login_required(login_url='common:login')
 def question_create(request):
@@ -17,7 +18,21 @@ def question_create(request):
                 question.author = request.user  # author 속성에 로그인 계정 저장
                 question.create_date = timezone.now()
                 question.save()
-                messages.success(request, '게시글이 성공적으로 등록되었습니다.')
+
+                # 질문 작성 포인트 지급 (50포인트)
+                profile, _ = Profile.objects.get_or_create(user=request.user)
+                profile.points += 50
+                profile.save()
+
+                # 포인트 히스토리 기록
+                PointHistory.objects.create(
+                    user=request.user,
+                    points=50,
+                    reason='질문 작성',
+                    description=f'질문 작성: {question.subject[:30]}'
+                )
+
+                messages.success(request, '게시글이 성공적으로 등록되었습니다. (+50 포인트)')
                 return redirect('community:index')
             except Exception as e:
                 messages.error(request, f'게시글 저장 중 오류가 발생했습니다: {str(e)}')

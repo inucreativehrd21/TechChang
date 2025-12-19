@@ -5,6 +5,7 @@ from django.utils import timezone
 
 from ..forms import CommentForm
 from ..models import Question, Answer, Comment
+from common.models import Profile, PointHistory
 
 
 @login_required(login_url='common:login')
@@ -21,6 +22,20 @@ def comment_create_question(request, question_id):
             comment.create_date = timezone.now()
             comment.question = question
             comment.save()
+
+            # 댓글 작성 포인트 지급 (5포인트)
+            profile, _ = Profile.objects.get_or_create(user=request.user)
+            profile.points += 5
+            profile.save()
+
+            # 포인트 히스토리 기록
+            PointHistory.objects.create(
+                user=request.user,
+                points=5,
+                reason='댓글 작성',
+                description=f'질문 댓글 작성: {comment.content[:30]}'
+            )
+
             return redirect('{}#comment_{}'.format(
                 resolve_url('community:detail', question_id=comment.question.id), comment.id))
     else:
@@ -81,6 +96,20 @@ def comment_create_answer(request, answer_id):
             comment.create_date = timezone.now()
             comment.answer = answer
             comment.save()
+
+            # 댓글 작성 포인트 지급 (5포인트)
+            profile, _ = Profile.objects.get_or_create(user=request.user)
+            profile.points += 5
+            profile.save()
+
+            # 포인트 히스토리 기록
+            PointHistory.objects.create(
+                user=request.user,
+                points=5,
+                reason='댓글 작성',
+                description=f'답변 댓글 작성: {comment.content[:30]}'
+            )
+
             return redirect('{}#comment_{}'.format(
                 resolve_url('community:detail', question_id=comment.answer.question.id), comment.id))
     else:

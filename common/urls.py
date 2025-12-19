@@ -36,4 +36,5 @@ urlpatterns = [
     path('emoticon/purchase/<int:emoticon_id>/', views.purchase_emoticon, name='purchase_emoticon'),
     path('emoticon/select/<int:emoticon_id>/', views.select_emoticon, name='select_emoticon'),
     path('points/history/', views.point_history, name='point_history'),
+    path('points/ranking/', views.point_ranking, name='point_ranking'),
 ]

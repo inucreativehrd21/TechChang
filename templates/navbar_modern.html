@@ -16,6 +16,7 @@
             <a href="#" class="premium-nav-link" data-bs-toggle="modal" data-bs-target="#aboutModal">소개</a>
             <a href="{% url 'community:members_list' %}" class="premium-nav-link">구성원</a>
             <a href="{% url 'community:games_index' %}" class="premium-nav-link">게임</a>
+            <a href="{% url 'common:point_ranking' %}" class="premium-nav-link">랭킹</a>
             <a href="{% url 'community:guestbook_list' %}" class="premium-nav-link">방명록</a>
 
             {% if user.is_authenticated %}
@@ -65,6 +66,7 @@
         <a href="#" data-bs-toggle="modal" data-bs-target="#aboutModal" style="display: block; padding: var(--space-3) var(--space-6); color: var(--text-secondary); text-decoration: none;">소개</a>
         <a href="{% url 'community:members_list' %}" style="display: block; padding: var(--space-3) var(--space-6); color: var(--text-secondary); text-decoration: none;">구성원</a>
         <a href="{% url 'community:games_index' %}" style="display: block; padding: var(--space-3) var(--space-6); color: var(--text-secondary); text-decoration: none;">게임</a>
+        <a href="{% url 'common:point_ranking' %}" style="display: block; padding: var(--space-3) var(--space-6); color: var(--text-secondary); text-decoration: none;">랭킹</a>
         <a href="{% url 'community:guestbook_list' %}" style="display: block; padding: var(--space-3) var(--space-6); color: var(--text-secondary); text-decoration: none;">방명록</a>
         {% if user.is_authenticated %}
             <a href="{% url 'community:question_create' %}" style="display: block; padding: var(--space-3) var(--space-6); color: var(--text-secondary); text-decoration: none;">글쓰기</a>

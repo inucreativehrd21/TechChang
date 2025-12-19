@@ -972,3 +972,31 @@ def admin_unblock_ip(request, ip_id):
 
     messages.success(request, f'{ip_address}의 차단을 해제했습니다.')
     return redirect(request.META.get('HTTP_REFERER', 'common:admin_blocked_ip_list'))
+
+
+# ==================== 포인트 랭킹 ====================
+def point_ranking(request):
+    """포인트 랭킹 페이지"""
+    from .models import Profile
+
+    # 포인트 순으로 정렬된 사용자 목록 (상위 100명)
+    top_users = Profile.objects.select_related('user').order_by('-points')[:100]
+
+    # 현재 로그인한 사용자의 순위 (있는 경우)
+    current_user_rank = None
+    current_user_profile = None
+    if request.user.is_authenticated:
+        try:
+            current_user_profile = Profile.objects.get(user=request.user)
+            # 현재 사용자보다 포인트가 높은 사용자 수 + 1
+            current_user_rank = Profile.objects.filter(points__gt=current_user_profile.points).count() + 1
+        except Profile.DoesNotExist:
+            pass
+
+    context = {
+        'top_users': top_users,
+        'current_user_rank': current_user_rank,
+        'current_user_profile': current_user_profile,
+    }
+
+    return render(request, 'common/point_ranking.html', context)
