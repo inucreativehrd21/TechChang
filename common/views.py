@@ -142,9 +142,9 @@ def account_delete(request):
             user.email = f"deleted_{user.id}_{user.email}"  # 이메일 중복 방지
             user.username = f"deleted_{user.id}_{user.username}"  # 사용자명 중복 방지
             user.save()
-            
+
             messages.success(request, '회원 탈퇴가 완료되었습니다. 그동안 테크창을 이용해주셔서 감사합니다.')
-            return redirect('pybo:index')
+            return redirect('community:index')
             
         except Exception as e:
             messages.error(request, '회원 탈퇴 처리 중 오류가 발생했습니다. 관리자에게 문의해주세요.')
@@ -307,7 +307,7 @@ def signup_with_email_verification(request):
             login(request, user)
 
             messages.success(request, '회원가입이 완료되었습니다! 테크창에 오신 것을 환영합니다.')
-            return redirect('pybo:index')
+            return redirect('community:index')
     else:
         form = UserForm()
 
@@ -451,7 +451,7 @@ def kakao_callback(request):
         request.session['is_kakao_user'] = True
 
         messages.success(request, f'{nickname}님, 카카오 로그인에 성공했습니다!')
-        return redirect('pybo:index')
+        return redirect('community:index')
 
     except requests.exceptions.RequestException as e:
         logger.error(f"카카오 API 요청 오류: {e}")
