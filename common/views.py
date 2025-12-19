@@ -25,7 +25,7 @@ logger = logging.getLogger(__name__)
 
 def logout_view(request):
     logout(request)
-    return redirect('index')
+    return redirect('community:index')
 
 def signup(request):
     if request.method == "POST":
@@ -43,7 +43,7 @@ def signup(request):
             raw_password = form.cleaned_data.get('password1')
             user = authenticate(username=username, password=raw_password)  # 사용자 인증
             login(request, user)  # 로그인
-            return redirect('index')
+            return redirect('community:index')
     else:
         form = UserForm()
     return render(request, 'common/signup.html', {'form': form})
@@ -507,7 +507,7 @@ def admin_required(view_func):
             return redirect('common:login')
         if not request.user.is_staff and not request.user.is_superuser:
             messages.error(request, '관리자 권한이 필요합니다.')
-            return redirect('index')
+            return redirect('community:index')
         return view_func(request, *args, **kwargs)
     return wrapper
 
