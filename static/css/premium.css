@@ -88,8 +88,13 @@
    Base Styles
    ============================================ */
 
+html {
+    font-size: 16px; /* 기본 폰트 크기 명시 (1rem = 16px) */
+}
+
 body {
     font-family: var(--font-sans);
+    font-size: 1rem; /* 16px */
     color: var(--text-primary);
     background: var(--bg-gradient);
     background-attachment: fixed;
