@@ -293,9 +293,37 @@ LOGGING = {
     },
 }
 
-# 이메일 설정 (개발용)
-EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
-DEFAULT_FROM_EMAIL = 'noreply@techchang.com'
+# ===== 이메일 설정 =====
+# .env 파일의 환경변수를 읽어서 Gmail SMTP 설정
+EMAIL_BACKEND = os.environ.get(
+    'DJANGO_EMAIL_BACKEND',
+    'django.core.mail.backends.smtp.EmailBackend'  # 기본값: SMTP 백엔드
+)
+EMAIL_HOST = os.environ.get('DJANGO_EMAIL_HOST', 'smtp.gmail.com')
+EMAIL_PORT = int(os.environ.get('DJANGO_EMAIL_PORT', 587))
+EMAIL_HOST_USER = os.environ.get('DJANGO_EMAIL_HOST_USER', '')
+EMAIL_HOST_PASSWORD = os.environ.get('DJANGO_EMAIL_HOST_PASSWORD', '')
+EMAIL_USE_TLS = os.environ.get('DJANGO_EMAIL_USE_TLS', 'true').lower() == 'true'
+EMAIL_USE_SSL = os.environ.get('DJANGO_EMAIL_USE_SSL', 'false').lower() == 'true'
+EMAIL_TIMEOUT = int(os.environ.get('DJANGO_EMAIL_TIMEOUT', 30))
+
+# SSL과 TLS는 동시에 사용할 수 없음
+if EMAIL_USE_SSL:
+    EMAIL_USE_TLS = False
+
+DEFAULT_FROM_EMAIL = os.environ.get(
+    'DJANGO_DEFAULT_FROM_EMAIL',
+    EMAIL_HOST_USER or 'noreply@techchang.com'
+)
+SERVER_EMAIL = os.environ.get(
+    'DJANGO_SERVER_EMAIL',
+    DEFAULT_FROM_EMAIL
+)
+
+ADMINS = [
+    ('Admin', os.environ.get('DJANGO_ADMIN_EMAIL', DEFAULT_FROM_EMAIL)),
+]
+MANAGERS = ADMINS
 
 # 추가 보안 설정
 SECURE_BROWSER_XSS_FILTER = True

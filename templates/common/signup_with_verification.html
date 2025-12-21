@@ -1,148 +1,648 @@
-{% extends 'base.html' %}
+{% extends "base.html" %}
 {% load static %}
 
 {% block title %}회원가입 - 테크창{% endblock %}
 
 {% block content %}
-<div class="container mt-4">
-  <div class="row justify-content-center">
-    <div class="col-lg-6">
-      <div class="card shadow border-0" style="border-radius: 15px;">
-        <div class="card-header bg-primary text-white text-center py-4" style="border-radius: 15px 15px 0 0;">
-          <i class="fas fa-user-plus fa-3x mb-3"></i>
-          <h2 class="mb-1">회원가입</h2>
-          <p class="mb-0">테크창 커뮤니티에 오신 것을 환영합니다</p>
-        </div>
-        <div class="card-body p-4">
-          {% if messages %}
-            {% for message in messages %}
-              <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
-                {{ message }}
-                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-              </div>
-            {% endfor %}
-          {% endif %}
-          <form id="signupForm" method="post" action="{% url 'common:signup' %}">
-            {% csrf_token %}
-            <div class="mb-3">
-              <label for="{{ form.username.id_for_label }}" class="form-label fw-semibold">
-                <i class="fas fa-user me-2 text-primary"></i>사용자명 <span class="text-danger">*</span>
-              </label>
-              {{ form.username }}
-            </div>
-            <div class="mb-3">
-              <label for="{{ form.email.id_for_label }}" class="form-label fw-semibold">
-                <i class="fas fa-envelope me-2 text-primary"></i>이메일 <span class="text-danger">*</span>
-              </label>
-              <div class="input-group">
-                {{ form.email }}
-                <button type="button" class="btn btn-outline-primary" id="sendCodeBtn">
-                  <i class="fas fa-paper-plane me-1"></i>인증코드 발송
-                </button>
-              </div>
-              <div class="form-text">이메일로 인증 코드를 받아 확인해주세요.</div>
-            </div>
-            <div class="mb-3" id="codeSection" style="display:none;">
-              <label class="form-label fw-semibold">
-                <i class="fas fa-key me-2 text-success"></i>이메일 인증 코드 <span class="text-danger">*</span>
-              </label>
-              <div class="input-group">
-                <input type="text" class="form-control" id="verificationCode" placeholder="4자리 숫자 입력" maxlength="4">
-                <button type="button" class="btn btn-outline-success" id="verifyCodeBtn">
-                  <i class="fas fa-check me-1"></i>인증 확인
-                </button>
-              </div>
-              <div id="verificationStatus" class="mt-2"></div>
-            </div>
-            {{ form.nickname.label_tag }} {{ form.nickname }}
-            {{ form.password1.label_tag }} {{ form.password1 }}
-            {{ form.password2.label_tag }} {{ form.password2 }}
-            <div class="d-flex justify-content-between align-items-center mt-4">
-              <a href="{% url 'common:login' %}" class="btn btn-outline-secondary">
-                <i class="fas fa-arrow-left me-1"></i>로그인으로 돌아가기
-              </a>
-              <button type="submit" class="btn btn-primary btn-lg" id="submitBtn" disabled>
-                <i class="fas fa-user-plus me-1"></i>회원가입 완료
-              </button>
-            </div>
-          </form>
-        </div>
-      </div>
-      <div class="text-center mt-4">
-        <p class="text-muted small">
-          <i class="fas fa-shield-alt me-1"></i>
-          테크창은 안전한 이메일 인증을 통해 계정을 보호합니다
-        </p>
-      </div>
-    </div>
-  </div>
-</div>
-{% endblock %}
+<style>
+.signup-premium-card {
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(0, 0, 0, 0.06);
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.08);
+}
+.signup-premium-card .form-control,
+.signup-premium-card .form-select {
+    background: #ffffff;
+    color: var(--text-primary);
+    border: 1px solid var(--border-color);
+    transition: all 0.3s ease;
+}
+.signup-premium-card .form-control:focus,
+.signup-premium-card .form-select:focus {
+    background: #ffffff;
+    color: var(--text-primary);
+    border-color: var(--accent-blue);
+    box-shadow: 0 0 0 0.2rem rgba(79, 172, 254, 0.15);
+}
+.signup-premium-card .input-group-text {
+    background: #f8f9fa;
+    color: var(--text-secondary);
+    border: 1px solid var(--border-color);
+}
+.verification-status {
+    padding: 0.75rem;
+    border-radius: 8px;
+    font-weight: 600;
+}
+.verification-status.success {
+    background: #d1fae5;
+    color: #065f46;
+}
+.verification-status.error {
+    background: #fee2e2;
+    color: #991b1b;
+}
 
-{% block extra_js %}
+/* 약관 동의 스타일 */
+.terms-container {
+    border: 2px solid var(--border-color);
+    border-radius: 12px;
+    padding: 1rem;
+    margin-bottom: 1rem;
+    background: #f8f9fa;
+}
+.terms-scroll-box {
+    height: 200px;
+    overflow-y: scroll;
+    padding: 1rem;
+    background: white;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    font-size: 0.9rem;
+    line-height: 1.6;
+    margin-bottom: 0.75rem;
+}
+.terms-scroll-box h4 {
+    color: var(--accent-blue);
+    font-size: 1rem;
+    font-weight: 700;
+    margin-bottom: 0.75rem;
+}
+.terms-scroll-box p, .terms-scroll-box ul {
+    margin-bottom: 0.75rem;
+}
+.terms-scroll-box strong {
+    color: var(--text-primary);
+}
+.terms-checkbox {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+.terms-checkbox input[type="checkbox"]:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+.terms-checkbox label {
+    margin: 0;
+    cursor: pointer;
+}
+.scroll-indicator {
+    font-size: 0.85rem;
+    color: var(--accent-blue);
+    font-weight: 600;
+    margin-top: 0.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+.scroll-indicator i {
+    animation: bounce 2s infinite;
+}
+@keyframes bounce {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-5px); }
+}
+.non-profit-badge {
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    color: white;
+    padding: 0.5rem 1rem;
+    border-radius: 20px;
+    font-size: 0.875rem;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+}
+</style>
+
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-10 col-lg-8">
+            <div class="card border-0 signup-premium-card" style="border-radius: 20px;">
+                <!-- 헤더 -->
+                <div class="card-header text-white text-center py-4" style="border-radius: 20px 20px 0 0; background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">
+                    <i class="fas fa-user-plus fa-3x mb-3"></i>
+                    <h2 class="mb-1">회원가입</h2>
+                    <p class="mb-2" style="opacity: 0.95;">이메일 인증을 통한 안전한 회원가입</p>
+                    <div class="non-profit-badge">
+                        <i class="fas fa-heart"></i>
+                        비영리 커뮤니티 사이트
+                    </div>
+                </div>
+
+                <!-- 본문 -->
+                <div class="card-body p-5">
+                    <!-- 메시지 표시 -->
+                    {% if messages %}
+                        {% for message in messages %}
+                        <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                            {{ message }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        </div>
+                        {% endfor %}
+                    {% endif %}
+
+                    <!-- 에러 메시지 -->
+                    {% if form.errors %}
+                    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        <strong>오류가 발생했습니다!</strong>
+                        <ul class="mb-0 mt-2">
+                            {% for field in form %}
+                                {% for error in field.errors %}
+                                    <li><strong>{{ field.label }}:</strong> {{ error }}</li>
+                                {% endfor %}
+                            {% endfor %}
+                            {% for error in form.non_field_errors %}
+                                <li>{{ error }}</li>
+                            {% endfor %}
+                        </ul>
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                    {% endif %}
+
+                    <form id="signupForm" method="post" action="{% url 'common:signup' %}">
+                        {% csrf_token %}
+
+                        <!-- 사용자명 -->
+                        <div class="mb-4">
+                            <label for="{{ form.username.id_for_label }}" class="form-label fw-semibold">
+                                <i class="fas fa-user me-2 text-primary"></i>사용자 이름 <span class="text-danger">*</span>
+                            </label>
+                            {{ form.username }}
+                            {% if form.username.help_text %}
+                            <div class="form-text">{{ form.username.help_text }}</div>
+                            {% endif %}
+                        </div>
+
+                        <!-- 이메일 + 인증 코드 발송 -->
+                        <div class="mb-4">
+                            <label for="{{ form.email.id_for_label }}" class="form-label fw-semibold">
+                                <i class="fas fa-envelope me-2 text-primary"></i>이메일 <span class="text-danger">*</span>
+                            </label>
+                            <div class="input-group">
+                                {{ form.email }}
+                                <button type="button" class="btn btn-outline-primary" id="sendCodeBtn">
+                                    <i class="fas fa-paper-plane me-1"></i>인증코드 발송
+                                </button>
+                            </div>
+                            <div class="form-text">
+                                <i class="fas fa-shield-alt me-1"></i>
+                                이메일로 인증 코드를 받아 확인해주세요.
+                            </div>
+                        </div>
+
+                        <!-- 인증 코드 입력 섹션 (초기에는 숨김) -->
+                        <div class="mb-4" id="codeSection" style="display:none;">
+                            <label class="form-label fw-semibold">
+                                <i class="fas fa-key me-2 text-success"></i>이메일 인증 코드 <span class="text-danger">*</span>
+                            </label>
+                            <div class="input-group">
+                                <input type="text"
+                                       class="form-control"
+                                       id="verificationCode"
+                                       placeholder="4자리 숫자 입력"
+                                       maxlength="4">
+                                <button type="button" class="btn btn-outline-success" id="verifyCodeBtn">
+                                    <i class="fas fa-check me-1"></i>인증 확인
+                                </button>
+                            </div>
+                            <div id="verificationStatus" class="mt-2"></div>
+                        </div>
+
+                        <!-- 닉네임 -->
+                        <div class="mb-4">
+                            <label for="{{ form.nickname.id_for_label }}" class="form-label fw-semibold">
+                                <i class="fas fa-tag me-2 text-primary"></i>닉네임 <span class="text-muted">(선택사항)</span>
+                            </label>
+                            {{ form.nickname }}
+                            {% if form.nickname.help_text %}
+                            <div class="form-text">
+                                <i class="fas fa-info-circle me-1"></i>
+                                {{ form.nickname.help_text }}
+                            </div>
+                            {% endif %}
+                        </div>
+
+                        <!-- 비밀번호 -->
+                        <div class="mb-4">
+                            <label for="{{ form.password1.id_for_label }}" class="form-label fw-semibold">
+                                <i class="fas fa-lock me-2 text-primary"></i>비밀번호 <span class="text-danger">*</span>
+                            </label>
+                            {{ form.password1 }}
+                            {% if form.password1.help_text %}
+                            <div class="form-text">{{ form.password1.help_text }}</div>
+                            {% endif %}
+                        </div>
+
+                        <!-- 비밀번호 확인 -->
+                        <div class="mb-4">
+                            <label for="{{ form.password2.id_for_label }}" class="form-label fw-semibold">
+                                <i class="fas fa-shield-alt me-2 text-primary"></i>비밀번호 확인 <span class="text-danger">*</span>
+                            </label>
+                            {{ form.password2 }}
+                            {% if form.password2.help_text %}
+                            <div class="form-text">{{ form.password2.help_text }}</div>
+                            {% endif %}
+                        </div>
+
+                        <!-- 약관 동의 섹션 -->
+                        <div class="mb-4">
+                            <h5 class="mb-3">
+                                <i class="fas fa-file-contract me-2 text-primary"></i>
+                                약관 동의
+                            </h5>
+
+                            <!-- 이용약관 -->
+                            <div class="terms-container">
+                                <h6 class="mb-2 fw-bold">
+                                    <i class="fas fa-book me-2"></i>이용약관 <span class="text-danger">*</span>
+                                </h6>
+                                <div class="terms-scroll-box" id="termsBox">
+                                    <h4>테크창 이용약관</h4>
+
+                                    <p><strong>제1조 (목적)</strong></p>
+                                    <p>본 약관은 테크창(이하 "사이트")이 제공하는 모든 서비스(이하 "서비스")의 이용과 관련하여 사이트와 회원 간의 권리, 의무 및 책임사항을 규정함을 목적으로 합니다.</p>
+
+                                    <p><strong>제2조 (사이트의 성격)</strong></p>
+                                    <p>테크창은 <strong>비영리 커뮤니티 사이트</strong>로서, 회원들이 자유롭게 지식과 정보를 교환하고 소통하는 공간을 제공합니다. 사이트는 어떠한 영리 목적도 추구하지 않으며, 회원의 개인정보를 상업적으로 이용하지 않습니다.</p>
+
+                                    <p><strong>제3조 (서비스의 제공)</strong></p>
+                                    <ul>
+                                        <li>질문과 답변 게시판</li>
+                                        <li>커뮤니티 게시판</li>
+                                        <li>게임 및 인터랙티브 기능</li>
+                                        <li>포인트 및 랭킹 시스템</li>
+                                        <li>프로필 및 포트폴리오 기능</li>
+                                    </ul>
+
+                                    <p><strong>제4조 (회원가입)</strong></p>
+                                    <p>1. 회원가입은 이메일 인증을 통해 이루어집니다.<br>
+                                    2. 회원은 가입 시 제공한 정보에 대해 책임을 집니다.<br>
+                                    3. 타인의 정보를 도용하여 가입한 경우 즉시 탈퇴 처리됩니다.</p>
+
+                                    <p><strong>제5조 (회원의 의무)</strong></p>
+                                    <p>1. 회원은 타인의 명예를 훼손하거나 불쾌감을 주는 내용을 게시해서는 안 됩니다.<br>
+                                    2. 회원은 저작권법을 준수해야 하며, 타인의 저작물을 무단으로 게시해서는 안 됩니다.<br>
+                                    3. 회원은 사이트의 안정적인 운영을 방해하는 행위를 해서는 안 됩니다.</p>
+
+                                    <p><strong>제6조 (사이트의 의무)</strong></p>
+                                    <p>1. 사이트는 회원의 개인정보를 보호하기 위해 최선을 다합니다.<br>
+                                    2. 사이트는 안정적인 서비스 제공을 위해 노력합니다.<br>
+                                    3. 사이트는 회원의 의견을 존중하며, 합리적인 의견은 적극 반영합니다.</p>
+
+                                    <p><strong>제7조 (서비스 이용의 제한)</strong></p>
+                                    <p>사이트는 다음 각 호에 해당하는 경우 서비스 이용을 제한할 수 있습니다:</p>
+                                    <ul>
+                                        <li>타인의 명예를 훼손하거나 불이익을 주는 행위</li>
+                                        <li>사이트의 운영을 방해하는 행위</li>
+                                        <li>공공질서 및 미풍양속에 반하는 내용을 게시하는 행위</li>
+                                        <li>범죄와 결부된다고 판단되는 행위</li>
+                                    </ul>
+
+                                    <p><strong>제8조 (저작권)</strong></p>
+                                    <p>1. 회원이 게시한 게시물의 저작권은 해당 회원에게 귀속됩니다.<br>
+                                    2. 사이트는 게시물을 서비스 내에서 사용할 수 있는 권리를 가집니다.<br>
+                                    3. 회원은 자신이 게시한 게시물을 언제든지 삭제할 수 있습니다.</p>
+
+                                    <p><strong>제9조 (면책조항)</strong></p>
+                                    <p>1. 사이트는 천재지변 또는 이에 준하는 불가항력으로 인해 서비스를 제공할 수 없는 경우 책임이 면제됩니다.<br>
+                                    2. 사이트는 회원 간의 거래에 대해 책임을 지지 않습니다.<br>
+                                    3. 사이트는 회원이 게시한 정보의 신뢰도, 정확성에 대해 책임을 지지 않습니다.</p>
+
+                                    <p><strong>제10조 (분쟁해결)</strong></p>
+                                    <p>본 약관과 관련하여 분쟁이 발생한 경우, 사이트의 본사 소재지 법원을 관할 법원으로 합니다.</p>
+
+                                    <p class="mt-4 mb-0"><strong>시행일: 2025년 1월 1일</strong></p>
+                                </div>
+                                <div class="scroll-indicator" id="termsScrollIndicator">
+                                    <i class="fas fa-chevron-down"></i>
+                                    내용을 끝까지 읽어주세요
+                                </div>
+                                <div class="terms-checkbox">
+                                    <input type="checkbox" class="form-check-input" id="agreeTerms" disabled>
+                                    <label class="form-check-label" for="agreeTerms">
+                                        <strong>이용약관</strong>에 동의합니다 <span class="text-danger">*</span>
+                                    </label>
+                                </div>
+                            </div>
+
+                            <!-- 개인정보 수집 및 이용 동의 -->
+                            <div class="terms-container">
+                                <h6 class="mb-2 fw-bold">
+                                    <i class="fas fa-user-shield me-2"></i>개인정보 수집 및 이용 동의 <span class="text-danger">*</span>
+                                </h6>
+                                <div class="terms-scroll-box" id="privacyBox">
+                                    <h4>개인정보 수집 및 이용 동의</h4>
+
+                                    <p><strong>1. 개인정보의 수집 및 이용 목적</strong></p>
+                                    <p>테크창은 비영리 커뮤니티 사이트로서, 다음의 목적을 위해 개인정보를 수집 및 이용합니다:</p>
+                                    <ul>
+                                        <li>회원 가입 및 관리</li>
+                                        <li>서비스 제공 및 운영</li>
+                                        <li>회원 간 소통 지원</li>
+                                        <li>공지사항 전달</li>
+                                        <li>서비스 개선 및 통계 분석</li>
+                                    </ul>
+
+                                    <p><strong>2. 수집하는 개인정보 항목</strong></p>
+                                    <p><u>필수 항목:</u></p>
+                                    <ul>
+                                        <li>이메일 주소</li>
+                                        <li>사용자 이름 (아이디)</li>
+                                        <li>비밀번호 (암호화 저장)</li>
+                                    </ul>
+                                    <p><u>선택 항목:</u></p>
+                                    <ul>
+                                        <li>닉네임</li>
+                                        <li>프로필 이미지</li>
+                                        <li>자기소개</li>
+                                        <li>포트폴리오 정보</li>
+                                    </ul>
+                                    <p><u>자동 수집 항목:</u></p>
+                                    <ul>
+                                        <li>서비스 이용 기록</li>
+                                        <li>접속 로그</li>
+                                        <li>쿠키 정보</li>
+                                        <li>IP 주소</li>
+                                    </ul>
+
+                                    <p><strong>3. 개인정보의 보유 및 이용 기간</strong></p>
+                                    <p>회원의 개인정보는 <strong>회원 탈퇴 시까지</strong> 보유 및 이용됩니다. 다만, 다음의 경우에는 해당 기간 동안 보유합니다:</p>
+                                    <ul>
+                                        <li>관계 법령 위반에 따른 수사, 조사 등이 진행 중인 경우: 해당 수사, 조사 종료 시까지</li>
+                                        <li>사이트 이용에 따른 채권·채무관계 잔존 시: 해당 채권·채무관계 정산 시까지</li>
+                                    </ul>
+
+                                    <p><strong>4. 개인정보의 제3자 제공</strong></p>
+                                    <p>사이트는 원칙적으로 회원의 개인정보를 제3자에게 제공하지 않습니다. 다만, 다음의 경우에는 예외로 합니다:</p>
+                                    <ul>
+                                        <li>회원이 사전에 동의한 경우</li>
+                                        <li>법령의 규정에 의거하거나, 수사 목적으로 법령에 정해진 절차와 방법에 따라 수사기관의 요구가 있는 경우</li>
+                                    </ul>
+                                    <p><strong class="text-danger">테크창은 비영리 사이트로서 회원의 개인정보를 절대 상업적 목적으로 제3자에게 제공하지 않습니다.</strong></p>
+
+                                    <p><strong>5. 개인정보의 처리 위탁</strong></p>
+                                    <p>사이트는 원활한 서비스 제공을 위해 다음과 같이 개인정보 처리를 위탁하고 있습니다:</p>
+                                    <ul>
+                                        <li>이메일 발송: Gmail SMTP (회원가입 인증 목적)</li>
+                                    </ul>
+
+                                    <p><strong>6. 회원의 권리와 의무</strong></p>
+                                    <p>회원은 언제든지 다음의 권리를 행사할 수 있습니다:</p>
+                                    <ul>
+                                        <li>개인정보 열람 요구</li>
+                                        <li>개인정보 정정·삭제 요구</li>
+                                        <li>개인정보 처리 정지 요구</li>
+                                        <li>회원 탈퇴 (동의 철회)</li>
+                                    </ul>
+                                    <p>위 권리 행사는 사이트의 프로필 편집 페이지 또는 관리자 이메일을 통해 가능합니다.</p>
+
+                                    <p><strong>7. 개인정보 보호를 위한 기술적·관리적 대책</strong></p>
+                                    <p>사이트는 회원의 개인정보를 안전하게 보호하기 위해 다음과 같은 조치를 취하고 있습니다:</p>
+                                    <ul>
+                                        <li>비밀번호 암호화 저장</li>
+                                        <li>HTTPS 보안 통신</li>
+                                        <li>접근 권한 관리</li>
+                                        <li>보안 프로그램 설치 및 주기적 점검</li>
+                                        <li>개인정보 취급 직원의 최소화</li>
+                                    </ul>
+
+                                    <p><strong>8. 개인정보 보호책임자</strong></p>
+                                    <p>사이트는 회원의 개인정보를 보호하고 개인정보와 관련한 불만을 처리하기 위하여 아래와 같이 개인정보 보호책임자를 지정하고 있습니다.</p>
+                                    <ul>
+                                        <li>개인정보 보호책임자: 테크창 관리자</li>
+                                        <li>문의: 사이트 내 문의 게시판</li>
+                                    </ul>
+
+                                    <p><strong>9. 쿠키의 운용</strong></p>
+                                    <p>사이트는 회원에게 최적화된 서비스를 제공하기 위해 쿠키를 사용합니다. 쿠키 사용 목적:</p>
+                                    <ul>
+                                        <li>로그인 상태 유지</li>
+                                        <li>테마 설정 저장</li>
+                                        <li>사용자 경험 개선</li>
+                                    </ul>
+                                    <p>회원은 브라우저 설정을 통해 쿠키 저장을 거부할 수 있으나, 이 경우 일부 서비스 이용에 제한이 있을 수 있습니다.</p>
+
+                                    <p><strong>10. 개인정보 처리방침의 변경</strong></p>
+                                    <p>본 개인정보 처리방침은 법령, 정책 또는 보안기술의 변경에 따라 내용이 추가·삭제·수정될 수 있으며, 변경 시 사이트를 통해 공지합니다.</p>
+
+                                    <p class="mt-4 mb-0"><strong>시행일: 2025년 1월 1일</strong></p>
+                                </div>
+                                <div class="scroll-indicator" id="privacyScrollIndicator">
+                                    <i class="fas fa-chevron-down"></i>
+                                    내용을 끝까지 읽어주세요
+                                </div>
+                                <div class="terms-checkbox">
+                                    <input type="checkbox" class="form-check-input" id="agreePrivacy" disabled>
+                                    <label class="form-check-label" for="agreePrivacy">
+                                        <strong>개인정보 수집 및 이용</strong>에 동의합니다 <span class="text-danger">*</span>
+                                    </label>
+                                </div>
+                            </div>
+
+                            <!-- 마케팅 수신 동의 (선택) -->
+                            <div class="terms-container">
+                                <h6 class="mb-2 fw-bold">
+                                    <i class="fas fa-envelope-open-text me-2"></i>마케팅 정보 수신 동의 <span class="text-muted">(선택)</span>
+                                </h6>
+                                <p class="small text-muted mb-2">이벤트, 공지사항 등의 유익한 정보를 이메일로 받아보실 수 있습니다.</p>
+                                <div class="terms-checkbox">
+                                    <input type="checkbox" class="form-check-input" id="agreeMarketing">
+                                    <label class="form-check-label" for="agreeMarketing">
+                                        마케팅 정보 수신에 동의합니다 (선택)
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 회원가입 버튼 -->
+                        <div class="d-grid mb-4">
+                            <button type="submit"
+                                    class="btn btn-primary btn-lg"
+                                    id="submitBtn"
+                                    disabled
+                                    style="border-radius: 10px; background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); border: none;">
+                                <i class="fas fa-user-plus me-2"></i>회원가입 완료
+                            </button>
+                        </div>
+
+                        <!-- 로그인 링크 -->
+                        <div class="text-center">
+                            <p class="mb-2 text-muted">이미 계정이 있으신가요?</p>
+                            <a href="{% url 'common:login' %}" class="btn btn-outline-primary" style="border-radius: 10px;">
+                                <i class="fas fa-sign-in-alt me-2"></i>로그인하기
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- 하단 정보 -->
+            <div class="text-center mt-4">
+                <p class="text-muted small">
+                    <i class="fas fa-shield-alt me-1"></i>
+                    테크창은 이메일 인증을 통해 안전한 계정 보호를 제공합니다
+                </p>
+                <p class="text-muted small">
+                    <i class="fas fa-heart me-1 text-danger"></i>
+                    비영리 커뮤니티 사이트 | 회원의 개인정보를 상업적으로 이용하지 않습니다
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-  const emailEl   = document.getElementById('{{ form.email.id_for_label }}');
-  const sendBtn   = document.getElementById('sendCodeBtn');
-  const codeSec   = document.getElementById('codeSection');
-  const codeInput = document.getElementById('verificationCode');
-  const verifyBtn = document.getElementById('verifyCodeBtn');
-  const statusDiv = document.getElementById('verificationStatus');
-  const submitBtn = document.getElementById('submitBtn');
+    const emailEl   = document.getElementById('{{ form.email.id_for_label }}');
+    const sendBtn   = document.getElementById('sendCodeBtn');
+    const codeSec   = document.getElementById('codeSection');
+    const codeInput = document.getElementById('verificationCode');
+    const verifyBtn = document.getElementById('verifyCodeBtn');
+    const statusDiv = document.getElementById('verificationStatus');
+    const submitBtn = document.getElementById('submitBtn');
 
-  function getCSRF() {
-    const match = document.cookie.match(/csrftoken=([^;]+)/);
-    return match && match[1];
-  }
+    // 약관 관련 요소
+    const termsBox = document.getElementById('termsBox');
+    const termsCheckbox = document.getElementById('agreeTerms');
+    const termsIndicator = document.getElementById('termsScrollIndicator');
 
-  sendBtn.addEventListener('click', () => {
-    const email = emailEl.value.trim();
-    if (!email) return alert('이메일을 입력해주세요.');
-    sendBtn.disabled = true;
-    fetch("{% url 'common:send_verification_email' %}", {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-CSRFToken': getCSRF()
-      },
-      body: JSON.stringify({ email })
-    })
-    .then(r => r.json())
-    .then(data => {
-      alert(data.message);
-      if (data.success) codeSec.style.display = 'block';
-      else sendBtn.disabled = false;
-    })
-    .catch(() => {
-      alert('서버 오류');
-      sendBtn.disabled = false;
+    const privacyBox = document.getElementById('privacyBox');
+    const privacyCheckbox = document.getElementById('agreePrivacy');
+    const privacyIndicator = document.getElementById('privacyScrollIndicator');
+
+    let isEmailVerified = false;
+    let isTermsScrolled = false;
+    let isPrivacyScrolled = false;
+
+    function getCSRF() {
+        const match = document.cookie.match(/csrftoken=([^;]+)/);
+        return match && match[1];
+    }
+
+    // 스크롤 끝 감지 함수
+    function isScrolledToBottom(element) {
+        return element.scrollHeight - element.scrollTop <= element.clientHeight + 5;
+    }
+
+    // 이용약관 스크롤 감지
+    termsBox.addEventListener('scroll', function() {
+        if (isScrolledToBottom(this) && !isTermsScrolled) {
+            isTermsScrolled = true;
+            termsCheckbox.disabled = false;
+            termsIndicator.style.display = 'none';
+            termsCheckbox.parentElement.style.opacity = '1';
+        }
     });
-  });
 
-  verifyBtn.addEventListener('click', () => {
-    const email = emailEl.value.trim();
-    const code  = codeInput.value.trim();
-    if (!email || !code) return alert('이메일과 코드 모두 입력해주세요.');
-    verifyBtn.disabled = true;
-    fetch("{% url 'common:verify_email_code' %}", {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-CSRFToken': getCSRF()
-      },
-      body: JSON.stringify({ email, code })
-    })
-    .then(r => r.json())
-    .then(data => {
-      statusDiv.textContent = data.message;
-      if (data.success) submitBtn.disabled = false;
-      else verifyBtn.disabled = false;
-    })
-    .catch(() => {
-      alert('서버 오류');
-      verifyBtn.disabled = false;
+    // 개인정보 스크롤 감지
+    privacyBox.addEventListener('scroll', function() {
+        if (isScrolledToBottom(this) && !isPrivacyScrolled) {
+            isPrivacyScrolled = true;
+            privacyCheckbox.disabled = false;
+            privacyIndicator.style.display = 'none';
+            privacyCheckbox.parentElement.style.opacity = '1';
+        }
     });
-  });
+
+    function updateSubmitButton() {
+        // 이메일 인증 + 이용약관 동의 + 개인정보 동의 모두 완료되어야 활성화
+        const allAgreed = isEmailVerified &&
+                         termsCheckbox.checked &&
+                         privacyCheckbox.checked;
+        submitBtn.disabled = !allAgreed;
+    }
+
+    // 체크박스 변경 이벤트
+    termsCheckbox.addEventListener('change', updateSubmitButton);
+    privacyCheckbox.addEventListener('change', updateSubmitButton);
+
+    // 인증 코드 발송
+    sendBtn.addEventListener('click', () => {
+        const email = emailEl.value.trim();
+        if (!email) {
+            alert('이메일을 입력해주세요.');
+            return;
+        }
+
+        sendBtn.disabled = true;
+        sendBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>발송 중...';
+
+        fetch("{% url 'common:send_verification_email' %}", {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCSRF()
+            },
+            body: JSON.stringify({ email })
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                alert(data.message);
+                codeSec.style.display = 'block';
+                sendBtn.innerHTML = '<i class="fas fa-check me-1"></i>발송 완료';
+            } else {
+                alert(data.message);
+                sendBtn.disabled = false;
+                sendBtn.innerHTML = '<i class="fas fa-paper-plane me-1"></i>인증코드 발송';
+            }
+        })
+        .catch(() => {
+            alert('서버 오류가 발생했습니다.');
+            sendBtn.disabled = false;
+            sendBtn.innerHTML = '<i class="fas fa-paper-plane me-1"></i>인증코드 발송';
+        });
+    });
+
+    // 인증 코드 확인
+    verifyBtn.addEventListener('click', () => {
+        const email = emailEl.value.trim();
+        const code  = codeInput.value.trim();
+
+        if (!email || !code) {
+            alert('이메일과 인증코드를 모두 입력해주세요.');
+            return;
+        }
+
+        verifyBtn.disabled = true;
+        verifyBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>확인 중...';
+
+        fetch("{% url 'common:verify_email_code' %}", {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCSRF()
+            },
+            body: JSON.stringify({ email, code })
+        })
+        .then(r => r.json())
+        .then(data => {
+            statusDiv.className = 'verification-status ' + (data.success ? 'success' : 'error');
+            statusDiv.innerHTML = '<i class="fas fa-' + (data.success ? 'check-circle' : 'times-circle') + ' me-2"></i>' + data.message;
+
+            if (data.success) {
+                isEmailVerified = true;
+                updateSubmitButton();
+                verifyBtn.innerHTML = '<i class="fas fa-check me-1"></i>인증 완료';
+                verifyBtn.classList.remove('btn-outline-success');
+                verifyBtn.classList.add('btn-success');
+                codeInput.disabled = true;
+            } else {
+                verifyBtn.disabled = false;
+                verifyBtn.innerHTML = '<i class="fas fa-check me-1"></i>인증 확인';
+            }
+        })
+        .catch(() => {
+            alert('서버 오류가 발생했습니다.');
+            verifyBtn.disabled = false;
+            verifyBtn.innerHTML = '<i class="fas fa-check me-1"></i>인증 확인';
+        });
+    });
 });
 </script>
 {% endblock %}
