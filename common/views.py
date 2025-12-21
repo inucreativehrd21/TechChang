@@ -979,17 +979,17 @@ def point_ranking(request):
     """포인트 랭킹 페이지"""
     from .models import Profile
 
-    # 포인트가 0보다 큰 사용자만 필터링하여 정렬 (상위 100명)
-    top_users = Profile.objects.select_related('user').filter(points__gt=0).order_by('-points')[:100]
+    # 포인트가 0보다 큰 사용자만 필터링하여 정렬 (admin 제외, 상위 100명)
+    top_users = Profile.objects.select_related('user').filter(points__gt=0).exclude(user__username='admin').order_by('-points')[:100]
 
     # 현재 로그인한 사용자의 순위 (있는 경우)
     current_user_rank = None
     current_user_profile = None
-    if request.user.is_authenticated:
+    if request.user.is_authenticated and request.user.username != 'admin':
         try:
             current_user_profile = Profile.objects.get(user=request.user)
-            # 현재 사용자보다 포인트가 높은 사용자 수 + 1 (0포인트 제외)
-            current_user_rank = Profile.objects.filter(points__gt=current_user_profile.points).count() + 1
+            # 현재 사용자보다 포인트가 높은 사용자 수 + 1 (0포인트 및 admin 제외)
+            current_user_rank = Profile.objects.filter(points__gt=current_user_profile.points).exclude(user__username='admin').count() + 1
         except Profile.DoesNotExist:
             pass
 
