@@ -35,13 +35,13 @@ urlpatterns = [
     path('question/vote/<int:question_id>/', question_views.question_vote, name='question_vote'),
     path('answer/vote/<int:answer_id>/', answer_views.answer_vote, name='answer_vote'),
 
-    # comment_views.py
-    path('comment/create/question/<int:question_id>/', comment_views.comment_create_question, name='comment_create_question'),
-    path('comment/modify/question/<int:comment_id>/', comment_views.comment_modify_question, name='comment_modify_question'),
-    path('comment/delete/question/<int:comment_id>/', comment_views.comment_delete_question, name='comment_delete_question'),
-    path('comment/create/answer/<int:answer_id>/', comment_views.comment_create_answer, name='comment_create_answer'),
-    path('comment/modify/answer/<int:comment_id>/', comment_views.comment_modify_answer, name='comment_modify_answer'),
-    path('comment/delete/answer/<int:comment_id>/', comment_views.comment_delete_answer, name='comment_delete_answer'), 
+    # comment_views.py - 비활성화 (답변을 댓글로 사용)
+    # path('comment/create/question/<int:question_id>/', comment_views.comment_create_question, name='comment_create_question'),
+    # path('comment/modify/question/<int:comment_id>/', comment_views.comment_modify_question, name='comment_modify_question'),
+    # path('comment/delete/question/<int:comment_id>/', comment_views.comment_delete_question, name='comment_delete_question'),
+    # path('comment/create/answer/<int:answer_id>/', comment_views.comment_create_answer, name='comment_create_answer'),
+    # path('comment/modify/answer/<int:comment_id>/', comment_views.comment_modify_answer, name='comment_modify_answer'),
+    # path('comment/delete/answer/<int:comment_id>/', comment_views.comment_delete_answer, name='comment_delete_answer'), 
     
     # profile_views.py
     path('profile/<int:user_id>/', profile_views.profile, name='profile'),

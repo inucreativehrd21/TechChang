@@ -12,34 +12,36 @@ from common.models import Profile, PointHistory
 def answer_create(request, question_id):
     question = get_object_or_404(Question, pk=question_id)
     if request.method == "POST":
-        form = AnswerForm(request.POST, request.FILES)
-        if form.is_valid():
-            answer = form.save(commit=False)
-            answer.author = request.user  # author 속성에 로그인 계정 저장
-            answer.create_date = timezone.now()
-            answer.question = question
-            answer.save()
+        content = request.POST.get('content', '').strip()
+        if not content:
+            messages.error(request, '댓글 내용을 입력해주세요.')
+            return redirect('community:detail', question_id=question.id)
             
-            # 답변 작성 포인트 지급 (20포인트)
-            profile, _ = Profile.objects.get_or_create(user=request.user)
-            profile.points += 20
-            profile.save()
-            
-            # 포인트 히스토리 기록
-            PointHistory.objects.create(
-                user=request.user,
-                amount=20,
-                reason=PointHistory.REASON_ADMIN,
-                description=f'답변 작성: {answer.content[:30]}'
-            )
-            
-            messages.success(request, '답변이 등록되었습니다. (+20 포인트)')
-            return redirect('{}#answer_{}'.format(
-                resolve_url('community:detail', question_id=question.id), answer.id))
-    else:
-        form = AnswerForm()
-    context = {'question': question, 'form': form}
-    return render(request, 'community/question_detail.html', context)
+        answer = Answer()
+        answer.content = content
+        answer.author = request.user
+        answer.create_date = timezone.now()
+        answer.question = question
+        answer.save()
+        
+        # 답변 작성 포인트 지급 (20포인트)
+        profile, _ = Profile.objects.get_or_create(user=request.user)
+        profile.points += 20
+        profile.save()
+        
+        # 포인트 히스토리 기록
+        PointHistory.objects.create(
+            user=request.user,
+            amount=20,
+            reason=PointHistory.REASON_ADMIN,
+            description=f'댓글 작성: {answer.content[:30]}'
+        )
+        
+        messages.success(request, '댓글이 등록되었습니다. (+20 포인트)')
+        return redirect('{}#answer_{}'.format(
+            resolve_url('community:detail', question_id=question.id), answer.id))
+    
+    return redirect('community:detail', question_id=question.id)
 
 @login_required(login_url='common:login')
 def answer_modify(request, answer_id):

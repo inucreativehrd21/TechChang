@@ -541,50 +541,12 @@
         </div>
     </article>
 
-    <!-- Question Comments -->
-    {% if question.comment_set.count > 0 %}
+    <!-- Comments Section (기존 답변을 댓글 형식으로) -->
     <section class="comments-section">
-        <h2 class="section-title">
-            <i class="fas fa-comment-dots"></i>
-            질문에 대한 댓글 ({{ question.comment_set.count }})
-        </h2>
-
-        {% for comment in question.comment_set.all %}
-        <div class="comment-item">
-            <div class="comment-header">
-                <div style="display: flex; align-items: center; gap: var(--space-3);">
-                    <span class="comment-author">{{ comment.author|display_name }}</span>
-                    {% if comment.modify_date %}
-                    <span style="font-size: 0.75rem; color: #f97316;">수정됨</span>
-                    {% endif %}
-                </div>
-                <div style="display: flex; align-items: center; gap: var(--space-2);">
-                    <span class="comment-date">{{ comment.create_date|date:"Y.m.d H:i" }}</span>
-                    {% if request.user == comment.author %}
-                    <a href="{% url 'community:comment_modify_question' comment.id %}"
-                       style="color: var(--accent-blue); font-size: 0.875rem; text-decoration: none;">
-                        수정
-                    </a>
-                    <a href="{% url 'community:comment_delete_question' comment.id %}"
-                       style="color: #ef4444; font-size: 0.875rem; text-decoration: none;"
-                       onclick="return confirm('삭제하시겠습니까?');">
-                        삭제
-                    </a>
-                    {% endif %}
-                </div>
-            </div>
-            <div class="comment-content">{{ comment.content|linebreaksbr }}</div>
-        </div>
-        {% endfor %}
-    </section>
-    {% endif %}
-
-    <!-- Answers Section -->
-    <section class="answers-section">
         <div class="answers-header">
             <h2 class="section-title" style="margin: 0;">
                 <i class="fas fa-comments"></i>
-                답변 ({{ question.answer_set.count }})
+                댓글 ({{ question.answer_set.count }})
             </h2>
 
             <div class="sort-buttons">
@@ -599,183 +561,114 @@
 
         {% if question.answer_set.count > 0 %}
             {% for answer in answer_list %}
-            <article class="answer-card">
-                <!-- Answer Content -->
-                <div class="question-content">
-                    {{ answer.content|mark }}
-                </div>
-
-                <!-- Answer Image -->
-                {% if answer.image %}
-                <div style="margin: var(--space-4) 0;">
-                    <img src="{{ answer.image.url }}" alt="답변 이미지"
-                         style="max-width: 100%; border-radius: var(--radius-lg); box-shadow: var(--shadow-md);">
-                </div>
-                {% endif %}
-
-                <!-- Answer Author -->
-                <div class="author-section">
-                    <div class="author-info">
+            <div class="comment-item" id="answer_{{ answer.id }}">
+                <div class="comment-header">
+                    <div style="display: flex; align-items: center; gap: var(--space-3);">
                         {% if answer.author.profile.profile_image %}
-                        <img src="{{ answer.author.profile.profile_image.url }}" alt="프로필" class="author-avatar">
+                        <img src="{{ answer.author.profile.profile_image.url }}" alt="프로필" 
+                             style="width: 32px; height: 32px; border-radius: 50%; object-fit: cover;">
                         {% else %}
-                        <div class="author-avatar-placeholder">
+                        <div style="width: 32px; height: 32px; border-radius: 50%; background: linear-gradient(135deg, #667eea, #764ba2); display: flex; align-items: center; justify-content: center; color: white; font-weight: 700; font-size: 0.875rem;">
                             {{ answer.author.username|slice:":1"|upper }}
                         </div>
                         {% endif %}
-                        <div class="author-details">
-                            <a href="{% url 'community:profile' answer.author.id %}" class="author-name">
-                                {{ answer.author|display_name }}
-                            </a>
-                            <div class="author-date">
-                                {{ answer.create_date|date:"Y년 m월 d일 H:i" }}
-                                {% if answer.modify_date %}
-                                <span style="color: #f97316;">· 수정됨</span>
-                                {% endif %}
-                            </div>
-                        </div>
+                        <a href="{% url 'community:profile' answer.author.id %}" class="comment-author">
+                            {{ answer.author|display_name }}
+                        </a>
+                        {% if answer.modify_date %}
+                        <span style="font-size: 0.75rem; color: #f97316;">수정됨</span>
+                        {% endif %}
                     </div>
-
-                    <div class="action-buttons">
+                    <div style="display: flex; align-items: center; gap: var(--space-3);">
                         {% if user.is_authenticated %}
                         <form method="post" action="{% url 'community:answer_vote' answer.id %}" style="margin: 0;">
                             {% csrf_token %}
-                            <button type="submit" class="vote-btn {% if user in answer.voter.all %}voted{% endif %}">
+                            <button type="submit" class="vote-btn-small {% if user in answer.voter.all %}voted{% endif %}"
+                                    style="padding: 4px 12px; font-size: 0.875rem; background: none; border: 1px solid var(--border-color); border-radius: 20px; cursor: pointer; transition: all 0.3s;">
                                 <i class="fas fa-thumbs-up"></i>
                                 <span>{{ answer.voter.count }}</span>
                             </button>
                         </form>
+                        {% else %}
+                        <span style="padding: 4px 12px; font-size: 0.875rem; border: 1px solid var(--border-color); border-radius: 20px; color: var(--text-tertiary);">
+                            <i class="fas fa-thumbs-up"></i> {{ answer.voter.count }}
+                        </span>
                         {% endif %}
-
+                        <span class="comment-date">{{ answer.create_date|date:"Y.m.d H:i" }}</span>
                         {% if request.user == answer.author %}
-                        <a href="{% url 'community:answer_modify' answer.id %}" class="btn-premium btn-premium-secondary">
-                            <i class="fas fa-edit"></i> 수정
+                        <a href="{% url 'community:answer_modify' answer.id %}"
+                           style="color: var(--accent-blue); font-size: 0.875rem; text-decoration: none;">
+                            수정
                         </a>
-                        <a href="{% url 'community:answer_delete' answer.id %}" class="btn-premium btn-premium-secondary"
+                        <a href="{% url 'community:answer_delete' answer.id %}"
+                           style="color: #ef4444; font-size: 0.875rem; text-decoration: none;"
                            onclick="return confirm('삭제하시겠습니까?');">
-                            <i class="fas fa-trash"></i> 삭제
+                            삭제
                         </a>
                         {% endif %}
                     </div>
                 </div>
-
-                <!-- Answer Comments -->
-                {% if answer.comment_set.count > 0 %}
-                <div style="margin-top: var(--space-6); padding-top: var(--space-6); border-top: 2px solid var(--border-light);">
-                    <h3 style="font-size: 1rem; font-weight: 700; margin-bottom: var(--space-4); color: var(--text-secondary);">
-                        <i class="fas fa-comment-dots"></i> 답변에 대한 댓글 ({{ answer.comment_set.count }})
-                    </h3>
-
-                    {% for comment in answer.comment_set.all %}
-                    <div class="comment-item">
-                        <div class="comment-header">
-                            <div style="display: flex; align-items: center; gap: var(--space-3);">
-                                <span class="comment-author">{{ comment.author|display_name }}</span>
-                                {% if comment.modify_date %}
-                                <span style="font-size: 0.75rem; color: #f97316;">수정됨</span>
-                                {% endif %}
-                            </div>
-                            <div style="display: flex; align-items: center; gap: var(--space-2);">
-                                <span class="comment-date">{{ comment.create_date|date:"Y.m.d H:i" }}</span>
-                                {% if request.user == comment.author %}
-                                <a href="{% url 'community:comment_modify_answer' comment.id %}"
-                                   style="color: var(--accent-blue); font-size: 0.875rem; text-decoration: none;">
-                                    수정
-                                </a>
-                                <a href="{% url 'community:comment_delete_answer' comment.id %}"
-                                   style="color: #ef4444; font-size: 0.875rem; text-decoration: none;"
-                                   onclick="return confirm('삭제하시겠습니까?');">
-                                    삭제
-                                </a>
-                                {% endif %}
-                            </div>
-                        </div>
-                        <div class="comment-content">{{ comment.content|linebreaksbr }}</div>
-                    </div>
-                    {% endfor %}
+                <div class="comment-content">
+                    {{ answer.content|linebreaksbr }}
                 </div>
-                {% endif %}
-            </article>
+            </div>
             {% endfor %}
         {% else %}
-        <div class="empty-state">
+        <div class="empty-state" style="padding: var(--space-12) 0;">
             <div class="empty-icon">
                 <i class="fas fa-comment-slash"></i>
             </div>
-            <h3 style="font-size: 1.5rem; font-weight: 700; margin-bottom: var(--space-2);">
-                아직 답변이 없습니다
-            </h3>
-            <p style="color: var(--text-secondary);">첫 번째 답변을 작성해보세요!</p>
+            <p style="color: var(--text-secondary); margin-top: var(--space-4);">아직 댓글이 없습니다. 첫 번째 댓글을 작성해보세요!</p>
         </div>
         {% endif %}
     </section>
 
-    <!-- Answer Form -->
+    <!-- Comment Form (답변 작성을 댓글 형식으로) -->
     {% if user.is_authenticated %}
-    <section class="answer-form-section">
-        <h2 class="section-title">
-            <i class="fas fa-pen"></i>
-            답변 작성
-        </h2>
-
-        <form method="post" action="{% url 'community:answer_create' question.id %}" enctype="multipart/form-data">
+    <section style="margin-top: var(--space-6); padding: var(--space-6); background: var(--bg-elevated); border-radius: var(--radius-xl); border: 1px solid var(--border-color);">
+        <form method="post" action="{% url 'community:answer_create' question.id %}" style="display: flex; flex-direction: column; gap: var(--space-4);">
             {% csrf_token %}
             {% include "form_errors.html" %}
 
-            <div style="margin-bottom: var(--space-6);">
-                <label for="{{ form.content.id_for_label }}"
-                       style="font-weight: 700; margin-bottom: var(--space-3); display: block; color: var(--text-primary);">
-                    답변 내용
-                </label>
-                <textarea name="content"
-                          id="{{ form.content.id_for_label }}"
-                          class="form-control-detail"
-                          placeholder="답변을 작성하세요. 마크다운 문법을 사용할 수 있습니다."
-                          required>{{ form.content.value|default_if_none:"" }}</textarea>
-            </div>
-
-            <div style="margin-bottom: var(--space-6);">
-                <label for="{{ form.image.id_for_label }}"
-                       style="font-weight: 700; margin-bottom: var(--space-3); display: block; color: var(--text-primary);">
-                    이미지 첨부 (선택사항)
-                </label>
-                <input type="file"
-                       name="image"
-                       id="{{ form.image.id_for_label }}"
-                       accept="image/*"
-                       style="width: 100%; padding: var(--space-4); border: 2px dashed var(--border-light); border-radius: var(--radius-lg); cursor: pointer;">
-                <div style="font-size: 0.875rem; color: var(--text-tertiary); margin-top: var(--space-2);">
-                    JPG, PNG, GIF 파일 (최대 10MB)
+            <div style="display: flex; gap: var(--space-4); align-items: flex-start;">
+                {% if user.profile.profile_image %}
+                <img src="{{ user.profile.profile_image.url }}" alt="프로필" 
+                     style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover; flex-shrink: 0;">
+                {% else %}
+                <div style="width: 40px; height: 40px; border-radius: 50%; background: linear-gradient(135deg, #667eea, #764ba2); display: flex; align-items: center; justify-content: center; color: white; font-weight: 700; flex-shrink: 0;">
+                    {{ user.username|slice:":1"|upper }}
                 </div>
-            </div>
+                {% endif %}
 
-            <div class="form-footer">
-                <div class="form-hint-text">
-                    <i class="fab fa-markdown"></i>
-                    마크다운 문법 지원
+                <div style="flex: 1;">
+                    <textarea name="content"
+                              id="comment-input"
+                              placeholder="댓글을 작성하세요..."
+                              rows="3"
+                              style="width: 100%; padding: var(--space-4); border: 1px solid var(--border-color); border-radius: var(--radius-lg); font-size: 0.9375rem; resize: vertical; min-height: 80px; transition: all 0.3s;"
+                              required></textarea>
+                    
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-top: var(--space-3);">
+                        <span style="font-size: 0.875rem; color: var(--text-tertiary);">
+                            <i class="fas fa-info-circle"></i> 댓글 작성 시 20포인트 지급
+                        </span>
+                        <button type="submit" class="btn-premium btn-premium-primary" style="padding: var(--space-3) var(--space-6);">
+                            <i class="fas fa-paper-plane"></i> 댓글 등록
+                        </button>
+                    </div>
                 </div>
-                <button type="submit" class="btn-premium btn-premium-primary">
-                    <i class="fas fa-paper-plane"></i> 답변 등록
-                </button>
             </div>
         </form>
     </section>
     {% else %}
-    <section class="answer-form-section">
-        <div class="empty-state">
-            <div class="empty-icon">
-                <i class="fas fa-lock"></i>
-            </div>
-            <h3 style="font-size: 1.5rem; font-weight: 700; margin-bottom: var(--space-4);">
-                로그인이 필요합니다
-            </h3>
-            <p style="color: var(--text-secondary); margin-bottom: var(--space-6);">
-                답변을 작성하려면 로그인해주세요
-            </p>
-            <a href="{% url 'common:login' %}" class="btn-premium btn-premium-primary">
-                <i class="fas fa-sign-in-alt"></i> 로그인
-            </a>
-        </div>
+    <section style="margin-top: var(--space-6); padding: var(--space-8); background: var(--bg-elevated); border-radius: var(--radius-xl); border: 1px solid var(--border-color); text-align: center;">
+        <i class="fas fa-lock" style="font-size: 2.5rem; color: var(--text-tertiary); margin-bottom: var(--space-4);"></i>
+        <p style="color: var(--text-secondary); margin-bottom: var(--space-4);">
+            댓글을 작성하려면 로그인해주세요
+        </p>
+        <a href="{% url 'common:login' %}" class="btn-premium btn-premium-primary">
+            <i class="fas fa-sign-in-alt"></i> 로그인
+        </a>
     </section>
     {% endif %}
 </div>
