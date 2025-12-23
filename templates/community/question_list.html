@@ -24,6 +24,11 @@
                 <a href="{% url 'community:games_index' %}" class="btn-premium btn-premium-secondary">
                     게임 센터
                 </a>
+                {% if user.is_staff or user.is_superuser %}
+                <a href="{% url 'common:admin_dashboard' %}" class="btn-premium btn-premium-admin" style="background: linear-gradient(135deg, #ef4444, #dc2626); color: white; border: none;">
+                    <i class="fas fa-shield-alt me-1"></i>관리자 대시보드
+                </a>
+                {% endif %}
             {% else %}
                 <a href="{% url 'common:login' %}" class="btn-premium btn-premium-primary">
                     시작하기
