@@ -272,6 +272,90 @@ def verify_email_code(request):
     return JsonResponse({'success': True, 'message': '이메일 인증이 완료되었습니다.'})
 
 @login_required
+def send_profile_verification_email(request):
+    """프로필 페이지에서 이메일 인증 코드 발송 (AJAX)"""
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'message': '잘못된 요청입니다.'}, status=405)
+
+    try:
+        data = json.loads(request.body or '{}')
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False, 'message': '요청 형식이 올바르지 않습니다.'}, status=400)
+
+    email = data.get('email', '').strip().lower()
+    if not email:
+        return JsonResponse({'success': False, 'message': '이메일을 입력해주세요.'}, status=400)
+
+    # 이메일이 다른 사용자에게 사용 중인지 확인 (자신의 이메일은 허용)
+    existing_user = User.objects.filter(email=email).exclude(id=request.user.id).first()
+    if existing_user:
+        return JsonResponse({'success': False, 'message': '이미 다른 사용자가 사용 중인 이메일입니다.'}, status=400)
+
+    # 이메일/아이피별 간단한 요청 속도 제한
+    cooldown_key = f"email_verification:cooldown:{email}"
+    if cache.get(cooldown_key):
+        return JsonResponse({'success': False, 'message': '인증 코드를 잠시 후 다시 요청해주세요.'}, status=429)
+
+    ip_address = request.META.get('HTTP_X_FORWARDED_FOR', '').split(',')[0] or request.META.get('REMOTE_ADDR')
+    if ip_address:
+        ip_cooldown_key = f"email_verification:cooldown_ip:{ip_address}"
+        if cache.get(ip_cooldown_key):
+            return JsonResponse({'success': False, 'message': '요청이 너무 빈번합니다. 잠시 후 다시 시도해주세요.'}, status=429)
+
+    # 진행 중인 인증 레코드 정리
+    EmailVerification.objects.filter(email=email, is_verified=False).delete()
+
+    code = EmailVerification.generate_code()
+    verification = EmailVerification.objects.create(email=email, code=code)
+
+    # 이메일 변경인지 현재 이메일 인증인지 확인
+    is_change = email != request.user.email
+    action_text = "이메일 변경" if is_change else "이메일 인증"
+
+    message_body = f'''
+안녕하세요, {request.user.username}님!
+
+{action_text}을 위한 인증 코드는 다음과 같습니다:
+
+인증코드: {code}
+
+이 코드는 10분간 유효합니다.
+인증 코드를 입력하여 {action_text}을 완료해주세요.
+
+감사합니다.
+- 테크창
+'''
+
+    try:
+        send_mail(
+            subject=f'[테크창] {action_text} 인증 코드',
+            message=message_body,
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            recipient_list=[email],
+            fail_silently=False,
+        )
+    except Exception as exc:
+        logger.exception("Failed to send profile verification email to %s", email)
+        verification.delete()
+        if settings.DEBUG:
+            return JsonResponse({'success': True, 'message': f'개발 모드: 인증코드는 {code}입니다.', 'code': code})
+        error_type = type(exc).__name__
+        error_msg = str(exc)
+        logger.error(f"Email send error - Type: {error_type}, Message: {error_msg}")
+        return JsonResponse({
+            'success': False,
+            'message': f'이메일 발송 중 문제가 발생했습니다. 관리자에게 문의해주세요. (Error: {error_type})',
+            'debug_info': error_msg if settings.DEBUG else None
+        }, status=500)
+
+    cache.set(cooldown_key, True, timeout=EmailVerification.RESEND_COOLDOWN_SECONDS)
+    if ip_address:
+        cache.set(f"email_verification:cooldown_ip:{ip_address}", True, timeout=EmailVerification.RESEND_COOLDOWN_SECONDS)
+
+    return JsonResponse({'success': True, 'message': f'인증 코드가 {email}로 발송되었습니다.'})
+
+
+@login_required
 def verify_email_change(request):
     """프로필 페이지에서 이메일 인증/변경 (AJAX)"""
     if request.method != 'POST':
