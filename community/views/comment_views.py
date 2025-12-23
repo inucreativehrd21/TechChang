@@ -78,7 +78,21 @@ def comment_delete_question(request, comment_id):
         messages.error(request, '댓글삭제권한이 없습니다')
         return redirect('community:detail', question_id=comment.question.id)
     else:
+        # 포인트 차감 (작성 시 지급된 5포인트 회수)
+        profile, _ = Profile.objects.get_or_create(user=request.user)
+        profile.points = max(0, profile.points - 5)
+        profile.save()
+        
+        # 포인트 히스토리 기록
+        PointHistory.objects.create(
+            user=request.user,
+            amount=-5,
+            reason=PointHistory.REASON_ADMIN,
+            description=f'댓글 삭제: {comment.content[:30]}'
+        )
+        
         comment.delete()
+        messages.success(request, '댓글이 삭제되었습니다. (-5 포인트)')
     return redirect('community:detail', question_id=comment.question.id)
 
 
@@ -152,5 +166,19 @@ def comment_delete_answer(request, comment_id):
         messages.error(request, '댓글삭제권한이 없습니다')
         return redirect('community:detail', question_id=comment.answer.question.id)
     else:
+        # 포인트 차감 (작성 시 지급된 5포인트 회수)
+        profile, _ = Profile.objects.get_or_create(user=request.user)
+        profile.points = max(0, profile.points - 5)
+        profile.save()
+        
+        # 포인트 히스토리 기록
+        PointHistory.objects.create(
+            user=request.user,
+            amount=-5,
+            reason=PointHistory.REASON_ADMIN,
+            description=f'댓글 삭제: {comment.content[:30]}'
+        )
+        
         comment.delete()
+        messages.success(request, '댓글이 삭제되었습니다. (-5 포인트)')
     return redirect('community:detail', question_id=comment.answer.question.id)

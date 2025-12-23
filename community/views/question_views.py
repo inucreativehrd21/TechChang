@@ -77,7 +77,21 @@ def question_delete(request, question_id):
         question.is_deleted = True
         question.deleted_date = timezone.now()
         question.save()
-        messages.success(request, '질문이 삭제되었습니다.')
+        
+        # 포인트 차감 (작성 시 지급된 50포인트 회수)
+        profile, _ = Profile.objects.get_or_create(user=request.user)
+        profile.points = max(0, profile.points - 50)  # 포인트가 음수가 되지 않도록
+        profile.save()
+        
+        # 포인트 히스토리 기록
+        PointHistory.objects.create(
+            user=request.user,
+            amount=-50,
+            reason=PointHistory.REASON_ADMIN,
+            description=f'질문 삭제: {question.subject[:30]}'
+        )
+        
+        messages.success(request, '질문이 삭제되었습니다. (-50 포인트)')
         return redirect('community:index')
     
     # GET 요청시 확인 페이지 표시
