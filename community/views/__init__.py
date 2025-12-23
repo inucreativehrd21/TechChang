@@ -7,6 +7,7 @@ from . import question_views
 from . import answer_views
 from . import comment_views
 from . import profile_views
+from . import board_views
 # 실시간 게임 비활성화 (WebSocket 필요)
 # from . import wordchain_views
 # from . import tictactoe_views
@@ -20,6 +21,7 @@ __all__ = [
     'answer_views',
     'comment_views',
     'profile_views',
+    'board_views',
     # 'wordchain_views',  # 비활성화
     # 'tictactoe_views',  # 비활성화
     'baseball_views',

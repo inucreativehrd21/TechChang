@@ -13,6 +13,7 @@
         <!-- Desktop Links -->
         <div class="premium-nav-links d-none d-lg-flex">
             <a href="{% url 'community:index' %}" class="premium-nav-link">홈</a>
+            <a href="{% url 'community:board_main' %}" class="premium-nav-link">커뮤니티</a>
             <a href="#" class="premium-nav-link" data-bs-toggle="modal" data-bs-target="#aboutModal">소개</a>
             <a href="{% url 'community:members_list' %}" class="premium-nav-link">구성원</a>
             <a href="{% url 'community:games_index' %}" class="premium-nav-link">게임</a>
@@ -63,6 +64,7 @@
     <!-- Mobile Nav -->
     <div class="collapse d-lg-none" id="mobileNav" style="padding: var(--space-4) 0; border-top: 1px solid rgba(226, 232, 240, 0.5);">
         <a href="{% url 'community:index' %}" style="display: block; padding: var(--space-3) var(--space-6); color: var(--text-secondary); text-decoration: none;">홈</a>
+        <a href="{% url 'community:board_main' %}" style="display: block; padding: var(--space-3) var(--space-6); color: var(--text-secondary); text-decoration: none;">커뮤니티</a>
         <a href="#" data-bs-toggle="modal" data-bs-target="#aboutModal" style="display: block; padding: var(--space-3) var(--space-6); color: var(--text-secondary); text-decoration: none;">소개</a>
         <a href="{% url 'community:members_list' %}" style="display: block; padding: var(--space-3) var(--space-6); color: var(--text-secondary); text-decoration: none;">구성원</a>
         <a href="{% url 'community:games_index' %}" style="display: block; padding: var(--space-3) var(--space-6); color: var(--text-secondary); text-decoration: none;">게임</a>

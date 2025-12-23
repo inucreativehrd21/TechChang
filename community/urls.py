@@ -3,7 +3,7 @@ from django.urls import path
 
 # 실시간 게임 비활성화 (나중을 위해 파일은 유지)
 # from .views import wordchain_views, tictactoe_views
-from .views import base_views, question_views, answer_views, comment_views, profile_views, baseball_views, guestbook_views, game2048_views, minesweeper_views, portfolio_views
+from .views import base_views, question_views, answer_views, comment_views, profile_views, board_views, baseball_views, guestbook_views, game2048_views, minesweeper_views, portfolio_views
 
 app_name = 'community'
 
@@ -47,6 +47,10 @@ urlpatterns = [
     path('profile/<int:user_id>/', profile_views.profile, name='profile'),
     path('profile/update/', profile_views.profile_update, name='profile_update'),
     path('profile/password-change/', profile_views.password_change, name='password_change'),
+
+    # board_views.py - 커뮤니티 게시판
+    path('board/', board_views.board_main, name='board_main'),
+    path('board/<str:category_name>/', board_views.board_category, name='board_category'),
 
     # file download
     path('download/<int:question_id>/', base_views.download_file, name='download_file'),

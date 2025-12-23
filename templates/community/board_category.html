@@ -1,0 +1,215 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load common_tags %}
+
+{% block extra_css %}
+<link href="{% static 'css/premium.css' %}?v={{ 'now'|date:'YmdHis' }}" rel="stylesheet">
+{% endblock %}
+
+{% block content %}
+<div class="container-premium" style="padding: var(--space-12) var(--space-6); max-width: 1400px;">
+    <div style="display: grid; grid-template-columns: 250px 1fr; gap: var(--space-8); align-items: start;">
+        <!-- Sidebar -->
+        <div style="position: sticky; top: 132px;">
+            <div class="premium-glass-card" style="padding: var(--space-6); border-radius: var(--radius-2xl);">
+                <h3 style="font-size: 1.125rem; font-weight: 700; margin-bottom: var(--space-6); color: var(--text-primary);">
+                    <i class="fas fa-list me-2" style="color: #0891b2;"></i>카테고리
+                </h3>
+                <div style="display: flex; flex-direction: column; gap: var(--space-2);">
+                    {% for cat in all_categories %}
+                    <a href="{% url 'community:board_category' cat.name %}"
+                       class="category-sidebar-link {% if category.name == cat.name %}active{% endif %}"
+                       style="padding: var(--space-3) var(--space-4); border-radius: var(--radius-lg); text-decoration: none; display: flex; justify-content: space-between; align-items: center; transition: all 0.2s ease;">
+                        <span style="font-weight: 600; color: var(--text-secondary);">{{ cat.name }}</span>
+                        <span style="background: rgba(102, 126, 234, 0.1); color: #667eea; padding: 0.25rem 0.5rem; border-radius: var(--radius-md); font-size: 0.75rem; font-weight: 700;">
+                            {{ cat.post_count }}
+                        </span>
+                    </a>
+                    {% endfor %}
+                </div>
+
+                <hr style="margin: var(--space-6) 0; border: none; border-top: 1px solid var(--border-light);">
+
+                <a href="{% url 'community:board_main' %}" class="btn-premium btn-premium-secondary" style="width: 100%; font-size: 0.875rem;">
+                    <i class="fas fa-th me-2"></i>전체 카테고리
+                </a>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div>
+            <!-- Header -->
+            <div style="margin-bottom: var(--space-8);">
+                <h1 style="font-size: 2.5rem; font-weight: 800; color: var(--text-primary); margin-bottom: var(--space-4); display: flex; align-items: center; gap: var(--space-4);">
+                    {% if category.name == 'HRD' %}
+                        <i class="fas fa-users-cog" style="color: #0891b2;"></i>
+                    {% elif category.name == '데이터분석' %}
+                        <i class="fas fa-chart-line" style="color: #10b981;"></i>
+                    {% elif category.name == '프로그래밍' %}
+                        <i class="fas fa-code" style="color: #8b5cf6;"></i>
+                    {% elif category.name == '공지사항' %}
+                        <i class="fas fa-bullhorn" style="color: #ef4444;"></i>
+                    {% else %}
+                        <i class="fas fa-comments" style="color: #f59e0b;"></i>
+                    {% endif %}
+                    {{ category.name }}
+                </h1>
+                {% if category.description %}
+                <p style="font-size: 1.125rem; color: var(--text-secondary);">{{ category.description }}</p>
+                {% endif %}
+            </div>
+
+            <!-- Search & Sort -->
+            <div class="premium-glass-card" style="padding: var(--space-6); margin-bottom: var(--space-8); border-radius: var(--radius-2xl);">
+                <form method="get" class="row g-3">
+                    <div class="col-md-7">
+                        <div style="position: relative;">
+                            <input type="text" name="search" value="{{ search_query }}"
+                                   class="form-input" style="padding-left: var(--space-12);"
+                                   placeholder="게시글 검색...">
+                            <i class="fas fa-search" style="position: absolute; left: var(--space-4); top: 50%; transform: translateY(-50%); color: var(--text-tertiary);"></i>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <select name="sort" class="form-input">
+                            <option value="latest" {% if sort == 'latest' %}selected{% endif %}>최신순</option>
+                            <option value="popular" {% if sort == 'popular' %}selected{% endif %}>인기순</option>
+                            <option value="views" {% if sort == 'views' %}selected{% endif %}>조회순</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <button type="submit" class="btn-premium btn-premium-primary" style="width: 100%;">
+                            <i class="fas fa-search me-2"></i>검색
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Posts List -->
+            <div style="display: flex; flex-direction: column; gap: var(--space-4);">
+                {% for question in page_obj %}
+                <a href="{% url 'community:detail' question.id %}" class="premium-glass-card"
+                   style="padding: var(--space-6); text-decoration: none; transition: all 0.3s ease; border-radius: var(--radius-xl); display: block;">
+                    <div style="display: flex; justify-content: space-between; align-items: start; gap: var(--space-6);">
+                        <!-- Main Content -->
+                        <div style="flex: 1;">
+                            <div style="display: flex; align-items: center; gap: var(--space-3); margin-bottom: var(--space-3);">
+                                {% if question.is_locked %}
+                                <span style="background: rgba(239, 68, 68, 0.1); color: #ef4444; padding: 0.375rem 0.875rem; border-radius: var(--radius-full); font-size: 0.75rem; font-weight: 600;">
+                                    <i class="fas fa-lock me-1"></i>회원전용
+                                </span>
+                                {% endif %}
+
+                                {% if question.image or question.file %}
+                                <span style="background: rgba(102, 126, 234, 0.1); color: #667eea; padding: 0.375rem 0.875rem; border-radius: var(--radius-full); font-size: 0.75rem; font-weight: 600;">
+                                    <i class="fas fa-paperclip me-1"></i>첨부
+                                </span>
+                                {% endif %}
+                            </div>
+
+                            <h3 style="font-size: 1.25rem; font-weight: 700; color: var(--text-primary); margin-bottom: var(--space-3); line-height: 1.5;">
+                                {{ question.subject }}
+                            </h3>
+
+                            <div style="display: flex; align-items: center; gap: var(--space-4); font-size: 0.875rem; color: var(--text-tertiary);">
+                                <span><i class="fas fa-user me-1"></i>{{ question.author|display_name }}</span>
+                                <span><i class="far fa-clock me-1"></i>{{ question.create_date|date:"Y-m-d H:i" }}</span>
+                            </div>
+                        </div>
+
+                        <!-- Stats -->
+                        <div style="display: flex; gap: var(--space-6); align-items: center;">
+                            <div style="text-align: center;">
+                                <div style="font-size: 1.5rem; font-weight: 800; color: #0891b2;">{{ question.voter_count }}</div>
+                                <div style="font-size: 0.75rem; color: var(--text-tertiary);">추천</div>
+                            </div>
+                            <div style="text-align: center;">
+                                <div style="font-size: 1.5rem; font-weight: 800; color: #10b981;">{{ question.answer_count }}</div>
+                                <div style="font-size: 0.75rem; color: var(--text-tertiary);">답변</div>
+                            </div>
+                            <div style="text-align: center;">
+                                <div style="font-size: 1.5rem; font-weight: 800; color: var(--text-secondary);">{{ question.view_count }}</div>
+                                <div style="font-size: 0.75rem; color: var(--text-tertiary);">조회</div>
+                            </div>
+                        </div>
+                    </div>
+                </a>
+                {% empty %}
+                <div class="premium-glass-card" style="padding: var(--space-16); text-align: center; border-radius: var(--radius-2xl);">
+                    <i class="fas fa-inbox fa-4x mb-4" style="opacity: 0.2; color: var(--text-tertiary);"></i>
+                    <h3 style="font-size: 1.5rem; font-weight: 700; color: var(--text-secondary); margin-bottom: var(--space-2);">
+                        {% if search_query %}
+                        검색 결과가 없습니다
+                        {% else %}
+                        아직 게시글이 없습니다
+                        {% endif %}
+                    </h3>
+                    <p style="color: var(--text-tertiary); margin-bottom: var(--space-6);">
+                        {% if search_query %}
+                        다른 검색어로 시도해보세요.
+                        {% else %}
+                        첫 번째 게시글을 작성해보세요!
+                        {% endif %}
+                    </p>
+                    {% if user.is_authenticated and not search_query %}
+                    <a href="{% url 'community:question_create' %}?category={{ category.name }}" class="btn-premium btn-premium-primary">
+                        <i class="fas fa-pen me-2"></i>첫 게시글 작성하기
+                    </a>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </div>
+
+            <!-- Pagination -->
+            {% if page_obj.paginator.num_pages > 1 %}
+            <div class="pagination-premium" style="margin-top: var(--space-12);">
+                {% if page_obj.has_previous %}
+                    <a href="?page=1{% if search_query %}&search={{ search_query }}{% endif %}{% if sort %}&sort={{ sort }}{% endif %}">«</a>
+                    <a href="?page={{ page_obj.previous_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}{% if sort %}&sort={{ sort }}{% endif %}">‹</a>
+                {% endif %}
+
+                {% for num in page_obj.paginator.page_range %}
+                    {% if num >= page_obj.number|add:-2 and num <= page_obj.number|add:2 %}
+                        {% if num == page_obj.number %}
+                            <span class="active">{{ num }}</span>
+                        {% else %}
+                            <a href="?page={{ num }}{% if search_query %}&search={{ search_query }}{% endif %}{% if sort %}&sort={{ sort }}{% endif %}">{{ num }}</a>
+                        {% endif %}
+                    {% endif %}
+                {% endfor %}
+
+                {% if page_obj.has_next %}
+                    <a href="?page={{ page_obj.next_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}{% if sort %}&sort={{ sort }}{% endif %}">›</a>
+                    <a href="?page={{ page_obj.paginator.num_pages }}{% if search_query %}&search={{ search_query }}{% endif %}{% if sort %}&sort={{ sort }}{% endif %}">»</a>
+                {% endif %}
+            </div>
+            {% endif %}
+
+            <!-- Write Button (Fixed) -->
+            {% if user.is_authenticated %}
+            <a href="{% url 'community:question_create' %}?category={{ category.name }}"
+               style="position: fixed; bottom: var(--space-8); right: var(--space-8); width: 64px; height: 64px; background: linear-gradient(135deg, #667eea, #764ba2); color: white; border-radius: var(--radius-full); display: flex; align-items: center; justify-content: center; box-shadow: 0 8px 24px -8px rgba(102, 126, 234, 0.5); text-decoration: none; transition: all 0.3s ease; z-index: 50;">
+                <i class="fas fa-pen" style="font-size: 1.5rem;"></i>
+            </a>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<style>
+.category-sidebar-link:hover {
+    background: rgba(102, 126, 234, 0.08);
+    transform: translateX(4px);
+}
+
+.category-sidebar-link.active {
+    background: linear-gradient(135deg, rgba(102, 126, 234, 0.15), rgba(118, 75, 162, 0.15));
+    border-left: 3px solid #667eea;
+}
+
+.premium-glass-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 12px 24px -10px rgba(0, 0, 0, 0.12);
+}
+</style>
+{% endblock %}

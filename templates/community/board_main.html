@@ -1,0 +1,145 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load common_tags %}
+
+{% block extra_css %}
+<link href="{% static 'css/premium.css' %}?v={{ 'now'|date:'YmdHis' }}" rel="stylesheet">
+{% endblock %}
+
+{% block content %}
+<!-- Hero Section -->
+<section class="hero-premium" style="min-height: 400px;">
+    <div class="hero-premium-content">
+        <h1 class="hero-premium-title" style="font-size: clamp(2.5rem, 6vw, 4rem);">
+            <i class="fas fa-comments me-3" style="color: #7dd3fc;"></i>커뮤니티
+        </h1>
+        <p class="hero-premium-subtitle" style="font-size: clamp(1.125rem, 2.5vw, 1.5rem); max-width: 700px; margin: 0 auto;">
+            HRD, 데이터분석, 프로그래밍 등 다양한 주제로<br>
+            지식을 공유하고 함께 성장하는 공간
+        </p>
+
+        {% if user.is_authenticated %}
+        <div class="hero-premium-actions" style="margin-top: var(--space-8);">
+            <a href="{% url 'community:question_create' %}" class="btn-premium btn-premium-primary" style="padding: 1rem 2rem; font-size: 1.125rem;">
+                <i class="fas fa-pen me-2"></i>새 글 작성
+            </a>
+        </div>
+        {% endif %}
+
+        <!-- Stats -->
+        <div class="stats-premium" style="margin-top: var(--space-12);">
+            <div class="stat-premium">
+                <div class="stat-premium-value">{{ total_questions }}</div>
+                <div class="stat-premium-label">전체 게시글</div>
+            </div>
+            <div class="stat-premium">
+                <div class="stat-premium-value">{{ categories|length }}</div>
+                <div class="stat-premium-label">카테고리</div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Categories Grid -->
+<section class="container-premium" style="padding: var(--space-20) var(--space-8);">
+    <div style="max-width: 1400px; margin: 0 auto;">
+        {% for category_name, data in category_posts.items %}
+        <div style="margin-bottom: var(--space-16);">
+            <!-- Category Header -->
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-8);">
+                <div>
+                    <h2 style="font-size: 2rem; font-weight: 800; color: var(--text-primary); margin-bottom: var(--space-2);">
+                        {% if category_name == 'HRD' %}
+                            <i class="fas fa-users-cog me-3" style="color: #0891b2;"></i>
+                        {% elif category_name == '데이터분석' %}
+                            <i class="fas fa-chart-line me-3" style="color: #10b981;"></i>
+                        {% elif category_name == '프로그래밍' %}
+                            <i class="fas fa-code me-3" style="color: #8b5cf6;"></i>
+                        {% elif category_name == '공지사항' %}
+                            <i class="fas fa-bullhorn me-3" style="color: #ef4444;"></i>
+                        {% else %}
+                            <i class="fas fa-comments me-3" style="color: #f59e0b;"></i>
+                        {% endif %}
+                        {{ category_name }}
+                    </h2>
+                    <p style="color: var(--text-secondary); font-size: 1rem;">{{ data.category.description|default:"" }}</p>
+                </div>
+                <a href="{% url 'community:board_category' category_name %}" class="btn-premium btn-premium-secondary" style="white-space: nowrap;">
+                    전체 보기 <i class="fas fa-arrow-right ms-2"></i>
+                </a>
+            </div>
+
+            <!-- Posts Grid -->
+            <div class="bento-grid" style="grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: var(--space-6);">
+                {% for post in data.posts %}
+                <a href="{% url 'community:detail' post.id %}" class="post-card" style="transition: all 0.3s ease;">
+                    <div style="display: flex; align-items: center; gap: var(--space-3); margin-bottom: var(--space-3);">
+                        {% if category_name == 'HRD' %}
+                            <span class="post-card-badge badge-hrd">{{ category_name }}</span>
+                        {% elif category_name == '데이터분석' %}
+                            <span class="post-card-badge badge-data">{{ category_name }}</span>
+                        {% elif category_name == '프로그래밍' %}
+                            <span class="post-card-badge badge-programming">{{ category_name }}</span>
+                        {% elif category_name == '공지사항' %}
+                            <span class="post-card-badge badge-notice">{{ category_name }}</span>
+                        {% else %}
+                            <span class="post-card-badge badge-free">{{ category_name }}</span>
+                        {% endif %}
+
+                        {% if post.is_locked %}
+                        <span style="background: rgba(239, 68, 68, 0.1); color: #ef4444; padding: 0.25rem 0.75rem; border-radius: var(--radius-full); font-size: 0.75rem; font-weight: 600;">
+                            <i class="fas fa-lock me-1"></i>회원전용
+                        </span>
+                        {% endif %}
+                    </div>
+
+                    <h3 class="post-card-title" style="margin-bottom: var(--space-4); font-size: 1.125rem; line-height: 1.5;">{{ post.subject|truncatewords:10 }}</h3>
+
+                    <div style="display: flex; align-items: center; gap: var(--space-4); margin-bottom: var(--space-4); font-size: 0.875rem; color: var(--text-tertiary);">
+                        <span><i class="fas fa-user me-1"></i>{{ post.author|display_name }}</span>
+                        <span><i class="far fa-clock me-1"></i>{{ post.create_date|date:"m-d H:i" }}</span>
+                    </div>
+
+                    <div class="post-card-meta" style="border-top: 1px solid var(--border-light); padding-top: var(--space-3);">
+                        <span><i class="fas fa-thumbs-up me-1"></i>{{ post.voter_count }}</span>
+                        <span><i class="fas fa-comment me-1"></i>{{ post.answer_count }}</span>
+                        <span><i class="fas fa-eye me-1"></i>{{ post.view_count }}</span>
+                    </div>
+                </a>
+                {% empty %}
+                <div style="grid-column: 1 / -1; text-align: center; padding: var(--space-12); color: var(--text-tertiary);">
+                    <i class="fas fa-inbox fa-3x mb-3" style="opacity: 0.3;"></i>
+                    <p style="font-size: 1.125rem; margin: 0;">아직 게시글이 없습니다.</p>
+                </div>
+                {% endfor %}
+            </div>
+
+            <!-- Show "더 보기" if there are more posts -->
+            {% if data.total_count > 5 %}
+            <div style="text-align: center; margin-top: var(--space-8);">
+                <a href="{% url 'community:board_category' category_name %}" style="color: var(--text-secondary); text-decoration: none; font-weight: 600; display: inline-flex; align-items: center; gap: var(--space-2); padding: var(--space-3) var(--space-6); border: 2px solid var(--border-light); border-radius: var(--radius-lg); transition: all 0.3s ease;">
+                    {{ category_name }} 게시판에 {{ data.total_count|add:"-5" }}개의 게시글이 더 있습니다
+                    <i class="fas fa-arrow-right"></i>
+                </a>
+            </div>
+            {% endif %}
+        </div>
+
+        {% if not forloop.last %}
+        <hr style="border: none; border-top: 2px solid var(--border-light); margin: var(--space-16) 0;">
+        {% endif %}
+        {% endfor %}
+    </div>
+</section>
+
+<style>
+.post-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 12px 24px -10px rgba(0, 0, 0, 0.1);
+}
+
+.post-card:hover .post-card-title {
+    color: var(--accent-blue);
+}
+</style>
+{% endblock %}

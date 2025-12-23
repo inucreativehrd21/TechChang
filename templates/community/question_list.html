@@ -12,18 +12,12 @@
     <div class="hero-premium-content">
         <h1 class="hero-premium-title">테크창</h1>
         <p class="hero-premium-subtitle">
-            HRD와 테크놀로지 지식을 공유하는 커뮤니티<br>
-            데이터 분석부터 프로그래밍까지, AI 시대의 인재개발 혁신
+            인천대학교 창의인재개발학과 전공심화연구모임<br>
+            HRD와 테크놀로지 지식 공유 & 커뮤니티 플랫폼
         </p>
 
         <div class="hero-premium-actions">
             {% if user.is_authenticated %}
-                <a href="{% url 'community:question_create' %}" class="btn-premium btn-premium-primary">
-                    게시글 작성
-                </a>
-                <a href="{% url 'community:games_index' %}" class="btn-premium btn-premium-secondary">
-                    게임 센터
-                </a>
                 {% if user.is_staff or user.is_superuser %}
                 <a href="{% url 'common:admin_dashboard' %}" class="btn-premium btn-premium-admin" style="background: linear-gradient(135deg, #ef4444, #dc2626); color: white; border: none;">
                     <i class="fas fa-shield-alt me-1"></i>관리자 대시보드
