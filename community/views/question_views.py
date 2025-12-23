@@ -27,8 +27,8 @@ def question_create(request):
                 # 포인트 히스토리 기록
                 PointHistory.objects.create(
                     user=request.user,
-                    points=50,
-                    reason='질문 작성',
+                    amount=50,
+                    reason=PointHistory.REASON_ADMIN,
                     description=f'질문 작성: {question.subject[:30]}'
                 )
 

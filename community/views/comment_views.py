@@ -31,8 +31,8 @@ def comment_create_question(request, question_id):
             # 포인트 히스토리 기록
             PointHistory.objects.create(
                 user=request.user,
-                points=5,
-                reason='댓글 작성',
+                amount=5,
+                reason=PointHistory.REASON_ADMIN,
                 description=f'질문 댓글 작성: {comment.content[:30]}'
             )
 
@@ -105,8 +105,8 @@ def comment_create_answer(request, answer_id):
             # 포인트 히스토리 기록
             PointHistory.objects.create(
                 user=request.user,
-                points=5,
-                reason='댓글 작성',
+                amount=5,
+                reason=PointHistory.REASON_ADMIN,
                 description=f'답변 댓글 작성: {comment.content[:30]}'
             )
 
