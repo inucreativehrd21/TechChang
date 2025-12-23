@@ -61,6 +61,7 @@ class Profile(models.Model):
 	rank = models.CharField(max_length=20, choices=RANK_CHOICES, default=RANK_REGULAR, verbose_name='회원 등급')
 	points = models.IntegerField(default=0, verbose_name='포인트')
 	selected_emoticon = models.ForeignKey('Emoticon', on_delete=models.SET_NULL, null=True, blank=True, verbose_name='선택한 이모티콘', related_name='selected_by')
+	is_email_verified = models.BooleanField(default=False, verbose_name='이메일 인증 여부', help_text='이메일 인증을 완료한 사용자인지 여부')
 	updated_at = models.DateTimeField(auto_now=True)
 	created_at = models.DateTimeField(auto_now_add=True)
 

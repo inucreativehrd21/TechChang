@@ -271,6 +271,60 @@ def verify_email_code(request):
     verification.mark_verified()
     return JsonResponse({'success': True, 'message': '이메일 인증이 완료되었습니다.'})
 
+@login_required
+def verify_email_change(request):
+    """프로필 페이지에서 이메일 인증/변경 (AJAX)"""
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'message': '잘못된 요청입니다.'}, status=405)
+
+    try:
+        data = json.loads(request.body or '{}')
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False, 'message': '요청 형식이 올바르지 않습니다.'}, status=400)
+
+    email = data.get('email', '').strip().lower()
+    code = data.get('code', '').strip()
+
+    if not email or not code:
+        return JsonResponse({'success': False, 'message': '이메일과 인증코드를 모두 입력해주세요.'}, status=400)
+
+    # 이메일 인증 확인
+    verification = EmailVerification.objects.filter(
+        email=email,
+        is_verified=False
+    ).order_by('-created_at').first()
+
+    if not verification:
+        return JsonResponse({'success': False, 'message': '인증 요청을 찾을 수 없습니다. 코드를 다시 요청해주세요.'}, status=404)
+
+    if verification.is_expired():
+        verification.delete()
+        return JsonResponse({'success': False, 'message': '인증 코드가 만료되었습니다. 새로운 코드를 요청해주세요.'}, status=400)
+
+    if not verification.can_retry():
+        verification.delete()
+        return JsonResponse({'success': False, 'message': '인증 시도 횟수를 초과했습니다. 새로운 코드를 요청해주세요.'}, status=429)
+
+    if verification.code != code:
+        remaining = verification.increment_attempts()
+        if remaining <= 0:
+            verification.delete()
+            return JsonResponse({'success': False, 'message': '인증 시도 횟수를 초과했습니다. 새로운 코드를 요청해주세요.'}, status=429)
+        return JsonResponse({'success': False, 'message': f'인증 코드가 틀렸습니다. (남은 시도: {remaining}회)'}, status=400)
+
+    # 인증 성공 - 사용자 이메일 업데이트
+    verification.mark_verified()
+    user = request.user
+    user.email = email
+    user.save(update_fields=['email'])
+
+    # 프로필의 is_email_verified를 True로 설정
+    profile = user.profile
+    profile.is_email_verified = True
+    profile.save(update_fields=['is_email_verified'])
+
+    return JsonResponse({'success': True, 'message': '이메일 인증이 완료되었습니다.'})
+
 def signup_with_email_verification(request):
     """이메일 인증이 포함된 회원가입"""
     if request.method == "POST":
@@ -298,12 +352,13 @@ def signup_with_email_verification(request):
             # 사용자 생성
             user = form.save()
 
-            # 프로필 생성
+            # 프로필 생성 및 이메일 인증 상태 설정
             nickname = form.cleaned_data.get('nickname')
+            profile, created = Profile.objects.get_or_create(user=user)
             if nickname:
-                profile, created = Profile.objects.get_or_create(user=user)
                 profile.nickname = nickname
-                profile.save()
+            profile.is_email_verified = True  # 이메일 인증 완료
+            profile.save()
 
             # 인증 기록 삭제
             verification.delete()
@@ -980,6 +1035,73 @@ def admin_unblock_ip(request, ip_id):
 
     messages.success(request, f'{ip_address}의 차단을 해제했습니다.')
     return redirect(request.META.get('HTTP_REFERER', 'common:admin_blocked_ip_list'))
+
+
+# ==================== 비밀번호 찾기 ====================
+def password_reset(request):
+    """비밀번호 찾기 - 임시 비밀번호 발송"""
+    if request.method == 'POST':
+        username = request.POST.get('username', '').strip()
+        email = request.POST.get('email', '').strip().lower()
+
+        if not username or not email:
+            messages.error(request, '사용자명과 이메일을 모두 입력해주세요.')
+            return render(request, 'common/password_reset.html')
+
+        # 사용자 확인
+        try:
+            user = User.objects.get(username=username, email=email)
+        except User.DoesNotExist:
+            messages.error(request, '일치하는 사용자 정보를 찾을 수 없습니다. 사용자명과 이메일을 확인해주세요.')
+            return render(request, 'common/password_reset.html')
+
+        # 이메일 인증 여부 확인
+        try:
+            profile = user.profile
+            if not profile.is_email_verified:
+                messages.error(request, '이메일 인증이 완료되지 않은 계정입니다. 프로필 설정에서 이메일 인증을 먼저 완료해주세요.')
+                return render(request, 'common/password_reset.html')
+        except Profile.DoesNotExist:
+            messages.error(request, '프로필 정보를 찾을 수 없습니다.')
+            return render(request, 'common/password_reset.html')
+
+        # 임시 비밀번호 생성 (10자리: 영문 대소문자 + 숫자 혼합)
+        import random
+        import string
+        temp_password = ''.join(random.choices(string.ascii_letters + string.digits, k=10))
+
+        # 사용자 비밀번호 변경
+        user.set_password(temp_password)
+        user.save()
+
+        # 이메일 발송
+        try:
+            send_mail(
+                subject='[테크창] 임시 비밀번호 안내',
+                message=f'''
+안녕하세요, {username}님!
+
+비밀번호 찾기 요청에 따라 임시 비밀번호를 발송합니다.
+
+임시 비밀번호: {temp_password}
+
+로그인 후 반드시 비밀번호를 변경해주세요.
+
+감사합니다.
+- 테크창 운영팀
+                ''',
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                recipient_list=[email],
+                fail_silently=False,
+            )
+            messages.success(request, f'{email}로 임시 비밀번호가 발송되었습니다. 이메일을 확인해주세요.')
+            return redirect('common:login')
+        except Exception:
+            logger.exception("임시 비밀번호 이메일 발송 실패")
+            messages.error(request, '임시 비밀번호 발송 중 오류가 발생했습니다. 관리자에게 문의해주세요.')
+            return render(request, 'common/password_reset.html')
+
+    return render(request, 'common/password_reset.html')
 
 
 # ==================== 포인트 랭킹 ====================
