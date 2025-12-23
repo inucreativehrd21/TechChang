@@ -447,7 +447,7 @@
                 </div>
                 <div class="meta-item">
                     <i class="fas fa-comment"></i>
-                    <span>답변 {{ question.answer_set.count }}개</span>
+                    <span>댓글 {{ question.answer_set.count }}개</span>
                 </div>
                 <div class="meta-item">
                     {% if user.is_authenticated %}
@@ -541,7 +541,7 @@
         </div>
     </article>
 
-    <!-- Comments Section (기존 답변을 댓글 형식으로) -->
+    <!-- Comments Section (기존 댓글 섹션) -->
     <section class="comments-section">
         <div class="answers-header">
             <h2 class="section-title" style="margin: 0;">
@@ -623,7 +623,7 @@
         {% endif %}
     </section>
 
-    <!-- Comment Form (답변 작성을 댓글 형식으로) -->
+    <!-- Comment Form (댓글 작성 폼) -->
     {% if user.is_authenticated %}
     <section style="margin-top: var(--space-6); padding: var(--space-6); background: var(--bg-elevated); border-radius: var(--radius-xl); border: 1px solid var(--border-color);">
         <form method="post" action="{% url 'community:answer_create' question.id %}" style="display: flex; flex-direction: column; gap: var(--space-4);">
