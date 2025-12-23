@@ -520,8 +520,17 @@ document.addEventListener('DOMContentLoaded', function() {
     let isPrivacyScrolled = false;
 
     function getCSRF() {
-        const match = document.cookie.match(/csrftoken=([^;]+)/);
-        return match && match[1];
+        // Django의 CSRF 토큰을 쿠키 또는 DOM에서 가져오기
+        const cookieMatch = document.cookie.match(/csrftoken=([^;]+)/);
+        if (cookieMatch && cookieMatch[1]) {
+            return cookieMatch[1];
+        }
+        // 쿠키에 없으면 hidden input에서 가져오기
+        const csrfInput = document.querySelector('[name=csrfmiddlewaretoken]');
+        if (csrfInput) {
+            return csrfInput.value;
+        }
+        return '';
     }
 
     // 스크롤 끝 감지 함수

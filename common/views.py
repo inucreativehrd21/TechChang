@@ -213,7 +213,15 @@ def send_verification_email(request):
         verification.delete()
         if settings.DEBUG:
             return JsonResponse({'success': True, 'message': f'개발 모드: 인증코드는 {code}입니다.', 'code': code})
-        return JsonResponse({'success': False, 'message': '이메일 발송 중 문제가 발생했습니다. 잠시 후 다시 시도해주세요.'}, status=500)
+        # 에러 타입과 메시지를 더 자세히 반환 (프로덕션에서 디버깅용)
+        error_type = type(exc).__name__
+        error_msg = str(exc)
+        logger.error(f"Email send error - Type: {error_type}, Message: {error_msg}")
+        return JsonResponse({
+            'success': False, 
+            'message': f'이메일 발송 중 문제가 발생했습니다. 관리자에게 문의해주세요. (Error: {error_type})',
+            'debug_info': error_msg if settings.DEBUG else None
+        }, status=500)
 
     cache.set(cooldown_key, True, timeout=EmailVerification.RESEND_COOLDOWN_SECONDS)
     if ip_address:
