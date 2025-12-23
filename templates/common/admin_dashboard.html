@@ -3,17 +3,17 @@
 {% block title %}관리자 대시보드 - 테크창{% endblock %}
 
 {% block content %}
-<div class="container my-4" style="color:#e5e7eb;">
+<div class="container my-4" style="background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); padding: var(--space-8); border-radius: var(--radius-2xl); min-height: 100vh;">
   <!-- 페이지 헤더 -->
   <div class="d-flex justify-content-between align-items-center mb-4">
-    <h2>
-      <i class="fas fa-tachometer-alt me-2 text-primary"></i>관리자 대시보드
+    <h2 style="color: #f3f4f6; font-weight: 800;">
+      <i class="fas fa-tachometer-alt me-2" style="color: #7dd3fc;"></i>관리자 대시보드
     </h2>
     <div>
-      <a href="{% url 'common:admin_blocked_ip_list' %}" class="btn btn-danger me-2">
+      <a href="{% url 'common:admin_blocked_ip_list' %}" class="btn me-2" style="background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); color: white; border: none; font-weight: 600;">
         <i class="fas fa-ban me-2"></i>IP 차단 관리
       </a>
-      <a href="{% url 'common:admin_user_list' %}" class="btn btn-primary">
+      <a href="{% url 'common:admin_user_list' %}" class="btn" style="background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); color: white; border: none; font-weight: 600;">
         <i class="fas fa-users me-2"></i>사용자 관리
       </a>
     </div>
