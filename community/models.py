@@ -478,6 +478,60 @@ class Portfolio(models.Model):
     hero_gradient = models.CharField(max_length=200, default='linear-gradient(135deg, #667eea 0%, #764ba2 100%)', verbose_name='히어로 배경')
     skills_gradient = models.CharField(max_length=200, default='linear-gradient(135deg, #f093fb 0%, #f5576c 100%)', verbose_name='스킬 배경')
 
+    # 배경 타입 및 커스텀 색상 (고급 옵션)
+    BACKGROUND_TYPE_CHOICES = [
+        ('gradient', '그라데이션'),
+        ('solid', '단색 (브랜드)'),
+        ('white', '화이트'),
+        ('custom', '커스텀 색상'),
+    ]
+
+    hero_background_type = models.CharField(max_length=20, choices=BACKGROUND_TYPE_CHOICES, default='gradient', verbose_name='히어로 배경 타입')
+    skills_background_type = models.CharField(max_length=20, choices=BACKGROUND_TYPE_CHOICES, default='gradient', verbose_name='스킬 배경 타입')
+
+    hero_custom_color = models.CharField(max_length=7, blank=True, default='', verbose_name='히어로 커스텀 색상', help_text='HEX 색상 코드 (예: #667eea)')
+    skills_custom_color = models.CharField(max_length=7, blank=True, default='', verbose_name='스킬 커스텀 색상', help_text='HEX 색상 코드 (예: #f093fb)')
+
+    hero_solid_color = models.CharField(max_length=200, blank=True, default='', verbose_name='히어로 단색 배경', help_text='브랜드 색상 gradient 값')
+    skills_solid_color = models.CharField(max_length=200, blank=True, default='', verbose_name='스킬 단색 배경', help_text='브랜드 색상 gradient 값')
+
+    # 비개발 직군 스킬 시스템
+    skills_with_levels = models.JSONField(
+        default=list,
+        blank=True,
+        verbose_name='레벨별 스킬',
+        help_text='[{"name": "Excel", "level": "Expert"}, ...]'
+    )
+
+    categorized_skills = models.JSONField(
+        default=dict,
+        blank=True,
+        verbose_name='카테고리별 스킬',
+        help_text='{"Office Skills": ["MS Word", "Excel"], "Languages": ["English", "Korean"], ...}'
+    )
+
+    free_text_skills = models.TextField(
+        blank=True,
+        default='',
+        verbose_name='자유형 스킬 설명',
+        help_text='역량에 대한 자유로운 서술'
+    )
+
+    skill_tags = models.JSONField(
+        default=list,
+        blank=True,
+        verbose_name='스킬 태그',
+        help_text='자유형 설명과 함께 사용할 키워드 태그'
+    )
+
+    # 스킬 표시 설정
+    enabled_skill_types = models.JSONField(
+        default=list,
+        blank=True,
+        verbose_name='활성화된 스킬 타입',
+        help_text='["simple", "leveled", "categorized", "freetext"] 중 선택'
+    )
+
     # 설정
     is_public = models.BooleanField(default=True, verbose_name='공개 여부')
     theme = models.CharField(max_length=10, choices=THEME_CHOICES, default='light', verbose_name='테마')

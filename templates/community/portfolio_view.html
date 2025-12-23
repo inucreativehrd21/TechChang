@@ -590,17 +590,81 @@ body {
     </section>
 
     <!-- Slide 2: Skills -->
-    {% if portfolio.skills %}
-    <section class="portfolio-slide skills-slide" data-slide="1" style="background: {{ portfolio.skills_gradient }}">
+    {% if portfolio.enabled_skill_types %}
+    <section class="portfolio-slide skills-slide" data-slide="1" style="background: {{ skills_background }}">
         <div class="skills-content">
-            <h2 class="slide-title">Skills</h2>
-            <div class="skills-grid">
-                {% for skill in portfolio.skills %}
-                <div class="skill-card">
-                    <div class="skill-name">{{ skill }}</div>
+            <h2 class="slide-title">Skills & Expertise</h2>
+
+            <!-- Simple Skills -->
+            {% if 'simple' in portfolio.enabled_skill_types and portfolio.skills %}
+            <div class="skills-section" style="margin-bottom: 4rem;">
+                <h3 class="skills-section-title">기술 스택</h3>
+                <div class="skills-grid-premium">
+                    {% for skill in portfolio.skills %}
+                    <div class="skill-card-premium gradient-border">
+                        <i class="fas fa-code"></i>
+                        <div class="skill-text">{{ skill }}</div>
+                    </div>
+                    {% endfor %}
                 </div>
-                {% endfor %}
             </div>
+            {% endif %}
+
+            <!-- Leveled Skills -->
+            {% if 'leveled' in portfolio.enabled_skill_types and portfolio.skills_with_levels %}
+            <div class="skills-section" style="margin-bottom: 4rem;">
+                <h3 class="skills-section-title">역량 수준</h3>
+                <div class="skills-grid-premium leveled">
+                    {% for skill in portfolio.skills_with_levels %}
+                    <div class="skill-card-premium leveled">
+                        <div class="skill-header">
+                            <div class="skill-text">{{ skill.name }}</div>
+                            <div class="level-badge level-{{ skill.level|lower }}">{{ skill.level }}</div>
+                        </div>
+                        <div class="skill-progress">
+                            <div class="progress-bar level-{{ skill.level|lower }}"></div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Categorized Skills -->
+            {% if 'categorized' in portfolio.enabled_skill_types and portfolio.categorized_skills %}
+            <div class="skills-section" style="margin-bottom: 4rem;">
+                <h3 class="skills-section-title">전문 분야</h3>
+                <div class="category-grid">
+                    {% for category, skills in portfolio.categorized_skills.items %}
+                    <div class="category-card-premium">
+                        <h4 class="category-title">{{ category }}</h4>
+                        <div class="category-skills">
+                            {% for skill in skills %}
+                            <span class="skill-tag-premium">{{ skill }}</span>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Free Text Skills -->
+            {% if 'freetext' in portfolio.enabled_skill_types and portfolio.free_text_skills %}
+            <div class="skills-section">
+                <h3 class="skills-section-title">핵심 역량</h3>
+                <div class="freetext-card-premium">
+                    <div class="freetext-content">{{ portfolio.free_text_skills|linebreaksbr }}</div>
+                    {% if portfolio.skill_tags %}
+                    <div class="skill-tags-container">
+                        {% for tag in portfolio.skill_tags %}
+                        <span class="skill-tag-premium highlighted">{{ tag }}</span>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            {% endif %}
         </div>
     </section>
     {% endif %}

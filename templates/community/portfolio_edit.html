@@ -66,12 +66,112 @@
             </div>
 
             <!-- Skills -->
-            <div style="margin-bottom: var(--space-6);">
-                <label style="display: block; font-weight: 700; margin-bottom: var(--space-3); color: var(--text-primary);">
-                    기술 스택 (쉼표로 구분)
-                </label>
-                <input type="text" name="skills" value="{{ skills_str }}" placeholder="Python, Django, JavaScript, React" style="width: 100%; padding: var(--space-4); border: 1px solid var(--border-light); border-radius: var(--radius-md); font-size: 1rem;">
-                <small style="color: var(--text-tertiary); margin-top: var(--space-2); display: block;">예: Python, Django, JavaScript, React</small>
+            <div style="margin-bottom: var(--space-8); padding: var(--space-6); background: var(--bg-secondary); border-radius: var(--radius-lg);">
+                <h3 style="font-size: 1.125rem; font-weight: 700; margin-bottom: var(--space-4); color: var(--text-primary);">스킬 표시 옵션</h3>
+                <p style="color: var(--text-secondary); margin-bottom: var(--space-6); font-size: 0.9375rem;">표시할 스킬 타입을 선택하세요 (여러 개 선택 가능)</p>
+
+                <!-- Skill Type Selection -->
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--space-3); margin-bottom: var(--space-6);">
+                    <label class="skill-type-checkbox" style="display: flex; align-items: center; gap: var(--space-3); padding: var(--space-4); background: white; border: 2px solid var(--border-light); border-radius: var(--radius-lg); cursor: pointer; transition: all 0.3s ease;">
+                        <input type="checkbox" name="enabled_skill_types" value="simple" {% if 'simple' in portfolio.enabled_skill_types %}checked{% endif %} style="width: 20px; height: 20px; cursor: pointer;">
+                        <div>
+                            <div style="font-weight: 600; font-size: 0.9375rem;">심플 태그</div>
+                            <div style="font-size: 0.8125rem; color: var(--text-tertiary);">기술 스택 나열</div>
+                        </div>
+                    </label>
+                    <label class="skill-type-checkbox" style="display: flex; align-items: center; gap: var(--space-3); padding: var(--space-4); background: white; border: 2px solid var(--border-light); border-radius: var(--radius-lg); cursor: pointer; transition: all 0.3s ease;">
+                        <input type="checkbox" name="enabled_skill_types" value="leveled" {% if 'leveled' in portfolio.enabled_skill_types %}checked{% endif %} style="width: 20px; height: 20px; cursor: pointer;">
+                        <div>
+                            <div style="font-weight: 600; font-size: 0.9375rem;">레벨별 스킬</div>
+                            <div style="font-size: 0.8125rem; color: var(--text-tertiary);">숙련도 표시</div>
+                        </div>
+                    </label>
+                    <label class="skill-type-checkbox" style="display: flex; align-items: center; gap: var(--space-3); padding: var(--space-4); background: white; border: 2px solid var(--border-light); border-radius: var(--radius-lg); cursor: pointer; transition: all 0.3s ease;">
+                        <input type="checkbox" name="enabled_skill_types" value="categorized" {% if 'categorized' in portfolio.enabled_skill_types %}checked{% endif %} style="width: 20px; height: 20px; cursor: pointer;">
+                        <div>
+                            <div style="font-weight: 600; font-size: 0.9375rem;">카테고리별 스킬</div>
+                            <div style="font-size: 0.8125rem; color: var(--text-tertiary);">그룹으로 분류</div>
+                        </div>
+                    </label>
+                    <label class="skill-type-checkbox" style="display: flex; align-items: center; gap: var(--space-3); padding: var(--space-4); background: white; border: 2px solid var(--border-light); border-radius: var(--radius-lg); cursor: pointer; transition: all 0.3s ease;">
+                        <input type="checkbox" name="enabled_skill_types" value="freetext" {% if 'freetext' in portfolio.enabled_skill_types %}checked{% endif %} style="width: 20px; height: 20px; cursor: pointer;">
+                        <div>
+                            <div style="font-weight: 600; font-size: 0.9375rem;">자유형 설명</div>
+                            <div style="font-size: 0.8125rem; color: var(--text-tertiary);">텍스트 + 태그</div>
+                        </div>
+                    </label>
+                </div>
+
+                <!-- Simple Skills Panel -->
+                <div id="simple_skills_panel" style="display: none; margin-bottom: var(--space-6); padding: var(--space-6); background: white; border-radius: var(--radius-lg); border: 1px solid var(--border-light);">
+                    <label style="display: block; font-weight: 700; margin-bottom: var(--space-3); color: var(--text-primary);">
+                        심플 태그 (쉼표로 구분)
+                    </label>
+                    <input type="text" name="skills" value="{{ skills_str }}" placeholder="Python, Django, JavaScript, React" style="width: 100%; padding: var(--space-4); border: 1px solid var(--border-light); border-radius: var(--radius-md); font-size: 1rem;">
+                    <small style="color: var(--text-tertiary); margin-top: var(--space-2); display: block;">예: MS Office, Excel, PowerPoint, Photoshop</small>
+                </div>
+
+                <!-- Leveled Skills Panel -->
+                <div id="leveled_skills_panel" style="display: none; margin-bottom: var(--space-6); padding: var(--space-6); background: white; border-radius: var(--radius-lg); border: 1px solid var(--border-light);">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-4);">
+                        <label style="font-weight: 700; color: var(--text-primary);">레벨별 스킬</label>
+                        <button type="button" onclick="addLeveledSkill()" style="padding: var(--space-2) var(--space-4); background: var(--accent-blue); color: white; border: none; border-radius: var(--radius-md); cursor: pointer; font-weight: 600; font-size: 0.875rem;">
+                            <i class="fas fa-plus"></i> 스킬 추가
+                        </button>
+                    </div>
+                    <div id="leveled_skills_container" style="display: flex; flex-direction: column; gap: var(--space-3);">
+                        {% for skill in portfolio.skills_with_levels %}
+                        <div class="leveled-skill-row" style="display: grid; grid-template-columns: 1fr 150px 40px; gap: var(--space-3); align-items: center;">
+                            <input type="text" name="skill_level_name[]" value="{{ skill.name }}" placeholder="스킬 이름 (예: Excel)" style="padding: var(--space-3); border: 1px solid var(--border-light); border-radius: var(--radius-md);">
+                            <select name="skill_level_value[]" style="padding: var(--space-3); border: 1px solid var(--border-light); border-radius: var(--radius-md);">
+                                <option value="Beginner" {% if skill.level == 'Beginner' %}selected{% endif %}>초급</option>
+                                <option value="Intermediate" {% if skill.level == 'Intermediate' %}selected{% endif %}>중급</option>
+                                <option value="Advanced" {% if skill.level == 'Advanced' %}selected{% endif %}>고급</option>
+                                <option value="Expert" {% if skill.level == 'Expert' %}selected{% endif %}>전문가</option>
+                            </select>
+                            <button type="button" onclick="this.parentElement.remove()" style="padding: var(--space-2); background: #fee; color: #c33; border: none; border-radius: var(--radius-md); cursor: pointer;">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <!-- Categorized Skills Panel -->
+                <div id="categorized_skills_panel" style="display: none; margin-bottom: var(--space-6); padding: var(--space-6); background: white; border-radius: var(--radius-lg); border: 1px solid var(--border-light);">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-4);">
+                        <label style="font-weight: 700; color: var(--text-primary);">카테고리별 스킬</label>
+                        <button type="button" onclick="addCategorizedSkill()" style="padding: var(--space-2) var(--space-4); background: var(--accent-blue); color: white; border: none; border-radius: var(--radius-md); cursor: pointer; font-weight: 600; font-size: 0.875rem;">
+                            <i class="fas fa-plus"></i> 카테고리 추가
+                        </button>
+                    </div>
+                    <div id="categorized_skills_container" style="display: flex; flex-direction: column; gap: var(--space-4);">
+                        {% for category, skills in portfolio.categorized_skills.items %}
+                        <div class="categorized-skill-row" style="padding: var(--space-4); background: var(--bg-secondary); border-radius: var(--radius-md);">
+                            <div style="display: grid; grid-template-columns: 1fr 40px; gap: var(--space-3); margin-bottom: var(--space-3);">
+                                <input type="text" name="category_name[]" value="{{ category }}" placeholder="카테고리 이름 (예: Office Skills)" style="padding: var(--space-3); border: 1px solid var(--border-light); border-radius: var(--radius-md); font-weight: 600;">
+                                <button type="button" onclick="this.closest('.categorized-skill-row').remove()" style="padding: var(--space-2); background: #fee; color: #c33; border: none; border-radius: var(--radius-md); cursor: pointer;">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            </div>
+                            <input type="text" name="category_skills[]" value="{{ skills|join:', ' }}" placeholder="스킬 (쉼표로 구분, 예: MS Word, Excel, PowerPoint)" style="width: 100%; padding: var(--space-3); border: 1px solid var(--border-light); border-radius: var(--radius-md);">
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <!-- Freetext Skills Panel -->
+                <div id="freetext_skills_panel" style="display: none; padding: var(--space-6); background: white; border-radius: var(--radius-lg); border: 1px solid var(--border-light);">
+                    <label style="display: block; font-weight: 700; margin-bottom: var(--space-3); color: var(--text-primary);">
+                        자유형 스킬 설명
+                    </label>
+                    <textarea name="free_text_skills" rows="6" placeholder="당신의 역량과 경험을 자유롭게 작성해주세요..." style="width: 100%; padding: var(--space-4); border: 1px solid var(--border-light); border-radius: var(--radius-md); font-size: 1rem; resize: vertical;">{{ portfolio.free_text_skills }}</textarea>
+                    <label style="display: block; font-weight: 600; margin-top: var(--space-4); margin-bottom: var(--space-3); color: var(--text-primary);">
+                        키워드 태그 (쉼표로 구분)
+                    </label>
+                    <input type="text" name="skill_tags" value="{% for tag in portfolio.skill_tags %}{{ tag }}{% if not forloop.last %}, {% endif %}{% endfor %}" placeholder="협업, 리더십, 문제해결, 커뮤니케이션" style="width: 100%; padding: var(--space-4); border: 1px solid var(--border-light); border-radius: var(--radius-md); font-size: 1rem;">
+                    <small style="color: var(--text-tertiary); margin-top: var(--space-2); display: block;">설명과 함께 표시될 주요 키워드를 입력하세요</small>
+                </div>
             </div>
 
             <!-- Social Links -->
@@ -96,48 +196,158 @@
                 <input type="url" name="website_url" value="{{ portfolio.website_url }}" placeholder="https://yourwebsite.com" style="width: 100%; padding: var(--space-4); border: 1px solid var(--border-light); border-radius: var(--radius-md); font-size: 1rem;">
             </div>
 
-            <!-- Background Gradients -->
+            <!-- Background Options -->
             <div style="margin-bottom: var(--space-8); padding: var(--space-6); background: var(--bg-secondary); border-radius: var(--radius-lg);">
-                <h3 style="font-size: 1.125rem; font-weight: 700; margin-bottom: var(--space-4); color: var(--text-primary);">배경 그라데이션</h3>
+                <h3 style="font-size: 1.125rem; font-weight: 700; margin-bottom: var(--space-6); color: var(--text-primary);">배경 옵션</h3>
 
-                <!-- Hero Gradient -->
-                <div style="margin-bottom: var(--space-6);">
-                    <label style="display: block; font-weight: 600; margin-bottom: var(--space-3); color: var(--text-primary);">
+                <!-- Hero Background -->
+                <div style="margin-bottom: var(--space-8); padding: var(--space-6); background: white; border-radius: var(--radius-lg); border: 1px solid var(--border-light);">
+                    <label style="display: block; font-weight: 700; margin-bottom: var(--space-4); color: var(--text-primary); font-size: 1.0625rem;">
                         히어로 슬라이드 배경
                     </label>
-                    <select name="hero_gradient" id="hero_gradient" style="width: 100%; padding: var(--space-4); border: 1px solid var(--border-light); border-radius: var(--radius-md); font-size: 1rem;">
-                        <option value="linear-gradient(135deg, #667eea 0%, #764ba2 100%)" {% if portfolio.hero_gradient == 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' %}selected{% endif %}>보라 그라데이션</option>
-                        <option value="linear-gradient(135deg, #f093fb 0%, #f5576c 100%)" {% if portfolio.hero_gradient == 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)' %}selected{% endif %}>핑크 그라데이션</option>
-                        <option value="linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)" {% if portfolio.hero_gradient == 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)' %}selected{% endif %}>파랑 그라데이션</option>
-                        <option value="linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)" {% if portfolio.hero_gradient == 'linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)' %}selected{% endif %}>초록 그라데이션</option>
-                        <option value="linear-gradient(135deg, #fa709a 0%, #fee140 100%)" {% if portfolio.hero_gradient == 'linear-gradient(135deg, #fa709a 0%, #fee140 100%)' %}selected{% endif %}>노랑 그라데이션</option>
-                        <option value="linear-gradient(135deg, #30cfd0 0%, #330867 100%)" {% if portfolio.hero_gradient == 'linear-gradient(135deg, #30cfd0 0%, #330867 100%)' %}selected{% endif %}>다크 블루 그라데이션</option>
-                        <option value="linear-gradient(135deg, #a8edea 0%, #fed6e3 100%)" {% if portfolio.hero_gradient == 'linear-gradient(135deg, #a8edea 0%, #fed6e3 100%)' %}selected{% endif %}>파스텔 그라데이션</option>
-                        <option value="linear-gradient(135deg, #ff9a9e 0%, #fecfef 100%)" {% if portfolio.hero_gradient == 'linear-gradient(135deg, #ff9a9e 0%, #fecfef 100%)' %}selected{% endif %}>로즈 그라데이션</option>
-                        <option value="linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%)" {% if portfolio.hero_gradient == 'linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%)' %}selected{% endif %}>복숭아 그라데이션</option>
-                        <option value="linear-gradient(135deg, #ff6e7f 0%, #bfe9ff 100%)" {% if portfolio.hero_gradient == 'linear-gradient(135deg, #ff6e7f 0%, #bfe9ff 100%)' %}selected{% endif %}>선셋 그라데이션</option>
-                    </select>
-                    <div id="hero_preview" style="margin-top: var(--space-3); height: 80px; border-radius: var(--radius-md); background: {{ portfolio.hero_gradient }};"></div>
+
+                    <!-- Hero Background Type Selection -->
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: var(--space-3); margin-bottom: var(--space-6);">
+                        <label class="bg-type-option" style="display: flex; flex-direction: column; align-items: center; padding: var(--space-4); border: 2px solid var(--border-light); border-radius: var(--radius-lg); cursor: pointer; transition: all 0.3s ease; background: white;">
+                            <input type="radio" name="hero_background_type" value="gradient" {% if portfolio.hero_background_type == 'gradient' %}checked{% endif %} style="margin-bottom: var(--space-2);">
+                            <span style="font-weight: 600; font-size: 0.9375rem;">그라데이션</span>
+                        </label>
+                        <label class="bg-type-option" style="display: flex; flex-direction: column; align-items: center; padding: var(--space-4); border: 2px solid var(--border-light); border-radius: var(--radius-lg); cursor: pointer; transition: all 0.3s ease; background: white;">
+                            <input type="radio" name="hero_background_type" value="solid" {% if portfolio.hero_background_type == 'solid' %}checked{% endif %} style="margin-bottom: var(--space-2);">
+                            <span style="font-weight: 600; font-size: 0.9375rem;">단색 (브랜드)</span>
+                        </label>
+                        <label class="bg-type-option" style="display: flex; flex-direction: column; align-items: center; padding: var(--space-4); border: 2px solid var(--border-light); border-radius: var(--radius-lg); cursor: pointer; transition: all 0.3s ease; background: white;">
+                            <input type="radio" name="hero_background_type" value="white" {% if portfolio.hero_background_type == 'white' %}checked{% endif %} style="margin-bottom: var(--space-2);">
+                            <span style="font-weight: 600; font-size: 0.9375rem;">화이트</span>
+                        </label>
+                        <label class="bg-type-option" style="display: flex; flex-direction: column; align-items: center; padding: var(--space-4); border: 2px solid var(--border-light); border-radius: var(--radius-lg); cursor: pointer; transition: all 0.3s ease; background: white;">
+                            <input type="radio" name="hero_background_type" value="custom" {% if portfolio.hero_background_type == 'custom' %}checked{% endif %} style="margin-bottom: var(--space-2);">
+                            <span style="font-weight: 600; font-size: 0.9375rem;">커스텀 색상</span>
+                        </label>
+                    </div>
+
+                    <!-- Hero Gradient Options Panel -->
+                    <div id="hero_gradient_panel" style="display: none; margin-bottom: var(--space-4);">
+                        <label style="display: block; font-weight: 600; margin-bottom: var(--space-3); color: var(--text-secondary);">
+                            그라데이션 선택
+                        </label>
+                        <select name="hero_gradient" id="hero_gradient" style="width: 100%; padding: var(--space-4); border: 1px solid var(--border-light); border-radius: var(--radius-md); font-size: 1rem;">
+                            {% for value, label in gradient_choices %}
+                            <option value="{{ value }}" {% if portfolio.hero_gradient == value %}selected{% endif %}>{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <!-- Hero Solid Color Options Panel -->
+                    <div id="hero_solid_panel" style="display: none; margin-bottom: var(--space-4);">
+                        <label style="display: block; font-weight: 600; margin-bottom: var(--space-3); color: var(--text-secondary);">
+                            브랜드 색상 선택
+                        </label>
+                        <div style="display: grid; grid-template-columns: repeat(5, 1fr); gap: var(--space-3);">
+                            {% for value, label in gradient_choices %}
+                            <label class="solid-color-swatch" style="position: relative; height: 60px; border-radius: var(--radius-md); cursor: pointer; border: 3px solid transparent; transition: all 0.3s ease; background: {{ value }};">
+                                <input type="radio" name="hero_solid_color" value="{{ value }}" {% if portfolio.hero_solid_color == value %}checked{% endif %} style="position: absolute; opacity: 0;">
+                                <div style="position: absolute; bottom: 0; left: 0; right: 0; background: rgba(0,0,0,0.6); color: white; padding: var(--space-1); font-size: 0.6875rem; text-align: center; border-radius: 0 0 var(--radius-sm) var(--radius-sm);">{{ label }}</div>
+                            </label>
+                            {% endfor %}
+                        </div>
+                    </div>
+
+                    <!-- Hero Custom Color Panel -->
+                    <div id="hero_custom_panel" style="display: none; margin-bottom: var(--space-4);">
+                        <label style="display: block; font-weight: 600; margin-bottom: var(--space-3); color: var(--text-secondary);">
+                            커스텀 색상
+                        </label>
+                        <div style="display: flex; gap: var(--space-4); align-items: center;">
+                            <input type="color" id="hero_custom_color_picker" value="{{ portfolio.hero_custom_color|default:'#667eea' }}" style="width: 80px; height: 50px; border: 1px solid var(--border-light); border-radius: var(--radius-md); cursor: pointer;">
+                            <input type="text" name="hero_custom_color" id="hero_custom_color_text" value="{{ portfolio.hero_custom_color|default:'#667eea' }}" placeholder="#667eea" style="flex: 1; padding: var(--space-4); border: 1px solid var(--border-light); border-radius: var(--radius-md); font-size: 1rem; font-family: monospace;">
+                        </div>
+                    </div>
+
+                    <!-- Hero Preview -->
+                    <div style="margin-top: var(--space-4);">
+                        <label style="display: block; font-weight: 600; margin-bottom: var(--space-3); color: var(--text-secondary);">
+                            미리보기
+                        </label>
+                        <div id="hero_preview" style="height: 100px; border-radius: var(--radius-md); background: {{ portfolio.hero_gradient }}; display: flex; align-items: center; justify-content: center; color: white; font-weight: 700; font-size: 1.125rem; text-shadow: 0 2px 4px rgba(0,0,0,0.2);">
+                            히어로 슬라이드 배경
+                        </div>
+                    </div>
                 </div>
 
-                <!-- Skills Gradient -->
-                <div>
-                    <label style="display: block; font-weight: 600; margin-bottom: var(--space-3); color: var(--text-primary);">
+                <!-- Skills Background -->
+                <div style="padding: var(--space-6); background: white; border-radius: var(--radius-lg); border: 1px solid var(--border-light);">
+                    <label style="display: block; font-weight: 700; margin-bottom: var(--space-4); color: var(--text-primary); font-size: 1.0625rem;">
                         스킬 슬라이드 배경
                     </label>
-                    <select name="skills_gradient" id="skills_gradient" style="width: 100%; padding: var(--space-4); border: 1px solid var(--border-light); border-radius: var(--radius-md); font-size: 1rem;">
-                        <option value="linear-gradient(135deg, #667eea 0%, #764ba2 100%)" {% if portfolio.skills_gradient == 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' %}selected{% endif %}>보라 그라데이션</option>
-                        <option value="linear-gradient(135deg, #f093fb 0%, #f5576c 100%)" {% if portfolio.skills_gradient == 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)' %}selected{% endif %}>핑크 그라데이션</option>
-                        <option value="linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)" {% if portfolio.skills_gradient == 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)' %}selected{% endif %}>파랑 그라데이션</option>
-                        <option value="linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)" {% if portfolio.skills_gradient == 'linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)' %}selected{% endif %}>초록 그라데이션</option>
-                        <option value="linear-gradient(135deg, #fa709a 0%, #fee140 100%)" {% if portfolio.skills_gradient == 'linear-gradient(135deg, #fa709a 0%, #fee140 100%)' %}selected{% endif %}>노랑 그라데이션</option>
-                        <option value="linear-gradient(135deg, #30cfd0 0%, #330867 100%)" {% if portfolio.skills_gradient == 'linear-gradient(135deg, #30cfd0 0%, #330867 100%)' %}selected{% endif %}>다크 블루 그라데이션</option>
-                        <option value="linear-gradient(135deg, #a8edea 0%, #fed6e3 100%)" {% if portfolio.skills_gradient == 'linear-gradient(135deg, #a8edea 0%, #fed6e3 100%)' %}selected{% endif %}>파스텔 그라데이션</option>
-                        <option value="linear-gradient(135deg, #ff9a9e 0%, #fecfef 100%)" {% if portfolio.skills_gradient == 'linear-gradient(135deg, #ff9a9e 0%, #fecfef 100%)' %}selected{% endif %}>로즈 그라데이션</option>
-                        <option value="linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%)" {% if portfolio.skills_gradient == 'linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%)' %}selected{% endif %}>복숭아 그라데이션</option>
-                        <option value="linear-gradient(135deg, #ff6e7f 0%, #bfe9ff 100%)" {% if portfolio.skills_gradient == 'linear-gradient(135deg, #ff6e7f 0%, #bfe9ff 100%)' %}selected{% endif %}>선셋 그라데이션</option>
-                    </select>
-                    <div id="skills_preview" style="margin-top: var(--space-3); height: 80px; border-radius: var(--radius-md); background: {{ portfolio.skills_gradient }};"></div>
+
+                    <!-- Skills Background Type Selection -->
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: var(--space-3); margin-bottom: var(--space-6);">
+                        <label class="bg-type-option" style="display: flex; flex-direction: column; align-items: center; padding: var(--space-4); border: 2px solid var(--border-light); border-radius: var(--radius-lg); cursor: pointer; transition: all 0.3s ease; background: white;">
+                            <input type="radio" name="skills_background_type" value="gradient" {% if portfolio.skills_background_type == 'gradient' %}checked{% endif %} style="margin-bottom: var(--space-2);">
+                            <span style="font-weight: 600; font-size: 0.9375rem;">그라데이션</span>
+                        </label>
+                        <label class="bg-type-option" style="display: flex; flex-direction: column; align-items: center; padding: var(--space-4); border: 2px solid var(--border-light); border-radius: var(--radius-lg); cursor: pointer; transition: all 0.3s ease; background: white;">
+                            <input type="radio" name="skills_background_type" value="solid" {% if portfolio.skills_background_type == 'solid' %}checked{% endif %} style="margin-bottom: var(--space-2);">
+                            <span style="font-weight: 600; font-size: 0.9375rem;">단색 (브랜드)</span>
+                        </label>
+                        <label class="bg-type-option" style="display: flex; flex-direction: column; align-items: center; padding: var(--space-4); border: 2px solid var(--border-light); border-radius: var(--radius-lg); cursor: pointer; transition: all 0.3s ease; background: white;">
+                            <input type="radio" name="skills_background_type" value="white" {% if portfolio.skills_background_type == 'white' %}checked{% endif %} style="margin-bottom: var(--space-2);">
+                            <span style="font-weight: 600; font-size: 0.9375rem;">화이트</span>
+                        </label>
+                        <label class="bg-type-option" style="display: flex; flex-direction: column; align-items: center; padding: var(--space-4); border: 2px solid var(--border-light); border-radius: var(--radius-lg); cursor: pointer; transition: all 0.3s ease; background: white;">
+                            <input type="radio" name="skills_background_type" value="custom" {% if portfolio.skills_background_type == 'custom' %}checked{% endif %} style="margin-bottom: var(--space-2);">
+                            <span style="font-weight: 600; font-size: 0.9375rem;">커스텀 색상</span>
+                        </label>
+                    </div>
+
+                    <!-- Skills Gradient Options Panel -->
+                    <div id="skills_gradient_panel" style="display: none; margin-bottom: var(--space-4);">
+                        <label style="display: block; font-weight: 600; margin-bottom: var(--space-3); color: var(--text-secondary);">
+                            그라데이션 선택
+                        </label>
+                        <select name="skills_gradient" id="skills_gradient" style="width: 100%; padding: var(--space-4); border: 1px solid var(--border-light); border-radius: var(--radius-md); font-size: 1rem;">
+                            {% for value, label in gradient_choices %}
+                            <option value="{{ value }}" {% if portfolio.skills_gradient == value %}selected{% endif %}>{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <!-- Skills Solid Color Options Panel -->
+                    <div id="skills_solid_panel" style="display: none; margin-bottom: var(--space-4);">
+                        <label style="display: block; font-weight: 600; margin-bottom: var(--space-3); color: var(--text-secondary);">
+                            브랜드 색상 선택
+                        </label>
+                        <div style="display: grid; grid-template-columns: repeat(5, 1fr); gap: var(--space-3);">
+                            {% for value, label in gradient_choices %}
+                            <label class="solid-color-swatch" style="position: relative; height: 60px; border-radius: var(--radius-md); cursor: pointer; border: 3px solid transparent; transition: all 0.3s ease; background: {{ value }};">
+                                <input type="radio" name="skills_solid_color" value="{{ value }}" {% if portfolio.skills_solid_color == value %}checked{% endif %} style="position: absolute; opacity: 0;">
+                                <div style="position: absolute; bottom: 0; left: 0; right: 0; background: rgba(0,0,0,0.6); color: white; padding: var(--space-1); font-size: 0.6875rem; text-align: center; border-radius: 0 0 var(--radius-sm) var(--radius-sm);">{{ label }}</div>
+                            </label>
+                            {% endfor %}
+                        </div>
+                    </div>
+
+                    <!-- Skills Custom Color Panel -->
+                    <div id="skills_custom_panel" style="display: none; margin-bottom: var(--space-4);">
+                        <label style="display: block; font-weight: 600; margin-bottom: var(--space-3); color: var(--text-secondary);">
+                            커스텀 색상
+                        </label>
+                        <div style="display: flex; gap: var(--space-4); align-items: center;">
+                            <input type="color" id="skills_custom_color_picker" value="{{ portfolio.skills_custom_color|default:'#f093fb' }}" style="width: 80px; height: 50px; border: 1px solid var(--border-light); border-radius: var(--radius-md); cursor: pointer;">
+                            <input type="text" name="skills_custom_color" id="skills_custom_color_text" value="{{ portfolio.skills_custom_color|default:'#f093fb' }}" placeholder="#f093fb" style="flex: 1; padding: var(--space-4); border: 1px solid var(--border-light); border-radius: var(--radius-md); font-size: 1rem; font-family: monospace;">
+                        </div>
+                    </div>
+
+                    <!-- Skills Preview -->
+                    <div style="margin-top: var(--space-4);">
+                        <label style="display: block; font-weight: 600; margin-bottom: var(--space-3); color: var(--text-secondary);">
+                            미리보기
+                        </label>
+                        <div id="skills_preview" style="height: 100px; border-radius: var(--radius-md); background: {{ portfolio.skills_gradient }}; display: flex; align-items: center; justify-content: center; color: white; font-weight: 700; font-size: 1.125rem; text-shadow: 0 2px 4px rgba(0,0,0,0.2);">
+                            스킬 슬라이드 배경
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -217,25 +427,244 @@
     </div>
 </section>
 
+<style>
+/* Background type option hover effect */
+.bg-type-option:has(input:checked) {
+    border-color: var(--accent-blue);
+    background: rgba(59, 130, 246, 0.05) !important;
+}
+
+.bg-type-option:hover {
+    border-color: var(--accent-blue);
+    background: rgba(59, 130, 246, 0.02) !important;
+}
+
+/* Solid color swatch selection */
+.solid-color-swatch:has(input:checked) {
+    border-color: var(--accent-blue) !important;
+    transform: scale(1.05);
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+}
+
+.solid-color-swatch:hover {
+    transform: scale(1.05);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+/* Skill type checkbox styling */
+.skill-type-checkbox:has(input:checked) {
+    border-color: var(--accent-blue);
+    background: rgba(59, 130, 246, 0.05) !important;
+}
+
+.skill-type-checkbox:hover {
+    border-color: var(--accent-blue);
+    background: rgba(59, 130, 246, 0.02) !important;
+}
+</style>
+
 <script>
-// Update gradient previews when selection changes
 document.addEventListener('DOMContentLoaded', function() {
-    const heroGradient = document.getElementById('hero_gradient');
+    // ========== Hero Background Management ==========
+    const heroTypeRadios = document.querySelectorAll('input[name="hero_background_type"]');
+    const heroGradientPanel = document.getElementById('hero_gradient_panel');
+    const heroSolidPanel = document.getElementById('hero_solid_panel');
+    const heroCustomPanel = document.getElementById('hero_custom_panel');
+    const heroGradientSelect = document.getElementById('hero_gradient');
     const heroPreview = document.getElementById('hero_preview');
-    const skillsGradient = document.getElementById('skills_gradient');
+    const heroCustomColorPicker = document.getElementById('hero_custom_color_picker');
+    const heroCustomColorText = document.getElementById('hero_custom_color_text');
+
+    // Toggle hero panels based on selected type
+    function updateHeroPanels() {
+        const selectedType = document.querySelector('input[name="hero_background_type"]:checked').value;
+
+        heroGradientPanel.style.display = selectedType === 'gradient' ? 'block' : 'none';
+        heroSolidPanel.style.display = selectedType === 'solid' ? 'block' : 'none';
+        heroCustomPanel.style.display = selectedType === 'custom' ? 'block' : 'none';
+
+        updateHeroPreview();
+    }
+
+    // Update hero preview
+    function updateHeroPreview() {
+        const selectedType = document.querySelector('input[name="hero_background_type"]:checked').value;
+
+        if (selectedType === 'gradient') {
+            heroPreview.style.background = heroGradientSelect.value;
+            heroPreview.style.color = 'white';
+        } else if (selectedType === 'solid') {
+            const selectedSwatch = document.querySelector('input[name="hero_solid_color"]:checked');
+            heroPreview.style.background = selectedSwatch ? selectedSwatch.value : heroGradientSelect.value;
+            heroPreview.style.color = 'white';
+        } else if (selectedType === 'white') {
+            heroPreview.style.background = '#ffffff';
+            heroPreview.style.color = '#333333';
+        } else if (selectedType === 'custom') {
+            heroPreview.style.background = heroCustomColorText.value;
+            heroPreview.style.color = 'white';
+        }
+    }
+
+    // Sync color picker and text input for hero
+    heroCustomColorPicker.addEventListener('input', function() {
+        heroCustomColorText.value = this.value;
+        updateHeroPreview();
+    });
+
+    heroCustomColorText.addEventListener('input', function() {
+        if (/^#[0-9A-F]{6}$/i.test(this.value)) {
+            heroCustomColorPicker.value = this.value;
+            updateHeroPreview();
+        }
+    });
+
+    // Event listeners for hero
+    heroTypeRadios.forEach(radio => {
+        radio.addEventListener('change', updateHeroPanels);
+    });
+
+    if (heroGradientSelect) {
+        heroGradientSelect.addEventListener('change', updateHeroPreview);
+    }
+
+    document.querySelectorAll('input[name="hero_solid_color"]').forEach(radio => {
+        radio.addEventListener('change', updateHeroPreview);
+    });
+
+    // ========== Skills Background Management ==========
+    const skillsTypeRadios = document.querySelectorAll('input[name="skills_background_type"]');
+    const skillsGradientPanel = document.getElementById('skills_gradient_panel');
+    const skillsSolidPanel = document.getElementById('skills_solid_panel');
+    const skillsCustomPanel = document.getElementById('skills_custom_panel');
+    const skillsGradientSelect = document.getElementById('skills_gradient');
     const skillsPreview = document.getElementById('skills_preview');
+    const skillsCustomColorPicker = document.getElementById('skills_custom_color_picker');
+    const skillsCustomColorText = document.getElementById('skills_custom_color_text');
 
-    if (heroGradient && heroPreview) {
-        heroGradient.addEventListener('change', function() {
-            heroPreview.style.background = this.value;
-        });
+    // Toggle skills panels based on selected type
+    function updateSkillsPanels() {
+        const selectedType = document.querySelector('input[name="skills_background_type"]:checked').value;
+
+        skillsGradientPanel.style.display = selectedType === 'gradient' ? 'block' : 'none';
+        skillsSolidPanel.style.display = selectedType === 'solid' ? 'block' : 'none';
+        skillsCustomPanel.style.display = selectedType === 'custom' ? 'block' : 'none';
+
+        updateSkillsPreview();
     }
 
-    if (skillsGradient && skillsPreview) {
-        skillsGradient.addEventListener('change', function() {
-            skillsPreview.style.background = this.value;
-        });
+    // Update skills preview
+    function updateSkillsPreview() {
+        const selectedType = document.querySelector('input[name="skills_background_type"]:checked').value;
+
+        if (selectedType === 'gradient') {
+            skillsPreview.style.background = skillsGradientSelect.value;
+            skillsPreview.style.color = 'white';
+        } else if (selectedType === 'solid') {
+            const selectedSwatch = document.querySelector('input[name="skills_solid_color"]:checked');
+            skillsPreview.style.background = selectedSwatch ? selectedSwatch.value : skillsGradientSelect.value;
+            skillsPreview.style.color = 'white';
+        } else if (selectedType === 'white') {
+            skillsPreview.style.background = '#ffffff';
+            skillsPreview.style.color = '#333333';
+        } else if (selectedType === 'custom') {
+            skillsPreview.style.background = skillsCustomColorText.value;
+            skillsPreview.style.color = 'white';
+        }
     }
+
+    // Sync color picker and text input for skills
+    skillsCustomColorPicker.addEventListener('input', function() {
+        skillsCustomColorText.value = this.value;
+        updateSkillsPreview();
+    });
+
+    skillsCustomColorText.addEventListener('input', function() {
+        if (/^#[0-9A-F]{6}$/i.test(this.value)) {
+            skillsCustomColorPicker.value = this.value;
+            updateSkillsPreview();
+        }
+    });
+
+    // Event listeners for skills
+    skillsTypeRadios.forEach(radio => {
+        radio.addEventListener('change', updateSkillsPanels);
+    });
+
+    if (skillsGradientSelect) {
+        skillsGradientSelect.addEventListener('change', updateSkillsPreview);
+    }
+
+    document.querySelectorAll('input[name="skills_solid_color"]').forEach(radio => {
+        radio.addEventListener('change', updateSkillsPreview);
+    });
+
+    // Initialize panels on page load
+    updateHeroPanels();
+    updateSkillsPanels();
+
+    // ========== Skills Type Management ==========
+    const skillTypeCheckboxes = document.querySelectorAll('input[name="enabled_skill_types"]');
+    const simpleSkillsPanel = document.getElementById('simple_skills_panel');
+    const leveledSkillsPanel = document.getElementById('leveled_skills_panel');
+    const categorizedSkillsPanel = document.getElementById('categorized_skills_panel');
+    const freetextSkillsPanel = document.getElementById('freetext_skills_panel');
+
+    function updateSkillPanels() {
+        const enabledTypes = Array.from(skillTypeCheckboxes)
+            .filter(cb => cb.checked)
+            .map(cb => cb.value);
+
+        simpleSkillsPanel.style.display = enabledTypes.includes('simple') ? 'block' : 'none';
+        leveledSkillsPanel.style.display = enabledTypes.includes('leveled') ? 'block' : 'none';
+        categorizedSkillsPanel.style.display = enabledTypes.includes('categorized') ? 'block' : 'none';
+        freetextSkillsPanel.style.display = enabledTypes.includes('freetext') ? 'block' : 'none';
+    }
+
+    skillTypeCheckboxes.forEach(checkbox => {
+        checkbox.addEventListener('change', updateSkillPanels);
+    });
+
+    // Initialize skill panels
+    updateSkillPanels();
 });
+
+// ========== Dynamic Skill Functions ==========
+function addLeveledSkill() {
+    const container = document.getElementById('leveled_skills_container');
+    const newRow = document.createElement('div');
+    newRow.className = 'leveled-skill-row';
+    newRow.style.cssText = 'display: grid; grid-template-columns: 1fr 150px 40px; gap: var(--space-3); align-items: center;';
+    newRow.innerHTML = `
+        <input type="text" name="skill_level_name[]" placeholder="스킬 이름 (예: Excel)" style="padding: var(--space-3); border: 1px solid var(--border-light); border-radius: var(--radius-md);">
+        <select name="skill_level_value[]" style="padding: var(--space-3); border: 1px solid var(--border-light); border-radius: var(--radius-md);">
+            <option value="Beginner">초급</option>
+            <option value="Intermediate">중급</option>
+            <option value="Advanced">고급</option>
+            <option value="Expert">전문가</option>
+        </select>
+        <button type="button" onclick="this.parentElement.remove()" style="padding: var(--space-2); background: #fee; color: #c33; border: none; border-radius: var(--radius-md); cursor: pointer;">
+            <i class="fas fa-times"></i>
+        </button>
+    `;
+    container.appendChild(newRow);
+}
+
+function addCategorizedSkill() {
+    const container = document.getElementById('categorized_skills_container');
+    const newRow = document.createElement('div');
+    newRow.className = 'categorized-skill-row';
+    newRow.style.cssText = 'padding: var(--space-4); background: var(--bg-secondary); border-radius: var(--radius-md);';
+    newRow.innerHTML = `
+        <div style="display: grid; grid-template-columns: 1fr 40px; gap: var(--space-3); margin-bottom: var(--space-3);">
+            <input type="text" name="category_name[]" placeholder="카테고리 이름 (예: Office Skills)" style="padding: var(--space-3); border: 1px solid var(--border-light); border-radius: var(--radius-md); font-weight: 600;">
+            <button type="button" onclick="this.closest('.categorized-skill-row').remove()" style="padding: var(--space-2); background: #fee; color: #c33; border: none; border-radius: var(--radius-md); cursor: pointer;">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <input type="text" name="category_skills[]" placeholder="스킬 (쉼표로 구분, 예: MS Word, Excel, PowerPoint)" style="width: 100%; padding: var(--space-3); border: 1px solid var(--border-light); border-radius: var(--radius-md);">
+    `;
+    container.appendChild(newRow);
+}
 </script>
 {% endblock %}
