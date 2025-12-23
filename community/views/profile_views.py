@@ -38,12 +38,6 @@ def profile(request, user_id):
 def profile_update(request):
     """개인정보 수정"""
     if request.method == 'POST':
-        # 이메일 업데이트
-        email = request.POST.get('email', '')
-        if email:
-            request.user.email = email
-            request.user.save()
-
         # 프로필 가져오기 또는 생성
         profile, created = Profile.objects.get_or_create(user=request.user)
 

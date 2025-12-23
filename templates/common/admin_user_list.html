@@ -15,7 +15,7 @@
   </div>
 
   <!-- 검색 및 필터 -->
-  <div class="card mb-4" style="background:#0f172a; border:1px solid rgba(255,255,255,0.08);">
+  <div class="card mb-4 premium-glass-card" style="background: linear-gradient(135deg, rgba(102,126,234,0.05) 0%, rgba(118,75,162,0.05) 100%); border:1px solid rgba(102,126,234,0.15); backdrop-filter: blur(10px);">
     <div class="card-body">
       <form method="get" class="row g-3">
         <div class="col-md-4">
@@ -53,9 +53,11 @@
   </div>
 
   <!-- 사용자 목록 -->
-  <div class="card" style="background:#0f172a; border:1px solid rgba(255,255,255,0.08);">
-    <div class="card-header d-flex justify-content-between align-items-center" style="background: rgba(255,255,255,0.06); color:#e5e7eb;">
-      <h5 class="mb-0">사용자 목록 ({{ page_obj.paginator.count }}명)</h5>
+  <div class="card premium-glass-card" style="background: linear-gradient(135deg, rgba(14,165,233,0.05) 0%, rgba(6,182,212,0.05) 100%); border:1px solid rgba(14,165,233,0.15); backdrop-filter: blur(10px);">
+    <div class="card-header d-flex justify-content-between align-items-center" style="background: linear-gradient(135deg, rgba(14,165,233,0.1) 0%, rgba(6,182,212,0.1) 100%); border-bottom: 2px solid rgba(14,165,233,0.2); color:#e5e7eb;">
+      <h5 class="mb-0" style="font-weight: 700;">
+        <i class="fas fa-users me-2" style="color: #7dd3fc;"></i>사용자 목록 ({{ page_obj.paginator.count }}명)
+      </h5>
     </div>
     <div class="card-body p-0">
       <style>
@@ -79,6 +81,7 @@
               <th>사용자명</th>
               <th>닉네임</th>
               <th>이메일</th>
+              <th>이메일 인증</th>
               <th>등급</th>
               <th>가입일</th>
               <th>상태</th>
@@ -98,6 +101,17 @@
                 </td>
                 <td>{{ user.profile.nickname|default:"-" }}</td>
                 <td>{{ user.email|default:"-" }}</td>
+                <td>
+                  {% if user.profile.is_email_verified %}
+                    <span class="badge bg-success">
+                      <i class="fas fa-check-circle me-1"></i>인증완료
+                    </span>
+                  {% else %}
+                    <span class="badge bg-warning text-dark">
+                      <i class="fas fa-exclamation-triangle me-1"></i>미인증
+                    </span>
+                  {% endif %}
+                </td>
                 <td>
               <select class="form-select form-select-sm rank-selector"
                       data-user-id="{{ user.id }}"
@@ -145,7 +159,7 @@
               </tr>
             {% empty %}
               <tr>
-                <td colspan="9" class="text-center py-4" style="color:#94a3b8;">
+                <td colspan="10" class="text-center py-4" style="color:#94a3b8;">
                   검색 결과가 없습니다.
                 </td>
               </tr>

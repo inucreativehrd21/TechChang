@@ -397,14 +397,42 @@
     <div class="profile-tab-content" id="edit-tab">
         <div class="profile-card">
             <h2 class="profile-card-title">개인정보 수정</h2>
+
+            <!-- 이메일 인증 상태 -->
+            <div class="alert {% if profile_user.profile.is_email_verified %}alert-success{% else %}alert-warning{% endif %} mb-4" style="border-radius: var(--radius-lg);">
+                <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
+                    <div>
+                        <h6 class="mb-1" style="font-weight: 700;">
+                            {% if profile_user.profile.is_email_verified %}
+                            <i class="fas fa-check-circle me-2"></i>이메일 인증 완료
+                            {% else %}
+                            <i class="fas fa-exclamation-triangle me-2"></i>이메일 인증 필요
+                            {% endif %}
+                        </h6>
+                        <p class="mb-0 small">
+                            {% if profile_user.profile.is_email_verified %}
+                            현재 이메일: <strong>{{ user.email }}</strong>
+                            {% else %}
+                            이메일 인증이 필요합니다. 비밀번호 찾기 등의 기능을 이용하려면 이메일 인증을 완료해주세요.
+                            {% endif %}
+                        </p>
+                    </div>
+                    <div>
+                        {% if not profile_user.profile.is_email_verified %}
+                        <button type="button" class="btn-premium btn-premium-primary" style="font-size: 0.875rem; padding: var(--space-2) var(--space-4);" data-bs-toggle="modal" data-bs-target="#emailVerifyModal">
+                            <i class="fas fa-envelope-open-text me-1"></i>이메일 인증하기
+                        </button>
+                        {% else %}
+                        <button type="button" class="btn-premium btn-premium-secondary" style="font-size: 0.875rem; padding: var(--space-2) var(--space-4);" data-bs-toggle="modal" data-bs-target="#emailChangeModal">
+                            <i class="fas fa-edit me-1"></i>이메일 변경
+                        </button>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
             <form method="post" action="{% url 'community:profile_update' %}" enctype="multipart/form-data">
                 {% csrf_token %}
-
-                <div class="form-group">
-                    <label class="form-label">이메일</label>
-                    <input type="email" name="email" value="{{ user.email }}" class="form-input" required>
-                    <small class="form-help">이메일 주소는 로그인에 사용됩니다.</small>
-                </div>
 
                 <div class="form-group">
                     <label class="form-label">닉네임</label>
@@ -487,7 +515,225 @@
     {% endif %}
 </div>
 
+<!-- 이메일 인증 모달 -->
+<div class="modal fade" id="emailVerifyModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content" style="border-radius: var(--radius-xl); border: none;">
+            <div class="modal-header" style="border-bottom: 2px solid var(--border-light);">
+                <h5 class="modal-title" style="font-weight: 700;">
+                    <i class="fas fa-envelope-open-text me-2" style="color: var(--accent-blue);"></i>이메일 인증
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" style="padding: var(--space-6);">
+                <div id="verifyStep1">
+                    <p class="mb-3">현재 이메일: <strong id="currentEmail">{{ user.email|default:"미설정" }}</strong></p>
+                    <div class="mb-3">
+                        <label for="verifyEmail" class="form-label" style="font-weight: 600;">이메일 주소</label>
+                        <input type="email" class="form-input" id="verifyEmail" value="{{ user.email }}" placeholder="your@email.com" required>
+                        <div class="form-text">이메일을 변경하려면 새 이메일을 입력하세요.</div>
+                    </div>
+                    <button type="button" class="btn-premium btn-premium-primary w-100" onclick="sendVerificationCode('verify')">
+                        <i class="fas fa-paper-plane me-2"></i>인증코드 발송
+                    </button>
+                </div>
+                <div id="verifyStep2" style="display: none;">
+                    <div class="alert alert-info mb-3">
+                        <i class="fas fa-info-circle me-2"></i>
+                        <span id="verifyEmailDisplay"></span>로 인증코드가 발송되었습니다.
+                    </div>
+                    <div class="mb-3">
+                        <label for="verifyCode" class="form-label" style="font-weight: 600;">인증코드 (4자리)</label>
+                        <input type="text" class="form-input" id="verifyCode" maxlength="4" placeholder="0000" required>
+                    </div>
+                    <div class="d-grid gap-2">
+                        <button type="button" class="btn-premium btn-premium-primary" onclick="verifyCode('verify')">
+                            <i class="fas fa-check me-2"></i>인증 완료
+                        </button>
+                        <button type="button" class="btn-premium btn-premium-secondary" style="font-size: 0.875rem;" onclick="sendVerificationCode('verify')">
+                            <i class="fas fa-redo me-2"></i>인증코드 재발송
+                        </button>
+                    </div>
+                </div>
+                <div id="verifySuccess" style="display: none;">
+                    <div class="alert alert-success text-center">
+                        <i class="fas fa-check-circle fa-3x mb-3" style="color: var(--accent-blue);"></i>
+                        <h5 style="font-weight: 700;">이메일 인증 완료!</h5>
+                        <p class="mb-0">이메일 인증이 성공적으로 완료되었습니다.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 이메일 변경 모달 -->
+<div class="modal fade" id="emailChangeModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content" style="border-radius: var(--radius-xl); border: none;">
+            <div class="modal-header" style="border-bottom: 2px solid var(--border-light);">
+                <h5 class="modal-title" style="font-weight: 700;">
+                    <i class="fas fa-edit me-2" style="color: var(--accent-blue);"></i>이메일 변경
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" style="padding: var(--space-6);">
+                <div id="changeStep1">
+                    <p class="mb-3">현재 이메일: <strong>{{ user.email }}</strong></p>
+                    <div class="mb-3">
+                        <label for="newEmail" class="form-label" style="font-weight: 600;">새 이메일 주소</label>
+                        <input type="email" class="form-input" id="newEmail" placeholder="newemail@example.com" required>
+                    </div>
+                    <button type="button" class="btn-premium btn-premium-primary w-100" onclick="sendVerificationCode('change')">
+                        <i class="fas fa-paper-plane me-2"></i>인증코드 발송
+                    </button>
+                </div>
+                <div id="changeStep2" style="display: none;">
+                    <div class="alert alert-info mb-3">
+                        <i class="fas fa-info-circle me-2"></i>
+                        <span id="changeEmailDisplay"></span>로 인증코드가 발송되었습니다.
+                    </div>
+                    <div class="mb-3">
+                        <label for="changeCode" class="form-label" style="font-weight: 600;">인증코드 (4자리)</label>
+                        <input type="text" class="form-input" id="changeCode" maxlength="4" placeholder="0000" required>
+                    </div>
+                    <div class="d-grid gap-2">
+                        <button type="button" class="btn-premium btn-premium-primary" onclick="verifyCode('change')">
+                            <i class="fas fa-check me-2"></i>이메일 변경 완료
+                        </button>
+                        <button type="button" class="btn-premium btn-premium-secondary" style="font-size: 0.875rem;" onclick="sendVerificationCode('change')">
+                            <i class="fas fa-redo me-2"></i>인증코드 재발송
+                        </button>
+                    </div>
+                </div>
+                <div id="changeSuccess" style="display: none;">
+                    <div class="alert alert-success text-center">
+                        <i class="fas fa-check-circle fa-3x mb-3" style="color: var(--accent-blue);"></i>
+                        <h5 style="font-weight: 700;">이메일 변경 완료!</h5>
+                        <p class="mb-0">이메일이 성공적으로 변경되었습니다.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
+// Email verification variables
+let currentMode = '';
+let currentEmail = '';
+
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+function sendVerificationCode(mode) {
+    currentMode = mode;
+    let email;
+
+    if (mode === 'verify') {
+        email = document.getElementById('verifyEmail').value;
+    } else {
+        email = document.getElementById('newEmail').value;
+    }
+
+    if (!email || !email.includes('@')) {
+        alert('올바른 이메일 주소를 입력해주세요.');
+        return;
+    }
+
+    currentEmail = email;
+
+    fetch('/common/send-verification-email/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken')
+        },
+        body: JSON.stringify({ email: email })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert(data.message);
+            if (mode === 'verify') {
+                document.getElementById('verifyStep1').style.display = 'none';
+                document.getElementById('verifyStep2').style.display = 'block';
+                document.getElementById('verifyEmailDisplay').textContent = email;
+            } else {
+                document.getElementById('changeStep1').style.display = 'none';
+                document.getElementById('changeStep2').style.display = 'block';
+                document.getElementById('changeEmailDisplay').textContent = email;
+            }
+        } else {
+            alert('오류: ' + data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('인증코드 발송 중 오류가 발생했습니다.');
+    });
+}
+
+function verifyCode(mode) {
+    let code;
+
+    if (mode === 'verify') {
+        code = document.getElementById('verifyCode').value;
+    } else {
+        code = document.getElementById('changeCode').value;
+    }
+
+    if (!code || code.length !== 4) {
+        alert('4자리 인증코드를 입력해주세요.');
+        return;
+    }
+
+    fetch('/common/verify-email-change/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken')
+        },
+        body: JSON.stringify({
+            email: currentEmail,
+            code: code
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            if (mode === 'verify') {
+                document.getElementById('verifyStep2').style.display = 'none';
+                document.getElementById('verifySuccess').style.display = 'block';
+            } else {
+                document.getElementById('changeStep2').style.display = 'none';
+                document.getElementById('changeSuccess').style.display = 'block';
+            }
+            setTimeout(() => {
+                location.reload();
+            }, 2000);
+        } else {
+            alert('오류: ' + data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('인증 처리 중 오류가 발생했습니다.');
+    });
+}
+
 document.addEventListener('DOMContentLoaded', function() {
     // Tab switching
     const tabs = document.querySelectorAll('.profile-tab');

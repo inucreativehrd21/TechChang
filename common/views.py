@@ -586,6 +586,9 @@ def admin_dashboard(request):
     from common.models import Profile
     rank_stats = Profile.objects.values('rank').annotate(count=Count('rank'))
 
+    # 이메일 인증 통계
+    email_verified_users = Profile.objects.filter(is_email_verified=True).count()
+
     # 최근 가입 사용자
     recent_users = User.objects.select_related('profile').order_by('-date_joined')[:10]
 
@@ -593,6 +596,7 @@ def admin_dashboard(request):
         'total_users': total_users,
         'active_users': active_users,
         'inactive_users': total_users - active_users,
+        'email_verified_users': email_verified_users,
         'rank_stats': rank_stats,
         'recent_users': recent_users,
     }
