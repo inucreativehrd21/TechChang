@@ -104,6 +104,12 @@ urlpatterns = [
     path('portfolio/project/<int:project_id>/delete/', portfolio_views.project_delete, name='project_delete'),
     path('portfolio/project/reorder/', portfolio_views.project_reorder, name='project_reorder'),
 
+    # portfolio_views.py - 경력 사항
+    path('portfolio/experience/create/', portfolio_views.experience_create, name='experience_create'),
+    path('portfolio/experience/<int:experience_id>/edit/', portfolio_views.experience_edit, name='experience_edit'),
+    path('portfolio/experience/<int:experience_id>/delete/', portfolio_views.experience_delete, name='experience_delete'),
+    path('portfolio/experience/reorder/', portfolio_views.experience_reorder, name='experience_reorder'),
+
     # *** IMPORTANT: 이 패턴은 맨 마지막에 위치해야 합니다! ***
     # <int:question_id>/ 패턴이 숫자로 시작하는 다른 URL들(2048 등)을 가로채지 않도록
     # 모든 구체적인 URL 패턴을 먼저 정의한 후, 마지막에 이 일반적인 패턴을 배치합니다.

@@ -1,0 +1,192 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}경력 추가{% endblock %}
+
+{% block content %}
+<section style="padding: var(--space-16) var(--space-6); background: var(--bg-secondary); min-height: 100vh;">
+    <div style="max-width: 800px; margin: 0 auto;">
+        <h1 style="font-size: 2.5rem; font-weight: 900; margin-bottom: var(--space-8); color: var(--text-primary);">
+            경력 추가
+        </h1>
+
+        <form method="post" style="background: white; padding: var(--space-8); border-radius: var(--radius-2xl); box-shadow: var(--shadow-xl);">
+            {% csrf_token %}
+
+            <!-- Company -->
+            <div style="margin-bottom: var(--space-6);">
+                <label style="display: block; font-weight: 700; margin-bottom: var(--space-3); color: var(--text-primary);">
+                    회사/기관명 <span style="color: red;">*</span>
+                </label>
+                <input type="text" name="company" required placeholder="예: 삼성전자" style="width: 100%; padding: var(--space-4); border: 1px solid var(--border-light); border-radius: var(--radius-md); font-size: 1rem;">
+            </div>
+
+            <!-- Position -->
+            <div style="margin-bottom: var(--space-6);">
+                <label style="display: block; font-weight: 700; margin-bottom: var(--space-3); color: var(--text-primary);">
+                    직책/역할 <span style="color: red;">*</span>
+                </label>
+                <input type="text" name="position" required placeholder="예: 백엔드 개발자" style="width: 100%; padding: var(--space-4); border: 1px solid var(--border-light); border-radius: var(--radius-md); font-size: 1rem;">
+            </div>
+
+            <!-- Location -->
+            <div style="margin-bottom: var(--space-6);">
+                <label style="display: block; font-weight: 700; margin-bottom: var(--space-3); color: var(--text-primary);">
+                    근무지
+                </label>
+                <input type="text" name="location" placeholder="예: 서울, 대한민국" style="width: 100%; padding: var(--space-4); border: 1px solid var(--border-light); border-radius: var(--radius-md); font-size: 1rem;">
+            </div>
+
+            <!-- Dates -->
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-4); margin-bottom: var(--space-6);">
+                <div>
+                    <label style="display: block; font-weight: 700; margin-bottom: var(--space-3); color: var(--text-primary);">
+                        시작일 <span style="color: red;">*</span>
+                    </label>
+                    <input type="date" name="start_date" required id="start_date" style="width: 100%; padding: var(--space-4); border: 1px solid var(--border-light); border-radius: var(--radius-md); font-size: 1rem;">
+                </div>
+                <div>
+                    <label style="display: block; font-weight: 700; margin-bottom: var(--space-3); color: var(--text-primary);">
+                        종료일
+                    </label>
+                    <input type="date" name="end_date" id="end_date" style="width: 100%; padding: var(--space-4); border: 1px solid var(--border-light); border-radius: var(--radius-md); font-size: 1rem;">
+                    <small style="color: var(--text-tertiary); margin-top: var(--space-2); display: block;">재직 중이면 아래 체크박스 선택</small>
+                </div>
+            </div>
+
+            <!-- Currently Working -->
+            <div style="margin-bottom: var(--space-6); padding: var(--space-4); background: var(--bg-secondary); border-radius: var(--radius-lg);">
+                <label style="display: flex; align-items: center; gap: var(--space-3); cursor: pointer;">
+                    <input type="checkbox" name="is_current" id="is_current" style="width: 20px; height: 20px; cursor: pointer;">
+                    <div>
+                        <span style="font-weight: 600; display: block;">현재 재직 중</span>
+                        <small style="color: var(--text-tertiary);">체크하면 종료일이 자동으로 비워집니다</small>
+                    </div>
+                </label>
+            </div>
+
+            <!-- Description -->
+            <div style="margin-bottom: var(--space-6);">
+                <label style="display: block; font-weight: 700; margin-bottom: var(--space-3); color: var(--text-primary);">
+                    주요 업무
+                </label>
+                <textarea name="description" rows="6" placeholder="담당했던 주요 업무와 역할에 대해 작성해주세요" style="width: 100%; padding: var(--space-4); border: 1px solid var(--border-light); border-radius: var(--radius-md); font-size: 1rem; resize: vertical;"></textarea>
+            </div>
+
+            <!-- Achievements -->
+            <div style="margin-bottom: var(--space-6);">
+                <label style="display: block; font-weight: 700; margin-bottom: var(--space-3); color: var(--text-primary);">
+                    주요 성과
+                </label>
+                <div id="achievements_container">
+                    <div class="achievement-item" style="display: flex; gap: var(--space-2); margin-bottom: var(--space-3);">
+                        <input type="text" class="achievement-input" placeholder="예: 서비스 성능 30% 개선" style="flex: 1; padding: var(--space-3); border: 1px solid var(--border-light); border-radius: var(--radius-md);">
+                        <button type="button" class="remove-achievement" style="display: none; padding: var(--space-3); background: #fee; color: #c33; border: 1px solid #fcc; border-radius: var(--radius-md); cursor: pointer;">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                </div>
+                <button type="button" id="add_achievement" style="padding: var(--space-3) var(--space-4); background: var(--bg-secondary); color: var(--text-primary); border: 1px solid var(--border-light); border-radius: var(--radius-md); cursor: pointer; font-weight: 600;">
+                    <i class="fas fa-plus"></i> 성과 추가
+                </button>
+                <input type="hidden" name="achievements" id="achievements_data">
+                <small style="color: var(--text-tertiary); margin-top: var(--space-2); display: block;">구체적인 성과나 기여한 내용을 추가하세요</small>
+            </div>
+
+            <!-- Tech Stack -->
+            <div style="margin-bottom: var(--space-8);">
+                <label style="display: block; font-weight: 700; margin-bottom: var(--space-3); color: var(--text-primary);">
+                    사용 기술 (쉼표로 구분)
+                </label>
+                <input type="text" name="tech_stack" placeholder="Django, Python, PostgreSQL, Docker" style="width: 100%; padding: var(--space-4); border: 1px solid var(--border-light); border-radius: var(--radius-md); font-size: 1rem;">
+                <small style="color: var(--text-tertiary); margin-top: var(--space-2); display: block;">사용한 기술들을 쉼표로 구분하여 입력하세요</small>
+            </div>
+
+            <!-- Actions -->
+            <div style="display: flex; gap: var(--space-4); justify-content: flex-end; flex-wrap: wrap;">
+                <a href="{% url 'community:portfolio_edit' %}" class="btn-premium btn-premium-secondary">
+                    취소
+                </a>
+                <button type="submit" class="btn-premium btn-premium-primary">
+                    경력 추가
+                </button>
+            </div>
+        </form>
+    </div>
+</section>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const isCurrentCheckbox = document.getElementById('is_current');
+    const endDateInput = document.getElementById('end_date');
+    const achievementsContainer = document.getElementById('achievements_container');
+    const addAchievementBtn = document.getElementById('add_achievement');
+    const achievementsData = document.getElementById('achievements_data');
+
+    // Handle "currently working" checkbox
+    if (isCurrentCheckbox && endDateInput) {
+        isCurrentCheckbox.addEventListener('change', function() {
+            if (this.checked) {
+                endDateInput.value = '';
+                endDateInput.disabled = true;
+                endDateInput.style.opacity = '0.5';
+            } else {
+                endDateInput.disabled = false;
+                endDateInput.style.opacity = '1';
+            }
+        });
+    }
+
+    // Handle achievements
+    if (addAchievementBtn && achievementsContainer) {
+        addAchievementBtn.addEventListener('click', function() {
+            const newItem = document.createElement('div');
+            newItem.className = 'achievement-item';
+            newItem.style.cssText = 'display: flex; gap: var(--space-2); margin-bottom: var(--space-3);';
+            newItem.innerHTML = `
+                <input type="text" class="achievement-input" placeholder="예: 서비스 성능 30% 개선" style="flex: 1; padding: var(--space-3); border: 1px solid var(--border-light); border-radius: var(--radius-md);">
+                <button type="button" class="remove-achievement" style="padding: var(--space-3); background: #fee; color: #c33; border: 1px solid #fcc; border-radius: var(--radius-md); cursor: pointer;">
+                    <i class="fas fa-times"></i>
+                </button>
+            `;
+            achievementsContainer.appendChild(newItem);
+            updateRemoveButtons();
+        });
+
+        // Remove achievement
+        achievementsContainer.addEventListener('click', function(e) {
+            if (e.target.closest('.remove-achievement')) {
+                e.target.closest('.achievement-item').remove();
+                updateRemoveButtons();
+            }
+        });
+
+        function updateRemoveButtons() {
+            const items = achievementsContainer.querySelectorAll('.achievement-item');
+            items.forEach((item, index) => {
+                const removeBtn = item.querySelector('.remove-achievement');
+                if (items.length === 1) {
+                    removeBtn.style.display = 'none';
+                } else {
+                    removeBtn.style.display = 'block';
+                }
+            });
+        }
+    }
+
+    // Form submission - collect achievements
+    const form = document.querySelector('form');
+    if (form && achievementsData) {
+        form.addEventListener('submit', function(e) {
+            const achievements = [];
+            document.querySelectorAll('.achievement-input').forEach(input => {
+                if (input.value.trim()) {
+                    achievements.push(input.value.trim());
+                }
+            });
+            achievementsData.value = JSON.stringify(achievements);
+        });
+    }
+});
+</script>
+{% endblock %}

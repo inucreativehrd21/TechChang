@@ -5,6 +5,7 @@ from django.db.models import Q, Count, F
 from django.http import Http404, FileResponse, HttpResponse
 from django.core.cache import cache
 from django.conf import settings
+from django.contrib.auth.models import User
 import time
 import os
 import mimetypes
@@ -74,23 +75,44 @@ def index(request):
     for cat in categories:
         category_counts[cat.name] = Question.objects.filter(is_deleted=False, category=cat).count()
     total_count = Question.objects.filter(is_deleted=False).count()
+
     # 서비스 런칭일 기준 경과 일수 (2025-10-01)
     from datetime import date
     launch_date = date(2025, 10, 1)
     launch_days = (date.today() - launch_date).days
     if launch_days < 0:
         launch_days = 0
-    
+
+    # 총 회원 수
+    total_users = User.objects.count()
+
+    # 오늘 방문자 수 (세션 기반)
+    today_str = date.today().strftime('%Y-%m-%d')
+    session_key = f'visited_{today_str}'
+
+    # 현재 사용자가 오늘 처음 방문했는지 확인
+    if not request.session.get(session_key):
+        request.session[session_key] = True
+        # 캐시에서 오늘 방문자 수 증가
+        cache_key = f'visitors_{today_str}'
+        visitors_today = cache.get(cache_key, 0)
+        cache.set(cache_key, visitors_today + 1, 86400)  # 24시간 유지
+
+    # 오늘 방문자 수 가져오기
+    visitors_today = cache.get(f'visitors_{today_str}', 0)
+
     context = {
-        'question_list': page_obj, 
-        'page': page, 
-        'kw': kw, 
+        'question_list': page_obj,
+        'page': page,
+        'kw': kw,
         'category': category_name,
         'sort': sort,
         'categories': categories,
         'category_counts': category_counts,
         'total_count': total_count,
         'launch_days': launch_days,
+        'total_users': total_users,
+        'visitors_today': visitors_today,
     }
     return render(request, 'community/question_list.html', context)
 

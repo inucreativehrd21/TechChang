@@ -734,6 +734,115 @@ body {
     </section>
     {% endfor %}
 
+    <!-- Experience Section (Timeline) -->
+    {% if portfolio.show_experience and experiences %}
+    <section class="portfolio-slide experience-slide" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+        <div style="max-width: 1200px; margin: 0 auto; padding: var(--space-12) var(--space-6); height: 100%; display: flex; flex-direction: column; justify-content: center;">
+            <h2 style="font-size: clamp(2.5rem, 5vw, 4rem); font-weight: 900; color: white; text-align: center; margin-bottom: var(--space-12);">
+                <i class="fas fa-briefcase me-3"></i>경력 사항
+            </h2>
+
+            <div class="experience-timeline" style="position: relative; max-width: 900px; margin: 0 auto; width: 100%;">
+                <!-- Timeline line -->
+                <div style="position: absolute; left: 30px; top: 0; bottom: 0; width: 3px; background: rgba(255, 255, 255, 0.3);"></div>
+
+                {% for experience in experiences %}
+                <div class="experience-item" style="position: relative; padding-left: 80px; margin-bottom: var(--space-10); animation: fadeInUp 0.6s ease-out {{ forloop.counter|add:'-1'|add:'*0.2' }}s both;">
+                    <!-- Timeline dot -->
+                    <div style="position: absolute; left: 18px; top: 8px; width: 27px; height: 27px; background: white; border: 4px solid rgba(255, 255, 255, 0.5); border-radius: 50%; box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.3);"></div>
+
+                    <!-- Experience card -->
+                    <div style="background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); padding: var(--space-6); border-radius: var(--radius-2xl); box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.3); border-left: 5px solid white;">
+                        <!-- Header -->
+                        <div style="display: flex; justify-content: space-between; align-items: start; flex-wrap: wrap; gap: var(--space-3); margin-bottom: var(--space-4);">
+                            <div style="flex: 1; min-width: 250px;">
+                                <div style="display: flex; align-items: center; gap: var(--space-3); margin-bottom: var(--space-2); flex-wrap: wrap;">
+                                    <h3 style="font-size: 1.5rem; font-weight: 800; color: var(--text-primary); margin: 0;">
+                                        {{ experience.position }}
+                                    </h3>
+                                    {% if experience.is_current %}
+                                    <span style="background: linear-gradient(135deg, #10b981, #059669); color: white; padding: var(--space-1) var(--space-3); border-radius: var(--radius-full); font-size: 0.75rem; font-weight: 700; box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);">
+                                        재직 중
+                                    </span>
+                                    {% endif %}
+                                </div>
+                                <div style="font-size: 1.125rem; font-weight: 600; color: #667eea; margin-bottom: var(--space-2);">
+                                    {{ experience.company }}
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Date and location -->
+                        <div style="display: flex; align-items: center; gap: var(--space-6); flex-wrap: wrap; margin-bottom: var(--space-4); font-size: 0.875rem; color: var(--text-secondary);">
+                            <span style="display: flex; align-items: center; gap: var(--space-2);">
+                                <i class="far fa-calendar"></i>
+                                <strong>{{ experience.start_date|date:"Y.m" }}</strong>
+                                <span>-</span>
+                                {% if experience.is_current %}
+                                <strong>현재</strong>
+                                {% else %}
+                                <strong>{{ experience.end_date|date:"Y.m" }}</strong>
+                                {% endif %}
+                            </span>
+                            <span style="display: flex; align-items: center; gap: var(--space-2);">
+                                <i class="far fa-clock"></i>
+                                <strong>{{ experience.get_duration }}</strong>
+                            </span>
+                            {% if experience.location %}
+                            <span style="display: flex; align-items: center; gap: var(--space-2);">
+                                <i class="fas fa-map-marker-alt"></i>
+                                <strong>{{ experience.location }}</strong>
+                            </span>
+                            {% endif %}
+                        </div>
+
+                        <!-- Description -->
+                        {% if experience.description %}
+                        <div style="margin-bottom: var(--space-4); padding: var(--space-4); background: var(--bg-secondary); border-radius: var(--radius-lg); border-left: 3px solid #667eea;">
+                            <p style="color: var(--text-primary); line-height: 1.7; margin: 0; white-space: pre-line;">{{ experience.description }}</p>
+                        </div>
+                        {% endif %}
+
+                        <!-- Achievements -->
+                        {% if experience.achievements %}
+                        <div style="margin-bottom: var(--space-4);">
+                            <h4 style="font-size: 0.875rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: var(--space-3);">
+                                주요 성과
+                            </h4>
+                            <ul style="margin: 0; padding-left: var(--space-5); list-style: none;">
+                                {% for achievement in experience.achievements %}
+                                <li style="margin-bottom: var(--space-2); position: relative; padding-left: var(--space-4); color: var(--text-primary); line-height: 1.6;">
+                                    <i class="fas fa-check-circle" style="position: absolute; left: 0; top: 4px; color: #10b981; font-size: 0.875rem;"></i>
+                                    {{ achievement }}
+                                </li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                        {% endif %}
+
+                        <!-- Tech stack -->
+                        {% if experience.tech_stack %}
+                        <div>
+                            <h4 style="font-size: 0.875rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: var(--space-3);">
+                                사용 기술
+                            </h4>
+                            <div style="display: flex; flex-wrap: wrap; gap: var(--space-2);">
+                                {% for tech in experience.tech_stack %}
+                                <span style="background: linear-gradient(135deg, #667eea, #764ba2); color: white; padding: var(--space-2) var(--space-4); border-radius: var(--radius-full); font-size: 0.875rem; font-weight: 600; box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);">
+                                    {{ tech }}
+                                </span>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </section>
+    {% endif %}
+
 </div>
 
 <script>

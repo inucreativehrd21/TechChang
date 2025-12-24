@@ -7,7 +7,7 @@ from django.db import models
 from django.db.models import F, Max
 import json
 
-from ..models import Portfolio, Project
+from ..models import Portfolio, Project, Experience
 
 
 def get_background_css(portfolio, section='hero'):
@@ -86,9 +86,13 @@ def portfolio_view(request, user_id):
     # 프로젝트 목록 (순서대로)
     projects = portfolio.projects.all()
 
+    # 경력 사항 목록 (순서대로)
+    experiences = portfolio.experiences.all().order_by('order')
+
     context = {
         'portfolio': portfolio,
         'projects': projects,
+        'experiences': experiences,
         'is_owner': request.user == user,
         'hero_background': get_background_css(portfolio, 'hero'),
         'skills_background': get_background_css(portfolio, 'skills'),
@@ -116,6 +120,7 @@ def portfolio_edit(request):
         portfolio.linkedin_url = request.POST.get('linkedin_url', '')
         portfolio.website_url = request.POST.get('website_url', '')
         portfolio.is_public = request.POST.get('is_public') == 'on'
+        portfolio.show_experience = request.POST.get('show_experience') == 'on'
         portfolio.theme = request.POST.get('theme', 'light')
 
         # 배경 그라데이션
@@ -367,4 +372,162 @@ def project_reorder(request):
 
         return JsonResponse({'success': True})
 
-    return JsonResponse({'success': False, 'message': 'POST 요청만 허용됩니다.'})
+
+# ========== 경력 관리 ==========
+
+@login_required
+def experience_create(request):
+    """
+    경력 추가
+    """
+    portfolio, created = Portfolio.objects.get_or_create(user=request.user)
+
+    if request.method == 'POST':
+        # 폼 데이터 받기
+        company = request.POST.get('company')
+        position = request.POST.get('position')
+        location = request.POST.get('location', '')
+        start_date = request.POST.get('start_date')
+        end_date = request.POST.get('end_date')
+        is_current = request.POST.get('is_current') == 'on'
+        description = request.POST.get('description', '')
+
+        # 성과 데이터 처리 (JSON)
+        achievements_str = request.POST.get('achievements', '')
+        try:
+            achievements = json.loads(achievements_str) if achievements_str else []
+        except json.JSONDecodeError:
+            achievements = []
+
+        # 기술 스택 처리
+        tech_stack_str = request.POST.get('tech_stack', '')
+        tech_stack = [tech.strip() for tech in tech_stack_str.split(',') if tech.strip()] if tech_stack_str else []
+
+        # 현재 재직 중이면 end_date를 None으로
+        if is_current:
+            end_date = None
+
+        # 순서 자동 설정 (가장 큰 순서 + 1)
+        max_order = Experience.objects.filter(portfolio=portfolio).aggregate(Max('order'))['order__max']
+        order = (max_order or 0) + 1
+
+        # 경력 생성
+        Experience.objects.create(
+            portfolio=portfolio,
+            company=company,
+            position=position,
+            location=location,
+            start_date=start_date,
+            end_date=end_date,
+            is_current=is_current,
+            description=description,
+            achievements=achievements,
+            tech_stack=tech_stack,
+            order=order
+        )
+
+        return redirect('community:portfolio_edit')
+
+    context = {
+        'portfolio': portfolio,
+    }
+
+    return render(request, 'community/experience_create.html', context)
+
+
+@login_required
+def experience_edit(request, experience_id):
+    """
+    경력 수정
+    """
+    experience = get_object_or_404(Experience, pk=experience_id)
+
+    # 본인 경력만 수정 가능
+    if experience.portfolio.user != request.user:
+        return HttpResponseForbidden("본인의 경력만 수정할 수 있습니다.")
+
+    if request.method == 'POST':
+        experience.company = request.POST.get('company')
+        experience.position = request.POST.get('position')
+        experience.location = request.POST.get('location', '')
+        experience.start_date = request.POST.get('start_date')
+        experience.is_current = request.POST.get('is_current') == 'on'
+        experience.description = request.POST.get('description', '')
+
+        # 현재 재직 중이면 end_date를 None으로
+        if experience.is_current:
+            experience.end_date = None
+        else:
+            experience.end_date = request.POST.get('end_date')
+
+        # 성과 데이터 처리
+        achievements_str = request.POST.get('achievements', '')
+        try:
+            experience.achievements = json.loads(achievements_str) if achievements_str else []
+        except json.JSONDecodeError:
+            experience.achievements = []
+
+        # 기술 스택 처리
+        tech_stack_str = request.POST.get('tech_stack', '')
+        experience.tech_stack = [tech.strip() for tech in tech_stack_str.split(',') if tech.strip()] if tech_stack_str else []
+
+        experience.save()
+
+        return redirect('community:portfolio_edit')
+
+    # 성과를 문자열로 변환 (편집 폼에 표시하기 위해)
+    achievements_str = json.dumps(experience.achievements, ensure_ascii=False) if experience.achievements else '[]'
+
+    # 기술 스택을 문자열로 변환
+    tech_stack_str = ', '.join(experience.tech_stack) if experience.tech_stack else ''
+
+    context = {
+        'experience': experience,
+        'achievements_str': achievements_str,
+        'tech_stack_str': tech_stack_str,
+    }
+
+    return render(request, 'community/experience_edit.html', context)
+
+
+@login_required
+def experience_delete(request, experience_id):
+    """
+    경력 삭제
+    """
+    experience = get_object_or_404(Experience, pk=experience_id)
+
+    # 본인 경력만 삭제 가능
+    if experience.portfolio.user != request.user:
+        return HttpResponseForbidden("본인의 경력만 삭제할 수 있습니다.")
+
+    if request.method == 'POST':
+        experience.delete()
+        return redirect('community:portfolio_edit')
+
+    return render(request, 'community/experience_delete.html', {'experience': experience})
+
+
+@login_required
+def experience_reorder(request):
+    """
+    경력 순서 변경 (AJAX)
+    """
+    if request.method == 'POST':
+        data = json.loads(request.body)
+        experience_orders = data.get('orders', [])
+
+        for item in experience_orders:
+            experience_id = item.get('id')
+            order = item.get('order')
+
+            try:
+                experience = Experience.objects.get(pk=experience_id, portfolio__user=request.user)
+                experience.order = order
+                experience.save()
+            except Experience.DoesNotExist:
+                pass
+
+        return JsonResponse({'success': True})
+
+    return JsonResponse({'success': False})

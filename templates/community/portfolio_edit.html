@@ -353,10 +353,20 @@
 
             <!-- Settings -->
             <div style="margin-bottom: var(--space-6); padding: var(--space-6); background: var(--bg-secondary); border-radius: var(--radius-lg);">
+                <h3 style="font-size: 1.125rem; font-weight: 700; margin-bottom: var(--space-4); color: var(--text-primary);">표시 설정</h3>
                 <div style="margin-bottom: var(--space-4);">
                     <label style="display: flex; align-items: center; gap: var(--space-3); cursor: pointer;">
                         <input type="checkbox" name="is_public" {% if portfolio.is_public %}checked{% endif %} style="width: 20px; height: 20px; cursor: pointer;">
                         <span style="font-weight: 600;">포트폴리오 공개</span>
+                    </label>
+                </div>
+                <div>
+                    <label style="display: flex; align-items: center; gap: var(--space-3); cursor: pointer;">
+                        <input type="checkbox" name="show_experience" {% if portfolio.show_experience %}checked{% endif %} style="width: 20px; height: 20px; cursor: pointer;">
+                        <div>
+                            <div style="font-weight: 600;">경력 사항 표시</div>
+                            <div style="font-size: 0.875rem; color: var(--text-tertiary); margin-top: var(--space-1);">포트폴리오에 경력 사항 섹션을 표시합니다</div>
+                        </div>
                     </label>
                 </div>
             </div>
@@ -421,6 +431,71 @@
             <div style="text-align: center; padding: var(--space-12); background: white; border-radius: var(--radius-lg); color: var(--text-tertiary);">
                 <i class="fas fa-folder-open" style="font-size: 3rem; margin-bottom: var(--space-4);"></i>
                 <p>아직 프로젝트가 없습니다.</p>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Experience Section -->
+        <div style="margin-top: var(--space-12);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-6);">
+                <h2 style="font-size: 1.75rem; font-weight: 800; color: var(--text-primary);">경력 사항 관리</h2>
+                <a href="{% url 'community:experience_create' %}" class="btn-premium btn-premium-primary">
+                    <i class="fas fa-plus"></i> 경력 추가
+                </a>
+            </div>
+
+            {% if portfolio.experiences.all %}
+            <div style="display: grid; gap: var(--space-4);">
+                {% for experience in portfolio.experiences.all %}
+                <div style="background: white; padding: var(--space-6); border-radius: var(--radius-lg); box-shadow: var(--shadow-md); border: 1px solid var(--border-light);">
+                    <div style="display: flex; justify-content: space-between; align-items: start; gap: var(--space-4);">
+                        <div style="flex: 1;">
+                            <div style="display: flex; align-items: center; gap: var(--space-3); margin-bottom: var(--space-2);">
+                                <h3 style="font-size: 1.25rem; font-weight: 700; color: var(--text-primary); margin: 0;">
+                                    {{ experience.position }}
+                                </h3>
+                                {% if experience.is_current %}
+                                <span style="background: linear-gradient(135deg, #10b981, #059669); color: white; padding: var(--space-1) var(--space-3); border-radius: var(--radius-full); font-size: 0.75rem;">재직 중</span>
+                                {% endif %}
+                            </div>
+                            <div style="color: var(--text-secondary); font-weight: 600; margin-bottom: var(--space-2);">{{ experience.company }}</div>
+                            <div style="display: flex; align-items: center; gap: var(--space-4); font-size: 0.875rem; color: var(--text-tertiary); margin-bottom: var(--space-4);">
+                                <span><i class="far fa-calendar me-1"></i>{{ experience.start_date|date:"Y.m" }} - {% if experience.is_current %}현재{% else %}{{ experience.end_date|date:"Y.m" }}{% endif %}</span>
+                                <span><i class="far fa-clock me-1"></i>{{ experience.get_duration }}</span>
+                                {% if experience.location %}
+                                <span><i class="fas fa-map-marker-alt me-1"></i>{{ experience.location }}</span>
+                                {% endif %}
+                            </div>
+                            {% if experience.description %}
+                            <p style="color: var(--text-secondary); margin-bottom: var(--space-4); line-height: 1.6;">{{ experience.description|truncatewords:30 }}</p>
+                            {% endif %}
+                            {% if experience.tech_stack %}
+                            <div style="display: flex; flex-wrap: wrap; gap: var(--space-2);">
+                                {% for tech in experience.tech_stack %}
+                                <span style="padding: var(--space-1) var(--space-3); background: var(--bg-secondary); border-radius: var(--radius-md); font-size: 0.8125rem; font-weight: 600;">{{ tech }}</span>
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+                        </div>
+                        <div style="display: flex; gap: var(--space-2);">
+                            <a href="{% url 'community:experience_edit' experience.id %}" class="btn-premium btn-premium-secondary" style="padding: var(--space-2) var(--space-4);">
+                                <i class="fas fa-edit"></i>
+                            </a>
+                            <form method="post" action="{% url 'community:experience_delete' experience.id %}" style="display: inline;" onsubmit="return confirm('이 경력을 삭제하시겠습니까?');">
+                                {% csrf_token %}
+                                <button type="submit" class="btn-premium btn-premium-secondary" style="padding: var(--space-2) var(--space-4); background: #fee; color: #c33;">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div style="text-align: center; padding: var(--space-12); background: white; border-radius: var(--radius-lg); color: var(--text-tertiary);">
+                <i class="fas fa-briefcase" style="font-size: 3rem; margin-bottom: var(--space-4);"></i>
+                <p>아직 경력 사항이 없습니다.</p>
             </div>
             {% endif %}
         </div>

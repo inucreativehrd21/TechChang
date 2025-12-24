@@ -535,6 +535,7 @@ class Portfolio(models.Model):
     # 설정
     is_public = models.BooleanField(default=True, verbose_name='공개 여부')
     theme = models.CharField(max_length=10, choices=THEME_CHOICES, default='light', verbose_name='테마')
+    show_experience = models.BooleanField(default=False, verbose_name='경력 사항 표시', help_text='포트폴리오에 경력 사항 섹션 표시 여부')
 
     # 메타 정보
     create_date = models.DateTimeField(auto_now_add=True, verbose_name='생성일')
@@ -622,3 +623,67 @@ class Project(models.Model):
         verbose_name = '프로젝트'
         verbose_name_plural = '프로젝트 목록'
         ordering = ['order', '-create_date']
+
+
+class Experience(models.Model):
+    """경력 사항"""
+    portfolio = models.ForeignKey(Portfolio, on_delete=models.CASCADE, related_name='experiences', verbose_name='포트폴리오')
+    company = models.CharField(max_length=200, verbose_name='회사/기관명')
+    position = models.CharField(max_length=100, verbose_name='직책/역할')
+    location = models.CharField(max_length=100, blank=True, default='', verbose_name='근무지')
+
+    # 기간
+    start_date = models.DateField(verbose_name='시작일')
+    end_date = models.DateField(null=True, blank=True, verbose_name='종료일', help_text='재직 중인 경우 비워두세요')
+    is_current = models.BooleanField(default=False, verbose_name='현재 재직 중')
+
+    # 상세 설명
+    description = models.TextField(blank=True, default='', verbose_name='주요 업무', help_text='담당했던 주요 업무를 설명하세요')
+
+    # 성과 (JSON 배열)
+    achievements = models.JSONField(
+        default=list,
+        blank=True,
+        verbose_name='주요 성과',
+        help_text='["성과 1", "성과 2", ...] 형식으로 저장'
+    )
+
+    # 기술 스택 (선택사항)
+    tech_stack = models.JSONField(default=list, blank=True, verbose_name='사용 기술')
+
+    # 정렬
+    order = models.IntegerField(default=0, verbose_name='순서', help_text='작은 숫자가 위에 표시됩니다')
+
+    # 메타 정보
+    create_date = models.DateTimeField(auto_now_add=True, verbose_name='생성일')
+    modify_date = models.DateTimeField(auto_now=True, verbose_name='수정일')
+
+    def get_duration(self):
+        """근무 기간을 문자열로 반환"""
+        from datetime import date
+        start = self.start_date
+        end = self.end_date if self.end_date else date.today()
+
+        years = (end.year - start.year)
+        months = (end.month - start.month)
+
+        if months < 0:
+            years -= 1
+            months += 12
+
+        duration_parts = []
+        if years > 0:
+            duration_parts.append(f"{years}년")
+        if months > 0:
+            duration_parts.append(f"{months}개월")
+
+        return " ".join(duration_parts) if duration_parts else "1개월 미만"
+
+    def __str__(self):
+        return f"{self.portfolio.user.username} - {self.company} ({self.position})"
+
+    class Meta:
+        db_table = 'pybo_experience'
+        verbose_name = '경력 사항'
+        verbose_name_plural = '경력 사항 목록'
+        ordering = ['order', '-start_date']
