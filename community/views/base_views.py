@@ -6,12 +6,13 @@ from django.http import Http404, FileResponse, HttpResponse
 from django.core.cache import cache
 from django.conf import settings
 from django.contrib.auth.models import User
+from django.db import transaction
 import time
 import os
 import mimetypes
 
 
-from ..models import Question, Answer, Comment, Category
+from ..models import Question, Answer, Comment, Category, DailyVisitor
 
 DEFAULT_CATEGORIES = ['HRD', '데이터분석', '프로그래밍', '자유게시판', '앨범', '공지사항', '문의']
 
@@ -86,20 +87,29 @@ def index(request):
     # 총 회원 수
     total_users = User.objects.count()
 
-    # 오늘 방문자 수 (세션 기반)
-    today_str = date.today().strftime('%Y-%m-%d')
-    session_key = f'visited_{today_str}'
+    # 오늘 방문자 수 (DB 기반)
+    today = date.today()
+    session_key = f'visited_{today}'
 
     # 현재 사용자가 오늘 처음 방문했는지 확인
     if not request.session.get(session_key):
         request.session[session_key] = True
-        # 캐시에서 오늘 방문자 수 증가
-        cache_key = f'visitors_{today_str}'
-        visitors_today = cache.get(cache_key, 0)
-        cache.set(cache_key, visitors_today + 1, 86400)  # 24시간 유지
+
+        # DB에서 오늘 방문자 수 증가 (원자적 업데이트)
+        with transaction.atomic():
+            daily_visitor, created = DailyVisitor.objects.get_or_create(
+                date=today,
+                defaults={'visitor_count': 1}
+            )
+            if not created:
+                daily_visitor.visitor_count = F('visitor_count') + 1
+                daily_visitor.save(update_fields=['visitor_count'])
 
     # 오늘 방문자 수 가져오기
-    visitors_today = cache.get(f'visitors_{today_str}', 0)
+    try:
+        visitors_today = DailyVisitor.objects.get(date=today).visitor_count
+    except DailyVisitor.DoesNotExist:
+        visitors_today = 0
 
     context = {
         'question_list': page_obj,

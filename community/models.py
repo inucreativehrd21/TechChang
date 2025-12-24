@@ -687,3 +687,20 @@ class Experience(models.Model):
         verbose_name = '경력 사항'
         verbose_name_plural = '경력 사항 목록'
         ordering = ['order', '-start_date']
+
+
+class DailyVisitor(models.Model):
+    """일일 방문자 통계"""
+    date = models.DateField(unique=True, verbose_name='날짜')
+    visitor_count = models.PositiveIntegerField(default=0, verbose_name='방문자 수')
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name='생성일시')
+    updated_at = models.DateTimeField(auto_now=True, verbose_name='수정일시')
+
+    def __str__(self):
+        return f"{self.date} - {self.visitor_count}명"
+
+    class Meta:
+        db_table = 'pybo_daily_visitor'
+        verbose_name = '일일 방문자'
+        verbose_name_plural = '일일 방문자 통계'
+        ordering = ['-date']
