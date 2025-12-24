@@ -73,7 +73,7 @@
             <div class="bento-grid" style="grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: var(--space-6);">
                 {% for post in data.posts %}
                 <a href="{% url 'community:detail' post.id %}" class="post-card" style="transition: all 0.3s ease;">
-                    <div style="display: flex; align-items: center; gap: var(--space-3); margin-bottom: var(--space-3);">
+                    <div style="display: flex; align-items: center; gap: var(--space-2); margin-bottom: var(--space-3); flex-wrap: wrap;">
                         {% if category_name == 'HRD' %}
                             <span class="post-card-badge badge-hrd">{{ category_name }}</span>
                         {% elif category_name == '데이터분석' %}
@@ -87,7 +87,7 @@
                         {% endif %}
 
                         {% if post.is_locked %}
-                        <span style="display: inline-flex; align-items: center; gap: 0.25rem; background: rgba(239, 68, 68, 0.1); color: #ef4444; padding: 0.375rem 0.75rem; border-radius: var(--radius-full); font-size: 0.75rem; font-weight: 600;">
+                        <span style="display: inline-flex; align-items: center; gap: 0.25rem; background: linear-gradient(135deg, rgba(239, 68, 68, 0.1), rgba(220, 38, 38, 0.1)); color: #dc2626; padding: 0.375rem 0.875rem; border-radius: var(--radius-full); font-size: 0.75rem; font-weight: 700; border: 1px solid rgba(239, 68, 68, 0.2);">
                             <i class="fas fa-lock"></i>회원전용
                         </span>
                         {% endif %}
