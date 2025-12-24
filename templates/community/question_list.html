@@ -89,8 +89,8 @@
             <h3 class="post-card-title">{{ question.subject }}</h3>
 
             <div class="post-card-meta">
-                <span>추천 {{ question.voter.count }}</span>
-                <span>댓글 {{ question.answer_set.count }}</span>
+                <span>추천 {{ question.voter_count }}</span>
+                <span>댓글 {{ question.answer_count }}</span>
                 <span>{{ question.create_date|date:"m-d" }}</span>
             </div>
         </a>

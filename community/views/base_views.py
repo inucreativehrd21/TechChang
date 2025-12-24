@@ -35,11 +35,18 @@ def index(request):
     sort = request.GET.get('sort', 'recent')  # 정렬 방식
     
     # 기본 쿼리셋 - select_related로 성능 최적화 (삭제되지 않은 질문만)
-    question_list = Question.objects.filter(is_deleted=False).select_related('author', 'category').prefetch_related('voter')
-    
+    # annotate로 voter_count, answer_count 미리 계산 (N+1 쿼리 방지)
+    question_list = Question.objects.filter(is_deleted=False)\
+        .select_related('author', 'category')\
+        .prefetch_related('voter')\
+        .annotate(
+            voter_count=Count('voter'),
+            answer_count=Count('answer', filter=Q(answer__is_deleted=False))
+        )
+
     # 정렬 처리
     if sort == 'recommend':
-        question_list = question_list.annotate(num_voter=Count('voter')).order_by('-num_voter', '-create_date')
+        question_list = question_list.order_by('-voter_count', '-create_date')
     elif sort == 'popular':
         question_list = question_list.order_by('-view_count', '-create_date')
     else:  # recent
@@ -70,11 +77,11 @@ def index(request):
     except (EmptyPage, PageNotAnInteger):
         page_obj = paginator.get_page(1)
     
-    # 카테고리 목록 및 각 카테고리별 글 개수 가져오기
-    categories = Category.objects.all().order_by('name')
-    category_counts = {}
-    for cat in categories:
-        category_counts[cat.name] = Question.objects.filter(is_deleted=False, category=cat).count()
+    # 카테고리 목록 및 각 카테고리별 글 개수 가져오기 (단일 쿼리로 최적화)
+    categories = Category.objects.annotate(
+        question_count=Count('question', filter=Q(question__is_deleted=False))
+    ).order_by('name')
+    category_counts = {cat.name: cat.question_count for cat in categories}
     total_count = Question.objects.filter(is_deleted=False).count()
 
     # 서비스 런칭일 기준 경과 일수 (2025-10-01)

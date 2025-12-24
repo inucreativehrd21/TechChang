@@ -6,7 +6,8 @@ from django.utils import timezone
 
 from ..forms import QuestionForm
 from ..models import Question
-from common.models import Profile, PointHistory
+from ..utils import award_points, deduct_points
+from common.models import PointHistory
 
 @login_required(login_url='common:login')
 def question_create(request):
@@ -19,17 +20,12 @@ def question_create(request):
                 question.create_date = timezone.now()
                 question.save()
 
-                # 질문 작성 포인트 지급 (50포인트)
-                profile, _ = Profile.objects.get_or_create(user=request.user)
-                profile.points += 50
-                profile.save()
-
-                # 포인트 히스토리 기록
-                PointHistory.objects.create(
+                # 질문 작성 포인트 지급 (50포인트) - 유틸리티 함수 사용
+                award_points(
                     user=request.user,
                     amount=50,
-                    reason=PointHistory.REASON_ADMIN,
-                    description=f'질문 작성: {question.subject[:30]}'
+                    description=f'질문 작성: {question.subject[:30]}',
+                    reason=PointHistory.REASON_ADMIN
                 )
 
                 messages.success(request, '게시글이 성공적으로 등록되었습니다. (+50 포인트)')
@@ -77,20 +73,15 @@ def question_delete(request, question_id):
         question.is_deleted = True
         question.deleted_date = timezone.now()
         question.save()
-        
-        # 포인트 차감 (작성 시 지급된 50포인트 회수)
-        profile, _ = Profile.objects.get_or_create(user=request.user)
-        profile.points = max(0, profile.points - 50)  # 포인트가 음수가 되지 않도록
-        profile.save()
-        
-        # 포인트 히스토리 기록
-        PointHistory.objects.create(
+
+        # 포인트 차감 (작성 시 지급된 50포인트 회수) - 유틸리티 함수 사용
+        deduct_points(
             user=request.user,
-            amount=-50,
-            reason=PointHistory.REASON_ADMIN,
-            description=f'질문 삭제: {question.subject[:30]}'
+            amount=50,
+            description=f'질문 삭제: {question.subject[:30]}',
+            reason=PointHistory.REASON_ADMIN
         )
-        
+
         messages.success(request, '질문이 삭제되었습니다. (-50 포인트)')
         return redirect('community:index')
     

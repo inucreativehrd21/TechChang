@@ -16,15 +16,15 @@ class Question(models.Model):
     author = models.ForeignKey(User, on_delete=models.CASCADE, related_name='author_question')
     subject = models.CharField(max_length=200)
     content = models.TextField()
-    create_date = models.DateTimeField()
+    create_date = models.DateTimeField(db_index=True)  # 인덱스 추가 (정렬에 자주 사용)
     modify_date = models.DateTimeField(null=True, blank=True)
     voter = models.ManyToManyField(User, related_name='voter_question')  # 추천인 추가
-    view_count = models.PositiveIntegerField(default=0)  # 조회수 추가
-    category = models.ForeignKey(Category, on_delete=models.PROTECT)  # 카테고리 필수
+    view_count = models.PositiveIntegerField(default=0, db_index=True)  # 인덱스 추가 (인기순 정렬에 사용)
+    category = models.ForeignKey(Category, on_delete=models.PROTECT)  # 카테고리 필수 (ForeignKey는 자동 인덱스)
     image = models.ImageField(upload_to='questions/', blank=True, null=True)  # 이미지 첨부
     file = models.FileField(upload_to='question_files/', blank=True, null=True)  # 파일 첨부
-    is_deleted = models.BooleanField(default=False)  # Soft delete 필드
-    deleted_date = models.DateTimeField(null=True, blank=True)  # 삭제 날짜
+    is_deleted = models.BooleanField(default=False, db_index=True)  # 인덱스 추가 (필터링에 자주 사용)
+    deleted_date = models.DateTimeField(null=True, blank=True)
     is_locked = models.BooleanField(default=False, help_text="회원 전용 글 (로그인 필요)")  # 글 잠금 기능
 
     def __str__(self):
@@ -45,12 +45,12 @@ class Answer(models.Model):
     author = models.ForeignKey(User, on_delete=models.CASCADE, related_name='author_answer')
     question = models.ForeignKey(Question, on_delete=models.CASCADE)
     content = models.TextField()
-    create_date = models.DateTimeField()
+    create_date = models.DateTimeField(db_index=True)  # 인덱스 추가 (정렬에 자주 사용)
     modify_date = models.DateTimeField(null=True, blank=True)
     voter = models.ManyToManyField(User, related_name='voter_answer')
     is_ai = models.BooleanField(default=False)  # AI가 생성한 답변인지 표시
     image = models.ImageField(upload_to='answers/', blank=True, null=True)  # 이미지 첨부
-    is_deleted = models.BooleanField(default=False)  # Soft delete 필드
+    is_deleted = models.BooleanField(default=False, db_index=True)  # 인덱스 추가 (필터링에 자주 사용)
     deleted_date = models.DateTimeField(null=True, blank=True)  # 삭제 날짜
 
     class Meta:
@@ -59,7 +59,7 @@ class Answer(models.Model):
 class Comment(models.Model):
     author = models.ForeignKey(User, on_delete=models.CASCADE)
     content = models.TextField()
-    create_date = models.DateTimeField()
+    create_date = models.DateTimeField(db_index=True)  # 인덱스 추가 (정렬에 자주 사용)
     modify_date = models.DateTimeField(null=True, blank=True)
     question = models.ForeignKey(Question, null=True, blank=True, on_delete=models.CASCADE)
     answer = models.ForeignKey(Answer, null=True, blank=True, on_delete=models.CASCADE)
@@ -68,6 +68,16 @@ class Comment(models.Model):
     class Meta:
         db_table = 'pybo_comment'
         ordering = ['create_date']  # 오래된 댓글부터 표시 (최신 댓글이 아래로)
+
+    def clean(self):
+        """데이터 무결성 검증: question 또는 answer 중 정확히 하나만 있어야 함"""
+        from django.core.exceptions import ValidationError
+
+        if not self.question and not self.answer:
+            raise ValidationError('댓글은 질문 또는 답변 중 하나에 연결되어야 합니다.')
+
+        if self.question and self.answer:
+            raise ValidationError('댓글은 질문과 답변 둘 다에 연결될 수 없습니다.')
 
 
 # 끝말잇기 게임 모델

@@ -6,8 +6,10 @@ from ..models import Category, Question
 
 def board_main(request):
     """커뮤니티 메인 페이지 - 카테고리별 최신 게시글 미리보기"""
-    # 모든 카테고리 가져오기
-    categories = Category.objects.all().order_by('id')
+    # 모든 카테고리 가져오기 (N+1 쿼리 방지: count를 미리 계산)
+    categories = Category.objects.annotate(
+        question_count=Count('question', filter=Q(question__is_deleted=False))
+    ).order_by('id')
 
     # 각 카테고리별 최신 게시글 5개씩 가져오기
     category_posts = {}
@@ -23,7 +25,7 @@ def board_main(request):
         category_posts[category.name] = {
             'category': category,
             'posts': posts,
-            'total_count': Question.objects.filter(category=category, is_deleted=False).count()
+            'total_count': category.question_count  # 미리 계산된 count 사용
         }
 
     # 전체 통계

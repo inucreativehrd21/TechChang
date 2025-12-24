@@ -18,6 +18,7 @@ from datetime import timedelta
 from django.contrib.auth.models import User
 from common.forms import UserForm, ProfileForm
 from .models import Profile, EmailVerification, KakaoUser
+from community.utils import award_points, deduct_points
 
 
 logger = logging.getLogger(__name__)
@@ -886,16 +887,12 @@ def daily_checkin(request):
             points_earned=points_earned
         )
 
-        # 포인트 지급
-        profile.points += points_earned
-        profile.save()
-
-        # 포인트 히스토리 기록
-        PointHistory.objects.create(
+        # 포인트 지급 - 유틸리티 함수 사용
+        award_points(
             user=user,
             amount=points_earned,
-            reason='checkin',
-            description='일일 출석 체크'
+            description='일일 출석 체크',
+            reason='checkin'
         )
 
         if is_ajax:
@@ -958,20 +955,16 @@ def purchase_emoticon(request, emoticon_id):
 
     # 구매 처리
     with transaction.atomic():
-        # 포인트 차감
-        profile.points -= emoticon.price
-        profile.save()
+        # 포인트 차감 - 유틸리티 함수 사용
+        deduct_points(
+            user=user,
+            amount=emoticon.price,
+            description=f'이모티콘 구매: {emoticon.name}',
+            reason='purchase'
+        )
 
         # 이모티콘 구매 기록
         UserEmoticon.objects.create(user=user, emoticon=emoticon)
-
-        # 포인트 히스토리 기록
-        PointHistory.objects.create(
-            user=user,
-            amount=-emoticon.price,
-            reason='purchase',
-            description=f'이모티콘 구매: {emoticon.name}'
-        )
 
     messages.success(request, f'{emoticon.name} 이모티콘을 구매했습니다!')
     return redirect('common:emoticon_shop')

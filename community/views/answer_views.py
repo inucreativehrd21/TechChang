@@ -6,7 +6,8 @@ from django.utils import timezone
 
 from ..forms import AnswerForm
 from ..models import Question, Answer
-from common.models import Profile, PointHistory
+from ..utils import award_points, deduct_points
+from common.models import PointHistory
 
 @login_required(login_url='common:login')
 def answer_create(request, question_id):
@@ -23,20 +24,15 @@ def answer_create(request, question_id):
         answer.create_date = timezone.now()
         answer.question = question
         answer.save()
-        
-        # 답변 작성 포인트 지급 (20포인트)
-        profile, _ = Profile.objects.get_or_create(user=request.user)
-        profile.points += 20
-        profile.save()
-        
-        # 포인트 히스토리 기록
-        PointHistory.objects.create(
+
+        # 답변 작성 포인트 지급 (20포인트) - 유틸리티 함수 사용
+        award_points(
             user=request.user,
             amount=20,
-            reason=PointHistory.REASON_ADMIN,
-            description=f'댓글 작성: {answer.content[:30]}'
+            description=f'댓글 작성: {answer.content[:30]}',
+            reason=PointHistory.REASON_ADMIN
         )
-        
+
         messages.success(request, '댓글이 등록되었습니다. (+20 포인트)')
         return redirect('{}#answer_{}'.format(
             resolve_url('community:detail', question_id=question.id), answer.id))
@@ -68,20 +64,18 @@ def answer_delete(request, answer_id):
     if request.user != answer.author:
         messages.error(request, '삭제권한이 없습니다')
     else:
-        # 포인트 차감 (작성 시 지급된 20포인트 회수)
-        profile, _ = Profile.objects.get_or_create(user=request.user)
-        profile.points = max(0, profile.points - 20)
-        profile.save()
-        
-        # 포인트 히스토리 기록
-        PointHistory.objects.create(
+        # 포인트 차감 (작성 시 지급된 20포인트 회수) - 유틸리티 함수 사용
+        deduct_points(
             user=request.user,
-            amount=-20,
-            reason=PointHistory.REASON_ADMIN,
-            description=f'답변 삭제: {answer.content[:30]}'
+            amount=20,
+            description=f'답변 삭제: {answer.content[:30]}',
+            reason=PointHistory.REASON_ADMIN
         )
-        
-        answer.delete()
+
+        # Soft Delete로 통일 (하드 삭제 대신 is_deleted 플래그 사용)
+        answer.is_deleted = True
+        answer.deleted_date = timezone.now()
+        answer.save()
         messages.success(request, '답변이 삭제되었습니다. (-20 포인트)')
     return redirect('community:detail', question_id=answer.question.id)
 
