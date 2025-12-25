@@ -38,12 +38,13 @@ def index(request):
     
     # 기본 쿼리셋 - select_related로 성능 최적화 (삭제되지 않은 질문만)
     # annotate로 voter_count, answer_count 미리 계산 (N+1 쿼리 방지)
+    # distinct=True로 Cartesian product에 의한 중복 카운트 방지
     question_list = Question.objects.filter(is_deleted=False)\
         .select_related('author', 'category')\
         .prefetch_related('voter')\
         .annotate(
-            voter_count=Count('voter'),
-            answer_count=Count('answer', filter=Q(answer__is_deleted=False))
+            voter_count=Count('voter', distinct=True),
+            answer_count=Count('answer', filter=Q(answer__is_deleted=False), distinct=True)
         )
 
     # 정렬 처리
@@ -176,7 +177,7 @@ def detail(request, question_id):
 
     # 정렬 (오래된 댓글이 위, 최신 댓글이 아래)
     if sort == 'recommend':
-        answer_qs = answer_qs.annotate(num_voter=Count('voter')) \
+        answer_qs = answer_qs.annotate(num_voter=Count('voter', distinct=True)) \
                              .order_by('-num_voter', 'create_date')
     else:
         answer_qs = answer_qs.order_by('create_date')

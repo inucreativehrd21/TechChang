@@ -18,8 +18,8 @@ def board_main(request):
             category=category,
             is_deleted=False
         ).select_related('author', 'author__profile').annotate(
-            answer_count=Count('answer', filter=Q(answer__is_deleted=False)),
-            voter_count=Count('voter')
+            answer_count=Count('answer', filter=Q(answer__is_deleted=False), distinct=True),
+            voter_count=Count('voter', distinct=True)
         ).order_by('-create_date')[:5]
 
         category_posts[category.name] = {
@@ -55,8 +55,8 @@ def board_category(request, category_name):
         category=category,
         is_deleted=False
     ).select_related('author', 'author__profile').annotate(
-        answer_count=Count('answer', filter=Q(answer__is_deleted=False)),
-        voter_count=Count('voter')
+        answer_count=Count('answer', filter=Q(answer__is_deleted=False), distinct=True),
+        voter_count=Count('voter', distinct=True)
     )
 
     # 검색
