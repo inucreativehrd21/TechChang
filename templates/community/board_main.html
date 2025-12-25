@@ -91,6 +91,12 @@
                             <i class="fas fa-lock"></i>회원전용
                         </span>
                         {% endif %}
+
+                        {% if post.image or post.file %}
+                        <span style="display: inline-flex; align-items: center; gap: 0.25rem; background: linear-gradient(135deg, rgba(102, 126, 234, 0.1), rgba(118, 75, 162, 0.1)); color: #667eea; padding: 0.375rem 0.875rem; border-radius: var(--radius-full); font-size: 0.75rem; font-weight: 700; border: 1px solid rgba(102, 126, 234, 0.2);">
+                            <i class="fas fa-paperclip"></i>첨부파일
+                        </span>
+                        {% endif %}
                     </div>
 
                     <h3 class="post-card-title" style="margin-bottom: var(--space-4); font-size: 1.125rem; line-height: 1.5;">{{ post.subject|truncatewords:10 }}</h3>
