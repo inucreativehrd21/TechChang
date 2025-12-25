@@ -93,7 +93,10 @@ def question_delete(request, question_id):
 def question_vote(request, question_id):
     question = get_object_or_404(Question, pk=question_id)
     if request.user == question.author:
-        messages.error(request, '본인이 작성한 글은 추천할수 없습니다')
+        messages.error(request, '본인이 작성한 글은 추천할 수 없습니다')
+    elif question.voter.filter(id=request.user.id).exists():
+        messages.warning(request, '이미 추천한 글입니다')
     else:
         question.voter.add(request.user)
+        messages.success(request, '글을 추천했습니다')
     return redirect('community:detail', question_id=question.id)

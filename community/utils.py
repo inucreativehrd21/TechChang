@@ -3,6 +3,7 @@
 """
 
 from django.db import transaction
+from django.db.models import F
 from common.models import Profile, PointHistory
 
 
@@ -21,8 +22,10 @@ def award_points(user, amount, description, reason=PointHistory.REASON_ADMIN):
     """
     with transaction.atomic():
         profile, _ = Profile.objects.get_or_create(user=user)
-        profile.points += amount
+        # F() 객체로 DB 레벨 원자연산 보장 (Race Condition 방지)
+        profile.points = F('points') + amount
         profile.save(update_fields=['points'])
+        profile.refresh_from_db()  # 메모리 값 동기화
 
         point_history = PointHistory.objects.create(
             user=user,
@@ -52,11 +55,20 @@ def deduct_points(user, amount, description, reason=PointHistory.REASON_ADMIN, a
         profile, _ = Profile.objects.get_or_create(user=user)
 
         if allow_negative:
-            profile.points -= amount
+            # F() 객체로 DB 레벨 원자연산 보장 (Race Condition 방지)
+            profile.points = F('points') - amount
+            profile.save(update_fields=['points'])
         else:
-            profile.points = max(0, profile.points - amount)
+            # 음수 방지: 조건부 업데이트로 0 이하 방지
+            # points >= amount인 경우: 차감
+            # points < amount인 경우: 0으로 설정
+            updated = Profile.objects.filter(id=profile.id, points__gte=amount).update(
+                points=F('points') - amount
+            )
+            if not updated:
+                Profile.objects.filter(id=profile.id).update(points=0)
 
-        profile.save(update_fields=['points'])
+        profile.refresh_from_db()  # 메모리 값 동기화
 
         point_history = PointHistory.objects.create(
             user=user,

@@ -120,10 +120,12 @@ class SecurityMiddleware:
         """클라이언트 IP 주소 확인 (프록시 고려)"""
         x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
         if x_forwarded_for:
-            ip = x_forwarded_for.split(',')[0]
+            # 보안: 마지막 IP 사용 (클라이언트에 가장 가까운 신뢰 프록시가 추가)
+            # 첫 번째 IP는 공격자가 위조 가능
+            ip = x_forwarded_for.split(',')[-1].strip()
         else:
             ip = request.META.get('REMOTE_ADDR')
-        return ip
+        return ip if ip else '0.0.0.0'
     
     def is_ip_blocked(self, ip):
         """IP가 차단되어 있는지 확인"""
@@ -275,10 +277,11 @@ class RequestLoggingMiddleware:
         """클라이언트 IP 주소 확인"""
         x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
         if x_forwarded_for:
-            ip = x_forwarded_for.split(',')[0]
+            # 보안: 마지막 IP 사용 (클라이언트에 가까운 신뢰 프록시가 추가)
+            ip = x_forwarded_for.split(',')[-1].strip()
         else:
             ip = request.META.get('REMOTE_ADDR')
-        return ip
+        return ip if ip else '0.0.0.0'
     
     def is_suspicious_request(self, request, response, response_time):
         """의심스러운 요청 패턴 확인"""

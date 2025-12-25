@@ -84,9 +84,9 @@ CSP_FRAME_ANCESTORS = ("'none'",)
 SESSION_COOKIE_SECURE = True
 CSRF_COOKIE_SECURE = True
 SESSION_COOKIE_HTTPONLY = True
-# CSRF_COOKIE_HTTPONLY를 False로 설정하여 JavaScript에서 CSRF 토큰 읽기 가능하게 함
-# (AJAX 요청에 필요)
-CSRF_COOKIE_HTTPONLY = False
+# CSRF 쿠키도 HttpOnly로 보호 (XSS 공격 시 토큰 탈취 방지)
+# Django는 템플릿의 {% csrf_token %}과 X-CSRFToken 헤더로 자동 처리
+CSRF_COOKIE_HTTPONLY = True
 SESSION_COOKIE_SAMESITE = 'Lax'
 CSRF_COOKIE_SAMESITE = 'Lax'
 

@@ -81,12 +81,12 @@ class ProfileForm(forms.ModelForm):
 class EmailVerificationForm(forms.Form):
     """이메일 인증 코드 확인 폼"""
     email = forms.EmailField(label="이메일")
-    code = forms.CharField(max_length=4, min_length=4, label="인증코드",
-                          help_text="이메일로 받은 4자리 숫자를 입력하세요.")
-    
+    code = forms.CharField(max_length=6, min_length=6, label="인증코드",
+                          help_text="이메일로 받은 6자리 숫자를 입력하세요.")
+
     def clean_code(self):
         code = self.cleaned_data.get('code')
         if not code.isdigit():
-            raise forms.ValidationError("인증코드는 4자리 숫자여야 합니다.")
+            raise forms.ValidationError("인증코드는 6자리 숫자여야 합니다.")
         return code
 

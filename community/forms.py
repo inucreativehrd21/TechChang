@@ -10,6 +10,7 @@ ALLOWED_IMAGE_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.gif', '.webp']
 ALLOWED_FILE_EXTENSIONS = ['.pdf', '.doc', '.docx', '.txt', '.zip', '.hwp', '.xlsx', '.pptx']
 MAX_IMAGE_SIZE = 10 * 1024 * 1024  # 10MB
 MAX_FILE_SIZE = 20 * 1024 * 1024   # 20MB
+MAX_IMAGE_DIMENSION = 10000  # 최대 이미지 해상도 (가로/세로)
 
 
 class QuestionForm(forms.ModelForm):
@@ -75,6 +76,11 @@ class QuestionForm(forms.ModelForm):
         if image:
             # 파일 확장자 검증
             ext = os.path.splitext(image.name)[1].lower()
+
+            # SVG 차단 (XXE 공격 방지)
+            if ext == '.svg':
+                raise ValidationError('SVG 파일은 보안상의 이유로 업로드할 수 없습니다.')
+
             if ext not in ALLOWED_IMAGE_EXTENSIONS:
                 raise ValidationError(
                     f'허용되지 않는 이미지 형식입니다. '
@@ -90,9 +96,18 @@ class QuestionForm(forms.ModelForm):
             # 이미지 유효성 검증 (악성 파일 방지)
             try:
                 img = Image.open(image)
+
+                # 메모리 폭탄 공격 방지 (해상도 검증)
+                if img.width > MAX_IMAGE_DIMENSION or img.height > MAX_IMAGE_DIMENSION:
+                    raise ValidationError(
+                        f'이미지 해상도가 너무 높습니다. 최대 {MAX_IMAGE_DIMENSION}x{MAX_IMAGE_DIMENSION}px까지 가능합니다.'
+                    )
+
                 img.verify()  # 이미지 손상 여부 확인
                 # verify() 후에는 파일 포인터를 처음으로 되돌려야 함
                 image.seek(0)
+            except ValidationError:
+                raise
             except Exception:
                 raise ValidationError('유효하지 않은 이미지 파일입니다.')
 
@@ -146,11 +161,11 @@ class QuestionForm(forms.ModelForm):
 
 class AnswerForm(forms.ModelForm):
     """답변 생성/수정 폼 - 향상된 UX 지원"""
-    
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._setup_form_fields()
-    
+
     def _setup_form_fields(self):
         """폼 필드 설정 및 스타일링"""
         self.fields['content'].widget.attrs.update({
@@ -172,6 +187,11 @@ class AnswerForm(forms.ModelForm):
         if image:
             # 파일 확장자 검증
             ext = os.path.splitext(image.name)[1].lower()
+
+            # SVG 차단 (XXE 공격 방지)
+            if ext == '.svg':
+                raise ValidationError('SVG 파일은 보안상의 이유로 업로드할 수 없습니다.')
+
             if ext not in ALLOWED_IMAGE_EXTENSIONS:
                 raise ValidationError(
                     f'허용되지 않는 이미지 형식입니다. '
@@ -187,8 +207,17 @@ class AnswerForm(forms.ModelForm):
             # 이미지 유효성 검증 (악성 파일 방지)
             try:
                 img = Image.open(image)
+
+                # 메모리 폭탄 공격 방지 (해상도 검증)
+                if img.width > MAX_IMAGE_DIMENSION or img.height > MAX_IMAGE_DIMENSION:
+                    raise ValidationError(
+                        f'이미지 해상도가 너무 높습니다. 최대 {MAX_IMAGE_DIMENSION}x{MAX_IMAGE_DIMENSION}px까지 가능합니다.'
+                    )
+
                 img.verify()
                 image.seek(0)
+            except ValidationError:
+                raise
             except Exception:
                 raise ValidationError('유효하지 않은 이미지 파일입니다.')
 
@@ -207,11 +236,11 @@ class AnswerForm(forms.ModelForm):
 
 class CommentForm(forms.ModelForm):
     """댓글 생성/수정 폼 - 간결한 사용성 지원"""
-    
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._setup_form_fields()
-    
+
     def _setup_form_fields(self):
         """폼 필드 설정 및 스타일링"""
         self.fields['content'].widget.attrs.update({
@@ -234,6 +263,11 @@ class CommentForm(forms.ModelForm):
         if image:
             # 파일 확장자 검증
             ext = os.path.splitext(image.name)[1].lower()
+
+            # SVG 차단 (XXE 공격 방지)
+            if ext == '.svg':
+                raise ValidationError('SVG 파일은 보안상의 이유로 업로드할 수 없습니다.')
+
             if ext not in ALLOWED_IMAGE_EXTENSIONS:
                 raise ValidationError(
                     f'허용되지 않는 이미지 형식입니다. '
@@ -249,8 +283,17 @@ class CommentForm(forms.ModelForm):
             # 이미지 유효성 검증 (악성 파일 방지)
             try:
                 img = Image.open(image)
+
+                # 메모리 폭탄 공격 방지 (해상도 검증)
+                if img.width > MAX_IMAGE_DIMENSION or img.height > MAX_IMAGE_DIMENSION:
+                    raise ValidationError(
+                        f'이미지 해상도가 너무 높습니다. 최대 {MAX_IMAGE_DIMENSION}x{MAX_IMAGE_DIMENSION}px까지 가능합니다.'
+                    )
+
                 img.verify()
                 image.seek(0)
+            except ValidationError:
+                raise
             except Exception:
                 raise ValidationError('유효하지 않은 이미지 파일입니다.')
 
