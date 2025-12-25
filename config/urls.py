@@ -22,7 +22,12 @@ from django.views.generic import RedirectView
 from community.views import base_views
 
 urlpatterns = [
-    path('admin/', admin.site.urls),
+    # 보안: Admin URL을 추측하기 어려운 경로로 변경
+    # 환경변수 DJANGO_ADMIN_URL로 커스터마이징 가능 (기본: secret-control-panel/)
+    path(
+        settings.ADMIN_URL if hasattr(settings, 'ADMIN_URL') else 'secret-control-panel/',
+        admin.site.urls
+    ),
 
     # 기존 pybo URL 리다이렉트 (하위 호환성)
     path('pybo/', RedirectView.as_view(url='/', permanent=True)),

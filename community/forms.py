@@ -1,6 +1,15 @@
 
 from django import forms
+from django.core.exceptions import ValidationError
+from PIL import Image
+import os
 from community.models import Question, Answer, Comment, Category
+
+# 보안: 허용할 파일 확장자 정의
+ALLOWED_IMAGE_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.gif', '.webp']
+ALLOWED_FILE_EXTENSIONS = ['.pdf', '.doc', '.docx', '.txt', '.zip', '.hwp', '.xlsx', '.pptx']
+MAX_IMAGE_SIZE = 10 * 1024 * 1024  # 10MB
+MAX_FILE_SIZE = 20 * 1024 * 1024   # 20MB
 
 
 class QuestionForm(forms.ModelForm):
@@ -60,6 +69,55 @@ class QuestionForm(forms.ModelForm):
         help_text='질문 내용에 가장 적합한 카테고리를 선택하세요.'
     )
 
+    def clean_image(self):
+        """이미지 파일 검증 (확장자, 크기, 유효성)"""
+        image = self.cleaned_data.get('image')
+        if image:
+            # 파일 확장자 검증
+            ext = os.path.splitext(image.name)[1].lower()
+            if ext not in ALLOWED_IMAGE_EXTENSIONS:
+                raise ValidationError(
+                    f'허용되지 않는 이미지 형식입니다. '
+                    f'허용: {", ".join(ALLOWED_IMAGE_EXTENSIONS)}'
+                )
+
+            # 파일 크기 검증
+            if image.size > MAX_IMAGE_SIZE:
+                raise ValidationError(
+                    f'이미지 크기가 너무 큽니다. 최대 {MAX_IMAGE_SIZE // (1024*1024)}MB까지 가능합니다.'
+                )
+
+            # 이미지 유효성 검증 (악성 파일 방지)
+            try:
+                img = Image.open(image)
+                img.verify()  # 이미지 손상 여부 확인
+                # verify() 후에는 파일 포인터를 처음으로 되돌려야 함
+                image.seek(0)
+            except Exception:
+                raise ValidationError('유효하지 않은 이미지 파일입니다.')
+
+        return image
+
+    def clean_file(self):
+        """첨부 파일 검증 (확장자, 크기)"""
+        file = self.cleaned_data.get('file')
+        if file:
+            # 파일 확장자 검증
+            ext = os.path.splitext(file.name)[1].lower()
+            if ext not in ALLOWED_FILE_EXTENSIONS:
+                raise ValidationError(
+                    f'허용되지 않는 파일 형식입니다. '
+                    f'허용: {", ".join(ALLOWED_FILE_EXTENSIONS)}'
+                )
+
+            # 파일 크기 검증
+            if file.size > MAX_FILE_SIZE:
+                raise ValidationError(
+                    f'파일 크기가 너무 큽니다. 최대 {MAX_FILE_SIZE // (1024*1024)}MB까지 가능합니다.'
+                )
+
+        return file
+
     class Meta:
         model = Question  # 사용할 모델
         fields = ['category', 'subject', 'content', 'image', 'file', 'is_locked']  # 파일 필드 및 잠금 필드 추가
@@ -100,14 +158,42 @@ class AnswerForm(forms.ModelForm):
             'rows': 8,
             'placeholder': '도움이 되는 답변을 작성해주세요. 구체적인 예시나 설명을 포함하면 더욱 좋습니다.',
         })
-        
+
         self.fields['image'].widget.attrs.update({
             'class': 'form-control',
             'accept': 'image/*',
             'data-bs-toggle': 'tooltip',
             'title': '답변을 설명하는 이미지나 코드 스크린샷을 첨부할 수 있습니다'
         })
-    
+
+    def clean_image(self):
+        """이미지 파일 검증 (확장자, 크기, 유효성)"""
+        image = self.cleaned_data.get('image')
+        if image:
+            # 파일 확장자 검증
+            ext = os.path.splitext(image.name)[1].lower()
+            if ext not in ALLOWED_IMAGE_EXTENSIONS:
+                raise ValidationError(
+                    f'허용되지 않는 이미지 형식입니다. '
+                    f'허용: {", ".join(ALLOWED_IMAGE_EXTENSIONS)}'
+                )
+
+            # 파일 크기 검증
+            if image.size > MAX_IMAGE_SIZE:
+                raise ValidationError(
+                    f'이미지 크기가 너무 큽니다. 최대 {MAX_IMAGE_SIZE // (1024*1024)}MB까지 가능합니다.'
+                )
+
+            # 이미지 유효성 검증 (악성 파일 방지)
+            try:
+                img = Image.open(image)
+                img.verify()
+                image.seek(0)
+            except Exception:
+                raise ValidationError('유효하지 않은 이미지 파일입니다.')
+
+        return image
+
     class Meta:
         model = Answer
         fields = ['content', 'image']
@@ -134,14 +220,42 @@ class CommentForm(forms.ModelForm):
             'placeholder': '댓글을 작성해주세요. 건설적인 의견을 개진합니다.',
             'maxlength': 500
         })
-        
+
         self.fields['image'].widget.attrs.update({
             'class': 'form-control',
             'accept': 'image/*',
             'data-bs-toggle': 'tooltip',
             'title': '댓글에 관련 이미지를 첨부할 수 있습니다'
         })
-    
+
+    def clean_image(self):
+        """이미지 파일 검증 (확장자, 크기, 유효성)"""
+        image = self.cleaned_data.get('image')
+        if image:
+            # 파일 확장자 검증
+            ext = os.path.splitext(image.name)[1].lower()
+            if ext not in ALLOWED_IMAGE_EXTENSIONS:
+                raise ValidationError(
+                    f'허용되지 않는 이미지 형식입니다. '
+                    f'허용: {", ".join(ALLOWED_IMAGE_EXTENSIONS)}'
+                )
+
+            # 파일 크기 검증
+            if image.size > MAX_IMAGE_SIZE:
+                raise ValidationError(
+                    f'이미지 크기가 너무 큽니다. 최대 {MAX_IMAGE_SIZE // (1024*1024)}MB까지 가능합니다.'
+                )
+
+            # 이미지 유효성 검증 (악성 파일 방지)
+            try:
+                img = Image.open(image)
+                img.verify()
+                image.seek(0)
+            except Exception:
+                raise ValidationError('유효하지 않은 이미지 파일입니다.')
+
+        return image
+
     class Meta:
         model = Comment
         fields = ['content', 'image']

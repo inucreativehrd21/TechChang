@@ -1,11 +1,13 @@
 
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
-from django.shortcuts import render, get_object_or_404
+from django.shortcuts import render, get_object_or_404, redirect
 from django.db.models import Q, Count, F
 from django.http import Http404, FileResponse, HttpResponse
 from django.core.cache import cache
 from django.conf import settings
 from django.contrib.auth.models import User
+from django.contrib.auth.decorators import login_required
+from django.contrib import messages
 from django.db import transaction
 import time
 import os
@@ -230,31 +232,32 @@ def recent_comments(request):
     return render(request, 'community/recent_comments.html', context)
 
 
+@login_required(login_url='common:login')
 def download_file(request, question_id):
-    """파일 다운로드"""
-    question = get_object_or_404(Question, pk=question_id)
+    """파일 다운로드 - 권한 검증 포함"""
+    question = get_object_or_404(Question, pk=question_id, is_deleted=False)
+
+    # 권한 검사: 잠긴 글은 회원만, 문의 게시판은 작성자/관리자만
+    if question.is_locked and not request.user.is_authenticated:
+        messages.error(request, '회원 전용 글입니다.')
+        return redirect('community:index')
+
+    if question.category and question.category.name == '문의':
+        if not (request.user.is_staff or request.user == question.author):
+            messages.error(request, '문의글은 작성자와 관리자만 확인할 수 있습니다.')
+            return redirect('community:index')
 
     if not question.file:
         raise Http404("파일이 존재하지 않습니다.")
 
-    file_path = question.file.path
-
-    if not os.path.exists(file_path):
+    # FileField를 직접 사용하여 파일 제공 (경로 조작 방지)
+    try:
+        response = FileResponse(question.file.open('rb'))
+        response['Content-Type'] = mimetypes.guess_type(question.file.name)[0] or 'application/octet-stream'
+        response['Content-Disposition'] = f'attachment; filename="{os.path.basename(question.file.name)}"'
+        return response
+    except FileNotFoundError:
         raise Http404("파일이 존재하지 않습니다.")
-
-    # 파일명 추출
-    filename = os.path.basename(file_path)
-
-    # MIME 타입 추측
-    content_type, _ = mimetypes.guess_type(file_path)
-    if content_type is None:
-        content_type = 'application/octet-stream'
-
-    # 파일 응답
-    response = FileResponse(open(file_path, 'rb'), content_type=content_type)
-    response['Content-Disposition'] = f'attachment; filename="{filename}"'
-
-    return response
 
 
 def games_index(request):

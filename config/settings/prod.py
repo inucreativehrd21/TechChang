@@ -10,7 +10,18 @@ except ImportError:
 
 # ===== 보안 및 기본 설정 =====
 DEBUG = False
-SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', 'temporary-secret-key-change-in-production')
+
+# SECRET_KEY는 반드시 환경변수로 설정되어야 함 (보안)
+SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY')
+if not SECRET_KEY:
+    raise ValueError(
+        "DJANGO_SECRET_KEY 환경변수가 설정되지 않았습니다. "
+        "프로덕션 환경에서는 반드시 안전한 SECRET_KEY를 설정해야 합니다."
+    )
+
+# Admin URL 커스터마이징 (보안: 추측하기 어려운 경로)
+# 환경변수로 설정 가능, 기본값: secret-control-panel/
+ADMIN_URL = os.environ.get('DJANGO_ADMIN_URL', 'secret-control-panel/')
 
 # 허용 호스트
 # 환경변수로 설정 가능 (쉼표로 구분)

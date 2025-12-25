@@ -96,7 +96,7 @@ class Profile(models.Model):
 class EmailVerification(models.Model):
     """이메일 인증 모델"""
 
-    CODE_LENGTH = 4
+    CODE_LENGTH = 6  # 보안 강화: 4자리 → 6자리 (백만 조합)
     CODE_EXPIRY_MINUTES = 10
     MAX_ATTEMPTS = 5
     RESEND_COOLDOWN_SECONDS = 60
