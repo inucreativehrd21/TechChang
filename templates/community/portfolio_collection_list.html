@@ -1,0 +1,411 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}내 포트폴리오 관리 - 테크창{% endblock %}
+
+{% block extra_css %}
+<style nonce="{{ csp_nonce }}">
+.portfolio-mgmt {
+    max-width: 1000px;
+    margin: 0 auto;
+    padding: var(--space-16) var(--space-6);
+}
+
+.portfolio-mgmt-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--space-8);
+    flex-wrap: wrap;
+    gap: var(--space-4);
+}
+
+.portfolio-mgmt-title {
+    font-size: clamp(2rem, 5vw, 2.5rem);
+    font-weight: 900;
+    color: var(--text-primary);
+}
+
+.portfolio-count-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding: var(--space-2) var(--space-4);
+    background: rgba(59, 130, 246, 0.1);
+    color: var(--accent-blue);
+    border-radius: var(--radius-full);
+    font-size: 0.875rem;
+    font-weight: 700;
+}
+
+.portfolio-card-grid {
+    display: grid;
+    gap: var(--space-6);
+}
+
+.portfolio-mgmt-card {
+    background: white;
+    border-radius: var(--radius-2xl);
+    padding: var(--space-8);
+    box-shadow: var(--shadow-lg);
+    border: 2px solid var(--border-light);
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.portfolio-mgmt-card:hover {
+    box-shadow: var(--shadow-xl);
+    border-color: var(--accent-blue);
+}
+
+.portfolio-mgmt-card.is-main::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: var(--gradient-blue);
+}
+
+.card-header-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: start;
+    gap: var(--space-4);
+    margin-bottom: var(--space-4);
+}
+
+.card-info h3 {
+    font-size: 1.5rem;
+    font-weight: 800;
+    color: var(--text-primary);
+    margin-bottom: var(--space-2);
+}
+
+.card-badges {
+    display: flex;
+    gap: var(--space-2);
+    flex-wrap: wrap;
+}
+
+.badge-main {
+    padding: var(--space-1) var(--space-3);
+    background: var(--gradient-blue);
+    color: white;
+    border-radius: var(--radius-full);
+    font-size: 0.75rem;
+    font-weight: 700;
+}
+
+.badge-published {
+    padding: var(--space-1) var(--space-3);
+    background: linear-gradient(135deg, #10b981, #059669);
+    color: white;
+    border-radius: var(--radius-full);
+    font-size: 0.75rem;
+    font-weight: 700;
+}
+
+.badge-draft {
+    padding: var(--space-1) var(--space-3);
+    background: var(--bg-secondary);
+    color: var(--text-tertiary);
+    border-radius: var(--radius-full);
+    font-size: 0.75rem;
+    font-weight: 700;
+}
+
+.badge-legacy {
+    padding: var(--space-1) var(--space-3);
+    background: linear-gradient(135deg, #f59e0b, #d97706);
+    color: white;
+    border-radius: var(--radius-full);
+    font-size: 0.75rem;
+    font-weight: 700;
+}
+
+.card-meta {
+    display: flex;
+    gap: var(--space-6);
+    color: var(--text-tertiary);
+    font-size: 0.875rem;
+    margin-bottom: var(--space-4);
+}
+
+.card-meta-item {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+}
+
+.card-description {
+    color: var(--text-secondary);
+    line-height: 1.6;
+    margin-bottom: var(--space-6);
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.card-actions {
+    display: flex;
+    gap: var(--space-3);
+    flex-wrap: wrap;
+}
+
+.card-actions .btn-action {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding: var(--space-2) var(--space-4);
+    border-radius: var(--radius-md);
+    font-size: 0.875rem;
+    font-weight: 600;
+    text-decoration: none;
+    border: none;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.btn-view {
+    background: var(--gradient-blue);
+    color: white;
+}
+
+.btn-view:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-blue);
+    color: white;
+}
+
+.btn-edit {
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+}
+
+.btn-edit:hover {
+    background: var(--border-light);
+}
+
+.btn-publish {
+    background: rgba(16, 185, 129, 0.1);
+    color: #059669;
+}
+
+.btn-publish:hover {
+    background: rgba(16, 185, 129, 0.2);
+}
+
+.btn-unpublish {
+    background: rgba(245, 158, 11, 0.1);
+    color: #d97706;
+}
+
+.btn-unpublish:hover {
+    background: rgba(245, 158, 11, 0.2);
+}
+
+.btn-set-main {
+    background: rgba(59, 130, 246, 0.1);
+    color: var(--accent-blue);
+}
+
+.btn-set-main:hover {
+    background: rgba(59, 130, 246, 0.2);
+}
+
+.btn-delete {
+    background: rgba(239, 68, 68, 0.1);
+    color: #dc2626;
+}
+
+.btn-delete:hover {
+    background: rgba(239, 68, 68, 0.2);
+}
+
+.empty-portfolio {
+    text-align: center;
+    padding: var(--space-16);
+    background: white;
+    border-radius: var(--radius-2xl);
+    box-shadow: var(--shadow-lg);
+}
+
+.empty-portfolio i {
+    font-size: 4rem;
+    color: var(--text-muted);
+    margin-bottom: var(--space-6);
+}
+
+.empty-portfolio h2 {
+    font-size: 1.5rem;
+    font-weight: 800;
+    margin-bottom: var(--space-4);
+    color: var(--text-primary);
+}
+
+.empty-portfolio p {
+    color: var(--text-secondary);
+    margin-bottom: var(--space-8);
+}
+
+@media (max-width: 768px) {
+    .portfolio-mgmt {
+        padding: var(--space-12) var(--space-4);
+    }
+    .portfolio-mgmt-card {
+        padding: var(--space-6);
+    }
+    .card-header-row {
+        flex-direction: column;
+    }
+    .card-actions {
+        flex-direction: column;
+    }
+    .card-actions .btn-action {
+        justify-content: center;
+    }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="portfolio-mgmt">
+    <div class="portfolio-mgmt-header">
+        <div>
+            <h1 class="portfolio-mgmt-title">
+                <i class="fas fa-briefcase"></i> 내 포트폴리오
+            </h1>
+            <span class="portfolio-count-badge">
+                <i class="fas fa-layer-group"></i>
+                {{ total_count }} / {{ max_portfolios }}개
+            </span>
+        </div>
+        {% if total_count < max_portfolios %}
+        <a href="{% url 'community:portfolio_collection_create' %}" class="btn-premium btn-premium-primary">
+            <i class="fas fa-plus"></i> 새 포트폴리오
+        </a>
+        {% endif %}
+    </div>
+
+    {% if legacy_portfolio or collections %}
+    <div class="portfolio-card-grid">
+        <!-- Legacy Portfolio -->
+        {% if legacy_portfolio %}
+        <div class="portfolio-mgmt-card">
+            <div class="card-header-row">
+                <div class="card-info">
+                    <h3>{{ legacy_portfolio.get_display_name }}의 포트폴리오</h3>
+                    <div class="card-badges">
+                        <span class="badge-legacy">기존 포트폴리오</span>
+                        {% if legacy_portfolio.is_public %}
+                        <span class="badge-published"><i class="fas fa-globe"></i> 공개</span>
+                        {% else %}
+                        <span class="badge-draft"><i class="fas fa-lock"></i> 비공개</span>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            {% if legacy_portfolio.title %}
+            <div class="card-meta">
+                <span class="card-meta-item"><i class="fas fa-user-tie"></i> {{ legacy_portfolio.title }}</span>
+            </div>
+            {% endif %}
+
+            {% if legacy_portfolio.bio %}
+            <p class="card-description">{{ legacy_portfolio.bio }}</p>
+            {% endif %}
+
+            <div class="card-actions">
+                <a href="{% url 'community:portfolio_view' request.user.id %}" class="btn-action btn-view">
+                    <i class="fas fa-eye"></i> 보기
+                </a>
+                <a href="{% url 'community:portfolio_edit' %}" class="btn-action btn-edit">
+                    <i class="fas fa-edit"></i> 편집
+                </a>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Portfolio Collections -->
+        {% for collection in collections %}
+        <div class="portfolio-mgmt-card {% if collection.is_main %}is-main{% endif %}">
+            <div class="card-header-row">
+                <div class="card-info">
+                    <h3>{{ collection.portfolio_name }}</h3>
+                    <div class="card-badges">
+                        {% if collection.is_main %}
+                        <span class="badge-main"><i class="fas fa-star"></i> 대표</span>
+                        {% endif %}
+                        {% if collection.is_published %}
+                        <span class="badge-published"><i class="fas fa-globe"></i> 공개</span>
+                        {% else %}
+                        <span class="badge-draft"><i class="fas fa-lock"></i> 비공개</span>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <div class="card-meta">
+                {% if collection.title %}
+                <span class="card-meta-item"><i class="fas fa-user-tie"></i> {{ collection.title }}</span>
+                {% endif %}
+                <span class="card-meta-item"><i class="fas fa-project-diagram"></i> 프로젝트 {{ collection.projects.count }}개</span>
+                <span class="card-meta-item"><i class="fas fa-eye"></i> 조회 {{ collection.view_count }}회</span>
+                <span class="card-meta-item"><i class="far fa-calendar"></i> {{ collection.create_date|date:"Y.m.d" }}</span>
+            </div>
+
+            {% if collection.bio %}
+            <p class="card-description">{{ collection.bio }}</p>
+            {% endif %}
+
+            <div class="card-actions">
+                <a href="{% url 'community:portfolio_collection_detail' collection.slug %}" class="btn-action btn-view">
+                    <i class="fas fa-eye"></i> 보기
+                </a>
+                <a href="{% url 'community:portfolio_collection_edit' collection.slug %}" class="btn-action btn-edit">
+                    <i class="fas fa-edit"></i> 편집
+                </a>
+                <form method="post" action="{% url 'community:portfolio_collection_publish' collection.slug %}" style="display: inline;">
+                    {% csrf_token %}
+                    {% if collection.is_published %}
+                    <button type="submit" class="btn-action btn-unpublish">
+                        <i class="fas fa-eye-slash"></i> 비공개
+                    </button>
+                    {% else %}
+                    <button type="submit" class="btn-action btn-publish">
+                        <i class="fas fa-globe"></i> 게시
+                    </button>
+                    {% endif %}
+                </form>
+                {% if not collection.is_main %}
+                <form method="post" action="{% url 'community:portfolio_collection_set_main' collection.slug %}" style="display: inline;">
+                    {% csrf_token %}
+                    <button type="submit" class="btn-action btn-set-main">
+                        <i class="fas fa-star"></i> 대표 설정
+                    </button>
+                </form>
+                {% endif %}
+                <a href="{% url 'community:portfolio_collection_delete' collection.slug %}" class="btn-action btn-delete">
+                    <i class="fas fa-trash"></i> 삭제
+                </a>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty-portfolio">
+        <i class="fas fa-folder-open"></i>
+        <h2>아직 포트폴리오가 없습니다</h2>
+        <p>새 포트폴리오를 만들어 자신의 작업물과 경험을 공유해보세요.</p>
+        <a href="{% url 'community:portfolio_collection_create' %}" class="btn-premium btn-premium-primary">
+            <i class="fas fa-plus"></i> 포트폴리오 만들기
+        </a>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

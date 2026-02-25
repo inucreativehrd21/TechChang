@@ -495,6 +495,7 @@ class Portfolio(models.Model):
         ('solid', '단색 (브랜드)'),
         ('white', '화이트'),
         ('custom', '커스텀 색상'),
+        ('image', '배경 이미지'),
     ]
 
     hero_background_type = models.CharField(max_length=20, choices=BACKGROUND_TYPE_CHOICES, default='gradient', verbose_name='히어로 배경 타입')
@@ -505,6 +506,13 @@ class Portfolio(models.Model):
 
     hero_solid_color = models.CharField(max_length=200, blank=True, default='', verbose_name='히어로 단색 배경', help_text='브랜드 색상 gradient 값')
     skills_solid_color = models.CharField(max_length=200, blank=True, default='', verbose_name='스킬 단색 배경', help_text='브랜드 색상 gradient 값')
+
+    # 히어로 배경 이미지
+    hero_background_image = models.ImageField(upload_to='portfolio/hero_backgrounds/', blank=True, null=True, verbose_name='히어로 배경 이미지')
+    hero_image_position_x = models.PositiveSmallIntegerField(default=50, verbose_name='배경 X 위치 (%)')
+    hero_image_position_y = models.PositiveSmallIntegerField(default=50, verbose_name='배경 Y 위치 (%)')
+    hero_image_zoom = models.PositiveSmallIntegerField(default=100, verbose_name='배경 확대 비율 (%)')
+    hero_image_overlay_opacity = models.PositiveSmallIntegerField(default=40, verbose_name='오버레이 투명도 (%)')
 
     # 비개발 직군 스킬 시스템
     skills_with_levels = models.JSONField(
@@ -697,6 +705,155 @@ class Experience(models.Model):
         db_table = 'pybo_experience'
         verbose_name = '경력 사항'
         verbose_name_plural = '경력 사항 목록'
+        ordering = ['order', '-start_date']
+
+
+class PortfolioCollection(models.Model):
+    """다중 포트폴리오 지원 모델 - 한 사용자가 여러 포트폴리오를 관리"""
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='portfolio_collections', verbose_name='사용자')
+    portfolio_name = models.CharField(max_length=100, verbose_name='포트폴리오 이름')
+    slug = models.SlugField(max_length=200, unique=True, verbose_name='URL 슬러그', allow_unicode=True)
+    is_published = models.BooleanField(default=False, verbose_name='게시 여부')
+    is_main = models.BooleanField(default=False, verbose_name='대표 포트폴리오')
+    display_order = models.PositiveIntegerField(default=0, verbose_name='정렬 순서')
+
+    # 기본 정보 (Portfolio 모델과 동일)
+    display_name = models.CharField(max_length=100, default='', blank=True, verbose_name='표시 이름')
+    title = models.CharField(max_length=100, default='', blank=True, verbose_name='직업/역할')
+    bio = models.TextField(max_length=500, default='', blank=True, verbose_name='자기소개')
+    location = models.CharField(max_length=100, default='', blank=True, verbose_name='위치')
+    email = models.EmailField(max_length=100, default='', blank=True, verbose_name='이메일')
+
+    # 소셜 링크
+    github_url = models.URLField(max_length=200, default='', blank=True, verbose_name='GitHub URL')
+    linkedin_url = models.URLField(max_length=200, default='', blank=True, verbose_name='LinkedIn URL')
+    website_url = models.URLField(max_length=200, default='', blank=True, verbose_name='개인 웹사이트')
+
+    # 기술 스택
+    skills = models.JSONField(default=list, blank=True, verbose_name='기술 스택')
+    profile_image = models.ImageField(upload_to='portfolio/profiles/', blank=True, null=True, verbose_name='프로필 이미지')
+
+    # 배경 그라데이션
+    hero_gradient = models.CharField(max_length=200, default='linear-gradient(135deg, #667eea 0%, #764ba2 100%)', verbose_name='히어로 배경')
+    skills_gradient = models.CharField(max_length=200, default='linear-gradient(135deg, #f093fb 0%, #f5576c 100%)', verbose_name='스킬 배경')
+    hero_background_type = models.CharField(max_length=20, choices=Portfolio.BACKGROUND_TYPE_CHOICES, default='gradient', verbose_name='히어로 배경 타입')
+    skills_background_type = models.CharField(max_length=20, choices=Portfolio.BACKGROUND_TYPE_CHOICES, default='gradient', verbose_name='스킬 배경 타입')
+    hero_custom_color = models.CharField(max_length=7, blank=True, default='', verbose_name='히어로 커스텀 색상')
+    skills_custom_color = models.CharField(max_length=7, blank=True, default='', verbose_name='스킬 커스텀 색상')
+    hero_solid_color = models.CharField(max_length=200, blank=True, default='', verbose_name='히어로 단색 배경')
+    skills_solid_color = models.CharField(max_length=200, blank=True, default='', verbose_name='스킬 단색 배경')
+
+    # 히어로 배경 이미지
+    hero_background_image = models.ImageField(upload_to='portfolio/hero_backgrounds/', blank=True, null=True, verbose_name='히어로 배경 이미지')
+    hero_image_position_x = models.PositiveSmallIntegerField(default=50, verbose_name='배경 X 위치 (%)')
+    hero_image_position_y = models.PositiveSmallIntegerField(default=50, verbose_name='배경 Y 위치 (%)')
+    hero_image_zoom = models.PositiveSmallIntegerField(default=100, verbose_name='배경 확대 비율 (%)')
+    hero_image_overlay_opacity = models.PositiveSmallIntegerField(default=40, verbose_name='오버레이 투명도 (%)')
+
+    # 스킬 시스템
+    skills_with_levels = models.JSONField(default=list, blank=True, verbose_name='레벨별 스킬')
+    categorized_skills = models.JSONField(default=dict, blank=True, verbose_name='카테고리별 스킬')
+    free_text_skills = models.TextField(blank=True, default='', verbose_name='자유형 스킬 설명')
+    skill_tags = models.JSONField(default=list, blank=True, verbose_name='스킬 태그')
+    enabled_skill_types = models.JSONField(default=list, blank=True, verbose_name='활성화된 스킬 타입')
+
+    # 설정
+    theme = models.CharField(max_length=10, choices=Portfolio.THEME_CHOICES, default='light', verbose_name='테마')
+    show_experience = models.BooleanField(default=False, verbose_name='경력 사항 표시')
+
+    # 메타 정보
+    view_count = models.PositiveIntegerField(default=0, verbose_name='조회수')
+    create_date = models.DateTimeField(auto_now_add=True, verbose_name='생성일')
+    modify_date = models.DateTimeField(auto_now=True, verbose_name='수정일')
+
+    def get_display_name(self):
+        return self.display_name if self.display_name else self.user.username
+
+    def __str__(self):
+        return f"{self.user.username} - {self.portfolio_name}"
+
+    class Meta:
+        db_table = 'community_portfolio_collection'
+        verbose_name = '포트폴리오 컬렉션'
+        verbose_name_plural = '포트폴리오 컬렉션 목록'
+        ordering = ['display_order', '-create_date']
+        unique_together = [['user', 'portfolio_name']]
+        indexes = [
+            models.Index(fields=['slug']),
+            models.Index(fields=['user', 'is_published']),
+        ]
+
+
+class CollectionProject(models.Model):
+    """포트폴리오 컬렉션의 프로젝트"""
+
+    portfolio_collection = models.ForeignKey(PortfolioCollection, on_delete=models.CASCADE, related_name='projects', verbose_name='포트폴리오')
+    title = models.CharField(max_length=200, verbose_name='프로젝트 제목')
+    description = models.TextField(verbose_name='프로젝트 설명')
+    project_type = models.CharField(max_length=20, choices=Project.PROJECT_TYPE_CHOICES, default='dev', verbose_name='타입')
+    image = models.ImageField(upload_to='portfolio/projects/', blank=True, null=True, verbose_name='프로젝트 이미지')
+    tech_stack = models.JSONField(default=list, blank=True, verbose_name='기술 스택')
+    project_url = models.URLField(max_length=200, default='', blank=True, verbose_name='프로젝트 URL')
+    github_url = models.URLField(max_length=200, default='', blank=True, verbose_name='GitHub URL')
+    start_date = models.DateField(null=True, blank=True, verbose_name='시작일')
+    end_date = models.DateField(null=True, blank=True, verbose_name='종료일')
+    background_gradient = models.CharField(max_length=200, default='linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)', verbose_name='배경 그라데이션')
+    order = models.IntegerField(default=0, verbose_name='순서')
+    is_featured = models.BooleanField(default=False, verbose_name='추천 프로젝트')
+    create_date = models.DateTimeField(auto_now_add=True, verbose_name='생성일')
+    modify_date = models.DateTimeField(auto_now=True, verbose_name='수정일')
+
+    def __str__(self):
+        return f"{self.portfolio_collection.portfolio_name} - {self.title}"
+
+    class Meta:
+        db_table = 'community_collection_project'
+        verbose_name = '컬렉션 프로젝트'
+        verbose_name_plural = '컬렉션 프로젝트 목록'
+        ordering = ['order', '-create_date']
+
+
+class CollectionExperience(models.Model):
+    """포트폴리오 컬렉션의 경력 사항"""
+
+    portfolio_collection = models.ForeignKey(PortfolioCollection, on_delete=models.CASCADE, related_name='experiences', verbose_name='포트폴리오')
+    company = models.CharField(max_length=200, verbose_name='회사/기관명')
+    position = models.CharField(max_length=100, verbose_name='직책/역할')
+    location = models.CharField(max_length=100, blank=True, default='', verbose_name='근무지')
+    start_date = models.DateField(verbose_name='시작일')
+    end_date = models.DateField(null=True, blank=True, verbose_name='종료일')
+    is_current = models.BooleanField(default=False, verbose_name='현재 재직 중')
+    description = models.TextField(blank=True, default='', verbose_name='주요 업무')
+    achievements = models.JSONField(default=list, blank=True, verbose_name='주요 성과')
+    tech_stack = models.JSONField(default=list, blank=True, verbose_name='사용 기술')
+    order = models.IntegerField(default=0, verbose_name='순서')
+    create_date = models.DateTimeField(auto_now_add=True, verbose_name='생성일')
+    modify_date = models.DateTimeField(auto_now=True, verbose_name='수정일')
+
+    def get_duration(self):
+        from datetime import date
+        start = self.start_date
+        end = self.end_date if self.end_date else date.today()
+        years = (end.year - start.year)
+        months = (end.month - start.month)
+        if months < 0:
+            years -= 1
+            months += 12
+        duration_parts = []
+        if years > 0:
+            duration_parts.append(f"{years}년")
+        if months > 0:
+            duration_parts.append(f"{months}개월")
+        return " ".join(duration_parts) if duration_parts else "1개월 미만"
+
+    def __str__(self):
+        return f"{self.portfolio_collection.portfolio_name} - {self.company} ({self.position})"
+
+    class Meta:
+        db_table = 'community_collection_experience'
+        verbose_name = '컬렉션 경력 사항'
+        verbose_name_plural = '컬렉션 경력 사항 목록'
         ordering = ['order', '-start_date']
 
 

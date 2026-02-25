@@ -224,6 +224,10 @@
                             <input type="radio" name="hero_background_type" value="custom" {% if portfolio.hero_background_type == 'custom' %}checked{% endif %} style="margin-bottom: var(--space-2);">
                             <span style="font-weight: 600; font-size: 0.9375rem;">커스텀 색상</span>
                         </label>
+                        <label class="bg-type-option" style="display: flex; flex-direction: column; align-items: center; padding: var(--space-4); border: 2px solid var(--border-light); border-radius: var(--radius-lg); cursor: pointer; transition: all 0.3s ease; background: white;">
+                            <input type="radio" name="hero_background_type" value="image" {% if portfolio.hero_background_type == 'image' %}checked{% endif %} style="margin-bottom: var(--space-2);">
+                            <span style="font-weight: 600; font-size: 0.9375rem;">배경 이미지</span>
+                        </label>
                     </div>
 
                     <!-- Hero Gradient Options Panel -->
@@ -264,13 +268,64 @@
                         </div>
                     </div>
 
+                    <!-- Hero Image Panel -->
+                    <div id="hero_image_panel" style="display: none; margin-bottom: var(--space-4);">
+                        <label style="display: block; font-weight: 600; margin-bottom: var(--space-3); color: var(--text-secondary);">
+                            배경 이미지
+                        </label>
+
+                        {% if portfolio.hero_background_image %}
+                        <div style="margin-bottom: var(--space-4); text-align: center;">
+                            <img src="{{ portfolio.hero_background_image.url }}" alt="현재 배경" style="max-height: 120px; border-radius: var(--radius-md); box-shadow: var(--shadow-sm);">
+                            <p style="font-size: 0.8125rem; color: var(--text-tertiary); margin-top: var(--space-2);">현재 배경 이미지</p>
+                        </div>
+                        {% endif %}
+
+                        <input type="file" name="hero_background_image" id="hero_background_image_input" accept="image/*" style="width: 100%; padding: var(--space-3); border: 1px solid var(--border-light); border-radius: var(--radius-md); font-size: 0.9375rem; margin-bottom: var(--space-6);">
+
+                        <div style="display: grid; gap: var(--space-4);">
+                            <div>
+                                <label style="display: flex; justify-content: space-between; font-weight: 600; margin-bottom: var(--space-2); color: var(--text-secondary); font-size: 0.9375rem;">
+                                    <span>가로 위치</span>
+                                    <span id="hero_pos_x_val">{{ portfolio.hero_image_position_x|default:50 }}%</span>
+                                </label>
+                                <input type="range" name="hero_image_position_x" id="hero_image_position_x" min="0" max="100" value="{{ portfolio.hero_image_position_x|default:50 }}" style="width: 100%;">
+                            </div>
+
+                            <div>
+                                <label style="display: flex; justify-content: space-between; font-weight: 600; margin-bottom: var(--space-2); color: var(--text-secondary); font-size: 0.9375rem;">
+                                    <span>세로 위치</span>
+                                    <span id="hero_pos_y_val">{{ portfolio.hero_image_position_y|default:50 }}%</span>
+                                </label>
+                                <input type="range" name="hero_image_position_y" id="hero_image_position_y" min="0" max="100" value="{{ portfolio.hero_image_position_y|default:50 }}" style="width: 100%;">
+                            </div>
+
+                            <div>
+                                <label style="display: flex; justify-content: space-between; font-weight: 600; margin-bottom: var(--space-2); color: var(--text-secondary); font-size: 0.9375rem;">
+                                    <span>확대</span>
+                                    <span id="hero_zoom_val">{{ portfolio.hero_image_zoom|default:100 }}%</span>
+                                </label>
+                                <input type="range" name="hero_image_zoom" id="hero_image_zoom" min="100" max="300" value="{{ portfolio.hero_image_zoom|default:100 }}" style="width: 100%;">
+                            </div>
+
+                            <div>
+                                <label style="display: flex; justify-content: space-between; font-weight: 600; margin-bottom: var(--space-2); color: var(--text-secondary); font-size: 0.9375rem;">
+                                    <span>오버레이 어둡기</span>
+                                    <span id="hero_overlay_val">{{ portfolio.hero_image_overlay_opacity|default:40 }}%</span>
+                                </label>
+                                <input type="range" name="hero_image_overlay_opacity" id="hero_image_overlay_opacity" min="0" max="80" value="{{ portfolio.hero_image_overlay_opacity|default:40 }}" style="width: 100%;">
+                            </div>
+                        </div>
+                    </div>
+
                     <!-- Hero Preview -->
                     <div style="margin-top: var(--space-4);">
                         <label style="display: block; font-weight: 600; margin-bottom: var(--space-3); color: var(--text-secondary);">
                             미리보기
                         </label>
-                        <div id="hero_preview" style="height: 100px; border-radius: var(--radius-md); background: {{ portfolio.hero_gradient }}; display: flex; align-items: center; justify-content: center; color: white; font-weight: 700; font-size: 1.125rem; text-shadow: 0 2px 4px rgba(0,0,0,0.2);">
-                            히어로 슬라이드 배경
+                        <div id="hero_preview" style="height: 100px; border-radius: var(--radius-md); background: {{ portfolio.hero_gradient }}; display: flex; align-items: center; justify-content: center; color: white; font-weight: 700; font-size: 1.125rem; text-shadow: 0 2px 4px rgba(0,0,0,0.2); position: relative; overflow: hidden; background-size: cover; background-position: center;">
+                            <div id="hero_preview_overlay" style="position: absolute; inset: 0; background: rgba(0,0,0,0); z-index: 1;"></div>
+                            <span style="position: relative; z-index: 2;">히어로 슬라이드 배경</span>
                         </div>
                     </div>
                 </div>
@@ -354,12 +409,28 @@
             <!-- Settings -->
             <div style="margin-bottom: var(--space-6); padding: var(--space-6); background: var(--bg-secondary); border-radius: var(--radius-lg);">
                 <h3 style="font-size: 1.125rem; font-weight: 700; margin-bottom: var(--space-4); color: var(--text-primary);">표시 설정</h3>
+                {% if is_collection %}
+                <!-- Collection: portfolio_name + is_published -->
+                <div style="margin-bottom: var(--space-4);">
+                    <label style="display: block; font-weight: 700; margin-bottom: var(--space-3); color: var(--text-primary);">
+                        포트폴리오 이름
+                    </label>
+                    <input type="text" name="portfolio_name" value="{{ portfolio.portfolio_name }}" style="width: 100%; padding: var(--space-4); border: 1px solid var(--border-light); border-radius: var(--radius-md); font-size: 1rem;">
+                </div>
+                <div style="margin-bottom: var(--space-4);">
+                    <label style="display: flex; align-items: center; gap: var(--space-3); cursor: pointer;">
+                        <input type="checkbox" name="is_published" {% if portfolio.is_published %}checked{% endif %} style="width: 20px; height: 20px; cursor: pointer;">
+                        <span style="font-weight: 600;">포트폴리오 공개</span>
+                    </label>
+                </div>
+                {% else %}
                 <div style="margin-bottom: var(--space-4);">
                     <label style="display: flex; align-items: center; gap: var(--space-3); cursor: pointer;">
                         <input type="checkbox" name="is_public" {% if portfolio.is_public %}checked{% endif %} style="width: 20px; height: 20px; cursor: pointer;">
                         <span style="font-weight: 600;">포트폴리오 공개</span>
                     </label>
                 </div>
+                {% endif %}
                 <div>
                     <label style="display: flex; align-items: center; gap: var(--space-3); cursor: pointer;">
                         <input type="checkbox" name="show_experience" {% if portfolio.show_experience %}checked{% endif %} style="width: 20px; height: 20px; cursor: pointer;">
@@ -373,9 +444,15 @@
 
             <!-- Actions -->
             <div style="display: flex; gap: var(--space-4); justify-content: flex-end; flex-wrap: wrap;">
+                {% if is_collection %}
+                <a href="{% url 'community:portfolio_collection_detail' portfolio.slug %}" class="btn-premium btn-premium-secondary">
+                    취소
+                </a>
+                {% else %}
                 <a href="{% url 'community:portfolio_view' user.id %}" class="btn-premium btn-premium-secondary">
                     취소
                 </a>
+                {% endif %}
                 <button type="submit" class="btn-premium btn-premium-primary">
                     저장
                 </button>
@@ -386,9 +463,15 @@
         <div style="margin-top: var(--space-12);">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-6);">
                 <h2 style="font-size: 1.75rem; font-weight: 800; color: var(--text-primary);">프로젝트 관리</h2>
+                {% if is_collection %}
+                <a href="{% url 'community:collection_project_create' portfolio.slug %}" class="btn-premium btn-premium-primary">
+                    <i class="fas fa-plus"></i> 프로젝트 추가
+                </a>
+                {% else %}
                 <a href="{% url 'community:project_create' %}" class="btn-premium btn-premium-primary">
                     <i class="fas fa-plus"></i> 프로젝트 추가
                 </a>
+                {% endif %}
             </div>
 
             {% if portfolio.projects.all %}
@@ -413,6 +496,17 @@
                             {% endif %}
                         </div>
                         <div style="display: flex; gap: var(--space-2);">
+                            {% if is_collection %}
+                            <a href="{% url 'community:collection_project_edit' portfolio.slug project.id %}" class="btn-premium btn-premium-secondary" style="padding: var(--space-2) var(--space-4);">
+                                <i class="fas fa-edit"></i>
+                            </a>
+                            <form method="post" action="{% url 'community:collection_project_delete' portfolio.slug project.id %}" style="display: inline;" onsubmit="return confirm('이 프로젝트를 삭제하시겠습니까?');">
+                                {% csrf_token %}
+                                <button type="submit" class="btn-premium btn-premium-secondary" style="padding: var(--space-2) var(--space-4); background: #fee; color: #c33;">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </form>
+                            {% else %}
                             <a href="{% url 'community:project_edit' project.id %}" class="btn-premium btn-premium-secondary" style="padding: var(--space-2) var(--space-4);">
                                 <i class="fas fa-edit"></i>
                             </a>
@@ -422,6 +516,7 @@
                                     <i class="fas fa-trash"></i>
                                 </button>
                             </form>
+                            {% endif %}
                         </div>
                     </div>
                 </div>
@@ -439,9 +534,15 @@
         <div style="margin-top: var(--space-12);">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-6);">
                 <h2 style="font-size: 1.75rem; font-weight: 800; color: var(--text-primary);">경력 사항 관리</h2>
+                {% if is_collection %}
+                <a href="{% url 'community:collection_experience_create' portfolio.slug %}" class="btn-premium btn-premium-primary">
+                    <i class="fas fa-plus"></i> 경력 추가
+                </a>
+                {% else %}
                 <a href="{% url 'community:experience_create' %}" class="btn-premium btn-premium-primary">
                     <i class="fas fa-plus"></i> 경력 추가
                 </a>
+                {% endif %}
             </div>
 
             {% if portfolio.experiences.all %}
@@ -478,6 +579,17 @@
                             {% endif %}
                         </div>
                         <div style="display: flex; gap: var(--space-2);">
+                            {% if is_collection %}
+                            <a href="{% url 'community:collection_experience_edit' portfolio.slug experience.id %}" class="btn-premium btn-premium-secondary" style="padding: var(--space-2) var(--space-4);">
+                                <i class="fas fa-edit"></i>
+                            </a>
+                            <form method="post" action="{% url 'community:collection_experience_delete' portfolio.slug experience.id %}" style="display: inline;" onsubmit="return confirm('이 경력을 삭제하시겠습니까?');">
+                                {% csrf_token %}
+                                <button type="submit" class="btn-premium btn-premium-secondary" style="padding: var(--space-2) var(--space-4); background: #fee; color: #c33;">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </form>
+                            {% else %}
                             <a href="{% url 'community:experience_edit' experience.id %}" class="btn-premium btn-premium-secondary" style="padding: var(--space-2) var(--space-4);">
                                 <i class="fas fa-edit"></i>
                             </a>
@@ -487,6 +599,7 @@
                                     <i class="fas fa-trash"></i>
                                 </button>
                             </form>
+                            {% endif %}
                         </div>
                     </div>
                 </div>
@@ -545,10 +658,20 @@ document.addEventListener('DOMContentLoaded', function() {
     const heroGradientPanel = document.getElementById('hero_gradient_panel');
     const heroSolidPanel = document.getElementById('hero_solid_panel');
     const heroCustomPanel = document.getElementById('hero_custom_panel');
+    const heroImagePanel = document.getElementById('hero_image_panel');
     const heroGradientSelect = document.getElementById('hero_gradient');
     const heroPreview = document.getElementById('hero_preview');
+    const heroPreviewOverlay = document.getElementById('hero_preview_overlay');
     const heroCustomColorPicker = document.getElementById('hero_custom_color_picker');
     const heroCustomColorText = document.getElementById('hero_custom_color_text');
+
+    // Image sliders
+    const heroImageInput = document.getElementById('hero_background_image_input');
+    const heroPosX = document.getElementById('hero_image_position_x');
+    const heroPosY = document.getElementById('hero_image_position_y');
+    const heroZoom = document.getElementById('hero_image_zoom');
+    const heroOverlay = document.getElementById('hero_image_overlay_opacity');
+    let heroImageDataUrl = null;
 
     // Toggle hero panels based on selected type
     function updateHeroPanels() {
@@ -557,6 +680,7 @@ document.addEventListener('DOMContentLoaded', function() {
         heroGradientPanel.style.display = selectedType === 'gradient' ? 'block' : 'none';
         heroSolidPanel.style.display = selectedType === 'solid' ? 'block' : 'none';
         heroCustomPanel.style.display = selectedType === 'custom' ? 'block' : 'none';
+        heroImagePanel.style.display = selectedType === 'image' ? 'block' : 'none';
 
         updateHeroPreview();
     }
@@ -564,6 +688,12 @@ document.addEventListener('DOMContentLoaded', function() {
     // Update hero preview
     function updateHeroPreview() {
         const selectedType = document.querySelector('input[name="hero_background_type"]:checked').value;
+
+        // Reset image-related styles
+        heroPreview.style.backgroundImage = '';
+        heroPreview.style.backgroundPosition = '';
+        heroPreview.style.backgroundSize = '';
+        heroPreviewOverlay.style.background = 'rgba(0,0,0,0)';
 
         if (selectedType === 'gradient') {
             heroPreview.style.background = heroGradientSelect.value;
@@ -577,6 +707,19 @@ document.addEventListener('DOMContentLoaded', function() {
             heroPreview.style.color = '#333333';
         } else if (selectedType === 'custom') {
             heroPreview.style.background = heroCustomColorText.value;
+            heroPreview.style.color = 'white';
+        } else if (selectedType === 'image') {
+            const imgUrl = heroImageDataUrl || '{% if portfolio.hero_background_image %}{{ portfolio.hero_background_image.url }}{% endif %}';
+            if (imgUrl) {
+                heroPreview.style.background = '#111';
+                heroPreview.style.backgroundImage = 'url(' + imgUrl + ')';
+                heroPreview.style.backgroundPosition = heroPosX.value + '% ' + heroPosY.value + '%';
+                heroPreview.style.backgroundSize = heroZoom.value + '%';
+                heroPreview.style.backgroundRepeat = 'no-repeat';
+                heroPreviewOverlay.style.background = 'rgba(0,0,0,' + (heroOverlay.value / 100) + ')';
+            } else {
+                heroPreview.style.background = '#333';
+            }
             heroPreview.style.color = 'white';
         }
     }
@@ -592,6 +735,30 @@ document.addEventListener('DOMContentLoaded', function() {
             heroCustomColorPicker.value = this.value;
             updateHeroPreview();
         }
+    });
+
+    // Image file preview
+    heroImageInput.addEventListener('change', function() {
+        const file = this.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                heroImageDataUrl = e.target.result;
+                updateHeroPreview();
+            };
+            reader.readAsDataURL(file);
+        }
+    });
+
+    // Image slider listeners
+    [heroPosX, heroPosY, heroZoom, heroOverlay].forEach(function(slider) {
+        slider.addEventListener('input', function() {
+            document.getElementById('hero_pos_x_val').textContent = heroPosX.value + '%';
+            document.getElementById('hero_pos_y_val').textContent = heroPosY.value + '%';
+            document.getElementById('hero_zoom_val').textContent = heroZoom.value + '%';
+            document.getElementById('hero_overlay_val').textContent = heroOverlay.value + '%';
+            updateHeroPreview();
+        });
     });
 
     // Event listeners for hero

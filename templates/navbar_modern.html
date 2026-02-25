@@ -32,8 +32,8 @@
                         <a href="{% url 'community:profile' user.id %}" style="display: block; padding: var(--space-4); color: var(--text-primary); text-decoration: none; border-bottom: 1px solid var(--border-light);">
                             <i class="fas fa-user"></i> 마이페이지
                         </a>
-                        <a href="{% url 'community:portfolio_view' user.id %}" style="display: block; padding: var(--space-4); color: var(--text-primary); text-decoration: none; border-bottom: 1px solid var(--border-light);">
-                            <i class="fas fa-briefcase"></i> 포트폴리오
+                        <a href="{% url 'community:portfolio_collection_list' %}" style="display: block; padding: var(--space-4); color: var(--text-primary); text-decoration: none; border-bottom: 1px solid var(--border-light);">
+                            <i class="fas fa-briefcase"></i> 포트폴리오 관리
                         </a>
                         <a href="#" onclick="checkAttendance(); return false;" style="display: block; padding: var(--space-4); color: var(--text-primary); text-decoration: none; border-bottom: 1px solid var(--border-light);">
                             <i class="fas fa-check-circle"></i> 출석체크
@@ -73,7 +73,7 @@
         {% if user.is_authenticated %}
             <a href="{% url 'community:question_create' %}" style="display: block; padding: var(--space-3) var(--space-6); color: var(--text-secondary); text-decoration: none;">글쓰기</a>
             <a href="{% url 'community:profile' user.id %}" style="display: block; padding: var(--space-3) var(--space-6); color: var(--text-secondary); text-decoration: none;">마이페이지</a>
-            <a href="{% url 'community:portfolio_view' user.id %}" style="display: block; padding: var(--space-3) var(--space-6); color: var(--text-secondary); text-decoration: none;">포트폴리오</a>
+            <a href="{% url 'community:portfolio_collection_list' %}" style="display: block; padding: var(--space-3) var(--space-6); color: var(--text-secondary); text-decoration: none;">포트폴리오 관리</a>
             <a href="#" onclick="checkAttendance(); return false;" style="display: block; padding: var(--space-3) var(--space-6); color: var(--text-secondary); text-decoration: none;">출석체크</a>
             <a href="{% url 'common:logout' %}" style="display: block; padding: var(--space-3) var(--space-6); color: var(--text-secondary); text-decoration: none;">로그아웃</a>
         {% else %}

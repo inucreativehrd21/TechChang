@@ -1,0 +1,42 @@
+{% extends 'base.html' %}
+
+{% block title %}포트폴리오 삭제 - 테크창{% endblock %}
+
+{% block content %}
+<section style="padding: var(--space-16) var(--space-6); background: var(--bg-secondary); min-height: 100vh;">
+    <div style="max-width: 600px; margin: 0 auto;">
+        <a href="{% url 'community:portfolio_collection_list' %}" style="display: inline-flex; align-items: center; gap: var(--space-2); color: var(--text-secondary); text-decoration: none; margin-bottom: var(--space-6); font-weight: 600;">
+            <i class="fas fa-arrow-left"></i> 포트폴리오 목록으로
+        </a>
+
+        <div style="background: white; padding: var(--space-8); border-radius: var(--radius-2xl); box-shadow: var(--shadow-xl); text-align: center;">
+            <div style="width: 80px; height: 80px; margin: 0 auto var(--space-6); background: rgba(239, 68, 68, 0.1); border-radius: 50%; display: flex; align-items: center; justify-content: center;">
+                <i class="fas fa-exclamation-triangle" style="font-size: 2.5rem; color: #dc2626;"></i>
+            </div>
+
+            <h1 style="font-size: 2rem; font-weight: 900; margin-bottom: var(--space-4); color: var(--text-primary);">
+                포트폴리오 삭제
+            </h1>
+
+            <p style="color: var(--text-secondary); margin-bottom: var(--space-2); font-size: 1.0625rem; line-height: 1.6;">
+                <strong>"{{ collection.portfolio_name }}"</strong> 포트폴리오를 삭제하시겠습니까?
+            </p>
+            <p style="color: #dc2626; margin-bottom: var(--space-8); font-size: 0.9375rem;">
+                포트폴리오에 포함된 프로젝트와 경력 사항이 모두 삭제되며, 이 작업은 되돌릴 수 없습니다.
+            </p>
+
+            <div style="display: flex; gap: var(--space-4); justify-content: center;">
+                <a href="{% url 'community:portfolio_collection_list' %}" class="btn-premium btn-premium-secondary">
+                    취소
+                </a>
+                <form method="post" style="display: inline;">
+                    {% csrf_token %}
+                    <button type="submit" class="btn-premium" style="background: #dc2626; color: white; border: none; padding: var(--space-3) var(--space-6); border-radius: var(--radius-lg); font-weight: 700; cursor: pointer; font-size: 1rem;">
+                        <i class="fas fa-trash"></i> 삭제하기
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}

@@ -110,6 +110,25 @@ urlpatterns = [
     path('portfolio/experience/<int:experience_id>/delete/', portfolio_views.experience_delete, name='experience_delete'),
     path('portfolio/experience/reorder/', portfolio_views.experience_reorder, name='experience_reorder'),
 
+    # portfolio_views.py - 포트폴리오 컬렉션 (다중 포트폴리오)
+    path('portfolios/', portfolio_views.portfolio_collection_list, name='portfolio_collection_list'),
+    path('portfolios/create/', portfolio_views.portfolio_collection_create, name='portfolio_collection_create'),
+    path('portfolios/<slug:slug>/', portfolio_views.portfolio_collection_detail, name='portfolio_collection_detail'),
+    path('portfolios/<slug:slug>/edit/', portfolio_views.portfolio_collection_edit, name='portfolio_collection_edit'),
+    path('portfolios/<slug:slug>/publish/', portfolio_views.portfolio_collection_publish, name='portfolio_collection_publish'),
+    path('portfolios/<slug:slug>/set-main/', portfolio_views.portfolio_collection_set_main, name='portfolio_collection_set_main'),
+    path('portfolios/<slug:slug>/delete/', portfolio_views.portfolio_collection_delete, name='portfolio_collection_delete'),
+
+    # 포트폴리오 컬렉션 - 프로젝트 CRUD
+    path('portfolios/<slug:slug>/project/create/', portfolio_views.collection_project_create, name='collection_project_create'),
+    path('portfolios/<slug:slug>/project/<int:project_id>/edit/', portfolio_views.collection_project_edit, name='collection_project_edit'),
+    path('portfolios/<slug:slug>/project/<int:project_id>/delete/', portfolio_views.collection_project_delete, name='collection_project_delete'),
+
+    # 포트폴리오 컬렉션 - 경력 CRUD
+    path('portfolios/<slug:slug>/experience/create/', portfolio_views.collection_experience_create, name='collection_experience_create'),
+    path('portfolios/<slug:slug>/experience/<int:experience_id>/edit/', portfolio_views.collection_experience_edit, name='collection_experience_edit'),
+    path('portfolios/<slug:slug>/experience/<int:experience_id>/delete/', portfolio_views.collection_experience_delete, name='collection_experience_delete'),
+
     # *** IMPORTANT: 이 패턴은 맨 마지막에 위치해야 합니다! ***
     # <int:question_id>/ 패턴이 숫자로 시작하는 다른 URL들(2048 등)을 가로채지 않도록
     # 모든 구체적인 URL 패턴을 먼저 정의한 후, 마지막에 이 일반적인 패턴을 배치합니다.

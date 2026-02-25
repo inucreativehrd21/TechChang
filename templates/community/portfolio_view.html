@@ -515,9 +515,15 @@ body {
 {% block content %}
 <!-- Edit Button (Owner Only) -->
 {% if is_owner %}
+{% if is_collection %}
+<a href="{% url 'community:portfolio_collection_edit' portfolio.slug %}" class="edit-button">
+    <i class="fas fa-edit"></i> 편집
+</a>
+{% else %}
 <a href="{% url 'community:portfolio_edit' %}" class="edit-button">
     <i class="fas fa-edit"></i> 편집
 </a>
+{% endif %}
 {% endif %}
 
 <!-- Navigation Dots -->
@@ -529,8 +535,14 @@ body {
 <div class="portfolio-fullpage" id="portfolioFullpage">
 
     <!-- Slide 1: Hero/Intro -->
-    <section class="portfolio-slide hero-slide" data-slide="0" style="background: {{ portfolio.hero_gradient }}">
+    {% if hero_bg_type == 'image' and portfolio.hero_background_image %}
+    <section class="portfolio-slide hero-slide" data-slide="0" style="background-image: url('{{ portfolio.hero_background_image.url }}'); background-position: {{ portfolio.hero_image_position_x }}% {{ portfolio.hero_image_position_y }}%; background-size: {{ portfolio.hero_image_zoom }}%; background-repeat: no-repeat; background-color: #111; position: relative;">
+        <div style="position: absolute; inset: 0; background: {{ hero_overlay_css }}; z-index: 1;"></div>
+        <div class="hero-content" style="position: relative; z-index: 2;">
+    {% else %}
+    <section class="portfolio-slide hero-slide" data-slide="0" style="background: {{ hero_background }}">
         <div class="hero-content">
+    {% endif %}
             {% if portfolio.profile_image %}
             <img src="{{ portfolio.profile_image.url }}" alt="{{ portfolio.get_display_name }}" class="hero-avatar">
             {% else %}
@@ -583,7 +595,7 @@ body {
             {% endif %}
         </div>
 
-        <div class="scroll-hint">
+        <div class="scroll-hint" style="position: relative; z-index: 2;">
             <span>스크롤하여 포트폴리오 보기</span>
             <i class="fas fa-chevron-down"></i>
         </div>

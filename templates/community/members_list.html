@@ -336,7 +336,7 @@
                     <i class="fas fa-user-friends"></i>
                 </div>
                 <div>
-                    <div class="stat-value">{{ portfolios.count }}</div>
+                    <div class="stat-value">{{ portfolios.count|add:collections.count }}</div>
                     <div class="stat-label">공개 포트폴리오</div>
                 </div>
             </div>
@@ -344,11 +344,11 @@
     </div>
 
     <!-- Members Grid -->
-    {% if portfolios %}
+    {% if portfolios or collections %}
     <div class="members-grid">
+        <!-- Legacy Portfolios -->
         {% for portfolio in portfolios %}
         <a href="{% url 'community:portfolio_view' portfolio.user.id %}" class="member-card">
-            <!-- Avatar Section -->
             <div class="member-avatar-section">
                 {% if portfolio.profile_image %}
                 <img src="{{ portfolio.profile_image.url }}" alt="{{ portfolio.get_display_name }}" class="member-avatar">
@@ -372,7 +372,6 @@
                 {% endif %}
             </div>
 
-            <!-- Bio -->
             {% if portfolio.bio %}
             <p class="member-bio">{{ portfolio.bio|linebreaksbr }}</p>
             {% else %}
@@ -381,7 +380,6 @@
             </p>
             {% endif %}
 
-            <!-- Skills -->
             {% if portfolio.skills %}
             <div class="member-skills">
                 {% for skill in portfolio.skills|slice:":5" %}
@@ -393,7 +391,6 @@
             </div>
             {% endif %}
 
-            <!-- Footer -->
             <div class="member-footer">
                 <div class="member-stats">
                     <div class="member-stat">
@@ -402,6 +399,70 @@
                     </div>
                     <div class="member-stat">
                         <div class="member-stat-value">{{ portfolio.view_count }}</div>
+                        <div class="member-stat-label">조회</div>
+                    </div>
+                </div>
+
+                <button class="view-portfolio-btn">
+                    포트폴리오 보기 <i class="fas fa-arrow-right"></i>
+                </button>
+            </div>
+        </a>
+        {% endfor %}
+
+        <!-- New Portfolio Collections -->
+        {% for collection in collections %}
+        <a href="{% url 'community:portfolio_collection_detail' collection.slug %}" class="member-card">
+            <div class="member-avatar-section">
+                {% if collection.profile_image %}
+                <img src="{{ collection.profile_image.url }}" alt="{{ collection.get_display_name }}" class="member-avatar">
+                {% else %}
+                <div class="member-avatar-placeholder">
+                    {{ collection.get_display_name|slice:":1"|upper }}
+                </div>
+                {% endif %}
+
+                <h2 class="member-name">{{ collection.get_display_name }}</h2>
+
+                {% if collection.title %}
+                <div class="member-title">{{ collection.title }}</div>
+                {% endif %}
+
+                {% if collection.location %}
+                <div class="member-location">
+                    <i class="fas fa-map-marker-alt"></i>
+                    <span>{{ collection.location }}</span>
+                </div>
+                {% endif %}
+            </div>
+
+            {% if collection.bio %}
+            <p class="member-bio">{{ collection.bio|linebreaksbr }}</p>
+            {% else %}
+            <p class="member-bio" style="color: var(--text-muted); font-style: italic;">
+                아직 자기소개가 없습니다.
+            </p>
+            {% endif %}
+
+            {% if collection.skills %}
+            <div class="member-skills">
+                {% for skill in collection.skills|slice:":5" %}
+                <span class="skill-tag">{{ skill }}</span>
+                {% endfor %}
+                {% if collection.skills|length > 5 %}
+                <span class="skill-tag">+{{ collection.skills|length|add:"-5" }}</span>
+                {% endif %}
+            </div>
+            {% endif %}
+
+            <div class="member-footer">
+                <div class="member-stats">
+                    <div class="member-stat">
+                        <div class="member-stat-value">{{ collection.projects.count }}</div>
+                        <div class="member-stat-label">프로젝트</div>
+                    </div>
+                    <div class="member-stat">
+                        <div class="member-stat-value">{{ collection.view_count }}</div>
                         <div class="member-stat-label">조회</div>
                     </div>
                 </div>
@@ -424,7 +485,7 @@
             포트폴리오를 공개하여 첫 번째 구성원이 되어보세요!
         </p>
         {% if user.is_authenticated %}
-        <a href="{% url 'community:portfolio_edit' %}" class="btn-premium btn-premium-primary">
+        <a href="{% url 'community:portfolio_collection_list' %}" class="btn-premium btn-premium-primary">
             <i class="fas fa-plus"></i> 포트폴리오 만들기
         </a>
         {% else %}
