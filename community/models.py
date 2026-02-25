@@ -1,5 +1,6 @@
 from django.db import models
 from django.contrib.auth.models import User
+from .validators import validate_image_file, validate_question_file
 
 # Create your models here.
 class Category(models.Model):
@@ -21,8 +22,8 @@ class Question(models.Model):
     voter = models.ManyToManyField(User, related_name='voter_question')  # 추천인 추가
     view_count = models.PositiveIntegerField(default=0, db_index=True)  # 인덱스 추가 (인기순 정렬에 사용)
     category = models.ForeignKey(Category, on_delete=models.PROTECT)  # 카테고리 필수 (ForeignKey는 자동 인덱스)
-    image = models.ImageField(upload_to='questions/', blank=True, null=True)  # 이미지 첨부
-    file = models.FileField(upload_to='question_files/', blank=True, null=True)  # 파일 첨부
+    image = models.ImageField(upload_to='questions/', blank=True, null=True, validators=[validate_image_file])  # 보안: MIME 검증
+    file = models.FileField(upload_to='question_files/', blank=True, null=True, validators=[validate_question_file])  # 보안: MIME 검증
     is_deleted = models.BooleanField(default=False, db_index=True)  # 인덱스 추가 (필터링에 자주 사용)
     deleted_date = models.DateTimeField(null=True, blank=True)
     is_locked = models.BooleanField(default=False, help_text="회원 전용 글 (로그인 필요)")  # 글 잠금 기능

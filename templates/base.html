@@ -7,7 +7,7 @@
     <meta name="keywords" content="HRD, 데이터분석, 프로그래밍, 테크놀로지, 지식공유">
     
     {% csrf_token %}
-    <script>
+    <script nonce="{{ csp_nonce }}">
         window.CSRF_TOKEN = "{{ csrf_token }}";
     </script>
     

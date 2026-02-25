@@ -465,6 +465,9 @@ def signup_with_email_verification(request):
 # ==================== 카카오 로그인 ====================
 def kakao_login(request):
     """카카오 로그인 시작 (인가 코드 요청)"""
+    import secrets
+    from django.utils import timezone
+
     # 환경변수에서 카카오 REST API 키 가져오기
     kakao_rest_api_key = settings.KAKAO_REST_API_KEY
 
@@ -473,11 +476,19 @@ def kakao_login(request):
     scheme = 'https' if request.is_secure() else 'http'
     redirect_uri = f"{scheme}://{host}/common/kakao/callback/"
 
+    # State 토큰 생성 (CSRF 방지)
+    state_token = secrets.token_urlsafe(32)
+
+    # 세션에 state 저장 (검증용)
+    request.session['kakao_oauth_state'] = state_token
+    request.session['kakao_oauth_state_created'] = timezone.now().isoformat()
+
     kakao_auth_url = (
         f"https://kauth.kakao.com/oauth/authorize"
         f"?client_id={kakao_rest_api_key}"
         f"&redirect_uri={redirect_uri}"
         f"&response_type=code"
+        f"&state={state_token}"  # State 추가
     )
 
     return redirect(kakao_auth_url)
@@ -485,11 +496,42 @@ def kakao_login(request):
 
 def kakao_callback(request):
     """카카오 로그인 콜백 (토큰 및 사용자 정보 받기)"""
+    from django.utils import timezone
+    from datetime import datetime, timedelta
+
     code = request.GET.get('code')
+    state = request.GET.get('state')  # 수신된 state
 
     if not code:
         messages.error(request, '카카오 로그인에 실패했습니다.')
         return redirect('common:login')
+
+    # State 검증
+    saved_state = request.session.get('kakao_oauth_state')
+    state_created = request.session.get('kakao_oauth_state_created')
+
+    if not saved_state or not state:
+        logger.warning(f"카카오 OAuth state 누락: saved={bool(saved_state)}, received={bool(state)}")
+        messages.error(request, '인증 오류: State 토큰이 없습니다.')
+        return redirect('common:login')
+
+    if saved_state != state:
+        logger.warning(f"카카오 OAuth state 불일치")
+        messages.error(request, '인증 오류: 잘못된 요청입니다.')
+        return redirect('common:login')
+
+    # State 만료 검증 (5분)
+    if state_created:
+        created_time = datetime.fromisoformat(state_created)
+        if timezone.now() - created_time > timedelta(minutes=5):
+            logger.warning("카카오 OAuth state 만료")
+            messages.error(request, '인증 시간이 만료되었습니다. 다시 시도해주세요.')
+            return redirect('common:login')
+
+    # State 세션 삭제 (재사용 방지)
+    del request.session['kakao_oauth_state']
+    if 'kakao_oauth_state_created' in request.session:
+        del request.session['kakao_oauth_state_created']
 
     # 환경변수에서 키 가져오기
     kakao_rest_api_key = settings.KAKAO_REST_API_KEY
@@ -1146,10 +1188,8 @@ def password_reset(request):
             messages.error(request, '프로필 정보를 찾을 수 없습니다.')
             return render(request, 'common/password_reset.html')
 
-        # 임시 비밀번호 생성 (10자리: 영문 대소문자 + 숫자 혼합)
-        import random
-        import string
-        temp_password = ''.join(random.choices(string.ascii_letters + string.digits, k=10))
+        # 임시 비밀번호 생성 (암호학적으로 안전한 12자리)
+        temp_password = secrets.token_urlsafe(12)
 
         # 사용자 비밀번호 변경
         user.set_password(temp_password)
@@ -1187,20 +1227,33 @@ def password_reset(request):
 
 # ==================== 포인트 랭킹 ====================
 def point_ranking(request):
-    """포인트 랭킹 페이지"""
+    """포인트 랭킹 페이지 (N+1 쿼리 최적화)"""
     from .models import Profile
 
-    # 포인트가 0보다 큰 사용자만 필터링하여 정렬 (admin 제외, 상위 100명)
-    top_users = Profile.objects.select_related('user').filter(points__gt=0).exclude(user__username='admin').order_by('-points')[:100]
+    # N+1 방지: select_related로 user, selected_emoticon 조인
+    # only()로 필요한 필드만 가져와 성능 향상
+    top_users = Profile.objects.select_related('user', 'selected_emoticon').filter(
+        points__gt=0
+    ).exclude(
+        user__username='admin'
+    ).only(
+        'user__username', 'user__email',
+        'nickname', 'points', 'profile_image',
+        'selected_emoticon__name', 'selected_emoticon__image'
+    ).order_by('-points')[:100]
 
     # 현재 로그인한 사용자의 순위 (있는 경우)
     current_user_rank = None
     current_user_profile = None
     if request.user.is_authenticated and request.user.username != 'admin':
         try:
-            current_user_profile = Profile.objects.get(user=request.user)
+            current_user_profile = Profile.objects.select_related('user').only(
+                'user__username', 'nickname', 'points', 'profile_image'
+            ).get(user=request.user)
             # 현재 사용자보다 포인트가 높은 사용자 수 + 1 (0포인트 및 admin 제외)
-            current_user_rank = Profile.objects.filter(points__gt=current_user_profile.points).exclude(user__username='admin').count() + 1
+            current_user_rank = Profile.objects.filter(
+                points__gt=current_user_profile.points
+            ).exclude(user__username='admin').count() + 1
         except Profile.DoesNotExist:
             pass
 

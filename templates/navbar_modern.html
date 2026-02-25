@@ -166,13 +166,13 @@
     </div>
 </div>
 
-<style>
+<style nonce="{{ csp_nonce }}">
 body { padding-top: 112px; }
 .user-dropdown.show { display: block !important; }
 .user-dropdown a:hover { background-color: var(--bg-secondary); }
 </style>
 
-<script>
+<script nonce="{{ csp_nonce }}">
 // 유저 메뉴 드롭다운 토글
 document.addEventListener('DOMContentLoaded', function() {
     const userMenuBtn = document.querySelector('.user-menu-btn');

@@ -41,7 +41,7 @@ def board_main(request):
 
 
 def board_category(request, category_name):
-    """카테고리별 게시글 목록"""
+    """카테고리별 게시글 목록 (N+1 쿼리 최적화)"""
     category = get_object_or_404(Category, name=category_name)
 
     # 검색어
@@ -50,13 +50,24 @@ def board_category(request, category_name):
     # 정렬 기준
     sort = request.GET.get('sort', 'latest')  # latest, popular, views
 
-    # 기본 쿼리셋
+    # N+1 방지: select_related로 author, profile, category 조인
+    # only()로 필요한 필드만 가져와 성능 향상
     questions = Question.objects.filter(
         category=category,
         is_deleted=False
-    ).select_related('author', 'author__profile').annotate(
+    ).select_related(
+        'author',
+        'author__profile',
+        'category'
+    ).annotate(
         answer_count=Count('answer', filter=Q(answer__is_deleted=False), distinct=True),
         voter_count=Count('voter', distinct=True)
+    ).only(
+        'id', 'subject', 'content', 'create_date', 'view_count', 'file',
+        'is_locked',
+        'author__username',
+        'author__profile__nickname',
+        'category__name'
     )
 
     # 검색

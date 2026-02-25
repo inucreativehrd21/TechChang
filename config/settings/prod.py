@@ -58,16 +58,17 @@ SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 SECURE_REFERRER_POLICY = 'same-origin'
 
 # Content Security Policy (CSP)
+# nonce 기반 CSP로 XSS 공격 방어 강화
 CSP_DEFAULT_SRC = ("'self'",)
 CSP_SCRIPT_SRC = (
     "'self'",
-    "'unsafe-inline'",  # GSAP 및 인라인 스크립트용
+    # "'unsafe-inline'", 제거됨 - nonce로 대체
     "cdn.jsdelivr.net",
     "cdnjs.cloudflare.com",
 )
 CSP_STYLE_SRC = (
     "'self'",
-    "'unsafe-inline'",  # Bootstrap 및 인라인 스타일용
+    # "'unsafe-inline'", 제거됨 - nonce로 대체
     "cdn.jsdelivr.net",
     "fonts.googleapis.com",
 )
@@ -79,6 +80,9 @@ CSP_FONT_SRC = (
 CSP_IMG_SRC = ("'self'", "data:", "https:")
 CSP_CONNECT_SRC = ("'self'",)
 CSP_FRAME_ANCESTORS = ("'none'",)
+
+# nonce 포함 설정 (django-csp 3.8+)
+CSP_INCLUDE_NONCE_IN = ['script-src', 'style-src']
 
 # ===== 세션·CSRF 보안 =====
 SESSION_COOKIE_SECURE = True

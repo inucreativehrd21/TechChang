@@ -675,7 +675,7 @@
 {% endblock %}
 
 {% block script %}
-<script>
+<script nonce="{{ csp_nonce }}">
 document.addEventListener('DOMContentLoaded', function() {
     // Smooth scroll animations
     const cards = document.querySelectorAll('.question-card, .comments-section, .answers-section, .answer-form-section');

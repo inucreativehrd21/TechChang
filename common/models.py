@@ -96,30 +96,44 @@ class Profile(models.Model):
 class EmailVerification(models.Model):
     """이메일 인증 모델"""
 
-    CODE_LENGTH = 6  # 보안 강화: 4자리 → 6자리 (백만 조합)
+    CODE_LENGTH = 8  # 보안 강화: 6자리 → 8자리 (1억 조합)
     CODE_EXPIRY_MINUTES = 10
     MAX_ATTEMPTS = 5
     RESEND_COOLDOWN_SECONDS = 60
 
     email = models.EmailField(verbose_name="이메일")
-    code = models.CharField(max_length=CODE_LENGTH, verbose_name="인증코드")
-    created_at = models.DateTimeField(auto_now_add=True, verbose_name="생성일시")
+    code = models.CharField(max_length=10, verbose_name="인증코드")  # max_length 증가
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="생성일시", db_index=True)
     verified_at = models.DateTimeField(null=True, blank=True, verbose_name="인증일시")
     is_verified = models.BooleanField(default=False, verbose_name="인증완료")
     attempts = models.PositiveIntegerField(default=0, verbose_name="시도횟수")
-    
+
     class Meta:
         verbose_name = "이메일 인증"
         verbose_name_plural = "이메일 인증"
         ordering = ['-created_at']
-    
+        indexes = [
+            models.Index(fields=['email', 'created_at']),  # Rate limiting 쿼리 최적화
+        ]
+
     def __str__(self):
         return f"{self.email} - {self.code}"
-    
+
     @classmethod
     def generate_code(cls):
-        """고정 길이의 숫자 코드 생성"""
-        return ''.join(random.choices(string.digits, k=cls.CODE_LENGTH))
+        """암호학적으로 안전한 8자리 코드 생성"""
+        import secrets
+        return ''.join(secrets.choice(string.digits) for _ in range(cls.CODE_LENGTH))
+
+    @classmethod
+    def can_send_new_code(cls, email):
+        """Rate limiting: 1분에 1회만 발송 가능"""
+        one_minute_ago = timezone.now() - timedelta(minutes=1)
+        recent_count = cls.objects.filter(
+            email=email,
+            created_at__gte=one_minute_ago
+        ).count()
+        return recent_count == 0
     
     def is_expired(self):
         """10분 후 만료 체크"""
