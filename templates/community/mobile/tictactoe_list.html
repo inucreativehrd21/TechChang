@@ -1,0 +1,103 @@
+{% extends 'base_mobile.html' %}
+{% load common_tags %}
+
+{% block title %}틱택토 게임 - 테크창{% endblock %}
+{% block tab_games %}active{% endblock %}
+
+{% block extra_css %}
+<style>
+.m-game-header {
+    padding: 16px;
+    background: var(--bg-primary, #fff);
+    border-bottom: 1px solid var(--border-light, #e5e7eb);
+    display: flex; align-items: center; justify-content: space-between;
+}
+.m-game-header-title { font-size: 1.0625rem; font-weight: 800; }
+.m-btn-new {
+    padding: 8px 16px; border-radius: 10px;
+    background: var(--accent-primary, #3b82f6); color: #fff;
+    border: none; font-size: 0.875rem; font-weight: 600;
+    text-decoration: none; display: inline-flex; align-items: center; gap: 6px;
+}
+.m-game-card {
+    margin: 10px 16px;
+    background: var(--bg-primary, #fff);
+    border-radius: 14px;
+    box-shadow: 0 2px 8px rgba(0,0,0,.06);
+    overflow: hidden;
+    border-left: 4px solid var(--border-light, #e5e7eb);
+}
+.m-game-card.waiting { border-left-color: #f59e0b; }
+.m-game-card.playing { border-left-color: #10b981; }
+.m-game-card.finished { border-left-color: #9ca3af; }
+.m-game-card-header {
+    padding: 12px 14px 8px;
+    display: flex; align-items: center; justify-content: space-between;
+}
+.m-game-title-text { font-size: 0.9375rem; font-weight: 700; color: var(--text-primary, #111); }
+.m-status-badge {
+    padding: 3px 10px; border-radius: 20px; font-size: 0.6875rem; font-weight: 700;
+}
+.badge-waiting { background: #fef3c7; color: #92400e; }
+.badge-playing { background: #d1fae5; color: #065f46; }
+.badge-finished { background: #f3f4f6; color: #6b7280; }
+.m-game-card-body { padding: 0 14px 12px; }
+.m-player-row { font-size: 0.8125rem; color: var(--text-secondary, #6b7280); padding: 2px 0; }
+.m-view-btn {
+    display: block; width: 100%; padding: 10px;
+    background: var(--bg-secondary, #f9fafb);
+    border: 1.5px solid var(--border-light, #e5e7eb);
+    border-radius: 10px; margin-top: 10px;
+    font-size: 0.875rem; font-weight: 600;
+    color: var(--accent-primary, #3b82f6); text-align: center; text-decoration: none;
+}
+.m-empty {
+    text-align: center; padding: 40px 20px;
+    color: var(--text-tertiary, #9ca3af); font-size: .875rem;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="m-game-header">
+    <div>
+        <div class="m-game-header-title">⭕❌ 틱택토</div>
+    </div>
+    <a href="{% url 'community:tictactoe_create' %}" class="m-btn-new">
+        <i class="fas fa-plus"></i> 새 게임
+    </a>
+</div>
+
+{% if games %}
+{% for game in games %}
+<div class="m-game-card {% if game.status == 'waiting' %}waiting{% elif game.status == 'playing' %}playing{% else %}finished{% endif %}">
+    <div class="m-game-card-header">
+        <div class="m-game-title-text">{{ game.title }}</div>
+        <span class="m-status-badge {% if game.status == 'waiting' %}badge-waiting{% elif game.status == 'playing' %}badge-playing{% else %}badge-finished{% endif %}">
+            {{ game.get_status_display }}
+        </span>
+    </div>
+    <div class="m-game-card-body">
+        <div class="m-player-row"><i class="fas fa-times me-2" style="color:#ef4444;"></i>플레이어 X: <strong>{{ game.player_x.username }}</strong></div>
+        <div class="m-player-row">
+            <i class="far fa-circle me-2" style="color:#3b82f6;"></i>플레이어 O:
+            {% if game.player_o %}<strong>{{ game.player_o.username }}</strong>{% else %}<span style="color:#9ca3af;">대기중...</span>{% endif %}
+        </div>
+        {% if game.winner %}
+        <div class="m-player-row" style="color:#10b981;margin-top:4px;">
+            <i class="fas fa-trophy me-2"></i>승자: <strong>{{ game.winner.username }}</strong>
+        </div>
+        {% endif %}
+        <a href="{% url 'community:tictactoe_detail' game.id %}" class="m-view-btn">
+            게임 보기 <i class="fas fa-arrow-right ms-2"></i>
+        </a>
+    </div>
+</div>
+{% endfor %}
+{% else %}
+<div class="m-empty">
+    <i class="fas fa-gamepad" style="font-size:2rem;display:block;margin-bottom:8px;"></i>
+    진행중인 게임이 없습니다.<br>새 게임을 만들어보세요!
+</div>
+{% endif %}
+{% endblock %}

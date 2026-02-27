@@ -1,0 +1,142 @@
+{% extends 'base_mobile.html' %}
+{% load static %}
+{% load common_tags %}
+
+{% block title %}구성원 - 테크창{% endblock %}
+{% block tab_members %}active{% endblock %}
+
+{% block extra_css %}
+<style>
+.m-members-header {
+    padding: 16px;
+    background: var(--bg-primary, #fff);
+    border-bottom: 1px solid var(--border-light, #e5e7eb);
+}
+.m-members-title { font-size: 1.125rem; font-weight: 800; color: var(--text-primary, #111); }
+.m-members-sub { font-size: 0.8125rem; color: var(--text-tertiary, #9ca3af); margin-top: 2px; }
+.m-member-card {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--border-light, #f3f4f6);
+    text-decoration: none;
+    background: var(--bg-primary, #fff);
+}
+.m-member-card:active { background: var(--bg-secondary, #f9fafb); }
+.m-member-avatar {
+    width: 52px; height: 52px;
+    border-radius: 50%; object-fit: cover;
+    flex-shrink: 0;
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    display: flex; align-items: center; justify-content: center;
+    color: #fff; font-size: 1.25rem; font-weight: 800;
+}
+.m-member-avatar img { width: 52px; height: 52px; border-radius: 50%; object-fit: cover; }
+.m-member-info { flex: 1; min-width: 0; }
+.m-member-name { font-size: 0.9375rem; font-weight: 700; color: var(--text-primary, #111); }
+.m-member-title { font-size: 0.8125rem; color: var(--accent-primary, #3b82f6); font-weight: 600; }
+.m-member-bio {
+    font-size: 0.8125rem; color: var(--text-secondary, #6b7280);
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    max-width: 220px;
+}
+.m-member-skills {
+    display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px;
+}
+.m-skill-tag {
+    padding: 2px 8px; border-radius: 20px;
+    background: var(--bg-secondary, #f3f4f6);
+    font-size: 0.6875rem; color: var(--text-secondary, #6b7280);
+    font-weight: 600;
+}
+.m-member-chevron { color: var(--text-tertiary, #9ca3af); font-size: 0.875rem; flex-shrink: 0; }
+.m-section-label {
+    padding: 10px 16px 6px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--text-tertiary, #9ca3af);
+    text-transform: uppercase;
+    letter-spacing: .05em;
+    background: var(--bg-secondary, #f9fafb);
+    border-bottom: 1px solid var(--border-light, #e5e7eb);
+}
+.m-empty {
+    text-align: center;
+    padding: 40px 20px;
+    color: var(--text-tertiary, #9ca3af);
+    font-size: 0.875rem;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="m-members-header">
+    <div class="m-members-title">구성원</div>
+    <div class="m-members-sub">포트폴리오를 공개한 멤버들</div>
+</div>
+
+{% if collections %}
+<div class="m-section-label">포트폴리오 컬렉션</div>
+{% for col in collections %}
+<a href="{% url 'community:portfolio_collection_detail' col.slug %}" class="m-member-card">
+    <div class="m-member-avatar">
+        {% if col.profile_image %}
+        <img src="{{ col.profile_image.url }}" alt="">
+        {% else %}
+        {{ col.display_name|slice:":1"|upper }}
+        {% endif %}
+    </div>
+    <div class="m-member-info">
+        <div class="m-member-name">{{ col.display_name|default:col.user.username }}</div>
+        {% if col.title %}<div class="m-member-title">{{ col.title }}</div>{% endif %}
+        {% if col.bio %}<div class="m-member-bio">{{ col.bio }}</div>{% endif %}
+        {% if col.skills %}
+        <div class="m-member-skills">
+            {% for skill in col.skills|split_skills|slice:":4" %}
+            <span class="m-skill-tag">{{ skill }}</span>
+            {% endfor %}
+        </div>
+        {% endif %}
+        <div style="font-size:0.6875rem;color:var(--text-tertiary,#9ca3af);margin-top:4px;">{{ col.portfolio_name }}</div>
+    </div>
+    <i class="fas fa-chevron-right m-member-chevron"></i>
+</a>
+{% endfor %}
+{% endif %}
+
+{% if portfolios %}
+<div class="m-section-label">포트폴리오</div>
+{% for portfolio in portfolios %}
+<a href="{% url 'community:portfolio_view' portfolio.user.id %}" class="m-member-card">
+    <div class="m-member-avatar">
+        {% if portfolio.profile_image %}
+        <img src="{{ portfolio.profile_image.url }}" alt="">
+        {% else %}
+        {{ portfolio.display_name|slice:":1"|upper }}
+        {% endif %}
+    </div>
+    <div class="m-member-info">
+        <div class="m-member-name">{{ portfolio.display_name|default:portfolio.user.username }}</div>
+        {% if portfolio.title %}<div class="m-member-title">{{ portfolio.title }}</div>{% endif %}
+        {% if portfolio.bio %}<div class="m-member-bio">{{ portfolio.bio }}</div>{% endif %}
+        {% if portfolio.skills %}
+        <div class="m-member-skills">
+            {% for skill in portfolio.skills|split_skills|slice:":4" %}
+            <span class="m-skill-tag">{{ skill }}</span>
+            {% endfor %}
+        </div>
+        {% endif %}
+    </div>
+    <i class="fas fa-chevron-right m-member-chevron"></i>
+</a>
+{% endfor %}
+{% endif %}
+
+{% if not portfolios and not collections %}
+<div class="m-empty">
+    <i class="fas fa-users" style="font-size:2rem;margin-bottom:8px;display:block;"></i>
+    아직 포트폴리오를 공개한 멤버가 없습니다.
+</div>
+{% endif %}
+{% endblock %}

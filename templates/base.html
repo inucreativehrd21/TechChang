@@ -54,11 +54,16 @@
     {% block script %}
     {% endblock %}
 
-    <!-- 버전 전환 FAB (모바일 기기에서 PC 버전 보는 경우) -->
-    {% if is_forced_version %}
-    <a href="{% url 'common:toggle_version' %}" style="position:fixed;right:16px;bottom:20px;z-index:9999;background:#fff;border:1px solid #e5e7eb;border-radius:50px;padding:8px 14px;font-size:0.75rem;font-weight:600;color:#6b7280;text-decoration:none;display:flex;align-items:center;gap:6px;box-shadow:0 2px 12px rgba(0,0,0,.15);">
+    <!-- 버전 전환 FAB (PC 버전 보는 경우 항상 표시) -->
+    <a href="{% url 'common:toggle_version' %}" id="mobile-version-fab" style="position:fixed;right:16px;bottom:20px;z-index:9999;background:#fff;border:1px solid #e5e7eb;border-radius:50px;padding:8px 14px;font-size:0.75rem;font-weight:600;color:#6b7280;text-decoration:none;display:flex;align-items:center;gap:6px;box-shadow:0 2px 12px rgba(0,0,0,.15);opacity:0;transition:opacity .3s;" onmouseover="this.style.color='#3b82f6';this.style.borderColor='#3b82f6';" onmouseout="this.style.color='#6b7280';this.style.borderColor='#e5e7eb';">
         <i class="fas fa-mobile-alt"></i> 모바일 버전
     </a>
-    {% endif %}
+    <script>
+    // 스크롤 후 FAB 표시 (페이지 로드 즉시는 약간 숨겨서 UX 방해 방지)
+    setTimeout(function() {
+        var fab = document.getElementById('mobile-version-fab');
+        if (fab) fab.style.opacity = '1';
+    }, 1500);
+    </script>
 </body>
 </html>

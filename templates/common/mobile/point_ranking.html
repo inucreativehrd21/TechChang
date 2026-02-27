@@ -1,0 +1,160 @@
+{% extends 'base_mobile.html' %}
+{% load static %}
+
+{% block title %}포인트 랭킹 - 테크창{% endblock %}
+
+{% block extra_css %}
+<style>
+.m-ranking-header {
+    padding: 20px 16px 16px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: #fff; text-align: center;
+}
+.m-ranking-title { font-size: 1.25rem; font-weight: 800; }
+.m-my-rank {
+    margin: 12px 16px;
+    background: rgba(102, 126, 234, 0.1);
+    border: 1.5px solid rgba(102, 126, 234, 0.3);
+    border-radius: 14px; padding: 14px 16px;
+    display: flex; justify-content: space-around;
+}
+.m-my-stat { text-align: center; }
+.m-my-stat-val { font-size: 1.25rem; font-weight: 800; color: var(--accent-primary, #3b82f6); }
+.m-my-stat-label { font-size: 0.75rem; color: var(--text-secondary, #6b7280); margin-top: 2px; }
+.m-podium {
+    display: flex; align-items: flex-end; justify-content: center;
+    gap: 8px; padding: 16px 20px 8px;
+}
+.m-podium-item { text-align: center; flex: 1; }
+.m-podium-avatar {
+    width: 56px; height: 56px; border-radius: 50%;
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    display: flex; align-items: center; justify-content: center;
+    color: #fff; font-size: 1.25rem; font-weight: 800;
+    margin: 0 auto 4px; overflow: hidden;
+}
+.m-podium-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.m-podium-avatar.rank1 { width: 68px; height: 68px; }
+.m-podium-name { font-size: 0.75rem; font-weight: 700; color: var(--text-primary, #111); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.m-podium-pts { font-size: 0.6875rem; color: var(--text-secondary, #6b7280); }
+.m-podium-platform {
+    margin-top: 6px; border-radius: 10px 10px 0 0;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.125rem; font-weight: 800; color: #fff;
+}
+.m-podium-platform.p1 { background: linear-gradient(135deg, #facc15, #eab308); height: 64px; }
+.m-podium-platform.p2 { background: linear-gradient(135deg, #e5e7eb, #cbd5e1); height: 48px; color: #374151; }
+.m-podium-platform.p3 { background: linear-gradient(135deg, #f59e0b, #d97706); height: 36px; }
+.m-rank-row {
+    display: flex; align-items: center; gap: 12px;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border-light, #f3f4f6);
+    background: var(--bg-primary, #fff);
+}
+.m-rank-num {
+    width: 36px; height: 36px; border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.9375rem; font-weight: 800;
+    background: var(--bg-secondary, #f3f4f6);
+    color: var(--text-secondary, #6b7280); flex-shrink: 0;
+}
+.m-rank-avatar {
+    width: 40px; height: 40px; border-radius: 50%;
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    display: flex; align-items: center; justify-content: center;
+    color: #fff; font-weight: 800; flex-shrink: 0; overflow: hidden;
+}
+.m-rank-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.m-rank-info { flex: 1; min-width: 0; }
+.m-rank-name { font-size: 0.9375rem; font-weight: 700; color: var(--text-primary, #111); }
+.m-rank-sub { font-size: 0.75rem; color: var(--text-secondary, #6b7280); margin-top: 1px; }
+.m-rank-pts { font-size: 1.0625rem; font-weight: 800; color: #667eea; flex-shrink: 0; }
+.m-empty { text-align: center; padding: 40px 20px; color: var(--text-tertiary, #9ca3af); font-size: .875rem; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="m-ranking-header">
+    <div style="font-size:1.75rem;margin-bottom:4px;">🏆</div>
+    <div class="m-ranking-title">포인트 랭킹</div>
+</div>
+
+{% if current_user_profile %}
+<div class="m-my-rank">
+    <div class="m-my-stat">
+        <div class="m-my-stat-val">{{ current_user_rank }}위</div>
+        <div class="m-my-stat-label">내 순위</div>
+    </div>
+    <div class="m-my-stat">
+        <div class="m-my-stat-val">{{ current_user_profile.points }}P</div>
+        <div class="m-my-stat-label">내 포인트</div>
+    </div>
+</div>
+{% endif %}
+
+{% if top_users %}
+<!-- 상위 3명 포디움 -->
+{% if top_users|length >= 3 %}
+<div class="m-podium">
+    <!-- 2등 -->
+    <div class="m-podium-item">
+        {% with profile=top_users.1 %}
+        <div class="m-podium-avatar">
+            {% if profile.profile_image %}<img src="{{ profile.profile_image.url }}" alt="">{% else %}{{ profile.user.username|slice:":1"|upper }}{% endif %}
+        </div>
+        <div class="m-podium-name">{{ profile.nickname|default:profile.user.username }}</div>
+        <div class="m-podium-pts">{{ profile.points }}P</div>
+        <div class="m-podium-platform p2">🥈</div>
+        {% endwith %}
+    </div>
+    <!-- 1등 -->
+    <div class="m-podium-item">
+        {% with profile=top_users.0 %}
+        <div style="text-align:center;font-size:1.25rem;">👑</div>
+        <div class="m-podium-avatar rank1">
+            {% if profile.profile_image %}<img src="{{ profile.profile_image.url }}" alt="">{% else %}{{ profile.user.username|slice:":1"|upper }}{% endif %}
+        </div>
+        <div class="m-podium-name">{{ profile.nickname|default:profile.user.username }}</div>
+        <div class="m-podium-pts">{{ profile.points }}P</div>
+        <div class="m-podium-platform p1">🥇</div>
+        {% endwith %}
+    </div>
+    <!-- 3등 -->
+    <div class="m-podium-item">
+        {% with profile=top_users.2 %}
+        <div class="m-podium-avatar">
+            {% if profile.profile_image %}<img src="{{ profile.profile_image.url }}" alt="">{% else %}{{ profile.user.username|slice:":1"|upper }}{% endif %}
+        </div>
+        <div class="m-podium-name">{{ profile.nickname|default:profile.user.username }}</div>
+        <div class="m-podium-pts">{{ profile.points }}P</div>
+        <div class="m-podium-platform p3">🥉</div>
+        {% endwith %}
+    </div>
+</div>
+{% endif %}
+
+<!-- 4위부터 -->
+{% for profile in top_users %}
+{% if forloop.counter > 3 %}
+<div class="m-rank-row">
+    <div class="m-rank-num">{{ forloop.counter }}</div>
+    <div class="m-rank-avatar">
+        {% if profile.profile_image %}<img src="{{ profile.profile_image.url }}" alt="">
+        {% else %}{{ profile.user.username|slice:":1"|upper }}{% endif %}
+    </div>
+    <div class="m-rank-info">
+        <div class="m-rank-name">{{ profile.nickname|default:profile.user.username }}</div>
+        <div class="m-rank-sub">@{{ profile.user.username }}</div>
+    </div>
+    <div class="m-rank-pts">{{ profile.points }}P</div>
+</div>
+{% endif %}
+{% endfor %}
+
+{% else %}
+<div class="m-empty">
+    <i class="fas fa-trophy" style="font-size:2rem;display:block;margin-bottom:8px;"></i>
+    아직 포인트가 없습니다.
+</div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,123 @@
+{% extends 'base_mobile.html' %}
+
+{% block title %}지뢰찾기 - 테크창{% endblock %}
+{% block tab_games %}active{% endblock %}
+
+{% block extra_css %}
+<style>
+.m-game-hero {
+    padding: 24px 20px 16px;
+    text-align: center;
+    background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+    color: #fff;
+}
+.m-game-emoji { font-size: 2.5rem; margin-bottom: 8px; }
+.m-game-title { font-size: 1.5rem; font-weight: 800; margin-bottom: 4px; }
+.m-game-sub { font-size: 0.875rem; opacity: .9; }
+.m-touch-hint {
+    margin: 12px 16px 0;
+    background: rgba(79, 172, 254, 0.1);
+    border: 1px solid rgba(79, 172, 254, 0.3);
+    border-radius: 12px;
+    padding: 12px 16px;
+    font-size: 0.8125rem;
+    color: #0369a1;
+    display: flex; align-items: center; gap: 8px;
+}
+.m-mode-card {
+    margin: 10px 16px 0;
+    background: var(--bg-primary, #fff);
+    border-radius: 16px;
+    padding: 18px;
+    box-shadow: 0 2px 10px rgba(0,0,0,.08);
+    text-decoration: none;
+    display: flex; align-items: center; gap: 16px;
+    color: inherit;
+    border: 2px solid transparent;
+    transition: border-color .2s;
+}
+.m-mode-card:active { border-color: #4facfe; }
+.m-mode-icon {
+    width: 52px; height: 52px;
+    border-radius: 14px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.5rem; flex-shrink: 0;
+}
+.icon-easy { background: #d1fae5; }
+.icon-medium { background: #fef3c7; }
+.icon-hard { background: #fee2e2; }
+.m-mode-info { flex: 1; }
+.m-mode-badge {
+    display: inline-block; padding: 3px 8px; border-radius: 20px;
+    font-size: 0.6875rem; font-weight: 700; margin-bottom: 4px;
+}
+.badge-easy { background: #d1fae5; color: #065f46; }
+.badge-medium { background: #fef3c7; color: #92400e; }
+.badge-hard { background: #fee2e2; color: #991b1b; }
+.m-mode-title { font-size: 1rem; font-weight: 700; color: var(--text-primary, #111); }
+.m-mode-desc { font-size: 0.8125rem; color: var(--text-secondary, #6b7280); }
+.m-actions { padding: 16px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.m-btn-ghost {
+    padding: 13px; border-radius: 12px;
+    background: var(--bg-secondary, #f9fafb);
+    color: var(--text-secondary, #6b7280);
+    border: 1.5px solid var(--border-light, #e5e7eb);
+    font-weight: 600; font-size: 0.9375rem;
+    text-align: center; text-decoration: none; display: block;
+}
+.m-btn-lb {
+    padding: 13px; border-radius: 12px;
+    background: #4facfe; color: #fff;
+    font-weight: 600; font-size: 0.9375rem;
+    text-align: center; text-decoration: none; display: block;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="m-game-hero">
+    <div class="m-game-emoji">💣</div>
+    <div class="m-game-title">지뢰찾기</div>
+    <div class="m-game-sub">난이도를 선택하세요</div>
+</div>
+
+<div class="m-touch-hint">
+    <i class="fas fa-info-circle" style="flex-shrink:0;"></i>
+    <span>지뢰 위치를 기억하고 모든 안전한 칸을 열어보세요</span>
+</div>
+
+<a href="{% url 'community:minesweeper_create' %}?difficulty=easy" class="m-mode-card">
+    <div class="m-mode-icon icon-easy">😊</div>
+    <div class="m-mode-info">
+        <div><span class="m-mode-badge badge-easy">쉬움</span></div>
+        <div class="m-mode-title">Easy</div>
+        <div class="m-mode-desc">9 × 9 · 지뢰 10개</div>
+    </div>
+    <i class="fas fa-chevron-right" style="color:var(--text-tertiary,#9ca3af);"></i>
+</a>
+
+<a href="{% url 'community:minesweeper_create' %}?difficulty=medium" class="m-mode-card">
+    <div class="m-mode-icon icon-medium">😤</div>
+    <div class="m-mode-info">
+        <div><span class="m-mode-badge badge-medium">보통</span></div>
+        <div class="m-mode-title">Medium</div>
+        <div class="m-mode-desc">16 × 16 · 지뢰 40개</div>
+    </div>
+    <i class="fas fa-chevron-right" style="color:var(--text-tertiary,#9ca3af);"></i>
+</a>
+
+<a href="{% url 'community:minesweeper_create' %}?difficulty=hard" class="m-mode-card" style="margin-bottom:0;">
+    <div class="m-mode-icon icon-hard">🔥</div>
+    <div class="m-mode-info">
+        <div><span class="m-mode-badge badge-hard">어려움</span></div>
+        <div class="m-mode-title">Hard</div>
+        <div class="m-mode-desc">16 × 30 · 지뢰 99개</div>
+    </div>
+    <i class="fas fa-chevron-right" style="color:var(--text-tertiary,#9ca3af);"></i>
+</a>
+
+<div class="m-actions">
+    <a href="{% url 'community:games_index' %}" class="m-btn-ghost"><i class="fas fa-gamepad me-2"></i>게임 목록</a>
+    <a href="{% url 'community:minesweeper_leaderboard' %}?difficulty=easy" class="m-btn-lb"><i class="fas fa-trophy me-2"></i>리더보드</a>
+</div>
+{% endblock %}

@@ -1266,6 +1266,86 @@ def point_ranking(request):
     return render(request, 'common/point_ranking.html', context)
 
 
+@admin_required
+def server_monitor(request):
+    """서버 모니터링 대시보드 (관리자 전용)"""
+    from common.management.commands.send_log_report import Command as ReportCmd
+    from community.models import Question, DailyVisitor
+    from datetime import date
+
+    hours = int(request.GET.get('hours', 24))
+    cmd = ReportCmd()
+
+    db_stats       = cmd._collect_db_stats()
+    journal_stats  = cmd._collect_journal(hours)
+    security_stats = cmd._collect_security_logs(hours)
+    sys_stats      = cmd._collect_system_stats()
+
+    # 최근 7일 방문자 추이
+    today = date.today()
+    visitor_trend = []
+    for i in range(6, -1, -1):
+        d = today - timedelta(days=i)
+        try:
+            vc = DailyVisitor.objects.filter(date=d).first()
+            visitor_trend.append({'date': d.strftime('%m/%d'), 'count': vc.visitor_count if vc else 0})
+        except Exception:
+            visitor_trend.append({'date': d.strftime('%m/%d'), 'count': 0})
+
+    # 최근 7일 질문 추이
+    question_trend = []
+    for i in range(6, -1, -1):
+        d = today - timedelta(days=i)
+        cnt = Question.objects.filter(is_deleted=False, create_date__date=d).count()
+        question_trend.append({'date': d.strftime('%m/%d'), 'count': cnt})
+
+    context = {
+        'hours': hours,
+        'db': db_stats,
+        'journal': journal_stats,
+        'security': security_stats,
+        'sys': sys_stats,
+        'visitor_trend': visitor_trend,
+        'question_trend': question_trend,
+    }
+    return render(request, 'common/server_monitor.html', context)
+
+
+@require_POST
+@admin_required
+def send_monitor_email(request):
+    """모니터 대시보드에서 즉시 이메일 발송"""
+    import os
+    from common.management.commands.send_log_report import Command as ReportCmd
+    from datetime import datetime as dt
+    from django.core.mail import send_mail as _send_mail
+
+    hours = int(request.POST.get('hours', 24))
+    recipient = os.environ.get('DJANGO_ADMIN_EMAIL', '')
+    if not recipient and settings.ADMINS:
+        recipient = settings.ADMINS[0][1]
+
+    if not recipient:
+        messages.error(request, '수신자 이메일 미설정 (.env DJANGO_ADMIN_EMAIL 확인)')
+        return redirect('common:server_monitor')
+
+    try:
+        report = ReportCmd()._build_report(hours)
+        _send_mail(
+            subject=f'[테크창] 서버 리포트 {dt.now():%Y-%m-%d %H:%M} ({hours}h)',
+            message=report['text'],
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            recipient_list=[recipient],
+            html_message=report['html'],
+            fail_silently=False,
+        )
+        messages.success(request, f'리포트를 {recipient}로 발송했습니다.')
+    except Exception as e:
+        messages.error(request, f'발송 실패: {e}')
+
+    return redirect(f'/common/admin/monitor/?hours={hours}')
+
+
 def toggle_version(request):
     """PC/모바일 버전 전환"""
     current = request.COOKIES.get('force_version', '')

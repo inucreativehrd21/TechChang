@@ -1,0 +1,185 @@
+{% extends 'base_mobile.html' %}
+{% load static %}
+
+{% block title %}{% if question %}게시글 수정{% else %}게시글 작성{% endif %} - 테크창{% endblock %}
+
+{% block extra_css %}
+<style>
+.m-form-header {
+    padding: 16px;
+    background: var(--bg-primary, #fff);
+    border-bottom: 1px solid var(--border-light, #e5e7eb);
+}
+.m-form-title { font-size: 1.0625rem; font-weight: 800; }
+.m-form-body { padding: 16px; }
+.m-fg { margin-bottom: 16px; }
+.m-label {
+    display: block; font-size: 0.8125rem; font-weight: 700;
+    color: var(--text-secondary, #6b7280); margin-bottom: 6px;
+}
+.m-label .req { color: #ef4444; }
+.m-input, .m-select, .m-textarea {
+    width: 100%;
+    padding: 13px 14px;
+    border: 1.5px solid var(--border-light, #e5e7eb);
+    border-radius: 12px;
+    font-size: 0.9375rem;
+    color: var(--text-primary, #111);
+    background: var(--bg-primary, #fff);
+    outline: none;
+    transition: border-color .2s;
+    font-family: inherit;
+}
+.m-input:focus, .m-select:focus, .m-textarea:focus {
+    border-color: var(--accent-primary, #3b82f6);
+}
+.m-textarea {
+    min-height: 240px;
+    resize: vertical;
+    line-height: 1.6;
+}
+.m-hint { font-size: 0.75rem; color: var(--text-tertiary, #9ca3af); margin-top: 4px; }
+.m-file-btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 10px 16px;
+    background: var(--bg-secondary, #f9fafb);
+    border: 1.5px dashed var(--border-light, #e5e7eb);
+    border-radius: 10px;
+    font-size: 0.875rem; color: var(--text-secondary, #6b7280);
+    cursor: pointer; width: 100%; justify-content: center;
+}
+.m-btn-submit {
+    display: block; width: 100%;
+    padding: 15px; margin-top: 8px;
+    background: var(--accent-primary, #3b82f6);
+    color: #fff; border: none; border-radius: 12px;
+    font-size: 1rem; font-weight: 700; cursor: pointer;
+}
+.m-btn-cancel {
+    display: block; width: 100%; padding: 13px; margin-top: 10px;
+    background: transparent; color: var(--text-secondary, #6b7280);
+    border: 1.5px solid var(--border-light, #e5e7eb); border-radius: 12px;
+    font-size: 0.9375rem; font-weight: 600; cursor: pointer; text-decoration: none;
+    text-align: center;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="m-form-header">
+    <div class="m-form-title">
+        {% if question %}<i class="fas fa-edit me-2 text-primary"></i>게시글 수정
+        {% else %}<i class="fas fa-plus-circle me-2 text-primary"></i>게시글 작성
+        {% endif %}
+    </div>
+</div>
+
+<div class="m-form-body">
+    {% if form.errors %}
+    <div class="alert alert-danger mb-3" style="border-radius:12px;font-size:.875rem;">
+        <i class="fas fa-exclamation-triangle me-2"></i>
+        {% for field in form %}{% for error in field.errors %}<div>{{ field.label }}: {{ error }}</div>{% endfor %}{% endfor %}
+        {% for error in form.non_field_errors %}<div>{{ error }}</div>{% endfor %}
+    </div>
+    {% endif %}
+
+    <form method="post" enctype="multipart/form-data" id="questionForm"
+          action="{% if question %}{% url 'community:question_modify' question.id %}{% else %}{% url 'community:question_create' %}{% endif %}">
+        {% csrf_token %}
+
+        <!-- 카테고리 -->
+        <div class="m-fg">
+            <label class="m-label" for="{{ form.category.id_for_label }}">카테고리 <span class="req">*</span></label>
+            <select class="m-select" name="category" id="{{ form.category.id_for_label }}" required>
+                <option value="">카테고리를 선택하세요</option>
+                {% for value, label in form.category.field.choices %}
+                    {% if value %}
+                    <option value="{{ value }}" {% if form.category.value == value %}selected{% endif %}>{{ label }}</option>
+                    {% endif %}
+                {% endfor %}
+            </select>
+        </div>
+
+        <!-- 제목 -->
+        <div class="m-fg">
+            <label class="m-label" for="{{ form.subject.id_for_label }}">제목 <span class="req">*</span></label>
+            <input type="text" class="m-input" name="subject"
+                   id="{{ form.subject.id_for_label }}"
+                   value="{{ form.subject.value|default:'' }}"
+                   placeholder="질문 제목을 입력하세요" required maxlength="200">
+            <div class="m-hint">명확하고 구체적인 제목이 더 많은 답변을 받습니다</div>
+        </div>
+
+        <!-- 내용 -->
+        <div class="m-fg">
+            <label class="m-label" for="{{ form.content.id_for_label }}">내용 <span class="req">*</span></label>
+            <textarea class="m-textarea" name="content"
+                      id="{{ form.content.id_for_label }}"
+                      placeholder="질문 내용을 자세히 작성해주세요.&#10;&#10;- 어떤 문제가 있나요?&#10;- 어떤 환경에서 발생했나요?&#10;- 이미 시도해본 것이 있나요?" required>{{ form.content.value|default:'' }}</textarea>
+        </div>
+
+        <!-- 이미지 첨부 -->
+        <div class="m-fg">
+            <label class="m-label">이미지 첨부 <span style="font-weight:400;color:var(--text-tertiary,#9ca3af);">(선택)</span></label>
+            <label class="m-file-btn" for="imageInput">
+                <i class="fas fa-image"></i>
+                <span id="imageLabel">이미지 선택 (JPG, PNG 최대 5MB)</span>
+            </label>
+            <input type="file" id="imageInput" name="image" accept="image/*" style="display:none;" onchange="updateImageLabel(this)">
+            {% if question and question.image %}
+            <div style="margin-top:8px;font-size:0.8125rem;color:var(--text-secondary,#6b7280);">
+                현재 이미지: <a href="{{ question.image.url }}" target="_blank">보기</a>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- 파일 첨부 -->
+        <div class="m-fg">
+            <label class="m-label">파일 첨부 <span style="font-weight:400;color:var(--text-tertiary,#9ca3af);">(선택)</span></label>
+            <label class="m-file-btn" for="fileInput">
+                <i class="fas fa-paperclip"></i>
+                <span id="fileLabel">파일 선택 (PDF, DOC, XLS 등 최대 20MB)</span>
+            </label>
+            <input type="file" id="fileInput" name="file" style="display:none;" onchange="updateFileLabel(this)">
+            {% if question and question.file %}
+            <div style="margin-top:8px;font-size:0.8125rem;color:var(--text-secondary,#6b7280);">
+                현재 파일: {{ question.file.name|truncatechars:30 }}
+            </div>
+            {% endif %}
+        </div>
+
+        <button type="submit" class="m-btn-submit">
+            <i class="fas fa-{% if question %}save{% else %}paper-plane{% endif %} me-2"></i>
+            {% if question %}수정 완료{% else %}게시글 등록{% endif %}
+        </button>
+        <a href="javascript:history.back()" class="m-btn-cancel">취소</a>
+    </form>
+</div>
+{% endblock %}
+
+{% block script %}
+<script>
+function updateImageLabel(input) {
+    var label = document.getElementById('imageLabel');
+    if (input.files && input.files[0]) {
+        label.textContent = input.files[0].name;
+        label.style.color = 'var(--accent-primary, #3b82f6)';
+    }
+}
+function updateFileLabel(input) {
+    var label = document.getElementById('fileLabel');
+    if (input.files && input.files[0]) {
+        label.textContent = input.files[0].name;
+        label.style.color = 'var(--accent-primary, #3b82f6)';
+    }
+}
+document.getElementById('questionForm').addEventListener('submit', function(e) {
+    var category = this.querySelector('select[name="category"]').value;
+    var subject = this.querySelector('[name="subject"]').value.trim();
+    var content = this.querySelector('[name="content"]').value.trim();
+    if (!category) { e.preventDefault(); alert('카테고리를 선택해주세요.'); return; }
+    if (!subject) { e.preventDefault(); alert('제목을 입력해주세요.'); return; }
+    if (!content) { e.preventDefault(); alert('내용을 입력해주세요.'); return; }
+});
+</script>
+{% endblock %}

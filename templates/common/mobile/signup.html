@@ -1,0 +1,136 @@
+{% extends 'base_mobile.html' %}
+
+{% block title %}회원가입 - 테크창{% endblock %}
+
+{% block extra_css %}
+<style>
+.m-signup-header {
+    background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+    padding: 28px 24px 20px;
+    text-align: center;
+    color: #fff;
+}
+.m-signup-title { font-size: 1.25rem; font-weight: 800; margin-bottom: 4px; }
+.m-signup-sub { font-size: 0.875rem; opacity: 0.9; }
+.m-signup-body { padding: 20px; }
+.m-form-group { margin-bottom: 16px; }
+.m-form-label {
+    display: block;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: var(--text-secondary, #6b7280);
+    margin-bottom: 6px;
+}
+.m-form-label .req { color: #ef4444; }
+.m-form-input {
+    width: 100%;
+    padding: 13px 16px;
+    border: 1.5px solid var(--border-light, #e5e7eb);
+    border-radius: 12px;
+    font-size: 0.9375rem;
+    color: var(--text-primary, #111);
+    background: var(--bg-primary, #fff);
+    outline: none;
+    transition: border-color .2s;
+}
+.m-form-input:focus { border-color: #4facfe; }
+.m-form-hint {
+    font-size: 0.75rem;
+    color: var(--text-tertiary, #9ca3af);
+    margin-top: 4px;
+}
+.m-btn-primary {
+    width: 100%;
+    padding: 15px;
+    background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+    color: #fff;
+    border: none;
+    border-radius: 12px;
+    font-size: 1rem;
+    font-weight: 700;
+    cursor: pointer;
+    margin-top: 8px;
+}
+.m-login-link {
+    text-align: center;
+    margin-top: 20px;
+    font-size: 0.875rem;
+    color: var(--text-secondary, #6b7280);
+}
+.m-login-link a { color: var(--accent-primary, #3b82f6); font-weight: 600; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="m-signup-header">
+    <div style="font-size:1.75rem;margin-bottom:6px;"><i class="fas fa-user-plus"></i></div>
+    <div class="m-signup-title">회원가입</div>
+    <div class="m-signup-sub">테크창 커뮤니티의 새 멤버가 되어보세요</div>
+</div>
+
+<div class="m-signup-body">
+    {% if form.errors %}
+    <div class="alert alert-danger mb-3" style="border-radius:12px;font-size:.875rem;">
+        <i class="fas fa-exclamation-triangle me-2"></i>
+        <strong>입력 오류가 있습니다:</strong>
+        <ul class="mb-0 mt-1" style="padding-left:18px;">
+            {% for field in form %}
+                {% for error in field.errors %}
+                <li><strong>{{ field.label }}:</strong> {{ error }}</li>
+                {% endfor %}
+            {% endfor %}
+            {% for error in form.non_field_errors %}
+            <li>{{ error }}</li>
+            {% endfor %}
+        </ul>
+    </div>
+    {% endif %}
+
+    <form method="post" action="{% url 'common:signup' %}">
+        {% csrf_token %}
+
+        <div class="m-form-group">
+            <label class="m-form-label" for="username">사용자 이름 <span class="req">*</span></label>
+            <input type="text" class="m-form-input" id="username" name="username"
+                   value="{{ form.username.value|default_if_none:'' }}"
+                   placeholder="영문, 숫자, 밑줄 사용 가능" autocomplete="username" required>
+            <div class="m-form-hint">로그인 시 사용할 고유한 이름입니다</div>
+        </div>
+
+        <div class="m-form-group">
+            <label class="m-form-label" for="email1">이메일 <span class="req">*</span></label>
+            <input type="email" class="m-form-input" id="email1" name="email1"
+                   value="{{ form.email1.value|default_if_none:'' }}"
+                   placeholder="이메일 주소" autocomplete="email" required>
+        </div>
+
+        <div class="m-form-group">
+            <label class="m-form-label" for="email2">이메일 확인 <span class="req">*</span></label>
+            <input type="email" class="m-form-input" id="email2" name="email2"
+                   value="{{ form.email2.value|default_if_none:'' }}"
+                   placeholder="이메일 주소 재입력" autocomplete="email" required>
+        </div>
+
+        <div class="m-form-group">
+            <label class="m-form-label" for="password1">비밀번호 <span class="req">*</span></label>
+            <input type="password" class="m-form-input" id="password1" name="password1"
+                   placeholder="10자 이상의 비밀번호" autocomplete="new-password" required>
+            <div class="m-form-hint">영문, 숫자, 특수문자를 포함하여 10자 이상</div>
+        </div>
+
+        <div class="m-form-group">
+            <label class="m-form-label" for="password2">비밀번호 확인 <span class="req">*</span></label>
+            <input type="password" class="m-form-input" id="password2" name="password2"
+                   placeholder="비밀번호 재입력" autocomplete="new-password" required>
+        </div>
+
+        <button type="submit" class="m-btn-primary">
+            <i class="fas fa-user-plus me-2"></i>회원가입
+        </button>
+    </form>
+
+    <div class="m-login-link">
+        이미 계정이 있으신가요? <a href="{% url 'common:login' %}">로그인</a>
+    </div>
+</div>
+{% endblock %}

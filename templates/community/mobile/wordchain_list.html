@@ -1,0 +1,177 @@
+{% extends 'base_mobile.html' %}
+{% load common_tags %}
+
+{% block title %}끝말잇기 - 테크창{% endblock %}
+{% block tab_games %}active{% endblock %}
+
+{% block extra_css %}
+<style>
+.m-game-header {
+    padding: 16px;
+    background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
+    border-bottom: 1px solid var(--border-light, #e5e7eb);
+}
+.m-game-header-top { display: flex; align-items: center; justify-content: space-between; }
+.m-game-header-title { font-size: 1.125rem; font-weight: 800; color: var(--text-primary, #111); }
+.m-game-header-sub { font-size: 0.8125rem; color: var(--text-secondary, #6b7280); margin-top: 2px; }
+.m-btn-new {
+    padding: 8px 14px; border-radius: 10px;
+    background: var(--accent-primary, #3b82f6); color: #fff;
+    border: none; font-size: 0.875rem; font-weight: 600;
+    cursor: pointer; display: inline-flex; align-items: center; gap: 6px;
+}
+.m-section-label {
+    padding: 10px 16px 6px;
+    font-size: 0.75rem; font-weight: 700;
+    color: var(--text-tertiary, #9ca3af); text-transform: uppercase; letter-spacing: .05em;
+    background: var(--bg-secondary, #f9fafb);
+    border-bottom: 1px solid var(--border-light, #e5e7eb);
+}
+.m-wc-card {
+    margin: 10px 16px;
+    background: var(--bg-primary, #fff);
+    border-radius: 14px;
+    box-shadow: 0 2px 8px rgba(0,0,0,.06);
+    padding: 14px;
+}
+.m-wc-title { font-size: 0.9375rem; font-weight: 700; color: var(--text-primary, #111); margin-bottom: 6px; }
+.m-wc-meta { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 8px; }
+.m-wc-badge {
+    padding: 3px 8px; border-radius: 20px;
+    font-size: 0.6875rem; font-weight: 700;
+}
+.badge-active { background: #d1fae5; color: #065f46; }
+.badge-words { background: #dbeafe; color: #1e40af; }
+.badge-players { background: #f3f4f6; color: #374151; }
+.m-wc-last-word {
+    background: var(--bg-secondary, #f9fafb);
+    border-radius: 10px; padding: 8px 12px;
+    font-size: 0.8125rem; color: var(--text-secondary, #6b7280);
+    margin-bottom: 10px;
+}
+.m-wc-last-word strong { color: var(--accent-primary, #3b82f6); }
+.m-wc-last-word .next { color: #10b981; }
+.m-join-btn {
+    display: block; width: 100%; padding: 11px;
+    background: var(--accent-primary, #3b82f6); color: #fff;
+    border: none; border-radius: 10px; font-size: 0.875rem; font-weight: 700;
+    text-align: center; text-decoration: none; cursor: pointer;
+}
+.m-empty { text-align: center; padding: 30px 20px; color: var(--text-tertiary, #9ca3af); font-size: .875rem; }
+
+/* 새 게임 모달 */
+.m-modal { display: none; position: fixed; inset: 0; z-index: 2000; }
+.m-modal-backdrop { position: absolute; inset: 0; background: rgba(0,0,0,.5); }
+.m-modal-sheet {
+    position: absolute; bottom: 0; left: 0; right: 0;
+    background: var(--bg-primary, #fff);
+    border-radius: 20px 20px 0 0;
+    padding: 20px;
+    max-height: 80vh; overflow-y: auto;
+}
+.m-modal.open { display: block; }
+.m-modal-title { font-size: 1.0625rem; font-weight: 800; margin-bottom: 16px; }
+.m-modal-input {
+    width: 100%; padding: 13px 14px;
+    border: 1.5px solid var(--border-light, #e5e7eb);
+    border-radius: 12px; font-size: 0.9375rem;
+    color: var(--text-primary, #111);
+    outline: none; margin-bottom: 8px;
+}
+.m-modal-input:focus { border-color: var(--accent-primary, #3b82f6); }
+.m-modal-label { font-size: 0.8125rem; font-weight: 600; color: var(--text-secondary, #6b7280); margin-bottom: 6px; display: block; }
+.m-modal-hint { font-size: 0.75rem; color: var(--text-tertiary, #9ca3af); margin-bottom: 16px; }
+.m-modal-submit {
+    display: block; width: 100%; padding: 14px;
+    background: var(--accent-primary, #3b82f6); color: #fff;
+    border: none; border-radius: 12px; font-size: 1rem; font-weight: 700;
+    cursor: pointer; margin-bottom: 10px;
+}
+.m-modal-cancel {
+    display: block; width: 100%; padding: 12px;
+    background: transparent; color: var(--text-secondary, #6b7280);
+    border: 1.5px solid var(--border-light, #e5e7eb); border-radius: 12px;
+    font-size: 0.9375rem; font-weight: 600; cursor: pointer;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="m-game-header">
+    <div class="m-game-header-top">
+        <div>
+            <div class="m-game-header-title">🎯 끝말잇기</div>
+            <div class="m-game-header-sub">함께 끝말잇기를 해보세요!</div>
+        </div>
+        <button class="m-btn-new" onclick="document.getElementById('newGameModal').classList.add('open')">
+            <i class="fas fa-plus"></i> 새 게임
+        </button>
+    </div>
+</div>
+
+<!-- 진행 중인 게임 -->
+<div class="m-section-label">
+    진행중인 게임
+    {% if active_games %}<span style="background:#d1fae5;color:#065f46;padding:2px 8px;border-radius:20px;font-size:.6875rem;">{{ active_games.paginator.count }}개</span>{% endif %}
+</div>
+
+{% if active_games %}
+{% for game in active_games %}
+<div class="m-wc-card">
+    <div class="m-wc-title">{{ game.title }}</div>
+    <div class="m-wc-meta">
+        <span class="m-wc-badge badge-active">진행중</span>
+        <span class="m-wc-badge badge-words">단어 {{ game.entry_count }}개</span>
+        <span class="m-wc-badge badge-players">{{ game.participant_count }}명 참가</span>
+    </div>
+    {% if game.last_word %}
+    <div class="m-wc-last-word">
+        마지막 단어: <strong>{{ game.last_word }}</strong>
+        {% if game.expected_first_char %}<span class="next"> → "{{ game.expected_first_char }}"로 시작</span>{% endif %}
+    </div>
+    {% else %}
+    <div class="m-wc-last-word">🎯 첫 단어를 기다리고 있어요!</div>
+    {% endif %}
+    <a href="{% url 'community:wordchain_detail' game.id %}" class="m-join-btn">
+        <i class="fas fa-arrow-right me-2"></i>참가하기
+    </a>
+</div>
+{% endfor %}
+{% else %}
+<div class="m-empty">진행중인 게임이 없습니다.</div>
+{% endif %}
+
+<!-- 종료된 게임 -->
+{% if finished_games %}
+<div class="m-section-label">종료된 게임</div>
+{% for game in finished_games %}
+<div class="m-wc-card" style="opacity:.7;">
+    <div class="m-wc-title">{{ game.title }}</div>
+    <div class="m-wc-meta">
+        <span class="m-wc-badge" style="background:#f3f4f6;color:#6b7280;">종료</span>
+        <span class="m-wc-badge badge-words">단어 {{ game.entry_count }}개</span>
+    </div>
+    <a href="{% url 'community:wordchain_detail' game.id %}" class="m-join-btn" style="background:var(--bg-secondary,#f9fafb);color:var(--text-secondary,#6b7280);">
+        기록 보기
+    </a>
+</div>
+{% endfor %}
+{% endif %}
+
+<!-- 새 게임 모달 (바텀 시트) -->
+<div id="newGameModal" class="m-modal">
+    <div class="m-modal-backdrop" onclick="document.getElementById('newGameModal').classList.remove('open')"></div>
+    <div class="m-modal-sheet">
+        <div class="m-modal-title">새 끝말잇기 게임 시작</div>
+        <form method="post" action="{% url 'community:wordchain_create' %}">
+            {% csrf_token %}
+            <label class="m-modal-label">게임 제목</label>
+            <input type="text" name="title" class="m-modal-input"
+                   placeholder="게임 제목을 입력하세요" required maxlength="100">
+            <div class="m-modal-hint">친구들이 쉽게 찾을 수 있는 제목을 지어주세요</div>
+            <button type="submit" class="m-modal-submit"><i class="fas fa-play me-2"></i>게임 시작</button>
+        </form>
+        <button class="m-modal-cancel" onclick="document.getElementById('newGameModal').classList.remove('open')">취소</button>
+    </div>
+</div>
+{% endblock %}

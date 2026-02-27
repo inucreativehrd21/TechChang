@@ -1,0 +1,247 @@
+{% extends 'base_mobile.html' %}
+{% load common_tags %}
+
+{% block title %}{{ game.title }} - 끝말잇기{% endblock %}
+{% block tab_games %}active{% endblock %}
+
+{% block extra_css %}
+<style>
+.m-wc-header {
+    padding: 14px 16px;
+    background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
+    border-bottom: 1px solid var(--border-light, #e5e7eb);
+}
+.m-wc-game-title { font-size: 1rem; font-weight: 800; color: var(--text-primary, #111); }
+.m-wc-game-meta { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 6px; }
+.m-wc-badge {
+    padding: 3px 8px; border-radius: 20px;
+    font-size: 0.6875rem; font-weight: 700;
+}
+.badge-active { background: #d1fae5; color: #065f46; }
+.badge-waiting { background: #fef3c7; color: #92400e; }
+.badge-finished { background: #f3f4f6; color: #6b7280; }
+.m-word-chain-box {
+    margin: 12px 16px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 16px; padding: 16px;
+    text-align: center; color: #fff;
+}
+.m-current-word { font-size: 2rem; font-weight: 900; }
+.m-next-hint { font-size: 0.875rem; opacity: .9; margin-top: 4px; }
+.m-timer-bar {
+    height: 4px; background: rgba(255,255,255,.3);
+    border-radius: 2px; margin-top: 10px;
+    overflow: hidden;
+}
+.m-timer-fill {
+    height: 100%; background: #fff;
+    border-radius: 2px;
+    transition: width 1s linear;
+}
+.m-word-input-section {
+    margin: 0 16px 12px;
+    background: var(--bg-primary, #fff);
+    border-radius: 14px; padding: 14px;
+    box-shadow: 0 2px 8px rgba(0,0,0,.06);
+}
+.m-word-input {
+    width: 100%; padding: 13px 14px;
+    border: 1.5px solid var(--border-light, #e5e7eb);
+    border-radius: 10px; font-size: 1.0625rem;
+    color: var(--text-primary, #111); outline: none;
+    transition: border-color .2s; margin-bottom: 8px;
+}
+.m-word-input:focus { border-color: #764ba2; }
+.m-word-submit {
+    display: block; width: 100%; padding: 13px;
+    background: linear-gradient(135deg, #667eea, #764ba2); color: #fff;
+    border: none; border-radius: 10px; font-size: 1rem; font-weight: 700;
+    cursor: pointer;
+}
+.m-word-list { padding: 0 16px; }
+.m-word-section-title {
+    font-size: 0.75rem; font-weight: 700;
+    color: var(--text-tertiary, #9ca3af); text-transform: uppercase;
+    letter-spacing: .05em; margin-bottom: 8px;
+}
+.m-word-item {
+    background: var(--bg-primary, #fff);
+    border-radius: 12px; padding: 12px 14px;
+    margin-bottom: 8px;
+    box-shadow: 0 1px 4px rgba(0,0,0,.06);
+    border-left: 3px solid transparent;
+    display: flex; align-items: center; gap: 10px;
+}
+.m-word-item.latest { border-left-color: #f5576c; }
+.m-word-num {
+    width: 32px; height: 32px; border-radius: 50%;
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    color: #fff; font-weight: 800; font-size: 0.875rem;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+}
+.m-word-info { flex: 1; }
+.m-word-text { font-size: 1rem; font-weight: 700; color: var(--text-primary, #111); }
+.m-word-by { font-size: 0.75rem; color: var(--text-secondary, #6b7280); }
+.m-back-btn {
+    display: block; text-align: center; padding: 16px;
+    font-size: 0.875rem; color: var(--accent-primary, #3b82f6); text-decoration: none;
+}
+.m-join-bar { padding: 12px 16px; }
+.m-join-btn {
+    display: block; width: 100%; padding: 14px;
+    background: #10b981; color: #fff;
+    border: none; border-radius: 12px; font-size: 1rem; font-weight: 700; cursor: pointer;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="m-wc-header">
+    <div class="m-wc-game-title">🎯 {{ game.title }}</div>
+    <div class="m-wc-game-meta">
+        <span class="m-wc-badge {% if game.status == 'active' %}badge-active{% elif game.status == 'waiting' %}badge-waiting{% else %}badge-finished{% endif %}">
+            {{ game.get_status_display }}
+        </span>
+        <span class="m-wc-badge" style="background:#dbeafe;color:#1e40af;">단어 {{ total_entries }}개</span>
+        <span class="m-wc-badge" style="background:#f3f4f6;color:#374151;">{{ participant_count }}명 참가</span>
+    </div>
+</div>
+
+{% if game.status == 'active' %}
+<!-- 현재 단어 체인 표시 -->
+{% if game.last_word %}
+<div class="m-word-chain-box">
+    <div style="font-size:.8125rem;opacity:.8;margin-bottom:4px;">현재 단어</div>
+    <div class="m-current-word">{{ game.last_word }}</div>
+    {% if game.expected_first_char %}
+    <div class="m-next-hint">"<strong>{{ game.expected_first_char }}</strong>"로 시작하는 단어를 입력하세요</div>
+    {% endif %}
+    <div class="m-timer-bar">
+        <div class="m-timer-fill" id="timerFill" style="width:100%;"></div>
+    </div>
+    <div style="font-size:.875rem;margin-top:6px;opacity:.9;">남은 시간: <strong id="timerCount">{{ timeout_seconds }}</strong>초</div>
+</div>
+{% endif %}
+
+{% if can_play %}
+<!-- 단어 입력 폼 -->
+<div class="m-word-input-section">
+    <form method="post" action="{% url 'community:wordchain_play' game.id %}" id="wordForm">
+        {% csrf_token %}
+        <input type="text" class="m-word-input" name="word" id="wordInput"
+               placeholder="{% if game.expected_first_char %}'{{ game.expected_first_char }}'로 시작하는 단어{% else %}첫 단어를 입력하세요{% endif %}"
+               autocomplete="off" autocorrect="off" autocapitalize="none"
+               inputmode="text">
+        <button type="submit" class="m-word-submit" id="submitBtn">
+            <i class="fas fa-paper-plane me-2"></i>단어 제출
+        </button>
+    </form>
+    {% if word_error %}
+    <div class="alert alert-danger mt-2" style="border-radius:10px;font-size:.875rem;">{{ word_error }}</div>
+    {% endif %}
+</div>
+{% elif not user.is_authenticated %}
+<div class="m-join-bar">
+    <a href="{% url 'common:login' %}" class="m-join-btn" style="display:block;text-align:center;text-decoration:none;">
+        <i class="fas fa-sign-in-alt me-2"></i>로그인 후 참가
+    </a>
+</div>
+{% endif %}
+
+{% elif game.status == 'waiting' %}
+<div style="text-align:center;padding:24px 16px;color:var(--text-secondary,#6b7280);">
+    <i class="fas fa-hourglass-half fa-2x mb-3 d-block" style="color:#f59e0b;"></i>
+    게임 시작을 기다리는 중...<br>
+    {% if can_play %}
+    첫 단어를 입력해 게임을 시작하세요!
+    <div class="m-word-input-section" style="margin-top:16px;">
+        <form method="post" action="{% url 'community:wordchain_play' game.id %}">
+            {% csrf_token %}
+            <input type="text" class="m-word-input" name="word" placeholder="첫 단어를 입력하세요" autocomplete="off">
+            <button type="submit" class="m-word-submit"><i class="fas fa-play me-2"></i>게임 시작!</button>
+        </form>
+    </div>
+    {% endif %}
+</div>
+
+{% else %}
+<!-- 게임 종료 -->
+<div style="text-align:center;padding:20px 16px;">
+    <div style="font-size:3rem;margin-bottom:8px;">🏁</div>
+    <div style="font-size:1.0625rem;font-weight:800;color:var(--text-primary,#111);">게임 종료</div>
+    <div style="font-size:0.875rem;color:var(--text-secondary,#6b7280);margin-top:4px;">총 {{ total_entries }}개의 단어가 사용되었습니다</div>
+</div>
+{% endif %}
+
+<!-- 단어 목록 -->
+{% if entries %}
+<div class="m-word-list">
+    <div class="m-word-section-title">단어 목록</div>
+    {% for entry in entries %}
+    <div class="m-word-item {% if forloop.first %}latest{% endif %}">
+        <div class="m-word-num">{{ forloop.revcounter }}</div>
+        <div class="m-word-info">
+            <div class="m-word-text">{{ entry.word }}</div>
+            <div class="m-word-by">{{ entry.player|display_name }} · {{ entry.played_at|date:"H:i" }}</div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+<a href="{% url 'community:wordchain_list' %}" class="m-back-btn">
+    <i class="fas fa-arrow-left me-2"></i>목록으로
+</a>
+{% endblock %}
+
+{% block script %}
+<script>
+{% if game.status == 'active' %}
+// 타이머
+var timeoutSec = {{ timeout_seconds|default:30 }};
+var timerCount = document.getElementById('timerCount');
+var timerFill = document.getElementById('timerFill');
+var totalTime = timeoutSec;
+
+if (timerCount) {
+    var timer = setInterval(function() {
+        timeoutSec--;
+        timerCount.textContent = timeoutSec;
+        if (timerFill) {
+            timerFill.style.width = (timeoutSec / totalTime * 100) + '%';
+        }
+        if (timeoutSec <= 0) {
+            clearInterval(timer);
+            location.reload();
+        }
+        if (timeoutSec <= 10 && timerFill) {
+            timerFill.style.background = '#ff6b6b';
+        }
+    }, 1000);
+}
+
+// WebSocket 실시간 업데이트
+var wsScheme = location.protocol === 'https:' ? 'wss' : 'ws';
+var ws = new WebSocket(wsScheme + '://' + location.host + '/ws/wordchain/{{ game.id }}/');
+ws.onmessage = function(e) {
+    var data = JSON.parse(e.data);
+    if (data.type === 'new_word' || data.type === 'game_update') {
+        location.reload();
+    }
+};
+
+// 폼 최적화
+var wordForm = document.getElementById('wordForm');
+if (wordForm) {
+    wordForm.addEventListener('submit', function() {
+        var btn = document.getElementById('submitBtn');
+        if (btn) { btn.disabled = true; btn.textContent = '제출 중...'; }
+    });
+}
+// 단어 입력 시 자동 포커스
+var wordInput = document.getElementById('wordInput');
+if (wordInput) { wordInput.focus(); }
+{% endif %}
+</script>
+{% endblock %}

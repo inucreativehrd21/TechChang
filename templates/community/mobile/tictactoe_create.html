@@ -1,0 +1,62 @@
+{% extends 'base_mobile.html' %}
+
+{% block title %}틱택토 게임 만들기 - 테크창{% endblock %}
+{% block tab_games %}active{% endblock %}
+
+{% block extra_css %}
+<style>
+.m-form-header {
+    padding: 20px 16px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: #fff; text-align: center;
+}
+.m-form-body { padding: 20px 16px; }
+.m-form-group { margin-bottom: 18px; }
+.m-form-label { display: block; font-size: 0.8125rem; font-weight: 600; color: var(--text-secondary, #6b7280); margin-bottom: 6px; }
+.m-form-input {
+    width: 100%; padding: 14px 16px;
+    border: 1.5px solid var(--border-light, #e5e7eb);
+    border-radius: 12px; font-size: 0.9375rem;
+    color: var(--text-primary, #111); background: var(--bg-primary, #fff);
+    outline: none; transition: border-color .2s;
+}
+.m-form-input:focus { border-color: #667eea; }
+.m-btn-primary {
+    display: block; width: 100%; padding: 15px;
+    background: linear-gradient(135deg, #667eea, #764ba2); color: #fff;
+    border: none; border-radius: 12px; font-size: 1rem; font-weight: 700;
+    cursor: pointer; margin-bottom: 10px;
+}
+.m-btn-ghost {
+    display: block; width: 100%; padding: 13px;
+    background: transparent; color: var(--text-secondary, #6b7280);
+    border: 1.5px solid var(--border-light, #e5e7eb); border-radius: 12px;
+    font-size: 0.9375rem; font-weight: 600; text-align: center; text-decoration: none;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="m-form-header">
+    <div style="font-size:1.75rem;margin-bottom:6px;">⭕❌</div>
+    <div style="font-size:1.125rem;font-weight:800;">새 틱택토 게임</div>
+    <div style="font-size:0.875rem;opacity:.9;">방을 만들고 친구를 초대하세요</div>
+</div>
+
+<div class="m-form-body">
+    <form method="post">
+        {% csrf_token %}
+        <div class="m-form-group">
+            <label class="m-form-label" for="title">게임 제목</label>
+            <input type="text" class="m-form-input" id="title" name="title"
+                   placeholder="{{ user.username }}의 틱택토 게임" maxlength="200">
+        </div>
+        <button type="submit" class="m-btn-primary">
+            <i class="fas fa-check me-2"></i>게임 만들기
+        </button>
+        <a href="{% url 'community:tictactoe_list' %}" class="m-btn-ghost">
+            <i class="fas fa-arrow-left me-2"></i>목록으로
+        </a>
+    </form>
+</div>
+{% endblock %}

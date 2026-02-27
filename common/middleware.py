@@ -12,8 +12,6 @@ from django.conf import settings
 from django.utils import timezone
 import logging
 import re
-from datetime import timedelta
-
 logger = logging.getLogger(__name__)
 
 class SecurityMiddleware:
@@ -257,7 +255,6 @@ class RequestLoggingMiddleware:
         # 기본 정보 수집
         client_ip = self.get_client_ip(request)
         user_agent = request.META.get('HTTP_USER_AGENT', '')
-        referer = request.META.get('HTTP_REFERER', '')
 
         response = self.get_response(request)
         
@@ -316,6 +313,8 @@ class MobileDetectionMiddleware:
         self.get_response = get_response
 
     def __call__(self, request):
+        from common.mobile_loader import set_mobile_request, clear_mobile_request
+
         user_agent = request.META.get('HTTP_USER_AGENT', '').lower()
         is_mobile_device = any(kw in user_agent for kw in self.MOBILE_KEYWORDS)
 
@@ -329,7 +328,12 @@ class MobileDetectionMiddleware:
             request.is_mobile = is_mobile_device
             request.is_forced = False
 
-        return self.get_response(request)
+        # thread-local에 모바일 여부 설정 (템플릿 로더에서 사용)
+        set_mobile_request(request)
+        try:
+            return self.get_response(request)
+        finally:
+            clear_mobile_request()
 
 
 # 안전한 설정 검사

@@ -81,7 +81,7 @@ TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
         'DIRS': [BASE_DIR / 'templates'],
-        'APP_DIRS': True,
+        'APP_DIRS': False,
         'OPTIONS': {
             'context_processors': [
                 'django.template.context_processors.debug',
@@ -89,6 +89,11 @@ TEMPLATES = [
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
                 'common.context_processors.theme_context',
+            ],
+            'loaders': [
+                # 모바일 자동 감지 로더 (mobile/ 서브 경로 우선 시도)
+                'common.mobile_loader.MobileFsLoader',
+                'common.mobile_loader.MobileAppLoader',
             ],
         },
     },

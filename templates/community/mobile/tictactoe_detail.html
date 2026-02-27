@@ -1,0 +1,281 @@
+{% extends 'base_mobile.html' %}
+{% load common_tags %}
+
+{% block title %}{{ game.title }} - 틱택토{% endblock %}
+{% block tab_games %}active{% endblock %}
+
+{% block extra_css %}
+<style>
+.m-ttt-header {
+    padding: 14px 16px;
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    color: #fff;
+}
+.m-ttt-title { font-size: 1rem; font-weight: 800; margin-bottom: 8px; }
+.m-players {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
+}
+.m-player {
+    background: rgba(255,255,255,.15); border-radius: 10px;
+    padding: 8px 12px; text-align: center;
+}
+.m-player.active-turn { background: rgba(255,255,255,.3); box-shadow: 0 0 0 2px #fff; }
+.m-player-mark { font-size: 1.25rem; font-weight: 900; }
+.m-player-name { font-size: 0.8125rem; opacity: .9; }
+.m-player-me { font-size: 0.6875rem; opacity: .75; }
+
+.m-game-status {
+    padding: 10px 16px;
+    text-align: center;
+    font-size: 0.875rem; font-weight: 600;
+}
+.m-game-status.my-turn { color: #10b981; }
+.m-game-status.waiting { color: #f59e0b; }
+
+.m-board-wrap { padding: 16px; display: flex; justify-content: center; }
+.tictactoe-board {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 6px;
+    width: min(calc(100vw - 40px), 320px);
+}
+.tictactoe-cell {
+    aspect-ratio: 1;
+    border: 2px solid var(--border-light, #e5e7eb);
+    border-radius: 12px;
+    background: var(--bg-primary, #fff);
+    font-size: 2.5rem; font-weight: 900;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: all .15s;
+    -webkit-tap-highlight-color: transparent;
+}
+.tictactoe-cell:active { transform: scale(.95); }
+.tictactoe-cell.cell-x { color: #ef4444; border-color: #fecaca; background: #fff5f5; }
+.tictactoe-cell.cell-o { color: #3b82f6; border-color: #bfdbfe; background: #eff6ff; }
+.tictactoe-cell:disabled { cursor: not-allowed; opacity: 0.9; }
+
+.m-join-bar {
+    padding: 12px 16px;
+    background: var(--bg-primary, #fff);
+    border-top: 1px solid var(--border-light, #e5e7eb);
+}
+.m-btn-join {
+    display: block; width: 100%; padding: 14px;
+    background: #10b981; color: #fff;
+    border: none; border-radius: 12px; font-size: 1rem; font-weight: 700;
+    cursor: pointer;
+}
+.m-back-btn {
+    display: block; text-align: center; padding: 12px 16px;
+    font-size: 0.875rem; color: var(--accent-primary, #3b82f6);
+    text-decoration: none;
+}
+
+/* 게임 종료 오버레이 */
+.m-winner-overlay {
+    display: none; position: fixed; inset: 0; z-index: 2000;
+    background: rgba(0,0,0,.6);
+    align-items: center; justify-content: center;
+}
+.m-winner-overlay.show { display: flex; }
+.m-winner-box {
+    background: #fff; border-radius: 20px; padding: 32px 24px;
+    text-align: center; margin: 20px;
+}
+.m-winner-title { font-size: 1.75rem; font-weight: 900; margin-bottom: 8px; }
+.m-winner-sub { color: var(--text-secondary, #6b7280); margin-bottom: 20px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="m-ttt-header">
+    <div class="m-ttt-title">{{ game.title }}</div>
+    <div class="m-players">
+        <div class="m-player {% if game.status == 'playing' and game.current_turn == 'X' %}active-turn{% endif %}" id="playerXInfo">
+            <div class="m-player-mark" style="color:#ff6b6b;">X</div>
+            <div class="m-player-name">{{ game.player_x.username }}</div>
+            {% if is_player_x %}<div class="m-player-me">(나)</div>{% endif %}
+        </div>
+        <div class="m-player {% if game.status == 'playing' and game.current_turn == 'O' %}active-turn{% endif %}" id="playerOInfo">
+            <div class="m-player-mark" style="color:#74b9ff;">O</div>
+            {% if game.player_o %}
+            <div class="m-player-name">{{ game.player_o.username }}</div>
+            {% if is_player_o %}<div class="m-player-me">(나)</div>{% endif %}
+            {% else %}
+            <div class="m-player-name" style="opacity:.6;">대기중...</div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<div class="m-game-status" id="statusMsg">
+    {% if game.status == 'waiting' %}
+    <span style="color:#f59e0b;"><i class="fas fa-clock me-2"></i>상대를 기다리는 중...</span>
+    {% elif game.status == 'playing' %}
+        {% if is_player_x and game.current_turn == 'X' or is_player_o and game.current_turn == 'O' %}
+        <span style="color:#10b981;"><i class="fas fa-hand-pointer me-2"></i>내 차례입니다!</span>
+        {% else %}
+        <span style="color:#6b7280;"><i class="fas fa-clock me-2"></i>상대의 차례입니다...</span>
+        {% endif %}
+    {% elif game.status == 'finished' %}
+    <span style="color:#667eea;"><i class="fas fa-flag-checkered me-2"></i>게임 종료</span>
+    {% endif %}
+</div>
+
+<!-- 게임 보드 -->
+<div class="m-board-wrap">
+    <div class="tictactoe-board" id="gameBoard">
+        {% for row in game.board_state %}
+            {% for cell in row %}
+            <button class="tictactoe-cell {% if cell == 'X' %}cell-x{% elif cell == 'O' %}cell-o{% endif %}"
+                data-row="{{ forloop.parentloop.counter0 }}"
+                data-col="{{ forloop.counter0 }}"
+                onclick="makeMove({{ forloop.parentloop.counter0 }}, {{ forloop.counter0 }})"
+                {% if game.status != 'playing' or cell %}disabled{% endif %}>
+                {{ cell }}
+            </button>
+            {% endfor %}
+        {% endfor %}
+    </div>
+</div>
+
+{% if game.status == 'waiting' and can_join %}
+<div class="m-join-bar">
+    <button class="m-btn-join" onclick="joinGame()">
+        <i class="fas fa-user-plus me-2"></i>게임 참가하기
+    </button>
+</div>
+{% endif %}
+
+<a href="{% url 'community:tictactoe_list' %}" class="m-back-btn">
+    <i class="fas fa-arrow-left me-2"></i>목록으로
+</a>
+
+<!-- 게임 종료 팝업 -->
+<div class="m-winner-overlay" id="winnerOverlay">
+    <div class="m-winner-box">
+        <div class="m-winner-title" id="winnerTitle"></div>
+        <div class="m-winner-sub" id="winnerSub"></div>
+        <button class="btn btn-primary w-100 mb-2" onclick="location.reload()">
+            <i class="fas fa-redo me-2"></i>다시하기
+        </button>
+        <a href="{% url 'community:tictactoe_list' %}" class="btn btn-outline-secondary w-100">목록으로</a>
+    </div>
+</div>
+
+<input type="hidden" name="csrfmiddlewaretoken" value="{{ csrf_token }}">
+{% endblock %}
+
+{% block script %}
+<script>
+const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+const gameId = {{ game.id }};
+const isPlayerX = {{ is_player_x|yesno:"true,false" }};
+const isPlayerO = {{ is_player_o|yesno:"true,false" }};
+let currentTurn = '{{ game.current_turn }}';
+let gameStatus = '{{ game.status }}';
+
+let gameSocket = null;
+
+function initWebSocket() {
+    const wsScheme = window.location.protocol === 'https:' ? 'wss' : 'ws';
+    gameSocket = new WebSocket(`${wsScheme}://${window.location.host}/ws/tictactoe/${gameId}/`);
+
+    gameSocket.onmessage = function(e) {
+        const data = JSON.parse(e.data);
+        if (data.type === 'delta_update') {
+            handleDeltaUpdate(data);
+        } else if (data.type === 'player_connected') {
+            location.reload(); // 참가자 접속 시 새로고침
+        }
+    };
+}
+
+function handleDeltaUpdate(data) {
+    const action = data.action;
+    const payload = data.data;
+
+    if (action === 'move') {
+        const cell = document.querySelector(`[data-row="${payload.row}"][data-col="${payload.col}"]`);
+        if (cell) {
+            cell.textContent = payload.mark;
+            cell.classList.add(payload.mark === 'X' ? 'cell-x' : 'cell-o');
+            cell.disabled = true;
+        }
+        currentTurn = payload.next_turn;
+        updateStatusMsg();
+        updateTurnDisplay();
+    } else if (action === 'game_over') {
+        const cell = document.querySelector(`[data-row="${payload.row}"][data-col="${payload.col}"]`);
+        if (cell) {
+            cell.textContent = payload.mark;
+            cell.classList.add(payload.mark === 'X' ? 'cell-x' : 'cell-o');
+            cell.disabled = true;
+        }
+        document.querySelectorAll('.tictactoe-cell').forEach(c => c.disabled = true);
+        if (payload.draw) {
+            showWinner('무승부! 🤝', '');
+        } else {
+            showWinner(`${payload.winner} 승리! 🎉`, '');
+        }
+    }
+}
+
+function updateTurnDisplay() {
+    const xInfo = document.getElementById('playerXInfo');
+    const oInfo = document.getElementById('playerOInfo');
+    xInfo.classList.toggle('active-turn', currentTurn === 'X');
+    oInfo.classList.toggle('active-turn', currentTurn === 'O');
+    updateStatusMsg();
+}
+
+function updateStatusMsg() {
+    const msg = document.getElementById('statusMsg');
+    const isMyTurn = (isPlayerX && currentTurn === 'X') || (isPlayerO && currentTurn === 'O');
+    if (isMyTurn) {
+        msg.innerHTML = '<span style="color:#10b981;"><i class="fas fa-hand-pointer me-2"></i>내 차례입니다!</span>';
+    } else {
+        msg.innerHTML = '<span style="color:#6b7280;"><i class="fas fa-clock me-2"></i>상대의 차례입니다...</span>';
+    }
+}
+
+function showWinner(title, sub) {
+    document.getElementById('winnerTitle').textContent = title;
+    document.getElementById('winnerSub').textContent = sub;
+    document.getElementById('winnerOverlay').classList.add('show');
+}
+
+function makeMove(row, col) {
+    const isMyTurn = (isPlayerX && currentTurn === 'X') || (isPlayerO && currentTurn === 'O');
+    if (!isMyTurn || gameStatus !== 'playing') return;
+
+    if (gameSocket && gameSocket.readyState === WebSocket.OPEN) {
+        gameSocket.send(JSON.stringify({action: 'move', row: row, col: col}));
+    } else {
+        fetch(`/community/tictactoe/${gameId}/move/`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json', 'X-CSRFToken': csrfToken},
+            body: JSON.stringify({row: row, col: col})
+        }).then(() => location.reload());
+    }
+}
+
+function joinGame() {
+    fetch(`/community/tictactoe/${gameId}/join/`, {
+        method: 'POST',
+        headers: {'X-CSRFToken': csrfToken}
+    }).then(() => location.reload());
+}
+
+{% if game.status != 'finished' %}
+initWebSocket();
+// 자동 갱신 (WS 없을 경우 폴백)
+setInterval(function() {
+    if (!gameSocket || gameSocket.readyState !== WebSocket.OPEN) {
+        location.reload();
+    }
+}, 5000);
+{% endif %}
+</script>
+{% endblock %}

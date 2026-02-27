@@ -1,0 +1,113 @@
+{% extends 'base_mobile.html' %}
+{% load common_tags %}
+
+{% block title %}숫자야구 리더보드 - 테크창{% endblock %}
+{% block tab_games %}active{% endblock %}
+
+{% block extra_css %}
+<style>
+.m-lb-header {
+    padding: 20px 16px 12px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: #fff;
+    text-align: center;
+}
+.m-lb-title { font-size: 1.25rem; font-weight: 800; }
+.m-lb-sub { font-size: 0.8125rem; opacity: .9; margin-top: 2px; }
+.m-lb-row {
+    display: flex; align-items: center; gap: 12px;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border-light, #f3f4f6);
+    background: var(--bg-primary, #fff);
+}
+.m-lb-rank {
+    width: 36px; height: 36px; border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.9375rem; font-weight: 800;
+    background: var(--bg-secondary, #f3f4f6);
+    color: var(--text-secondary, #6b7280); flex-shrink: 0;
+}
+.m-lb-rank.r1 { background: linear-gradient(135deg, #facc15, #eab308); color: #111; }
+.m-lb-rank.r2 { background: linear-gradient(135deg, #e5e7eb, #cbd5e1); color: #111; }
+.m-lb-rank.r3 { background: linear-gradient(135deg, #f59e0b, #d97706); color: #111; }
+.m-lb-avatar {
+    width: 40px; height: 40px; border-radius: 50%;
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    display: flex; align-items: center; justify-content: center;
+    color: #fff; font-weight: 800; font-size: 1rem;
+    flex-shrink: 0; overflow: hidden;
+}
+.m-lb-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.m-lb-info { flex: 1; min-width: 0; }
+.m-lb-name { font-size: 0.9375rem; font-weight: 700; color: var(--text-primary, #111); }
+.m-lb-stats { font-size: 0.75rem; color: var(--text-secondary, #6b7280); margin-top: 2px; }
+.m-lb-score {
+    text-align: right; flex-shrink: 0;
+}
+.m-lb-score-val { font-size: 1.0625rem; font-weight: 800; color: var(--accent-primary, #3b82f6); }
+.m-lb-score-label { font-size: 0.6875rem; color: var(--text-tertiary, #9ca3af); }
+.m-empty { text-align: center; padding: 40px 20px; color: var(--text-tertiary, #9ca3af); font-size: .875rem; }
+.m-lb-actions { padding: 16px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.m-btn-ghost {
+    padding: 13px; border-radius: 12px;
+    background: var(--bg-secondary, #f9fafb);
+    color: var(--text-secondary, #6b7280);
+    border: 1.5px solid var(--border-light, #e5e7eb);
+    font-weight: 600; font-size: 0.875rem;
+    text-align: center; text-decoration: none; display: block;
+}
+.m-btn-play {
+    padding: 13px; border-radius: 12px;
+    background: linear-gradient(135deg, #667eea, #764ba2); color: #fff;
+    font-weight: 600; font-size: 0.875rem;
+    text-align: center; text-decoration: none; display: block;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="m-lb-header">
+    <div style="font-size:1.5rem;margin-bottom:4px;">⚾</div>
+    <div class="m-lb-title">숫자야구 리더보드</div>
+    <div class="m-lb-sub">{{ total_players }}명의 플레이어</div>
+</div>
+
+{% if leaderboard %}
+{% for entry in leaderboard %}
+<div class="m-lb-row">
+    <div class="m-lb-rank {% if entry.rank == 1 %}r1{% elif entry.rank == 2 %}r2{% elif entry.rank == 3 %}r3{% endif %}">
+        {% if entry.rank <= 3 %}
+        {{ entry.rank }}
+        {% else %}
+        {{ entry.rank }}
+        {% endif %}
+    </div>
+    <div class="m-lb-avatar">
+        {% if entry.profile_image %}
+        <img src="{{ entry.profile_image }}" alt="">
+        {% else %}
+        {{ entry.display_name|slice:":1"|upper }}
+        {% endif %}
+    </div>
+    <div class="m-lb-info">
+        <div class="m-lb-name">{{ entry.display_name }}</div>
+        <div class="m-lb-stats">{{ entry.wins }}승 / {{ entry.total_games }}판 · 승률 {{ entry.win_rate }}%</div>
+    </div>
+    <div class="m-lb-score">
+        <div class="m-lb-score-val">{{ entry.best_attempts }}</div>
+        <div class="m-lb-score-label">최소 시도</div>
+    </div>
+</div>
+{% endfor %}
+{% else %}
+<div class="m-empty">
+    <i class="fas fa-trophy" style="font-size:2rem;display:block;margin-bottom:8px;"></i>
+    아직 기록이 없습니다. 게임을 플레이해보세요!
+</div>
+{% endif %}
+
+<div class="m-lb-actions">
+    <a href="{% url 'community:baseball_start' %}" class="m-btn-ghost"><i class="fas fa-play me-2"></i>게임 시작</a>
+    <a href="{% url 'community:games_index' %}" class="m-btn-play"><i class="fas fa-gamepad me-2"></i>게임 목록</a>
+</div>
+{% endblock %}

@@ -1,0 +1,371 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}서버 모니터 - 테크창{% endblock %}
+
+{% block extra_css %}
+<style>
+.monitor-wrap {
+    background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+    min-height: 100vh;
+    padding: 2rem;
+}
+.mon-card {
+    background: rgba(255,255,255,.04);
+    border: 1px solid rgba(255,255,255,.08);
+    border-radius: 16px;
+    padding: 20px 24px;
+    margin-bottom: 20px;
+    backdrop-filter: blur(10px);
+}
+.mon-card h2 {
+    font-size: .9375rem;
+    font-weight: 700;
+    color: #7dd3fc;
+    margin-bottom: 16px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid rgba(255,255,255,.08);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 12px; }
+.stat-box {
+    background: rgba(255,255,255,.06);
+    border-radius: 12px;
+    padding: 14px;
+    text-align: center;
+}
+.stat-num { font-size: 1.75rem; font-weight: 900; color: #38bdf8; }
+.stat-num.green { color: #4ade80; }
+.stat-num.yellow { color: #fbbf24; }
+.stat-num.red { color: #f87171; }
+.stat-label { font-size: .6875rem; color: #94a3b8; margin-top: 4px; }
+
+.mon-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 0;
+    border-bottom: 1px solid rgba(255,255,255,.05);
+    font-size: .875rem;
+    color: #cbd5e1;
+}
+.mon-row:last-child { border: none; }
+.mon-row .label { color: #94a3b8; }
+
+.badge-ok   { background: #14532d; color: #4ade80; padding: 2px 10px; border-radius: 20px; font-size: .75rem; font-weight: 700; }
+.badge-warn { background: #713f12; color: #fbbf24; padding: 2px 10px; border-radius: 20px; font-size: .75rem; font-weight: 700; }
+.badge-err  { background: #7f1d1d; color: #f87171; padding: 2px 10px; border-radius: 20px; font-size: .75rem; font-weight: 700; }
+
+.svc-active { color: #4ade80; font-weight: 700; }
+.svc-fail   { color: #f87171; font-weight: 700; }
+
+/* 트렌드 바 차트 */
+.trend-bars {
+    display: flex;
+    align-items: flex-end;
+    gap: 6px;
+    height: 80px;
+    margin-top: 8px;
+}
+.trend-bar-wrap { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.trend-bar {
+    width: 100%;
+    border-radius: 4px 4px 0 0;
+    min-height: 4px;
+    transition: height .3s;
+}
+.trend-date { font-size: .6rem; color: #64748b; }
+.trend-val  { font-size: .6875rem; font-weight: 700; color: #7dd3fc; }
+
+/* 에러 로그 */
+.err-log {
+    font-family: 'Courier New', monospace;
+    font-size: .75rem;
+    color: #f87171;
+    background: rgba(239,68,68,.08);
+    border-radius: 8px;
+    padding: 10px 12px;
+    margin-bottom: 6px;
+    word-break: break-all;
+    line-height: 1.5;
+    border-left: 3px solid #ef4444;
+}
+
+/* 시간 필터 */
+.hours-filter { display: flex; gap: 8px; }
+.h-btn {
+    padding: 5px 14px;
+    border-radius: 20px;
+    border: 1px solid rgba(255,255,255,.12);
+    background: transparent;
+    color: #94a3b8;
+    font-size: .8125rem;
+    font-weight: 600;
+    cursor: pointer;
+    text-decoration: none;
+    transition: all .2s;
+}
+.h-btn.active, .h-btn:hover {
+    background: #3b82f6;
+    border-color: #3b82f6;
+    color: #fff;
+}
+
+/* 자동 새로고침 */
+.refresh-bar {
+    height: 3px;
+    background: linear-gradient(90deg, #3b82f6, #6366f1);
+    border-radius: 2px;
+    animation: shrink {{ refresh_sec }}s linear forwards;
+}
+@keyframes shrink { from { width:100%; } to { width:0; } }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="monitor-wrap">
+
+  <!-- 헤더 -->
+  <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:24px; flex-wrap:wrap; gap:12px;">
+    <div>
+      <h1 style="color:#f1f5f9; font-size:1.25rem; font-weight:900; margin:0 0 4px;">
+        <i class="fas fa-server" style="color:#7dd3fc; margin-right:8px;"></i>서버 모니터
+      </h1>
+      <div style="font-size:.8125rem; color:#64748b;">마지막 갱신: <span id="last-update"></span></div>
+    </div>
+    <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+      <!-- 시간 범위 필터 -->
+      <div class="hours-filter">
+        <a href="?hours=6"   class="h-btn {% if hours == 6 %}active{% endif %}">6h</a>
+        <a href="?hours=24"  class="h-btn {% if hours == 24 or not hours %}active{% endif %}">24h</a>
+        <a href="?hours=72"  class="h-btn {% if hours == 72 %}active{% endif %}">3일</a>
+        <a href="?hours=168" class="h-btn {% if hours == 168 %}active{% endif %}">7일</a>
+      </div>
+      <!-- 이메일 발송 버튼 -->
+      <form method="post" action="{% url 'common:send_monitor_email' %}">
+        {% csrf_token %}
+        <input type="hidden" name="hours" value="{{ hours }}">
+        <button type="submit" style="padding:6px 16px; border-radius:20px; border:none; background:linear-gradient(135deg,#3b82f6,#6366f1); color:#fff; font-size:.8125rem; font-weight:700; cursor:pointer;">
+          <i class="fas fa-envelope me-1"></i> 이메일 발송
+        </button>
+      </form>
+      <a href="{% url 'common:admin_dashboard' %}" style="font-size:.8125rem; color:#94a3b8; text-decoration:none;">
+        <i class="fas fa-arrow-left me-1"></i>대시보드
+      </a>
+    </div>
+  </div>
+
+  <!-- 자동 새로고침 바 (60초) -->
+  <div style="margin-bottom:20px;">
+    <div style="font-size:.75rem; color:#475569; margin-bottom:4px;">60초 후 자동 새로고침</div>
+    <div style="background:rgba(255,255,255,.06); border-radius:2px; height:3px;">
+      <div id="refresh-bar" style="height:100%; background:linear-gradient(90deg,#3b82f6,#6366f1); border-radius:2px; transition:width 1s linear; width:100%;"></div>
+    </div>
+  </div>
+
+  <div style="display:grid; grid-template-columns:1fr 1fr; gap:20px;">
+
+    <!-- 왼쪽 컬럼 -->
+    <div>
+
+      <!-- 서비스 상태 -->
+      <div class="mon-card">
+        <h2><i class="fas fa-heartbeat"></i> 서비스 상태</h2>
+        <div class="mon-row">
+          <span class="label">Django (mysite)</span>
+          <span class="{% if sys.mysite_status == 'active' %}svc-active{% else %}svc-fail{% endif %}">
+            {% if sys.mysite_status == 'active' %}● active{% elif sys.mysite_status %}● {{ sys.mysite_status }}{% else %}● 확인불가{% endif %}
+          </span>
+        </div>
+        <div class="mon-row">
+          <span class="label">Nginx</span>
+          <span class="{% if sys.nginx_status == 'active' %}svc-active{% else %}svc-fail{% endif %}">
+            {% if sys.nginx_status == 'active' %}● active{% elif sys.nginx_status %}● {{ sys.nginx_status }}{% else %}● 확인불가{% endif %}
+          </span>
+        </div>
+        <div class="mon-row">
+          <span class="label">CPU 부하 (Load Avg)</span>
+          <span>{{ sys.load_avg|default:"–" }}</span>
+        </div>
+        <div class="mon-row">
+          <span class="label">메모리</span>
+          <span>
+            {% if sys.mem_pct %}
+              {% if sys.mem_pct >= 90 %}<span class="badge-err">{% elif sys.mem_pct >= 70 %}<span class="badge-warn">{% else %}<span class="badge-ok">{% endif %}
+              {{ sys.mem_used_mb }}MB / {{ sys.mem_total_mb }}MB ({{ sys.mem_pct }}%)
+              </span>
+            {% else %}–{% endif %}
+          </span>
+        </div>
+        <div class="mon-row">
+          <span class="label">디스크</span>
+          <span>
+            {% if sys.disk_pct %}
+              {% if sys.disk_pct >= "90%" %}<span class="badge-err">{% elif sys.disk_pct >= "70%" %}<span class="badge-warn">{% else %}<span class="badge-ok">{% endif %}
+              {{ sys.disk_used }} / {{ sys.disk_total }} ({{ sys.disk_pct }})
+              </span>
+            {% else %}–{% endif %}
+          </span>
+        </div>
+      </div>
+
+      <!-- 로그 분석 -->
+      <div class="mon-card">
+        <h2><i class="fas fa-file-alt"></i> 로그 분석 ({{ hours }}h)</h2>
+        {% if journal.available %}
+        <div class="stat-grid" style="margin-bottom:16px;">
+          <div class="stat-box">
+            <div class="stat-num">{{ journal.request_count }}</div>
+            <div class="stat-label">총 요청</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-num {% if journal.status_5xx > 0 %}red{% else %}green{% endif %}">{{ journal.status_5xx }}</div>
+            <div class="stat-label">5xx 에러</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-num {% if journal.status_4xx > 50 %}yellow{% else %}green{% endif %}">{{ journal.status_4xx }}</div>
+            <div class="stat-label">4xx 에러</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-num {% if journal.error_count > 0 %}red{% else %}green{% endif %}">{{ journal.error_count }}</div>
+            <div class="stat-label">Exception</div>
+          </div>
+        </div>
+        {% else %}
+        <div style="color:#64748b; font-size:.875rem; text-align:center; padding:20px 0;">
+          <i class="fas fa-info-circle me-1"></i> 서버(Linux)에서 실행 시 활성화됩니다.
+        </div>
+        {% endif %}
+      </div>
+
+      <!-- 보안 이벤트 -->
+      <div class="mon-card">
+        <h2><i class="fas fa-shield-alt"></i> 보안 이벤트 ({{ hours }}h)</h2>
+        {% if security.available %}
+        <div class="mon-row">
+          <span class="label">IP 차단</span>
+          <span>{% if security.blocked_ips > 5 %}<span class="badge-err">{% else %}<span class="badge-ok">{% endif %}{{ security.blocked_ips }}건</span></span>
+        </div>
+        <div class="mon-row">
+          <span class="label">Rate Limit 발동</span>
+          <span>{{ security.rate_limit_hits }}건</span>
+        </div>
+        <div class="mon-row">
+          <span class="label">DDoS 감지</span>
+          <span>{% if security.ddos_detected > 0 %}<span class="badge-err">위험 {{ security.ddos_detected }}건</span>{% else %}<span class="badge-ok">정상</span>{% endif %}</span>
+        </div>
+        {% else %}
+        <div style="color:#64748b; font-size:.875rem; text-align:center; padding:20px 0;">
+          <i class="fas fa-info-circle me-1"></i> 서버(Linux)에서 실행 시 활성화됩니다.
+        </div>
+        {% endif %}
+      </div>
+
+    </div><!-- /왼쪽 -->
+
+    <!-- 오른쪽 컬럼 -->
+    <div>
+
+      <!-- DB 현황 -->
+      <div class="mon-card">
+        <h2><i class="fas fa-database"></i> DB 현황 (오늘)</h2>
+        <div class="stat-grid">
+          <div class="stat-box">
+            <div class="stat-num">{{ db.total_users|default:"–" }}</div>
+            <div class="stat-label">전체 회원</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-num green">+{{ db.new_users_today|default:0 }}</div>
+            <div class="stat-label">신규 가입</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-num">{{ db.visitors_today|default:"–" }}</div>
+            <div class="stat-label">오늘 방문자</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-num">{{ db.total_questions|default:"–" }}</div>
+            <div class="stat-label">전체 질문</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-num green">+{{ db.new_questions|default:0 }}</div>
+            <div class="stat-label">오늘 질문</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-num green">+{{ db.new_answers|default:0 }}</div>
+            <div class="stat-label">오늘 답변</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 방문자 7일 추이 -->
+      <div class="mon-card">
+        <h2><i class="fas fa-chart-bar"></i> 방문자 추이 (7일)</h2>
+        {% with max_v=visitor_trend.0.count %}
+        {% for item in visitor_trend %}{% if item.count > max_v %}{% endif %}{% endfor %}
+        <div class="trend-bars">
+          {% for item in visitor_trend %}
+          <div class="trend-bar-wrap">
+            <div class="trend-val">{{ item.count }}</div>
+            <div class="trend-bar" style="background: linear-gradient(180deg,#3b82f6,#6366f1);
+              height: {% if item.count > 0 %}{% widthratio item.count 1 1 %}{% else %}4{% endif %}px;
+              max-height:60px;"></div>
+            <div class="trend-date">{{ item.date }}</div>
+          </div>
+          {% endfor %}
+        </div>
+        {% endwith %}
+      </div>
+
+      <!-- 질문 7일 추이 -->
+      <div class="mon-card">
+        <h2><i class="fas fa-question-circle"></i> 질문 추이 (7일)</h2>
+        <div class="trend-bars">
+          {% for item in question_trend %}
+          <div class="trend-bar-wrap">
+            <div class="trend-val">{{ item.count }}</div>
+            <div class="trend-bar" style="background: linear-gradient(180deg,#10b981,#059669);
+              height: {% if item.count > 0 %}{{ item.count|add:10 }}px{% else %}4px{% endif %};
+              max-height:60px;"></div>
+            <div class="trend-date">{{ item.date }}</div>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+
+      <!-- 최근 에러 로그 -->
+      {% if journal.available and journal.top_errors %}
+      <div class="mon-card">
+        <h2><i class="fas fa-exclamation-triangle"></i> 최근 에러 로그</h2>
+        {% for err in journal.top_errors %}
+        <div class="err-log">{{ err }}</div>
+        {% endfor %}
+      </div>
+      {% endif %}
+
+    </div><!-- /오른쪽 -->
+  </div><!-- /grid -->
+
+</div>
+{% endblock %}
+
+{% block script %}
+<script>
+// 현재 시각 표시
+document.getElementById('last-update').textContent = new Date().toLocaleTimeString('ko-KR');
+
+// 새로고침 바 애니메이션 + 60초 후 자동 새로고침
+const bar = document.getElementById('refresh-bar');
+const totalSec = 60;
+let elapsed = 0;
+const timer = setInterval(() => {
+    elapsed++;
+    bar.style.width = ((totalSec - elapsed) / totalSec * 100) + '%';
+    if (elapsed >= totalSec) {
+        clearInterval(timer);
+        location.reload();
+    }
+}, 1000);
+</script>
+{% endblock %}
