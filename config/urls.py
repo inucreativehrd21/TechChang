@@ -19,7 +19,15 @@ from django.urls import include, path
 from django.conf import settings
 from django.conf.urls.static import static
 from django.views.generic import RedirectView
+from django.contrib.sitemaps.views import sitemap
 from community.views import base_views
+from community.sitemaps import StaticViewSitemap, QuestionSitemap, PortfolioCollectionSitemap
+
+sitemaps = {
+    'static': StaticViewSitemap,
+    'questions': QuestionSitemap,
+    'portfolios': PortfolioCollectionSitemap,
+}
 
 urlpatterns = [
     # 보안: Admin URL을 추측하기 어려운 경로로 변경
@@ -36,6 +44,7 @@ urlpatterns = [
     path('', include('community.urls')),  # 커뮤니티 메인 (루트 경로)
     path('common/', include('common.urls')),
     path('accounts/', include('allauth.urls')),  # django-allauth URLs
+    path('sitemap.xml', sitemap, {'sitemaps': sitemaps}, name='django.contrib.sitemaps.views.sitemap'),
 ]
 
 # 개발 환경에서 미디어 파일 서빙

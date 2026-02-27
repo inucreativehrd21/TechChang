@@ -52,6 +52,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'django.contrib.sites',  # django-allauth 필수
+    'django.contrib.sitemaps',
     'community.apps.CommunityConfig',
     'channels',
     # django-allauth
@@ -120,12 +121,31 @@ CHANNEL_LAYERS = {
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+# .env에서 DJANGO_DB_ENGINE=mysql 설정 시 MySQL 사용, 기본은 SQLite
+_DB_ENGINE = os.environ.get('DJANGO_DB_ENGINE', 'sqlite3')
+
+if _DB_ENGINE == 'mysql':
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.mysql',
+            'NAME': os.environ.get('DJANGO_DB_NAME', 'techchang'),
+            'USER': os.environ.get('DJANGO_DB_USER', 'techchang'),
+            'PASSWORD': os.environ.get('DJANGO_DB_PASSWORD', ''),
+            'HOST': os.environ.get('DJANGO_DB_HOST', '127.0.0.1'),
+            'PORT': os.environ.get('DJANGO_DB_PORT', '3306'),
+            'OPTIONS': {
+                'charset': 'utf8mb4',
+                'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
+            },
+        }
     }
-}
+else:
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR / 'db.sqlite3',
+        }
+    }
 
 
 # Password validation
