@@ -181,7 +181,7 @@ class Command(BaseCommand):
         try:
             result = subprocess.run(
                 ['journalctl', '-u', 'mysite', f'--since={hours} hours ago',
-                 '--no-pager', '-o', 'short', '--grep', 'blocked\|rate limit\|DDoS\|suspicious'],
+                 '--no-pager', '-o', 'short', '--grep', r'blocked\|rate limit\|DDoS\|suspicious'],
                 capture_output=True, text=True, timeout=15
             )
             if result.returncode != 0:
