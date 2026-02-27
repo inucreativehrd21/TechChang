@@ -4,7 +4,7 @@
 # 서버에서 실행: bash setup_cron.sh
 # =====================================================
 
-SITE_DIR="/home/ubuntu/mysite"        # 실제 서버 경로
+SITE_DIR="$(cd "$(dirname "$0")" && pwd)"  # 스크립트 위치 자동 감지
 VENV_PYTHON="$SITE_DIR/venv/bin/python"
 MANAGE="$SITE_DIR/manage.py"
 LOG_FILE="/var/log/techchang_report.log"
