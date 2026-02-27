@@ -113,7 +113,7 @@ class Command(BaseCommand):
 
     # ------------------------------------------------------------------ #
     def _collect_journal(self, hours):
-        """systemd journal에서 mysite 서비스 로그 파싱"""
+        """systemd journal + nginx 액세스 로그 파싱"""
         stats = {
             'error_count': 0,
             'warning_count': 0,
@@ -167,7 +167,71 @@ class Command(BaseCommand):
         except (subprocess.TimeoutExpired, FileNotFoundError):
             pass
 
+        # journal에 요청 수가 없으면 nginx 로그에서 보완
+        if stats['available'] and stats['request_count'] == 0:
+            stats.update(self._collect_nginx_access(hours, stats))
+
         return stats
+
+    # ------------------------------------------------------------------ #
+    def _collect_nginx_access(self, hours, existing_stats):
+        """nginx 액세스 로그에서 요청 수 / 상태 코드 집계"""
+        import os
+        from datetime import timezone as tz
+
+        candidates = [
+            '/var/log/nginx/techchang_access.log',
+            '/var/log/nginx/mysite_access.log',
+            '/var/log/nginx/access.log',
+        ]
+
+        cutoff = datetime.now(tz.utc).replace(tzinfo=None) - timedelta(hours=hours)
+        # nginx 로그 날짜 포맷: 27/Feb/2026:14:00:00 +0900
+        date_pat = re.compile(r'\[(\d{2}/\w+/\d{4}:\d{2}:\d{2}:\d{2})')
+        month_map = {
+            'Jan': 1, 'Feb': 2, 'Mar': 3, 'Apr': 4, 'May': 5, 'Jun': 6,
+            'Jul': 7, 'Aug': 8, 'Sep': 9, 'Oct': 10, 'Nov': 11, 'Dec': 12,
+        }
+
+        req_count = status_5xx = status_4xx = 0
+
+        for log_path in candidates:
+            if not os.path.exists(log_path):
+                continue
+            try:
+                with open(log_path, 'r', errors='replace') as f:
+                    for line in f:
+                        # 시간 필터
+                        dm = date_pat.search(line)
+                        if dm:
+                            raw = dm.group(1)  # 27/Feb/2026:14:00:00
+                            parts = raw.split('/')
+                            day = int(parts[0])
+                            mon = month_map.get(parts[1], 0)
+                            rest = parts[2].split(':')
+                            year = int(rest[0])
+                            h, mi, s = int(rest[1]), int(rest[2]), int(rest[3])
+                            log_dt = datetime(year, mon, day, h, mi, s)
+                            if log_dt < cutoff:
+                                continue
+
+                        sm = re.search(r'"[A-Z]+ .+?" (\d{3})', line)
+                        if sm:
+                            code = int(sm.group(1))
+                            req_count += 1
+                            if 500 <= code < 600:
+                                status_5xx += 1
+                            elif 400 <= code < 500:
+                                status_4xx += 1
+            except OSError:
+                continue
+            break  # 첫 번째로 찾은 파일만 사용
+
+        return {
+            'request_count': req_count,
+            'status_5xx': existing_stats.get('status_5xx', 0) + status_5xx,
+            'status_4xx': existing_stats.get('status_4xx', 0) + status_4xx,
+        }
 
     # ------------------------------------------------------------------ #
     def _collect_security_logs(self, hours):
