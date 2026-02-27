@@ -1,0 +1,283 @@
+{% extends 'base_mobile.html' %}
+{% load static %}
+
+{% block title %}{{ question.subject }}{% endblock %}
+
+{% block extra_css %}
+<style>
+.m-detail-header {
+    padding: 14px 16px;
+    background: var(--bg-primary, #fff);
+    border-bottom: 1px solid var(--border-light, #e5e7eb);
+}
+.m-detail-back {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.875rem;
+    color: var(--accent-primary, #3b82f6);
+    text-decoration: none;
+    margin-bottom: 10px;
+}
+.m-detail-category {
+    display: inline-block;
+    font-size: 0.6875rem;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 10px;
+    background: var(--accent-light, #eff6ff);
+    color: var(--accent-primary, #3b82f6);
+    margin-bottom: 8px;
+}
+.m-detail-subject {
+    font-size: 1.0625rem;
+    font-weight: 700;
+    color: var(--text-primary, #111);
+    line-height: 1.4;
+    margin-bottom: 10px;
+}
+.m-detail-meta {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 0.75rem;
+    color: var(--text-tertiary, #9ca3af);
+}
+.m-detail-body {
+    padding: 16px;
+    font-size: 0.9375rem;
+    color: var(--text-primary, #111);
+    line-height: 1.75;
+    background: var(--bg-primary, #fff);
+    border-bottom: 8px solid var(--bg-secondary, #f9fafb);
+}
+.m-detail-body img { max-width: 100%; border-radius: 8px; }
+.m-detail-actions {
+    padding: 12px 16px;
+    display: flex;
+    gap: 8px;
+    background: var(--bg-primary, #fff);
+    border-bottom: 8px solid var(--bg-secondary, #f9fafb);
+}
+.m-vote-btn, .m-action-btn {
+    flex: 1;
+    height: 40px;
+    border-radius: 20px;
+    border: 1px solid var(--border-light, #e5e7eb);
+    background: var(--bg-primary, #fff);
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--text-secondary, #6b7280);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    text-decoration: none;
+    transition: all .15s;
+}
+.m-vote-btn:hover, .m-vote-btn:active { background: #eff6ff; color: var(--accent-primary, #3b82f6); border-color: var(--accent-primary, #3b82f6); }
+
+/* 답변 섹션 */
+.m-answers-header {
+    padding: 12px 16px 8px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: var(--bg-secondary, #f9fafb);
+}
+.m-answers-title {
+    font-size: 0.9375rem;
+    font-weight: 700;
+    color: var(--text-primary, #111);
+}
+.m-answer-card {
+    background: var(--bg-primary, #fff);
+    border-top: 1px solid var(--border-light, #e5e7eb);
+    padding: 14px 16px;
+}
+.m-answer-author {
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: var(--text-secondary, #6b7280);
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+.m-answer-body {
+    font-size: 0.9375rem;
+    color: var(--text-primary, #111);
+    line-height: 1.7;
+    margin-bottom: 10px;
+}
+.m-answer-body img { max-width: 100%; border-radius: 8px; }
+.m-answer-foot {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 0.75rem;
+    color: var(--text-tertiary, #9ca3af);
+}
+.m-answer-vote {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-weight: 600;
+}
+
+/* 답변 작성 */
+.m-answer-form {
+    padding: 14px 16px;
+    background: var(--bg-primary, #fff);
+    border-top: 8px solid var(--bg-secondary, #f9fafb);
+}
+.m-answer-textarea {
+    width: 100%;
+    min-height: 120px;
+    border: 1px solid var(--border-light, #e5e7eb);
+    border-radius: 12px;
+    padding: 12px;
+    font-size: 0.9375rem;
+    color: var(--text-primary, #111);
+    resize: vertical;
+    outline: none;
+    font-family: inherit;
+}
+.m-answer-textarea:focus { border-color: var(--accent-primary, #3b82f6); }
+.m-submit-btn {
+    display: block;
+    width: 100%;
+    margin-top: 10px;
+    height: 46px;
+    border-radius: 12px;
+    border: none;
+    background: var(--accent-primary, #3b82f6);
+    color: #fff;
+    font-size: 1rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: opacity .15s;
+}
+.m-submit-btn:active { opacity: .8; }
+
+/* 댓글 */
+.m-comment {
+    background: var(--bg-secondary, #f9fafb);
+    border-radius: 8px;
+    padding: 8px 10px;
+    font-size: 0.8125rem;
+    color: var(--text-secondary, #6b7280);
+    margin-top: 8px;
+}
+.m-comment-author { font-weight: 600; color: var(--text-primary, #111); margin-right: 4px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- 질문 헤더 -->
+<div class="m-detail-header">
+    <a href="javascript:history.back()" class="m-detail-back">
+        <i class="fas fa-arrow-left"></i> 목록
+    </a>
+    {% if question.category %}
+    <div><span class="m-detail-category">{{ question.category.name }}</span></div>
+    {% endif %}
+    <h1 class="m-detail-subject">{{ question.subject }}</h1>
+    <div class="m-detail-meta">
+        <span><i class="fas fa-user fa-xs"></i> {{ question.author.username }}</span>
+        <span><i class="fas fa-clock fa-xs"></i> {{ question.create_date|date:"m.d H:i" }}</span>
+        <span><i class="fas fa-eye fa-xs"></i> {{ question.view_count }}</span>
+        <span><i class="fas fa-thumbs-up fa-xs"></i> {{ question.voter.count }}</span>
+    </div>
+</div>
+
+<!-- 질문 본문 -->
+<div class="m-detail-body">
+    {{ question.content|linebreaksbr }}
+    {% if question.image %}
+    <br><img src="{{ question.image.url }}" alt="첨부 이미지">
+    {% endif %}
+</div>
+
+<!-- 액션 버튼 -->
+<div class="m-detail-actions">
+    {% if user.is_authenticated %}
+    <form method="post" action="{% url 'community:question_vote' question.id %}" style="flex:1;display:flex;">
+        {% csrf_token %}
+        <button type="submit" class="m-vote-btn" style="width:100%;">
+            <i class="fas fa-thumbs-up"></i> 추천 {{ question.voter.count }}
+        </button>
+    </form>
+    {% if user == question.author %}
+    <a href="{% url 'community:question_modify' question.id %}" class="m-action-btn" style="max-width:80px;">수정</a>
+    {% endif %}
+    {% else %}
+    <a href="{% url 'common:login' %}" class="m-vote-btn">
+        <i class="fas fa-thumbs-up"></i> 추천 {{ question.voter.count }}
+    </a>
+    {% endif %}
+</div>
+
+<!-- 답변 목록 -->
+<div class="m-answers-header">
+    <span class="m-answers-title">답변 {{ answer_list|length }}개</span>
+    <div style="display:flex;gap:8px;">
+        <a href="?sort=recent" style="font-size:0.75rem;color:{% if sort == 'recent' or not sort %}var(--accent-primary,#3b82f6){% else %}var(--text-tertiary,#9ca3af){% endif %};text-decoration:none;">최신</a>
+        <a href="?sort=recommend" style="font-size:0.75rem;color:{% if sort == 'recommend' %}var(--accent-primary,#3b82f6){% else %}var(--text-tertiary,#9ca3af){% endif %};text-decoration:none;">추천순</a>
+    </div>
+</div>
+
+{% for answer in answer_list %}
+<div class="m-answer-card" id="answer_{{ answer.id }}">
+    <div class="m-answer-author">
+        <i class="fas fa-user-circle"></i>
+        {{ answer.author.username }}
+        <span style="font-weight:400;color:var(--text-tertiary,#9ca3af);">{{ answer.create_date|date:"m.d H:i" }}</span>
+    </div>
+    <div class="m-answer-body">{{ answer.content|linebreaksbr }}</div>
+    <div class="m-answer-foot">
+        {% if user.is_authenticated %}
+        <form method="post" action="{% url 'community:answer_vote' answer.id %}" style="display:inline;">
+            {% csrf_token %}
+            <button type="submit" class="m-answer-vote" style="background:none;border:none;cursor:pointer;font-size:0.75rem;color:var(--text-tertiary,#9ca3af);padding:0;">
+                <i class="fas fa-thumbs-up"></i> {{ answer.voter.count }}
+            </button>
+        </form>
+        {% else %}
+        <span class="m-answer-vote"><i class="fas fa-thumbs-up"></i> {{ answer.voter.count }}</span>
+        {% endif %}
+        {% if user == answer.author %}
+        <a href="{% url 'community:answer_modify' answer.id %}" style="color:var(--text-tertiary,#9ca3af);text-decoration:none;">수정</a>
+        {% endif %}
+    </div>
+    <!-- 답변 댓글 -->
+    {% for comment in answer.comment_set.all %}
+    <div class="m-comment">
+        <span class="m-comment-author">{{ comment.author.username }}</span>
+        {{ comment.content }}
+    </div>
+    {% endfor %}
+</div>
+{% empty %}
+<div style="padding:30px 16px;text-align:center;color:var(--text-tertiary,#9ca3af);font-size:0.875rem;background:var(--bg-primary,#fff);border-top:1px solid var(--border-light,#e5e7eb);">
+    아직 답변이 없습니다. 첫 번째로 답변해보세요!
+</div>
+{% endfor %}
+
+<!-- 답변 작성 -->
+{% if user.is_authenticated %}
+<div class="m-answer-form">
+    <div style="font-size:0.9375rem;font-weight:700;color:var(--text-primary,#111);margin-bottom:10px;">답변 작성</div>
+    <form method="post" action="{% url 'community:answer_create' question.id %}" enctype="multipart/form-data">
+        {% csrf_token %}
+        <textarea name="content" class="m-answer-textarea" placeholder="답변을 작성해주세요..."></textarea>
+        <button type="submit" class="m-submit-btn">답변 등록</button>
+    </form>
+</div>
+{% else %}
+<div style="padding:20px 16px;text-align:center;background:var(--bg-primary,#fff);border-top:8px solid var(--bg-secondary,#f9fafb);">
+    <a href="{% url 'common:login' %}" style="color:var(--accent-primary,#3b82f6);font-weight:600;">로그인 후 답변 작성</a>
+</div>
+{% endif %}
+{% endblock %}

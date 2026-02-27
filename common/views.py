@@ -1264,3 +1264,28 @@ def point_ranking(request):
     }
 
     return render(request, 'common/point_ranking.html', context)
+
+
+def toggle_version(request):
+    """PC/모바일 버전 전환"""
+    current = request.COOKIES.get('force_version', '')
+
+    if current == 'mobile':
+        new_version = 'desktop'
+    elif current == 'desktop':
+        new_version = 'mobile'
+    else:
+        new_version = 'desktop' if getattr(request, 'is_mobile', False) else 'mobile'
+
+    referer = request.META.get('HTTP_REFERER', '/')
+    response = redirect(referer)
+    response.set_cookie('force_version', new_version, max_age=365 * 24 * 3600, samesite='Lax')
+    return response
+
+
+def reset_version(request):
+    """자동 감지 모드로 되돌리기"""
+    referer = request.META.get('HTTP_REFERER', '/')
+    response = redirect(referer)
+    response.delete_cookie('force_version')
+    return response

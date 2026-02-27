@@ -70,6 +70,7 @@ MIDDLEWARE = [
     'allauth.account.middleware.AccountMiddleware',  # django-allauth
     'common.middleware.SecurityMiddleware',  # 보안 미들웨어
     'common.middleware.RequestLoggingMiddleware',  # 요청 로깅 미들웨어
+    'common.middleware.MobileDetectionMiddleware',  # 모바일 감지
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]

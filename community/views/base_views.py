@@ -134,7 +134,8 @@ def index(request):
         'total_users': total_users,
         'visitors_today': visitors_today,
     }
-    return render(request, 'community/question_list.html', context)
+    template = 'community/mobile/question_list.html' if getattr(request, 'is_mobile', False) else 'community/question_list.html'
+    return render(request, template, context)
 
 def detail(request, question_id):
     # 질문 객체 조회 (삭제되지 않은 것만)
@@ -190,7 +191,8 @@ def detail(request, question_id):
         'answer_list': answer_list,  # 템플릿에서 for answer in answer_list
         'sort': sort,
     }
-    return render(request, 'community/question_detail.html', context)
+    template = 'community/mobile/question_detail.html' if getattr(request, 'is_mobile', False) else 'community/question_detail.html'
+    return render(request, template, context)
 
 def recent_answers(request):
     """최근 답변 목록 - 성능 최적화된 버전"""
@@ -318,4 +320,5 @@ def games_index(request):
         'recent_stats': recent_stats,
     }
 
-    return render(request, 'community/games_index.html', context)
+    template = 'community/mobile/games_index.html' if getattr(request, 'is_mobile', False) else 'community/games_index.html'
+    return render(request, template, context)

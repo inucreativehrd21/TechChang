@@ -1,0 +1,114 @@
+{% extends 'base_mobile.html' %}
+{% load static %}
+{% load pybo_filter %}
+
+{% block title %}커뮤니티{% endblock %}
+{% block tab_board %}active{% endblock %}
+
+{% block extra_css %}
+<style>
+.m-board-header {
+    padding: 16px;
+    background: var(--bg-primary, #fff);
+    border-bottom: 1px solid var(--border-light, #e5e7eb);
+}
+.m-board-title {
+    font-size: 1.125rem;
+    font-weight: 800;
+    color: var(--text-primary, #111);
+    margin-bottom: 2px;
+}
+.m-board-sub {
+    font-size: 0.8125rem;
+    color: var(--text-tertiary, #9ca3af);
+}
+.m-cat-section { margin-bottom: 8px; }
+.m-cat-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px 8px;
+}
+.m-cat-name {
+    font-size: 0.9375rem;
+    font-weight: 700;
+    color: var(--text-primary, #111);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.m-cat-count {
+    font-size: 0.75rem;
+    color: var(--text-tertiary, #9ca3af);
+    font-weight: 400;
+}
+.m-cat-more {
+    font-size: 0.8125rem;
+    color: var(--accent-primary, #3b82f6);
+    text-decoration: none;
+}
+.m-post-row {
+    display: flex;
+    align-items: center;
+    padding: 9px 16px;
+    border-top: 1px solid var(--border-light, #f3f4f6);
+    text-decoration: none;
+    gap: 10px;
+}
+.m-post-row:last-child { border-bottom: 1px solid var(--border-light, #e5e7eb); }
+.m-post-subject {
+    flex: 1;
+    font-size: 0.875rem;
+    color: var(--text-primary, #111);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.m-post-answer {
+    font-size: 0.75rem;
+    color: var(--accent-primary, #3b82f6);
+    font-weight: 600;
+    flex-shrink: 0;
+    min-width: 28px;
+    text-align: right;
+}
+.m-post-answer.no-answer { color: var(--text-tertiary, #9ca3af); }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="m-board-header">
+    <div class="m-board-title">커뮤니티</div>
+    <div class="m-board-sub">총 {{ total_questions }}개의 게시글</div>
+</div>
+
+{% for cat in categories %}
+{% with cat_data=category_posts|get_item:cat.name %}
+{% if cat_data %}
+<div class="m-cat-section">
+    <div class="m-cat-header">
+        <span class="m-cat-name">
+            {{ cat.name }}
+            <span class="m-cat-count">{{ cat_data.total_count }}</span>
+        </span>
+        <a href="/?category={{ cat.name }}" class="m-cat-more">더보기</a>
+    </div>
+    {% for post in cat_data.posts %}
+    <a href="{% url 'community:detail' post.id %}" class="m-post-row">
+        <span class="m-post-subject">{{ post.subject }}</span>
+        <span class="m-post-answer {% if post.answer_count == 0 %}no-answer{% endif %}">
+            {% if post.answer_count > 0 %}
+            <i class="fas fa-comment fa-xs"></i> {{ post.answer_count }}
+            {% else %}
+            <i class="fas fa-comment fa-xs"></i> 0
+            {% endif %}
+        </span>
+    </a>
+    {% empty %}
+    <div style="padding:12px 16px;font-size:0.8125rem;color:var(--text-tertiary,#9ca3af);">아직 게시글이 없습니다.</div>
+    {% endfor %}
+</div>
+{% endif %}
+{% endwith %}
+{% endfor %}
+{% endblock %}

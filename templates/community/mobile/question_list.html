@@ -1,0 +1,281 @@
+{% extends 'base_mobile.html' %}
+{% load static %}
+{% load pybo_filter %}
+
+{% block title %}테크창 Q&A{% endblock %}
+{% block tab_home %}active{% endblock %}
+
+{% block extra_css %}
+<style>
+.m-search-bar {
+    position: sticky;
+    top: 56px;
+    z-index: 100;
+    background: var(--bg-secondary, #f9fafb);
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--border-light, #e5e7eb);
+    display: flex;
+    gap: 8px;
+}
+.m-search-input {
+    flex: 1;
+    height: 40px;
+    border: 1px solid var(--border-light, #e5e7eb);
+    border-radius: 20px;
+    padding: 0 16px;
+    font-size: 0.9375rem;
+    background: var(--bg-primary, #fff);
+    color: var(--text-primary, #111);
+    outline: none;
+}
+.m-search-input:focus { border-color: var(--accent-primary, #3b82f6); }
+.m-search-btn {
+    width: 40px; height: 40px;
+    border-radius: 50%;
+    border: none;
+    background: var(--accent-primary, #3b82f6);
+    color: #fff;
+    font-size: 1rem;
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
+/* 카테고리 가로 스크롤 */
+.m-category-scroll {
+    display: flex;
+    gap: 8px;
+    padding: 10px 16px;
+    overflow-x: auto;
+    scrollbar-width: none;
+    background: var(--bg-primary, #fff);
+    border-bottom: 1px solid var(--border-light, #e5e7eb);
+}
+.m-category-scroll::-webkit-scrollbar { display: none; }
+.m-cat-chip {
+    flex-shrink: 0;
+    padding: 5px 14px;
+    border-radius: 20px;
+    border: 1px solid var(--border-light, #e5e7eb);
+    font-size: 0.8125rem;
+    font-weight: 500;
+    color: var(--text-secondary, #6b7280);
+    text-decoration: none;
+    background: var(--bg-primary, #fff);
+    white-space: nowrap;
+    transition: all .15s;
+}
+.m-cat-chip.active,
+.m-cat-chip:hover {
+    background: var(--accent-primary, #3b82f6);
+    border-color: var(--accent-primary, #3b82f6);
+    color: #fff;
+}
+
+/* 정렬 탭 */
+.m-sort-tabs {
+    display: flex;
+    padding: 0 16px;
+    border-bottom: 1px solid var(--border-light, #e5e7eb);
+    background: var(--bg-primary, #fff);
+}
+.m-sort-tab {
+    padding: 10px 14px;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--text-tertiary, #9ca3af);
+    text-decoration: none;
+    border-bottom: 2px solid transparent;
+}
+.m-sort-tab.active { color: var(--accent-primary, #3b82f6); border-bottom-color: var(--accent-primary, #3b82f6); }
+
+/* 질문 카드 */
+.m-q-list { padding: 12px 16px; display: flex; flex-direction: column; gap: 10px; }
+.m-q-card {
+    background: var(--bg-primary, #fff);
+    border-radius: 14px;
+    padding: 14px;
+    box-shadow: 0 1px 6px rgba(0,0,0,.06);
+    text-decoration: none;
+    color: inherit;
+    display: block;
+    border: 1px solid var(--border-light, #e5e7eb);
+    transition: box-shadow .15s;
+}
+.m-q-card:active { box-shadow: 0 4px 16px rgba(0,0,0,.1); }
+.m-q-badge {
+    display: inline-block;
+    font-size: 0.6875rem;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 10px;
+    background: var(--accent-light, #eff6ff);
+    color: var(--accent-primary, #3b82f6);
+    margin-bottom: 6px;
+}
+.m-q-title {
+    font-size: 0.9375rem;
+    font-weight: 600;
+    color: var(--text-primary, #111);
+    line-height: 1.45;
+    margin-bottom: 8px;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+.m-q-meta {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 0.75rem;
+    color: var(--text-tertiary, #9ca3af);
+}
+.m-q-meta i { font-size: 0.6875rem; }
+.m-q-stat { display: flex; align-items: center; gap: 3px; }
+
+/* 페이징 */
+.m-paging {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 4px;
+    padding: 16px;
+}
+.m-page-btn {
+    min-width: 36px; height: 36px;
+    border-radius: 50%;
+    border: 1px solid var(--border-light, #e5e7eb);
+    background: var(--bg-primary, #fff);
+    color: var(--text-secondary, #6b7280);
+    font-size: 0.875rem;
+    font-weight: 500;
+    text-decoration: none;
+    display: flex; align-items: center; justify-content: center;
+    transition: all .15s;
+}
+.m-page-btn.active {
+    background: var(--accent-primary, #3b82f6);
+    border-color: var(--accent-primary, #3b82f6);
+    color: #fff;
+}
+.m-page-btn.disabled { opacity: .4; pointer-events: none; }
+
+/* 스탯 배너 */
+.m-stat-banner {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1px;
+    background: var(--border-light, #e5e7eb);
+    border-top: 1px solid var(--border-light, #e5e7eb);
+    border-bottom: 1px solid var(--border-light, #e5e7eb);
+    margin-bottom: 4px;
+}
+.m-stat-item {
+    background: var(--bg-primary, #fff);
+    padding: 12px 8px;
+    text-align: center;
+}
+.m-stat-num { font-size: 1.125rem; font-weight: 800; color: var(--accent-primary, #3b82f6); }
+.m-stat-label { font-size: 0.6875rem; color: var(--text-tertiary, #9ca3af); margin-top: 2px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- 검색바 -->
+<form method="get" action="/" class="m-search-bar">
+    {% if category %}<input type="hidden" name="category" value="{{ category }}">{% endif %}
+    {% if sort %}<input type="hidden" name="sort" value="{{ sort }}">{% endif %}
+    <input type="text" name="kw" value="{{ kw }}" placeholder="질문 검색..." class="m-search-input">
+    <button type="submit" class="m-search-btn"><i class="fas fa-search"></i></button>
+</form>
+
+<!-- 카테고리 -->
+<div class="m-category-scroll">
+    <a href="/?sort={{ sort }}" class="m-cat-chip {% if not category %}active{% endif %}">
+        전체 <small>{{ total_count }}</small>
+    </a>
+    {% for cat in categories %}
+    <a href="/?category={{ cat.name }}&sort={{ sort }}" class="m-cat-chip {% if category == cat.name %}active{% endif %}">
+        {{ cat.name }} <small>{{ category_counts|get_item:cat.name|default:0 }}</small>
+    </a>
+    {% endfor %}
+</div>
+
+<!-- 정렬 탭 -->
+<div class="m-sort-tabs">
+    <a href="?{% if kw %}kw={{ kw }}&{% endif %}{% if category %}category={{ category }}&{% endif %}sort=recent" class="m-sort-tab {% if sort == 'recent' or not sort %}active{% endif %}">최신</a>
+    <a href="?{% if kw %}kw={{ kw }}&{% endif %}{% if category %}category={{ category }}&{% endif %}sort=recommend" class="m-sort-tab {% if sort == 'recommend' %}active{% endif %}">추천</a>
+    <a href="?{% if kw %}kw={{ kw }}&{% endif %}{% if category %}category={{ category }}&{% endif %}sort=popular" class="m-sort-tab {% if sort == 'popular' %}active{% endif %}">인기</a>
+</div>
+
+<!-- 스탯 -->
+<div class="m-stat-banner">
+    <div class="m-stat-item">
+        <div class="m-stat-num">{{ total_count }}</div>
+        <div class="m-stat-label">질문</div>
+    </div>
+    <div class="m-stat-item">
+        <div class="m-stat-num">{{ total_users }}</div>
+        <div class="m-stat-label">회원</div>
+    </div>
+    <div class="m-stat-item">
+        <div class="m-stat-num">{{ visitors_today }}</div>
+        <div class="m-stat-label">오늘 방문</div>
+    </div>
+</div>
+
+<!-- 질문 목록 -->
+<div class="m-q-list">
+    {% if question_list %}
+    {% for question in question_list %}
+    <a href="{% url 'community:detail' question.id %}" class="m-q-card">
+        {% if question.category %}
+        <span class="m-q-badge">{{ question.category.name }}</span>
+        {% endif %}
+        <div class="m-q-title">{{ question.subject }}</div>
+        <div class="m-q-meta">
+            <span class="m-q-stat"><i class="fas fa-thumbs-up"></i> {{ question.voter_count }}</span>
+            <span class="m-q-stat"><i class="fas fa-comment"></i> {{ question.answer_count }}</span>
+            <span class="m-q-stat"><i class="fas fa-eye"></i> {{ question.view_count }}</span>
+            <span style="margin-left:auto;">{{ question.author.username }}</span>
+        </div>
+    </a>
+    {% endfor %}
+    {% else %}
+    <div style="text-align:center;padding:40px 16px;color:var(--text-tertiary,#9ca3af);">
+        <i class="fas fa-inbox" style="font-size:2rem;margin-bottom:12px;display:block;"></i>
+        질문이 없습니다.
+        <br><br>
+        <a href="{% url 'community:question_create' %}" style="color:var(--accent-primary,#3b82f6);font-weight:600;">첫 질문 작성하기</a>
+    </div>
+    {% endif %}
+</div>
+
+<!-- 페이징 -->
+{% if question_list.paginator.num_pages > 1 %}
+<div class="m-paging">
+    {% if question_list.has_previous %}
+    <a href="?page={{ question_list.previous_page_number }}{% if kw %}&kw={{ kw }}{% endif %}{% if category %}&category={{ category }}{% endif %}&sort={{ sort }}" class="m-page-btn">
+        <i class="fas fa-chevron-left"></i>
+    </a>
+    {% else %}
+    <span class="m-page-btn disabled"><i class="fas fa-chevron-left"></i></span>
+    {% endif %}
+
+    {% for p in question_list.paginator.page_range %}
+    {% if p >= question_list.number|add:"-2" and p <= question_list.number|add:"2" %}
+    <a href="?page={{ p }}{% if kw %}&kw={{ kw }}{% endif %}{% if category %}&category={{ category }}{% endif %}&sort={{ sort }}"
+       class="m-page-btn {% if p == question_list.number %}active{% endif %}">{{ p }}</a>
+    {% endif %}
+    {% endfor %}
+
+    {% if question_list.has_next %}
+    <a href="?page={{ question_list.next_page_number }}{% if kw %}&kw={{ kw }}{% endif %}{% if category %}&category={{ category }}{% endif %}&sort={{ sort }}" class="m-page-btn">
+        <i class="fas fa-chevron-right"></i>
+    </a>
+    {% else %}
+    <span class="m-page-btn disabled"><i class="fas fa-chevron-right"></i></span>
+    {% endif %}
+</div>
+{% endif %}
+{% endblock %}

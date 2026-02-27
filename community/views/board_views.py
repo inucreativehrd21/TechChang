@@ -37,7 +37,8 @@ def board_main(request):
         'total_questions': total_questions,
     }
 
-    return render(request, 'community/board_main.html', context)
+    template = 'community/mobile/board_main.html' if getattr(request, 'is_mobile', False) else 'community/board_main.html'
+    return render(request, template, context)
 
 
 def board_category(request, category_name):

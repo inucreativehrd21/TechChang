@@ -35,6 +35,10 @@ urlpatterns = [
     path('admin/ip/unblock/<int:ip_id>/', views.admin_unblock_ip, name='admin_unblock_ip'),
     path('admin/ip/list/', views.admin_blocked_ip_list, name='admin_blocked_ip_list'),
 
+    # 버전 전환 (PC/모바일)
+    path('toggle-version/', views.toggle_version, name='toggle_version'),
+    path('reset-version/', views.reset_version, name='reset_version'),
+
     # 포인트 및 이모티콘 시스템
     path('checkin/', views.daily_checkin, name='daily_checkin'),
     path('emoticon/shop/', views.emoticon_shop, name='emoticon_shop'),

@@ -304,6 +304,34 @@ class RequestLoggingMiddleware:
         return False
 
 
+class MobileDetectionMiddleware:
+    """모바일 기기 감지 미들웨어 - User-Agent 기반 + 쿠키 수동 전환"""
+
+    MOBILE_KEYWORDS = [
+        'mobile', 'android', 'iphone', 'ipad', 'ipod',
+        'windows phone', 'blackberry', 'opera mini', 'iemobile',
+    ]
+
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        user_agent = request.META.get('HTTP_USER_AGENT', '').lower()
+        is_mobile_device = any(kw in user_agent for kw in self.MOBILE_KEYWORDS)
+
+        # 쿠키로 사용자 수동 전환 확인 (우선)
+        user_preference = request.COOKIES.get('force_version')  # 'mobile' or 'desktop'
+
+        if user_preference in ('mobile', 'desktop'):
+            request.is_mobile = (user_preference == 'mobile')
+            request.is_forced = True
+        else:
+            request.is_mobile = is_mobile_device
+            request.is_forced = False
+
+        return self.get_response(request)
+
+
 # 안전한 설정 검사
 def validate_security_settings():
     """보안 설정 유효성 검사"""
