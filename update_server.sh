@@ -484,7 +484,8 @@ show_step "SSL 인증서 확인"
 SSL_CERT_PATH="/etc/letsencrypt/live/techchang.com/fullchain.pem"
 HAS_SSL=false
 
-if [ -f "$SSL_CERT_PATH" ]; then
+# sudo로 확인 (letsencrypt 디렉토리는 root 권한 필요)
+if sudo test -f "$SSL_CERT_PATH"; then
     echo "✓ SSL 인증서 존재: $SSL_CERT_PATH"
     HAS_SSL=true
 else
