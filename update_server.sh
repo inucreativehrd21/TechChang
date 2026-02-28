@@ -134,10 +134,14 @@ echo "프로젝트 전체 백업 중..."
 sudo cp -r $PROJECT_DIR $BACKUP_DIR/mysite_backup
 echo "✓ 프로젝트 백업 완료"
 
-# 데이터베이스 백업
-echo "데이터베이스 백업 중..."
-cp $PROJECT_DIR/db.sqlite3 $BACKUP_DIR/db_backup.sqlite3
-echo "✓ DB 백업 완료: $(du -h $BACKUP_DIR/db_backup.sqlite3 | cut -f1)"
+# 데이터베이스 백업 (SQLite만 해당, MySQL은 backup_db 명령어 사용)
+if [ -f "$PROJECT_DIR/db.sqlite3" ]; then
+    echo "데이터베이스 백업 중..."
+    cp $PROJECT_DIR/db.sqlite3 $BACKUP_DIR/db_backup.sqlite3
+    echo "✓ DB 백업 완료: $(du -h $BACKUP_DIR/db_backup.sqlite3 | cut -f1)"
+else
+    echo "ℹ MySQL 사용 중 - DB 백업은 backup_db 명령어로 별도 진행"
+fi
 
 # 미디어 파일 백업
 if [ -d "$PROJECT_DIR/media" ]; then
@@ -250,9 +254,11 @@ show_step "데이터 및 설정 복원"
 cd $PROJECT_DIR
 
 if [ "$update_method" = "2" ]; then
-    # 데이터베이스 복원
-    echo "데이터베이스 복원 중..."
-    sudo cp $BACKUP_DIR/db_backup.sqlite3 ./db.sqlite3
+    # 데이터베이스 복원 (SQLite만 해당)
+    if [ -f "$BACKUP_DIR/db_backup.sqlite3" ]; then
+        echo "데이터베이스 복원 중..."
+        sudo cp $BACKUP_DIR/db_backup.sqlite3 ./db.sqlite3
+    fi
 
     # 미디어 파일 복원
     echo "미디어 파일 복원 중..."
@@ -272,9 +278,11 @@ sed -i 's/www\.tc\.o-r\.kr/www.techchang.com/g' .env
 
 # 권한 설정
 echo "권한 설정 중..."
-sudo chown ubuntu:www-data db.sqlite3
-sudo chmod 664 db.sqlite3
-sudo chown -R ubuntu:www-data media/
+if [ -f "db.sqlite3" ]; then
+    sudo chown ubuntu:www-data db.sqlite3
+    sudo chmod 664 db.sqlite3
+fi
+sudo chown -R ubuntu:www-data media/ 2>/dev/null || true
 sudo chmod -R 755 media/
 
 echo "✓ 데이터 복원 완료"
@@ -337,19 +345,21 @@ echo "✓ 환경 설정 완료"
 # ============================================
 show_step "가상환경 및 패키지 업데이트"
 
-# 가상환경 확인
-if [ ! -d "venv" ]; then
-    if [ -d "/home/ubuntu/projects/mysite_old/venv" ]; then
-        echo "기존 가상환경 복사 중..."
-        cp -r /home/ubuntu/projects/mysite_old/venv ./
-    else
-        echo "새 가상환경 생성 중..."
-        python3 -m venv venv
-    fi
+# venv 경로 자동 감지: 서버 공용 venv 우선, 없으면 프로젝트 내 venv
+if [ -f "/home/ubuntu/venvs/mysite/bin/activate" ]; then
+    VENV_DIR="/home/ubuntu/venvs/mysite"
+    echo "공용 venv 사용: $VENV_DIR"
+elif [ -d "$PROJECT_DIR/venv" ]; then
+    VENV_DIR="$PROJECT_DIR/venv"
+    echo "프로젝트 venv 사용: $VENV_DIR"
+else
+    echo "새 가상환경 생성 중..."
+    python3 -m venv $PROJECT_DIR/venv
+    VENV_DIR="$PROJECT_DIR/venv"
 fi
 
 # 가상환경 활성화
-source venv/bin/activate
+source $VENV_DIR/bin/activate
 
 # 패키지 업데이트
 echo "Python 패키지 업데이트 중..."
@@ -403,11 +413,13 @@ else
     echo "⚠️ 마이그레이션 디렉토리를 찾을 수 없습니다"
 fi
 
-# django_migrations 테이블 업데이트
+# django_migrations 테이블 업데이트 (SQLite만 해당)
 echo "데이터베이스 마이그레이션 히스토리 업데이트 중..."
 if [ -f "$PROJECT_DIR/db.sqlite3" ]; then
     sqlite3 "$PROJECT_DIR/db.sqlite3" "UPDATE django_migrations SET app = 'community' WHERE app = 'pybo';" 2>/dev/null || true
     echo "✓ 데이터베이스 마이그레이션 히스토리 업데이트 완료"
+else
+    echo "ℹ MySQL 사용 중 - 마이그레이션 히스토리는 Django가 자동 관리"
 fi
 
 # ============================================
