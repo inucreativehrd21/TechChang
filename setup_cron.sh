@@ -24,8 +24,11 @@ echo ""
 (crontab -l 2>/dev/null | grep -v 'send_log_report' | grep -v 'backup_db'; echo "") | crontab -
 
 # ─── cron 항목 ──────────────────────────────────────────────────────
-# 매일 새벽 3시: DB 백업 (최근 7개 보관)
+# 매일 새벽 3시: DB 로컬 백업 (최근 7개 보관)
 CRON_BACKUP="0 3 * * * cd $SITE_DIR && $VENV_PYTHON $MANAGE backup_db --keep 7 --dest $BACKUP_DIR >> $LOG_FILE 2>&1"
+
+# 매주 월요일 새벽 3시 30분: DB 주간 백업 + 이메일 전송 (최근 4개 보관)
+CRON_WEEKLY_BACKUP="30 3 * * 1 cd $SITE_DIR && $VENV_PYTHON $MANAGE backup_db --keep 4 --dest $BACKUP_DIR --email $ADMIN_EMAIL >> $LOG_FILE 2>&1"
 
 # 매일 오전 8시: 일간 리포트 이메일
 CRON_DAILY="0 8 * * * cd $SITE_DIR && $VENV_PYTHON $MANAGE send_log_report --hours 24 --to $ADMIN_EMAIL >> $LOG_FILE 2>&1"
@@ -34,7 +37,7 @@ CRON_DAILY="0 8 * * * cd $SITE_DIR && $VENV_PYTHON $MANAGE send_log_report --hou
 CRON_WEEKLY="0 8 * * 1 cd $SITE_DIR && $VENV_PYTHON $MANAGE send_log_report --hours 168 --to $ADMIN_EMAIL >> $LOG_FILE 2>&1"
 # ────────────────────────────────────────────────────────────────────
 
-(crontab -l 2>/dev/null; echo "$CRON_BACKUP"; echo "$CRON_DAILY"; echo "$CRON_WEEKLY") | crontab -
+(crontab -l 2>/dev/null; echo "$CRON_BACKUP"; echo "$CRON_WEEKLY_BACKUP"; echo "$CRON_DAILY"; echo "$CRON_WEEKLY") | crontab -
 
 echo "✅ cron 등록 완료!"
 echo ""
@@ -46,4 +49,5 @@ echo "💾 백업 경로: $BACKUP_DIR"
 echo ""
 echo "🧪 지금 바로 테스트:"
 echo "   $VENV_PYTHON $MANAGE backup_db --keep 7 --dest $BACKUP_DIR"
+echo "   $VENV_PYTHON $MANAGE backup_db --keep 4 --dest $BACKUP_DIR --email $ADMIN_EMAIL"
 echo "   $VENV_PYTHON $MANAGE send_log_report --hours 24 --to $ADMIN_EMAIL --dry-run"

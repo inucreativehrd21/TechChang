@@ -296,7 +296,47 @@
             <div class="stat-num green">+{{ db.new_answers|default:0 }}</div>
             <div class="stat-label">오늘 답변</div>
           </div>
+          <div class="stat-box">
+            <div class="stat-num green">+{{ db.new_comments_today|default:0 }}</div>
+            <div class="stat-label">오늘 댓글</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-num">{{ db.total_comments|default:"–" }}</div>
+            <div class="stat-label">전체 댓글</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-num">{{ db.total_answers|default:"–" }}</div>
+            <div class="stat-label">전체 답변</div>
+          </div>
         </div>
+      </div>
+
+      <!-- 사용자 활동 -->
+      <div class="mon-card">
+        <h2><i class="fas fa-users"></i> 사용자 활동</h2>
+        <div class="stat-grid" style="margin-bottom:16px;">
+          <div class="stat-box">
+            <div class="stat-num">{{ db.active_users_7d|default:"–" }}</div>
+            <div class="stat-label">7일 활성 유저</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-num">{{ db.active_users_30d|default:"–" }}</div>
+            <div class="stat-label">30일 활성 유저</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-num green">{{ db.game_plays_today|default:0 }}</div>
+            <div class="stat-label">오늘 게임 플레이</div>
+          </div>
+        </div>
+        {% if db.game_detail %}
+        <div style="font-size:.75rem; color:#94a3b8; margin-bottom:6px;">게임별 플레이 수 (오늘)</div>
+        {% for name, cnt in db.game_detail.items %}
+        <div class="mon-row">
+          <span class="label">{{ name }}</span>
+          <span>{{ cnt }}회</span>
+        </div>
+        {% endfor %}
+        {% endif %}
       </div>
 
       <!-- 방문자 7일 추이 -->
@@ -332,6 +372,21 @@
           </div>
           {% endfor %}
         </div>
+      </div>
+
+      <!-- 인기 질문 Top 5 -->
+      <div class="mon-card">
+        <h2><i class="fas fa-fire"></i> 인기 질문 Top 5</h2>
+        {% for q in db.top_questions %}
+        <div class="mon-row">
+          <span class="label" style="max-width:75%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
+            {{ forloop.counter }}. {{ q.subject }}
+          </span>
+          <span>{{ q.view_count|default:0 }}회</span>
+        </div>
+        {% empty %}
+        <div style="color:#64748b; font-size:.875rem;">데이터 없음</div>
+        {% endfor %}
       </div>
 
       <!-- 최근 에러 로그 -->
