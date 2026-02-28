@@ -5,7 +5,17 @@
 # =====================================================
 
 SITE_DIR="$(cd "$(dirname "$0")" && pwd)"  # 스크립트 위치 자동 감지
-VENV_PYTHON="$SITE_DIR/venv/bin/python"
+
+# venv 경로 자동 감지: 서버(venvs/mysite) 우선, 없으면 프로젝트 내 venv
+if [ -f "/home/ubuntu/venvs/mysite/bin/python3" ]; then
+    VENV_PYTHON="/home/ubuntu/venvs/mysite/bin/python3"
+elif [ -f "$SITE_DIR/venv/bin/python" ]; then
+    VENV_PYTHON="$SITE_DIR/venv/bin/python"
+else
+    echo "오류: Python 가상환경을 찾을 수 없습니다."
+    exit 1
+fi
+echo "Python 경로: $VENV_PYTHON"
 MANAGE="$SITE_DIR/manage.py"
 LOG_FILE="/var/log/techchang_report.log"
 BACKUP_DIR="$SITE_DIR/backups"
