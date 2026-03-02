@@ -6,6 +6,7 @@ from .models import Question, PortfolioCollection
 
 class StaticViewSitemap(Sitemap):
     """정적 페이지 (홈, 멤버, 게임 등)"""
+    protocol = 'https'
     priority = 0.5
     changefreq = 'weekly'
 
@@ -18,6 +19,7 @@ class StaticViewSitemap(Sitemap):
 
 class QuestionSitemap(Sitemap):
     """질문/답변 게시글"""
+    protocol = 'https'
     changefreq = 'daily'
     priority = 0.7
 
@@ -35,6 +37,7 @@ class QuestionSitemap(Sitemap):
 
 class PortfolioCollectionSitemap(Sitemap):
     """공개 포트폴리오 (slug 기반)"""
+    protocol = 'https'
     changefreq = 'weekly'
     priority = 0.8
 
