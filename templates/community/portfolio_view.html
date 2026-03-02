@@ -609,88 +609,95 @@ body {
 
     <!-- Slide 2: Experience (Timeline) -->
     {% if portfolio.show_experience and experiences %}
-    <section class="portfolio-slide experience-slide" data-slide="1" style="background: linear-gradient(160deg, #0f0c29 0%, #302b63 50%, #24243e 100%); overflow-y: auto;">
+    <section class="portfolio-slide experience-slide" data-slide="1" style="background: linear-gradient(160deg, #0f0c29 0%, #302b63 50%, #24243e 100%); overflow-y: auto; align-items: flex-start;">
         <style>
-        .exp-wrap {
-            max-width: 860px;
+        .exp-outer {
             width: 100%;
+            max-width: 1280px;
             margin: 0 auto;
-            padding: 5rem 2rem 4rem;
+            padding: 5rem 4rem 5rem;
+            display: grid;
+            grid-template-columns: 260px 1fr;
+            gap: 0 6rem;
+            align-items: start;
         }
-        .exp-header {
-            margin-bottom: 3.5rem;
+        .exp-sidebar {
+            position: sticky;
+            top: 5rem;
         }
         .exp-label {
-            font-size: 0.75rem;
+            font-size: 0.7rem;
             font-weight: 700;
-            letter-spacing: 0.2em;
-            color: rgba(255,255,255,0.4);
+            letter-spacing: 0.25em;
+            color: rgba(255,255,255,0.35);
             text-transform: uppercase;
             display: block;
-            margin-bottom: 0.5rem;
+            margin-bottom: 0.75rem;
         }
         .exp-title {
-            font-size: clamp(2.5rem, 5vw, 3.5rem);
+            font-size: clamp(2.8rem, 4vw, 4rem);
             font-weight: 900;
             color: white;
-            margin: 0;
+            margin: 0 0 1.5rem;
             line-height: 1.1;
+        }
+        .exp-subtitle {
+            font-size: 0.875rem;
+            color: rgba(255,255,255,0.35);
+            line-height: 1.8;
         }
         .exp-list {
             position: relative;
+            padding-top: 0.5rem;
         }
-        /* 세로 연결선 */
         .exp-list::before {
             content: '';
             position: absolute;
-            left: 130px;
+            left: 110px;
             top: 8px;
             bottom: 8px;
             width: 1px;
-            background: linear-gradient(to bottom, transparent, rgba(255,255,255,0.2) 10%, rgba(255,255,255,0.2) 90%, transparent);
+            background: linear-gradient(to bottom, transparent, rgba(255,255,255,0.15) 8%, rgba(255,255,255,0.15) 92%, transparent);
         }
         .exp-row {
             display: grid;
-            grid-template-columns: 120px 1fr;
+            grid-template-columns: 100px 1fr;
             gap: 0 2.5rem;
-            margin-bottom: 3rem;
+            margin-bottom: 3.5rem;
             position: relative;
         }
-        .exp-row:last-child {
-            margin-bottom: 0;
-        }
-        /* 타임라인 점 */
+        .exp-row:last-child { margin-bottom: 0; }
         .exp-row::before {
             content: '';
             position: absolute;
-            left: 124px;
-            top: 9px;
-            width: 13px;
-            height: 13px;
+            left: 104px;
+            top: 8px;
+            width: 12px;
+            height: 12px;
             border-radius: 50%;
             background: white;
-            box-shadow: 0 0 0 3px rgba(255,255,255,0.15), 0 0 20px rgba(167,139,250,0.6);
+            box-shadow: 0 0 0 3px rgba(255,255,255,0.12), 0 0 18px rgba(167,139,250,0.55);
             z-index: 1;
         }
         .exp-meta {
             text-align: right;
-            padding-top: 0.2rem;
+            padding-top: 0.15rem;
         }
         .exp-period {
-            font-size: 0.8rem;
+            font-size: 0.78rem;
             font-weight: 600;
-            color: rgba(255,255,255,0.5);
-            line-height: 1.6;
+            color: rgba(255,255,255,0.45);
+            line-height: 1.7;
             white-space: nowrap;
         }
         .exp-duration {
-            font-size: 0.7rem;
-            color: rgba(255,255,255,0.3);
-            margin-top: 0.2rem;
+            font-size: 0.68rem;
+            color: rgba(255,255,255,0.25);
+            margin-top: 0.25rem;
         }
         .exp-content {
-            padding-bottom: 2.5rem;
-            border-bottom: 1px solid rgba(255,255,255,0.06);
+            padding-bottom: 3rem;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
         }
         .exp-row:last-child .exp-content {
             border-bottom: none;
@@ -701,42 +708,43 @@ body {
             align-items: center;
             gap: 0.75rem;
             flex-wrap: wrap;
-            margin-bottom: 0.35rem;
+            margin-bottom: 0.3rem;
         }
         .exp-position {
-            font-size: 1.25rem;
+            font-size: 1.3rem;
             font-weight: 800;
             color: white;
             line-height: 1.3;
         }
         .exp-badge-current {
-            font-size: 0.65rem;
+            font-size: 0.62rem;
             font-weight: 700;
-            letter-spacing: 0.05em;
+            letter-spacing: 0.06em;
             text-transform: uppercase;
             color: #10b981;
-            background: rgba(16,185,129,0.15);
-            border: 1px solid rgba(16,185,129,0.3);
-            padding: 0.2rem 0.6rem;
+            background: rgba(16,185,129,0.12);
+            border: 1px solid rgba(16,185,129,0.25);
+            padding: 0.2rem 0.65rem;
             border-radius: 100px;
         }
         .exp-company {
             font-size: 0.95rem;
             font-weight: 500;
-            color: rgba(167,139,250,0.9);
-            margin-bottom: 0.25rem;
+            color: rgba(167,139,250,0.85);
+            margin-bottom: 0.2rem;
         }
         .exp-location-text {
-            font-size: 0.8rem;
-            color: rgba(255,255,255,0.35);
-            margin-bottom: 1rem;
+            font-size: 0.78rem;
+            color: rgba(255,255,255,0.3);
+            margin-bottom: 1.1rem;
         }
         .exp-desc {
             font-size: 0.9rem;
-            color: rgba(255,255,255,0.65);
-            line-height: 1.8;
+            color: rgba(255,255,255,0.6);
+            line-height: 1.85;
             margin: 0 0 1rem;
             white-space: pre-line;
+            max-width: 600px;
         }
         .exp-achievements-list {
             list-style: none;
@@ -745,8 +753,8 @@ body {
         }
         .exp-achievements-list li {
             font-size: 0.875rem;
-            color: rgba(255,255,255,0.6);
-            line-height: 1.7;
+            color: rgba(255,255,255,0.55);
+            line-height: 1.75;
             padding-left: 1.1rem;
             position: relative;
             margin-bottom: 0.3rem;
@@ -755,39 +763,50 @@ body {
             content: '—';
             position: absolute;
             left: 0;
-            color: rgba(167,139,250,0.5);
-            font-size: 0.75rem;
+            color: rgba(167,139,250,0.45);
         }
         .exp-tags {
             display: flex;
             flex-wrap: wrap;
             gap: 0.4rem;
+            margin-top: 0.75rem;
         }
         .exp-tag {
-            font-size: 0.7rem;
+            font-size: 0.68rem;
             font-weight: 600;
-            letter-spacing: 0.03em;
-            color: rgba(255,255,255,0.55);
-            background: rgba(255,255,255,0.07);
-            border: 1px solid rgba(255,255,255,0.1);
-            padding: 0.25rem 0.7rem;
+            letter-spacing: 0.04em;
+            color: rgba(255,255,255,0.45);
+            background: rgba(255,255,255,0.06);
+            border: 1px solid rgba(255,255,255,0.09);
+            padding: 0.22rem 0.7rem;
             border-radius: 100px;
         }
-        @media (max-width: 600px) {
+        @media (max-width: 900px) {
+            .exp-outer {
+                grid-template-columns: 1fr;
+                padding: 3rem 2rem;
+                gap: 0;
+            }
+            .exp-sidebar {
+                position: static;
+                margin-bottom: 2.5rem;
+            }
+            .exp-title { font-size: 2.2rem; }
             .exp-list::before { left: 80px; }
-            .exp-row { grid-template-columns: 70px 1fr; gap: 0 1.5rem; }
-            .exp-row::before { left: 74px; }
-            .exp-meta { }
-            .exp-period { font-size: 0.7rem; }
+            .exp-row { grid-template-columns: 72px 1fr; gap: 0 1.5rem; }
+            .exp-row::before { left: 75px; }
         }
         </style>
 
-        <div class="exp-wrap">
-            <div class="exp-header">
+        <div class="exp-outer">
+            <!-- 좌측 고정 타이틀 -->
+            <div class="exp-sidebar">
                 <span class="exp-label">Career</span>
-                <h2 class="exp-title">경력 사항</h2>
+                <h2 class="exp-title">경력<br>사항</h2>
+                <p class="exp-subtitle">{{ experiences|length }}개의<br>경력</p>
             </div>
 
+            <!-- 우측 타임라인 -->
             <div class="exp-list">
                 {% for experience in experiences %}
                 <div class="exp-row">
