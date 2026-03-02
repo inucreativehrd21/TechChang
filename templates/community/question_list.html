@@ -2,6 +2,9 @@
 {% load pybo_filter %}
 {% load static %}
 
+{% block title %}테크창{% endblock %}
+{% block meta_description %}테크창 - HRD & 테크놀로지 커뮤니티{% endblock %}
+
 {% block extra_css %}
 <link href="{% static 'css/premium.css' %}?v={{ 'now'|date:'YmdHis' }}" rel="stylesheet">
 {% endblock %}
