@@ -609,103 +609,225 @@ body {
 
     <!-- Slide 2: Experience (Timeline) -->
     {% if portfolio.show_experience and experiences %}
-    <section class="portfolio-slide experience-slide" data-slide="1" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
-        <div style="max-width: 1200px; margin: 0 auto; padding: var(--space-12) var(--space-6); height: 100%; display: flex; flex-direction: column; justify-content: center;">
-            <h2 style="font-size: clamp(2.5rem, 5vw, 4rem); font-weight: 900; color: white; text-align: center; margin-bottom: var(--space-12);">
-                경력 사항
-            </h2>
+    <section class="portfolio-slide experience-slide" data-slide="1" style="background: linear-gradient(160deg, #0f0c29 0%, #302b63 50%, #24243e 100%); overflow-y: auto;">
+        <style>
+        .exp-wrap {
+            max-width: 860px;
+            width: 100%;
+            margin: 0 auto;
+            padding: 5rem 2rem 4rem;
+        }
+        .exp-header {
+            margin-bottom: 3.5rem;
+        }
+        .exp-label {
+            font-size: 0.75rem;
+            font-weight: 700;
+            letter-spacing: 0.2em;
+            color: rgba(255,255,255,0.4);
+            text-transform: uppercase;
+            display: block;
+            margin-bottom: 0.5rem;
+        }
+        .exp-title {
+            font-size: clamp(2.5rem, 5vw, 3.5rem);
+            font-weight: 900;
+            color: white;
+            margin: 0;
+            line-height: 1.1;
+        }
+        .exp-list {
+            position: relative;
+        }
+        /* 세로 연결선 */
+        .exp-list::before {
+            content: '';
+            position: absolute;
+            left: 130px;
+            top: 8px;
+            bottom: 8px;
+            width: 1px;
+            background: linear-gradient(to bottom, transparent, rgba(255,255,255,0.2) 10%, rgba(255,255,255,0.2) 90%, transparent);
+        }
+        .exp-row {
+            display: grid;
+            grid-template-columns: 120px 1fr;
+            gap: 0 2.5rem;
+            margin-bottom: 3rem;
+            position: relative;
+        }
+        .exp-row:last-child {
+            margin-bottom: 0;
+        }
+        /* 타임라인 점 */
+        .exp-row::before {
+            content: '';
+            position: absolute;
+            left: 124px;
+            top: 9px;
+            width: 13px;
+            height: 13px;
+            border-radius: 50%;
+            background: white;
+            box-shadow: 0 0 0 3px rgba(255,255,255,0.15), 0 0 20px rgba(167,139,250,0.6);
+            z-index: 1;
+        }
+        .exp-meta {
+            text-align: right;
+            padding-top: 0.2rem;
+        }
+        .exp-period {
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: rgba(255,255,255,0.5);
+            line-height: 1.6;
+            white-space: nowrap;
+        }
+        .exp-duration {
+            font-size: 0.7rem;
+            color: rgba(255,255,255,0.3);
+            margin-top: 0.2rem;
+        }
+        .exp-content {
+            padding-bottom: 2.5rem;
+            border-bottom: 1px solid rgba(255,255,255,0.06);
+        }
+        .exp-row:last-child .exp-content {
+            border-bottom: none;
+            padding-bottom: 0;
+        }
+        .exp-position-row {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            flex-wrap: wrap;
+            margin-bottom: 0.35rem;
+        }
+        .exp-position {
+            font-size: 1.25rem;
+            font-weight: 800;
+            color: white;
+            line-height: 1.3;
+        }
+        .exp-badge-current {
+            font-size: 0.65rem;
+            font-weight: 700;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+            color: #10b981;
+            background: rgba(16,185,129,0.15);
+            border: 1px solid rgba(16,185,129,0.3);
+            padding: 0.2rem 0.6rem;
+            border-radius: 100px;
+        }
+        .exp-company {
+            font-size: 0.95rem;
+            font-weight: 500;
+            color: rgba(167,139,250,0.9);
+            margin-bottom: 0.25rem;
+        }
+        .exp-location-text {
+            font-size: 0.8rem;
+            color: rgba(255,255,255,0.35);
+            margin-bottom: 1rem;
+        }
+        .exp-desc {
+            font-size: 0.9rem;
+            color: rgba(255,255,255,0.65);
+            line-height: 1.8;
+            margin: 0 0 1rem;
+            white-space: pre-line;
+        }
+        .exp-achievements-list {
+            list-style: none;
+            margin: 0 0 1rem;
+            padding: 0;
+        }
+        .exp-achievements-list li {
+            font-size: 0.875rem;
+            color: rgba(255,255,255,0.6);
+            line-height: 1.7;
+            padding-left: 1.1rem;
+            position: relative;
+            margin-bottom: 0.3rem;
+        }
+        .exp-achievements-list li::before {
+            content: '—';
+            position: absolute;
+            left: 0;
+            color: rgba(167,139,250,0.5);
+            font-size: 0.75rem;
+        }
+        .exp-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.4rem;
+        }
+        .exp-tag {
+            font-size: 0.7rem;
+            font-weight: 600;
+            letter-spacing: 0.03em;
+            color: rgba(255,255,255,0.55);
+            background: rgba(255,255,255,0.07);
+            border: 1px solid rgba(255,255,255,0.1);
+            padding: 0.25rem 0.7rem;
+            border-radius: 100px;
+        }
+        @media (max-width: 600px) {
+            .exp-list::before { left: 80px; }
+            .exp-row { grid-template-columns: 70px 1fr; gap: 0 1.5rem; }
+            .exp-row::before { left: 74px; }
+            .exp-meta { }
+            .exp-period { font-size: 0.7rem; }
+        }
+        </style>
 
-            <div class="experience-timeline" style="position: relative; max-width: 900px; margin: 0 auto; width: 100%;">
-                <!-- Timeline line -->
-                <div style="position: absolute; left: 30px; top: 0; bottom: 0; width: 3px; background: rgba(255, 255, 255, 0.3);"></div>
+        <div class="exp-wrap">
+            <div class="exp-header">
+                <span class="exp-label">Career</span>
+                <h2 class="exp-title">경력 사항</h2>
+            </div>
 
+            <div class="exp-list">
                 {% for experience in experiences %}
-                <div class="experience-item" style="position: relative; padding-left: 80px; margin-bottom: var(--space-10);">
-                    <!-- Timeline dot -->
-                    <div style="position: absolute; left: 18px; top: 8px; width: 27px; height: 27px; background: white; border: 4px solid rgba(255, 255, 255, 0.5); border-radius: 50%; box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.3);"></div>
-
-                    <!-- Experience card -->
-                    <div style="background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); padding: var(--space-6); border-radius: var(--radius-2xl); box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.3); border-left: 5px solid white;">
-                        <!-- Header -->
-                        <div style="display: flex; justify-content: space-between; align-items: start; flex-wrap: wrap; gap: var(--space-3); margin-bottom: var(--space-4);">
-                            <div style="flex: 1; min-width: 250px;">
-                                <div style="display: flex; align-items: center; gap: var(--space-3); margin-bottom: var(--space-2); flex-wrap: wrap;">
-                                    <h3 style="font-size: 1.5rem; font-weight: 800; color: var(--text-primary); margin: 0;">
-                                        {{ experience.position }}
-                                    </h3>
-                                    {% if experience.is_current %}
-                                    <span style="background: linear-gradient(135deg, #10b981, #059669); color: white; padding: var(--space-1) var(--space-3); border-radius: var(--radius-full); font-size: 0.75rem; font-weight: 700; box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);">
-                                        재직 중
-                                    </span>
-                                    {% endif %}
-                                </div>
-                                <div style="font-size: 1.125rem; font-weight: 600; color: #667eea; margin-bottom: var(--space-2);">
-                                    {{ experience.company }}
-                                </div>
-                            </div>
+                <div class="exp-row">
+                    <div class="exp-meta">
+                        <div class="exp-period">
+                            {{ experience.start_date|date:"Y.m" }}<br>
+                            {% if experience.is_current %}현재{% else %}{{ experience.end_date|date:"Y.m" }}{% endif %}
                         </div>
+                        <div class="exp-duration">{{ experience.get_duration }}</div>
+                    </div>
 
-                        <!-- Date and location -->
-                        <div style="display: flex; align-items: center; gap: var(--space-6); flex-wrap: wrap; margin-bottom: var(--space-4); font-size: 0.875rem; color: var(--text-secondary);">
-                            <span style="display: flex; align-items: center; gap: var(--space-2);">
-                                <i class="far fa-calendar"></i>
-                                <strong>{{ experience.start_date|date:"Y.m" }}</strong>
-                                <span>-</span>
-                                {% if experience.is_current %}
-                                <strong>현재</strong>
-                                {% else %}
-                                <strong>{{ experience.end_date|date:"Y.m" }}</strong>
-                                {% endif %}
-                            </span>
-                            <span style="display: flex; align-items: center; gap: var(--space-2);">
-                                <i class="far fa-clock"></i>
-                                <strong>{{ experience.get_duration }}</strong>
-                            </span>
-                            {% if experience.location %}
-                            <span style="display: flex; align-items: center; gap: var(--space-2);">
-                                <i class="fas fa-map-marker-alt"></i>
-                                <strong>{{ experience.location }}</strong>
-                            </span>
+                    <div class="exp-content">
+                        <div class="exp-position-row">
+                            <span class="exp-position">{{ experience.position }}</span>
+                            {% if experience.is_current %}
+                            <span class="exp-badge-current">재직 중</span>
                             {% endif %}
                         </div>
+                        <div class="exp-company">{{ experience.company }}</div>
+                        {% if experience.location %}
+                        <div class="exp-location-text">{{ experience.location }}</div>
+                        {% endif %}
 
-                        <!-- Description -->
                         {% if experience.description %}
-                        <div style="margin-bottom: var(--space-4); padding: var(--space-4); background: var(--bg-secondary); border-radius: var(--radius-lg); border-left: 3px solid #667eea;">
-                            <p style="color: var(--text-primary); line-height: 1.7; margin: 0; white-space: pre-line;">{{ experience.description }}</p>
-                        </div>
+                        <p class="exp-desc">{{ experience.description }}</p>
                         {% endif %}
 
-                        <!-- Achievements -->
                         {% if experience.achievements %}
-                        <div style="margin-bottom: var(--space-4);">
-                            <h4 style="font-size: 0.875rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: var(--space-3);">
-                                주요 성과
-                            </h4>
-                            <ul style="margin: 0; padding-left: var(--space-5); list-style: none;">
-                                {% for achievement in experience.achievements %}
-                                <li style="margin-bottom: var(--space-2); position: relative; padding-left: var(--space-4); color: var(--text-primary); line-height: 1.6;">
-                                    <i class="fas fa-check-circle" style="position: absolute; left: 0; top: 4px; color: #10b981; font-size: 0.875rem;"></i>
-                                    {{ achievement }}
-                                </li>
-                                {% endfor %}
-                            </ul>
-                        </div>
+                        <ul class="exp-achievements-list">
+                            {% for achievement in experience.achievements %}
+                            <li>{{ achievement }}</li>
+                            {% endfor %}
+                        </ul>
                         {% endif %}
 
-                        <!-- Tech stack -->
                         {% if experience.tech_stack %}
-                        <div>
-                            <h4 style="font-size: 0.875rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: var(--space-3);">
-                                사용 기술
-                            </h4>
-                            <div style="display: flex; flex-wrap: wrap; gap: var(--space-2);">
-                                {% for tech in experience.tech_stack %}
-                                <span style="background: linear-gradient(135deg, #667eea, #764ba2); color: white; padding: var(--space-2) var(--space-4); border-radius: var(--radius-full); font-size: 0.875rem; font-weight: 600; box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);">
-                                    {{ tech }}
-                                </span>
-                                {% endfor %}
-                            </div>
+                        <div class="exp-tags">
+                            {% for tech in experience.tech_stack %}
+                            <span class="exp-tag">{{ tech }}</span>
+                            {% endfor %}
                         </div>
                         {% endif %}
                     </div>
