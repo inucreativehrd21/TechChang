@@ -1,5 +1,5 @@
 
-from django.urls import path
+from django.urls import path, re_path
 
 # 실시간 게임 비활성화 (나중을 위해 파일은 유지)
 # from .views import wordchain_views, tictactoe_views
@@ -113,21 +113,21 @@ urlpatterns = [
     # portfolio_views.py - 포트폴리오 컬렉션 (다중 포트폴리오)
     path('portfolios/', portfolio_views.portfolio_collection_list, name='portfolio_collection_list'),
     path('portfolios/create/', portfolio_views.portfolio_collection_create, name='portfolio_collection_create'),
-    path('portfolios/<slug:slug>/', portfolio_views.portfolio_collection_detail, name='portfolio_collection_detail'),
-    path('portfolios/<slug:slug>/edit/', portfolio_views.portfolio_collection_edit, name='portfolio_collection_edit'),
-    path('portfolios/<slug:slug>/publish/', portfolio_views.portfolio_collection_publish, name='portfolio_collection_publish'),
-    path('portfolios/<slug:slug>/set-main/', portfolio_views.portfolio_collection_set_main, name='portfolio_collection_set_main'),
-    path('portfolios/<slug:slug>/delete/', portfolio_views.portfolio_collection_delete, name='portfolio_collection_delete'),
+    re_path(r'^portfolios/(?P<slug>[-\w가-힣]+)/$', portfolio_views.portfolio_collection_detail, name='portfolio_collection_detail'),
+    re_path(r'^portfolios/(?P<slug>[-\w가-힣]+)/edit/$', portfolio_views.portfolio_collection_edit, name='portfolio_collection_edit'),
+    re_path(r'^portfolios/(?P<slug>[-\w가-힣]+)/publish/$', portfolio_views.portfolio_collection_publish, name='portfolio_collection_publish'),
+    re_path(r'^portfolios/(?P<slug>[-\w가-힣]+)/set-main/$', portfolio_views.portfolio_collection_set_main, name='portfolio_collection_set_main'),
+    re_path(r'^portfolios/(?P<slug>[-\w가-힣]+)/delete/$', portfolio_views.portfolio_collection_delete, name='portfolio_collection_delete'),
 
     # 포트폴리오 컬렉션 - 프로젝트 CRUD
-    path('portfolios/<slug:slug>/project/create/', portfolio_views.collection_project_create, name='collection_project_create'),
-    path('portfolios/<slug:slug>/project/<int:project_id>/edit/', portfolio_views.collection_project_edit, name='collection_project_edit'),
-    path('portfolios/<slug:slug>/project/<int:project_id>/delete/', portfolio_views.collection_project_delete, name='collection_project_delete'),
+    re_path(r'^portfolios/(?P<slug>[-\w가-힣]+)/project/create/$', portfolio_views.collection_project_create, name='collection_project_create'),
+    re_path(r'^portfolios/(?P<slug>[-\w가-힣]+)/project/(?P<project_id>\d+)/edit/$', portfolio_views.collection_project_edit, name='collection_project_edit'),
+    re_path(r'^portfolios/(?P<slug>[-\w가-힣]+)/project/(?P<project_id>\d+)/delete/$', portfolio_views.collection_project_delete, name='collection_project_delete'),
 
     # 포트폴리오 컬렉션 - 경력 CRUD
-    path('portfolios/<slug:slug>/experience/create/', portfolio_views.collection_experience_create, name='collection_experience_create'),
-    path('portfolios/<slug:slug>/experience/<int:experience_id>/edit/', portfolio_views.collection_experience_edit, name='collection_experience_edit'),
-    path('portfolios/<slug:slug>/experience/<int:experience_id>/delete/', portfolio_views.collection_experience_delete, name='collection_experience_delete'),
+    re_path(r'^portfolios/(?P<slug>[-\w가-힣]+)/experience/create/$', portfolio_views.collection_experience_create, name='collection_experience_create'),
+    re_path(r'^portfolios/(?P<slug>[-\w가-힣]+)/experience/(?P<experience_id>\d+)/edit/$', portfolio_views.collection_experience_edit, name='collection_experience_edit'),
+    re_path(r'^portfolios/(?P<slug>[-\w가-힣]+)/experience/(?P<experience_id>\d+)/delete/$', portfolio_views.collection_experience_delete, name='collection_experience_delete'),
 
     # *** IMPORTANT: 이 패턴은 맨 마지막에 위치해야 합니다! ***
     # <int:question_id>/ 패턴이 숫자로 시작하는 다른 URL들(2048 등)을 가로채지 않도록
