@@ -173,6 +173,7 @@ body {
     max-width: 1200px;
     width: 100%;
     text-align: center;
+    padding: 4rem 2rem;
 }
 
 .slide-title {
@@ -452,6 +453,12 @@ body {
     }
 }
 
+/* Fix: Skills slide 제목은 항상 흰색 */
+.skills-slide .slide-title {
+    color: white;
+    text-shadow: 0 2px 8px rgba(0,0,0,0.25);
+}
+
 /* Responsive Design */
 @media (max-width: 1024px) {
     .project-content {
@@ -464,33 +471,69 @@ body {
     }
 }
 
+/* 태블릿 */
 @media (max-width: 768px) {
     :root {
-        --slide-padding: 2rem 1.5rem;
+        --nav-height: 64px;
+        --slide-padding: 1.5rem 1.25rem;
     }
 
-    .hero-social {
-        flex-direction: column;
-        align-items: stretch;
+    /* Hero */
+    .hero-name { font-size: clamp(2rem, 9vw, 3rem); }
+    .hero-title { font-size: clamp(1rem, 4vw, 1.5rem); }
+    .hero-bio { font-size: 0.95rem; margin-bottom: 2rem; }
+    .hero-social { flex-direction: column; align-items: stretch; }
+    .social-link-hero { justify-content: center; padding: 0.75rem 1.5rem; font-size: 1rem; }
+
+    /* Skills */
+    .slide-title { font-size: 2rem; margin-bottom: 2rem; }
+    .skills-grid { grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: 0.75rem; }
+
+    /* Projects */
+    .project-title { font-size: clamp(1.5rem, 5vw, 2.5rem); }
+    .project-description { font-size: 1rem; }
+    .project-btn { padding: 0.75rem 1.5rem; font-size: 1rem; }
+    .tech-tag { padding: 0.5rem 1rem; font-size: 0.875rem; }
+
+    /* Nav dots - 모바일에서 숨김 */
+    .portfolio-nav { display: none; }
+
+    /* Scroll hint */
+    .scroll-hint { font-size: 0.75rem; }
+}
+
+/* 모바일 소형 */
+@media (max-width: 480px) {
+    :root {
+        --nav-height: 60px;
+        --slide-padding: 1.25rem 1rem;
     }
 
-    .skills-grid {
-        grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-        gap: 1rem;
+    .hero-avatar, .hero-avatar-placeholder {
+        width: 120px;
+        height: 120px;
+        font-size: 3.5rem;
+        margin-bottom: 1.25rem;
     }
 
-    .portfolio-nav {
-        right: 1rem;
-    }
+    .hero-name { font-size: clamp(1.75rem, 10vw, 2.5rem); }
+    .hero-bio { font-size: 0.875rem; }
+
+    .project-content { gap: 1.5rem; }
+    .project-links { flex-direction: column; }
+    .project-btn { justify-content: center; }
+
+    .project-image-placeholder { aspect-ratio: 4/3; }
+    .project-image-placeholder i { font-size: 4rem; }
 }
 
 /* Edit Button for Owner */
 .edit-button {
     position: fixed;
-    top: calc(var(--nav-height) + 2rem);
-    right: 2rem;
+    top: calc(var(--nav-height) + 1rem);
+    right: 1.5rem;
     z-index: 100;
-    padding: 1rem 2rem;
+    padding: 0.75rem 1.5rem;
     background: rgba(255, 255, 255, 0.95);
     backdrop-filter: blur(10px);
     border-radius: 50px;
@@ -498,6 +541,7 @@ body {
     text-decoration: none;
     color: var(--text-primary);
     font-weight: 700;
+    font-size: 0.875rem;
     transition: all 0.3s ease;
 }
 
@@ -507,12 +551,12 @@ body {
     color: var(--text-primary);
 }
 
-@media (max-width: 768px) {
+@media (max-width: 480px) {
     .edit-button {
-        top: calc(var(--nav-height) + 1rem);
-        right: 1rem;
-        padding: 0.75rem 1.5rem;
-        font-size: 0.875rem;
+        top: calc(var(--nav-height) + 0.5rem);
+        right: 0.75rem;
+        padding: 0.5rem 1rem;
+        font-size: 0.8rem;
     }
 }
 </style>
@@ -860,7 +904,7 @@ body {
 
     <!-- Slide 3: Skills -->
     {% if portfolio.enabled_skill_types %}
-    <section class="portfolio-slide skills-slide" data-slide="2" style="background: {{ skills_background }}">
+    <section class="portfolio-slide skills-slide" data-slide="2" style="background: {{ skills_background }}; overflow-y: auto; align-items: flex-start;">
         <div class="skills-content">
             <h2 class="slide-title">Skills & Expertise</h2>
 
