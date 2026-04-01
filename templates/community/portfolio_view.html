@@ -493,6 +493,189 @@ body {
     -webkit-backdrop-filter: blur(16px);
 }
 
+/* ===== 방사형 역량 다이어그램 ===== */
+.radial-section { text-align: center; }
+.radial-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1.5rem;
+}
+.radial-container {
+    position: relative;
+    width: min(520px, 88vw);
+    height: min(520px, 88vw);
+    margin: 0 auto;
+}
+.radial-svg {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 1;
+    overflow: visible;
+}
+/* 중앙 노드 */
+.radial-center {
+    position: absolute;
+    width: 120px;
+    height: 120px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.18);
+    border: 3px solid rgba(255,255,255,0.55);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.05rem;
+    font-weight: 800;
+    color: white;
+    text-align: center;
+    line-height: 1.3;
+    text-shadow: 0 2px 8px rgba(0,0,0,0.4);
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 5;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.25), inset 0 1px 0 rgba(255,255,255,0.3);
+}
+/* 주변 노드 공통 */
+.radial-node {
+    position: absolute;
+    width: 108px;
+    height: 108px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transform: translate(-50%, -50%);
+    z-index: 4;
+    cursor: default;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    border: 2.5px solid rgba(255,255,255,0.35);
+    box-shadow: 0 6px 24px rgba(0,0,0,0.22);
+}
+.radial-node:hover {
+    transform: translate(-50%, -50%) scale(1.12);
+    box-shadow: 0 14px 40px rgba(0,0,0,0.38);
+    z-index: 10;
+}
+/* 레벨 노드 내부 SVG (진행 링) */
+.radial-node .node-ring-svg {
+    position: absolute;
+    inset: -6px;
+    width: calc(100% + 12px);
+    height: calc(100% + 12px);
+    pointer-events: none;
+    z-index: 6;
+    transform: rotate(-90deg);
+}
+.radial-node-inner {
+    position: relative;
+    z-index: 7;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    padding: 0.4rem;
+    text-align: center;
+}
+.radial-node-name {
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: white;
+    line-height: 1.3;
+    text-shadow: 0 1px 4px rgba(0,0,0,0.35);
+    word-break: keep-all;
+}
+.radial-node-level {
+    font-size: 0.65rem;
+    font-weight: 700;
+    color: white;
+    background: rgba(0,0,0,0.25);
+    border-radius: 50px;
+    padding: 2px 7px;
+    letter-spacing: 0.02em;
+}
+/* 레벨별 색상 */
+.radial-node.lvl-expert    { background: rgba(251,191,36,0.55);  border-color: rgba(251,191,36,0.7); }
+.radial-node.lvl-advanced  { background: rgba(59,130,246,0.55);  border-color: rgba(59,130,246,0.7); }
+.radial-node.lvl-intermediate { background: rgba(16,185,129,0.55); border-color: rgba(16,185,129,0.7); }
+.radial-node.lvl-beginner  { background: rgba(139,92,246,0.5);   border-color: rgba(139,92,246,0.65); }
+.radial-node.lvl-basic     { background: rgba(107,114,128,0.5);  border-color: rgba(107,114,128,0.65); }
+/* 한국어 레벨 매핑 */
+.radial-node.lvl-전문가    { background: rgba(251,191,36,0.55);  border-color: rgba(251,191,36,0.7); }
+.radial-node.lvl-고급      { background: rgba(59,130,246,0.55);  border-color: rgba(59,130,246,0.7); }
+.radial-node.lvl-중급      { background: rgba(16,185,129,0.55);  border-color: rgba(16,185,129,0.7); }
+.radial-node.lvl-초급      { background: rgba(139,92,246,0.5);   border-color: rgba(139,92,246,0.65); }
+.radial-node.lvl-기초      { background: rgba(107,114,128,0.5);  border-color: rgba(107,114,128,0.65); }
+/* 태그 노드 */
+.radial-node.tag-node {
+    background: rgba(255,255,255,0.18);
+    border-color: rgba(255,255,255,0.45);
+}
+/* 태그 색상 순환 */
+.radial-node.tag-node:nth-child(2)  { background: rgba(251,191,36,0.45);  border-color: rgba(251,191,36,0.6); }
+.radial-node.tag-node:nth-child(3)  { background: rgba(59,130,246,0.45);  border-color: rgba(59,130,246,0.6); }
+.radial-node.tag-node:nth-child(4)  { background: rgba(16,185,129,0.45);  border-color: rgba(16,185,129,0.6); }
+.radial-node.tag-node:nth-child(5)  { background: rgba(239,68,68,0.45);   border-color: rgba(239,68,68,0.6); }
+.radial-node.tag-node:nth-child(6)  { background: rgba(139,92,246,0.45);  border-color: rgba(139,92,246,0.6); }
+.radial-node.tag-node:nth-child(7)  { background: rgba(236,72,153,0.45);  border-color: rgba(236,72,153,0.6); }
+.radial-node.tag-node:nth-child(8)  { background: rgba(20,184,166,0.45);  border-color: rgba(20,184,166,0.6); }
+.radial-node.tag-node:nth-child(9)  { background: rgba(251,146,60,0.45);  border-color: rgba(251,146,60,0.6); }
+.radial-node.tag-node:nth-child(10) { background: rgba(168,85,247,0.45);  border-color: rgba(168,85,247,0.6); }
+/* 역량 레전드 */
+.radial-legend {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.6rem 1.2rem;
+    margin-top: 0.5rem;
+}
+.radial-legend-item {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.78rem;
+    color: rgba(255,255,255,0.85);
+    font-weight: 600;
+}
+.radial-legend-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+/* freetext 설명 블록 */
+.radial-freetext {
+    max-width: 560px;
+    background: rgba(0,0,0,0.22);
+    border: 1px solid rgba(255,255,255,0.2);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border-radius: 1.2rem;
+    padding: 1.4rem 1.8rem;
+    color: rgba(255,255,255,0.9);
+    font-size: 0.95rem;
+    line-height: 1.75;
+    text-align: left;
+    margin: 0 auto;
+}
+/* 반응형 */
+@media (max-width: 600px) {
+    .radial-container {
+        width: min(340px, 92vw);
+        height: min(340px, 92vw);
+    }
+    .radial-center { width: 80px; height: 80px; font-size: 0.8rem; }
+    .radial-node { width: 72px; height: 72px; }
+    .radial-node-name { font-size: 0.65rem; }
+    .radial-node-level { font-size: 0.55rem; }
+}
+
 /* Responsive Design */
 @media (max-width: 1024px) {
     .project-content {
@@ -957,22 +1140,38 @@ body {
             </div>
             {% endif %}
 
-            <!-- Leveled Skills -->
+            <!-- Leveled Skills - 방사형 역량 다이어그램 -->
             {% if 'leveled' in portfolio.enabled_skill_types and portfolio.skills_with_levels %}
-            <div class="skills-section" style="margin-bottom: 4rem;">
+            <div class="skills-section radial-section" style="margin-bottom: 4rem;">
                 <h3 class="skills-section-title">역량 수준</h3>
-                <div class="skills-grid-premium leveled">
-                    {% for skill in portfolio.skills_with_levels %}
-                    <div class="skill-card-premium leveled">
-                        <div class="skill-header">
-                            <div class="skill-text">{{ skill.name }}</div>
-                            <div class="level-badge level-{{ skill.level|lower }}">{{ skill.level }}</div>
+                <div class="radial-wrap">
+                    <div class="radial-container" id="leveledRadial">
+                        <svg class="radial-svg" xmlns="http://www.w3.org/2000/svg"></svg>
+                        <div class="radial-center"><span>핵심<br>역량</span></div>
+                        {% for skill in portfolio.skills_with_levels %}
+                        <div class="radial-node lvl-{{ skill.level|lower }}"
+                             data-level="{{ skill.level }}">
+                            <svg class="node-ring-svg" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">
+                                <circle cx="60" cy="60" r="52" fill="none" stroke="rgba(255,255,255,0.12)" stroke-width="6"/>
+                                <circle class="node-progress-ring" cx="60" cy="60" r="52"
+                                        fill="none" stroke="rgba(255,255,255,0.75)" stroke-width="6"
+                                        stroke-linecap="round" stroke-dasharray="326.7" stroke-dashoffset="0"/>
+                            </svg>
+                            <div class="radial-node-inner">
+                                <span class="radial-node-name">{{ skill.name }}</span>
+                                <span class="radial-node-level">{{ skill.level }}</span>
+                            </div>
                         </div>
-                        <div class="skill-progress">
-                            <div class="progress-bar level-{{ skill.level|lower }}"></div>
-                        </div>
+                        {% endfor %}
                     </div>
-                    {% endfor %}
+                    <!-- 레전드 -->
+                    <div class="radial-legend">
+                        <span class="radial-legend-item"><span class="radial-legend-dot" style="background:rgba(251,191,36,0.85)"></span>Expert / 전문가</span>
+                        <span class="radial-legend-item"><span class="radial-legend-dot" style="background:rgba(59,130,246,0.85)"></span>Advanced / 고급</span>
+                        <span class="radial-legend-item"><span class="radial-legend-dot" style="background:rgba(16,185,129,0.85)"></span>Intermediate / 중급</span>
+                        <span class="radial-legend-item"><span class="radial-legend-dot" style="background:rgba(139,92,246,0.85)"></span>Beginner / 초급</span>
+                        <span class="radial-legend-item"><span class="radial-legend-dot" style="background:rgba(107,114,128,0.85)"></span>Basic / 기초</span>
+                    </div>
                 </div>
             </div>
             {% endif %}
@@ -996,19 +1195,25 @@ body {
             </div>
             {% endif %}
 
-            <!-- Free Text Skills -->
+            <!-- Free Text Skills - 태그 방사형 다이어그램 -->
             {% if 'freetext' in portfolio.enabled_skill_types and portfolio.free_text_skills %}
-            <div class="skills-section">
+            <div class="skills-section radial-section">
                 <h3 class="skills-section-title">핵심 역량</h3>
-                <div class="freetext-card-premium">
-                    <div class="freetext-content">{{ portfolio.free_text_skills|linebreaksbr }}</div>
+                <div class="radial-wrap">
                     {% if portfolio.skill_tags %}
-                    <div class="skill-tags-container">
+                    <div class="radial-container" id="freetextRadial">
+                        <svg class="radial-svg" xmlns="http://www.w3.org/2000/svg"></svg>
+                        <div class="radial-center"><span>핵심<br>역량</span></div>
                         {% for tag in portfolio.skill_tags %}
-                        <span class="skill-tag-premium highlighted">{{ tag }}</span>
+                        <div class="radial-node tag-node">
+                            <div class="radial-node-inner">
+                                <span class="radial-node-name">{{ tag }}</span>
+                            </div>
+                        </div>
                         {% endfor %}
                     </div>
                     {% endif %}
+                    <div class="radial-freetext">{{ portfolio.free_text_skills|linebreaksbr }}</div>
                 </div>
             </div>
             {% endif %}
@@ -1085,6 +1290,88 @@ body {
 </div>
 
 <script>
+// ===== 방사형 역량 다이어그램 초기화 =====
+function initRadialDiagram(containerId) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+
+    const w = container.offsetWidth;
+    const h = container.offsetHeight;
+    const cx = w / 2;
+    const cy = h / 2;
+    // 노드 수에 따라 반경 조정
+    const nodes = container.querySelectorAll('.radial-node');
+    const count = nodes.length;
+    if (!count) return;
+
+    const minDim = Math.min(w, h);
+    // 노드가 많을수록 반경을 조금 줄임
+    const r = count <= 4 ? minDim * 0.36 : minDim * 0.40;
+
+    const svg = container.querySelector('.radial-svg');
+    svg.setAttribute('viewBox', '0 0 ' + w + ' ' + h);
+
+    const levelPercent = {
+        'expert': 1.0,    '전문가': 1.0,
+        'advanced': 0.8,  '고급': 0.8,
+        'intermediate': 0.6, '중급': 0.6,
+        'beginner': 0.4,  '초급': 0.4,
+        'basic': 0.2,     '기초': 0.2
+    };
+
+    nodes.forEach(function(node, i) {
+        const angle = -Math.PI / 2 + (2 * Math.PI / count) * i;
+        const x = cx + r * Math.cos(angle);
+        const y = cy + r * Math.sin(angle);
+
+        node.style.left = x + 'px';
+        node.style.top  = y + 'px';
+
+        // 연결선 (점선)
+        const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+        line.setAttribute('x1', cx);
+        line.setAttribute('y1', cy);
+        line.setAttribute('x2', x);
+        line.setAttribute('y2', y);
+        line.setAttribute('stroke', 'rgba(255,255,255,0.28)');
+        line.setAttribute('stroke-width', '2');
+        line.setAttribute('stroke-dasharray', '7,5');
+        svg.appendChild(line);
+
+        // 진행 링 (레벨 노드만)
+        const levelKey = (node.dataset.level || '').toLowerCase();
+        const pct = levelPercent[levelKey];
+        if (pct !== undefined) {
+            const circumference = 2 * Math.PI * 52; // r=52 → 326.7
+            const offset = circumference * (1 - pct);
+            const ring = node.querySelector('.node-progress-ring');
+            if (ring) ring.setAttribute('stroke-dashoffset', offset.toFixed(1));
+        }
+    });
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    initRadialDiagram('leveledRadial');
+    initRadialDiagram('freetextRadial');
+
+    // resize 대응
+    window.addEventListener('resize', function() {
+        // SVG 라인 재생성
+        ['leveledRadial', 'freetextRadial'].forEach(function(id) {
+            const c = document.getElementById(id);
+            if (!c) return;
+            const svg = c.querySelector('.radial-svg');
+            // 기존 라인 제거 후 재초기화
+            while (svg.firstChild) svg.removeChild(svg.firstChild);
+            c.querySelectorAll('.radial-node').forEach(function(n) {
+                n.style.left = '';
+                n.style.top = '';
+            });
+            initRadialDiagram(id);
+        });
+    });
+});
+
 // Fullpage Portfolio Navigation
 document.addEventListener('DOMContentLoaded', function() {
     const fullpage = document.getElementById('portfolioFullpage');
