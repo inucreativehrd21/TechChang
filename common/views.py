@@ -8,6 +8,7 @@ from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.conf import settings
 from django.utils import timezone
+from django.utils.http import url_has_allowed_host_and_scheme
 from django.core.mail import send_mail
 from django.core.cache import cache
 import json
@@ -176,7 +177,8 @@ def send_verification_email(request):
     if cache.get(cooldown_key):
         return JsonResponse({'success': False, 'message': '인증 코드를 잠시 후 다시 요청해주세요.'}, status=429)
 
-    ip_address = request.META.get('HTTP_X_FORWARDED_FOR', '').split(',')[0] or request.META.get('REMOTE_ADDR')
+    ip_address = (request.META.get('HTTP_X_FORWARDED_FOR', '').split(',')[-1].strip()
+                  or request.META.get('REMOTE_ADDR'))
     if ip_address:
         ip_cooldown_key = f"email_verification:cooldown_ip:{ip_address}"
         if cache.get(ip_cooldown_key):
@@ -215,13 +217,10 @@ def send_verification_email(request):
         if settings.DEBUG:
             return JsonResponse({'success': True, 'message': f'개발 모드: 인증코드는 {code}입니다.', 'code': code})
         # 에러 타입과 메시지를 더 자세히 반환 (프로덕션에서 디버깅용)
-        error_type = type(exc).__name__
-        error_msg = str(exc)
-        logger.error(f"Email send error - Type: {error_type}, Message: {error_msg}")
+        logger.error(f"Email send error - Type: {type(exc).__name__}, Message: {exc}")
         return JsonResponse({
-            'success': False, 
-            'message': f'이메일 발송 중 문제가 발생했습니다. 관리자에게 문의해주세요. (Error: {error_type})',
-            'debug_info': error_msg if settings.DEBUG else None
+            'success': False,
+            'message': '이메일 발송 중 문제가 발생했습니다. 관리자에게 문의해주세요.',
         }, status=500)
 
     cache.set(cooldown_key, True, timeout=EmailVerification.RESEND_COOLDOWN_SECONDS)
@@ -262,7 +261,7 @@ def verify_email_code(request):
         verification.delete()
         return JsonResponse({'success': False, 'message': '인증 시도 횟수를 초과했습니다. 새로운 코드를 요청해주세요.'}, status=429)
 
-    if verification.code != code:
+    if not secrets.compare_digest(verification.code, code):
         remaining = verification.increment_attempts()
         if remaining <= 0:
             verification.delete()
@@ -297,7 +296,8 @@ def send_profile_verification_email(request):
     if cache.get(cooldown_key):
         return JsonResponse({'success': False, 'message': '인증 코드를 잠시 후 다시 요청해주세요.'}, status=429)
 
-    ip_address = request.META.get('HTTP_X_FORWARDED_FOR', '').split(',')[0] or request.META.get('REMOTE_ADDR')
+    ip_address = (request.META.get('HTTP_X_FORWARDED_FOR', '').split(',')[-1].strip()
+                  or request.META.get('REMOTE_ADDR'))
     if ip_address:
         ip_cooldown_key = f"email_verification:cooldown_ip:{ip_address}"
         if cache.get(ip_cooldown_key):
@@ -390,7 +390,7 @@ def verify_email_change(request):
         verification.delete()
         return JsonResponse({'success': False, 'message': '인증 시도 횟수를 초과했습니다. 새로운 코드를 요청해주세요.'}, status=429)
 
-    if verification.code != code:
+    if not secrets.compare_digest(verification.code, code):
         remaining = verification.increment_attempts()
         if remaining <= 0:
             verification.delete()
@@ -898,6 +898,7 @@ def daily_checkin(request):
     from .models import DailyCheckIn, PointHistory, Profile
     from datetime import date
     from django.http import JsonResponse
+    from django.db import transaction
 
     # AJAX 요청인지 확인
     is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest' or request.content_type == 'application/json'
@@ -908,13 +909,15 @@ def daily_checkin(request):
     # 프로필 확인 및 생성
     profile, _ = Profile.objects.get_or_create(user=user)
 
-    # 오늘 이미 출석했는지 확인
-    already_checked = DailyCheckIn.objects.filter(
-        user=user,
-        check_in_date=today
-    ).exists()
+    # atomic + get_or_create로 동시 요청 중복 지급 방지
+    with transaction.atomic():
+        checkin, created = DailyCheckIn.objects.get_or_create(
+            user=user,
+            check_in_date=today,
+            defaults={'points_earned': 5}
+        )
 
-    if already_checked:
+    if not created:
         if is_ajax:
             return JsonResponse({
                 'success': False,
@@ -922,14 +925,7 @@ def daily_checkin(request):
             })
         messages.warning(request, '오늘 이미 출석체크를 완료했습니다!')
     else:
-        # 출석 체크 생성
-        points_earned = 5
-        DailyCheckIn.objects.create(
-            user=user,
-            points_earned=points_earned
-        )
-
-        # 포인트 지급 - 유틸리티 함수 사용
+        points_earned = checkin.points_earned
         award_points(
             user=user,
             amount=points_earned,
@@ -945,7 +941,7 @@ def daily_checkin(request):
             })
         messages.success(request, f'출석 체크 완료! {points_earned} 포인트를 획득했습니다!')
 
-    return redirect(request.META.get('HTTP_REFERER', 'community:index'))
+    return redirect('community:index')
 
 
 @login_required
@@ -1117,7 +1113,7 @@ def admin_block_ip(request):
 
     if not ip_address:
         messages.error(request, 'IP 주소를 입력해주세요.')
-        return redirect(request.META.get('HTTP_REFERER', 'common:admin_dashboard'))
+        return redirect('common:admin_dashboard')
 
     # 이미 차단된 IP인지 확인
     existing = BlockedIP.objects.filter(ip_address=ip_address).first()
@@ -1131,7 +1127,7 @@ def admin_block_ip(request):
             existing.blocked_by = request.user
             existing.save()
             messages.success(request, f'{ip_address}를 다시 차단했습니다.')
-        return redirect(request.META.get('HTTP_REFERER', 'common:admin_blocked_ip_list'))
+        return redirect('common:admin_blocked_ip_list')
 
     # 새 IP 차단
     BlockedIP.objects.create(
@@ -1178,14 +1174,14 @@ def password_reset(request):
             messages.error(request, '일치하는 사용자 정보를 찾을 수 없습니다. 사용자명과 이메일을 확인해주세요.')
             return render(request, 'common/password_reset.html')
 
-        # 이메일 인증 여부 확인
+        # 이메일 인증 여부 확인 (미인증 계정도 동일 메시지로 처리 — 계정 존재 여부 노출 방지)
         try:
             profile = user.profile
             if not profile.is_email_verified:
-                messages.error(request, '이메일 인증이 완료되지 않은 계정입니다. 프로필 설정에서 이메일 인증을 먼저 완료해주세요.')
+                messages.error(request, '일치하는 사용자 정보를 찾을 수 없습니다. 사용자명과 이메일을 확인해주세요.')
                 return render(request, 'common/password_reset.html')
         except Profile.DoesNotExist:
-            messages.error(request, '프로필 정보를 찾을 수 없습니다.')
+            messages.error(request, '일치하는 사용자 정보를 찾을 수 없습니다. 사용자명과 이메일을 확인해주세요.')
             return render(request, 'common/password_reset.html')
 
         # 임시 비밀번호 생성 (암호학적으로 안전한 12자리)
@@ -1235,7 +1231,9 @@ def point_ranking(request):
     top_users = Profile.objects.select_related('user', 'selected_emoticon').filter(
         points__gt=0
     ).exclude(
-        user__username='admin'
+        user__is_staff=True
+    ).exclude(
+        user__is_superuser=True
     ).only(
         'user__username', 'user__email',
         'nickname', 'points', 'profile_image',
@@ -1245,15 +1243,15 @@ def point_ranking(request):
     # 현재 로그인한 사용자의 순위 (있는 경우)
     current_user_rank = None
     current_user_profile = None
-    if request.user.is_authenticated and request.user.username != 'admin':
+    if request.user.is_authenticated and not request.user.is_staff and not request.user.is_superuser:
         try:
             current_user_profile = Profile.objects.select_related('user').only(
                 'user__username', 'nickname', 'points', 'profile_image'
             ).get(user=request.user)
-            # 현재 사용자보다 포인트가 높은 사용자 수 + 1 (0포인트 및 admin 제외)
+            # 현재 사용자보다 포인트가 높은 사용자 수 + 1 (0포인트 및 스태프 제외)
             current_user_rank = Profile.objects.filter(
                 points__gt=current_user_profile.points
-            ).exclude(user__username='admin').count() + 1
+            ).exclude(user__is_staff=True).exclude(user__is_superuser=True).count() + 1
         except Profile.DoesNotExist:
             pass
 
@@ -1358,6 +1356,8 @@ def toggle_version(request):
         new_version = 'desktop' if getattr(request, 'is_mobile', False) else 'mobile'
 
     referer = request.META.get('HTTP_REFERER', '/')
+    if not url_has_allowed_host_and_scheme(referer, allowed_hosts={request.get_host()}):
+        referer = '/'
     response = redirect(referer)
     response.set_cookie('force_version', new_version, max_age=365 * 24 * 3600, samesite='Lax')
     return response
@@ -1366,6 +1366,8 @@ def toggle_version(request):
 def reset_version(request):
     """자동 감지 모드로 되돌리기"""
     referer = request.META.get('HTTP_REFERER', '/')
+    if not url_has_allowed_host_and_scheme(referer, allowed_hosts={request.get_host()}):
+        referer = '/'
     response = redirect(referer)
     response.delete_cookie('force_version')
     return response

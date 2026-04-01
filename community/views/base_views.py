@@ -253,6 +253,11 @@ def download_file(request, question_id):
     if not question.file:
         raise Http404("파일이 존재하지 않습니다.")
 
+    MAX_DOWNLOAD_SIZE = 100 * 1024 * 1024  # 100MB
+    if question.file.size > MAX_DOWNLOAD_SIZE:
+        messages.error(request, '파일이 너무 큽니다.')
+        return redirect('community:detail', question_id=question.id)
+
     # FileField를 직접 사용하여 파일 제공 (경로 조작 방지)
     try:
         response = FileResponse(question.file.open('rb'))

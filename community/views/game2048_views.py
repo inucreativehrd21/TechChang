@@ -324,21 +324,27 @@ def game2048_submit_final(request, game_id):
     if game.status != 'playing':
         return JsonResponse({'success': False, 'message': '이미 종료된 게임입니다.'})
 
+    # 세션에서 서버가 추적한 게임 상태 가져오기
+    session_key = f'game_2048_{game_id}'
+    game_data = request.session.get(session_key)
+
+    if not game_data:
+        # 세션 없음 = move 엔드포인트로 이미 정상 종료됐거나 세션 만료
+        return JsonResponse({'success': False, 'message': '이미 처리된 게임입니다.'})
+
     try:
         payload = json.loads(request.body.decode('utf-8'))
     except Exception:
         return JsonResponse({'success': False, 'message': '잘못된 요청입니다.'})
 
-    final_score = int(payload.get('score', 0))
-    moves = int(payload.get('moves', 0))
     status = payload.get('status', 'lost')
-    board_state = payload.get('board_state')
-
-    # 기본 검증
-    if final_score < 0 or final_score > 10_000_000:
-        return JsonResponse({'success': False, 'message': '점수 값이 비정상입니다.'})
     if status not in ['won', 'lost', 'timeout']:
         return JsonResponse({'success': False, 'message': '잘못된 상태입니다.'})
+
+    # 클라이언트 점수 무시 — 서버 세션 값 사용
+    final_score = game_data.get('score', 0)
+    moves = game_data.get('moves', 0)
+    board_state = game_data.get('board_state')
 
     # 보드 형태 검증 (4x4 숫자)
     def is_valid_board(board):
@@ -355,16 +361,24 @@ def game2048_submit_final(request, game_id):
     if not is_valid_board(board_state):
         return JsonResponse({'success': False, 'message': '보드 상태가 올바르지 않습니다.'})
 
+    # 점수-보드 일관성 검증 (점수 조작 방지)
+    board_sum = sum(cell for row in board_state for cell in row)
+    if board_sum > 0 and final_score > board_sum * 20:
+        logger.warning(f"Suspicious score submission: user={request.user.username}, score={final_score}, board_sum={board_sum}")
+        return JsonResponse({'success': False, 'message': '점수 값이 비정상입니다.'})
+
     # 게임 업데이트
     game.board_state = board_state
     game.score = final_score
     if final_score > game.best_score:
         game.best_score = final_score
-    game.moves = moves if moves > game.moves else game.moves
+    game.moves = moves
     game.status = status
     game.end_date = timezone.now()
     game.last_activity_time = timezone.now()
     game.save()
+
+    del request.session[session_key]
 
     return JsonResponse({'success': True, 'message': '최종 점수가 저장되었습니다.'})
 

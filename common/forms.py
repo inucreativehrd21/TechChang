@@ -2,7 +2,14 @@
 from django import forms
 from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth.models import User
+from django.core.exceptions import ValidationError
+from PIL import Image
+import os
 from .models import Profile, EmailVerification
+
+ALLOWED_PROFILE_IMAGE_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.gif', '.webp']
+MAX_PROFILE_IMAGE_SIZE = 5 * 1024 * 1024  # 5MB
+MAX_PROFILE_IMAGE_DIMENSION = 5000
 
 
 class UserForm(UserCreationForm):
@@ -76,6 +83,34 @@ class ProfileForm(forms.ModelForm):
             'nickname': forms.TextInput(attrs={'class': 'form-control', 'placeholder': '닉네임을 입력하세요'}),
             'profile_image': forms.ClearableFileInput(attrs={'class': 'form-control'}),
         }
+
+    def clean_profile_image(self):
+        image = self.cleaned_data.get('profile_image')
+        if image and hasattr(image, 'name'):
+            ext = os.path.splitext(image.name)[1].lower()
+            if ext == '.svg':
+                raise ValidationError('SVG 파일은 보안상의 이유로 업로드할 수 없습니다.')
+            if ext not in ALLOWED_PROFILE_IMAGE_EXTENSIONS:
+                raise ValidationError(
+                    f'허용되지 않는 이미지 형식입니다. 허용: {", ".join(ALLOWED_PROFILE_IMAGE_EXTENSIONS)}'
+                )
+            if image.size > MAX_PROFILE_IMAGE_SIZE:
+                raise ValidationError(
+                    f'이미지 크기가 너무 큽니다. 최대 {MAX_PROFILE_IMAGE_SIZE // (1024 * 1024)}MB까지 가능합니다.'
+                )
+            try:
+                img = Image.open(image)
+                if img.width > MAX_PROFILE_IMAGE_DIMENSION or img.height > MAX_PROFILE_IMAGE_DIMENSION:
+                    raise ValidationError(
+                        f'이미지 해상도가 너무 높습니다. 최대 {MAX_PROFILE_IMAGE_DIMENSION}x{MAX_PROFILE_IMAGE_DIMENSION}px까지 가능합니다.'
+                    )
+                img.verify()
+                image.seek(0)
+            except ValidationError:
+                raise
+            except Exception:
+                raise ValidationError('유효하지 않은 이미지 파일입니다.')
+        return image
 
 
 class EmailVerificationForm(forms.Form):

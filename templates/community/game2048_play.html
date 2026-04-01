@@ -395,7 +395,7 @@
 const csrfToken = '{{ csrf_token }}';
 const gameId = {{ game.id }};
 const inactivityLimit = {{ game.inactivity_limit }};
-let board = {{ game.board_state|safe }};
+let board = JSON.parse('{{ game.board_state|escapejs }}');
 let score = {{ game.score }};
 let isAnimating = false;
 let lastMoveAt = 0;

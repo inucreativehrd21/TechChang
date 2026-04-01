@@ -17,6 +17,7 @@ from ..models import GuestBook
 logger = logging.getLogger(__name__)
 
 
+@login_required
 def guestbook_list(request):
     """
     방명록 목록 페이지

@@ -9,6 +9,7 @@ from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
 from django.utils import timezone
 from django.core.serializers.json import DjangoJSONEncoder
+from django.core.cache import cache
 from django.db.models import Count, Avg, Min, Q
 from django.contrib.auth.models import User
 import json
@@ -208,13 +209,26 @@ def minesweeper_reveal(request, game_id):
     if request.method != 'POST':
         return JsonResponse({'success': False, 'message': 'POST 요청만 허용됩니다.'})
 
+    # Rate limit: 초당 10회 이하 (브루트포스 방지)
+    rate_key = f'ms_rate_{request.user.id}_{game_id}'
+    current_count = cache.get(rate_key, 0)
+    if current_count >= 10:
+        return JsonResponse({'success': False, 'message': '입력이 너무 빠릅니다. 잠시 후 다시 시도해주세요.'}, status=429)
+    cache.set(rate_key, current_count + 1, timeout=1)
+
     game = get_object_or_404(MinesweeperGame, id=game_id, player=request.user)
 
     if game.status != 'playing':
         return JsonResponse({'success': False, 'message': '이미 종료된 게임입니다.'})
 
-    row = int(request.POST.get('row'))
-    col = int(request.POST.get('col'))
+    try:
+        row = int(request.POST.get('row'))
+        col = int(request.POST.get('col'))
+    except (TypeError, ValueError):
+        return JsonResponse({'success': False, 'message': '잘못된 좌표입니다.'})
+
+    if not (0 <= row < game.rows and 0 <= col < game.cols):
+        return JsonResponse({'success': False, 'message': '범위를 벗어난 좌표입니다.'})
 
     # 이미 공개된 칸인지 확인
     if [row, col] in game.board_state['revealed']:
@@ -285,8 +299,14 @@ def minesweeper_flag(request, game_id):
     if game.status != 'playing':
         return JsonResponse({'success': False, 'message': '이미 종료된 게임입니다.'})
 
-    row = int(request.POST.get('row'))
-    col = int(request.POST.get('col'))
+    try:
+        row = int(request.POST.get('row'))
+        col = int(request.POST.get('col'))
+    except (TypeError, ValueError):
+        return JsonResponse({'success': False, 'message': '잘못된 좌표입니다.'})
+
+    if not (0 <= row < game.rows and 0 <= col < game.cols):
+        return JsonResponse({'success': False, 'message': '범위를 벗어난 좌표입니다.'})
 
     # 이미 공개된 칸인지 확인
     if [row, col] in game.board_state['revealed']:
