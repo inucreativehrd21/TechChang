@@ -19,6 +19,22 @@ from ..models import Question, Answer, Comment, Category, DailyVisitor
 DEFAULT_CATEGORIES = ['HRD', '데이터분석', '프로그래밍', '자유게시판', '앨범', '공지사항', '문의']
 
 
+def robots_txt(request):
+    """검색엔진 크롤러용 robots.txt — 사이트맵 위치 안내."""
+    from django.contrib.sites.shortcuts import get_current_site
+    domain = get_current_site(request).domain
+    lines = [
+        'User-agent: *',
+        'Allow: /',
+        'Disallow: /accounts/',   # allauth 로그인/가입 플로우 (색인 불필요)
+        'Disallow: /common/login/',
+        'Disallow: /common/signup/',
+        '',
+        f'Sitemap: https://{domain}/sitemap.xml',
+    ]
+    return HttpResponse('\n'.join(lines), content_type='text/plain; charset=utf-8')
+
+
 def ensure_default_categories():
     """필수 카테고리가 없으면 생성"""
     for name in DEFAULT_CATEGORIES:

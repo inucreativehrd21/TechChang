@@ -45,6 +45,7 @@ urlpatterns = [
     path('common/', include('common.urls')),
     path('accounts/', include('allauth.urls')),  # django-allauth URLs
     path('sitemap.xml', sitemap, {'sitemaps': sitemaps}, name='django.contrib.sitemaps.views.sitemap'),
+    path('robots.txt', base_views.robots_txt, name='robots_txt'),
 ]
 
 # 개발 환경에서 미디어 파일 서빙

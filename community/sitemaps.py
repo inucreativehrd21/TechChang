@@ -5,16 +5,30 @@ from .models import Question, PortfolioCollection
 
 
 class StaticViewSitemap(Sitemap):
-    """정적 페이지 (홈, 멤버, 게임 등)"""
+    """정적/주요 공개 페이지 (홈, 커뮤니티, 게임, 구성원, 랭킹, 방명록)"""
     protocol = 'https'
-    priority = 0.5
-    changefreq = 'weekly'
+
+    # (URL name, priority, changefreq) — 홈을 최상위 우선순위로
+    PAGES = [
+        ('community:index',          1.0, 'daily'),
+        ('community:board_main',     0.9, 'daily'),
+        ('community:games_index',    0.7, 'weekly'),
+        ('community:members_list',   0.7, 'weekly'),
+        ('common:point_ranking',     0.6, 'weekly'),
+        ('community:guestbook_list', 0.5, 'weekly'),
+    ]
 
     def items(self):
-        return ['index', 'board_main', 'members_list', 'games_index']
+        return self.PAGES
 
     def location(self, item):
-        return reverse(f'community:{item}')
+        return reverse(item[0])
+
+    def priority(self, item):
+        return item[1]
+
+    def changefreq(self, item):
+        return item[2]
 
 
 class QuestionSitemap(Sitemap):
