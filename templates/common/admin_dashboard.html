@@ -93,6 +93,48 @@
     </div>
   </div>
 
+  <!-- 칼럼 자동 작성 내역 -->
+  <div class="card mb-4 premium-glass-card" style="background: linear-gradient(135deg, rgba(99,102,241,0.08) 0%, rgba(79,70,229,0.05) 100%); border:1px solid rgba(99,102,241,0.2); backdrop-filter: blur(10px); color:#e5e7eb;">
+    <div class="card-header" style="background: linear-gradient(135deg, rgba(99,102,241,0.12) 0%, rgba(79,70,229,0.08) 100%); border-bottom: 2px solid rgba(99,102,241,0.2);">
+      <div class="d-flex justify-content-between align-items-center">
+        <h5 class="mb-0" style="font-weight: 700; color: #e5e7eb;">
+          <i class="fas fa-feather-pointed me-2" style="color: #a5b4fc;"></i>칼럼 자동 작성 내역
+        </h5>
+        <div>
+          <span class="badge" style="background:rgba(255,255,255,0.08); color:#c7d2fe; font-weight:600;">전체 {{ column_total }}건</span>
+          <span class="badge" style="background:rgba(34,197,94,0.18); color:#86efac; font-weight:600;">최근 7일 +{{ column_week }}</span>
+          <span class="badge" style="background:rgba(34,197,94,0.18); color:#86efac; font-weight:600;">오늘 +{{ column_today }}</span>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <div class="table-responsive">
+        <table class="table table-hover mb-0 admin-dark-table" style="color:#e5e7eb; background:#0f172a;">
+          <thead>
+            <tr>
+              <th style="width:120px;">카테고리</th>
+              <th>제목</th>
+              <th style="width:150px;">작성일시</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for col in recent_columns %}
+              <tr>
+                <td><span class="badge" style="background:rgba(99,102,241,0.2); color:#a5b4fc; font-weight:600;">{{ col.category.name|default:"-" }}</span></td>
+                <td><a href="{% url 'community:detail' col.id %}" style="color:#e5e7eb; text-decoration:none;">{{ col.subject|truncatechars:60 }}</a></td>
+                <td style="color:#94a3b8;">{{ col.create_date|date:"Y-m-d H:i" }}</td>
+              </tr>
+            {% empty %}
+              <tr>
+                <td colspan="3" class="text-center" style="color:#94a3b8;">아직 자동 작성된 칼럼이 없습니다. (cron: auto_write_columns)</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
   <!-- 회원 등급별 통계 -->
   <div class="card mb-4 premium-glass-card" style="background: linear-gradient(135deg, rgba(102,126,234,0.05) 0%, rgba(118,75,162,0.05) 100%); border:1px solid rgba(102,126,234,0.15); backdrop-filter: blur(10px); color:#e5e7eb;">
     <div class="card-header" style="background: linear-gradient(135deg, rgba(102,126,234,0.1) 0%, rgba(118,75,162,0.1) 100%); border-bottom: 2px solid rgba(102,126,234,0.2);">

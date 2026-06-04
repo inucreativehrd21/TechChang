@@ -719,6 +719,18 @@ def admin_dashboard(request):
     # 최근 가입 사용자
     recent_users = User.objects.select_related('profile').order_by('-date_joined')[:10]
 
+    # 칼럼 자동 작성 내역 (테크창 연구팀 봇)
+    from community.models import Question
+    today = timezone.now().date()
+    week_ago = today - timedelta(days=7)
+    bot_cols = Question.objects.filter(
+        is_deleted=False, author__username='techchang연구팀'
+    ).select_related('category')
+    column_total = bot_cols.count()
+    column_week = bot_cols.filter(create_date__date__gte=week_ago).count()
+    column_today = bot_cols.filter(create_date__date=today).count()
+    recent_columns = bot_cols.order_by('-create_date')[:10]
+
     context = {
         'total_users': total_users,
         'active_users': active_users,
@@ -726,6 +738,10 @@ def admin_dashboard(request):
         'email_verified_users': email_verified_users,
         'rank_stats': rank_stats,
         'recent_users': recent_users,
+        'column_total': column_total,
+        'column_week': column_week,
+        'column_today': column_today,
+        'recent_columns': recent_columns,
     }
 
     return render(request, 'common/admin_dashboard.html', context)

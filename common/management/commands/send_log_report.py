@@ -15,6 +15,9 @@ from django.conf import settings
 from django.contrib.auth.models import User
 from django.utils import timezone
 
+# 자동 칼럼 작성 봇 계정 (auto_write_columns 와 동일)
+COLUMN_BOT_USERNAME = 'techchang연구팀'
+
 
 class Command(BaseCommand):
     help = '서버 로그를 분석하고 요약 이메일을 발송합니다.'
@@ -142,6 +145,27 @@ class Command(BaseCommand):
                 )
             except Exception:
                 stats['top_questions'] = []
+
+            # 자동 칼럼 작성 내역 (테크창 연구팀 봇)
+            try:
+                week_ago = today - timedelta(days=7)
+                bot_cols = Question.objects.filter(
+                    is_deleted=False, author__username=COLUMN_BOT_USERNAME
+                ).select_related('category')
+                stats['column_total'] = bot_cols.count()
+                stats['column_today'] = bot_cols.filter(create_date__date=today).count()
+                stats['column_week']  = bot_cols.filter(create_date__date__gte=week_ago).count()
+                stats['recent_columns'] = [
+                    {
+                        'subject': c.subject,
+                        'category': c.category.name if c.category else '-',
+                        'date': c.create_date,
+                    }
+                    for c in bot_cols.order_by('-create_date')[:8]
+                ]
+            except Exception:
+                stats['column_total'] = stats['column_today'] = stats['column_week'] = 0
+                stats['recent_columns'] = []
 
         except Exception as e:
             stats['error'] = str(e)
@@ -433,36 +457,58 @@ class Command(BaseCommand):
             vc   = q.get('view_count', 0)
             top_q_html += (
                 '<div class="row">'
-                '<span style="color:#374151;">{i}. {subj}</span>'
-                '<span style="color:#6b7280;">{vc:,}회</span>'
+                '<span style="color:#3f3f46;">{i}. {subj}</span>'
+                '<span style="color:#a1a1aa;">{vc:,}회</span>'
                 '</div>'.format(i=i, subj=subj, vc=vc)
             )
         if not top_q_html:
-            top_q_html = '<div style="color:#6b7280;">데이터 없음</div>'
+            top_q_html = '<div style="color:#a1a1aa;">데이터 없음</div>'
+
+        # 칼럼 자동 작성 내역
+        col_rows = ''
+        for c in db.get('recent_columns', []):
+            subj = (c.get('subject') or '')[:42]
+            cat  = c.get('category', '-')
+            d    = c.get('date')
+            date_str = d.strftime('%m-%d %H:%M') if hasattr(d, 'strftime') else str(d)
+            col_rows += (
+                '<div class="row">'
+                '<span style="color:#3f3f46;"><span class="cat">{cat}</span>{subj}</span>'
+                '<span style="color:#a1a1aa;white-space:nowrap;">{date}</span>'
+                '</div>'.format(cat=cat, subj=subj, date=date_str)
+            )
+        if not col_rows:
+            col_rows = '<div style="color:#a1a1aa;">아직 자동 작성된 칼럼이 없습니다.</div>'
 
         return """<!DOCTYPE html>
 <html lang="ko">
-<head><meta charset="UTF-8"><style>
-  body {{ font-family: -apple-system, sans-serif; background:#f3f4f6; margin:0; padding:20px; }}
-  .card {{ background:#fff; border-radius:12px; padding:24px; margin-bottom:16px; box-shadow:0 1px 4px rgba(0,0,0,.08); }}
-  h1 {{ font-size:1.125rem; font-weight:800; color:#111; margin:0 0 4px; }}
-  h2 {{ font-size:0.875rem; font-weight:700; color:#374151; margin:0 0 14px;
-        border-bottom:1px solid #e5e7eb; padding-bottom:8px; letter-spacing:.02em; }}
-  .sub {{ font-size:0.8125rem; color:#6b7280; }}
-  .grid {{ display:grid; grid-template-columns:repeat(3,1fr); gap:12px; }}
-  .grid4 {{ display:grid; grid-template-columns:repeat(4,1fr); gap:12px; }}
-  .stat {{ background:#f9fafb; border-radius:8px; padding:12px; text-align:center; }}
-  .stat-num {{ font-size:1.375rem; font-weight:800; color:#3b82f6; }}
-  .stat-num.g {{ color:#16a34a; }}
-  .stat-label {{ font-size:0.6875rem; color:#6b7280; margin-top:2px; }}
-  .row {{ display:flex; justify-content:space-between; padding:6px 0;
-          border-bottom:1px solid #f3f4f6; font-size:0.8125rem; color:#374151; }}
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><style>
+  body {{ font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Noto Sans KR',sans-serif;
+          background:#fafafa; margin:0; padding:20px; color:#3f3f46; -webkit-font-smoothing:antialiased; }}
+  .wrap {{ max-width:640px; margin:0 auto; }}
+  .card {{ background:#fff; border:1px solid #e8e8eb; border-radius:14px; padding:22px 24px;
+           margin-bottom:14px; box-shadow:0 1px 2px rgba(16,24,40,.04); }}
+  h1 {{ font-size:1.0625rem; font-weight:800; letter-spacing:-.02em; color:#18181b; margin:0 0 4px; }}
+  h2 {{ font-size:0.8125rem; font-weight:700; color:#18181b; margin:0 0 14px;
+        padding-bottom:9px; border-bottom:1px solid #f0f0f1; letter-spacing:.01em; }}
+  .sub {{ font-size:0.8125rem; color:#71717a; }}
+  .grid {{ display:grid; grid-template-columns:repeat(3,1fr); gap:10px; }}
+  .stat {{ background:#fafafa; border:1px solid #f0f0f1; border-radius:10px; padding:12px; text-align:center; }}
+  .stat-num {{ font-size:1.375rem; font-weight:800; letter-spacing:-.02em; color:#4f46e5; }}
+  .stat-num.g {{ color:#059669; }}
+  .stat-label {{ font-size:0.6875rem; color:#a1a1aa; margin-top:3px; }}
+  .row {{ display:flex; justify-content:space-between; gap:10px; padding:7px 0;
+          border-bottom:1px solid #f4f4f5; font-size:0.8125rem; color:#3f3f46; }}
   .row:last-child {{ border:none; }}
+  .cat {{ display:inline-block; font-size:0.65rem; font-weight:700; color:#4f46e5;
+          background:#eef2ff; padding:1px 7px; border-radius:999px; margin-right:6px; }}
+  a {{ color:#4f46e5; text-decoration:none; }}
 </style></head>
 <body>
-<div class="card" style="background:#1e40af; color:#fff; padding:20px 24px;">
-  <h1 style="color:#fff; font-size:1rem;">테크창 서버 리포트</h1>
-  <div class="sub" style="color:rgba(255,255,255,.75);">{since_str} ~ {now_str} ({hours}h)</div>
+<div class="wrap">
+<div class="card" style="background:#18181b; border:none; color:#fff; padding:20px 24px;">
+  <h1 style="color:#fff;">테크창 서버 리포트</h1>
+  <div class="sub" style="color:rgba(255,255,255,.7);">{since_str} ~ {now_str} ({hours}h)</div>
 </div>
 
 <div class="card">
@@ -499,6 +545,16 @@ class Command(BaseCommand):
 </div>
 
 <div class="card">
+  <h2>칼럼 자동 작성 내역</h2>
+  <div class="grid" style="margin-bottom:14px;">
+    <div class="stat"><div class="stat-num">{column_total}</div><div class="stat-label">전체 칼럼</div></div>
+    <div class="stat"><div class="stat-num g">+{column_week}</div><div class="stat-label">최근 7일</div></div>
+    <div class="stat"><div class="stat-num g">+{column_today}</div><div class="stat-label">오늘</div></div>
+  </div>
+  {col_rows}
+</div>
+
+<div class="card">
   <h2>인기 질문 Top 5</h2>
   {top_q_html}
 </div>
@@ -515,8 +571,9 @@ class Command(BaseCommand):
 
 {errors_card}
 
-<div style="text-align:center;font-size:0.75rem;color:#9ca3af;margin-top:8px;">
-  자동 발송 — techchang.com | <a href="https://techchang.com" style="color:#3b82f6;">사이트 바로가기</a>
+<div style="text-align:center;font-size:0.75rem;color:#a1a1aa;margin-top:6px;padding-bottom:8px;">
+  자동 발송 · techchang.com | <a href="https://techchang.com">사이트 바로가기</a>
+</div>
 </div>
 </body></html>""".format(
             since_str=since_str, now_str=now_str, hours=hours,
@@ -539,6 +596,10 @@ class Command(BaseCommand):
             active_30d=db.get('active_users_30d', '-'),
             game_plays=db.get('game_plays_today', '-'),
             game_detail_html=game_detail_html,
+            column_total=db.get('column_total', 0),
+            column_week=db.get('column_week', 0),
+            column_today=db.get('column_today', 0),
+            col_rows=col_rows,
             top_q_html=top_q_html,
             journal_html=journal_html,
             security_html=security_html,
@@ -574,6 +635,21 @@ class Command(BaseCommand):
         game_detail = db.get('game_detail', {})
         for name, cnt in game_detail.items():
             lines.append(f'    - {name}: {cnt}회')
+
+        # 칼럼 자동 작성 내역
+        lines += [
+            '',
+            '[칼럼 자동 작성 내역]',
+            f'  전체 {db.get("column_total", 0)}건 (최근 7일 +{db.get("column_week", 0)}, 오늘 +{db.get("column_today", 0)})',
+        ]
+        recent_cols = db.get('recent_columns', [])
+        if recent_cols:
+            for c in recent_cols:
+                d = c.get('date')
+                date_str = d.strftime('%m-%d') if hasattr(d, 'strftime') else str(d)
+                lines.append(f'    - [{c.get("category", "-")}] {(c.get("subject") or "")[:40]} ({date_str})')
+        else:
+            lines.append('    (아직 자동 작성된 칼럼이 없습니다)')
 
         top_q = db.get('top_questions', [])
         if top_q:
