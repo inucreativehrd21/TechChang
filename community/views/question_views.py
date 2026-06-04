@@ -4,10 +4,44 @@ from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.decorators import login_required
 from django.utils import timezone
 
+from django.core.exceptions import ValidationError
+
 from ..forms import QuestionForm
-from ..models import Question
+from ..models import Question, QuestionImage
+from ..validators import validate_image_file
 from ..utils import award_points, deduct_points
 from common.models import PointHistory
+
+# 게시글당 최대 이미지 개수 (레거시 image 포함)
+MAX_POST_IMAGES = 10
+
+
+def _save_question_images(request, question):
+    """업로드된 다중 이미지(name='images')를 검증 후 QuestionImage로 저장."""
+    files = request.FILES.getlist('images')
+    if not files:
+        return 0
+
+    # 기존 이미지 수(레거시 단일 + 갤러리)를 고려해 총량 제한
+    existing = (1 if question.image else 0) + question.images.count()
+    saved = 0
+
+    for f in files:
+        if existing + saved >= MAX_POST_IMAGES:
+            messages.warning(
+                request,
+                f'이미지는 최대 {MAX_POST_IMAGES}개까지 첨부할 수 있어 일부는 추가되지 않았습니다.'
+            )
+            break
+        try:
+            validate_image_file(f)
+        except ValidationError as e:
+            messages.warning(request, f'{f.name}: {" ".join(e.messages)}')
+            continue
+        QuestionImage.objects.create(question=question, image=f)
+        saved += 1
+
+    return saved
 
 @login_required(login_url='common:login')
 def question_create(request):
@@ -19,6 +53,9 @@ def question_create(request):
                 question.author = request.user  # author 속성에 로그인 계정 저장
                 question.create_date = timezone.now()
                 question.save()
+
+                # 다중 이미지 첨부 저장
+                _save_question_images(request, question)
 
                 # 질문 작성 포인트 지급 (50포인트) - 유틸리티 함수 사용
                 award_points(
@@ -52,10 +89,14 @@ def question_modify(request, question_id):
             question = form.save(commit=False)
             question.modify_date = timezone.now()  # 수정일시 저장
             question.save()
+
+            # 다중 이미지 추가 첨부 저장
+            _save_question_images(request, question)
+
             return redirect('community:detail', question_id=question.id)
     else:
         form = QuestionForm(instance=question)
-    context = {'form': form}
+    context = {'form': form, 'question': question}
     return render(request, 'community/question_form.html', context)
 
 @login_required(login_url='common:login')

@@ -15,53 +15,57 @@
    ============================================ */
 
 :root {
-    /* 배경 - 미묘한 gradient mesh */
+    /* 배경 - 미니멀 뉴트럴 (Figma/Linear 계열) */
     --bg-primary: #ffffff;
-    --bg-secondary: #fafbfc;
-    --bg-gradient: linear-gradient(135deg, #f8f9ff 0%, #fff5f7 100%);
+    --bg-secondary: #fafafa;
+    --bg-mute: #f4f4f5;
+    --bg-gradient: #fafafa;
 
-    /* 텍스트 */
-    --text-primary: #0f172a;
-    --text-secondary: #475569;
-    --text-tertiary: #64748b;
-    --text-muted: #94a3b8;
+    /* 텍스트 - 잉크 스케일 */
+    --text-primary: #18181b;
+    --text-secondary: #3f3f46;
+    --text-tertiary: #71717a;
+    --text-muted: #a1a1aa;
 
-    /* Accent Colors - 풍부함 */
-    --accent-blue: #3b82f6;
-    --accent-purple: #8b5cf6;
-    --accent-pink: #ec4899;
-    --accent-orange: #f97316;
-    --accent-teal: #14b8a6;
-    --accent-green: #10b981;
+    /* Accent - 단일 인디고 포인트 */
+    --accent-primary: #4f46e5;   /* base_mobile.html 등에서 참조하는 별칭 */
+    --accent-blue: #4f46e5;
+    --accent-purple: #6366f1;
+    --accent-pink: #6366f1;
+    --accent-orange: #ea580c;
+    --accent-teal: #0d9488;
+    --accent-green: #059669;
+    --accent-wash: #eef2ff;
 
-    /* Gradient Accents */
-    --gradient-blue: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    --gradient-orange: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
-    --gradient-green: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
-    --gradient-purple: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
-    --gradient-sunset: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+    /* Gradient 토큰 - 비비드 제거, 거의 평면(잉크/뉴트럴)으로 치환.
+       기존 var(--gradient-*) 참조가 깨지지 않도록 이름은 유지. */
+    --gradient-blue: linear-gradient(135deg, #27272a 0%, #18181b 100%);  /* primary 버튼: 잉크블랙 */
+    --gradient-orange: #ea580c;
+    --gradient-green: #059669;
+    --gradient-purple: #6366f1;
+    --gradient-sunset: #4f46e5;
 
-    /* Game Colors */
+    /* Game Colors - 게임 포인트 컬러로 유지 */
     --game-baseball: #3b82f6;
     --game-2048: #f97316;
     --game-minesweeper: #ef4444;
     --game-tictactoe: #10b981;
     --game-wordchain: #8b5cf6;
 
-    /* Shadows - 더 풍부함 */
-    --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.08);
-    --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.1);
-    --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.12);
-    --shadow-xl: 0 12px 48px rgba(0, 0, 0, 0.15);
+    /* Shadows - 초미세 4단계 */
+    --shadow-sm: 0 1px 3px rgba(16, 24, 40, 0.06), 0 1px 2px rgba(16, 24, 40, 0.04);
+    --shadow-md: 0 4px 12px rgba(16, 24, 40, 0.06), 0 2px 4px rgba(16, 24, 40, 0.04);
+    --shadow-lg: 0 12px 32px rgba(16, 24, 40, 0.08), 0 4px 8px rgba(16, 24, 40, 0.04);
+    --shadow-xl: 0 20px 48px rgba(16, 24, 40, 0.10), 0 8px 16px rgba(16, 24, 40, 0.05);
 
-    /* Colored Shadows */
-    --shadow-blue: 0 8px 32px rgba(59, 130, 246, 0.2);
-    --shadow-purple: 0 8px 32px rgba(139, 92, 246, 0.2);
-    --shadow-pink: 0 8px 32px rgba(236, 72, 153, 0.2);
+    /* Colored Shadows - 뉴트럴로 치환 */
+    --shadow-blue: 0 4px 12px rgba(16, 24, 40, 0.06), 0 2px 4px rgba(16, 24, 40, 0.04);
+    --shadow-purple: 0 4px 12px rgba(16, 24, 40, 0.06), 0 2px 4px rgba(16, 24, 40, 0.04);
+    --shadow-pink: 0 4px 12px rgba(16, 24, 40, 0.06), 0 2px 4px rgba(16, 24, 40, 0.04);
 
     /* Border */
-    --border-color: #e2e8f0;
-    --border-light: #f1f5f9;
+    --border-color: #e4e4e7;
+    --border-light: #f0f0f1;
 
     /* Spacing */
     --space-2: 0.5rem;
@@ -174,17 +178,13 @@ body {
 .hero-premium::before {
     content: '';
     position: absolute;
-    top: -50%;
-    left: -50%;
-    width: 200%;
-    height: 200%;
-    background: radial-gradient(circle, rgba(139, 92, 246, 0.1) 0%, transparent 70%);
-    animation: rotate 20s linear infinite;
-}
-
-@keyframes rotate {
-    from { transform: rotate(0deg); }
-    to { transform: rotate(360deg); }
+    inset: 0;
+    background-image: radial-gradient(circle at center, var(--border-color) 1px, transparent 1px);
+    background-size: 26px 26px;
+    -webkit-mask-image: radial-gradient(ellipse 70% 60% at 50% 35%, #000 0%, transparent 75%);
+            mask-image: radial-gradient(ellipse 70% 60% at 50% 35%, #000 0%, transparent 75%);
+    opacity: 0.5;
+    pointer-events: none;
 }
 
 .hero-premium-content {
@@ -195,14 +195,12 @@ body {
 }
 
 .hero-premium-title {
-    font-size: clamp(3rem, 8vw, 5rem);
+    font-size: clamp(2.5rem, 6vw, 4rem);
     font-weight: 800;
-    line-height: 1.1;
+    line-height: 1.05;
+    letter-spacing: -0.035em;
     margin-bottom: var(--space-6);
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
+    color: var(--text-primary);
 }
 
 .hero-premium-subtitle {
@@ -228,37 +226,41 @@ body {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    padding: 1rem 2rem;
-    font-size: 1rem;
+    gap: 0.5rem;
+    padding: 0.75rem 1.375rem;
+    font-size: 0.9375rem;
     font-weight: 600;
-    border-radius: var(--radius-lg);
+    border-radius: var(--radius-md);
     text-decoration: none;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    border: none;
+    transition: transform 0.15s ease, box-shadow 0.2s ease, background 0.2s ease, border-color 0.2s ease;
+    border: 1px solid transparent;
     cursor: pointer;
+    line-height: 1;
 }
 
 .btn-premium-primary {
-    background: var(--gradient-blue);
+    background: var(--text-primary);
     color: white;
-    box-shadow: var(--shadow-blue);
+    box-shadow: var(--shadow-sm);
 }
 
 .btn-premium-primary:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 12px 48px rgba(59, 130, 246, 0.3);
+    transform: translateY(-1px);
+    background: #000;
+    box-shadow: var(--shadow-md);
 }
 
 .btn-premium-secondary {
     background: white;
-    color: var(--text-primary);
-    border: 2px solid var(--border-color);
+    color: var(--text-secondary);
+    border: 1px solid var(--border-color);
     box-shadow: var(--shadow-sm);
 }
 
 .btn-premium-secondary:hover {
-    border-color: var(--accent-blue);
-    transform: translateY(-2px);
+    border-color: var(--text-muted);
+    color: var(--text-primary);
+    transform: translateY(-1px);
 }
 
 /* ============================================
@@ -274,37 +276,34 @@ body {
 }
 
 .stat-premium {
-    background: rgba(255, 255, 255, 0.7);
-    backdrop-filter: blur(10px);
-    border: 1px solid rgba(255, 255, 255, 0.8);
-    border-radius: var(--radius-xl);
-    padding: var(--space-8);
+    background: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    padding: var(--space-6) var(--space-8);
     text-align: center;
-    box-shadow: var(--shadow-md);
-    transition: all 0.3s;
+    box-shadow: var(--shadow-sm);
+    transition: transform 0.18s ease, box-shadow 0.2s ease, border-color 0.2s ease;
 }
 
 .stat-premium:hover {
-    transform: translateY(-4px);
-    box-shadow: var(--shadow-lg);
+    transform: translateY(-3px);
+    border-color: #d4d4d8;
+    box-shadow: var(--shadow-md);
 }
 
 .stat-premium-value {
-    font-size: 3rem;
+    font-size: 2.25rem;
     font-weight: 800;
-    background: var(--gradient-blue);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
+    letter-spacing: -0.02em;
+    color: var(--text-primary);
     margin-bottom: var(--space-2);
 }
 
 .stat-premium-label {
-    font-size: 0.875rem;
-    font-weight: 600;
-    color: var(--text-tertiary);
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    color: var(--text-muted);
+    letter-spacing: 0;
 }
 
 /* ============================================
@@ -450,11 +449,11 @@ body {
 
 .post-card {
     background: white;
-    border-radius: var(--radius-xl);
+    border-radius: var(--radius-lg);
     padding: var(--space-6);
     box-shadow: var(--shadow-sm);
-    border: 1px solid var(--border-light);
-    transition: all 0.3s;
+    border: 1px solid var(--border-color);
+    transition: transform 0.18s ease, box-shadow 0.2s ease, border-color 0.2s ease;
     text-decoration: none;
     color: inherit;
     display: flex;
@@ -462,10 +461,12 @@ body {
 }
 
 .post-card:hover {
-    transform: translateY(-4px);
-    box-shadow: var(--shadow-lg);
-    border-color: var(--accent-blue);
+    transform: translateY(-3px);
+    box-shadow: var(--shadow-md);
+    border-color: #d4d4d8;
 }
+
+.post-card:hover .post-card-title { color: var(--accent-blue); }
 
 .post-card-badge {
     display: inline-block;
@@ -494,30 +495,30 @@ body {
     margin-top: auto;
 }
 
-/* Category Colors */
+/* Category Colors - 뮤트 톤 */
 .badge-hrd {
-    background: rgba(59, 130, 246, 0.1);
-    color: var(--game-baseball);
+    background: #eef2ff;
+    color: #4f46e5;
 }
 
 .badge-data {
-    background: rgba(249, 115, 22, 0.1);
-    color: var(--game-2048);
+    background: #fff7ed;
+    color: #ea580c;
 }
 
 .badge-programming {
-    background: rgba(16, 185, 129, 0.1);
-    color: var(--game-tictactoe);
+    background: #ecfdf5;
+    color: #059669;
 }
 
 .badge-free {
-    background: rgba(139, 92, 246, 0.1);
-    color: var(--game-wordchain);
+    background: #f4f4f5;
+    color: #52525b;
 }
 
 .badge-notice {
-    background: rgba(239, 68, 68, 0.1);
-    color: var(--game-minesweeper);
+    background: #fef2f2;
+    color: #dc2626;
 }
 
 /* ============================================

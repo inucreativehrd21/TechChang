@@ -263,8 +263,8 @@
                             커스텀 색상
                         </label>
                         <div style="display: flex; gap: var(--space-4); align-items: center;">
-                            <input type="color" id="hero_custom_color_picker" value="{{ portfolio.hero_custom_color|default:'#667eea' }}" style="width: 80px; height: 50px; border: 1px solid var(--border-light); border-radius: var(--radius-md); cursor: pointer;">
-                            <input type="text" name="hero_custom_color" id="hero_custom_color_text" value="{{ portfolio.hero_custom_color|default:'#667eea' }}" placeholder="#667eea" style="flex: 1; padding: var(--space-4); border: 1px solid var(--border-light); border-radius: var(--radius-md); font-size: 1rem; font-family: monospace;">
+                            <input type="color" id="hero_custom_color_picker" value="{{ portfolio.hero_custom_color|default:'#4f46e5' }}" style="width: 80px; height: 50px; border: 1px solid var(--border-light); border-radius: var(--radius-md); cursor: pointer;">
+                            <input type="text" name="hero_custom_color" id="hero_custom_color_text" value="{{ portfolio.hero_custom_color|default:'#4f46e5' }}" placeholder="#4f46e5" style="flex: 1; padding: var(--space-4); border: 1px solid var(--border-light); border-radius: var(--radius-md); font-size: 1rem; font-family: monospace;">
                         </div>
                     </div>
 
@@ -556,7 +556,7 @@
                                     {{ experience.position }}
                                 </h3>
                                 {% if experience.is_current %}
-                                <span style="background: linear-gradient(135deg, #10b981, #059669); color: white; padding: var(--space-1) var(--space-3); border-radius: var(--radius-full); font-size: 0.75rem;">재직 중</span>
+                                <span style="background: #ecfdf5; color: #059669; padding: var(--space-1) var(--space-3); border-radius: var(--radius-full); font-size: 0.75rem;">재직 중</span>
                                 {% endif %}
                             </div>
                             <div style="color: var(--text-secondary); font-weight: 600; margin-bottom: var(--space-2);">{{ experience.company }}</div>
@@ -619,19 +619,19 @@
 /* Background type option hover effect */
 .bg-type-option:has(input:checked) {
     border-color: var(--accent-blue);
-    background: rgba(59, 130, 246, 0.05) !important;
+    background: rgba(79, 70, 229, 0.05) !important;
 }
 
 .bg-type-option:hover {
     border-color: var(--accent-blue);
-    background: rgba(59, 130, 246, 0.02) !important;
+    background: rgba(79, 70, 229, 0.02) !important;
 }
 
 /* Solid color swatch selection */
 .solid-color-swatch:has(input:checked) {
     border-color: var(--accent-blue) !important;
     transform: scale(1.05);
-    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+    box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3);
 }
 
 .solid-color-swatch:hover {
@@ -642,12 +642,12 @@
 /* Skill type checkbox styling */
 .skill-type-checkbox:has(input:checked) {
     border-color: var(--accent-blue);
-    background: rgba(59, 130, 246, 0.05) !important;
+    background: rgba(79, 70, 229, 0.05) !important;
 }
 
 .skill-type-checkbox:hover {
     border-color: var(--accent-blue);
-    background: rgba(59, 130, 246, 0.02) !important;
+    background: rgba(79, 70, 229, 0.02) !important;
 }
 </style>
 

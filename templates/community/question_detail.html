@@ -26,7 +26,7 @@
 
 .question-header {
     padding: var(--space-8);
-    background: linear-gradient(135deg, rgba(102, 126, 234, 0.05) 0%, rgba(118, 75, 162, 0.05) 100%);
+    background: linear-gradient(135deg, rgba(79, 70, 229, 0.05) 0%, rgba(79, 70, 229, 0.05) 100%);
     border-bottom: 2px solid var(--border-light);
 }
 
@@ -64,6 +64,96 @@
     margin-bottom: var(--space-6);
 }
 
+/* 칼럼/본문 내 마크다운 요소 스타일 */
+.question-content h2 {
+    font-size: 1.375rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin: 2rem 0 0.75rem;
+    padding-bottom: 0.4rem;
+    border-bottom: 2px solid var(--border-light);
+}
+.question-content h3 {
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: #0891b2;
+    margin: 1.5rem 0 0.5rem;
+}
+.question-content p {
+    margin: 0 0 1rem;
+}
+.question-content blockquote {
+    margin: 1.5rem 0;
+    padding: 1rem 1.25rem;
+    background: linear-gradient(135deg, rgba(8,145,178,0.06) 0%, rgba(102,126,234,0.06) 100%);
+    border-left: 4px solid #0891b2;
+    border-radius: 0 var(--radius-lg) var(--radius-lg) 0;
+    color: var(--text-secondary);
+    font-style: normal;
+}
+.question-content blockquote strong {
+    color: #0891b2;
+}
+.question-content ul,
+.question-content ol {
+    margin: 0.5rem 0 1rem 1.5rem;
+    padding: 0;
+}
+.question-content li {
+    margin-bottom: 0.35rem;
+}
+.question-content code {
+    background: #f3f4f6;
+    padding: 0.15em 0.4em;
+    border-radius: 4px;
+    font-size: 0.9em;
+    color: #be185d;
+}
+.question-content pre {
+    background: #1e293b;
+    color: #e2e8f0;
+    padding: 1rem 1.25rem;
+    border-radius: var(--radius-lg);
+    overflow-x: auto;
+    margin: 1rem 0 1.5rem;
+    font-size: 0.9rem;
+    line-height: 1.6;
+}
+.question-content pre code {
+    background: none;
+    padding: 0;
+    color: inherit;
+    font-size: inherit;
+}
+.question-content hr {
+    border: none;
+    border-top: 1px solid var(--border-light);
+    margin: 2rem 0;
+}
+.question-content table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 1rem 0 1.5rem;
+    font-size: 0.9375rem;
+}
+.question-content th,
+.question-content td {
+    border: 1px solid var(--border-light);
+    padding: 0.6rem 0.875rem;
+    text-align: left;
+}
+.question-content th {
+    background: #f8fafc;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+.question-content tr:nth-child(even) td {
+    background: #fafafa;
+}
+.question-content em {
+    color: var(--text-secondary);
+    font-style: italic;
+}
 .question-content img {
     max-width: 100%;
     border-radius: var(--radius-lg);
@@ -80,6 +170,44 @@
     display: flex;
     align-items: center;
     gap: var(--space-4);
+}
+
+/* 다중 이미지 갤러리 */
+.post-gallery {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: var(--space-3);
+    margin: var(--space-6) 0;
+}
+.post-gallery-item {
+    display: block;
+    aspect-ratio: 4 / 3;
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    border: 1px solid var(--border-light);
+    box-shadow: var(--shadow-sm);
+    transition: transform 0.18s ease, box-shadow 0.2s ease;
+}
+.post-gallery-item:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+}
+.post-gallery-item img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+/* 이미지가 1장일 때는 꽉 채우지 않고 자연스럽게 */
+.post-gallery:has(.post-gallery-item:only-child) {
+    grid-template-columns: minmax(0, 520px);
+}
+.post-gallery:has(.post-gallery-item:only-child) .post-gallery-item {
+    aspect-ratio: auto;
+}
+.post-gallery:has(.post-gallery-item:only-child) .post-gallery-item img {
+    height: auto;
+    max-height: 480px;
 }
 
 .attachment-icon {
@@ -202,7 +330,7 @@
 }
 
 .comment-item:hover {
-    background: rgba(59, 130, 246, 0.05);
+    background: rgba(79, 70, 229, 0.05);
     transform: translateX(4px);
 }
 
@@ -327,7 +455,7 @@
 .form-control-detail:focus {
     outline: none;
     border-color: var(--accent-blue);
-    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
 }
 
 .form-footer {
@@ -358,7 +486,7 @@
 }
 
 .badge-hrd {
-    background: rgba(59, 130, 246, 0.1);
+    background: rgba(79, 70, 229, 0.1);
     color: var(--game-baseball);
 }
 
@@ -474,16 +602,14 @@
                 {{ question.content|mark }}
             </div>
 
-            <!-- Image Attachment -->
-            {% if question.image %}
-            <div class="attachment-box">
-                <div class="attachment-icon">
-                    <i class="fas fa-image"></i>
-                </div>
-                <div style="flex: 1;">
-                    <img src="{{ question.image.url }}" alt="첨부 이미지"
-                         style="max-width: 100%; border-radius: var(--radius-lg); box-shadow: var(--shadow-md);">
-                </div>
+            <!-- Image Attachments (다중) -->
+            {% if question.all_images %}
+            <div class="post-gallery">
+                {% for img in question.all_images %}
+                <a href="{{ img.url }}" target="_blank" rel="noopener" class="post-gallery-item">
+                    <img src="{{ img.url }}" alt="첨부 이미지 {{ forloop.counter }}" loading="lazy">
+                </a>
+                {% endfor %}
             </div>
             {% endif %}
 
@@ -506,8 +632,8 @@
             <!-- Author Section -->
             <div class="author-section">
                 <div class="author-info">
-                    {% if question.author.profile.profile_image %}
-                    <img src="{{ question.author.profile.profile_image.url }}" alt="프로필" class="author-avatar">
+                    {% if question.author.profile.avatar_url %}
+                    <img src="{{ question.author.profile.avatar_url }}" alt="프로필" class="author-avatar">
                     {% else %}
                     <div class="author-avatar-placeholder">
                         {{ question.author.username|slice:":1"|upper }}
@@ -564,11 +690,11 @@
             <div class="comment-item" id="answer_{{ answer.id }}">
                 <div class="comment-header">
                     <div style="display: flex; align-items: center; gap: var(--space-3);">
-                        {% if answer.author.profile.profile_image %}
-                        <img src="{{ answer.author.profile.profile_image.url }}" alt="프로필" 
+                        {% if answer.author.profile.avatar_url %}
+                        <img src="{{ answer.author.profile.avatar_url }}" alt="프로필"
                              style="width: 32px; height: 32px; border-radius: 50%; object-fit: cover;">
                         {% else %}
-                        <div style="width: 32px; height: 32px; border-radius: 50%; background: linear-gradient(135deg, #667eea, #764ba2); display: flex; align-items: center; justify-content: center; color: white; font-weight: 700; font-size: 0.875rem;">
+                        <div style="width: 32px; height: 32px; border-radius: 50%; background: linear-gradient(135deg, #4f46e5, #4f46e5); display: flex; align-items: center; justify-content: center; color: white; font-weight: 700; font-size: 0.875rem;">
                             {{ answer.author.username|slice:":1"|upper }}
                         </div>
                         {% endif %}
@@ -631,11 +757,11 @@
             {% include "form_errors.html" %}
 
             <div style="display: flex; gap: var(--space-4); align-items: flex-start;">
-                {% if user.profile.profile_image %}
-                <img src="{{ user.profile.profile_image.url }}" alt="프로필" 
+                {% if user.profile.avatar_url %}
+                <img src="{{ user.profile.avatar_url }}" alt="프로필"
                      style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover; flex-shrink: 0;">
                 {% else %}
-                <div style="width: 40px; height: 40px; border-radius: 50%; background: linear-gradient(135deg, #667eea, #764ba2); display: flex; align-items: center; justify-content: center; color: white; font-weight: 700; flex-shrink: 0;">
+                <div style="width: 40px; height: 40px; border-radius: 50%; background: linear-gradient(135deg, #4f46e5, #4f46e5); display: flex; align-items: center; justify-content: center; color: white; font-weight: 700; flex-shrink: 0;">
                     {{ user.username|slice:":1"|upper }}
                 </div>
                 {% endif %}

@@ -1,11 +1,16 @@
 
 from django.contrib import admin
 
-from .models import Question, Answer, Comment, Category, WordChainGame, WordChainEntry
+from .models import Question, QuestionImage, Answer, Comment, Category, WordChainGame, WordChainEntry
 from .models import WordChainChatMessage, TicTacToeGame, NumberBaseballGame, NumberBaseballAttempt, GuestBook, Game2048
+
+class QuestionImageInline(admin.TabularInline):
+    model = QuestionImage
+    extra = 0
 
 class QuestionAdmin(admin.ModelAdmin):
     search_fields = ['subject']
+    inlines = [QuestionImageInline]
 
 class AnswerAdmin(admin.ModelAdmin):
     list_display = ('question', 'author', 'create_date')

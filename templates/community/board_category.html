@@ -11,9 +11,9 @@
     <div style="display: grid; grid-template-columns: 250px 1fr; gap: var(--space-8); align-items: start;">
         <!-- Sidebar -->
         <div style="position: sticky; top: 132px;">
-            <div style="padding: var(--space-6); border-radius: var(--radius-2xl); background: linear-gradient(135deg, rgba(102, 126, 234, 0.03), rgba(118, 75, 162, 0.03)); border: 2px solid rgba(102, 126, 234, 0.1); box-shadow: 0 4px 16px rgba(102, 126, 234, 0.08);">
+            <div style="padding: var(--space-6); border-radius: var(--radius-2xl); background: linear-gradient(135deg, rgba(79, 70, 229, 0.03), rgba(79, 70, 229, 0.03)); border: 2px solid rgba(79, 70, 229, 0.1); box-shadow: 0 4px 16px rgba(79, 70, 229, 0.08);">
                 <h3 style="font-size: 1.125rem; font-weight: 800; margin-bottom: var(--space-6); color: var(--text-primary); display: flex; align-items: center; gap: var(--space-2);">
-                    <div style="width: 32px; height: 32px; background: linear-gradient(135deg, #667eea, #764ba2); border-radius: var(--radius-lg); display: flex; align-items: center; justify-content: center;">
+                    <div style="width: 32px; height: 32px; background: linear-gradient(135deg, #4f46e5, #4f46e5); border-radius: var(--radius-lg); display: flex; align-items: center; justify-content: center;">
                         <i class="fas fa-list" style="color: white; font-size: 0.875rem;"></i>
                     </div>
                     카테고리
@@ -22,7 +22,7 @@
                     {% for cat in all_categories %}
                     <a href="{% url 'community:board_category' cat.name %}"
                        class="category-sidebar-link {% if category.name == cat.name %}active{% endif %}"
-                       style="padding: var(--space-3) var(--space-4); border-radius: var(--radius-lg); text-decoration: none; display: flex; justify-content: space-between; align-items: center; background: white; border: 1px solid rgba(102, 126, 234, 0.08);">
+                       style="padding: var(--space-3) var(--space-4); border-radius: var(--radius-lg); text-decoration: none; display: flex; justify-content: space-between; align-items: center; background: white; border: 1px solid rgba(79, 70, 229, 0.08);">
                         <span style="font-weight: 700; color: var(--text-primary); display: flex; align-items: center; gap: var(--space-2);">
                             {% if cat.name == 'HRD' %}
                                 <i class="fas fa-users-cog" style="color: #0891b2; font-size: 0.875rem;"></i>
@@ -37,14 +37,14 @@
                             {% endif %}
                             {{ cat.name }}
                         </span>
-                        <span style="background: linear-gradient(135deg, rgba(102, 126, 234, 0.1), rgba(118, 75, 162, 0.1)); color: #667eea; padding: 0.25rem 0.625rem; border-radius: var(--radius-full); font-size: 0.7rem; font-weight: 800; border: 1px solid rgba(102, 126, 234, 0.2);">
+                        <span style="background: linear-gradient(135deg, rgba(79, 70, 229, 0.1), rgba(79, 70, 229, 0.1)); color: #4f46e5; padding: 0.25rem 0.625rem; border-radius: var(--radius-full); font-size: 0.7rem; font-weight: 800; border: 1px solid rgba(79, 70, 229, 0.2);">
                             {{ cat.post_count }}
                         </span>
                     </a>
                     {% endfor %}
                 </div>
 
-                <hr style="margin: var(--space-6) 0; border: none; border-top: 2px solid rgba(102, 126, 234, 0.1);">
+                <hr style="margin: var(--space-6) 0; border: none; border-top: 2px solid rgba(79, 70, 229, 0.1);">
 
                 <a href="{% url 'community:board_main' %}" class="btn-premium btn-premium-secondary" style="width: 100%; font-size: 0.875rem; font-weight: 700; padding: var(--space-4);">
                     <i class="fas fa-th me-2"></i>전체 카테고리 보기
@@ -76,22 +76,22 @@
             </div>
 
             <!-- Search & Sort -->
-            <div class="premium-glass-card" style="padding: var(--space-6); margin-bottom: var(--space-8); border-radius: var(--radius-2xl); background: linear-gradient(135deg, rgba(102, 126, 234, 0.03), rgba(118, 75, 162, 0.03)); border: 1px solid rgba(102, 126, 234, 0.1);">
+            <div class="premium-glass-card" style="padding: var(--space-6); margin-bottom: var(--space-8); border-radius: var(--radius-2xl); background: linear-gradient(135deg, rgba(79, 70, 229, 0.03), rgba(79, 70, 229, 0.03)); border: 1px solid rgba(79, 70, 229, 0.1);">
                 <form method="get" class="row g-3">
                     <div class="col-md-7">
                         <div style="position: relative;">
                             <input type="text" name="search" value="{{ search_query }}"
-                                   style="width: 100%; padding: var(--space-4) var(--space-4) var(--space-4) var(--space-12); border: 2px solid rgba(102, 126, 234, 0.2); border-radius: var(--radius-lg); background: white; font-size: 1rem; transition: all 0.3s ease; outline: none;"
+                                   style="width: 100%; padding: var(--space-4) var(--space-4) var(--space-4) var(--space-12); border: 2px solid rgba(79, 70, 229, 0.2); border-radius: var(--radius-lg); background: white; font-size: 1rem; transition: all 0.3s ease; outline: none;"
                                    placeholder="게시글 검색..."
-                                   onfocus="this.style.borderColor='#667eea'; this.style.boxShadow='0 0 0 3px rgba(102, 126, 234, 0.1)'"
-                                   onblur="this.style.borderColor='rgba(102, 126, 234, 0.2)'; this.style.boxShadow='none'">
-                            <i class="fas fa-search" style="position: absolute; left: var(--space-4); top: 50%; transform: translateY(-50%); color: #667eea;"></i>
+                                   onfocus="this.style.borderColor='#4f46e5'; this.style.boxShadow='0 0 0 3px rgba(79, 70, 229, 0.1)'"
+                                   onblur="this.style.borderColor='rgba(79, 70, 229, 0.2)'; this.style.boxShadow='none'">
+                            <i class="fas fa-search" style="position: absolute; left: var(--space-4); top: 50%; transform: translateY(-50%); color: #4f46e5;"></i>
                         </div>
                     </div>
                     <div class="col-md-3">
-                        <select name="sort" style="width: 100%; padding: var(--space-4); border: 2px solid rgba(102, 126, 234, 0.2); border-radius: var(--radius-lg); background: white; font-size: 1rem; font-weight: 600; color: var(--text-primary); cursor: pointer; transition: all 0.3s ease; outline: none;"
-                                onfocus="this.style.borderColor='#667eea'; this.style.boxShadow='0 0 0 3px rgba(102, 126, 234, 0.1)'"
-                                onblur="this.style.borderColor='rgba(102, 126, 234, 0.2)'; this.style.boxShadow='none'">
+                        <select name="sort" style="width: 100%; padding: var(--space-4); border: 2px solid rgba(79, 70, 229, 0.2); border-radius: var(--radius-lg); background: white; font-size: 1rem; font-weight: 600; color: var(--text-primary); cursor: pointer; transition: all 0.3s ease; outline: none;"
+                                onfocus="this.style.borderColor='#4f46e5'; this.style.boxShadow='0 0 0 3px rgba(79, 70, 229, 0.1)'"
+                                onblur="this.style.borderColor='rgba(79, 70, 229, 0.2)'; this.style.boxShadow='none'">
                             <option value="latest" {% if sort == 'latest' %}selected{% endif %}>🕐 최신순</option>
                             <option value="popular" {% if sort == 'popular' %}selected{% endif %}>🔥 인기순</option>
                             <option value="views" {% if sort == 'views' %}selected{% endif %}>👁️ 조회순</option>
@@ -109,9 +109,9 @@
             <div style="display: flex; flex-direction: column; gap: var(--space-5);">
                 {% for question in page_obj %}
                 <a href="{% url 'community:detail' question.id %}" class="post-list-item"
-                   style="padding: var(--space-6); text-decoration: none; transition: all 0.3s ease; border-radius: var(--radius-xl); display: block; background: white; border: 2px solid rgba(102, 126, 234, 0.08); box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04); position: relative; overflow: hidden;">
+                   style="padding: var(--space-6); text-decoration: none; transition: all 0.3s ease; border-radius: var(--radius-xl); display: block; background: white; border: 2px solid rgba(79, 70, 229, 0.08); box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04); position: relative; overflow: hidden;">
                     <!-- Hover gradient overlay -->
-                    <div class="post-gradient-overlay" style="position: absolute; top: 0; left: 0; right: 0; height: 4px; background: linear-gradient(90deg, #667eea, #764ba2); transform: scaleX(0); transform-origin: left; transition: transform 0.3s ease;"></div>
+                    <div class="post-gradient-overlay" style="position: absolute; top: 0; left: 0; right: 0; height: 4px; background: linear-gradient(90deg, #4f46e5, #4f46e5); transform: scaleX(0); transform-origin: left; transition: transform 0.3s ease;"></div>
 
                     <div style="display: flex; justify-content: space-between; align-items: start; gap: var(--space-6);">
                         <!-- Main Content -->
@@ -124,7 +124,7 @@
                                 {% endif %}
 
                                 {% if question.image or question.file %}
-                                <span style="background: linear-gradient(135deg, rgba(102, 126, 234, 0.1), rgba(118, 75, 162, 0.1)); color: #667eea; padding: 0.375rem 0.875rem; border-radius: var(--radius-full); font-size: 0.75rem; font-weight: 700; border: 1px solid rgba(102, 126, 234, 0.2); display: inline-flex; align-items: center; gap: 0.25rem;">
+                                <span style="background: linear-gradient(135deg, rgba(79, 70, 229, 0.1), rgba(79, 70, 229, 0.1)); color: #4f46e5; padding: 0.375rem 0.875rem; border-radius: var(--radius-full); font-size: 0.75rem; font-weight: 700; border: 1px solid rgba(79, 70, 229, 0.2); display: inline-flex; align-items: center; gap: 0.25rem;">
                                     <i class="fas fa-paperclip"></i>첨부파일
                                 </span>
                                 {% endif %}
@@ -142,13 +142,13 @@
 
                             <div style="display: flex; align-items: center; gap: var(--space-5); font-size: 0.875rem; color: var(--text-tertiary); flex-wrap: wrap;">
                                 <span style="display: inline-flex; align-items: center; gap: 0.375rem; font-weight: 600;">
-                                    <div style="width: 24px; height: 24px; border-radius: var(--radius-full); background: linear-gradient(135deg, #667eea, #764ba2); display: flex; align-items: center; justify-content: center; color: white; font-size: 0.7rem; font-weight: 700;">
+                                    <div style="width: 24px; height: 24px; border-radius: var(--radius-full); background: linear-gradient(135deg, #4f46e5, #4f46e5); display: flex; align-items: center; justify-content: center; color: white; font-size: 0.7rem; font-weight: 700;">
                                         {{ question.author.username|first|upper }}
                                     </div>
                                     {{ question.author|display_name }}
                                 </span>
                                 <span style="display: inline-flex; align-items: center; gap: 0.375rem;">
-                                    <i class="far fa-clock" style="color: #667eea;"></i>{{ question.create_date|date:"Y-m-d H:i" }}
+                                    <i class="far fa-clock" style="color: #4f46e5;"></i>{{ question.create_date|date:"Y-m-d H:i" }}
                                 </span>
                             </div>
                         </div>
@@ -156,11 +156,11 @@
                         <!-- Stats -->
                         <div style="display: flex; gap: var(--space-4); align-items: center; flex-shrink: 0;">
                             <div style="text-align: center; padding: var(--space-3); border-radius: var(--radius-lg); background: linear-gradient(135deg, rgba(8, 145, 178, 0.05), rgba(6, 182, 212, 0.05)); border: 1px solid rgba(8, 145, 178, 0.1); min-width: 60px;">
-                                <div style="font-size: 1.5rem; font-weight: 800; background: linear-gradient(135deg, #0891b2, #06b6d4); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">{{ question.voter_count }}</div>
+                                <div style="font-size: 1.5rem; font-weight: 800; color: var(--text-primary);">{{ question.voter_count }}</div>
                                 <div style="font-size: 0.7rem; color: #0891b2; font-weight: 600; text-transform: uppercase;">추천</div>
                             </div>
                             <div style="text-align: center; padding: var(--space-3); border-radius: var(--radius-lg); background: linear-gradient(135deg, rgba(16, 185, 129, 0.05), rgba(5, 150, 105, 0.05)); border: 1px solid rgba(16, 185, 129, 0.1); min-width: 60px;">
-                                <div style="font-size: 1.5rem; font-weight: 800; background: linear-gradient(135deg, #10b981, #059669); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">{{ question.answer_count }}</div>
+                                <div style="font-size: 1.5rem; font-weight: 800; color: var(--text-primary);">{{ question.answer_count }}</div>
                                 <div style="font-size: 0.7rem; color: #10b981; font-weight: 600; text-transform: uppercase;">댓글</div>
                             </div>
                             <div style="text-align: center; padding: var(--space-3); border-radius: var(--radius-lg); background: linear-gradient(135deg, rgba(100, 116, 139, 0.05), rgba(71, 85, 105, 0.05)); border: 1px solid rgba(100, 116, 139, 0.1); min-width: 60px;">
@@ -224,7 +224,7 @@
             <!-- Write Button (Fixed) -->
             {% if user.is_authenticated %}
             <a href="{% url 'community:question_create' %}?category={{ category.name }}"
-               style="position: fixed; bottom: var(--space-8); right: var(--space-8); width: 64px; height: 64px; background: linear-gradient(135deg, #667eea, #764ba2); color: white; border-radius: var(--radius-full); display: flex; align-items: center; justify-content: center; box-shadow: 0 8px 24px -8px rgba(102, 126, 234, 0.5); text-decoration: none; transition: all 0.3s ease; z-index: 50;">
+               style="position: fixed; bottom: var(--space-8); right: var(--space-8); width: 64px; height: 64px; background: linear-gradient(135deg, #4f46e5, #4f46e5); color: white; border-radius: var(--radius-full); display: flex; align-items: center; justify-content: center; box-shadow: 0 8px 24px -8px rgba(79, 70, 229, 0.5); text-decoration: none; transition: all 0.3s ease; z-index: 50;">
                 <i class="fas fa-pen" style="font-size: 1.5rem;"></i>
             </a>
             {% endif %}
@@ -238,20 +238,20 @@
 }
 
 .category-sidebar-link:hover {
-    background: linear-gradient(135deg, rgba(102, 126, 234, 0.08), rgba(118, 75, 162, 0.08));
+    background: linear-gradient(135deg, rgba(79, 70, 229, 0.08), rgba(79, 70, 229, 0.08));
     transform: translateX(4px);
 }
 
 .category-sidebar-link.active {
-    background: linear-gradient(135deg, rgba(102, 126, 234, 0.15), rgba(118, 75, 162, 0.15));
-    border-left: 4px solid #667eea;
+    background: linear-gradient(135deg, rgba(79, 70, 229, 0.15), rgba(79, 70, 229, 0.15));
+    border-left: 4px solid #4f46e5;
     padding-left: calc(var(--space-4) - 4px);
 }
 
 .post-list-item:hover {
     transform: translateY(-4px);
-    box-shadow: 0 12px 32px -8px rgba(102, 126, 234, 0.25);
-    border-color: rgba(102, 126, 234, 0.3);
+    box-shadow: 0 12px 32px -8px rgba(79, 70, 229, 0.25);
+    border-color: rgba(79, 70, 229, 0.3);
 }
 
 .post-list-item:hover .post-gradient-overlay {
@@ -259,12 +259,12 @@
 }
 
 .post-list-item:hover h3 {
-    color: #667eea;
+    color: #4f46e5;
 }
 
 /* 검색 입력 필드 placeholder 스타일 */
 input::placeholder {
-    color: rgba(102, 126, 234, 0.4);
+    color: rgba(79, 70, 229, 0.4);
     font-weight: 500;
 }
 
@@ -280,7 +280,7 @@ select {
 /* 글쓰기 플로팅 버튼 호버 효과 */
 a[style*="position: fixed"]:hover {
     transform: scale(1.1);
-    box-shadow: 0 12px 32px -8px rgba(102, 126, 234, 0.6);
+    box-shadow: 0 12px 32px -8px rgba(79, 70, 229, 0.6);
 }
 
 /* 반응형: 모바일에서 통계 숨기기 */

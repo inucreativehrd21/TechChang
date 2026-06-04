@@ -182,7 +182,7 @@
 .form-input:focus {
     outline: none;
     border-color: var(--accent-blue);
-    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
 }
 
 .form-help {
@@ -269,8 +269,8 @@
     <!-- Profile Header -->
     <div class="profile-header">
         <!-- Avatar -->
-        {% if profile_user.profile.profile_image %}
-        <img src="{{ profile_user.profile.profile_image.url }}" alt="{{ profile_user|display_name }}" class="profile-avatar">
+        {% if profile_user.profile.avatar_url %}
+        <img src="{{ profile_user.profile.avatar_url }}" alt="{{ profile_user|display_name }}" class="profile-avatar">
         {% else %}
         <div class="profile-avatar-placeholder">
             {{ profile_user|display_name|slice:":1"|upper }}

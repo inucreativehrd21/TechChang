@@ -118,18 +118,23 @@
                       placeholder="질문 내용을 자세히 작성해주세요.&#10;&#10;- 어떤 문제가 있나요?&#10;- 어떤 환경에서 발생했나요?&#10;- 이미 시도해본 것이 있나요?" required>{{ form.content.value|default:'' }}</textarea>
         </div>
 
-        <!-- 이미지 첨부 -->
+        <!-- 이미지 첨부 (다중) -->
         <div class="m-fg">
-            <label class="m-label">이미지 첨부 <span style="font-weight:400;color:var(--text-tertiary,#9ca3af);">(선택)</span></label>
+            <label class="m-label">이미지 첨부 <span style="font-weight:400;color:var(--text-tertiary,#9ca3af);">(여러 장 가능, 선택)</span></label>
             <label class="m-file-btn" for="imageInput">
                 <i class="fas fa-image"></i>
-                <span id="imageLabel">이미지 선택 (JPG, PNG 최대 5MB)</span>
+                <span id="imageLabel">이미지 선택 (JPG, PNG · 여러 장, 장당 최대 5MB)</span>
             </label>
-            <input type="file" id="imageInput" name="image" accept="image/*" style="display:none;" onchange="updateImageLabel(this)">
-            {% if question and question.image %}
-            <div style="margin-top:8px;font-size:0.8125rem;color:var(--text-secondary,#6b7280);">
-                현재 이미지: <a href="{{ question.image.url }}" target="_blank">보기</a>
+            <input type="file" id="imageInput" name="images" accept="image/*" multiple style="display:none;" onchange="updateImageLabel(this)">
+            {% if question and question.all_images %}
+            <div style="margin-top:8px;display:flex;flex-wrap:wrap;gap:6px;">
+                {% for img in question.all_images %}
+                <a href="{{ img.url }}" target="_blank" rel="noopener" style="display:block;width:64px;height:64px;border-radius:8px;overflow:hidden;border:1px solid var(--border-light,#e5e7eb);">
+                    <img src="{{ img.url }}" alt="첨부 {{ forloop.counter }}" style="width:100%;height:100%;object-fit:cover;">
+                </a>
+                {% endfor %}
             </div>
+            <div style="margin-top:6px;font-size:0.75rem;color:var(--text-tertiary,#9ca3af);">새로 선택한 이미지는 기존에 추가됩니다.</div>
             {% endif %}
         </div>
 
@@ -161,8 +166,12 @@
 <script>
 function updateImageLabel(input) {
     var label = document.getElementById('imageLabel');
-    if (input.files && input.files[0]) {
-        label.textContent = input.files[0].name;
+    if (input.files && input.files.length > 0) {
+        if (input.files.length === 1) {
+            label.textContent = input.files[0].name;
+        } else {
+            label.textContent = input.files.length + '장 선택됨';
+        }
         label.style.color = 'var(--accent-primary, #3b82f6)';
     }
 }

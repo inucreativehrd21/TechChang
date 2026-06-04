@@ -4,6 +4,19 @@
 
 {% block extra_css %}
 <link href="{% static 'css/premium.css' %}?v={{ 'now'|date:'YmdHis' }}" rel="stylesheet">
+<style>
+/* 게시글 카드 배지(카테고리/첨부/회원전용) 높이·정렬 통일 */
+.post-card-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.375rem 0.875rem;
+    border: 1px solid transparent;
+    border-radius: var(--radius-full);
+    margin-bottom: 0;
+    font-weight: 700;
+}
+</style>
 {% endblock %}
 
 {% block content %}
@@ -93,7 +106,7 @@
                         {% endif %}
 
                         {% if post.image or post.file %}
-                        <span style="display: inline-flex; align-items: center; gap: 0.25rem; background: linear-gradient(135deg, rgba(102, 126, 234, 0.1), rgba(118, 75, 162, 0.1)); color: #667eea; padding: 0.375rem 0.875rem; border-radius: var(--radius-full); font-size: 0.75rem; font-weight: 700; border: 1px solid rgba(102, 126, 234, 0.2);">
+                        <span style="display: inline-flex; align-items: center; gap: 0.25rem; background: linear-gradient(135deg, rgba(79, 70, 229, 0.1), rgba(79, 70, 229, 0.1)); color: #4f46e5; padding: 0.375rem 0.875rem; border-radius: var(--radius-full); font-size: 0.75rem; font-weight: 700; border: 1px solid rgba(79, 70, 229, 0.2);">
                             <i class="fas fa-paperclip"></i>첨부파일
                         </span>
                         {% endif %}

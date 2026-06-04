@@ -75,6 +75,15 @@ class Profile(models.Model):
 		return self.nickname if self.nickname else self.user.username
 
 	@property
+	def avatar_url(self):
+		"""아바타 이미지 URL. 선택한 이모티콘이 있으면 프로필 사진 대신 이모티콘을 사용."""
+		if self.selected_emoticon and self.selected_emoticon.image:
+			return self.selected_emoticon.image.url
+		if self.profile_image:
+			return self.profile_image.url
+		return None
+
+	@property
 	def rank_display(self):
 		"""회원 등급을 한글로 반환"""
 		return dict(self.RANK_CHOICES).get(self.rank, '일반회원')

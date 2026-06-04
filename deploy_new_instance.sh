@@ -61,7 +61,7 @@ if [ ! -f .env ]; then
     cp .env.example .env
     echo -e "${YELLOW}⚠️  .env 파일을 생성했습니다. 반드시 다음 값들을 설정하세요:${NC}"
     echo "  - DJANGO_SECRET_KEY (새로 생성 필요)"
-    echo "  - OPENAI_API_KEY"
+    echo "  - ANTHROPIC_API_KEY"
     echo "  - KAKAO_REST_API_KEY"
     echo "  - KAKAO_CLIENT_SECRET"
     echo "  - 기타 API 키들"

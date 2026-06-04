@@ -5,11 +5,17 @@
 {% block content %}
 <style>
 .signup-premium-card {
-    background: rgba(255, 255, 255, 0.95);
-    backdrop-filter: blur(20px);
-    border: 1px solid rgba(0, 0, 0, 0.06);
-    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.08);
+    background: #ffffff;
+    border: 1px solid var(--border-color);
+    box-shadow: var(--shadow-lg);
 }
+.signup-premium-header {
+    background: #ffffff;
+    border-bottom: 1px solid var(--border-light);
+    color: var(--text-primary) !important;
+}
+.signup-premium-header i { color: var(--accent-blue); }
+.signup-premium-header p { color: var(--text-tertiary) !important; opacity: 1 !important; }
 .signup-premium-card .form-control,
 .signup-premium-card .form-select {
     background: #ffffff;
@@ -21,8 +27,8 @@
 .signup-premium-card .form-select:focus {
     background: #ffffff;
     color: var(--text-primary);
-    border-color: var(--accent-green);
-    box-shadow: 0 0 0 0.2rem rgba(16, 185, 129, 0.15);
+    border-color: var(--accent-blue);
+    box-shadow: 0 0 0 0.2rem var(--accent-wash);
 }
 .signup-premium-card .input-group-text {
     background: #f8f9fa;
@@ -35,7 +41,7 @@
         <div class="col-md-8 col-lg-6">
             <div class="card border-0 signup-premium-card" style="border-radius: 20px;">
                 <!-- 헤더 -->
-                <div class="card-header text-white text-center py-4" style="border-radius: 20px 20px 0 0; background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">
+                <div class="card-header signup-premium-header text-center py-4" style="border-radius: 20px 20px 0 0;">
                     <i class="fas fa-user-plus fa-3x mb-3"></i>
                     <h2 class="mb-1">회원가입</h2>
                     <p class="mb-0" style="opacity: 0.95;">테크창 커뮤니티의 새로운 멤버가 되어보세요</p>
@@ -187,7 +193,7 @@
 
                         <!-- 회원가입 버튼 -->
                         <div class="d-grid mb-4">
-                            <button type="submit" class="btn btn-success btn-lg" style="border-radius: 10px; background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); border: none;">
+                            <button type="submit" class="btn btn-lg" style="border-radius: 10px; background: var(--text-primary); border: none; color: #fff;">
                                 <i class="fas fa-user-plus me-2"></i>계정 생성하기
                             </button>
                         </div>

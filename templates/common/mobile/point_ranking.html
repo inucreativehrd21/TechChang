@@ -7,14 +7,14 @@
 <style>
 .m-ranking-header {
     padding: 20px 16px 16px;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: var(--text-primary);
     color: #fff; text-align: center;
 }
 .m-ranking-title { font-size: 1.25rem; font-weight: 800; }
 .m-my-rank {
     margin: 12px 16px;
-    background: rgba(102, 126, 234, 0.1);
-    border: 1.5px solid rgba(102, 126, 234, 0.3);
+    background: rgba(79, 70, 229, 0.1);
+    border: 1.5px solid rgba(79, 70, 229, 0.3);
     border-radius: 14px; padding: 14px 16px;
     display: flex; justify-content: space-around;
 }
@@ -28,7 +28,7 @@
 .m-podium-item { text-align: center; flex: 1; }
 .m-podium-avatar {
     width: 56px; height: 56px; border-radius: 50%;
-    background: linear-gradient(135deg, #667eea, #764ba2);
+    background: #4f46e5;
     display: flex; align-items: center; justify-content: center;
     color: #fff; font-size: 1.25rem; font-weight: 800;
     margin: 0 auto 4px; overflow: hidden;
@@ -60,7 +60,7 @@
 }
 .m-rank-avatar {
     width: 40px; height: 40px; border-radius: 50%;
-    background: linear-gradient(135deg, #667eea, #764ba2);
+    background: #4f46e5;
     display: flex; align-items: center; justify-content: center;
     color: #fff; font-weight: 800; flex-shrink: 0; overflow: hidden;
 }
@@ -68,7 +68,7 @@
 .m-rank-info { flex: 1; min-width: 0; }
 .m-rank-name { font-size: 0.9375rem; font-weight: 700; color: var(--text-primary, #111); }
 .m-rank-sub { font-size: 0.75rem; color: var(--text-secondary, #6b7280); margin-top: 1px; }
-.m-rank-pts { font-size: 1.0625rem; font-weight: 800; color: #667eea; flex-shrink: 0; }
+.m-rank-pts { font-size: 1.0625rem; font-weight: 800; color: #4f46e5; flex-shrink: 0; }
 .m-empty { text-align: center; padding: 40px 20px; color: var(--text-tertiary, #9ca3af); font-size: .875rem; }
 </style>
 {% endblock %}
@@ -100,7 +100,7 @@
     <div class="m-podium-item">
         {% with profile=top_users.1 %}
         <div class="m-podium-avatar">
-            {% if profile.profile_image %}<img src="{{ profile.profile_image.url }}" alt="">{% else %}{{ profile.user.username|slice:":1"|upper }}{% endif %}
+            {% if profile.avatar_url %}<img src="{{ profile.avatar_url }}" alt="">{% else %}{{ profile.user.username|slice:":1"|upper }}{% endif %}
         </div>
         <div class="m-podium-name">{{ profile.nickname|default:profile.user.username }}</div>
         <div class="m-podium-pts">{{ profile.points }}P</div>
@@ -112,7 +112,7 @@
         {% with profile=top_users.0 %}
         <div style="text-align:center;font-size:1.25rem;">👑</div>
         <div class="m-podium-avatar rank1">
-            {% if profile.profile_image %}<img src="{{ profile.profile_image.url }}" alt="">{% else %}{{ profile.user.username|slice:":1"|upper }}{% endif %}
+            {% if profile.avatar_url %}<img src="{{ profile.avatar_url }}" alt="">{% else %}{{ profile.user.username|slice:":1"|upper }}{% endif %}
         </div>
         <div class="m-podium-name">{{ profile.nickname|default:profile.user.username }}</div>
         <div class="m-podium-pts">{{ profile.points }}P</div>
@@ -123,7 +123,7 @@
     <div class="m-podium-item">
         {% with profile=top_users.2 %}
         <div class="m-podium-avatar">
-            {% if profile.profile_image %}<img src="{{ profile.profile_image.url }}" alt="">{% else %}{{ profile.user.username|slice:":1"|upper }}{% endif %}
+            {% if profile.avatar_url %}<img src="{{ profile.avatar_url }}" alt="">{% else %}{{ profile.user.username|slice:":1"|upper }}{% endif %}
         </div>
         <div class="m-podium-name">{{ profile.nickname|default:profile.user.username }}</div>
         <div class="m-podium-pts">{{ profile.points }}P</div>
@@ -139,7 +139,7 @@
 <div class="m-rank-row">
     <div class="m-rank-num">{{ forloop.counter }}</div>
     <div class="m-rank-avatar">
-        {% if profile.profile_image %}<img src="{{ profile.profile_image.url }}" alt="">
+        {% if profile.avatar_url %}<img src="{{ profile.avatar_url }}" alt="">
         {% else %}{{ profile.user.username|slice:":1"|upper }}{% endif %}
     </div>
     <div class="m-rank-info">

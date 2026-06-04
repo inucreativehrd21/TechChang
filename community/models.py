@@ -42,6 +42,30 @@ class Question(models.Model):
             return os.path.basename(self.file.name)
         return None
 
+    @property
+    def all_images(self):
+        """레거시 단일 image + 갤러리 image를 합쳐 반환 (표시용)"""
+        images = []
+        if self.image:
+            images.append(self.image)
+        images.extend(qi.image for qi in self.images.all())
+        return images
+
+
+class QuestionImage(models.Model):
+    """질문에 첨부되는 다중 이미지 (1:N)"""
+    question = models.ForeignKey(Question, on_delete=models.CASCADE, related_name='images')
+    image = models.ImageField(upload_to='questions/', validators=[validate_image_file])  # 보안: MIME 검증
+    create_date = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'pybo_question_image'
+        ordering = ['id']
+
+    def __str__(self):
+        return f'{self.question_id} - {self.image.name}'
+
+
 class Answer(models.Model):
     author = models.ForeignKey(User, on_delete=models.CASCADE, related_name='author_answer')
     question = models.ForeignKey(Question, on_delete=models.CASCADE)

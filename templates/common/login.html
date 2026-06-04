@@ -6,11 +6,17 @@
 {% block content %}
 <style>
 .login-premium-card {
-    background: rgba(255, 255, 255, 0.95);
-    backdrop-filter: blur(20px);
-    border: 1px solid rgba(0, 0, 0, 0.06);
-    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.08);
+    background: #ffffff;
+    border: 1px solid var(--border-color);
+    box-shadow: var(--shadow-lg);
 }
+.login-premium-header {
+    background: #ffffff;
+    border-bottom: 1px solid var(--border-light);
+    color: var(--text-primary) !important;
+}
+.login-premium-header i { color: var(--accent-blue); }
+.login-premium-header p { color: var(--text-tertiary) !important; opacity: 1 !important; }
 .login-premium-card .form-control,
 .login-premium-card .form-select {
     background: #ffffff;
@@ -23,7 +29,7 @@
     background: #ffffff;
     color: var(--text-primary);
     border-color: var(--accent-blue);
-    box-shadow: 0 0 0 0.2rem rgba(59, 130, 246, 0.15);
+    box-shadow: 0 0 0 0.2rem var(--accent-wash);
 }
 .login-premium-card .input-group-text {
     background: #f8f9fa;
@@ -36,7 +42,7 @@
     border: 1px solid var(--border-color);
 }
 .login-premium-accordion .accordion-button:not(.collapsed) {
-    background: rgba(59, 130, 246, 0.08);
+    background: var(--accent-wash);
     color: var(--accent-blue);
 }
 .login-premium-accordion .accordion-body {
@@ -58,7 +64,7 @@
         <div class="col-md-6 col-lg-5">
             <div class="card border-0 login-premium-card" style="border-radius: 20px;">
                 <!-- 헤더 -->
-                <div class="card-header text-white text-center py-4" style="border-radius: 20px 20px 0 0; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                <div class="card-header login-premium-header text-center py-4" style="border-radius: 20px 20px 0 0;">
                     <i class="fas fa-sign-in-alt fa-3x mb-3"></i>
                     <h2 class="mb-1">로그인</h2>
                     <p class="mb-0" style="opacity: 0.95;">테크창 커뮤니티에 오신 것을 환영합니다</p>

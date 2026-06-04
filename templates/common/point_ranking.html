@@ -9,16 +9,16 @@
     --gold: #FFD700;
     --silver: #C0C0C0;
     --bronze: #CD7F32;
-    --gradient-primary: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     --gradient-gold: linear-gradient(135deg, #FFD700 0%, #FFA500 100%);
     --gradient-silver: linear-gradient(135deg, #E8E8E8 0%, #A8A8A8 100%);
     --gradient-bronze: linear-gradient(135deg, #CD7F32 0%, #8B4513 100%);
 }
 
 .ranking-hero {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: var(--bg-secondary);
+    border-bottom: 1px solid var(--border-color);
     padding: var(--space-12) 0;
-    color: white;
+    color: var(--text-primary);
     text-align: center;
     margin-bottom: var(--space-10);
     position: relative;
@@ -28,18 +28,13 @@
 .ranking-hero::before {
     content: '';
     position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.05'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
-    opacity: 0.3;
-    animation: heroPattern 20s linear infinite;
-}
-
-@keyframes heroPattern {
-    0% { transform: translateX(0) translateY(0); }
-    100% { transform: translateX(60px) translateY(60px); }
+    inset: 0;
+    background-image: radial-gradient(circle at center, var(--border-color) 1px, transparent 1px);
+    background-size: 26px 26px;
+    -webkit-mask-image: radial-gradient(ellipse 70% 70% at 50% 40%, #000 0%, transparent 75%);
+            mask-image: radial-gradient(ellipse 70% 70% at 50% 40%, #000 0%, transparent 75%);
+    opacity: 0.5;
+    pointer-events: none;
 }
 
 .ranking-hero h1 {
@@ -48,8 +43,7 @@
     margin-bottom: 0;
     position: relative;
     z-index: 1;
-    text-shadow: 0 4px 12px rgba(0,0,0,0.3);
-    letter-spacing: -1px;
+    letter-spacing: -0.03em;
 }
 
 .ranking-container {
@@ -60,34 +54,17 @@
 
 /* 현재 사용자 카드 - 프리미엄 글라스모피즘 */
 .current-user-card {
-    background: rgba(255, 255, 255, 0.95);
-    backdrop-filter: blur(30px);
-    border-radius: var(--radius-3xl);
+    background: #ffffff;
+    border-radius: var(--radius-2xl);
     padding: var(--space-8);
-    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.15);
-    border: 2px solid rgba(102, 126, 234, 0.3);
+    box-shadow: var(--shadow-md);
+    border: 1px solid var(--border-color);
     margin-bottom: var(--space-10);
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: var(--space-6);
     position: relative;
     overflow: hidden;
-}
-
-.current-user-card::before {
-    content: '';
-    position: absolute;
-    top: -50%;
-    left: -50%;
-    width: 200%;
-    height: 200%;
-    background: linear-gradient(45deg, transparent, rgba(102, 126, 234, 0.1), transparent);
-    animation: shimmer 3s infinite;
-}
-
-@keyframes shimmer {
-    0% { transform: translateX(-100%) translateY(-100%) rotate(45deg); }
-    100% { transform: translateX(100%) translateY(100%) rotate(45deg); }
 }
 
 .user-stat-box {
@@ -108,10 +85,8 @@
 .user-stat-box .value {
     font-size: 3rem;
     font-weight: 900;
-    background: var(--gradient-primary);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
+    color: var(--text-primary);
+    letter-spacing: -0.02em;
     line-height: 1;
 }
 
@@ -213,12 +188,12 @@
 
 /* 나머지 랭킹 카드 */
 .rank-card {
-    background: rgba(255, 255, 255, 0.95);
-    backdrop-filter: blur(20px);
-    border-radius: var(--radius-2xl);
+    background: #ffffff;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg);
     padding: var(--space-5);
     margin-bottom: var(--space-4);
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+    box-shadow: var(--shadow-sm);
     display: flex;
     align-items: center;
     gap: var(--space-4);
@@ -275,13 +250,13 @@
 }
 
 .points-badge {
-    background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
+    background: var(--accent-blue);
     color: white;
     padding: var(--space-3) var(--space-8);
     border-radius: var(--radius-xl);
     font-weight: 800;
     font-size: 1.5rem;
-    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+    box-shadow: var(--shadow-sm);
     min-width: 120px;
     text-align: center;
 }

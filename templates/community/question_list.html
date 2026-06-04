@@ -6,127 +6,146 @@
 {% block meta_description %}테크창 - HRD & 테크놀로지 커뮤니티{% endblock %}
 
 {% block extra_css %}
-<link href="{% static 'css/premium.css' %}?v={{ 'now'|date:'YmdHis' }}" rel="stylesheet">
+<link href="{% static 'css/home.css' %}?v={{ 'now'|date:'YmdHis' }}" rel="stylesheet">
 {% endblock %}
 
 {% block content %}
-<!-- Hero Section -->
-<section class="hero-premium">
-    <div class="hero-premium-content">
-        <h1 class="hero-premium-title">테크창</h1>
-        <p class="hero-premium-subtitle">
-            인천대학교 창의인재개발학과 전공심화연구모임<br>
-            HRD와 테크놀로지 지식 공유 & 커뮤니티 플랫폼
+<div class="tc-home">
+
+    <!-- ===== Hero ===== -->
+    <section class="tc-hero">
+        <span class="tc-eyebrow">
+            <span class="tc-dot"></span>
+            인천대학교 창의인재개발학과 전공심화연구모임
+        </span>
+
+        <h1 class="tc-hero-title">
+            HRD와 테크놀로지를<br>
+            <span class="tc-accent-text">잇는 지식 플랫폼</span>
+        </h1>
+
+        <p class="tc-hero-sub">
+            질문하고 답하며 함께 성장하는 테크창 커뮤니티.<br>
+            HRD · 데이터분석 · 프로그래밍 인사이트를 한곳에서.
         </p>
 
-        <div class="hero-premium-actions">
+        <div class="tc-hero-actions">
             {% if user.is_authenticated %}
                 {% if user.is_staff or user.is_superuser %}
-                <a href="{% url 'common:admin_dashboard' %}" class="btn-premium btn-premium-admin" style="background: linear-gradient(135deg, #ef4444, #dc2626); color: white; border: none;">
-                    <i class="fas fa-shield-alt me-1"></i>관리자 대시보드
+                <a href="{% url 'common:admin_dashboard' %}" class="tc-btn tc-btn-admin">
+                    <i class="fas fa-shield-alt"></i> 관리자 대시보드
                 </a>
                 {% endif %}
-            {% else %}
-                <a href="{% url 'common:login' %}" class="btn-premium btn-premium-primary">
-                    시작하기
+                <a href="{% url 'community:question_create' %}" class="tc-btn tc-btn-primary">
+                    글쓰기 <i class="fas fa-pen"></i>
                 </a>
-                <a href="{% url 'common:signup' %}" class="btn-premium btn-premium-secondary">
+                <a href="{% url 'community:board_main' %}" class="tc-btn tc-btn-ghost">
+                    커뮤니티 둘러보기
+                </a>
+            {% else %}
+                <a href="{% url 'common:login' %}" class="tc-btn tc-btn-primary">
+                    시작하기 <i class="fas fa-arrow-right"></i>
+                </a>
+                <a href="{% url 'common:signup' %}" class="tc-btn tc-btn-ghost">
                     회원가입
                 </a>
             {% endif %}
         </div>
 
         <!-- Stats -->
-        <div class="stats-premium">
-            <div class="stat-premium">
-                <div class="stat-premium-value">{{ visitors_today }}</div>
-                <div class="stat-premium-label">오늘 방문자</div>
+        <div class="tc-stats">
+            <div class="tc-stat">
+                <div class="tc-stat-value">{{ visitors_today }}</div>
+                <div class="tc-stat-label">오늘 방문자</div>
             </div>
-            <div class="stat-premium">
-                <div class="stat-premium-value">{{ total_users }}</div>
-                <div class="stat-premium-label">총 회원 수</div>
+            <div class="tc-stat">
+                <div class="tc-stat-value">{{ total_users }}</div>
+                <div class="tc-stat-label">총 회원 수</div>
             </div>
-            <div class="stat-premium">
-                <div class="stat-premium-value">{{ launch_days }}</div>
-                <div class="stat-premium-label">운영 일수</div>
+            <div class="tc-stat">
+                <div class="tc-stat-value">{{ launch_days }}</div>
+                <div class="tc-stat-label">운영 일수</div>
             </div>
         </div>
-    </div>
-</section>
+    </section>
 
-<!-- Categories -->
-<section class="container-premium" style="padding: var(--space-16) var(--space-8);">
-    <div class="category-pills">
-        <a href="?page=1" class="category-pill {% if not category %}active{% endif %}">
-            전체 ({{ total_count }})
-        </a>
-        {% for cat in categories %}
-        <a href="?category={{ cat.name }}&page=1" class="category-pill {% if category == cat.name %}active{% endif %}">
-            {{ cat.name }}
-        </a>
-        {% endfor %}
-    </div>
-</section>
+    <!-- ===== Posts ===== -->
+    <section class="tc-section">
+        <div class="tc-section-head">
+            <h2 class="tc-section-title">최신 게시글</h2>
+            <a href="{% url 'community:board_main' %}" class="tc-section-link">전체 보기 →</a>
+        </div>
 
-<!-- Posts Section -->
-<section class="posts-premium">
-    <h2 class="posts-premium-title">최신 게시글</h2>
+        <!-- Category filter -->
+        <div class="tc-pills">
+            <a href="?page=1" class="tc-pill {% if not category %}is-active{% endif %}">
+                전체 {{ total_count }}
+            </a>
+            {% for cat in categories %}
+            <a href="?category={{ cat.name }}&page=1" class="tc-pill {% if category == cat.name %}is-active{% endif %}">
+                {{ cat.name }}
+            </a>
+            {% endfor %}
+        </div>
 
-    <div class="bento-grid">
-        {% for question in question_list %}
-        <a href="{% url 'community:detail' question.id %}" class="post-card">
-            {% if question.category %}
-                {% if question.category.name == 'HRD' %}
-                    <span class="post-card-badge badge-hrd">{{ question.category.name }}</span>
-                {% elif question.category.name == '데이터분석' %}
-                    <span class="post-card-badge badge-data">{{ question.category.name }}</span>
-                {% elif question.category.name == '프로그래밍' %}
-                    <span class="post-card-badge badge-programming">{{ question.category.name }}</span>
-                {% elif question.category.name == '공지사항' %}
-                    <span class="post-card-badge badge-notice">{{ question.category.name }}</span>
-                {% else %}
-                    <span class="post-card-badge badge-free">{{ question.category.name }}</span>
+        <!-- Grid -->
+        <div class="tc-grid">
+            {% for question in question_list %}
+            <a href="{% url 'community:detail' question.id %}" class="tc-card">
+                {% if question.category %}
+                    {% if question.category.name == 'HRD' %}
+                        <span class="tc-card-badge tc-badge-hrd">{{ question.category.name }}</span>
+                    {% elif question.category.name == '데이터분석' %}
+                        <span class="tc-card-badge tc-badge-data">{{ question.category.name }}</span>
+                    {% elif question.category.name == '프로그래밍' %}
+                        <span class="tc-card-badge tc-badge-programming">{{ question.category.name }}</span>
+                    {% elif question.category.name == '공지사항' %}
+                        <span class="tc-card-badge tc-badge-notice">{{ question.category.name }}</span>
+                    {% else %}
+                        <span class="tc-card-badge tc-badge-free">{{ question.category.name }}</span>
+                    {% endif %}
                 {% endif %}
+
+                <h3 class="tc-card-title">{{ question.subject }}</h3>
+
+                <div class="tc-card-meta">
+                    <span><i class="far fa-thumbs-up"></i> {{ question.voter_count }}</span>
+                    <span><i class="far fa-comment"></i> {{ question.answer_count }}</span>
+                    <span class="tc-date">{{ question.create_date|date:"Y.m.d" }}</span>
+                </div>
+            </a>
+            {% empty %}
+            <div class="tc-empty">
+                <i class="far fa-folder-open"></i>
+                <p>아직 게시글이 없습니다.</p>
+            </div>
+            {% endfor %}
+        </div>
+
+        <!-- Pagination -->
+        {% if question_list.has_other_pages %}
+        <div class="tc-pagination">
+            {% if question_list.has_previous %}
+                <a href="?page=1{% if category %}&category={{ category }}{% endif %}{% if kw %}&kw={{ kw }}{% endif %}">«</a>
+                <a href="?page={{ question_list.previous_page_number }}{% if category %}&category={{ category }}{% endif %}{% if kw %}&kw={{ kw }}{% endif %}">‹</a>
             {% endif %}
 
-            <h3 class="post-card-title">{{ question.subject }}</h3>
+            <span class="is-current">{{ question_list.number }}</span>
 
-            <div class="post-card-meta">
-                <span>추천 {{ question.voter_count }}</span>
-                <span>댓글 {{ question.answer_count }}</span>
-                <span>{{ question.create_date|date:"m-d" }}</span>
-            </div>
-        </a>
-        {% empty %}
-        <div style="grid-column: 1 / -1; text-align: center; padding: var(--space-16); color: var(--text-tertiary);">
-            <p style="font-size: 1.25rem;">게시글이 없습니다.</p>
+            {% if question_list.has_next %}
+                <a href="?page={{ question_list.next_page_number }}{% if category %}&category={{ category }}{% endif %}{% if kw %}&kw={{ kw }}{% endif %}">›</a>
+                <a href="?page={{ question_list.paginator.num_pages }}{% if category %}&category={{ category }}{% endif %}{% if kw %}&kw={{ kw }}{% endif %}">»</a>
+            {% endif %}
         </div>
-        {% endfor %}
-    </div>
-
-    <!-- Pagination -->
-    {% if question_list.has_other_pages %}
-    <div class="pagination-premium">
-        {% if question_list.has_previous %}
-            <a href="?page=1{% if category %}&category={{ category }}{% endif %}{% if kw %}&kw={{ kw }}{% endif %}">«</a>
-            <a href="?page={{ question_list.previous_page_number }}{% if category %}&category={{ category }}{% endif %}{% if kw %}&kw={{ kw }}{% endif %}">‹</a>
         {% endif %}
+    </section>
 
-        <span class="active">{{ question_list.number }}</span>
+</div>
 
-        {% if question_list.has_next %}
-            <a href="?page={{ question_list.next_page_number }}{% if category %}&category={{ category }}{% endif %}{% if kw %}&kw={{ kw }}{% endif %}">›</a>
-            <a href="?page={{ question_list.paginator.num_pages }}{% if category %}&category={{ category }}{% endif %}{% if kw %}&kw={{ kw }}{% endif %}">»</a>
-        {% endif %}
-    </div>
-    {% endif %}
-</section>
-
-<!-- Search Form -->
+<!-- Search Form (헤더 검색에서 사용) -->
 <form id="searchForm" method="get" action="{% url 'community:index' %}" style="display: none;">
     <input type="hidden" id="kw" name="kw" value="{{ kw|default_if_none:'' }}">
     <input type="hidden" id="page" name="page" value="{{ page }}">
     <input type="hidden" id="category" name="category" value="{{ category }}">
 </form>
-
 {% endblock %}

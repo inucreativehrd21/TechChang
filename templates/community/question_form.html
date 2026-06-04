@@ -81,7 +81,7 @@
 .form-control-premium:focus {
     outline: none;
     border-color: var(--accent-blue);
-    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
 }
 
 .form-control-premium.large {
@@ -127,12 +127,12 @@
 
 .file-upload-zone:hover {
     border-color: var(--accent-blue);
-    background: rgba(59, 130, 246, 0.05);
+    background: rgba(79, 70, 229, 0.05);
 }
 
 .file-upload-zone.dragover {
     border-color: var(--accent-blue);
-    background: rgba(59, 130, 246, 0.1);
+    background: rgba(79, 70, 229, 0.1);
     transform: scale(1.02);
 }
 
@@ -170,6 +170,49 @@
     border-radius: var(--radius-lg);
     box-shadow: var(--shadow-md);
 }
+
+/* 다중 이미지 미리보기 / 기존 이미지 그리드 */
+.image-preview-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+    gap: var(--space-3);
+    margin-top: var(--space-4);
+}
+.image-preview-grid:empty { margin-top: 0; }
+.image-thumb {
+    position: relative;
+    aspect-ratio: 1 / 1;
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    border: 1px solid var(--border-color);
+    box-shadow: var(--shadow-xs, 0 1px 2px rgba(16,24,40,.04));
+    background: var(--bg-secondary);
+}
+.image-thumb img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+.image-thumb .thumb-remove {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    width: 24px;
+    height: 24px;
+    border: none;
+    border-radius: 50%;
+    background: rgba(0, 0, 0, 0.6);
+    color: #fff;
+    font-size: 0.75rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+}
+.image-thumb .thumb-remove:hover { background: #dc2626; }
+.existing-images { margin-bottom: var(--space-4); }
 
 .file-preview {
     margin-top: var(--space-4);
@@ -215,7 +258,7 @@
 }
 
 .switch-premium:hover {
-    background: rgba(59, 130, 246, 0.05);
+    background: rgba(79, 70, 229, 0.05);
 }
 
 .switch-premium input[type="checkbox"] {
@@ -432,27 +475,43 @@
                 <span class="optional">선택사항</span>
             </h3>
 
-            <!-- Image Upload -->
+            <!-- Image Upload (다중) -->
             <div class="form-group-premium">
-                <label for="{{ form.image.id_for_label }}" class="form-label-premium">
+                <label for="imageInput" class="form-label-premium">
                     <i class="fas fa-image"></i>
-                    <span>이미지</span>
+                    <span>이미지 (여러 장 가능)</span>
                 </label>
+
+                {% if question and question.all_images %}
+                <div class="existing-images" id="existingImages">
+                    <div style="font-size: 0.8125rem; color: var(--text-tertiary); margin-bottom: var(--space-2);">
+                        현재 첨부된 이미지 ({{ question.all_images|length }}장)
+                    </div>
+                    <div class="image-preview-grid">
+                        {% for img in question.all_images %}
+                        <div class="image-thumb"><img src="{{ img.url }}" alt="첨부 이미지 {{ forloop.counter }}"></div>
+                        {% endfor %}
+                    </div>
+                    <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: var(--space-2);">
+                        아래에서 선택한 이미지는 기존 이미지에 <b>추가</b>됩니다.
+                    </div>
+                </div>
+                {% endif %}
+
                 <div class="file-upload-zone" id="imageUploadZone">
                     <div class="file-upload-icon">
                         <i class="fas fa-cloud-upload-alt"></i>
                     </div>
                     <div class="file-upload-text">클릭하거나 이미지를 드래그하세요</div>
-                    <div class="file-upload-hint">JPG, PNG, GIF (최대 10MB)</div>
+                    <div class="file-upload-hint">JPG, PNG, GIF, WebP · 여러 장 선택 가능 (장당 최대 5MB, 최대 10장)</div>
                 </div>
                 <input type="file"
-                       name="image"
-                       id="{{ form.image.id_for_label }}"
+                       name="images"
+                       id="imageInput"
                        accept="image/*"
+                       multiple
                        style="display: none;">
-                <div class="image-preview" id="imagePreview">
-                    <img src="" alt="미리보기">
-                </div>
+                <div class="image-preview-grid" id="imagePreview"></div>
             </div>
 
             <!-- File Upload -->
@@ -523,7 +582,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const form = document.getElementById('questionForm');
     const subjectInput = document.getElementById('{{ form.subject.id_for_label }}');
     const contentTextarea = document.getElementById('{{ form.content.id_for_label }}');
-    const imageInput = document.getElementById('{{ form.image.id_for_label }}');
+    const imageInput = document.getElementById('imageInput');
     const fileInput = document.getElementById('{{ form.file.id_for_label }}');
     const submitBtn = document.getElementById('submitBtn');
 
@@ -554,9 +613,58 @@ document.addEventListener('DOMContentLoaded', function() {
         updateCharCounter(contentTextarea, 'contentCounter');
     }
 
-    // Image upload with drag & drop
+    // 다중 이미지 업로드 (drag & drop + 클릭, 개별 제거 가능)
     const imageZone = document.getElementById('imageUploadZone');
     const imagePreview = document.getElementById('imagePreview');
+    const MAX_IMAGES = 10;
+    let selectedImages = [];
+
+    function syncInputFiles() {
+        const dt = new DataTransfer();
+        selectedImages.forEach(f => dt.items.add(f));
+        imageInput.files = dt.files;
+    }
+
+    function renderImagePreviews() {
+        imagePreview.innerHTML = '';
+        selectedImages.forEach((file, idx) => {
+            const thumb = document.createElement('div');
+            thumb.className = 'image-thumb';
+
+            const img = document.createElement('img');
+            const reader = new FileReader();
+            reader.onload = e => { img.src = e.target.result; };
+            reader.readAsDataURL(file);
+
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'thumb-remove';
+            btn.innerHTML = '<i class="fas fa-times"></i>';
+            btn.addEventListener('click', () => {
+                selectedImages.splice(idx, 1);
+                syncInputFiles();
+                renderImagePreviews();
+            });
+
+            thumb.appendChild(img);
+            thumb.appendChild(btn);
+            imagePreview.appendChild(thumb);
+        });
+    }
+
+    function addImageFiles(fileList) {
+        Array.from(fileList).forEach(f => {
+            if (f.type && f.type.startsWith('image/')) {
+                selectedImages.push(f);
+            }
+        });
+        if (selectedImages.length > MAX_IMAGES) {
+            alert(`이미지는 최대 ${MAX_IMAGES}장까지 첨부할 수 있습니다.`);
+            selectedImages = selectedImages.slice(0, MAX_IMAGES);
+        }
+        syncInputFiles();
+        renderImagePreviews();
+    }
 
     if (imageZone && imageInput) {
         imageZone.addEventListener('click', () => imageInput.click());
@@ -573,29 +681,16 @@ document.addEventListener('DOMContentLoaded', function() {
         imageZone.addEventListener('drop', (e) => {
             e.preventDefault();
             imageZone.classList.remove('dragover');
-
-            const files = e.dataTransfer.files;
-            if (files.length > 0 && files[0].type.startsWith('image/')) {
-                imageInput.files = files;
-                handleImagePreview(files[0]);
+            if (e.dataTransfer.files.length > 0) {
+                addImageFiles(e.dataTransfer.files);
             }
         });
 
         imageInput.addEventListener('change', function() {
-            if (this.files && this.files[0]) {
-                handleImagePreview(this.files[0]);
+            if (this.files && this.files.length > 0) {
+                addImageFiles(this.files);
             }
         });
-    }
-
-    function handleImagePreview(file) {
-        const reader = new FileReader();
-        reader.onload = function(e) {
-            imagePreview.querySelector('img').src = e.target.result;
-            imagePreview.classList.add('active');
-            imageZone.style.display = 'none';
-        };
-        reader.readAsDataURL(file);
     }
 
     // File upload with drag & drop

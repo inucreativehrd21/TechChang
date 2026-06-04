@@ -19,6 +19,10 @@
             <a href="{% url 'community:games_index' %}" class="premium-nav-link">게임</a>
             <a href="{% url 'common:point_ranking' %}" class="premium-nav-link">랭킹</a>
             <a href="{% url 'community:guestbook_list' %}" class="premium-nav-link">방명록</a>
+            <a href="https://www.myochil.com/" class="premium-nav-link" target="_blank" rel="noopener noreferrer" style="display:inline-flex;align-items:center;gap:4px;">
+                <i class="fas fa-calendar-check" style="font-size:0.85em;color:#7c3aed;"></i>며칠
+                <i class="fas fa-external-link-alt" style="font-size:0.6em;opacity:0.5;"></i>
+            </a>
 
             {% if user.is_authenticated %}
                 <a href="{% url 'community:question_create' %}" class="btn-premium btn-premium-primary" style="padding: 0.625rem 1.25rem; font-size: 0.9375rem;">
@@ -34,6 +38,9 @@
                         </a>
                         <a href="{% url 'community:portfolio_collection_list' %}" style="display: block; padding: var(--space-4); color: var(--text-primary); text-decoration: none; border-bottom: 1px solid var(--border-light);">
                             <i class="fas fa-briefcase"></i> 포트폴리오 관리
+                        </a>
+                        <a href="{% url 'common:emoticon_shop' %}" style="display: block; padding: var(--space-4); color: var(--text-primary); text-decoration: none; border-bottom: 1px solid var(--border-light);">
+                            <i class="fas fa-face-smile"></i> 이모티콘 상점
                         </a>
                         <a href="#" onclick="checkAttendance(); return false;" style="display: block; padding: var(--space-4); color: var(--text-primary); text-decoration: none; border-bottom: 1px solid var(--border-light);">
                             <i class="fas fa-check-circle"></i> 출석체크
@@ -70,10 +77,14 @@
         <a href="{% url 'community:games_index' %}" style="display: block; padding: var(--space-3) var(--space-6); color: var(--text-secondary); text-decoration: none;">게임</a>
         <a href="{% url 'common:point_ranking' %}" style="display: block; padding: var(--space-3) var(--space-6); color: var(--text-secondary); text-decoration: none;">랭킹</a>
         <a href="{% url 'community:guestbook_list' %}" style="display: block; padding: var(--space-3) var(--space-6); color: var(--text-secondary); text-decoration: none;">방명록</a>
+        <a href="https://www.myochil.com/" target="_blank" rel="noopener noreferrer" style="display: block; padding: var(--space-3) var(--space-6); color: var(--text-secondary); text-decoration: none;">
+            <i class="fas fa-calendar-check" style="color:#7c3aed;margin-right:4px;"></i>며칠 <i class="fas fa-external-link-alt" style="font-size:0.65em;opacity:0.5;"></i>
+        </a>
         {% if user.is_authenticated %}
             <a href="{% url 'community:question_create' %}" style="display: block; padding: var(--space-3) var(--space-6); color: var(--text-secondary); text-decoration: none;">글쓰기</a>
             <a href="{% url 'community:profile' user.id %}" style="display: block; padding: var(--space-3) var(--space-6); color: var(--text-secondary); text-decoration: none;">마이페이지</a>
             <a href="{% url 'community:portfolio_collection_list' %}" style="display: block; padding: var(--space-3) var(--space-6); color: var(--text-secondary); text-decoration: none;">포트폴리오 관리</a>
+            <a href="{% url 'common:emoticon_shop' %}" style="display: block; padding: var(--space-3) var(--space-6); color: var(--text-secondary); text-decoration: none;">이모티콘 상점</a>
             <a href="#" onclick="checkAttendance(); return false;" style="display: block; padding: var(--space-3) var(--space-6); color: var(--text-secondary); text-decoration: none;">출석체크</a>
             <a href="{% url 'common:logout' %}" style="display: block; padding: var(--space-3) var(--space-6); color: var(--text-secondary); text-decoration: none;">로그아웃</a>
         {% else %}
@@ -87,13 +98,13 @@
 <div class="modal fade" id="aboutModal" tabindex="-1" aria-labelledby="aboutModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-scrollable modal-dialog-centered">
         <div class="modal-content" style="border: none; border-radius: var(--radius-2xl); overflow: hidden;">
-            <div class="modal-header" style="background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%); border-bottom: 1px solid var(--border-light);">
+            <div class="modal-header" style="background: var(--bg-secondary); border-bottom: 1px solid var(--border-light);">
                 <h5 class="modal-title" id="aboutModalLabel" style="font-size: 1.5rem; font-weight: 700; color: var(--text-primary);">
                     <i class="fas fa-info-circle" style="margin-right: var(--space-2); color: #0891b2;"></i>테크창 소개
                 </h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <div class="modal-body" style="padding: var(--space-8); background: linear-gradient(135deg, rgba(102, 126, 234, 0.05) 0%, rgba(118, 75, 162, 0.05) 100%);">
+            <div class="modal-body" style="padding: var(--space-8); background: var(--bg-primary);">
                 <!-- 단체사진 -->
                 <div style="text-align: center; margin-bottom: var(--space-12);">
                     <img src="{% static 'images/group.jpg' %}" alt="테크창 단체사진"

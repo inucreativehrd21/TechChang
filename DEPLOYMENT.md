@@ -110,7 +110,7 @@ nano .env
 DJANGO_SECRET_KEY=<앞서 생성한 SECRET_KEY>
 DEBUG=False
 DJANGO_ALLOWED_HOSTS=techchang.com,www.techchang.com
-OPENAI_API_KEY=<your-key>
+ANTHROPIC_API_KEY=<your-anthropic-key>
 KAKAO_REST_API_KEY=<your-key>
 KAKAO_CLIENT_SECRET=<your-secret>
 ```

@@ -4,7 +4,19 @@
 
 {% block title %}게임 센터 - 테크창{% endblock %}
 
+{% block extra_css %}
+<style>
+/* 게임 센터 전용: 히어로~게임 그리드 간격 축소 */
+.games-index-page .hero-premium { padding-top: var(--space-16); padding-bottom: var(--space-8); }
+.games-index-page .stats-premium { margin-bottom: 0; }
+.games-index-page .games-premium { padding-top: var(--space-8); }
+/* 컬러 배너에 이모지 아이콘 크게 표시 */
+.games-index-page .game-card-icon { font-size: 2.25rem; padding: var(--space-5) var(--space-6); }
+</style>
+{% endblock %}
+
 {% block content %}
+<div class="games-index-page">
 <!-- Hero Section -->
 <section class="hero-premium">
     <div class="hero-premium-content">
@@ -32,7 +44,7 @@
     <div class="games-grid">
         {% for game in games_info %}
         <a href="{% url game.url %}" class="game-card game-card-{% if 'baseball' in game.url %}baseball{% elif '2048' in game.url %}2048{% elif 'minesweeper' in game.url %}minesweeper{% endif %}">
-            <div class="game-card-icon">{{ game.name }}</div>
+            <div class="game-card-icon">{{ game.icon }}</div>
             <h3 class="game-card-title">{{ game.name }}</h3>
             <p class="game-card-desc">{{ game.description }}</p>
 
@@ -58,4 +70,5 @@
     </div>
 </section>
 {% endif %}
+</div>
 {% endblock %}

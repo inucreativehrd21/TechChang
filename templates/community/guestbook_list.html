@@ -8,7 +8,9 @@
 @import url('https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Do+Hyeon&family=Jua&family=Nanum+Gothic&family=Nanum+Myeongjo&family=Nanum+Pen+Script&display=swap');
 
 body {
-    background: linear-gradient(135deg, #0f1419 0%, #1a202c 50%, #2d3748 100%);
+    background:
+        radial-gradient(circle at center, var(--border-color) 1px, transparent 1px) 0 0 / 26px 26px,
+        var(--bg-secondary);
     min-height: 100vh;
 }
 
@@ -100,11 +102,11 @@ body {
     width: 70px;
     height: 70px;
     border-radius: 50%;
-    background: linear-gradient(135deg, #2d3748 0%, #1a202c 100%);
-    border: 2px solid rgba(255, 255, 255, 0.1);
-    box-shadow: 0 8px 20px rgba(0,0,0,0.5);
+    background: var(--text-primary);
+    border: none;
+    box-shadow: var(--shadow-lg);
     font-size: 30px;
-    color: #f7fafc;
+    color: #fff;
     cursor: pointer;
     transition: all 0.3s ease;
     z-index: 1001;
@@ -145,11 +147,10 @@ body {
 }
 
 .header-card {
-    background: rgba(255, 255, 255, 0.05);
-    backdrop-filter: blur(10px);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: var(--bg-primary);
+    border: 1px solid var(--border-color);
     border-radius: 15px;
-    box-shadow: 0 8px 30px rgba(0,0,0,0.3);
+    box-shadow: var(--shadow-sm);
     padding: 30px;
     margin-bottom: 40px;
 }
@@ -159,11 +160,11 @@ body {
 {% block content %}
 <div class="container my-5">
     <div class="header-card">
-        <h1 class="text-center mb-3" style="color: #f7fafc;">
-            <i class="fas fa-sticky-note me-2" style="color: #0891b2;"></i>
+        <h1 class="text-center mb-3" style="color: var(--text-primary);">
+            <i class="fas fa-sticky-note me-2" style="color: var(--accent-blue);"></i>
             방명록
         </h1>
-        <p class="text-center mb-0" style="color: #e2e8f0;">
+        <p class="text-center mb-0" style="color: var(--text-tertiary);">
             포스트잇에 메시지를 남겨주세요!
         </p>
     </div>

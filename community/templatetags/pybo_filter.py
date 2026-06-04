@@ -38,7 +38,7 @@ def mul(value, arg):
 @register.filter
 def mark(value):
     """마크다운을 HTML로 변환하고 XSS 공격 방어"""
-    extensions = ["nl2br", "fenced_code"]
+    extensions = ["nl2br", "fenced_code", "tables"]
     html = markdown.markdown(value, extensions=extensions)
     # bleach로 위험한 HTML 태그/속성 제거 (XSS 방어)
     clean_html = bleach.clean(html, tags=ALLOWED_TAGS, attributes=ALLOWED_ATTRS, strip=True)

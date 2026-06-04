@@ -71,15 +71,15 @@
   justify-content: center;
   gap: 20px;
   padding: 30px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
   border-radius: 20px;
-  box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
+  box-shadow: 0 10px 30px rgba(139, 92, 246, 0.3);
   animation: glow 2s ease-in-out infinite alternate;
 }
 
 @keyframes glow {
-  from { box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3); }
-  to { box-shadow: 0 10px 50px rgba(102, 126, 234, 0.6); }
+  from { box-shadow: 0 10px 30px rgba(139, 92, 246, 0.3); }
+  to { box-shadow: 0 10px 50px rgba(139, 92, 246, 0.6); }
 }
 
 .word-display {
@@ -88,7 +88,7 @@
   border-radius: 15px;
   font-size: 2.5rem;
   font-weight: bold;
-  color: #667eea;
+  color: #8b5cf6;
   box-shadow: 0 5px 15px rgba(0,0,0,0.1);
   animation: pulse 1.5s ease-in-out infinite;
 }
@@ -136,17 +136,17 @@
   padding: 15px 40px;
   font-size: 1.2rem;
   border-radius: 15px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
   border: none;
   color: white;
   font-weight: bold;
   transition: all 0.3s ease;
-  box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+  box-shadow: 0 5px 15px rgba(139, 92, 246, 0.4);
 }
 
 .submit-btn:hover {
   transform: translateY(-3px);
-  box-shadow: 0 8px 25px rgba(102, 126, 234, 0.6);
+  box-shadow: 0 8px 25px rgba(139, 92, 246, 0.6);
 }
 
 /* 단어 목록 카드 */
@@ -175,7 +175,7 @@
 .word-item:hover {
   transform: translateX(10px);
   box-shadow: 0 5px 20px rgba(0,0,0,0.15);
-  border-left-color: #667eea;
+  border-left-color: #8b5cf6;
 }
 
 .word-item.latest {
@@ -189,11 +189,11 @@
   height: 40px;
   line-height: 40px;
   text-align: center;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
   color: white;
   border-radius: 50%;
   font-weight: bold;
-  box-shadow: 0 3px 10px rgba(102, 126, 234, 0.3);
+  box-shadow: 0 3px 10px rgba(139, 92, 246, 0.3);
 }
 
 /* 게임 종료 오버레이 */
@@ -268,7 +268,7 @@
 
 .chat-send-btn {
   border-radius: 15px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
   border: none;
   padding: 12px 25px;
   color: white;
@@ -306,7 +306,7 @@
 
 .chat-messages::-webkit-scrollbar-thumb,
 .word-list-container::-webkit-scrollbar-thumb {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
   border-radius: 10px;
 }
 </style>
@@ -315,7 +315,7 @@
 {% block content %}
 <div class="container game-container my-4">
   <!-- 게임 타이틀 헤더 -->
-  <div class="card border-0 shadow-sm mb-4" style="border-radius: 20px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+  <div class="card border-0 shadow-sm mb-4" style="border-radius: 20px; background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);">
     <div class="card-body text-center text-white py-4">
       <h2 class="display-5 fw-bold mb-3">
         {% if game.status == 'waiting' %}
@@ -349,7 +349,7 @@
     <div class="row g-4 justify-content-center">
       <div class="col-lg-8">
         <div class="card border-0 shadow-lg" style="border-radius: 25px; overflow: hidden;">
-          <div class="card-header text-white text-center py-4" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+          <div class="card-header text-white text-center py-4" style="background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);">
             <h3><i class="fas fa-hourglass-half me-2"></i>게임 대기 중</h3>
             <p class="mb-0">최소 2명 이상의 참가자가 필요합니다</p>
           </div>
@@ -504,7 +504,7 @@
         <div class="card border-0 shadow-lg" style="border-radius: 25px; overflow: hidden;">
           <div class="card-header bg-white border-0 p-4">
             <h4 class="mb-0">
-              <i class="fas fa-list-ul me-2" style="color: #667eea;"></i>
+              <i class="fas fa-list-ul me-2" style="color: #8b5cf6;"></i>
               단어 목록
             </h4>
           </div>

@@ -65,7 +65,7 @@ cp .env.example .env
 필수 환경변수:
 - `DJANGO_SECRET_KEY`: Django SECRET_KEY
 - `DEBUG`: 개발 환경에서는 `True`
-- `OPENAI_API_KEY`: OpenAI API 키 (선택사항)
+- `ANTHROPIC_API_KEY`: Anthropic Claude API 키 (칼럼 자동 작성 등 AI 기능)
 - `KAKAO_REST_API_KEY`: 카카오 로그인 API 키
 - `KAKAO_CLIENT_SECRET`: 카카오 클라이언트 시크릿
 
@@ -168,7 +168,7 @@ mysite/
 | `DJANGO_SECRET_KEY` | Django SECRET_KEY | 필수 |
 | `DEBUG` | 디버그 모드 | `False` |
 | `DJANGO_ALLOWED_HOSTS` | 허용 호스트 | `techchang.com,www.techchang.com` |
-| `OPENAI_API_KEY` | OpenAI API 키 | 선택 |
+| `ANTHROPIC_API_KEY` | Anthropic Claude API 키 | AI 기능 사용 시 필수 |
 | `KAKAO_REST_API_KEY` | 카카오 REST API 키 | 필수 (카카오 로그인 사용 시) |
 | `KAKAO_CLIENT_SECRET` | 카카오 클라이언트 시크릿 | 필수 (카카오 로그인 사용 시) |
 | `RATE_LIMIT_REQUESTS` | Rate limit 요청 수 | `300` |
