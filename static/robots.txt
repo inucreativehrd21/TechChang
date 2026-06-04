@@ -1,0 +1,7 @@
+User-agent: *
+Allow: /
+Disallow: /accounts/
+Disallow: /common/login/
+Disallow: /common/signup/
+
+Sitemap: https://techchang.com/sitemap.xml
