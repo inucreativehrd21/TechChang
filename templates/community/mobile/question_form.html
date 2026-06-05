@@ -31,7 +31,7 @@
     font-family: inherit;
 }
 .m-input:focus, .m-select:focus, .m-textarea:focus {
-    border-color: var(--accent-primary, #3b82f6);
+    border-color: var(--accent-primary, #4f46e5);
 }
 .m-textarea {
     min-height: 240px;
@@ -51,7 +51,7 @@
 .m-btn-submit {
     display: block; width: 100%;
     padding: 15px; margin-top: 8px;
-    background: var(--accent-primary, #3b82f6);
+    background: var(--text-primary, #18181b);
     color: #fff; border: none; border-radius: 12px;
     font-size: 1rem; font-weight: 700; cursor: pointer;
 }
@@ -172,14 +172,14 @@ function updateImageLabel(input) {
         } else {
             label.textContent = input.files.length + '장 선택됨';
         }
-        label.style.color = 'var(--accent-primary, #3b82f6)';
+        label.style.color = 'var(--accent-primary, #4f46e5)';
     }
 }
 function updateFileLabel(input) {
     var label = document.getElementById('fileLabel');
     if (input.files && input.files[0]) {
         label.textContent = input.files[0].name;
-        label.style.color = 'var(--accent-primary, #3b82f6)';
+        label.style.color = 'var(--accent-primary, #4f46e5)';
     }
 }
 document.getElementById('questionForm').addEventListener('submit', function(e) {

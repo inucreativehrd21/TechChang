@@ -20,6 +20,8 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
     <!-- Premium Design System -->
     <link href="{% static 'css/premium.css' %}?v={{ 'now'|date:'YmdHis' }}" rel="stylesheet">
+    <!-- Mobile Design System (Figma 톤) -->
+    <link href="{% static 'css/mobile.css' %}?v={{ 'now'|date:'YmdHis' }}" rel="stylesheet">
 
 <style>
 /* ===== 모바일 전용 기본 스타일 ===== */
@@ -50,7 +52,7 @@ body {
 .m-header-logo {
     font-size: 1.125rem;
     font-weight: 800;
-    color: var(--accent-primary, #3b82f6);
+    color: var(--text-primary, #18181b);
     text-decoration: none;
     letter-spacing: -0.02em;
 }
@@ -69,7 +71,7 @@ body {
     display: flex;
     align-items: center;
 }
-.m-header-btn:hover { color: var(--accent-primary, #3b82f6); }
+.m-header-btn:hover { color: var(--accent-primary, #4f46e5); }
 
 /* ===== 하단 탭바 ===== */
 .m-tabbar {
@@ -98,7 +100,7 @@ body {
 }
 .m-tabbar-item i { font-size: 1.25rem; }
 .m-tabbar-item.active,
-.m-tabbar-item:hover { color: var(--accent-primary, #3b82f6); }
+.m-tabbar-item:hover { color: var(--accent-primary, #4f46e5); }
 
 /* ===== 메시지 ===== */
 .m-messages { padding: 8px 16px 0; }
@@ -139,7 +141,7 @@ body {
     text-decoration: none;
     transition: all .2s;
 }
-.m-version-fab:hover { color: var(--accent-primary, #3b82f6); border-color: var(--accent-primary, #3b82f6); }
+.m-version-fab:hover { color: var(--accent-primary, #4f46e5); border-color: var(--accent-primary, #4f46e5); }
 </style>
 
     {% block extra_css %}{% endblock %}
@@ -193,7 +195,7 @@ body {
     <a href="/board/" class="m-tabbar-item {% block tab_board %}{% endblock %}">
         <i class="fas fa-comments"></i><span>커뮤니티</span>
     </a>
-    <a href="{% url 'community:question_create' %}" class="m-tabbar-item" style="color: var(--accent-primary,#3b82f6);">
+    <a href="{% url 'community:question_create' %}" class="m-tabbar-item" style="color: var(--accent-primary,#4f46e5);">
         <i class="fas fa-plus-circle" style="font-size:1.75rem; margin-top:-6px;"></i><span>질문</span>
     </a>
     <a href="{% url 'community:games_index' %}" class="m-tabbar-item {% block tab_games %}{% endblock %}">

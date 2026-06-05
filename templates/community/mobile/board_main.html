@@ -7,77 +7,81 @@
 
 {% block extra_css %}
 <style>
-.m-board-header {
+.m-board-head {
     padding: 16px;
-    background: var(--bg-primary, #fff);
-    border-bottom: 1px solid var(--border-light, #e5e7eb);
+    background: var(--bg-primary);
+    border-bottom: 1px solid var(--border-light);
 }
-.m-board-title {
-    font-size: 1.125rem;
-    font-weight: 800;
-    color: var(--text-primary, #111);
-    margin-bottom: 2px;
-}
-.m-board-sub {
-    font-size: 0.8125rem;
-    color: var(--text-tertiary, #9ca3af);
-}
-.m-cat-section { margin-bottom: 8px; }
-.m-cat-header {
+.m-board-title { font-size: 1.125rem; font-weight: 800; letter-spacing: -0.02em; color: var(--text-primary); }
+.m-board-sub { margin-top: 2px; font-size: 0.8125rem; color: var(--text-muted); }
+
+.m-cat-block { margin: 12px 16px 0; }
+.m-cat-head {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 12px 16px 8px;
+    padding: 4px 2px 10px;
 }
 .m-cat-name {
-    font-size: 0.9375rem;
-    font-weight: 700;
-    color: var(--text-primary, #111);
-    display: flex;
+    display: inline-flex;
     align-items: center;
     gap: 8px;
+    font-size: 0.9375rem;
+    font-weight: 700;
+    color: var(--text-primary);
 }
-.m-cat-count {
-    font-size: 0.75rem;
-    color: var(--text-tertiary, #9ca3af);
-    font-weight: 400;
+.m-cat-name::before {
+    content: "";
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--text-muted);
 }
-.m-cat-more {
-    font-size: 0.8125rem;
-    color: var(--accent-primary, #3b82f6);
-    text-decoration: none;
-}
+.m-cat-name.c-hrd::before  { background: #4f46e5; }
+.m-cat-name.c-data::before { background: #ea580c; }
+.m-cat-name.c-prog::before { background: #059669; }
+.m-cat-name.c-notice::before { background: #dc2626; }
+.m-cat-name.c-free::before { background: #52525b; }
+.m-cat-count { font-size: 0.75rem; font-weight: 400; color: var(--text-muted); }
+.m-cat-more { font-size: 0.8125rem; font-weight: 500; color: var(--text-tertiary); text-decoration: none; }
+.m-cat-more:active { color: var(--accent-primary); }
+
 .m-post-row {
     display: flex;
     align-items: center;
-    padding: 9px 16px;
-    border-top: 1px solid var(--border-light, #f3f4f6);
-    text-decoration: none;
     gap: 10px;
+    padding: 11px 14px;
+    border-top: 1px solid var(--border-light);
+    text-decoration: none;
 }
-.m-post-row:last-child { border-bottom: 1px solid var(--border-light, #e5e7eb); }
+.m-post-row:first-of-type { border-top: none; }
 .m-post-subject {
     flex: 1;
     font-size: 0.875rem;
-    color: var(--text-primary, #111);
+    color: var(--text-secondary);
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
 }
 .m-post-answer {
-    font-size: 0.75rem;
-    color: var(--accent-primary, #3b82f6);
-    font-weight: 600;
     flex-shrink: 0;
-    min-width: 28px;
-    text-align: right;
+    min-width: 36px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    padding: 2px 8px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    border-radius: 999px;
+    background: var(--accent-wash);
+    color: var(--accent-primary);
 }
-.m-post-answer.no-answer { color: var(--text-tertiary, #9ca3af); }
+.m-post-answer.no-answer { background: var(--bg-mute); color: var(--text-muted); }
+.m-post-empty { padding: 14px; font-size: 0.8125rem; color: var(--text-muted); }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="m-board-header">
+<div class="m-board-head">
     <div class="m-board-title">커뮤니티</div>
     <div class="m-board-sub">총 {{ total_questions }}개의 게시글</div>
 </div>
@@ -85,28 +89,31 @@
 {% for cat in categories %}
 {% with cat_data=category_posts|get_item:cat.name %}
 {% if cat_data %}
-<div class="m-cat-section">
-    <div class="m-cat-header">
-        <span class="m-cat-name">
+<div class="m-cat-block">
+    <div class="m-cat-head">
+        <span class="m-cat-name
+            {% if cat.name == 'HRD' %}c-hrd
+            {% elif cat.name == '데이터분석' %}c-data
+            {% elif cat.name == '프로그래밍' %}c-prog
+            {% elif cat.name == '공지사항' %}c-notice
+            {% else %}c-free{% endif %}">
             {{ cat.name }}
             <span class="m-cat-count">{{ cat_data.total_count }}</span>
         </span>
-        <a href="/?category={{ cat.name }}" class="m-cat-more">더보기</a>
+        <a href="/?category={{ cat.name }}" class="m-cat-more">더보기 →</a>
     </div>
-    {% for post in cat_data.posts %}
-    <a href="{% url 'community:detail' post.id %}" class="m-post-row">
-        <span class="m-post-subject">{{ post.subject }}</span>
-        <span class="m-post-answer {% if post.answer_count == 0 %}no-answer{% endif %}">
-            {% if post.answer_count > 0 %}
-            <i class="fas fa-comment fa-xs"></i> {{ post.answer_count }}
-            {% else %}
-            <i class="fas fa-comment fa-xs"></i> 0
-            {% endif %}
-        </span>
-    </a>
-    {% empty %}
-    <div style="padding:12px 16px;font-size:0.8125rem;color:var(--text-tertiary,#9ca3af);">아직 게시글이 없습니다.</div>
-    {% endfor %}
+    <div class="tc-m-card">
+        {% for post in cat_data.posts %}
+        <a href="{% url 'community:detail' post.id %}" class="m-post-row">
+            <span class="m-post-subject">{{ post.subject }}</span>
+            <span class="m-post-answer {% if post.answer_count == 0 %}no-answer{% endif %}">
+                <i class="far fa-comment fa-xs"></i> {{ post.answer_count }}
+            </span>
+        </a>
+        {% empty %}
+        <div class="m-post-empty">아직 게시글이 없습니다.</div>
+        {% endfor %}
+    </div>
 </div>
 {% endif %}
 {% endwith %}

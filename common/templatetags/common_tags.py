@@ -20,3 +20,17 @@ def display_name_initial(user):
         return profile.display_name[0:1]
     except (Profile.DoesNotExist, IndexError):
         return user.username[0:1] if user.username else 'U'
+
+
+@register.filter
+def split_skills(value):
+    """스킬 값을 리스트로 정규화.
+
+    skills는 JSONField(list)지만, 과거 데이터/입력에 따라 콤마 구분 문자열이
+    들어올 수 있어 둘 다 안전하게 처리한다. 빈 값은 빈 리스트를 반환.
+    """
+    if not value:
+        return []
+    if isinstance(value, (list, tuple)):
+        return [str(s).strip() for s in value if str(s).strip()]
+    return [s.strip() for s in str(value).split(',') if s.strip()]

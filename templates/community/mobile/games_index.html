@@ -1,137 +1,50 @@
 {% extends 'base_mobile.html' %}
 {% load static %}
 
-{% block title %}게임{% endblock %}
+{% block title %}게임 센터{% endblock %}
 {% block tab_games %}active{% endblock %}
 
-{% block extra_css %}
-<style>
-.m-games-header {
-    padding: 16px;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    color: #fff;
-    text-align: center;
-}
-.m-games-header h1 { font-size: 1.25rem; font-weight: 800; margin-bottom: 4px; }
-.m-games-header p { font-size: 0.8125rem; opacity: .85; }
-
-.m-game-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 12px;
-    padding: 16px;
-}
-.m-game-card {
-    background: var(--bg-primary, #fff);
-    border-radius: 16px;
-    padding: 20px 14px;
-    text-align: center;
-    text-decoration: none;
-    border: 1px solid var(--border-light, #e5e7eb);
-    box-shadow: 0 2px 8px rgba(0,0,0,.06);
-    transition: all .15s;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 8px;
-}
-.m-game-card:active { transform: scale(.97); box-shadow: 0 1px 4px rgba(0,0,0,.08); }
-.m-game-icon {
-    width: 56px;
-    height: 56px;
-    border-radius: 16px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 1.5rem;
-    margin-bottom: 4px;
-}
-.m-game-name {
-    font-size: 0.875rem;
-    font-weight: 700;
-    color: var(--text-primary, #111);
-}
-.m-game-desc {
-    font-size: 0.6875rem;
-    color: var(--text-tertiary, #9ca3af);
-    line-height: 1.4;
-}
-
-/* 랭킹 섹션 */
-.m-ranking-section { padding: 0 16px 16px; }
-.m-section-title {
-    font-size: 0.9375rem;
-    font-weight: 700;
-    color: var(--text-primary, #111);
-    margin-bottom: 10px;
-    padding-top: 4px;
-}
-.m-rank-row {
-    display: flex;
-    align-items: center;
-    padding: 10px 14px;
-    background: var(--bg-primary, #fff);
-    border-radius: 12px;
-    margin-bottom: 8px;
-    box-shadow: 0 1px 4px rgba(0,0,0,.05);
-    gap: 12px;
-}
-.m-rank-num {
-    width: 24px;
-    height: 24px;
-    border-radius: 50%;
-    background: var(--bg-secondary, #f9fafb);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 0.75rem;
-    font-weight: 700;
-    color: var(--text-tertiary, #9ca3af);
-    flex-shrink: 0;
-}
-.m-rank-num.gold { background: #fef9c3; color: #ca8a04; }
-.m-rank-num.silver { background: #f1f5f9; color: #64748b; }
-.m-rank-num.bronze { background: #fef3c7; color: #d97706; }
-.m-rank-name { flex: 1; font-size: 0.875rem; font-weight: 600; color: var(--text-primary, #111); }
-.m-rank-score { font-size: 0.875rem; font-weight: 700; color: var(--accent-primary, #3b82f6); }
-</style>
-{% endblock %}
-
 {% block content %}
-<div class="m-games-header">
-    <h1>🎮 게임 센터</h1>
-    <p>지식을 게임으로 즐겨보세요</p>
+<!-- 미니 히어로 -->
+<div class="tc-m-hero">
+    <span class="tc-m-eyebrow"><span class="tc-m-dot"></span> 게임 센터</span>
+    <h1 class="tc-m-hero-title">두뇌를 자극하는 퍼즐</h1>
+    <p class="tc-m-hero-sub">지식을 게임으로 즐기고 랭킹에 도전하세요.</p>
 </div>
 
-<div class="m-game-grid">
-    <a href="{% url 'community:baseball_start' %}" class="m-game-card">
-        <div class="m-game-icon" style="background: linear-gradient(135deg,#3b82f6,#1d4ed8);">⚾</div>
-        <div class="m-game-name">숫자야구</div>
-        <div class="m-game-desc">숫자를 맞혀보세요</div>
-    </a>
-    <a href="{% url 'community:game2048_start' %}" class="m-game-card">
-        <div class="m-game-icon" style="background: linear-gradient(135deg,#f59e0b,#d97706);">🔢</div>
-        <div class="m-game-name">2048</div>
-        <div class="m-game-desc">타일을 합쳐보세요</div>
-    </a>
-    <a href="{% url 'community:minesweeper_start' %}" class="m-game-card">
-        <div class="m-game-icon" style="background: linear-gradient(135deg,#10b981,#059669);">💣</div>
-        <div class="m-game-name">지뢰찾기</div>
-        <div class="m-game-desc">지뢰를 피하세요</div>
-    </a>
-    <a href="{% url 'common:point_ranking' %}" class="m-game-card">
-        <div class="m-game-icon" style="background: linear-gradient(135deg,#f59e0b,#ea580c);">🏆</div>
-        <div class="m-game-name">포인트 랭킹</div>
-        <div class="m-game-desc">상위 유저를 확인</div>
-    </a>
+<!-- 게임 그리드 -->
+<div class="tc-m-page">
+    <div class="tc-m-game-grid">
+        <a href="{% url 'community:baseball_start' %}" class="tc-m-game-card tc-m-game-baseball">
+            <div class="tc-m-game-icon">⚾</div>
+            <div class="tc-m-game-name">숫자야구</div>
+            <div class="tc-m-game-desc">숫자를 맞혀보세요</div>
+        </a>
+        <a href="{% url 'community:game2048_start' %}" class="tc-m-game-card tc-m-game-2048">
+            <div class="tc-m-game-icon">🔢</div>
+            <div class="tc-m-game-name">2048</div>
+            <div class="tc-m-game-desc">타일을 합쳐보세요</div>
+        </a>
+        <a href="{% url 'community:minesweeper_start' %}" class="tc-m-game-card tc-m-game-minesweeper">
+            <div class="tc-m-game-icon">💣</div>
+            <div class="tc-m-game-name">지뢰찾기</div>
+            <div class="tc-m-game-desc">지뢰를 피하세요</div>
+        </a>
+        <a href="{% url 'common:point_ranking' %}" class="tc-m-game-card tc-m-game-ranking">
+            <div class="tc-m-game-icon">🏆</div>
+            <div class="tc-m-game-name">포인트 랭킹</div>
+            <div class="tc-m-game-desc">상위 유저를 확인</div>
+        </a>
+    </div>
 </div>
 
-<!-- 랭킹 바로가기 -->
-<div class="m-ranking-section">
-    <div style="display:flex;gap:8px;margin-bottom:12px;">
-        <a href="{% url 'community:baseball_leaderboard' %}" style="flex:1;padding:10px;background:var(--bg-primary,#fff);border-radius:10px;text-align:center;font-size:0.8125rem;font-weight:600;color:var(--accent-primary,#3b82f6);text-decoration:none;border:1px solid var(--border-light,#e5e7eb);">⚾ 야구 랭킹</a>
-        <a href="{% url 'community:game2048_leaderboard' %}" style="flex:1;padding:10px;background:var(--bg-primary,#fff);border-radius:10px;text-align:center;font-size:0.8125rem;font-weight:600;color:var(--accent-primary,#3b82f6);text-decoration:none;border:1px solid var(--border-light,#e5e7eb);">🔢 2048 랭킹</a>
-        <a href="{% url 'community:minesweeper_leaderboard' %}" style="flex:1;padding:10px;background:var(--bg-primary,#fff);border-radius:10px;text-align:center;font-size:0.8125rem;font-weight:600;color:var(--accent-primary,#3b82f6);text-decoration:none;border:1px solid var(--border-light,#e5e7eb);">💣 지뢰 랭킹</a>
+<!-- 리더보드 바로가기 -->
+<div class="tc-m-page" style="padding-top:0;">
+    <div class="tc-m-section-title">리더보드</div>
+    <div class="tc-m-quicklinks">
+        <a href="{% url 'community:baseball_leaderboard' %}" class="tc-m-quicklink">⚾ 야구</a>
+        <a href="{% url 'community:game2048_leaderboard' %}" class="tc-m-quicklink">🔢 2048</a>
+        <a href="{% url 'community:minesweeper_leaderboard' %}" class="tc-m-quicklink">💣 지뢰</a>
     </div>
 </div>
 {% endblock %}
