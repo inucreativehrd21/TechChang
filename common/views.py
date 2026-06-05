@@ -1295,6 +1295,15 @@ def server_monitor(request):
     security_stats = cmd._collect_security_logs(hours)
     sys_stats      = cmd._collect_system_stats()
 
+    # AI 에러 분석관 — 대시보드는 60초마다 자동 새로고침되므로 Claude 호출을 캐시한다.
+    # (성공/스킵 30분, 호출 실패 5분 캐시) → 새 에러는 최대 30분 내 반영되며 API 비용을 제한.
+    from django.core.cache import cache
+    ai_key = f'monitor_ai_analysis_{hours}'
+    ai_analysis = cache.get(ai_key)
+    if ai_analysis is None:
+        ai_analysis = cmd._analyze_errors(hours, journal_stats)
+        cache.set(ai_key, ai_analysis, 1800 if ai_analysis.get('available') else 300)
+
     # 최근 7일 방문자 추이
     today = date.today()
     visitor_trend = []
@@ -1319,10 +1328,27 @@ def server_monitor(request):
         'journal': journal_stats,
         'security': security_stats,
         'sys': sys_stats,
+        'ai': ai_analysis,
         'visitor_trend': visitor_trend,
         'question_trend': question_trend,
     }
     return render(request, 'common/server_monitor.html', context)
+
+
+@admin_required
+def server_live_logs(request):
+    """
+    실시간 로그 조회 (관리자 전용, 읽기 전용 JSON).
+    대시보드 라이브 로그 뷰어가 폴링한다. 어떤 입력도 받지 않고 조회만 수행한다.
+    """
+    from django.http import JsonResponse
+    from common.management.commands.send_log_report import Command as ReportCmd
+    from datetime import datetime as _dt
+
+    lines = request.GET.get('lines', 120)
+    data = ReportCmd()._tail_logs(lines)
+    data['server_time'] = _dt.now().strftime('%H:%M:%S')
+    return JsonResponse(data)
 
 
 @require_POST

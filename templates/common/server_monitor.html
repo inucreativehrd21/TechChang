@@ -93,6 +93,32 @@
     border-left: 3px solid #ef4444;
 }
 
+/* AI 에러 분석관 finding */
+.ai-finding { padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,.05); }
+.ai-finding:last-of-type { border: none; }
+.ai-finding .t { font-weight: 700; font-size: .82rem; color: #e2e8f0; margin-bottom: 5px; }
+.ai-finding .d { font-size: .78rem; color: #94a3b8; margin-bottom: 3px; }
+.ai-finding .d .k { color: #64748b; }
+
+/* 실시간 로그 뷰어 */
+.live-log {
+    background: #0a0e1a;
+    border: 1px solid rgba(255,255,255,.08);
+    border-radius: 10px;
+    height: 360px;
+    overflow-y: auto;
+    padding: 12px 14px;
+    font-family: 'Courier New', monospace;
+    font-size: .72rem;
+    line-height: 1.5;
+}
+.live-line { white-space: pre-wrap; word-break: break-all; color: #94a3b8; padding: 1px 0; }
+.live-line.error { color: #f87171; }
+.live-line.warn  { color: #fbbf24; }
+.live-empty { color: #475569; text-align: center; padding: 40px 0; font-size: .85rem; }
+.live-log::-webkit-scrollbar { width: 8px; }
+.live-log::-webkit-scrollbar-thumb { background: rgba(255,255,255,.12); border-radius: 4px; }
+
 /* 시간 필터 */
 .hours-filter { display: flex; gap: 8px; }
 .h-btn {
@@ -263,6 +289,40 @@
         {% endif %}
       </div>
 
+      <!-- AI 에러 분석관 -->
+      <div class="mon-card">
+        <h2>
+          <i class="fas fa-robot"></i> AI 에러 분석관
+          {% if ai.available and not ai.skipped %}
+          <span style="margin-left:auto; font-size:.7rem; padding:2px 10px; border-radius:20px; font-weight:700;
+            {% if ai.severity == '심각' %}background:#7f1d1d; color:#f87171;
+            {% elif ai.severity == '주의' %}background:#713f12; color:#fbbf24;
+            {% else %}background:#14532d; color:#4ade80;{% endif %}">{{ ai.severity }}</span>
+          {% endif %}
+        </h2>
+        {% if ai.available and not ai.skipped %}
+        <div style="font-size:.85rem; color:#cbd5e1; line-height:1.55; margin-bottom:12px;">{{ ai.overview }}</div>
+        {% for f in ai.findings %}
+        <div class="ai-finding">
+          <div class="t">{{ f.title }}</div>
+          <div class="d"><span class="k">원인&nbsp;</span>{{ f.cause }}</div>
+          <div class="d"><span class="k">조치&nbsp;</span>{{ f.action }}</div>
+        </div>
+        {% endfor %}
+        <div style="font-size:.65rem; color:#475569; margin-top:10px;">
+          <i class="fas fa-robot me-1"></i> Claude Sonnet 분석 · 참고용 · 최대 30분 캐시
+        </div>
+        {% elif ai.available and ai.skipped and journal.available %}
+        <div style="color:#4ade80; font-size:.875rem; text-align:center; padding:20px 0;">
+          <i class="fas fa-check-circle me-1"></i> 분석할 치명적 로그가 없습니다 (정상)
+        </div>
+        {% else %}
+        <div style="color:#64748b; font-size:.875rem; text-align:center; padding:20px 0;">
+          <i class="fas fa-info-circle me-1"></i> 에러/5xx 발생 시 AI가 자동으로 원인·조치를 분석합니다 (서버 환경).
+        </div>
+        {% endif %}
+      </div>
+
     </div><!-- /왼쪽 -->
 
     <!-- 오른쪽 컬럼 -->
@@ -402,6 +462,26 @@
     </div><!-- /오른쪽 -->
   </div><!-- /grid -->
 
+  <!-- 실시간 로그 (읽기 전용) -->
+  <div class="mon-card" style="margin-top:0;">
+    <h2 style="justify-content:space-between;">
+      <span><i class="fas fa-terminal"></i> 실시간 로그 (mysite)</span>
+      <span style="display:flex; gap:14px; align-items:center; font-size:.75rem; font-weight:600;">
+        <span id="live-status" style="color:#4ade80;">● LIVE</span>
+        <label style="color:#94a3b8; cursor:pointer; display:flex; gap:5px; align-items:center; user-select:none;">
+          <input type="checkbox" id="live-toggle" checked style="cursor:pointer;"> 자동 갱신
+        </label>
+        <span id="live-time" style="color:#64748b; min-width:62px; text-align:right;"></span>
+      </span>
+    </h2>
+    <div id="live-log" class="live-log">
+      <div class="live-empty">로그 불러오는 중…</div>
+    </div>
+    <div style="font-size:.7rem; color:#475569; margin-top:8px;">
+      <i class="fas fa-lock me-1"></i> 읽기 전용 · 최근 120줄 · 5초마다 갱신
+    </div>
+  </div>
+
 </div>
 {% endblock %}
 
@@ -422,5 +502,69 @@ const timer = setInterval(() => {
         location.reload();
     }
 }, 1000);
+
+// 실시간 로그 폴링 (읽기 전용)
+(function() {
+    const box = document.getElementById('live-log');
+    const statusEl = document.getElementById('live-status');
+    const timeEl = document.getElementById('live-time');
+    const toggle = document.getElementById('live-toggle');
+    const url = "{% url 'common:server_live_logs' %}?lines=120";
+    let logTimer = null;
+
+    function esc(s) {
+        const d = document.createElement('div');
+        d.textContent = s;
+        return d.innerHTML;
+    }
+
+    async function fetchLogs() {
+        try {
+            const res = await fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+            const data = await res.json();
+            timeEl.textContent = data.server_time || '';
+
+            if (!data.available) {
+                box.innerHTML = '<div class="live-empty"><i class="fas fa-info-circle me-1"></i> 서버(Linux)에서만 실시간 로그를 볼 수 있습니다.</div>';
+                statusEl.style.color = '#64748b';
+                statusEl.textContent = '● N/A';
+                return;
+            }
+            statusEl.style.color = '#4ade80';
+            statusEl.textContent = '● LIVE';
+
+            if (!data.lines.length) {
+                box.innerHTML = '<div class="live-empty">표시할 로그가 없습니다.</div>';
+                return;
+            }
+            // 사용자가 아래쪽을 보고 있으면 새 로그 도착 시 자동 스크롤
+            const atBottom = box.scrollHeight - box.scrollTop - box.clientHeight < 40;
+            box.innerHTML = data.lines.map(function(l) {
+                return '<div class="live-line ' + (l.level || '') + '">' + esc(l.text) + '</div>';
+            }).join('');
+            if (atBottom) box.scrollTop = box.scrollHeight;
+        } catch (e) {
+            statusEl.style.color = '#f87171';
+            statusEl.textContent = '● 오류';
+        }
+    }
+
+    function start() { fetchLogs(); logTimer = setInterval(fetchLogs, 5000); }
+    function stop()  { if (logTimer) { clearInterval(logTimer); logTimer = null; } }
+
+    toggle.addEventListener('change', function() {
+        if (toggle.checked) {
+            statusEl.style.color = '#4ade80';
+            statusEl.textContent = '● LIVE';
+            start();
+        } else {
+            stop();
+            statusEl.style.color = '#64748b';
+            statusEl.textContent = '● 일시정지';
+        }
+    });
+
+    start();
+})();
 </script>
 {% endblock %}

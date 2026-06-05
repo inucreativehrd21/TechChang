@@ -77,10 +77,120 @@ class Command(BaseCommand):
         journal_stats  = self._collect_journal(hours)
         security_stats = self._collect_security_logs(hours)
         sys_stats      = self._collect_system_stats()
+        ai_analysis    = self._analyze_errors(hours, journal_stats)
 
-        html = self._render_html(since, hours, db_stats, journal_stats, security_stats, sys_stats)
-        text = self._render_text(since, hours, db_stats, journal_stats, security_stats, sys_stats)
+        html = self._render_html(since, hours, db_stats, journal_stats, security_stats, sys_stats, ai_analysis)
+        text = self._render_text(since, hours, db_stats, journal_stats, security_stats, sys_stats, ai_analysis)
         return {'html': html, 'text': text}
+
+    # ------------------------------------------------------------------ #
+    def _analyze_errors(self, hours, journal):
+        """
+        Claude(Sonnet)를 에러 분석관으로 활용해 치명적 로그를 해설한다.
+        에러/5xx가 있을 때만 호출되며, API 키 미설정·호출 실패 시 조용히 None을 반환해
+        리포트 발송 자체는 막지 않는다.
+        """
+        top_errors = journal.get('top_errors', [])
+        error_count = journal.get('error_count', 0)
+        status_5xx  = journal.get('status_5xx', 0)
+
+        # 치명적 신호가 없으면 분석하지 않는다 (평소 API 비용 0)
+        if not top_errors and status_5xx == 0:
+            return {'available': True, 'skipped': True}
+
+        try:
+            from common.services.claude import ask_json, ClaudeModel
+
+            error_block = '\n'.join(
+                f'{i}. {e}' for i, e in enumerate(top_errors, 1)
+            ) or '(개별 에러 라인은 수집되지 않았으나 5xx 응답이 발생함)'
+
+            system = (
+                '당신은 테크창(Django 5.1 / Gunicorn / Nginx / Ubuntu 24.04, SQLite) 서비스의 '
+                '시니어 SRE 겸 에러 분석관입니다. 운영 로그에서 추출한 에러를 보고, '
+                '서버 전문 지식이 깊지 않은 운영자도 이해할 수 있도록 한국어로 간결하게 분석합니다. '
+                '추측을 단정하지 말고 근거에 기반해 원인을 추정하며, 바로 실행할 수 있는 조치를 제안합니다.'
+            )
+            prompt = (
+                f'다음은 최근 {hours}시간 동안 테크창 서버 로그에서 추출한 에러 지표와 샘플입니다.\n\n'
+                f'[지표]\n'
+                f'- 5xx 에러 응답: {status_5xx}건\n'
+                f'- 4xx 에러 응답: {journal.get("status_4xx", 0)}건\n'
+                f'- Error/Exception 라인: {error_count}건\n'
+                f'- Warning 라인: {journal.get("warning_count", 0)}건\n\n'
+                f'[에러 로그 샘플]\n{error_block}\n\n'
+                '치명적인 문제 위주로 분석해 아래 JSON 형식으로만 응답하세요.\n'
+                '```json\n'
+                '{\n'
+                '  "severity": "심각 | 주의 | 정보 중 하나",\n'
+                '  "overview": "전체 상황을 한두 문장으로 요약한 총평",\n'
+                '  "findings": [\n'
+                '    {"title": "문제 제목", "cause": "추정 원인", "action": "권장 조치"}\n'
+                '  ]\n'
+                '}\n'
+                '```\n'
+                'findings는 가장 중요한 것 위주로 최대 3개까지만 작성하세요.'
+            )
+
+            data = ask_json(
+                prompt,
+                system=system,
+                model=ClaudeModel.SONNET,
+                max_tokens=1500,
+            )
+
+            findings = data.get('findings', [])
+            if isinstance(findings, dict):
+                findings = [findings]
+
+            return {
+                'available': True,
+                'skipped': False,
+                'severity': str(data.get('severity', '정보')).strip(),
+                'overview': str(data.get('overview', '')).strip(),
+                'findings': findings[:3],
+            }
+
+        except Exception as e:
+            self.stderr.write(self.style.WARNING(f'에러 분석(Claude) 건너뜀: {e}'))
+            return {'available': False, 'error': str(e)}
+
+    # ------------------------------------------------------------------ #
+    def _tail_logs(self, lines=120):
+        """
+        실시간 모니터링용 최근 로그 라인 (읽기 전용).
+        대시보드 라이브 로그 뷰어가 사용한다. journalctl 미가용(로컬) 시 available=False.
+        """
+        out = {'available': False, 'lines': []}
+        try:
+            lines = max(20, min(int(lines), 300))
+        except (TypeError, ValueError):
+            lines = 120
+
+        try:
+            result = subprocess.run(
+                ['journalctl', '-u', 'mysite', '-n', str(lines),
+                 '--no-pager', '-o', 'short-iso'],
+                capture_output=True, text=True, timeout=10
+            )
+            if result.returncode != 0:
+                return out
+
+            out['available'] = True
+            for line in result.stdout.splitlines():
+                lower = line.lower()
+                if 'error' in lower or 'exception' in lower or 'traceback' in lower or '" 5' in line:
+                    level = 'error'
+                elif 'warning' in lower or 'warn' in lower or '" 4' in line:
+                    level = 'warn'
+                else:
+                    level = 'info'
+                out['lines'].append({'text': line, 'level': level})
+
+        except (subprocess.TimeoutExpired, FileNotFoundError):
+            pass
+
+        return out
 
     # ------------------------------------------------------------------ #
     def _collect_db_stats(self):
@@ -377,7 +487,55 @@ class Command(BaseCommand):
             return f'<span style="color:#ca8a04;font-weight:700;">{value}%</span>'
         return f'<span style="color:#16a34a;">{value}%</span>'
 
-    def _render_html(self, since, hours, db, journal, security, sys):
+    def _severity_color(self, severity):
+        """심각도 텍스트 → 컬러 매핑"""
+        return {
+            '심각': '#dc2626',
+            '주의': '#ca8a04',
+            '정보': '#16a34a',
+        }.get((severity or '').strip(), '#4f46e5')
+
+    def _render_ai_card(self, ai):
+        """Claude 에러 분석 카드 (HTML). 분석 결과가 없으면 빈 문자열."""
+        if not ai or not ai.get('available') or ai.get('skipped'):
+            return ''
+        findings = ai.get('findings', [])
+        if not ai.get('overview') and not findings:
+            return ''
+
+        severity = ai.get('severity', '정보')
+        sev_color = self._severity_color(severity)
+
+        items_html = ''
+        for f in findings:
+            title  = (f.get('title') or '').strip()
+            cause  = (f.get('cause') or '').strip()
+            action = (f.get('action') or '').strip()
+            items_html += (
+                '<div style="padding:11px 0;border-bottom:1px solid #f4f4f5;">'
+                '<div style="font-weight:700;font-size:0.8125rem;color:#18181b;margin-bottom:5px;">'
+                f'{title}</div>'
+                '<div style="font-size:0.78rem;color:#52525b;margin-bottom:3px;">'
+                f'<span style="color:#a1a1aa;">원인&nbsp;</span>{cause}</div>'
+                '<div style="font-size:0.78rem;color:#52525b;">'
+                f'<span style="color:#a1a1aa;">조치&nbsp;</span>{action}</div>'
+                '</div>'
+            )
+
+        return (
+            '<div class="card" style="border-left:3px solid ' + sev_color + ';">'
+            '<h2>AI 에러 분석관 '
+            '<span style="font-weight:700;font-size:0.6875rem;color:#fff;background:' + sev_color + ';'
+            'padding:1px 8px;border-radius:999px;margin-left:6px;vertical-align:middle;">'
+            + severity + '</span></h2>'
+            '<div style="font-size:0.82rem;color:#3f3f46;line-height:1.55;margin-bottom:4px;">'
+            + ai.get('overview', '') + '</div>'
+            + items_html +
+            '<div style="font-size:0.65rem;color:#c4c4cc;margin-top:10px;">Claude Sonnet 분석 · 참고용</div>'
+            '</div>'
+        )
+
+    def _render_html(self, since, hours, db, journal, security, sys, ai=None):
         now_str   = datetime.now().strftime('%Y-%m-%d %H:%M')
         since_str = since.strftime('%Y-%m-%d %H:%M')
 
@@ -480,6 +638,9 @@ class Command(BaseCommand):
         if not col_rows:
             col_rows = '<div style="color:#a1a1aa;">아직 자동 작성된 칼럼이 없습니다.</div>'
 
+        # AI 에러 분석 카드
+        ai_card = self._render_ai_card(ai)
+
         return """<!DOCTYPE html>
 <html lang="ko">
 <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><style>
@@ -571,6 +732,8 @@ class Command(BaseCommand):
 
 {errors_card}
 
+{ai_card}
+
 <div style="text-align:center;font-size:0.75rem;color:#a1a1aa;margin-top:6px;padding-bottom:8px;">
   자동 발송 · techchang.com | <a href="https://techchang.com">사이트 바로가기</a>
 </div>
@@ -604,9 +767,10 @@ class Command(BaseCommand):
             journal_html=journal_html,
             security_html=security_html,
             errors_card=errors_card,
+            ai_card=ai_card,
         )
 
-    def _render_text(self, since, hours, db, journal, security, sys):
+    def _render_text(self, since, hours, db, journal, security, sys, ai=None):
         now_str = since.strftime('%Y-%m-%d %H:%M') + ' ~ ' + datetime.now().strftime('%H:%M')
         lines = [
             f'[테크창] 서버 리포트 ({now_str}, {hours}h)',
@@ -682,6 +846,18 @@ class Command(BaseCommand):
                     lines.append(f'  {e[-100:]}')
         else:
             lines.append('[로그] journalctl 접근 불가 (서버에서 실행하세요)')
+
+        # AI 에러 분석관
+        if ai and ai.get('available') and not ai.get('skipped'):
+            findings = ai.get('findings', [])
+            if ai.get('overview') or findings:
+                lines += ['', f'[AI 에러 분석관 · {ai.get("severity", "정보")}]', f'  {ai.get("overview", "")}']
+                for f in findings:
+                    lines += [
+                        f'  - {(f.get("title") or "").strip()}',
+                        f'      원인: {(f.get("cause") or "").strip()}',
+                        f'      조치: {(f.get("action") or "").strip()}',
+                    ]
 
         lines += ['', '-' * 50, 'techchang.com 자동 발송']
         return '\n'.join(lines)
