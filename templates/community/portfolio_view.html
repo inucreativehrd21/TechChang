@@ -1024,44 +1024,47 @@ body {
             position: relative;
             padding-top: 0.5rem;
         }
-        /* 모노그램 중심(28px)을 지나는 세로 레일 */
+        /* 노드 중심(13px)을 지나는 세로 레일 */
         .exp-list::before {
             content: '';
             position: absolute;
-            left: 27px;
+            left: 13px;
             top: 28px;
             bottom: 28px;
             width: 2px;
             background: linear-gradient(to bottom, transparent, rgba(167,139,250,0.35) 6%, rgba(255,255,255,0.12) 94%, transparent);
         }
         .exp-row {
-            display: grid;
-            grid-template-columns: 56px 1fr;
-            gap: 0 1.5rem;
-            margin-bottom: 1.5rem;
             position: relative;
+            padding-left: 44px;
+            margin-bottom: 1.5rem;
         }
         .exp-row:last-child { margin-bottom: 0; }
-        /* 회사 이니셜 모노그램 = 타임라인 노드 */
-        .exp-logo {
-            width: 56px;
-            height: 56px;
-            border-radius: 16px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1.5rem;
-            font-weight: 800;
-            color: #fff;
-            background: linear-gradient(135deg, rgba(167,139,250,0.9), rgba(99,102,241,0.9));
-            box-shadow: 0 8px 24px rgba(99,102,241,0.35), inset 0 1px 0 rgba(255,255,255,0.25);
-            position: relative;
+        /* 미니멀 타임라인 점 노드 */
+        .exp-node {
+            position: absolute;
+            left: 13px;
+            top: 30px;
+            transform: translateX(-50%);
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            background: #a78bfa;
+            box-shadow: 0 0 0 4px rgba(167,139,250,0.14), 0 0 14px rgba(167,139,250,0.55);
             z-index: 2;
         }
-        .exp-row:nth-child(5n+2) .exp-logo { background: linear-gradient(135deg, rgba(244,114,182,0.9), rgba(217,70,239,0.9)); box-shadow: 0 8px 24px rgba(217,70,239,0.35), inset 0 1px 0 rgba(255,255,255,0.25); }
-        .exp-row:nth-child(5n+3) .exp-logo { background: linear-gradient(135deg, rgba(56,189,248,0.9), rgba(59,130,246,0.9)); box-shadow: 0 8px 24px rgba(59,130,246,0.35), inset 0 1px 0 rgba(255,255,255,0.25); }
-        .exp-row:nth-child(5n+4) .exp-logo { background: linear-gradient(135deg, rgba(52,211,153,0.9), rgba(16,185,129,0.9)); box-shadow: 0 8px 24px rgba(16,185,129,0.35), inset 0 1px 0 rgba(255,255,255,0.25); }
-        .exp-row:nth-child(5n+5) .exp-logo { background: linear-gradient(135deg, rgba(251,191,36,0.92), rgba(245,158,11,0.92)); box-shadow: 0 8px 24px rgba(245,158,11,0.32), inset 0 1px 0 rgba(255,255,255,0.25); }
+        .exp-row:nth-child(5n+2) .exp-node { background: #d946ef; box-shadow: 0 0 0 4px rgba(217,70,239,0.14), 0 0 14px rgba(217,70,239,0.55); }
+        .exp-row:nth-child(5n+3) .exp-node { background: #3b82f6; box-shadow: 0 0 0 4px rgba(59,130,246,0.14), 0 0 14px rgba(59,130,246,0.55); }
+        .exp-row:nth-child(5n+4) .exp-node { background: #10b981; box-shadow: 0 0 0 4px rgba(16,185,129,0.14), 0 0 14px rgba(16,185,129,0.55); }
+        .exp-row:nth-child(5n+5) .exp-node { background: #f59e0b; box-shadow: 0 0 0 4px rgba(245,158,11,0.14), 0 0 14px rgba(245,158,11,0.55); }
+        /* 재직 중 노드 펄스 */
+        .exp-node--current { animation: expNodePulse 2.2s infinite; }
+        @keyframes expNodePulse {
+            0%   { box-shadow: 0 0 0 0 rgba(16,185,129,0.5), 0 0 14px rgba(16,185,129,0.6); }
+            70%  { box-shadow: 0 0 0 9px rgba(16,185,129,0), 0 0 14px rgba(16,185,129,0.6); }
+            100% { box-shadow: 0 0 0 0 rgba(16,185,129,0), 0 0 14px rgba(16,185,129,0.6); }
+        }
+        .exp-node--current { background: #10b981 !important; }
 
         /* 글래스 카드 */
         .exp-card {
@@ -1223,9 +1226,9 @@ body {
                 margin-bottom: 2.5rem;
             }
             .exp-title { font-size: 2.2rem; }
-            .exp-list::before { left: 23px; }
-            .exp-row { grid-template-columns: 48px 1fr; gap: 0 1rem; }
-            .exp-logo { width: 48px; height: 48px; font-size: 1.3rem; border-radius: 14px; }
+            .exp-list::before { left: 11px; }
+            .exp-row { padding-left: 32px; }
+            .exp-node { left: 11px; top: 26px; }
             .exp-card { padding: 1.25rem 1.25rem; }
         }
         </style>
@@ -1242,8 +1245,8 @@ body {
             <div class="exp-list">
                 {% for experience in experiences %}
                 <div class="exp-row">
-                    <!-- 회사 이니셜 모노그램 = 타임라인 노드 -->
-                    <div class="exp-logo">{{ experience.company|slice:":1"|upper }}</div>
+                    <!-- 미니멀 타임라인 점 노드 -->
+                    <div class="exp-node{% if experience.is_current %} exp-node--current{% endif %}"></div>
 
                     <div class="exp-card">
                         <div class="exp-card-top">
