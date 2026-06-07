@@ -1,0 +1,137 @@
+{% extends "base.html" %}
+
+{% block title %}이메일 인증 - 테크창{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+  <div class="row justify-content-center">
+    <div class="col-md-7 col-lg-6">
+      <div class="card border-0 shadow-sm" style="border-radius: 20px;">
+        <div class="card-header text-center py-4 bg-white" style="border-radius: 20px 20px 0 0; border-bottom: 1px solid var(--border-light);">
+          <i class="fas fa-envelope-circle-check fa-3x mb-3 text-primary"></i>
+          <h2 class="mb-1 h4">이메일 인증이 필요합니다</h2>
+          <p class="mb-0 small text-muted">서비스 이용을 위해 이메일 인증을 완료해주세요.</p>
+        </div>
+
+        <div class="card-body p-4 p-md-5">
+          <div class="alert alert-info small" role="alert">
+            <i class="fas fa-info-circle me-1"></i>
+            {% if looks_dummy %}
+            등록된 이메일이 없거나 임시 이메일입니다. <strong>사용 중인 올바른 이메일</strong>을 입력해 인증하면 계정 이메일이 해당 주소로 변경됩니다.
+            {% else %}
+            아래 이메일로 인증 코드를 보냅니다. 다른 이메일로 바꾸려면 주소를 수정한 뒤 코드를 발송하세요. 인증 시 계정 이메일이 인증한 주소로 설정됩니다.
+            {% endif %}
+          </div>
+
+          <!-- 이메일 입력 + 코드 발송 -->
+          <div class="mb-3">
+            <label for="emailInput" class="form-label fw-semibold small">
+              <i class="fas fa-at me-1 text-primary"></i>이메일 주소
+            </label>
+            <div class="input-group">
+              <input type="email" class="form-control" id="emailInput"
+                     value="{{ current_email }}" placeholder="you@example.com" autocomplete="email" required>
+              <button class="btn btn-outline-primary" type="button" id="sendBtn">코드 발송</button>
+            </div>
+          </div>
+
+          <!-- 인증 코드 입력 + 확인 -->
+          <div class="mb-3">
+            <label for="codeInput" class="form-label fw-semibold small">
+              <i class="fas fa-key me-1 text-primary"></i>인증 코드
+            </label>
+            <div class="input-group">
+              <input type="text" class="form-control" id="codeInput" inputmode="numeric"
+                     maxlength="8" placeholder="이메일로 받은 8자리 코드" autocomplete="one-time-code">
+              <button class="btn btn-primary" type="button" id="verifyBtn">인증 확인</button>
+            </div>
+          </div>
+
+          <div id="statusMsg" class="small mt-2" role="status" aria-live="polite"></div>
+
+          <div class="text-center mt-4">
+            <a href="{% url 'common:logout' %}" class="text-muted small">
+              <i class="fas fa-sign-out-alt me-1"></i>로그아웃
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+function getCookie(name) {
+  let v = null;
+  if (document.cookie && document.cookie !== '') {
+    for (const c of document.cookie.split(';')) {
+      const t = c.trim();
+      if (t.substring(0, name.length + 1) === (name + '=')) {
+        v = decodeURIComponent(t.substring(name.length + 1));
+        break;
+      }
+    }
+  }
+  return v;
+}
+
+const emailInput = document.getElementById('emailInput');
+const codeInput  = document.getElementById('codeInput');
+const sendBtn    = document.getElementById('sendBtn');
+const verifyBtn  = document.getElementById('verifyBtn');
+const statusMsg  = document.getElementById('statusMsg');
+
+function setStatus(msg, ok) {
+  statusMsg.textContent = msg;
+  statusMsg.className = 'small mt-2 ' + (ok ? 'text-success' : 'text-danger');
+}
+
+async function postJSON(url, body) {
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
+    body: JSON.stringify(body),
+  });
+  let data = {};
+  try { data = await res.json(); } catch (e) {}
+  return { ok: res.ok, data };
+}
+
+sendBtn.addEventListener('click', async () => {
+  const email = (emailInput.value || '').trim().toLowerCase();
+  if (!email || email.indexOf('@') < 0) { setStatus('올바른 이메일 주소를 입력해주세요.', false); return; }
+  sendBtn.disabled = true;
+  setStatus('인증 코드를 발송하는 중...', true);
+  try {
+    const { ok, data } = await postJSON("{% url 'common:send_profile_verification_email' %}", { email });
+    setStatus(data.message || (ok ? '코드를 발송했습니다.' : '발송에 실패했습니다.'), ok);
+    if (ok) codeInput.focus();
+  } catch (e) {
+    setStatus('네트워크 오류로 발송에 실패했습니다.', false);
+  } finally {
+    sendBtn.disabled = false;
+  }
+});
+
+verifyBtn.addEventListener('click', async () => {
+  const email = (emailInput.value || '').trim().toLowerCase();
+  const code  = (codeInput.value || '').trim();
+  if (!email || !code) { setStatus('이메일과 인증 코드를 모두 입력해주세요.', false); return; }
+  verifyBtn.disabled = true;
+  setStatus('인증 코드를 확인하는 중...', true);
+  try {
+    const { ok, data } = await postJSON("{% url 'common:verify_email_change' %}", { email, code });
+    if (ok && data.success) {
+      setStatus('이메일 인증이 완료되었습니다. 잠시 후 이동합니다...', true);
+      setTimeout(() => { window.location.href = "{% url 'community:index' %}"; }, 1000);
+    } else {
+      setStatus(data.message || '인증에 실패했습니다.', false);
+      verifyBtn.disabled = false;
+    }
+  } catch (e) {
+    setStatus('네트워크 오류로 인증에 실패했습니다.', false);
+    verifyBtn.disabled = false;
+  }
+});
+</script>
+{% endblock %}

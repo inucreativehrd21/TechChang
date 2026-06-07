@@ -102,7 +102,11 @@
                 <td>{{ user.profile.nickname|default:"-" }}</td>
                 <td>{{ user.email|default:"-" }}</td>
                 <td>
-                  {% if user.profile.is_email_verified %}
+                  {% if user.username|slice:":6" == "kakao_" %}
+                    <span class="badge" style="background-color:#FEE500;color:#3C1E1E;">
+                      <i class="fas fa-comment me-1"></i>카카오
+                    </span>
+                  {% elif user.profile.is_email_verified %}
                     <span class="badge bg-success">
                       <i class="fas fa-check-circle me-1"></i>인증완료
                     </span>

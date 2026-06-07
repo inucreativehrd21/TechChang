@@ -410,6 +410,30 @@ def verify_email_change(request):
 
     return JsonResponse({'success': True, 'message': '이메일 인증이 완료되었습니다.'})
 
+
+@login_required
+def force_email_verification(request):
+    """미인증(비카카오) 사용자 강제 이메일 인증 페이지.
+
+    이메일을 입력/수정한 뒤 인증하면 verify_email_change(AJAX)가 user.email과
+    profile.is_email_verified를 갱신한다 — 과거 더미 이메일 사용자가 올바른
+    이메일로 교체할 수 있도록 입력 필드를 편집 가능하게 둔다.
+    이미 인증됐거나 카카오 사용자는 들어올 필요가 없으므로 홈으로 보낸다.
+    """
+    user = request.user
+    profile = getattr(user, 'profile', None)
+    if user.username.startswith('kakao_') or (profile and profile.is_email_verified):
+        return redirect('community:index')
+
+    # 더미/플레이스홀더 이메일(빈 값·@kakao.user·@ 없음)이면 비워서 새 입력을 유도
+    current = (user.email or '').strip()
+    looks_dummy = (not current) or current.endswith('@kakao.user') or '@' not in current
+    return render(request, 'common/force_email_verification.html', {
+        'current_email': '' if looks_dummy else current,
+        'looks_dummy': looks_dummy,
+    })
+
+
 def signup_with_email_verification(request):
     """이메일 인증이 포함된 회원가입"""
     if request.method == "POST":

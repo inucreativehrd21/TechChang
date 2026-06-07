@@ -308,6 +308,58 @@ class RequestLoggingMiddleware:
         return False
 
 
+class EmailVerificationRequiredMiddleware:
+    """비카카오·미인증 사용자에게 이메일 인증을 강제하는 게이트.
+
+    인증을 마치기 전까지 모든 페이지를 강제 인증 페이지로 리다이렉트한다.
+    - 제외: 카카오 로그인 사용자(username 'kakao_*'), 스태프/슈퍼유저(잠금 방지)
+    - 통과 허용 경로: 강제 인증 페이지·관련 인증 AJAX·로그아웃·정적/미디어
+    인증 성공 시 verify_email_change가 profile.is_email_verified를 True로 바꾸므로
+    이후 요청은 자연스럽게 통과한다.
+    """
+
+    def __init__(self, get_response):
+        from django.urls import reverse
+        self.get_response = get_response
+        # 인증 전에도 접근해야 하는 예외 경로
+        self.exempt_paths = {
+            reverse('common:force_email_verification'),
+            reverse('common:send_profile_verification_email'),
+            reverse('common:verify_email_change'),
+            reverse('common:logout'),
+            reverse('common:kakao_logout'),
+            reverse('common:login'),
+        }
+        self.exempt_prefixes = tuple(p for p in (
+            getattr(settings, 'STATIC_URL', '') or '/static/',
+            getattr(settings, 'MEDIA_URL', '') or '/media/',
+        ) if p)
+
+    def __call__(self, request):
+        if self._needs_verification(request):
+            from django.shortcuts import redirect
+            return redirect('common:force_email_verification')
+        return self.get_response(request)
+
+    def _needs_verification(self, request):
+        user = getattr(request, 'user', None)
+        if not (user and user.is_authenticated):
+            return False
+        # 관리자(잠금 방지)·카카오 사용자는 강제 대상 제외
+        if user.is_staff or user.is_superuser:
+            return False
+        if user.username.startswith('kakao_'):
+            return False
+        # 인증 흐름/정적 경로는 통과시켜 무한 리다이렉트 방지
+        path = request.path
+        if path in self.exempt_paths or (self.exempt_prefixes and path.startswith(self.exempt_prefixes)):
+            return False
+        profile = getattr(user, 'profile', None)
+        if profile is None or profile.is_email_verified:
+            return False
+        return True
+
+
 class MobileDetectionMiddleware:
     """모바일 기기 감지 미들웨어 - User-Agent 기반 + 쿠키 수동 전환"""
 

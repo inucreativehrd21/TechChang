@@ -13,6 +13,7 @@ urlpatterns = [
     path('email/verify/', views.verify_email_code, name='verify_email_code'),
     path('email/profile/send/', views.send_profile_verification_email, name='send_profile_verification_email'),
     path('verify-email-change/', views.verify_email_change, name='verify_email_change'),
+    path('email/required/', views.force_email_verification, name='force_email_verification'),
     path('theme/', views.save_theme, name='save_theme'),
     path('profile/edit/', views.profile_edit, name='profile_edit'),
     path('password/reset/', views.password_reset, name='password_reset'),
