@@ -676,6 +676,117 @@ body {
     .radial-node-level { font-size: 0.55rem; }
 }
 
+/* ===== 미니멀 역량 바 (Figma style) ===== */
+.skillbar-section {
+    max-width: 760px;
+    margin-left: auto;
+    margin-right: auto;
+}
+.skillbar-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1.6rem;
+    background: rgba(0, 0, 0, 0.24);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 1.5rem;
+    padding: 2.6rem 2.4rem;
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+    box-shadow: 0 12px 44px rgba(0, 0, 0, 0.28);
+}
+.skillbar-row {
+    text-align: left;
+    opacity: 0;
+    transform: translateY(8px);
+    transition: opacity 0.5s ease, transform 0.5s ease;
+}
+.skillbar-row.is-visible {
+    opacity: 1;
+    transform: translateY(0);
+}
+.skillbar-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 0.65rem;
+}
+.skillbar-name {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #fff;
+    letter-spacing: -0.01em;
+    line-height: 1.35;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
+    word-break: keep-all;
+}
+.skillbar-level {
+    flex-shrink: 0;
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: rgba(255, 255, 255, 0.55);
+}
+.skillbar-track {
+    position: relative;
+    height: 6px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.1);
+    overflow: hidden;
+}
+.skillbar-fill {
+    position: absolute;
+    inset: 0 auto 0 0;
+    width: 0;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.85);
+    transition: width 1.1s cubic-bezier(0.22, 1, 0.36, 1);
+}
+/* 레벨별 강조 색상 */
+.skillbar-row.lvl-expert .skillbar-fill,
+.skillbar-row.lvl-전문가 .skillbar-fill        { background: linear-gradient(90deg, #f59e0b, #fbbf24); }
+.skillbar-row.lvl-advanced .skillbar-fill,
+.skillbar-row.lvl-고급 .skillbar-fill          { background: linear-gradient(90deg, #2563eb, #60a5fa); }
+.skillbar-row.lvl-intermediate .skillbar-fill,
+.skillbar-row.lvl-중급 .skillbar-fill          { background: linear-gradient(90deg, #059669, #34d399); }
+.skillbar-row.lvl-beginner .skillbar-fill,
+.skillbar-row.lvl-초급 .skillbar-fill          { background: linear-gradient(90deg, #7c3aed, #a78bfa); }
+.skillbar-row.lvl-basic .skillbar-fill,
+.skillbar-row.lvl-기초 .skillbar-fill          { background: linear-gradient(90deg, #6b7280, #9ca3af); }
+
+.skillbar-row.lvl-expert .skillbar-level,
+.skillbar-row.lvl-전문가 .skillbar-level       { color: #fbbf24; }
+.skillbar-row.lvl-advanced .skillbar-level,
+.skillbar-row.lvl-고급 .skillbar-level         { color: #60a5fa; }
+.skillbar-row.lvl-intermediate .skillbar-level,
+.skillbar-row.lvl-중급 .skillbar-level         { color: #34d399; }
+.skillbar-row.lvl-beginner .skillbar-level,
+.skillbar-row.lvl-초급 .skillbar-level         { color: #a78bfa; }
+.skillbar-row.lvl-basic .skillbar-level,
+.skillbar-row.lvl-기초 .skillbar-level         { color: #9ca3af; }
+
+/* 대표 역량(Expert) 강조 */
+.skillbar-row.lvl-expert .skillbar-name,
+.skillbar-row.lvl-전문가 .skillbar-name {
+    font-size: 1.08rem;
+    font-weight: 700;
+}
+.skillbar-row.lvl-expert .skillbar-track,
+.skillbar-row.lvl-전문가 .skillbar-track { height: 8px; }
+.skillbar-row.lvl-expert .skillbar-fill,
+.skillbar-row.lvl-전문가 .skillbar-fill {
+    box-shadow: 0 0 16px rgba(251, 191, 36, 0.55);
+}
+
+@media (max-width: 600px) {
+    .skillbar-list { padding: 1.8rem 1.4rem; gap: 1.3rem; }
+    .skillbar-name { font-size: 0.92rem; }
+    .skillbar-row.lvl-expert .skillbar-name,
+    .skillbar-row.lvl-전문가 .skillbar-name { font-size: 0.98rem; }
+    .skillbar-level { font-size: 0.62rem; }
+}
+
 /* Responsive Design */
 @media (max-width: 1024px) {
     .project-content {
@@ -908,105 +1019,158 @@ body {
             color: rgba(255,255,255,0.35);
             line-height: 1.4;
         }
+        /* ===== 카드형 경력 타임라인 (모노그램 노드) ===== */
         .exp-list {
             position: relative;
             padding-top: 0.5rem;
         }
+        /* 모노그램 중심(28px)을 지나는 세로 레일 */
         .exp-list::before {
             content: '';
             position: absolute;
-            left: 110px;
-            top: 8px;
-            bottom: 8px;
-            width: 1px;
-            background: linear-gradient(to bottom, transparent, rgba(255,255,255,0.15) 8%, rgba(255,255,255,0.15) 92%, transparent);
+            left: 27px;
+            top: 28px;
+            bottom: 28px;
+            width: 2px;
+            background: linear-gradient(to bottom, transparent, rgba(167,139,250,0.35) 6%, rgba(255,255,255,0.12) 94%, transparent);
         }
         .exp-row {
             display: grid;
-            grid-template-columns: 100px 1fr;
-            gap: 0 2.5rem;
-            margin-bottom: 3.5rem;
+            grid-template-columns: 56px 1fr;
+            gap: 0 1.5rem;
+            margin-bottom: 1.5rem;
             position: relative;
         }
         .exp-row:last-child { margin-bottom: 0; }
-        .exp-row::before {
-            content: '';
-            position: absolute;
-            left: 104px;
-            top: 8px;
-            width: 12px;
-            height: 12px;
-            border-radius: 50%;
-            background: white;
-            box-shadow: 0 0 0 3px rgba(255,255,255,0.12), 0 0 18px rgba(167,139,250,0.55);
-            z-index: 1;
+        /* 회사 이니셜 모노그램 = 타임라인 노드 */
+        .exp-logo {
+            width: 56px;
+            height: 56px;
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            font-weight: 800;
+            color: #fff;
+            background: linear-gradient(135deg, rgba(167,139,250,0.9), rgba(99,102,241,0.9));
+            box-shadow: 0 8px 24px rgba(99,102,241,0.35), inset 0 1px 0 rgba(255,255,255,0.25);
+            position: relative;
+            z-index: 2;
         }
-        .exp-meta {
-            text-align: right;
-            padding-top: 0.15rem;
+        .exp-row:nth-child(5n+2) .exp-logo { background: linear-gradient(135deg, rgba(244,114,182,0.9), rgba(217,70,239,0.9)); box-shadow: 0 8px 24px rgba(217,70,239,0.35), inset 0 1px 0 rgba(255,255,255,0.25); }
+        .exp-row:nth-child(5n+3) .exp-logo { background: linear-gradient(135deg, rgba(56,189,248,0.9), rgba(59,130,246,0.9)); box-shadow: 0 8px 24px rgba(59,130,246,0.35), inset 0 1px 0 rgba(255,255,255,0.25); }
+        .exp-row:nth-child(5n+4) .exp-logo { background: linear-gradient(135deg, rgba(52,211,153,0.9), rgba(16,185,129,0.9)); box-shadow: 0 8px 24px rgba(16,185,129,0.35), inset 0 1px 0 rgba(255,255,255,0.25); }
+        .exp-row:nth-child(5n+5) .exp-logo { background: linear-gradient(135deg, rgba(251,191,36,0.92), rgba(245,158,11,0.92)); box-shadow: 0 8px 24px rgba(245,158,11,0.32), inset 0 1px 0 rgba(255,255,255,0.25); }
+
+        /* 글래스 카드 */
+        .exp-card {
+            background: rgba(255,255,255,0.045);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 18px;
+            padding: 1.5rem 1.75rem;
+            backdrop-filter: blur(14px);
+            -webkit-backdrop-filter: blur(14px);
+            transition: transform 0.3s ease, border-color 0.3s ease, background 0.3s ease;
+        }
+        .exp-card:hover {
+            transform: translateY(-3px);
+            border-color: rgba(167,139,250,0.35);
+            background: rgba(255,255,255,0.07);
+        }
+        /* 카드 상단: 기간 pill + 근무기간 */
+        .exp-card-top {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.75rem;
+            flex-wrap: wrap;
+            margin-bottom: 0.85rem;
         }
         .exp-period {
-            font-size: 0.78rem;
-            font-weight: 600;
-            color: rgba(255,255,255,0.45);
-            line-height: 1.7;
+            font-size: 0.72rem;
+            font-weight: 700;
+            letter-spacing: 0.04em;
+            color: rgba(255,255,255,0.7);
+            background: rgba(255,255,255,0.07);
+            border: 1px solid rgba(255,255,255,0.1);
+            padding: 0.28rem 0.75rem;
+            border-radius: 100px;
             white-space: nowrap;
         }
         .exp-duration {
-            font-size: 0.68rem;
-            color: rgba(255,255,255,0.25);
-            margin-top: 0.25rem;
-        }
-        .exp-content {
-            padding-bottom: 3rem;
-            border-bottom: 1px solid rgba(255,255,255,0.05);
-        }
-        .exp-row:last-child .exp-content {
-            border-bottom: none;
-            padding-bottom: 0;
+            font-size: 0.72rem;
+            font-weight: 600;
+            color: rgba(255,255,255,0.4);
+            white-space: nowrap;
         }
         .exp-position-row {
             display: flex;
             align-items: center;
-            gap: 0.75rem;
+            gap: 0.6rem;
             flex-wrap: wrap;
-            margin-bottom: 0.3rem;
+            margin-bottom: 0.25rem;
         }
         .exp-position {
-            font-size: 1.3rem;
+            font-size: 1.25rem;
             font-weight: 800;
             color: white;
             line-height: 1.3;
         }
         .exp-badge-current {
-            font-size: 0.62rem;
+            font-size: 0.6rem;
             font-weight: 700;
             letter-spacing: 0.06em;
             text-transform: uppercase;
             color: #10b981;
             background: rgba(16,185,129,0.12);
-            border: 1px solid rgba(16,185,129,0.25);
-            padding: 0.2rem 0.65rem;
+            border: 1px solid rgba(16,185,129,0.3);
+            padding: 0.18rem 0.6rem;
             border-radius: 100px;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+        }
+        .exp-badge-current::before {
+            content: '';
+            width: 6px; height: 6px;
+            border-radius: 50%;
+            background: #10b981;
+            box-shadow: 0 0 0 0 rgba(16,185,129,0.5);
+            animation: expPulse 2s infinite;
+        }
+        @keyframes expPulse {
+            0% { box-shadow: 0 0 0 0 rgba(16,185,129,0.5); }
+            70% { box-shadow: 0 0 0 6px rgba(16,185,129,0); }
+            100% { box-shadow: 0 0 0 0 rgba(16,185,129,0); }
+        }
+        .exp-company-row {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+            margin-bottom: 1rem;
         }
         .exp-company {
-            font-size: 0.95rem;
-            font-weight: 500;
-            color: rgba(167,139,250,0.85);
-            margin-bottom: 0.2rem;
+            font-size: 0.92rem;
+            font-weight: 600;
+            color: rgba(167,139,250,0.9);
         }
         .exp-location-text {
             font-size: 0.78rem;
-            color: rgba(255,255,255,0.3);
-            margin-bottom: 1.1rem;
+            color: rgba(255,255,255,0.35);
+        }
+        .exp-location-text::before {
+            content: '·';
+            margin-right: 0.5rem;
+            color: rgba(255,255,255,0.25);
         }
         .exp-desc {
-            font-size: 0.9rem;
+            font-size: 0.88rem;
             color: rgba(255,255,255,0.6);
-            line-height: 1.85;
+            line-height: 1.8;
             margin: 0 0 1rem;
             white-space: pre-line;
-            max-width: 600px;
         }
         .exp-achievements-list {
             list-style: none;
@@ -1014,39 +1178,44 @@ body {
             padding: 0;
         }
         .exp-achievements-list li {
-            font-size: 0.875rem;
-            color: rgba(255,255,255,0.55);
-            line-height: 1.75;
-            padding-left: 1.1rem;
+            font-size: 0.86rem;
+            color: rgba(255,255,255,0.6);
+            line-height: 1.7;
+            padding-left: 1.5rem;
             position: relative;
-            margin-bottom: 0.3rem;
+            margin-bottom: 0.4rem;
         }
         .exp-achievements-list li::before {
-            content: '—';
+            content: '';
             position: absolute;
             left: 0;
-            color: rgba(167,139,250,0.45);
+            top: 0.55em;
+            width: 7px;
+            height: 7px;
+            border-radius: 2px;
+            background: rgba(167,139,250,0.7);
+            transform: rotate(45deg);
         }
         .exp-tags {
             display: flex;
             flex-wrap: wrap;
             gap: 0.4rem;
-            margin-top: 0.75rem;
+            margin-top: 0.25rem;
         }
         .exp-tag {
             font-size: 0.68rem;
             font-weight: 600;
-            letter-spacing: 0.04em;
-            color: rgba(255,255,255,0.45);
+            letter-spacing: 0.03em;
+            color: rgba(255,255,255,0.55);
             background: rgba(255,255,255,0.06);
-            border: 1px solid rgba(255,255,255,0.09);
+            border: 1px solid rgba(255,255,255,0.1);
             padding: 0.22rem 0.7rem;
-            border-radius: 100px;
+            border-radius: 8px;
         }
         @media (max-width: 900px) {
             .exp-outer {
                 grid-template-columns: 1fr;
-                padding: 3rem 2rem;
+                padding: 3rem 1.5rem;
                 gap: 0;
             }
             .exp-sidebar {
@@ -1054,9 +1223,10 @@ body {
                 margin-bottom: 2.5rem;
             }
             .exp-title { font-size: 2.2rem; }
-            .exp-list::before { left: 80px; }
-            .exp-row { grid-template-columns: 72px 1fr; gap: 0 1.5rem; }
-            .exp-row::before { left: 75px; }
+            .exp-list::before { left: 23px; }
+            .exp-row { grid-template-columns: 48px 1fr; gap: 0 1rem; }
+            .exp-logo { width: 48px; height: 48px; font-size: 1.3rem; border-radius: 14px; }
+            .exp-card { padding: 1.25rem 1.25rem; }
         }
         </style>
 
@@ -1068,29 +1238,34 @@ body {
                 <p class="exp-subtitle">{{ experiences|length }}개의 경력</p>
             </div>
 
-            <!-- 우측 타임라인 -->
+            <!-- 우측 카드 타임라인 -->
             <div class="exp-list">
                 {% for experience in experiences %}
                 <div class="exp-row">
-                    <div class="exp-meta">
-                        <div class="exp-period">
-                            {{ experience.start_date|date:"Y.m" }}<br>
-                            {% if experience.is_current %}현재{% else %}{{ experience.end_date|date:"Y.m" }}{% endif %}
-                        </div>
-                        <div class="exp-duration">{{ experience.get_duration }}</div>
-                    </div>
+                    <!-- 회사 이니셜 모노그램 = 타임라인 노드 -->
+                    <div class="exp-logo">{{ experience.company|slice:":1"|upper }}</div>
 
-                    <div class="exp-content">
+                    <div class="exp-card">
+                        <div class="exp-card-top">
+                            <span class="exp-period">
+                                {{ experience.start_date|date:"Y.m" }} — {% if experience.is_current %}현재{% else %}{{ experience.end_date|date:"Y.m" }}{% endif %}
+                            </span>
+                            <span class="exp-duration">{{ experience.get_duration }}</span>
+                        </div>
+
                         <div class="exp-position-row">
                             <span class="exp-position">{{ experience.position }}</span>
                             {% if experience.is_current %}
                             <span class="exp-badge-current">재직 중</span>
                             {% endif %}
                         </div>
-                        <div class="exp-company">{{ experience.company }}</div>
-                        {% if experience.location %}
-                        <div class="exp-location-text">{{ experience.location }}</div>
-                        {% endif %}
+
+                        <div class="exp-company-row">
+                            <span class="exp-company">{{ experience.company }}</span>
+                            {% if experience.location %}
+                            <span class="exp-location-text">{{ experience.location }}</span>
+                            {% endif %}
+                        </div>
 
                         {% if experience.description %}
                         <p class="exp-desc">{{ experience.description }}</p>
@@ -1140,38 +1315,22 @@ body {
             </div>
             {% endif %}
 
-            <!-- Leveled Skills - 방사형 역량 다이어그램 -->
+            <!-- Leveled Skills - 미니멀 역량 바 (Figma style) -->
             {% if 'leveled' in portfolio.enabled_skill_types and portfolio.skills_with_levels %}
-            <div class="skills-section radial-section" style="margin-bottom: 4rem;">
+            <div class="skills-section skillbar-section" style="margin-bottom: 4rem;">
                 <h3 class="skills-section-title">역량 수준</h3>
-                <div class="radial-wrap">
-                    <div class="radial-container" id="leveledRadial">
-                        <svg class="radial-svg" xmlns="http://www.w3.org/2000/svg"></svg>
-                        <div class="radial-center"><span>핵심<br>역량</span></div>
-                        {% for skill in portfolio.skills_with_levels %}
-                        <div class="radial-node lvl-{{ skill.level|lower }}"
-                             data-level="{{ skill.level }}">
-                            <svg class="node-ring-svg" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">
-                                <circle cx="60" cy="60" r="52" fill="none" stroke="rgba(255,255,255,0.12)" stroke-width="6"/>
-                                <circle class="node-progress-ring" cx="60" cy="60" r="52"
-                                        fill="none" stroke="rgba(255,255,255,0.75)" stroke-width="6"
-                                        stroke-linecap="round" stroke-dasharray="326.7" stroke-dashoffset="0"/>
-                            </svg>
-                            <div class="radial-node-inner">
-                                <span class="radial-node-name">{{ skill.name }}</span>
-                                <span class="radial-node-level">{{ skill.level }}</span>
-                            </div>
+                <div class="skillbar-list" id="skillBarList">
+                    {% for skill in portfolio.skills_with_levels %}
+                    <div class="skillbar-row lvl-{{ skill.level|lower }}" data-level="{{ skill.level }}">
+                        <div class="skillbar-head">
+                            <span class="skillbar-name">{{ skill.name }}</span>
+                            <span class="skillbar-level">{{ skill.level }}</span>
                         </div>
-                        {% endfor %}
+                        <div class="skillbar-track">
+                            <div class="skillbar-fill"></div>
+                        </div>
                     </div>
-                    <!-- 레전드 -->
-                    <div class="radial-legend">
-                        <span class="radial-legend-item"><span class="radial-legend-dot" style="background:rgba(251,191,36,0.85)"></span>Expert / 전문가</span>
-                        <span class="radial-legend-item"><span class="radial-legend-dot" style="background:rgba(59,130,246,0.85)"></span>Advanced / 고급</span>
-                        <span class="radial-legend-item"><span class="radial-legend-dot" style="background:rgba(16,185,129,0.85)"></span>Intermediate / 중급</span>
-                        <span class="radial-legend-item"><span class="radial-legend-dot" style="background:rgba(139,92,246,0.85)"></span>Beginner / 초급</span>
-                        <span class="radial-legend-item"><span class="radial-legend-dot" style="background:rgba(107,114,128,0.85)"></span>Basic / 기초</span>
-                    </div>
+                    {% endfor %}
                 </div>
             </div>
             {% endif %}
@@ -1350,9 +1509,54 @@ function initRadialDiagram(containerId) {
     });
 }
 
+// ===== 미니멀 역량 바 초기화 =====
+function initSkillBars(containerId) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+
+    const levelPercent = {
+        'expert': 100,    '전문가': 100,
+        'advanced': 80,   '고급': 80,
+        'intermediate': 60, '중급': 60,
+        'beginner': 40,   '초급': 40,
+        'basic': 20,      '기초': 20
+    };
+
+    const rows = Array.from(container.querySelectorAll('.skillbar-row'));
+
+    // 레벨 내림차순 정렬 → 강조 역량이 맨 위로
+    rows.sort(function(a, b) {
+        const pa = levelPercent[(a.dataset.level || '').toLowerCase()] || 0;
+        const pb = levelPercent[(b.dataset.level || '').toLowerCase()] || 0;
+        return pb - pa;
+    }).forEach(function(row) {
+        container.appendChild(row);
+        const pct = levelPercent[(row.dataset.level || '').toLowerCase()] || 0;
+        row.querySelector('.skillbar-fill').dataset.target = pct;
+    });
+
+    // 스크롤 진입 시 등장 + 막대 채우기 애니메이션
+    const io = new IntersectionObserver(function(entries) {
+        entries.forEach(function(entry) {
+            if (!entry.isIntersecting) return;
+            const row = entry.target;
+            const fill = row.querySelector('.skillbar-fill');
+            const idx = rows.indexOf(row);
+            setTimeout(function() {
+                row.classList.add('is-visible');
+                fill.style.width = (fill.dataset.target || 0) + '%';
+            }, Math.max(0, idx) * 90);
+            io.unobserve(row);
+        });
+    }, { threshold: 0.25 });
+
+    rows.forEach(function(row) { io.observe(row); });
+}
+
 document.addEventListener('DOMContentLoaded', function() {
     initRadialDiagram('leveledRadial');
     initRadialDiagram('freetextRadial');
+    initSkillBars('skillBarList');
 
     // resize 대응
     window.addEventListener('resize', function() {
