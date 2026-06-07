@@ -49,6 +49,9 @@ CRON_WEEKLY="0 8 * * 1 cd $SITE_DIR && $VENV_PYTHON $MANAGE send_log_report --ho
 # 매주 월요일 오전 8시 30분: 방문자 주간 리포트 이메일 (서버 리포트와 분리)
 CRON_VISITOR_WEEKLY="30 8 * * 1 cd $SITE_DIR && $VENV_PYTHON $MANAGE send_visitor_report --period weekly --to $ADMIN_EMAIL >> $LOG_FILE 2>&1"
 
+# 매월 1일 오전 9시: 방문자 월간 리포트 이메일 (지난달 총합·일평균·월별 추이)
+CRON_VISITOR_MONTHLY="0 9 1 * * cd $SITE_DIR && $VENV_PYTHON $MANAGE send_visitor_report --period monthly --to $ADMIN_EMAIL >> $LOG_FILE 2>&1"
+
 # 트렌드 칼럼 자동 작성 (주제별 별도 실행 - 각 1개씩)
 # 매주 화요일 오전 10시: HRD 칼럼
 # 매주 목요일 오전 10시: 데이터분석 칼럼
@@ -59,7 +62,7 @@ CRON_COLUMN_THU="0 10 * * 4 cd $SITE_DIR && $VENV_PYTHON $MANAGE auto_write_colu
 CRON_COLUMN_SAT="0 10 * * 6 cd $SITE_DIR && $VENV_PYTHON $MANAGE auto_write_columns --topic coding >> $COLUMN_LOG 2>&1"
 # ────────────────────────────────────────────────────────────────────
 
-(crontab -l 2>/dev/null; echo "$CRON_BACKUP"; echo "$CRON_WEEKLY_BACKUP"; echo "$CRON_DAILY"; echo "$CRON_WEEKLY"; echo "$CRON_VISITOR_WEEKLY"; echo "$CRON_COLUMN_TUE"; echo "$CRON_COLUMN_THU"; echo "$CRON_COLUMN_SAT") | crontab -
+(crontab -l 2>/dev/null; echo "$CRON_BACKUP"; echo "$CRON_WEEKLY_BACKUP"; echo "$CRON_DAILY"; echo "$CRON_WEEKLY"; echo "$CRON_VISITOR_WEEKLY"; echo "$CRON_VISITOR_MONTHLY"; echo "$CRON_COLUMN_TUE"; echo "$CRON_COLUMN_THU"; echo "$CRON_COLUMN_SAT") | crontab -
 
 echo "✅ cron 등록 완료!"
 echo ""

@@ -747,12 +747,13 @@ def _generate_admin_otp(length=8):
 
 
 def _admin_otp_session_ok(request):
-    """현재 세션이 OTP 인증 상태이고, 인증한 IP와 현재 접속 IP가 일치하는가."""
-    import time
-    until = request.session.get('admin_otp_until', 0)
-    if time.time() >= until:
-        return False
-    return request.session.get('admin_otp_ip') == _client_ip(request)
+    """현재 세션이 OTP 인증 상태이고, 인증한 IP와 현재 접속 IP가 일치하는가.
+
+    검증 로직은 보안 미들웨어와 공유한다(common.admin_security) — 인증된
+    관리자 IP를 의심 분류에서 제외하는 데 동일 기준을 사용하기 위함.
+    """
+    from common.admin_security import admin_otp_session_valid
+    return admin_otp_session_valid(request.session, _client_ip(request))
 
 
 def admin_otp_required(view_func):

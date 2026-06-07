@@ -10,6 +10,7 @@ from django.http import HttpResponse
 from django.core.cache import cache
 from django.conf import settings
 from django.utils import timezone
+from common.admin_security import is_trusted_admin_request
 import logging
 import re
 logger = logging.getLogger(__name__)
@@ -102,8 +103,11 @@ class SecurityMiddleware:
                 logger.error(f"DDoS pattern detected from IP: {client_ip}")
                 return HttpResponse("Suspicious activity detected", status=403)
 
-        # 4. 의심스러운 User-Agent 확인 (신뢰 경로와 게임 경로 제외)
-        if not self.is_trusted_path(request.path) and not is_game_path and self.is_suspicious_user_agent(request):
+        # 4. 의심스러운 User-Agent 확인 (신뢰 경로·게임 경로·인증된 관리자 IP 제외)
+        #    안심 IP 확인은 UA가 실제 의심될 때만 수행(불필요한 세션 조회 방지)
+        if (not self.is_trusted_path(request.path) and not is_game_path
+                and self.is_suspicious_user_agent(request)
+                and not is_trusted_admin_request(request, client_ip)):
             self.increase_suspicion_score(client_ip)
             logger.info(f"Suspicious User-Agent from IP {client_ip}: {request.META.get('HTTP_USER_AGENT', '')}")
 
@@ -262,8 +266,11 @@ class RequestLoggingMiddleware:
         end_time = timezone.now()
         response_time = (end_time - start_time).total_seconds()
         
-        # 의심스러운 패턴 로깅
-        if self.is_suspicious_request(request, response, response_time):
+        # 의심스러운 패턴 로깅 (인증된 관리자 IP는 제외 — 대시보드 폴링이
+        # 빠른 응답(<0.1s)으로 매 요청 의심 분류되던 노이즈를 차단)
+        #    안심 IP 확인은 의심 판정된 요청에 한해 수행(불필요한 세션 조회 방지)
+        if (self.is_suspicious_request(request, response, response_time)
+                and not is_trusted_admin_request(request, client_ip)):
             logger.warning(f"Suspicious request detected - IP: {client_ip}, "
                          f"Path: {request.path}, Status: {response.status_code}, "
                          f"Time: {response_time:.3f}s, Agent: {user_agent[:100]}")
