@@ -1020,10 +1020,44 @@ def admin_portfolio_approval(request):
         approval_status='approved'
     ).select_related('user', 'reviewed_by').order_by('-reviewed_at')
 
-    # 최근 처리 내역 (승인/반려)
+    # 최근 처리 내역 (승인/반려) - 신규 컬렉션 + 레거시 포트폴리오 통합
     recent_collections = PortfolioCollection.objects.filter(
         approval_status__in=['approved', 'rejected']
-    ).select_related('user', 'reviewed_by').order_by('-reviewed_at')[:10]
+    ).select_related('user', 'reviewed_by').order_by('-reviewed_at')
+
+    recent_legacy = Portfolio.objects.filter(
+        approval_status__in=['approved', 'rejected']
+    ).select_related('user', 'reviewed_by').order_by('-reviewed_at')
+
+    recent_items = []
+    for c in recent_collections:
+        recent_items.append({
+            'name': c.portfolio_name,
+            'is_legacy': False,
+            'username': c.user.username,
+            'approval_status': c.approval_status,
+            'rejection_reason': c.rejection_reason,
+            'reviewed_by': c.reviewed_by,
+            'reviewed_at': c.reviewed_at,
+        })
+    for p in recent_legacy:
+        recent_items.append({
+            'name': '%s의 포트폴리오' % p.get_display_name(),
+            'is_legacy': True,
+            'username': p.user.username,
+            'approval_status': p.approval_status,
+            'rejection_reason': p.rejection_reason,
+            'reviewed_by': p.reviewed_by,
+            'reviewed_at': p.reviewed_at,
+        })
+
+    # 검토일 기준 최신순 정렬 (검토일 없는 항목은 뒤로)
+    from datetime import datetime, timezone as _tz
+    recent_items.sort(
+        key=lambda x: x['reviewed_at'] or datetime.min.replace(tzinfo=_tz.utc),
+        reverse=True,
+    )
+    recent_items = recent_items[:20]
 
     context = {
         'pending_collections': pending_collections,
@@ -1032,7 +1066,7 @@ def admin_portfolio_approval(request):
         'approved_collections': approved_collections,
         'approved_legacy': approved_legacy,
         'approved_count': approved_collections.count() + approved_legacy.count(),
-        'recent_collections': recent_collections,
+        'recent_items': recent_items,
     }
     return render(request, 'common/admin_portfolio_approval.html', context)
 

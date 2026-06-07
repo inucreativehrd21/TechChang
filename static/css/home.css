@@ -44,6 +44,35 @@
 .tc-home a { text-decoration: none; }
 
 /* ============================================
+   Panel snap (대문 ↔ 최신 게시글)
+   ============================================ */
+/* 홈 첫 화면에서만 활성화 (JS가 <html>.tc-snap 부여) */
+html.tc-snap {
+    --tc-nav: 104px;
+    scroll-snap-type: y proximity;
+    scroll-padding-top: var(--tc-nav);
+    scroll-behavior: smooth;
+}
+@media (max-width: 768px) {
+    html.tc-snap { --tc-nav: 72px; }
+}
+html.tc-snap .tc-panel { scroll-snap-align: start; }
+/* 대문 패널: 첫 화면을 가득 채워 명확히 분리 */
+html.tc-snap .tc-hero {
+    min-height: 100vh;
+    box-sizing: border-box;
+    justify-content: center;
+    padding-top: calc(var(--tc-nav) + 1rem);
+    padding-bottom: 5.5rem;
+}
+html.tc-snap .tc-section.tc-panel {
+    min-height: calc(100vh - var(--tc-nav));
+}
+@media (prefers-reduced-motion: reduce) {
+    html.tc-snap { scroll-behavior: auto; scroll-snap-type: none; }
+}
+
+/* ============================================
    Hero
    ============================================ */
 .tc-hero {
@@ -53,6 +82,9 @@
     padding: clamp(4rem, 9vw, 7rem) 1.5rem clamp(2.5rem, 5vw, 4rem);
     text-align: center;
     overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
 }
 
 /* 은은한 도트 그리드 배경 (Figma 캔버스 느낌) */
@@ -197,6 +229,51 @@
     font-size: 0.8125rem;
     font-weight: 500;
     color: var(--tc-ink-4);
+}
+
+/* ── 스크롤 큐 (대문 → 게시글 이동 안내) ── */
+.tc-scroll-cue { display: none; }
+html.tc-snap .tc-scroll-cue {
+    margin-top: 2.75rem;
+    align-self: center;
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+    background: none;
+    border: 0;
+    padding: 0;
+    cursor: pointer;
+    color: var(--tc-ink-4);
+    font-size: 0.8125rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    transition: color 0.15s ease;
+    z-index: 2;
+}
+html.tc-snap .tc-scroll-cue:hover { color: var(--tc-accent); }
+.tc-scroll-cue-arrow {
+    width: 34px; height: 34px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--tc-line);
+    border-radius: 999px;
+    background: var(--tc-bg);
+    box-shadow: var(--tc-shadow-xs);
+    animation: tcBounce 1.8s ease-in-out infinite;
+}
+html.tc-snap .tc-scroll-cue:hover .tc-scroll-cue-arrow { border-color: var(--tc-accent); }
+@keyframes tcBounce {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(5px); }
+}
+@media (prefers-reduced-motion: reduce) {
+    .tc-scroll-cue-arrow { animation: none; }
+}
+/* 세로가 짧은 화면에서는 큐가 콘텐츠와 겹치므로 숨김 (스냅 기능은 유지) */
+@media (max-height: 900px) {
+    html.tc-snap .tc-scroll-cue { display: none; }
 }
 
 /* ============================================

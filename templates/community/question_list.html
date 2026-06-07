@@ -13,7 +13,7 @@
 <div class="tc-home">
 
     <!-- ===== Hero ===== -->
-    <section class="tc-hero">
+    <section class="tc-hero tc-panel">
         <span class="tc-eyebrow">
             <span class="tc-dot"></span>
             인천대학교 창의인재개발학과 전공심화연구모임
@@ -67,10 +67,16 @@
                 <div class="tc-stat-label">운영 일수</div>
             </div>
         </div>
+
+        <!-- 스크롤 큐: 아래 패널로 스르륵 이동 -->
+        <button type="button" class="tc-scroll-cue" aria-label="최신 게시글로 이동">
+            <span class="tc-scroll-cue-text">최신 게시글</span>
+            <span class="tc-scroll-cue-arrow"><i class="fas fa-chevron-down"></i></span>
+        </button>
     </section>
 
     <!-- ===== Posts ===== -->
-    <section class="tc-section">
+    <section class="tc-section tc-panel" id="tc-posts">
         <div class="tc-section-head">
             <h2 class="tc-section-title">최신 게시글</h2>
             <a href="{% url 'community:board_main' %}" class="tc-section-link">전체 보기 →</a>
@@ -148,4 +154,44 @@
     <input type="hidden" id="page" name="page" value="{{ page }}">
     <input type="hidden" id="category" name="category" value="{{ category }}">
 </form>
+{% endblock %}
+
+{% block script %}
+<script>
+// ===== 홈 대문 ↔ 최신 게시글 패널 스냅 스크롤 =====
+(function () {
+    var docEl = document.documentElement;
+
+    // 1페이지·검색/카테고리 미적용일 때만 패널 스냅 활성화 (목록 탐색 중에는 비활성)
+    var params = new URLSearchParams(window.location.search);
+    var page = params.get('page');
+    var browsing = params.get('kw') || params.get('category') || (page && page !== '1');
+
+    if (!browsing) {
+        docEl.classList.add('tc-snap');
+    }
+
+    // 스크롤 큐 클릭 → 최신 게시글 패널로 스르륵 이동
+    var cue = document.querySelector('.tc-scroll-cue');
+    var posts = document.getElementById('tc-posts');
+    if (cue && posts) {
+        cue.addEventListener('click', function () {
+            posts.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+    }
+
+    // 대문에서 처음 휠/스와이프 시 게시글 패널로 한 번에 이동 (스냅 보조)
+    if (!browsing && posts) {
+        var hero = document.querySelector('.tc-hero');
+        var jumped = false;
+        function nearTop() { return window.scrollY < 40; }
+        window.addEventListener('wheel', function (e) {
+            if (jumped || !nearTop() || e.deltaY <= 0) return;
+            jumped = true;
+            posts.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            setTimeout(function () { jumped = false; }, 900);
+        }, { passive: true });
+    }
+})();
+</script>
 {% endblock %}

@@ -172,11 +172,11 @@
   </div>
 
   <!-- 최근 처리 내역 -->
-  {% if recent_collections %}
+  {% if recent_items %}
   <div class="card border-0" style="background: rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08);">
     <div class="card-body">
       <h5 style="color:#a5b4fc; font-weight: 700;" class="mb-3">
-        <i class="fas fa-history me-2"></i>최근 처리 내역
+        <i class="fas fa-history me-2"></i>최근 처리 내역 ({{ recent_items|length }})
       </h5>
       <div class="table-responsive">
         <table class="table table-sm align-middle" style="color:#e2e8f0;">
@@ -186,20 +186,23 @@
             </tr>
           </thead>
           <tbody>
-            {% for c in recent_collections %}
+            {% for item in recent_items %}
             <tr style="border-color:rgba(255,255,255,0.08);">
-              <td>{{ c.portfolio_name }}</td>
-              <td>{{ c.user.username }}</td>
               <td>
-                {% if c.approval_status == 'approved' %}
+                {{ item.name }}
+                {% if item.is_legacy %}<span class="badge" style="background:#d97706;">기존</span>{% endif %}
+              </td>
+              <td>{{ item.username }}</td>
+              <td>
+                {% if item.approval_status == 'approved' %}
                 <span class="badge" style="background:#10b981;">승인</span>
                 {% else %}
                 <span class="badge" style="background:#ef4444;">반려</span>
-                {% if c.rejection_reason %}<small style="color:#94a3b8;"> · {{ c.rejection_reason|truncatechars:40 }}</small>{% endif %}
+                {% if item.rejection_reason %}<small style="color:#94a3b8;"> · {{ item.rejection_reason|truncatechars:40 }}</small>{% endif %}
                 {% endif %}
               </td>
-              <td>{{ c.reviewed_by.username|default:"-" }}</td>
-              <td>{{ c.reviewed_at|date:"Y.m.d H:i"|default:"-" }}</td>
+              <td>{{ item.reviewed_by.username|default:"-" }}</td>
+              <td>{{ item.reviewed_at|date:"Y.m.d H:i"|default:"-" }}</td>
             </tr>
             {% endfor %}
           </tbody>
