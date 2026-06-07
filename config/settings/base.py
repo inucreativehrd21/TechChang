@@ -227,6 +227,17 @@ ANTHROPIC_API_KEY = os.environ.get('ANTHROPIC_API_KEY', '')
 KAKAO_REST_API_KEY = os.environ.get('KAKAO_REST_API_KEY', '')
 KAKAO_CLIENT_SECRET = os.environ.get('KAKAO_CLIENT_SECRET', '')
 
+# Google Search Console API (방문자 리포트의 검색 노출/클릭/CTR 지표)
+#  인증은 둘 중 하나 (OAuth 우선):
+#   - GSC_OAUTH_TOKEN     : OAuth 2.0 클라이언트로 1회 발급한 토큰(token.json) 경로
+#                           (gsc_authorize 커맨드로 생성, refresh token 자동 갱신)
+#   - GSC_CREDENTIALS_JSON : 서비스 계정 키(JSON) 파일 경로
+#  GSC_SITE_URL: 등록한 속성 ('sc-domain:techchang.com' 또는 'https://techchang.com/')
+#  모두 미설정 시 방문자 리포트는 GSC 섹션을 조용히 건너뛰고 정상 발송된다.
+GSC_OAUTH_TOKEN = os.environ.get('GSC_OAUTH_TOKEN', '')
+GSC_CREDENTIALS_JSON = os.environ.get('GSC_CREDENTIALS_JSON', '')
+GSC_SITE_URL = os.environ.get('GSC_SITE_URL', 'sc-domain:techchang.com')
+
 # 끝말잇기 게임 설정
 WORDCHAIN_TIMEOUT = int(os.environ.get('WORDCHAIN_TIMEOUT', 30))  # 기본 30초
 WORDCHAIN_USE_DICTIONARY_API = os.environ.get('WORDCHAIN_USE_DICTIONARY_API', 'True').lower() == 'true'

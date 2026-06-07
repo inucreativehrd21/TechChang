@@ -28,5 +28,12 @@ Markdown>=3.5,<4.0
 # HTTP 요청 라이브러리 (카카오 로그인 API 호출)
 requests>=2.31.0,<3.0.0
 
+# Google Search Console API (방문자 리포트의 노출/클릭/CTR 지표) - 선택
+#  미설치 시 방문자 리포트는 GSC 섹션만 건너뛰고 정상 동작한다.
+google-api-python-client>=2.100.0,<3.0.0
+google-auth>=2.23.0,<3.0.0
+#  아래는 OAuth 2.0 클라이언트 ID로 토큰을 1회 발급할 때만 필요 (gsc_authorize, 로컬 전용)
+google-auth-oauthlib>=1.1.0,<2.0.0
+
 # 데이터베이스: 현재 SQLite 사용. PostgreSQL 사용 시 아래 주석 해제
 # psycopg2-binary>=2.9,<3

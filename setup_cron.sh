@@ -31,7 +31,7 @@ echo "📧 리포트 수신 이메일: $ADMIN_EMAIL"
 echo ""
 
 # 기존 cron에서 techchang 관련 항목 제거 후 재등록
-(crontab -l 2>/dev/null | grep -v 'send_log_report' | grep -v 'backup_db' | grep -v 'auto_write_columns'; echo "") | crontab -
+(crontab -l 2>/dev/null | grep -v 'send_log_report' | grep -v 'send_visitor_report' | grep -v 'backup_db' | grep -v 'auto_write_columns'; echo "") | crontab -
 
 # ─── cron 항목 ──────────────────────────────────────────────────────
 # 매일 새벽 3시: DB 로컬 백업 (최근 7개 보관)
@@ -46,6 +46,9 @@ CRON_DAILY="0 8 * * * cd $SITE_DIR && $VENV_PYTHON $MANAGE send_log_report --hou
 # 매주 월요일 오전 8시: 주간 리포트 이메일
 CRON_WEEKLY="0 8 * * 1 cd $SITE_DIR && $VENV_PYTHON $MANAGE send_log_report --hours 168 --to $ADMIN_EMAIL >> $LOG_FILE 2>&1"
 
+# 매주 월요일 오전 8시 30분: 방문자 주간 리포트 이메일 (서버 리포트와 분리)
+CRON_VISITOR_WEEKLY="30 8 * * 1 cd $SITE_DIR && $VENV_PYTHON $MANAGE send_visitor_report --period weekly --to $ADMIN_EMAIL >> $LOG_FILE 2>&1"
+
 # 트렌드 칼럼 자동 작성 (주제별 별도 실행 - 각 1개씩)
 # 매주 화요일 오전 10시: HRD 칼럼
 # 매주 목요일 오전 10시: 데이터분석 칼럼
@@ -56,12 +59,12 @@ CRON_COLUMN_THU="0 10 * * 4 cd $SITE_DIR && $VENV_PYTHON $MANAGE auto_write_colu
 CRON_COLUMN_SAT="0 10 * * 6 cd $SITE_DIR && $VENV_PYTHON $MANAGE auto_write_columns --topic coding >> $COLUMN_LOG 2>&1"
 # ────────────────────────────────────────────────────────────────────
 
-(crontab -l 2>/dev/null; echo "$CRON_BACKUP"; echo "$CRON_WEEKLY_BACKUP"; echo "$CRON_DAILY"; echo "$CRON_WEEKLY"; echo "$CRON_COLUMN_TUE"; echo "$CRON_COLUMN_THU"; echo "$CRON_COLUMN_SAT") | crontab -
+(crontab -l 2>/dev/null; echo "$CRON_BACKUP"; echo "$CRON_WEEKLY_BACKUP"; echo "$CRON_DAILY"; echo "$CRON_WEEKLY"; echo "$CRON_VISITOR_WEEKLY"; echo "$CRON_COLUMN_TUE"; echo "$CRON_COLUMN_THU"; echo "$CRON_COLUMN_SAT") | crontab -
 
 echo "✅ cron 등록 완료!"
 echo ""
 echo "현재 crontab:"
-crontab -l | grep -E 'backup_db|send_log_report|auto_write_columns'
+crontab -l | grep -E 'backup_db|send_log_report|send_visitor_report|auto_write_columns'
 echo ""
 echo "📝 서버 로그: $LOG_FILE"
 echo "📝 칼럼 로그: $COLUMN_LOG"
@@ -70,5 +73,6 @@ echo ""
 echo "🧪 지금 바로 테스트:"
 echo "   $VENV_PYTHON $MANAGE backup_db --keep 7 --dest $BACKUP_DIR"
 echo "   $VENV_PYTHON $MANAGE send_log_report --hours 24 --to $ADMIN_EMAIL --dry-run"
+echo "   $VENV_PYTHON $MANAGE send_visitor_report --period weekly --dry-run   # 방문자 리포트 미리보기"
 echo "   $VENV_PYTHON $MANAGE auto_write_columns --dry-run          # 칼럼 미리보기 (ANTHROPIC_API_KEY 필요)"
 echo "   $VENV_PYTHON $MANAGE auto_write_columns --topic hrd        # HRD 칼럼 1개 즉시 게시"
