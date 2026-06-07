@@ -7,6 +7,13 @@ __pycache__
 .env.local
 .env.production
 
+# Google API 인증 비밀 (절대 커밋 금지)
+client_secret*.json
+token.json
+token.jso
+gsc_*.json
+*-gsc-key.json
+
 # 미디어 파일
 media/
 
