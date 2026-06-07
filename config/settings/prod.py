@@ -108,6 +108,9 @@ LOGGING = {
         },
     },
     'handlers': {
+        'null': {
+            'class': 'logging.NullHandler',
+        },
         'file': {
             'level': 'INFO',
             # 크기 제한 회전: 대시보드 모니터가 이 파일을 읽어 로그/보안/실시간 로그를
@@ -132,6 +135,12 @@ LOGGING = {
         'django': {
             'handlers': ['console', 'file'],
             'level': 'INFO',
+            'propagate': False,
+        },
+        # 미등록 Host(스캐너·봇)로 인한 DisallowedHost는 실제 장애가 아니므로
+        # 로그를 남기지 않아 모니터의 Error/Traceback 노이즈를 제거한다 (nginx 444로 1차 차단).
+        'django.security.DisallowedHost': {
+            'handlers': ['null'],
             'propagate': False,
         },
     },

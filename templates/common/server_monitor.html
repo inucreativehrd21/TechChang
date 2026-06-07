@@ -270,12 +270,43 @@
             <div class="stat-label">Exception</div>
           </div>
         </div>
+        <!-- 4xx 상태코드 분포 -->
+        <div class="mon-row"><span class="label">404 Not Found</span><span>{{ journal.status_404|default:0 }}건</span></div>
+        <div class="mon-row"><span class="label">403 Forbidden</span><span>{% if journal.status_403 %}<span class="badge-warn">{{ journal.status_403 }}건</span>{% else %}0건{% endif %}</span></div>
+        <div class="mon-row"><span class="label">401 Unauthorized</span><span>{% if journal.status_401 %}<span class="badge-warn">{{ journal.status_401 }}건</span>{% else %}0건{% endif %}</span></div>
+        <div class="mon-row"><span class="label">Warning</span><span>{{ journal.warning_count|default:0 }}건</span></div>
         {% else %}
         <div style="color:#64748b; font-size:.875rem; text-align:center; padding:20px 0;">
           <i class="fas fa-info-circle me-1"></i> journalctl 또는 logs/django.log 접근 시 활성화됩니다.
         </div>
         {% endif %}
       </div>
+
+      <!-- 상위 404 경로 -->
+      {% if journal.top_404 %}
+      <div class="mon-card">
+        <h2><i class="fas fa-link-slash"></i> 상위 404 경로 ({{ hours }}h)</h2>
+        {% for item in journal.top_404 %}
+        <div class="mon-row">
+          <span class="label" style="max-width:75%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-family:'Courier New',monospace;">{{ item.path }}</span>
+          <span>{{ item.count }}회</span>
+        </div>
+        {% endfor %}
+      </div>
+      {% endif %}
+
+      <!-- 상위 Warning 패턴 -->
+      {% if journal.top_warnings %}
+      <div class="mon-card">
+        <h2><i class="fas fa-triangle-exclamation"></i> 상위 Warning 패턴 ({{ hours }}h)</h2>
+        {% for item in journal.top_warnings %}
+        <div class="mon-row">
+          <span class="label" style="max-width:78%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">{{ item.msg }}</span>
+          <span>{{ item.count }}회</span>
+        </div>
+        {% endfor %}
+      </div>
+      {% endif %}
 
       <!-- 보안 이벤트 -->
       <div class="mon-card">

@@ -287,6 +287,9 @@ LOGGING = {
         },
     },
     'handlers': {
+        'null': {
+            'class': 'logging.NullHandler',
+        },
         'console': {
             'level': 'INFO',
             'class': 'logging.StreamHandler',
@@ -324,6 +327,12 @@ LOGGING = {
         'security': {
             'handlers': ['security_file', 'console', 'file'],
             'level': 'WARNING',
+            'propagate': False,
+        },
+        # 미등록 Host(스캐너·봇)로 인한 DisallowedHost는 실제 장애가 아니므로
+        # 로그를 남기지 않아 모니터의 Error/Traceback 노이즈를 제거한다 (nginx 444로 1차 차단).
+        'django.security.DisallowedHost': {
+            'handlers': ['null'],
             'propagate': False,
         },
     },

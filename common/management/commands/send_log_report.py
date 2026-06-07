@@ -348,6 +348,39 @@ class Command(BaseCommand):
         return stats
 
     # ------------------------------------------------------------------ #
+    #  로그 파싱 헬퍼 (요청 라인 / Warning 패턴 정규화)
+    # ------------------------------------------------------------------ #
+    # 액세스 라인에서 메서드·경로·상태코드 추출 (gunicorn/nginx 공통 "%(r)s" %(s)s)
+    _REQUEST_RE = re.compile(r'"([A-Z]+) (\S+?)(?: HTTP/[^"]*)?" (\d{3})')
+
+    def _parse_request_line(self, line):
+        m = self._REQUEST_RE.search(line)
+        if not m:
+            return None
+        try:
+            code = int(m.group(3))
+        except ValueError:
+            return None
+        path = m.group(2).split('?', 1)[0]  # 쿼리스트링 제거
+        return m.group(1), path, code
+
+    def _warn_key(self, line):
+        """Warning 라인을 패턴 집계용 키로 정규화.
+
+        로그 접두(asctime+module)와 가변값(IP·경로·숫자)을 제거/치환해
+        동일 메시지 템플릿끼리 묶이도록 한다. 표시는 원문(가변값 포함)을 쓴다.
+        """
+        idx = line.lower().find('warning')
+        msg = (line[idx + 7:] if idx >= 0 else line)
+        # 'WARNING <YYYY-MM-DD HH:MM:SS,ms> <module> ' 접두 제거 (file/journal 공통)
+        msg = re.sub(r'^[\s:.\-]*\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}:\d{2}[,.\d]*\s+\S+\s+', '', msg)
+        msg = msg.strip().lstrip(':- ').strip()
+        norm = re.sub(r'\b\d{1,3}(?:\.\d{1,3}){3}\b', '#IP', msg)  # IP 주소
+        norm = re.sub(r'/\S+', '/#', norm)                        # 경로 값
+        norm = re.sub(r'\d+', '#', norm)                          # 잔여 숫자
+        return norm[:80], msg[:100]
+
+    # ------------------------------------------------------------------ #
     def _collect_journal(self, hours):
         stats = {
             'error_count': 0,
@@ -355,7 +388,12 @@ class Command(BaseCommand):
             'request_count': 0,
             'status_5xx': 0,
             'status_4xx': 0,
+            'status_404': 0,
+            'status_403': 0,
+            'status_401': 0,
             'top_errors': [],
+            'top_404': [],
+            'top_warnings': [],
             'available': False,
             'source': None,
         }
@@ -384,6 +422,10 @@ class Command(BaseCommand):
         if raw_lines is not None:
             stats['available'] = True
             errors = []
+            err_samples = []          # 에러 라인이 없을 때 5xx 요청을 대체 샘플로
+            warn_counter = Counter()
+            warn_repr = {}
+            path_404 = Counter()
 
             for line in raw_lines:
                 lower = line.lower()
@@ -392,15 +434,27 @@ class Command(BaseCommand):
                     errors.append(line[-120:])
                 elif 'warning' in lower or 'warn' in lower:
                     stats['warning_count'] += 1
+                    key, rep = self._warn_key(line)
+                    warn_counter[key] += 1
+                    warn_repr.setdefault(key, rep)
 
-                m = re.search(r'"[A-Z]+ .+?" (\d{3})', line)
-                if m:
-                    code = int(m.group(1))
+                pr = self._parse_request_line(line)
+                if pr:
+                    method, path, code = pr
                     stats['request_count'] += 1
                     if 500 <= code < 600:
                         stats['status_5xx'] += 1
+                        if len(err_samples) < 5:
+                            err_samples.append(f'{code} {method} {path}')
                     elif 400 <= code < 500:
                         stats['status_4xx'] += 1
+                        if code == 404:
+                            stats['status_404'] += 1
+                            path_404[path] += 1
+                        elif code == 403:
+                            stats['status_403'] += 1
+                        elif code == 401:
+                            stats['status_401'] += 1
 
             seen = set()
             for e in errors:
@@ -410,6 +464,14 @@ class Command(BaseCommand):
                     stats['top_errors'].append(e)
                     if len(stats['top_errors']) >= 5:
                         break
+            # 에러 라인 샘플이 없으면 5xx 요청 라인으로 대체 (수집 공백 보완)
+            if not stats['top_errors'] and err_samples:
+                stats['top_errors'] = err_samples
+
+            stats['top_404'] = [{'path': p, 'count': c} for p, c in path_404.most_common(5)]
+            stats['top_warnings'] = [
+                {'msg': warn_repr[k], 'count': c} for k, c in warn_counter.most_common(5)
+            ]
 
         # 요청/상태 코드는 보통 nginx 액세스 로그에 있다 (저널/파일에 없을 때 보완)
         if stats['available'] and stats['request_count'] == 0:
@@ -434,7 +496,9 @@ class Command(BaseCommand):
             'Jul': 7, 'Aug': 8, 'Sep': 9, 'Oct': 10, 'Nov': 11, 'Dec': 12,
         }
 
-        req_count = status_5xx = status_4xx = 0
+        req_count = s5 = s4 = s404 = s403 = s401 = 0
+        path_404 = Counter()
+        samples_5xx = []
 
         for log_path in candidates:
             if not os.path.exists(log_path):
@@ -455,23 +519,42 @@ class Command(BaseCommand):
                             if log_dt < cutoff:
                                 continue
 
-                        sm = re.search(r'"[A-Z]+ .+?" (\d{3})', line)
-                        if sm:
-                            code = int(sm.group(1))
+                        pr = self._parse_request_line(line)
+                        if pr:
+                            method, path, code = pr
                             req_count += 1
                             if 500 <= code < 600:
-                                status_5xx += 1
+                                s5 += 1
+                                if len(samples_5xx) < 5:
+                                    samples_5xx.append(f'{code} {method} {path}')
                             elif 400 <= code < 500:
-                                status_4xx += 1
+                                s4 += 1
+                                if code == 404:
+                                    s404 += 1
+                                    path_404[path] += 1
+                                elif code == 403:
+                                    s403 += 1
+                                elif code == 401:
+                                    s401 += 1
             except OSError:
                 continue
             break
 
-        return {
+        result = {
             'request_count': req_count,
-            'status_5xx': existing_stats.get('status_5xx', 0) + status_5xx,
-            'status_4xx': existing_stats.get('status_4xx', 0) + status_4xx,
+            'status_5xx': existing_stats.get('status_5xx', 0) + s5,
+            'status_4xx': existing_stats.get('status_4xx', 0) + s4,
+            'status_404': existing_stats.get('status_404', 0) + s404,
+            'status_403': existing_stats.get('status_403', 0) + s403,
+            'status_401': existing_stats.get('status_401', 0) + s401,
+            'top_404': existing_stats.get('top_404') or [
+                {'path': p, 'count': c} for p, c in path_404.most_common(5)
+            ],
         }
+        # 에러 샘플이 비어 있으면 nginx 5xx 요청 라인으로 채운다 (수집 공백 보완)
+        if not existing_stats.get('top_errors') and samples_5xx:
+            result['top_errors'] = samples_5xx
+        return result
 
     # ------------------------------------------------------------------ #
     def _collect_security_logs(self, hours):
@@ -917,7 +1000,8 @@ class Command(BaseCommand):
                 '[로그 분석]',
                 f'  총 요청    : {journal.get("request_count", 0):,}',
                 f'  5xx 에러   : {journal.get("status_5xx", 0)}',
-                f'  4xx 에러   : {journal.get("status_4xx", 0):,}',
+                f'  4xx 에러   : {journal.get("status_4xx", 0):,} '
+                f'(404 {journal.get("status_404", 0)} / 403 {journal.get("status_403", 0)} / 401 {journal.get("status_401", 0)})',
                 f'  Warning    : {journal.get("warning_count", 0)}',
                 f'  Error/Exc  : {journal.get("error_count", 0)}',
                 '',
@@ -927,6 +1011,16 @@ class Command(BaseCommand):
                 f'  DDoS 감지  : {security.get("ddos_detected", 0)}',
                 '',
             ]
+            if journal.get('top_404'):
+                lines.append('[상위 404 경로]')
+                for item in journal['top_404']:
+                    lines.append(f'  {item["count"]:>4}회  {item["path"][:60]}')
+                lines.append('')
+            if journal.get('top_warnings'):
+                lines.append('[상위 Warning 패턴]')
+                for item in journal['top_warnings']:
+                    lines.append(f'  {item["count"]:>4}회  {item["msg"][:70]}')
+                lines.append('')
             if journal.get('top_errors'):
                 lines.append('[최근 에러]')
                 for e in journal['top_errors']:
