@@ -99,6 +99,7 @@ urlpatterns = [
     path('members/', portfolio_views.members_list, name='members_list'),
     path('portfolio/<int:user_id>/', portfolio_views.portfolio_view, name='portfolio_view'),
     path('portfolio/edit/', portfolio_views.portfolio_edit, name='portfolio_edit'),
+    path('portfolio/request-publish/', portfolio_views.portfolio_request_publish, name='portfolio_request_publish'),
     path('portfolio/project/create/', portfolio_views.project_create, name='project_create'),
     path('portfolio/project/<int:project_id>/edit/', portfolio_views.project_edit, name='project_edit'),
     path('portfolio/project/<int:project_id>/delete/', portfolio_views.project_delete, name='project_delete'),

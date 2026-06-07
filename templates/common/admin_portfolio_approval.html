@@ -1,0 +1,212 @@
+{% extends 'base.html' %}
+
+{% block title %}포트폴리오 게시 승인 - 테크창{% endblock %}
+
+{% block content %}
+<div class="container my-4" style="background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); padding: var(--space-8); border-radius: var(--radius-2xl); min-height: 100vh;">
+  <!-- 헤더 -->
+  <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+    <h2 style="color: #f3f4f6; font-weight: 800;">
+      <i class="fas fa-id-card me-2" style="color: #c4b5fd;"></i>포트폴리오 게시 승인
+    </h2>
+    <a href="{% url 'common:admin_dashboard' %}" class="btn" style="background: rgba(255,255,255,0.1); color: #e2e8f0; border: 1px solid rgba(255,255,255,0.2); font-weight: 600;">
+      <i class="fas fa-arrow-left me-2"></i>대시보드
+    </a>
+  </div>
+
+  <p style="color:#94a3b8;">구성원이 게시 요청한 포트폴리오입니다. 내용을 검토한 뒤 승인하면 구성원 목록에 공개됩니다.</p>
+
+  <!-- 승인 대기 -->
+  <div class="card border-0 mb-4" style="background: rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08);">
+    <div class="card-body">
+      <h5 style="color:#fde68a; font-weight: 700;" class="mb-3">
+        <i class="fas fa-clock me-2"></i>승인 대기 ({{ pending_count }})
+      </h5>
+
+      {% if pending_count == 0 %}
+      <p style="color:#94a3b8;" class="mb-0"><i class="fas fa-check-circle me-2"></i>대기 중인 게시 요청이 없습니다.</p>
+      {% endif %}
+
+      <!-- 신규 컬렉션 -->
+      {% for c in pending_collections %}
+      <div class="p-3 mb-3 rounded" style="background: rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.1);">
+        <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
+          <div>
+            <h6 class="mb-1" style="color:#f8fafc; font-weight:700;">{{ c.portfolio_name }}</h6>
+            <div style="color:#cbd5e1; font-size:0.9rem;">
+              <i class="fas fa-user me-1"></i>{{ c.user.username }}
+              {% if c.title %}· {{ c.title }}{% endif %}
+              · <i class="far fa-clock me-1"></i>{{ c.approval_requested_at|date:"Y.m.d H:i" }} 요청
+            </div>
+            {% if c.bio %}<p class="mb-0 mt-2" style="color:#94a3b8; font-size:0.875rem;">{{ c.bio|truncatechars:120 }}</p>{% endif %}
+          </div>
+          <a href="{% url 'community:portfolio_collection_detail' c.slug %}" target="_blank" class="btn btn-sm" style="background:#3b82f6; color:white; font-weight:600;">
+            <i class="fas fa-external-link-alt me-1"></i>내용 보기
+          </a>
+        </div>
+        <div class="d-flex gap-2 mt-3 flex-wrap align-items-start">
+          <form method="post" action="{% url 'common:admin_portfolio_approve' 'collection' c.id %}">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-sm" style="background:#10b981; color:white; font-weight:600;">
+              <i class="fas fa-check me-1"></i>승인
+            </button>
+          </form>
+          <form method="post" action="{% url 'common:admin_portfolio_reject' 'collection' c.id %}" class="d-flex gap-2 flex-grow-1" style="min-width:240px;">
+            {% csrf_token %}
+            <input type="text" name="reason" placeholder="반려 사유 (선택)" class="form-control form-control-sm" style="background:rgba(0,0,0,0.2); color:#e2e8f0; border:1px solid rgba(255,255,255,0.15);">
+            <button type="submit" class="btn btn-sm" style="background:#ef4444; color:white; font-weight:600; white-space:nowrap;">
+              <i class="fas fa-times me-1"></i>반려
+            </button>
+          </form>
+        </div>
+      </div>
+      {% endfor %}
+
+      <!-- 레거시 포트폴리오 -->
+      {% for p in pending_legacy %}
+      <div class="p-3 mb-3 rounded" style="background: rgba(255,255,255,0.06); border:1px solid rgba(245,158,11,0.3);">
+        <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
+          <div>
+            <h6 class="mb-1" style="color:#f8fafc; font-weight:700;">{{ p.get_display_name }}의 포트폴리오 <span class="badge" style="background:#d97706;">기존</span></h6>
+            <div style="color:#cbd5e1; font-size:0.9rem;">
+              <i class="fas fa-user me-1"></i>{{ p.user.username }}
+              {% if p.title %}· {{ p.title }}{% endif %}
+              · <i class="far fa-clock me-1"></i>{{ p.approval_requested_at|date:"Y.m.d H:i" }} 요청
+            </div>
+            {% if p.bio %}<p class="mb-0 mt-2" style="color:#94a3b8; font-size:0.875rem;">{{ p.bio|truncatechars:120 }}</p>{% endif %}
+          </div>
+          <a href="{% url 'community:portfolio_view' p.user.id %}" target="_blank" class="btn btn-sm" style="background:#3b82f6; color:white; font-weight:600;">
+            <i class="fas fa-external-link-alt me-1"></i>내용 보기
+          </a>
+        </div>
+        <div class="d-flex gap-2 mt-3 flex-wrap align-items-start">
+          <form method="post" action="{% url 'common:admin_portfolio_approve' 'legacy' p.id %}">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-sm" style="background:#10b981; color:white; font-weight:600;">
+              <i class="fas fa-check me-1"></i>승인
+            </button>
+          </form>
+          <form method="post" action="{% url 'common:admin_portfolio_reject' 'legacy' p.id %}" class="d-flex gap-2 flex-grow-1" style="min-width:240px;">
+            {% csrf_token %}
+            <input type="text" name="reason" placeholder="반려 사유 (선택)" class="form-control form-control-sm" style="background:rgba(0,0,0,0.2); color:#e2e8f0; border:1px solid rgba(255,255,255,0.15);">
+            <button type="submit" class="btn btn-sm" style="background:#ef4444; color:white; font-weight:600; white-space:nowrap;">
+              <i class="fas fa-times me-1"></i>반려
+            </button>
+          </form>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- 공개 중인 포트폴리오 (회수 가능) -->
+  <div class="card border-0 mb-4" style="background: rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08);">
+    <div class="card-body">
+      <h5 style="color:#6ee7b7; font-weight: 700;" class="mb-3">
+        <i class="fas fa-globe me-2"></i>공개 중인 포트폴리오 ({{ approved_count }})
+      </h5>
+      <p style="color:#94a3b8; font-size:0.875rem;">이미 승인되어 공개 중인 포트폴리오입니다. 문제가 있으면 사유와 함께 회수하여 승인 전(비공개) 상태로 되돌릴 수 있습니다.</p>
+
+      {% if approved_count == 0 %}
+      <p style="color:#94a3b8;" class="mb-0"><i class="fas fa-info-circle me-2"></i>현재 공개 중인 포트폴리오가 없습니다.</p>
+      {% endif %}
+
+      <!-- 신규 컬렉션 -->
+      {% for c in approved_collections %}
+      <div class="p-3 mb-3 rounded" style="background: rgba(16,185,129,0.06); border:1px solid rgba(16,185,129,0.2);">
+        <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
+          <div>
+            <h6 class="mb-1" style="color:#f8fafc; font-weight:700;">{{ c.portfolio_name }}
+              {% if not c.is_published %}<span class="badge" style="background:#64748b;">작성자 비공개</span>{% endif %}
+            </h6>
+            <div style="color:#cbd5e1; font-size:0.9rem;">
+              <i class="fas fa-user me-1"></i>{{ c.user.username }}
+              {% if c.title %}· {{ c.title }}{% endif %}
+              {% if c.reviewed_at %}· <i class="fas fa-check me-1"></i>{{ c.reviewed_at|date:"Y.m.d H:i" }} 승인{% endif %}
+            </div>
+          </div>
+          <a href="{% url 'community:portfolio_collection_detail' c.slug %}" target="_blank" class="btn btn-sm" style="background:#3b82f6; color:white; font-weight:600;">
+            <i class="fas fa-external-link-alt me-1"></i>내용 보기
+          </a>
+        </div>
+        <form method="post" action="{% url 'common:admin_portfolio_reject' 'collection' c.id %}" class="d-flex gap-2 mt-3 flex-wrap align-items-start">
+          {% csrf_token %}
+          <input type="text" name="reason" placeholder="회수 사유 (작성자에게 표시)" class="form-control form-control-sm flex-grow-1" style="min-width:240px; background:rgba(0,0,0,0.2); color:#e2e8f0; border:1px solid rgba(255,255,255,0.15);">
+          <button type="submit" class="btn btn-sm" style="background:#f59e0b; color:white; font-weight:600; white-space:nowrap;"
+                  onclick="return confirm('이 포트폴리오를 회수하여 비공개로 전환할까요?');">
+            <i class="fas fa-undo me-1"></i>게시 회수
+          </button>
+        </form>
+      </div>
+      {% endfor %}
+
+      <!-- 레거시 포트폴리오 -->
+      {% for p in approved_legacy %}
+      <div class="p-3 mb-3 rounded" style="background: rgba(16,185,129,0.06); border:1px solid rgba(245,158,11,0.3);">
+        <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
+          <div>
+            <h6 class="mb-1" style="color:#f8fafc; font-weight:700;">{{ p.get_display_name }}의 포트폴리오 <span class="badge" style="background:#d97706;">기존</span>
+              {% if not p.is_public %}<span class="badge" style="background:#64748b;">작성자 비공개</span>{% endif %}
+            </h6>
+            <div style="color:#cbd5e1; font-size:0.9rem;">
+              <i class="fas fa-user me-1"></i>{{ p.user.username }}
+              {% if p.title %}· {{ p.title }}{% endif %}
+              {% if p.reviewed_at %}· <i class="fas fa-check me-1"></i>{{ p.reviewed_at|date:"Y.m.d H:i" }} 승인{% endif %}
+            </div>
+          </div>
+          <a href="{% url 'community:portfolio_view' p.user.id %}" target="_blank" class="btn btn-sm" style="background:#3b82f6; color:white; font-weight:600;">
+            <i class="fas fa-external-link-alt me-1"></i>내용 보기
+          </a>
+        </div>
+        <form method="post" action="{% url 'common:admin_portfolio_reject' 'legacy' p.id %}" class="d-flex gap-2 mt-3 flex-wrap align-items-start">
+          {% csrf_token %}
+          <input type="text" name="reason" placeholder="회수 사유 (작성자에게 표시)" class="form-control form-control-sm flex-grow-1" style="min-width:240px; background:rgba(0,0,0,0.2); color:#e2e8f0; border:1px solid rgba(255,255,255,0.15);">
+          <button type="submit" class="btn btn-sm" style="background:#f59e0b; color:white; font-weight:600; white-space:nowrap;"
+                  onclick="return confirm('이 포트폴리오를 회수하여 비공개로 전환할까요?');">
+            <i class="fas fa-undo me-1"></i>게시 회수
+          </button>
+        </form>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- 최근 처리 내역 -->
+  {% if recent_collections %}
+  <div class="card border-0" style="background: rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08);">
+    <div class="card-body">
+      <h5 style="color:#a5b4fc; font-weight: 700;" class="mb-3">
+        <i class="fas fa-history me-2"></i>최근 처리 내역
+      </h5>
+      <div class="table-responsive">
+        <table class="table table-sm align-middle" style="color:#e2e8f0;">
+          <thead>
+            <tr style="color:#94a3b8;">
+              <th>포트폴리오</th><th>구성원</th><th>상태</th><th>검토자</th><th>검토일</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for c in recent_collections %}
+            <tr style="border-color:rgba(255,255,255,0.08);">
+              <td>{{ c.portfolio_name }}</td>
+              <td>{{ c.user.username }}</td>
+              <td>
+                {% if c.approval_status == 'approved' %}
+                <span class="badge" style="background:#10b981;">승인</span>
+                {% else %}
+                <span class="badge" style="background:#ef4444;">반려</span>
+                {% if c.rejection_reason %}<small style="color:#94a3b8;"> · {{ c.rejection_reason|truncatechars:40 }}</small>{% endif %}
+                {% endif %}
+              </td>
+              <td>{{ c.reviewed_by.username|default:"-" }}</td>
+              <td>{{ c.reviewed_at|date:"Y.m.d H:i"|default:"-" }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

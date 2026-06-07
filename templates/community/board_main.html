@@ -75,7 +75,9 @@
                         {% endif %}
                         {{ category_name }}
                     </h2>
-                    <p style="color: var(--text-secondary); font-size: 1rem;">{{ data.category.description|default:"" }}</p>
+                    {% if data.category.description and data.category.description != category_name %}
+                    <p style="color: var(--text-secondary); font-size: 1rem;">{{ data.category.description }}</p>
+                    {% endif %}
                 </div>
                 <a href="{% url 'community:board_category' category_name %}" class="btn-premium btn-premium-secondary" style="white-space: nowrap;">
                     전체 보기 <i class="fas fa-arrow-right ms-2"></i>

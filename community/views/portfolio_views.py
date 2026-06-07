@@ -53,14 +53,14 @@ def members_list(request):
     구성원 목록 - 포트폴리오를 공개한 사용자들
     기존 Portfolio + 새 PortfolioCollection 모두 표시
     """
-    # 기존 Portfolio (is_public=True)
+    # 기존 Portfolio (공개 + 관리자 승인 완료)
     public_portfolios = Portfolio.objects.filter(
-        is_public=True
+        is_public=True, approval_status='approved'
     ).select_related('user').order_by('-modify_date')
 
-    # 새 PortfolioCollection (is_published=True)
+    # 새 PortfolioCollection (게시 + 관리자 승인 완료)
     public_collections = PortfolioCollection.objects.filter(
-        is_published=True
+        is_published=True, approval_status='approved'
     ).select_related('user').order_by('-modify_date')
 
     context = {
@@ -83,9 +83,9 @@ def portfolio_view(request, user_id):
     # 포트폴리오 가져오기 (없으면 생성)
     portfolio, created = Portfolio.objects.get_or_create(user=user)
 
-    # 비공개 포트폴리오는 본인만 볼 수 있음
-    if not portfolio.is_public and request.user != user:
-        return HttpResponseForbidden("이 포트폴리오는 비공개입니다.")
+    # 승인되지 않았거나 비공개인 포트폴리오는 본인과 관리자만 볼 수 있음
+    if not portfolio.is_publicly_visible() and request.user != user and not request.user.is_staff:
+        return HttpResponseForbidden("이 포트폴리오는 비공개이거나 관리자 승인 대기 중입니다.")
 
     # 조회수 증가 (본인 제외)
     if request.user != user:
@@ -130,7 +130,6 @@ def portfolio_edit(request):
         portfolio.github_url = request.POST.get('github_url', '')
         portfolio.linkedin_url = request.POST.get('linkedin_url', '')
         portfolio.website_url = request.POST.get('website_url', '')
-        portfolio.is_public = request.POST.get('is_public') == 'on'
         portfolio.show_experience = request.POST.get('show_experience') == 'on'
         portfolio.theme = request.POST.get('theme', 'light')
 
@@ -215,6 +214,15 @@ def portfolio_edit(request):
         # 프로필 이미지
         if 'profile_image' in request.FILES:
             portfolio.profile_image = request.FILES['profile_image']
+
+        # 내용이 변경되면 재승인 필요 - 승인 후 장난성 내용으로 바꾸는 우회를 차단
+        if portfolio.approval_status in ('approved', 'pending', 'rejected'):
+            portfolio.approval_status = 'draft'
+            portfolio.approval_requested_at = None
+            portfolio.rejection_reason = ''
+            portfolio.is_public = False
+            from django.contrib import messages
+            messages.info(request, '내용이 수정되어 비공개로 전환되었습니다. 다시 게시 요청을 해주세요.')
 
         portfolio.save()
 
@@ -661,9 +669,9 @@ def portfolio_collection_detail(request, slug):
     """포트폴리오 컬렉션 상세 (공개 페이지)"""
     collection = get_object_or_404(PortfolioCollection, slug=slug)
 
-    # 비공개 포트폴리오는 본인만 조회
-    if not collection.is_published and request.user != collection.user:
-        return HttpResponseForbidden("비공개 포트폴리오입니다.")
+    # 승인되지 않았거나 비공개인 포트폴리오는 본인과 관리자만 조회
+    if not collection.is_publicly_visible() and request.user != collection.user and not request.user.is_staff:
+        return HttpResponseForbidden("비공개이거나 관리자 승인 대기 중인 포트폴리오입니다.")
 
     # 조회수 증가 (본인 제외)
     if request.user != collection.user:
@@ -703,7 +711,6 @@ def portfolio_collection_edit(request, slug):
         collection.github_url = request.POST.get('github_url', '')
         collection.linkedin_url = request.POST.get('linkedin_url', '')
         collection.website_url = request.POST.get('website_url', '')
-        collection.is_published = request.POST.get('is_published') == 'on'
         collection.show_experience = request.POST.get('show_experience') == 'on'
         collection.theme = request.POST.get('theme', 'light')
 
@@ -777,6 +784,15 @@ def portfolio_collection_edit(request, slug):
         if 'profile_image' in request.FILES:
             collection.profile_image = request.FILES['profile_image']
 
+        # 내용이 변경되면 재승인 필요 - 승인 후 장난성 내용으로 바꾸는 우회를 차단
+        if collection.approval_status in ('approved', 'pending', 'rejected'):
+            collection.approval_status = 'draft'
+            collection.approval_requested_at = None
+            collection.rejection_reason = ''
+            collection.is_published = False
+            from django.contrib import messages
+            messages.info(request, '내용이 수정되어 비공개로 전환되었습니다. 다시 게시 요청을 해주세요.')
+
         collection.save()
         return redirect('community:portfolio_collection_detail', slug=collection.slug)
 
@@ -794,16 +810,64 @@ def portfolio_collection_edit(request, slug):
 
 @login_required
 def portfolio_collection_publish(request, slug):
-    """포트폴리오 게시/비게시 토글"""
+    """게시 승인 요청 / 요청 취소 / (승인 후) 공개·비공개 토글
+
+    승인 상태에 따라 동작이 달라진다.
+    - draft/rejected → 관리자에게 게시 승인 요청 (pending)
+    - pending        → 게시 요청 취소 (draft)
+    - approved       → 공개 ↔ 비공개 토글 (재승인 불필요)
+    """
     collection = get_object_or_404(PortfolioCollection, slug=slug, user=request.user)
 
     if request.method == 'POST':
-        collection.is_published = not collection.is_published
-        collection.save(update_fields=['is_published'])
-
         from django.contrib import messages
-        status = "게시" if collection.is_published else "비공개"
-        messages.success(request, f'"{collection.portfolio_name}"이(가) {status}로 변경되었습니다.')
+        status = collection.approval_status
+
+        if status == 'approved':
+            collection.is_published = not collection.is_published
+            collection.save(update_fields=['is_published'])
+            label = "공개" if collection.is_published else "비공개"
+            messages.success(request, f'"{collection.portfolio_name}"이(가) {label}로 전환되었습니다.')
+        elif status == 'pending':
+            collection.approval_status = 'draft'
+            collection.approval_requested_at = None
+            collection.save(update_fields=['approval_status', 'approval_requested_at'])
+            messages.info(request, f'"{collection.portfolio_name}"의 게시 요청을 취소했습니다.')
+        else:  # draft, rejected
+            collection.approval_status = 'pending'
+            collection.approval_requested_at = timezone.now()
+            collection.rejection_reason = ''
+            collection.save(update_fields=['approval_status', 'approval_requested_at', 'rejection_reason'])
+            messages.success(request, f'"{collection.portfolio_name}"의 게시를 관리자에게 요청했습니다. 승인 후 공개됩니다.')
+
+    return redirect('community:portfolio_collection_list')
+
+
+@login_required
+def portfolio_request_publish(request):
+    """레거시 포트폴리오 게시 승인 요청 / 취소"""
+    portfolio, _ = Portfolio.objects.get_or_create(user=request.user)
+
+    if request.method == 'POST':
+        from django.contrib import messages
+        status = portfolio.approval_status
+
+        if status == 'approved':
+            portfolio.is_public = not portfolio.is_public
+            portfolio.save(update_fields=['is_public'])
+            label = "공개" if portfolio.is_public else "비공개"
+            messages.success(request, f'포트폴리오가 {label}로 전환되었습니다.')
+        elif status == 'pending':
+            portfolio.approval_status = 'draft'
+            portfolio.approval_requested_at = None
+            portfolio.save(update_fields=['approval_status', 'approval_requested_at'])
+            messages.info(request, '게시 요청을 취소했습니다.')
+        else:  # draft, rejected
+            portfolio.approval_status = 'pending'
+            portfolio.approval_requested_at = timezone.now()
+            portfolio.rejection_reason = ''
+            portfolio.save(update_fields=['approval_status', 'approval_requested_at', 'rejection_reason'])
+            messages.success(request, '포트폴리오 게시를 관리자에게 요청했습니다. 승인 후 공개됩니다.')
 
     return redirect('community:portfolio_collection_list')
 

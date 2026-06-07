@@ -410,27 +410,18 @@
             <div style="margin-bottom: var(--space-6); padding: var(--space-6); background: var(--bg-secondary); border-radius: var(--radius-lg);">
                 <h3 style="font-size: 1.125rem; font-weight: 700; margin-bottom: var(--space-4); color: var(--text-primary);">표시 설정</h3>
                 {% if is_collection %}
-                <!-- Collection: portfolio_name + is_published -->
+                <!-- Collection: portfolio_name -->
                 <div style="margin-bottom: var(--space-4);">
                     <label style="display: block; font-weight: 700; margin-bottom: var(--space-3); color: var(--text-primary);">
                         포트폴리오 이름
                     </label>
                     <input type="text" name="portfolio_name" value="{{ portfolio.portfolio_name }}" style="width: 100%; padding: var(--space-4); border: 1px solid var(--border-light); border-radius: var(--radius-md); font-size: 1rem;">
                 </div>
-                <div style="margin-bottom: var(--space-4);">
-                    <label style="display: flex; align-items: center; gap: var(--space-3); cursor: pointer;">
-                        <input type="checkbox" name="is_published" {% if portfolio.is_published %}checked{% endif %} style="width: 20px; height: 20px; cursor: pointer;">
-                        <span style="font-weight: 600;">포트폴리오 공개</span>
-                    </label>
-                </div>
-                {% else %}
-                <div style="margin-bottom: var(--space-4);">
-                    <label style="display: flex; align-items: center; gap: var(--space-3); cursor: pointer;">
-                        <input type="checkbox" name="is_public" {% if portfolio.is_public %}checked{% endif %} style="width: 20px; height: 20px; cursor: pointer;">
-                        <span style="font-weight: 600;">포트폴리오 공개</span>
-                    </label>
-                </div>
                 {% endif %}
+                <div style="margin-bottom: var(--space-4); padding: var(--space-4); background: #eff6ff; border: 1px solid #bfdbfe; border-radius: var(--radius-md); color: #1d4ed8; font-size: 0.9rem; line-height: 1.6;">
+                    <i class="fas fa-info-circle"></i> 포트폴리오는 작성을 완료한 뒤 <strong>내 포트폴리오 관리</strong> 화면에서 <strong>게시 요청</strong>을 해야 하며, <strong>관리자 승인</strong> 후에 구성원 목록에 공개됩니다.
+                    {% if portfolio.approval_status == 'approved' %}<br>내용을 수정하면 다시 비공개로 전환되어 재승인이 필요합니다.{% endif %}
+                </div>
                 <div>
                     <label style="display: flex; align-items: center; gap: var(--space-3); cursor: pointer;">
                         <input type="checkbox" name="show_experience" {% if portfolio.show_experience %}checked{% endif %} style="width: 20px; height: 20px; cursor: pointer;">

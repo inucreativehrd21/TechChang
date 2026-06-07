@@ -959,6 +959,13 @@ def admin_dashboard(request):
     column_today = bot_cols.filter(create_date__date=today).count()
     recent_columns = bot_cols.order_by('-create_date')[:10]
 
+    # 포트폴리오 게시 승인 대기 건수
+    from community.models import Portfolio, PortfolioCollection
+    portfolio_pending_count = (
+        PortfolioCollection.objects.filter(approval_status='pending').count()
+        + Portfolio.objects.filter(approval_status='pending').count()
+    )
+
     context = {
         'total_users': total_users,
         'active_users': active_users,
@@ -970,9 +977,122 @@ def admin_dashboard(request):
         'column_week': column_week,
         'column_today': column_today,
         'recent_columns': recent_columns,
+        'portfolio_pending_count': portfolio_pending_count,
     }
 
     return render(request, 'common/admin_dashboard.html', context)
+
+
+# ====================================================================== #
+#  포트폴리오 게시 승인 - 장난성 포트폴리오 방지
+#  구성원이 게시 요청한 포트폴리오를 관리자가 내용 검토 후 승인/반려한다.
+#  승인되어야만 구성원 목록 및 상세 페이지에 공개된다.
+# ====================================================================== #
+def _get_portfolio_for_review(kind, obj_id):
+    """kind('collection' | 'legacy')에 따라 승인 대상 객체를 반환."""
+    from community.models import Portfolio, PortfolioCollection
+    if kind == 'collection':
+        return get_object_or_404(PortfolioCollection, id=obj_id)
+    elif kind == 'legacy':
+        return get_object_or_404(Portfolio, id=obj_id)
+    return None
+
+
+@admin_required
+def admin_portfolio_approval(request):
+    """포트폴리오 게시 승인 대기 목록"""
+    from community.models import Portfolio, PortfolioCollection
+
+    pending_collections = PortfolioCollection.objects.filter(
+        approval_status='pending'
+    ).select_related('user').order_by('approval_requested_at')
+
+    pending_legacy = Portfolio.objects.filter(
+        approval_status='pending'
+    ).select_related('user').order_by('approval_requested_at')
+
+    # 현재 승인되어 공개 중인 포트폴리오 (사유와 함께 회수 가능)
+    approved_collections = PortfolioCollection.objects.filter(
+        approval_status='approved'
+    ).select_related('user', 'reviewed_by').order_by('-reviewed_at')
+
+    approved_legacy = Portfolio.objects.filter(
+        approval_status='approved'
+    ).select_related('user', 'reviewed_by').order_by('-reviewed_at')
+
+    # 최근 처리 내역 (승인/반려)
+    recent_collections = PortfolioCollection.objects.filter(
+        approval_status__in=['approved', 'rejected']
+    ).select_related('user', 'reviewed_by').order_by('-reviewed_at')[:10]
+
+    context = {
+        'pending_collections': pending_collections,
+        'pending_legacy': pending_legacy,
+        'pending_count': pending_collections.count() + pending_legacy.count(),
+        'approved_collections': approved_collections,
+        'approved_legacy': approved_legacy,
+        'approved_count': approved_collections.count() + approved_legacy.count(),
+        'recent_collections': recent_collections,
+    }
+    return render(request, 'common/admin_portfolio_approval.html', context)
+
+
+@admin_required
+@require_POST
+def admin_portfolio_approve(request, kind, obj_id):
+    """포트폴리오 게시 승인"""
+    obj = _get_portfolio_for_review(kind, obj_id)
+    if obj is None:
+        messages.error(request, '유효하지 않은 요청입니다.')
+        return redirect('common:admin_portfolio_approval')
+
+    obj.approval_status = 'approved'
+    obj.reviewed_at = timezone.now()
+    obj.reviewed_by = request.user
+    obj.rejection_reason = ''
+    if kind == 'collection':
+        obj.is_published = True
+        obj.save(update_fields=['approval_status', 'reviewed_at', 'reviewed_by', 'rejection_reason', 'is_published'])
+        name = obj.portfolio_name
+    else:
+        obj.is_public = True
+        obj.save(update_fields=['approval_status', 'reviewed_at', 'reviewed_by', 'rejection_reason', 'is_public'])
+        name = f'{obj.user.username}의 포트폴리오'
+
+    messages.success(request, f'"{name}"을(를) 승인하여 공개했습니다.')
+    return redirect('common:admin_portfolio_approval')
+
+
+@admin_required
+@require_POST
+def admin_portfolio_reject(request, kind, obj_id):
+    """포트폴리오 게시 반려"""
+    obj = _get_portfolio_for_review(kind, obj_id)
+    if obj is None:
+        messages.error(request, '유효하지 않은 요청입니다.')
+        return redirect('common:admin_portfolio_approval')
+
+    reason = request.POST.get('reason', '').strip()
+    was_approved = obj.approval_status == 'approved'
+
+    obj.approval_status = 'rejected'
+    obj.reviewed_at = timezone.now()
+    obj.reviewed_by = request.user
+    obj.rejection_reason = reason
+    if kind == 'collection':
+        obj.is_published = False
+        obj.save(update_fields=['approval_status', 'reviewed_at', 'reviewed_by', 'rejection_reason', 'is_published'])
+        name = obj.portfolio_name
+    else:
+        obj.is_public = False
+        obj.save(update_fields=['approval_status', 'reviewed_at', 'reviewed_by', 'rejection_reason', 'is_public'])
+        name = f'{obj.user.username}의 포트폴리오'
+
+    if was_approved:
+        messages.success(request, f'"{name}"의 게시를 회수하여 비공개로 전환했습니다. 작성자는 수정 후 다시 게시 요청을 해야 합니다.')
+    else:
+        messages.success(request, f'"{name}"을(를) 반려했습니다.')
+    return redirect('common:admin_portfolio_approval')
 
 
 @admin_required

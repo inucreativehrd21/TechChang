@@ -478,6 +478,14 @@ class Portfolio(models.Model):
         ('dark', '다크 모드'),
     ]
 
+    # 게시 승인 상태 - 장난성 포트폴리오 방지를 위해 관리자 승인 후에만 공개
+    APPROVAL_STATUS_CHOICES = [
+        ('draft', '작성 중'),
+        ('pending', '승인 대기'),
+        ('approved', '승인됨'),
+        ('rejected', '반려됨'),
+    ]
+
     GRADIENT_CHOICES = [
         ('linear-gradient(135deg, #667eea 0%, #764ba2 100%)', '보라 그라데이션'),
         ('linear-gradient(135deg, #f093fb 0%, #f5576c 100%)', '핑크 그라데이션'),
@@ -580,6 +588,13 @@ class Portfolio(models.Model):
     theme = models.CharField(max_length=10, choices=THEME_CHOICES, default='light', verbose_name='테마')
     show_experience = models.BooleanField(default=False, verbose_name='경력 사항 표시', help_text='포트폴리오에 경력 사항 섹션 표시 여부')
 
+    # 게시 승인 워크플로우
+    approval_status = models.CharField(max_length=10, choices=APPROVAL_STATUS_CHOICES, default='draft', verbose_name='승인 상태')
+    approval_requested_at = models.DateTimeField(null=True, blank=True, verbose_name='게시 요청일')
+    reviewed_at = models.DateTimeField(null=True, blank=True, verbose_name='검토일')
+    reviewed_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='+', verbose_name='검토 관리자')
+    rejection_reason = models.TextField(blank=True, default='', verbose_name='반려 사유')
+
     # 메타 정보
     create_date = models.DateTimeField(auto_now_add=True, verbose_name='생성일')
     modify_date = models.DateTimeField(auto_now=True, verbose_name='수정일')
@@ -588,6 +603,10 @@ class Portfolio(models.Model):
     def get_display_name(self):
         """포트폴리오 표시 이름 반환 (설정된 display_name이 있으면 사용, 없으면 사용자명)"""
         return self.display_name if self.display_name else self.user.username
+
+    def is_publicly_visible(self):
+        """공개 노출 가능 여부 - 관리자 승인 + 공개 설정이 모두 충족되어야 함"""
+        return self.approval_status == 'approved' and self.is_public
 
     def __str__(self):
         return f"{self.user.username}의 포트폴리오"
@@ -786,6 +805,13 @@ class PortfolioCollection(models.Model):
     theme = models.CharField(max_length=10, choices=Portfolio.THEME_CHOICES, default='light', verbose_name='테마')
     show_experience = models.BooleanField(default=False, verbose_name='경력 사항 표시')
 
+    # 게시 승인 워크플로우 - 장난성 포트폴리오 방지를 위해 관리자 승인 후에만 공개
+    approval_status = models.CharField(max_length=10, choices=Portfolio.APPROVAL_STATUS_CHOICES, default='draft', verbose_name='승인 상태')
+    approval_requested_at = models.DateTimeField(null=True, blank=True, verbose_name='게시 요청일')
+    reviewed_at = models.DateTimeField(null=True, blank=True, verbose_name='검토일')
+    reviewed_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='+', verbose_name='검토 관리자')
+    rejection_reason = models.TextField(blank=True, default='', verbose_name='반려 사유')
+
     # 메타 정보
     view_count = models.PositiveIntegerField(default=0, verbose_name='조회수')
     create_date = models.DateTimeField(auto_now_add=True, verbose_name='생성일')
@@ -793,6 +819,10 @@ class PortfolioCollection(models.Model):
 
     def get_display_name(self):
         return self.display_name if self.display_name else self.user.username
+
+    def is_publicly_visible(self):
+        """공개 노출 가능 여부 - 관리자 승인 + 게시 설정이 모두 충족되어야 함"""
+        return self.approval_status == 'approved' and self.is_published
 
     def __str__(self):
         return f"{self.user.username} - {self.portfolio_name}"

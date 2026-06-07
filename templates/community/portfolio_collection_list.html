@@ -126,6 +126,64 @@
     font-weight: 700;
 }
 
+.badge-pending {
+    padding: var(--space-1) var(--space-3);
+    background: #fef3c7;
+    color: #b45309;
+    border-radius: var(--radius-full);
+    font-size: 0.75rem;
+    font-weight: 700;
+}
+
+.badge-rejected {
+    padding: var(--space-1) var(--space-3);
+    background: #fee2e2;
+    color: #dc2626;
+    border-radius: var(--radius-full);
+    font-size: 0.75rem;
+    font-weight: 700;
+}
+
+.rejection-note {
+    margin-bottom: var(--space-4);
+    padding: var(--space-3) var(--space-4);
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+    border-radius: var(--radius-md);
+    color: #b91c1c;
+    font-size: 0.875rem;
+}
+
+.approval-info {
+    margin-bottom: var(--space-4);
+    padding: var(--space-3) var(--space-4);
+    background: #eff6ff;
+    border: 1px solid #bfdbfe;
+    border-radius: var(--radius-md);
+    color: #1d4ed8;
+    font-size: 0.875rem;
+}
+
+.btn-request {
+    background: var(--gradient-blue);
+    color: white;
+}
+
+.btn-request:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-blue);
+    color: white;
+}
+
+.btn-pending {
+    background: rgba(180, 83, 9, 0.1);
+    color: #b45309;
+}
+
+.btn-pending:hover {
+    background: rgba(180, 83, 9, 0.2);
+}
+
 .card-meta {
     display: flex;
     gap: var(--space-6);
@@ -301,10 +359,16 @@
                     <h3>{{ legacy_portfolio.get_display_name }}의 포트폴리오</h3>
                     <div class="card-badges">
                         <span class="badge-legacy">기존 포트폴리오</span>
-                        {% if legacy_portfolio.is_public %}
+                        {% if legacy_portfolio.approval_status == 'approved' and legacy_portfolio.is_public %}
                         <span class="badge-published"><i class="fas fa-globe"></i> 공개</span>
-                        {% else %}
+                        {% elif legacy_portfolio.approval_status == 'approved' %}
                         <span class="badge-draft"><i class="fas fa-lock"></i> 비공개</span>
+                        {% elif legacy_portfolio.approval_status == 'pending' %}
+                        <span class="badge-pending"><i class="fas fa-clock"></i> 승인 대기</span>
+                        {% elif legacy_portfolio.approval_status == 'rejected' %}
+                        <span class="badge-rejected"><i class="fas fa-times-circle"></i> 반려됨</span>
+                        {% else %}
+                        <span class="badge-draft"><i class="fas fa-pen"></i> 작성 중</span>
                         {% endif %}
                     </div>
                 </div>
@@ -320,6 +384,16 @@
             <p class="card-description">{{ legacy_portfolio.bio }}</p>
             {% endif %}
 
+            {% if legacy_portfolio.approval_status == 'rejected' and legacy_portfolio.rejection_reason %}
+            <div class="rejection-note">
+                <i class="fas fa-exclamation-triangle"></i> <strong>반려 사유:</strong> {{ legacy_portfolio.rejection_reason }}
+            </div>
+            {% elif legacy_portfolio.approval_status == 'pending' %}
+            <div class="approval-info">
+                <i class="fas fa-info-circle"></i> 관리자 승인 대기 중입니다. 승인되면 구성원 목록에 공개됩니다.
+            </div>
+            {% endif %}
+
             <div class="card-actions">
                 <a href="{% url 'community:portfolio_view' request.user.id %}" class="btn-action btn-view">
                     <i class="fas fa-eye"></i> 보기
@@ -327,6 +401,22 @@
                 <a href="{% url 'community:portfolio_edit' %}" class="btn-action btn-edit">
                     <i class="fas fa-edit"></i> 편집
                 </a>
+                <form method="post" action="{% url 'community:portfolio_request_publish' %}" style="display: inline;">
+                    {% csrf_token %}
+                    {% if legacy_portfolio.approval_status == 'approved' %}
+                        {% if legacy_portfolio.is_public %}
+                        <button type="submit" class="btn-action btn-unpublish"><i class="fas fa-eye-slash"></i> 비공개</button>
+                        {% else %}
+                        <button type="submit" class="btn-action btn-publish"><i class="fas fa-globe"></i> 공개</button>
+                        {% endif %}
+                    {% elif legacy_portfolio.approval_status == 'pending' %}
+                    <button type="submit" class="btn-action btn-pending"><i class="fas fa-undo"></i> 요청 취소</button>
+                    {% elif legacy_portfolio.approval_status == 'rejected' %}
+                    <button type="submit" class="btn-action btn-request"><i class="fas fa-redo"></i> 다시 게시 요청</button>
+                    {% else %}
+                    <button type="submit" class="btn-action btn-request"><i class="fas fa-paper-plane"></i> 게시 요청</button>
+                    {% endif %}
+                </form>
             </div>
         </div>
         {% endif %}
@@ -341,10 +431,16 @@
                         {% if collection.is_main %}
                         <span class="badge-main"><i class="fas fa-star"></i> 대표</span>
                         {% endif %}
-                        {% if collection.is_published %}
+                        {% if collection.approval_status == 'approved' and collection.is_published %}
                         <span class="badge-published"><i class="fas fa-globe"></i> 공개</span>
-                        {% else %}
+                        {% elif collection.approval_status == 'approved' %}
                         <span class="badge-draft"><i class="fas fa-lock"></i> 비공개</span>
+                        {% elif collection.approval_status == 'pending' %}
+                        <span class="badge-pending"><i class="fas fa-clock"></i> 승인 대기</span>
+                        {% elif collection.approval_status == 'rejected' %}
+                        <span class="badge-rejected"><i class="fas fa-times-circle"></i> 반려됨</span>
+                        {% else %}
+                        <span class="badge-draft"><i class="fas fa-pen"></i> 작성 중</span>
                         {% endif %}
                     </div>
                 </div>
@@ -363,6 +459,16 @@
             <p class="card-description">{{ collection.bio }}</p>
             {% endif %}
 
+            {% if collection.approval_status == 'rejected' and collection.rejection_reason %}
+            <div class="rejection-note">
+                <i class="fas fa-exclamation-triangle"></i> <strong>반려 사유:</strong> {{ collection.rejection_reason }}
+            </div>
+            {% elif collection.approval_status == 'pending' %}
+            <div class="approval-info">
+                <i class="fas fa-info-circle"></i> 관리자 승인 대기 중입니다. 승인되면 구성원 목록에 공개됩니다.
+            </div>
+            {% endif %}
+
             <div class="card-actions">
                 <a href="{% url 'community:portfolio_collection_detail' collection.slug %}" class="btn-action btn-view">
                     <i class="fas fa-eye"></i> 보기
@@ -372,14 +478,18 @@
                 </a>
                 <form method="post" action="{% url 'community:portfolio_collection_publish' collection.slug %}" style="display: inline;">
                     {% csrf_token %}
-                    {% if collection.is_published %}
-                    <button type="submit" class="btn-action btn-unpublish">
-                        <i class="fas fa-eye-slash"></i> 비공개
-                    </button>
+                    {% if collection.approval_status == 'approved' %}
+                        {% if collection.is_published %}
+                        <button type="submit" class="btn-action btn-unpublish"><i class="fas fa-eye-slash"></i> 비공개</button>
+                        {% else %}
+                        <button type="submit" class="btn-action btn-publish"><i class="fas fa-globe"></i> 공개</button>
+                        {% endif %}
+                    {% elif collection.approval_status == 'pending' %}
+                    <button type="submit" class="btn-action btn-pending"><i class="fas fa-undo"></i> 요청 취소</button>
+                    {% elif collection.approval_status == 'rejected' %}
+                    <button type="submit" class="btn-action btn-request"><i class="fas fa-redo"></i> 다시 게시 요청</button>
                     {% else %}
-                    <button type="submit" class="btn-action btn-publish">
-                        <i class="fas fa-globe"></i> 게시
-                    </button>
+                    <button type="submit" class="btn-action btn-request"><i class="fas fa-paper-plane"></i> 게시 요청</button>
                     {% endif %}
                 </form>
                 {% if not collection.is_main %}

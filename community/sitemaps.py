@@ -57,7 +57,7 @@ class PortfolioCollectionSitemap(Sitemap):
 
     def items(self):
         return PortfolioCollection.objects.filter(
-            is_published=True
+            is_published=True, approval_status='approved'
         ).select_related('user').order_by('-modify_date')
 
     def lastmod(self, obj):
