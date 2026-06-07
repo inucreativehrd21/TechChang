@@ -702,7 +702,210 @@ def admin_required(view_func):
     return wrapper
 
 
-@admin_required
+# ====================================================================== #
+#  관리자 대시보드 2차 인증 (이메일 OTP + IP 바인딩)
+#  민감한 서버 로그·모니터에 접근하기 전, 관리자 이메일로 8자리 영문+숫자
+#  코드를 발송해 재인증한다. 인증 상태는 "요청한 IP"에 묶이며, 세션 쿠키를
+#  탈취당하더라도 인증 시점과 다른 IP에서의 접근은 철저히 차단된다.
+# ====================================================================== #
+ADMIN_OTP_WINDOW_SECONDS   = 30 * 60   # 재인증 유지 시간 (이 안에서는 메일 재발송 없음)
+ADMIN_OTP_CODE_TTL_SECONDS = 10 * 60   # 발송된 코드 유효 시간
+ADMIN_OTP_RESEND_COOLDOWN  = 60        # 재발송 최소 간격
+ADMIN_OTP_MAX_ATTEMPTS     = 5         # 코드 검증 시도 제한
+
+
+def _client_ip(request):
+    """클라이언트 IP. nginx 프록시 환경에서 보안 미들웨어와 동일 규칙(XFF 마지막 값)."""
+    xff = request.META.get('HTTP_X_FORWARDED_FOR')
+    if xff:
+        ip = xff.split(',')[-1].strip()
+    else:
+        ip = request.META.get('REMOTE_ADDR')
+    return ip or '0.0.0.0'
+
+
+def _admin_otp_recipient():
+    """OTP 수신 이메일 — .env DJANGO_ADMIN_EMAIL 고정 (없으면 settings.ADMINS)."""
+    import os
+    rcpt = os.environ.get('DJANGO_ADMIN_EMAIL', '').strip()
+    if not rcpt and getattr(settings, 'ADMINS', None):
+        rcpt = settings.ADMINS[0][1]
+    return rcpt
+
+
+def _generate_admin_otp(length=8):
+    """영문 대소문자+숫자 혼합 8자리. 혼동 문자(O,I,l,0,1) 제외, 최소 1영문+1숫자 보장."""
+    import secrets
+    import string
+    letters = ''.join(c for c in string.ascii_letters if c not in 'OIl')
+    digits = ''.join(c for c in string.digits if c not in '01')
+    alphabet = letters + digits
+    while True:
+        code = ''.join(secrets.choice(alphabet) for _ in range(length))
+        if any(c in letters for c in code) and any(c in digits for c in code):
+            return code
+
+
+def _admin_otp_session_ok(request):
+    """현재 세션이 OTP 인증 상태이고, 인증한 IP와 현재 접속 IP가 일치하는가."""
+    import time
+    until = request.session.get('admin_otp_until', 0)
+    if time.time() >= until:
+        return False
+    return request.session.get('admin_otp_ip') == _client_ip(request)
+
+
+def admin_otp_required(view_func):
+    """관리자 권한 + 이메일 OTP(IP 바인딩) 2차 인증을 요구하는 데코레이터."""
+    @wraps(view_func)
+    def wrapper(request, *args, **kwargs):
+        if not request.user.is_authenticated:
+            messages.error(request, '로그인이 필요합니다.')
+            return redirect('common:login')
+        if not request.user.is_staff and not request.user.is_superuser:
+            messages.error(request, '관리자 권한이 필요합니다.')
+            return redirect('community:index')
+        if not _admin_otp_session_ok(request):
+            request.session['admin_otp_next'] = request.get_full_path()
+            return redirect('common:admin_otp')
+        return view_func(request, *args, **kwargs)
+    return wrapper
+
+
+def admin_otp(request):
+    """관리자 대시보드 2차 인증 페이지 — 코드 발송 및 검증 (IP 바인딩)."""
+    import time
+    from django.urls import reverse
+
+    if not request.user.is_authenticated:
+        messages.error(request, '로그인이 필요합니다.')
+        return redirect('common:login')
+    if not request.user.is_staff and not request.user.is_superuser:
+        messages.error(request, '관리자 권한이 필요합니다.')
+        return redirect('community:index')
+
+    ip = _client_ip(request)
+    next_url = request.session.get('admin_otp_next') or reverse('common:admin_dashboard')
+    if not url_has_allowed_host_and_scheme(next_url, allowed_hosts={request.get_host()}):
+        next_url = reverse('common:admin_dashboard')
+
+    # 이미 인증된 상태(IP 일치 + 유효시간 내)면 바로 통과
+    if _admin_otp_session_ok(request):
+        return redirect(next_url)
+
+    recipient = _admin_otp_recipient()
+    # 펜딩 코드/쿨다운은 세션(DB 백엔드, 워커 간 공유)에 저장한다.
+    # CACHES가 LocMemCache(프로세스별)라 gunicorn 멀티워커에서는 발송 워커와
+    # 검증 워커가 달라 캐시 기반 코드가 유실될 수 있으므로 세션을 사용한다.
+
+    def _send_code(force=False):
+        if not recipient:
+            messages.error(request, '관리자 수신 이메일(.env DJANGO_ADMIN_EMAIL)이 설정되지 않았습니다.')
+            return 'nomail'
+        last_sent = request.session.get('admin_otp_sent_at', 0)
+        if not force and (time.time() - last_sent) < ADMIN_OTP_RESEND_COOLDOWN:
+            return 'cooldown'  # 쿨다운 중 — 기존 코드 유지(새로고침 시 메일 폭주 방지)
+        code = _generate_admin_otp()
+        request.session['admin_otp_pending'] = {
+            'code': code, 'ip': ip, 'attempts': 0,
+            'exp': time.time() + ADMIN_OTP_CODE_TTL_SECONDS,
+        }
+        body = (
+            '테크창 관리자 대시보드 접속 인증 코드입니다.\n\n'
+            f'인증코드: {code}\n\n'
+            f'요청 IP: {ip}\n'
+            f'유효시간: {ADMIN_OTP_CODE_TTL_SECONDS // 60}분 · 인증 후 {ADMIN_OTP_WINDOW_SECONDS // 60}분간 유지\n\n'
+            '본인이 요청하지 않았다면 코드를 입력하지 말고 즉시 비밀번호를 변경하세요.'
+        )
+        try:
+            send_mail(
+                subject='[테크창] 관리자 대시보드 인증 코드',
+                message=body,
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                recipient_list=[recipient],
+                fail_silently=False,
+            )
+        except Exception:
+            logger.exception('관리자 OTP 이메일 발송 실패')
+            request.session.pop('admin_otp_pending', None)
+            messages.error(request, '인증 코드 발송에 실패했습니다. 잠시 후 다시 시도해주세요.')
+            return 'error'
+        request.session['admin_otp_sent_at'] = time.time()
+        logger.warning('관리자 OTP 발송: user=%s ip=%s', request.user.username, ip)
+        return 'sent'
+
+    def _get_pending():
+        p = request.session.get('admin_otp_pending')
+        if not p:
+            return None
+        if time.time() >= p.get('exp', 0):  # 만료
+            request.session.pop('admin_otp_pending', None)
+            return None
+        return p
+
+    if request.method == 'POST':
+        action = request.POST.get('action', 'verify')
+
+        if action == 'resend':
+            status = _send_code(force=False)
+            if status == 'sent':
+                messages.success(request, '인증 코드를 발송했습니다. 이메일을 확인해주세요.')
+            elif status == 'cooldown':
+                messages.info(request, '이미 코드를 발송했습니다. 이메일을 확인하거나 잠시 후 다시 시도해주세요.')
+            return redirect('common:admin_otp')
+
+        # 코드 검증
+        submitted = (request.POST.get('code') or '').strip()
+        pending = _get_pending()
+        if not pending:
+            messages.error(request, '인증 코드가 만료되었습니다. 코드를 다시 받아주세요.')
+            return redirect('common:admin_otp')
+        if pending.get('ip') != ip:
+            # 코드를 요청한 IP와 다른 IP에서의 검증 시도 → 철저히 차단.
+            # (코드는 삭제하지 않는다: 정당한 IP의 관리자가 계속 사용할 수 있어야 하고,
+            #  코드 값 비교 자체를 하지 않으므로 타 IP에서의 무차별 대입은 무의미하다.)
+            logger.warning('관리자 OTP IP 불일치 차단: user=%s req_ip=%s code_ip=%s',
+                           request.user.username, ip, pending.get('ip'))
+            messages.error(request, '인증을 요청한 IP와 접속 IP가 일치하지 않아 차단되었습니다.')
+            return redirect('common:admin_otp')
+        if pending.get('attempts', 0) >= ADMIN_OTP_MAX_ATTEMPTS:
+            request.session.pop('admin_otp_pending', None)
+            messages.error(request, '시도 횟수를 초과했습니다. 코드를 다시 받아주세요.')
+            return redirect('common:admin_otp')
+
+        if secrets.compare_digest(str(pending.get('code', '')), submitted):
+            request.session['admin_otp_until'] = time.time() + ADMIN_OTP_WINDOW_SECONDS
+            request.session['admin_otp_ip'] = ip
+            request.session.pop('admin_otp_next', None)
+            request.session.pop('admin_otp_pending', None)
+            request.session.pop('admin_otp_sent_at', None)
+            messages.success(request, '인증되었습니다.')
+            return redirect(next_url)
+
+        pending['attempts'] = pending.get('attempts', 0) + 1
+        remaining = max(ADMIN_OTP_MAX_ATTEMPTS - pending['attempts'], 0)
+        request.session['admin_otp_pending'] = pending
+        messages.error(request, f'인증 코드가 올바르지 않습니다. (남은 시도 {remaining}회)')
+        return redirect('common:admin_otp')
+
+    # GET — 코드 발송(쿨다운 고려) 후 폼 표시
+    _send_code(force=False)
+
+    masked = ''
+    if recipient and '@' in recipient:
+        name, domain = recipient.split('@', 1)
+        masked = (name[:2] + '***') if len(name) > 2 else (name[:1] + '***')
+        masked += '@' + domain
+
+    return render(request, 'common/admin_otp.html', {
+        'recipient_masked': masked,
+        'window_minutes': ADMIN_OTP_WINDOW_SECONDS // 60,
+        'code_ttl_minutes': ADMIN_OTP_CODE_TTL_SECONDS // 60,
+        'client_ip': ip,
+    })
+
+
+@admin_otp_required
 def admin_dashboard(request):
     """관리자 대시보드"""
     # 통계 정보
@@ -1280,9 +1483,9 @@ def point_ranking(request):
     return render(request, 'common/point_ranking.html', context)
 
 
-@admin_required
+@admin_otp_required
 def server_monitor(request):
-    """서버 모니터링 대시보드 (관리자 전용)"""
+    """서버 모니터링 대시보드 (관리자 전용 + 이메일 OTP 2차 인증)"""
     from common.management.commands.send_log_report import Command as ReportCmd
     from community.models import Question, DailyVisitor
     from datetime import date
@@ -1335,15 +1538,29 @@ def server_monitor(request):
     return render(request, 'common/server_monitor.html', context)
 
 
+@admin_otp_required
+def server_logs(request):
+    """실시간 로그 전용 뷰어 페이지 (대시보드에서 분리, 관리자 + OTP)."""
+    return render(request, 'common/server_logs.html', {})
+
+
 @admin_required
 def server_live_logs(request):
     """
     실시간 로그 조회 (관리자 전용, 읽기 전용 JSON).
     대시보드 라이브 로그 뷰어가 폴링한다. 어떤 입력도 받지 않고 조회만 수행한다.
+    OTP 미인증/IP 불일치 시에는 로그를 노출하지 않고 403으로 차단한다 (AJAX이므로 리다이렉트 대신 JSON).
     """
     from django.http import JsonResponse
     from common.management.commands.send_log_report import Command as ReportCmd
     from datetime import datetime as _dt
+
+    if not _admin_otp_session_ok(request):
+        return JsonResponse(
+            {'available': False, 'lines': [], 'error': 'reauth_required',
+             'message': '재인증이 필요합니다. 페이지를 새로고침하세요.'},
+            status=403,
+        )
 
     lines = request.GET.get('lines', 120)
     data = ReportCmd()._tail_logs(lines)
@@ -1352,7 +1569,7 @@ def server_live_logs(request):
 
 
 @require_POST
-@admin_required
+@admin_otp_required
 def send_monitor_email(request):
     """모니터 대시보드에서 즉시 이메일 발송"""
     import os

@@ -156,39 +156,104 @@ class Command(BaseCommand):
             return {'available': False, 'error': str(e)}
 
     # ------------------------------------------------------------------ #
+    #  파일 로그 폴백
+    #  journalctl은 mysite 유닛 로그를 보려면 서비스 계정이 systemd-journal
+    #  그룹에 속해야 한다. 권한이 없으면(대부분의 기본 배포) returncode != 0이 되어
+    #  로그 분석·보안·실시간 로그가 모두 비활성화된다. 그 경우 앱이 직접 기록하는
+    #  logs/django.log(prod LOGGING)를 읽어 동일 정보를 제공한다 — 추가 권한 불필요.
+    # ------------------------------------------------------------------ #
+    def _app_log_path(self):
+        """Django 파일 로그 경로 (LOGGING의 logs/django.log)."""
+        try:
+            base = str(settings.BASE_DIR)
+        except Exception:
+            base = os.getcwd()
+        return os.path.join(base, 'logs', 'django.log')
+
+    def _read_log_file(self, hours=None, tail=None, max_bytes=6 * 1024 * 1024):
+        """
+        logs/django.log를 읽어 라인 리스트로 반환 (journalctl 폴백 소스).
+        - hours    : 최근 N시간 라인만 (asctime '%Y-%m-%d %H:%M:%S' 기준 필터)
+        - tail     : 마지막 N줄만
+        - max_bytes: 파일 끝에서 최대 이만큼만 읽어 비용을 제한 (기본 6MB)
+        파일이 없거나 못 읽으면 None.
+        """
+        path = self._app_log_path()
+        if not os.path.exists(path):
+            return None
+        try:
+            size = os.path.getsize(path)
+            with open(path, 'r', errors='replace') as f:
+                if size > max_bytes:
+                    f.seek(size - max_bytes)
+                    f.readline()  # 잘린 첫 줄 버림
+                lines = [l.rstrip('\n') for l in f]
+        except OSError:
+            return None
+
+        if hours is not None:
+            cutoff = datetime.now() - timedelta(hours=hours)
+            ts_pat = re.compile(r'(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})')
+            kept, keep = [], False
+            for line in lines:
+                m = ts_pat.search(line)
+                if m:
+                    try:
+                        keep = datetime.strptime(m.group(1), '%Y-%m-%d %H:%M:%S') >= cutoff
+                    except ValueError:
+                        pass
+                if keep:
+                    kept.append(line)
+            lines = kept
+
+        if tail is not None:
+            lines = lines[-tail:]
+        return lines
+
+    @staticmethod
+    def _classify_level(line):
+        lower = line.lower()
+        if 'error' in lower or 'exception' in lower or 'traceback' in lower or '" 5' in line:
+            return 'error'
+        if 'warning' in lower or 'warn' in lower or '" 4' in line:
+            return 'warn'
+        return 'info'
+
+    # ------------------------------------------------------------------ #
     def _tail_logs(self, lines=120):
         """
         실시간 모니터링용 최근 로그 라인 (읽기 전용).
-        대시보드 라이브 로그 뷰어가 사용한다. journalctl 미가용(로컬) 시 available=False.
+        journalctl 우선, 미가용 시 logs/django.log 폴백.
         """
-        out = {'available': False, 'lines': []}
+        out = {'available': False, 'lines': [], 'source': None}
         try:
             lines = max(20, min(int(lines), 300))
         except (TypeError, ValueError):
             lines = 120
 
+        # 1) journalctl (systemd)
         try:
             result = subprocess.run(
                 ['journalctl', '-u', 'mysite', '-n', str(lines),
                  '--no-pager', '-o', 'short-iso'],
                 capture_output=True, text=True, timeout=10
             )
-            if result.returncode != 0:
+            if result.returncode == 0:
+                out['available'] = True
+                out['source'] = 'journal'
+                for line in result.stdout.splitlines():
+                    out['lines'].append({'text': line, 'level': self._classify_level(line)})
                 return out
-
-            out['available'] = True
-            for line in result.stdout.splitlines():
-                lower = line.lower()
-                if 'error' in lower or 'exception' in lower or 'traceback' in lower or '" 5' in line:
-                    level = 'error'
-                elif 'warning' in lower or 'warn' in lower or '" 4' in line:
-                    level = 'warn'
-                else:
-                    level = 'info'
-                out['lines'].append({'text': line, 'level': level})
-
         except (subprocess.TimeoutExpired, FileNotFoundError):
             pass
+
+        # 2) 폴백: Django 파일 로그
+        file_lines = self._read_log_file(tail=lines)
+        if file_lines is not None:
+            out['available'] = True
+            out['source'] = 'file'
+            for line in file_lines:
+                out['lines'].append({'text': line, 'level': self._classify_level(line)})
 
         return out
 
@@ -292,21 +357,35 @@ class Command(BaseCommand):
             'status_4xx': 0,
             'top_errors': [],
             'available': False,
+            'source': None,
         }
+
+        raw_lines = None
+        # 1) journalctl (systemd)
         try:
             result = subprocess.run(
                 ['journalctl', '-u', 'mysite', f'--since={hours} hours ago',
                  '--no-pager', '-o', 'short'],
                 capture_output=True, text=True, timeout=15
             )
-            if result.returncode != 0:
-                return stats
+            if result.returncode == 0:
+                raw_lines = result.stdout.splitlines()
+                stats['source'] = 'journal'
+        except (subprocess.TimeoutExpired, FileNotFoundError):
+            pass
 
-            lines = result.stdout.splitlines()
+        # 2) 폴백: Django 파일 로그
+        if raw_lines is None:
+            file_lines = self._read_log_file(hours=hours)
+            if file_lines is not None:
+                raw_lines = file_lines
+                stats['source'] = 'file'
+
+        if raw_lines is not None:
             stats['available'] = True
             errors = []
 
-            for line in lines:
+            for line in raw_lines:
                 lower = line.lower()
                 if 'error' in lower or 'exception' in lower or 'traceback' in lower:
                     stats['error_count'] += 1
@@ -332,9 +411,7 @@ class Command(BaseCommand):
                     if len(stats['top_errors']) >= 5:
                         break
 
-        except (subprocess.TimeoutExpired, FileNotFoundError):
-            pass
-
+        # 요청/상태 코드는 보통 nginx 액세스 로그에 있다 (저널/파일에 없을 때 보완)
         if stats['available'] and stats['request_count'] == 0:
             stats.update(self._collect_nginx_access(hours, stats))
 
@@ -403,7 +480,11 @@ class Command(BaseCommand):
             'rate_limit_hits': 0,
             'ddos_detected': 0,
             'available': False,
+            'source': None,
         }
+
+        raw_lines = None
+        # 1) journalctl --grep (systemd). 매칭이 없으면 returncode 1 → 파일 폴백으로 진행.
         try:
             result = subprocess.run(
                 ['journalctl', '-u', 'mysite', f'--since={hours} hours ago',
@@ -411,13 +492,22 @@ class Command(BaseCommand):
                  r'blocked\|rate limit\|DDoS\|suspicious'],
                 capture_output=True, text=True, timeout=15
             )
-            if result.returncode != 0:
-                return stats
+            if result.returncode == 0:
+                raw_lines = result.stdout.splitlines()
+                stats['source'] = 'journal'
+        except (subprocess.TimeoutExpired, FileNotFoundError):
+            pass
 
-            lines = result.stdout.splitlines()
+        # 2) 폴백: Django 파일 로그 (보안 미들웨어 로그가 logs/django.log에 기록됨)
+        if raw_lines is None:
+            file_lines = self._read_log_file(hours=hours)
+            if file_lines is not None:
+                raw_lines = file_lines
+                stats['source'] = 'file'
+
+        if raw_lines is not None:
             stats['available'] = True
-
-            for line in lines:
+            for line in raw_lines:
                 lower = line.lower()
                 if 'blocked' in lower:
                     stats['blocked_ips'] += 1
@@ -425,9 +515,6 @@ class Command(BaseCommand):
                     stats['rate_limit_hits'] += 1
                 if 'ddos' in lower:
                     stats['ddos_detected'] += 1
-
-        except (subprocess.TimeoutExpired, FileNotFoundError):
-            pass
 
         return stats
 

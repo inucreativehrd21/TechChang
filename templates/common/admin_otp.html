@@ -1,0 +1,143 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}관리자 인증 - 테크창{% endblock %}
+
+{% block extra_css %}
+<style>
+.otp-wrap {
+    max-width: 440px;
+    margin: 0 auto;
+    padding: clamp(2.5rem, 8vw, 5rem) 1.25rem;
+}
+.otp-card {
+    background: #fff;
+    border: 1px solid #e4e4e7;
+    border-radius: 16px;
+    padding: 32px 28px;
+    box-shadow: 0 1px 3px rgba(16,24,40,.06), 0 1px 2px rgba(16,24,40,.04);
+}
+.otp-icon {
+    width: 56px; height: 56px;
+    border-radius: 14px;
+    background: #18181b;
+    color: #fff;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.5rem;
+    margin: 0 auto 16px;
+}
+.otp-title {
+    font-size: 1.25rem; font-weight: 800; letter-spacing: -.02em;
+    color: #18181b; text-align: center; margin: 0 0 6px;
+}
+.otp-sub {
+    font-size: .875rem; color: #71717a; text-align: center;
+    line-height: 1.6; margin: 0 0 22px; word-break: keep-all;
+}
+.otp-sub b { color: #4f46e5; font-weight: 700; }
+.otp-input {
+    width: 100%;
+    height: 56px;
+    text-align: center;
+    font-size: 1.5rem;
+    font-weight: 700;
+    letter-spacing: .35em;
+    font-family: 'Courier New', monospace;
+    color: #18181b;
+    border: 1.5px solid #e4e4e7;
+    border-radius: 12px;
+    outline: none;
+    transition: border-color .15s ease;
+    text-transform: none;
+}
+.otp-input:focus { border-color: #4f46e5; }
+.otp-btn {
+    width: 100%;
+    height: 50px;
+    margin-top: 14px;
+    border: none;
+    border-radius: 12px;
+    background: #18181b;
+    color: #fff;
+    font-size: 1rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background .15s ease;
+}
+.otp-btn:hover { background: #000; }
+.otp-resend {
+    width: 100%;
+    height: 46px;
+    margin-top: 10px;
+    border: 1px solid #e4e4e7;
+    border-radius: 12px;
+    background: #fff;
+    color: #3f3f46;
+    font-size: .9375rem;
+    font-weight: 600;
+    cursor: pointer;
+}
+.otp-resend:hover { border-color: #a1a1aa; }
+.otp-meta {
+    margin-top: 18px;
+    padding-top: 16px;
+    border-top: 1px solid #f0f0f1;
+    font-size: .75rem;
+    color: #a1a1aa;
+    text-align: center;
+    line-height: 1.7;
+}
+.otp-meta .ip { color: #71717a; font-weight: 600; font-family: 'Courier New', monospace; }
+.otp-alert {
+    border-radius: 10px;
+    font-size: .8125rem;
+    padding: 10px 14px;
+    margin-bottom: 16px;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="otp-wrap">
+  <div class="otp-card">
+    <div class="otp-icon"><i class="fas fa-shield-halved"></i></div>
+    <h1 class="otp-title">관리자 2차 인증</h1>
+    <p class="otp-sub">
+      민감한 서버 정보 보호를 위해 추가 인증이 필요합니다.<br>
+      <b>{{ recipient_masked|default:"관리자 이메일" }}</b>로 발송된<br>
+      8자리 인증 코드를 입력하세요.
+    </p>
+
+    {% if messages %}
+      {% for message in messages %}
+      <div class="otp-alert alert alert-{{ message.tags }}">{{ message }}</div>
+      {% endfor %}
+    {% endif %}
+
+    <form method="post" action="{% url 'common:admin_otp' %}" autocomplete="off">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="verify">
+      <input type="text" name="code" class="otp-input" maxlength="8"
+             placeholder="________" inputmode="text" autocapitalize="none"
+             autocorrect="off" spellcheck="false" autofocus
+             aria-label="인증 코드">
+      <button type="submit" class="otp-btn">
+        <i class="fas fa-unlock me-1"></i> 인증하고 대시보드 열기
+      </button>
+    </form>
+
+    <form method="post" action="{% url 'common:admin_otp' %}">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="resend">
+      <button type="submit" class="otp-resend">
+        <i class="fas fa-paper-plane me-1"></i> 코드 다시 받기
+      </button>
+    </form>
+
+    <div class="otp-meta">
+      코드 유효시간 {{ code_ttl_minutes }}분 · 인증 후 {{ window_minutes }}분 유지<br>
+      현재 접속 IP <span class="ip">{{ client_ip }}</span> 에서만 사용 가능
+    </div>
+  </div>
+</div>
+{% endblock %}

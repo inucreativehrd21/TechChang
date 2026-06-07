@@ -1,0 +1,169 @@
+{% load static %}<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>실시간 로그 - 테크창</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+<style nonce="{{ csp_nonce }}">
+* { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; }
+body {
+    background: #0a0e1a;
+    color: #cbd5e1;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans KR', sans-serif;
+    display: flex;
+    flex-direction: column;
+    -webkit-font-smoothing: antialiased;
+}
+.lv-bar {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+    padding: 12px 18px;
+    background: #0f172a;
+    border-bottom: 1px solid rgba(255,255,255,.08);
+}
+.lv-title { font-size: .95rem; font-weight: 800; color: #f1f5f9; display: flex; align-items: center; gap: 8px; }
+.lv-title i { color: #7dd3fc; }
+.lv-ctrls { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; font-size: .78rem; font-weight: 600; }
+#lv-status { color: #4ade80; }
+.lv-meta { color: #64748b; }
+.lv-select, .lv-btn {
+    background: rgba(255,255,255,.06);
+    border: 1px solid rgba(255,255,255,.12);
+    color: #cbd5e1;
+    border-radius: 8px;
+    padding: 5px 10px;
+    font-size: .78rem;
+    font-weight: 600;
+    cursor: pointer;
+    outline: none;
+}
+.lv-btn:hover { background: rgba(255,255,255,.12); color: #fff; }
+.lv-toggle { display: flex; align-items: center; gap: 5px; color: #94a3b8; cursor: pointer; user-select: none; }
+.lv-back { color: #94a3b8; text-decoration: none; }
+.lv-back:hover { color: #fff; }
+
+.lv-log {
+    flex: 1;
+    overflow-y: auto;
+    padding: 14px 18px;
+    font-family: 'Courier New', monospace;
+    font-size: .78rem;
+    line-height: 1.55;
+}
+.lv-line { white-space: pre-wrap; word-break: break-all; color: #94a3b8; padding: 1px 0; }
+.lv-line.error { color: #f87171; }
+.lv-line.warn  { color: #fbbf24; }
+.lv-empty { color: #475569; text-align: center; padding: 48px 0; font-size: .9rem; }
+.lv-empty a { color: #7dd3fc; }
+.lv-log::-webkit-scrollbar { width: 10px; }
+.lv-log::-webkit-scrollbar-thumb { background: rgba(255,255,255,.14); border-radius: 5px; }
+</style>
+</head>
+<body>
+<div class="lv-bar">
+  <div class="lv-title"><i class="fas fa-terminal"></i> 실시간 로그 (mysite)</div>
+  <div class="lv-ctrls">
+    <span id="lv-status">● LIVE</span>
+    <span id="lv-source" class="lv-meta"></span>
+    <span id="lv-time" class="lv-meta" style="min-width:62px; text-align:right;"></span>
+    <select id="lv-lines" class="lv-select" title="표시 줄 수">
+      <option value="120">120줄</option>
+      <option value="200">200줄</option>
+      <option value="300">300줄</option>
+    </select>
+    <label class="lv-toggle"><input type="checkbox" id="lv-auto" checked> 자동 갱신</label>
+    <button id="lv-now" class="lv-btn" type="button"><i class="fas fa-rotate-right"></i> 새로고침</button>
+    <a href="{% url 'common:server_monitor' %}" class="lv-back"><i class="fas fa-gauge-high me-1"></i> 대시보드</a>
+  </div>
+</div>
+
+<div id="lv-log" class="lv-log">
+  <div class="lv-empty">로그 불러오는 중…</div>
+</div>
+
+<script nonce="{{ csp_nonce }}">
+(function() {
+    const box = document.getElementById('lv-log');
+    const statusEl = document.getElementById('lv-status');
+    const timeEl = document.getElementById('lv-time');
+    const srcEl = document.getElementById('lv-source');
+    const auto = document.getElementById('lv-auto');
+    const linesSel = document.getElementById('lv-lines');
+    const nowBtn = document.getElementById('lv-now');
+    const base = "{% url 'common:server_live_logs' %}";
+    let logTimer = null;
+
+    function esc(s) {
+        const d = document.createElement('div');
+        d.textContent = s;
+        return d.innerHTML;
+    }
+
+    async function fetchLogs() {
+        try {
+            const res = await fetch(base + '?lines=' + (linesSel.value || 120),
+                                    { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+
+            if (res.status === 403) {
+                stop();
+                statusEl.style.color = '#f87171';
+                statusEl.textContent = '● 재인증 필요';
+                box.innerHTML = '<div class="lv-empty"><i class="fas fa-lock me-1"></i> 세션이 만료되었거나 IP가 변경되었습니다.<br><br>'
+                    + '<a href="{% url 'common:server_monitor' %}">대시보드에서 다시 인증</a>해주세요.</div>';
+                return;
+            }
+
+            const data = await res.json();
+            timeEl.textContent = data.server_time || '';
+
+            if (!data.available) {
+                box.innerHTML = '<div class="lv-empty"><i class="fas fa-info-circle me-1"></i> journalctl 또는 logs/django.log 접근 시 표시됩니다.</div>';
+                statusEl.style.color = '#64748b';
+                statusEl.textContent = '● N/A';
+                srcEl.textContent = '';
+                return;
+            }
+            statusEl.style.color = '#4ade80';
+            statusEl.textContent = '● LIVE';
+            srcEl.textContent = data.source === 'file' ? '· 앱 로그(django.log)' : (data.source === 'journal' ? '· journald' : '');
+
+            if (!data.lines.length) {
+                box.innerHTML = '<div class="lv-empty">표시할 로그가 없습니다.</div>';
+                return;
+            }
+            const atBottom = box.scrollHeight - box.scrollTop - box.clientHeight < 60;
+            box.innerHTML = data.lines.map(function(l) {
+                return '<div class="lv-line ' + (l.level || '') + '">' + esc(l.text) + '</div>';
+            }).join('');
+            if (atBottom) box.scrollTop = box.scrollHeight;
+        } catch (e) {
+            statusEl.style.color = '#f87171';
+            statusEl.textContent = '● 오류';
+        }
+    }
+
+    function start() {
+        stop();
+        fetchLogs();
+        if (auto.checked) logTimer = setInterval(fetchLogs, 5000);
+    }
+    function stop() { if (logTimer) { clearInterval(logTimer); logTimer = null; } }
+
+    auto.addEventListener('change', function() {
+        if (auto.checked) { statusEl.style.color = '#4ade80'; statusEl.textContent = '● LIVE'; start(); }
+        else { stop(); statusEl.style.color = '#64748b'; statusEl.textContent = '● 일시정지'; }
+    });
+    linesSel.addEventListener('change', start);
+    nowBtn.addEventListener('click', fetchLogs);
+
+    start();
+})();
+</script>
+</body>
+</html>

@@ -26,9 +26,11 @@ urlpatterns = [
     path('kakao/logout/', views.kakao_logout, name='kakao_logout'),
 
     # 관리자 기능
+    path('admin/otp/', views.admin_otp, name='admin_otp'),
     path('admin/dashboard/', views.admin_dashboard, name='admin_dashboard'),
     path('admin/monitor/', views.server_monitor, name='server_monitor'),
     path('admin/monitor/send-email/', views.send_monitor_email, name='send_monitor_email'),
+    path('admin/monitor/logs/', views.server_logs, name='server_logs'),
     path('admin/monitor/live-logs/', views.server_live_logs, name='server_live_logs'),
     path('admin/users/', views.admin_user_list, name='admin_user_list'),
     path('admin/user/<int:user_id>/', views.admin_user_detail, name='admin_user_detail'),

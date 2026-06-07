@@ -292,6 +292,16 @@ LOGGING = {
             'class': 'logging.StreamHandler',
             'formatter': 'simple',
         },
+        # 앱 통합 로그 — 서버 모니터 대시보드가 journalctl 미가용 시 이 파일을 읽어
+        # 로그 분석·보안 이벤트·실시간 로그를 제공한다. verbose(타임스탬프 포함) 포맷 필수.
+        'file': {
+            'level': 'INFO',
+            'class': 'logging.handlers.RotatingFileHandler',
+            'filename': LOGS_DIR / 'django.log',
+            'maxBytes': 1024*1024*5,  # 5MB
+            'backupCount': 3,
+            'formatter': 'verbose',
+        },
         'security_file': {
             'level': 'WARNING',
             'class': 'logging.handlers.RotatingFileHandler',
@@ -302,17 +312,17 @@ LOGGING = {
         },
     },
     'root': {
-        'handlers': ['console'],
+        'handlers': ['console', 'file'],
         'level': 'INFO',
     },
     'loggers': {
         'django': {
-            'handlers': ['console'],
+            'handlers': ['console', 'file'],
             'level': 'INFO',
             'propagate': False,
         },
         'security': {
-            'handlers': ['security_file', 'console'],
+            'handlers': ['security_file', 'console', 'file'],
             'level': 'WARNING',
             'propagate': False,
         },

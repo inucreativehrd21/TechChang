@@ -110,8 +110,12 @@ LOGGING = {
     'handlers': {
         'file': {
             'level': 'INFO',
-            'class': 'logging.FileHandler',
+            # 크기 제한 회전: 대시보드 모니터가 이 파일을 읽어 로그/보안/실시간 로그를
+            # 제공하므로(저널 권한 불필요) 무한 증가를 막아 읽기 비용·디스크를 관리한다.
+            'class': 'logging.handlers.RotatingFileHandler',
             'filename': BASE_DIR / 'logs' / 'django.log',
+            'maxBytes': 1024 * 1024 * 5,  # 5MB
+            'backupCount': 3,
             'formatter': 'verbose',
         },
         'console': {

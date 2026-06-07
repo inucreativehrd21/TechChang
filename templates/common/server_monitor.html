@@ -61,6 +61,14 @@
 .svc-active { color: #4ade80; font-weight: 700; }
 .svc-fail   { color: #f87171; font-weight: 700; }
 
+/* 데이터 소스 칩 (journald / 앱 로그 파일) */
+.src-chip {
+    font-size: .625rem; font-weight: 700; letter-spacing: .02em;
+    color: #94a3b8; background: rgba(148,163,184,.14);
+    padding: 2px 9px; border-radius: 999px; white-space: nowrap;
+}
+.src-chip.src-file { color: #7dd3fc; background: rgba(125,211,252,.14); }
+
 /* 트렌드 바 차트 */
 .trend-bars {
     display: flex;
@@ -239,7 +247,10 @@
 
       <!-- 로그 분석 -->
       <div class="mon-card">
-        <h2><i class="fas fa-file-alt"></i> 로그 분석 ({{ hours }}h)</h2>
+        <h2 style="justify-content:space-between;">
+          <span><i class="fas fa-file-alt"></i> 로그 분석 ({{ hours }}h)</span>
+          {% if journal.source == 'file' %}<span class="src-chip src-file">앱 로그</span>{% elif journal.source == 'journal' %}<span class="src-chip">journald</span>{% endif %}
+        </h2>
         {% if journal.available %}
         <div class="stat-grid" style="margin-bottom:16px;">
           <div class="stat-box">
@@ -261,14 +272,17 @@
         </div>
         {% else %}
         <div style="color:#64748b; font-size:.875rem; text-align:center; padding:20px 0;">
-          <i class="fas fa-info-circle me-1"></i> 서버(Linux)에서 실행 시 활성화됩니다.
+          <i class="fas fa-info-circle me-1"></i> journalctl 또는 logs/django.log 접근 시 활성화됩니다.
         </div>
         {% endif %}
       </div>
 
       <!-- 보안 이벤트 -->
       <div class="mon-card">
-        <h2><i class="fas fa-shield-alt"></i> 보안 이벤트 ({{ hours }}h)</h2>
+        <h2 style="justify-content:space-between;">
+          <span><i class="fas fa-shield-alt"></i> 보안 이벤트 ({{ hours }}h)</span>
+          {% if security.source == 'file' %}<span class="src-chip src-file">앱 로그</span>{% elif security.source == 'journal' %}<span class="src-chip">journald</span>{% endif %}
+        </h2>
         {% if security.available %}
         <div class="mon-row">
           <span class="label">IP 차단</span>
@@ -284,7 +298,7 @@
         </div>
         {% else %}
         <div style="color:#64748b; font-size:.875rem; text-align:center; padding:20px 0;">
-          <i class="fas fa-info-circle me-1"></i> 서버(Linux)에서 실행 시 활성화됩니다.
+          <i class="fas fa-info-circle me-1"></i> journalctl 또는 logs/django.log 접근 시 활성화됩니다.
         </div>
         {% endif %}
       </div>
@@ -462,24 +476,20 @@
     </div><!-- /오른쪽 -->
   </div><!-- /grid -->
 
-  <!-- 실시간 로그 (읽기 전용) -->
-  <div class="mon-card" style="margin-top:0;">
-    <h2 style="justify-content:space-between;">
-      <span><i class="fas fa-terminal"></i> 실시간 로그 (mysite)</span>
-      <span style="display:flex; gap:14px; align-items:center; font-size:.75rem; font-weight:600;">
-        <span id="live-status" style="color:#4ade80;">● LIVE</span>
-        <label style="color:#94a3b8; cursor:pointer; display:flex; gap:5px; align-items:center; user-select:none;">
-          <input type="checkbox" id="live-toggle" checked style="cursor:pointer;"> 자동 갱신
-        </label>
-        <span id="live-time" style="color:#64748b; min-width:62px; text-align:right;"></span>
-      </span>
-    </h2>
-    <div id="live-log" class="live-log">
-      <div class="live-empty">로그 불러오는 중…</div>
+  <!-- 실시간 로그 — 전용 창으로 분리 -->
+  <div class="mon-card" style="margin-top:0; display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap;">
+    <div>
+      <div style="font-size:.9375rem; font-weight:700; color:#7dd3fc;">
+        <i class="fas fa-terminal me-1"></i> 실시간 로그
+      </div>
+      <div style="font-size:.78rem; color:#64748b; margin-top:4px;">
+        읽기 전용 로그 뷰어를 별도 창에서 크게 볼 수 있습니다.
+      </div>
     </div>
-    <div style="font-size:.7rem; color:#475569; margin-top:8px;">
-      <i class="fas fa-lock me-1"></i> 읽기 전용 · 최근 120줄 · 5초마다 갱신
-    </div>
+    <a href="{% url 'common:server_logs' %}" target="_blank" rel="noopener"
+       style="padding:9px 18px; border-radius:10px; border:none; background:linear-gradient(135deg,#3b82f6,#6366f1); color:#fff; font-size:.85rem; font-weight:700; text-decoration:none; white-space:nowrap;">
+      <i class="fas fa-external-link-alt me-1"></i> 로그 전용 창 열기
+    </a>
   </div>
 
 </div>
@@ -502,69 +512,5 @@ const timer = setInterval(() => {
         location.reload();
     }
 }, 1000);
-
-// 실시간 로그 폴링 (읽기 전용)
-(function() {
-    const box = document.getElementById('live-log');
-    const statusEl = document.getElementById('live-status');
-    const timeEl = document.getElementById('live-time');
-    const toggle = document.getElementById('live-toggle');
-    const url = "{% url 'common:server_live_logs' %}?lines=120";
-    let logTimer = null;
-
-    function esc(s) {
-        const d = document.createElement('div');
-        d.textContent = s;
-        return d.innerHTML;
-    }
-
-    async function fetchLogs() {
-        try {
-            const res = await fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
-            const data = await res.json();
-            timeEl.textContent = data.server_time || '';
-
-            if (!data.available) {
-                box.innerHTML = '<div class="live-empty"><i class="fas fa-info-circle me-1"></i> 서버(Linux)에서만 실시간 로그를 볼 수 있습니다.</div>';
-                statusEl.style.color = '#64748b';
-                statusEl.textContent = '● N/A';
-                return;
-            }
-            statusEl.style.color = '#4ade80';
-            statusEl.textContent = '● LIVE';
-
-            if (!data.lines.length) {
-                box.innerHTML = '<div class="live-empty">표시할 로그가 없습니다.</div>';
-                return;
-            }
-            // 사용자가 아래쪽을 보고 있으면 새 로그 도착 시 자동 스크롤
-            const atBottom = box.scrollHeight - box.scrollTop - box.clientHeight < 40;
-            box.innerHTML = data.lines.map(function(l) {
-                return '<div class="live-line ' + (l.level || '') + '">' + esc(l.text) + '</div>';
-            }).join('');
-            if (atBottom) box.scrollTop = box.scrollHeight;
-        } catch (e) {
-            statusEl.style.color = '#f87171';
-            statusEl.textContent = '● 오류';
-        }
-    }
-
-    function start() { fetchLogs(); logTimer = setInterval(fetchLogs, 5000); }
-    function stop()  { if (logTimer) { clearInterval(logTimer); logTimer = null; } }
-
-    toggle.addEventListener('change', function() {
-        if (toggle.checked) {
-            statusEl.style.color = '#4ade80';
-            statusEl.textContent = '● LIVE';
-            start();
-        } else {
-            stop();
-            statusEl.style.color = '#64748b';
-            statusEl.textContent = '● 일시정지';
-        }
-    });
-
-    start();
-})();
 </script>
 {% endblock %}
