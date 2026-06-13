@@ -266,4 +266,74 @@ class BlockedIP(models.Model):
     def __str__(self):
         return f"{self.ip_address} ({self.reason})"
 
-# Create your models here.
+
+class LogFinding(models.Model):
+    """AI 로그 분석관(send_log_report/대시보드)이 도출한 지적사항.
+
+    관리자가 대시보드에서 승인하면 GitHub repository_dispatch 로 자동 수정
+    PR 생성 워크플로를 트리거한다. fingerprint 로 같은 지적의 재생성을 막고,
+    한 번 결정(승인/거부)된 항목은 다시 pending 으로 되살리지 않는다.
+    """
+    STATUS_PENDING = 'pending'
+    STATUS_APPROVED = 'approved'
+    STATUS_REJECTED = 'rejected'
+    STATUS_DISPATCHED = 'dispatched'   # 승인 후 GitHub 워크플로 트리거 완료
+    STATUS_CHOICES = [
+        (STATUS_PENDING, '대기'),
+        (STATUS_APPROVED, '승인'),
+        (STATUS_REJECTED, '거부'),
+        (STATUS_DISPATCHED, '작업 전달됨'),
+    ]
+
+    fingerprint = models.CharField(max_length=64, unique=True, db_index=True, verbose_name='지문(중복 방지)')
+    title = models.CharField(max_length=300, verbose_name='문제 제목')
+    cause = models.TextField(blank=True, verbose_name='추정 원인')
+    action = models.TextField(blank=True, verbose_name='권장 조치')
+    severity = models.CharField(max_length=20, blank=True, verbose_name='심각도')
+    overview = models.TextField(blank=True, verbose_name='총평')
+
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default=STATUS_PENDING, db_index=True, verbose_name='상태')
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name='최초 감지일시')
+    decided_at = models.DateTimeField(null=True, blank=True, verbose_name='결정일시')
+    decided_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='decided_findings', verbose_name='결정한 관리자')
+    pr_url = models.URLField(blank=True, verbose_name='생성된 PR URL')
+    note = models.CharField(max_length=300, blank=True, verbose_name='비고')
+
+    class Meta:
+        verbose_name = 'AI 로그 지적사항'
+        verbose_name_plural = 'AI 로그 지적사항 목록'
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"[{self.get_status_display()}] {self.title}"
+
+    @staticmethod
+    def make_fingerprint(title: str, cause: str = '') -> str:
+        import hashlib
+        basis = f"{(title or '').strip().lower()}|{(cause or '').strip().lower()[:200]}"
+        return hashlib.sha256(basis.encode('utf-8')).hexdigest()
+
+    @classmethod
+    def record(cls, finding: dict, severity: str = '', overview: str = ''):
+        """분석 결과 finding({title,cause,action}) 1건을 저장(upsert)한다.
+
+        - 같은 fingerprint 가 이미 있으면 새로 만들지 않는다(이미 결정된 건도 보존).
+        - 신규일 때만 (obj, True) 를 반환, 기존이면 (obj, False).
+        제목이 없으면 저장하지 않고 (None, False).
+        """
+        title = (finding.get('title') or '').strip()
+        if not title:
+            return None, False
+        cause = (finding.get('cause') or '').strip()
+        fp = cls.make_fingerprint(title, cause)
+        obj, created = cls.objects.get_or_create(
+            fingerprint=fp,
+            defaults={
+                'title': title[:300],
+                'cause': cause,
+                'action': (finding.get('action') or '').strip(),
+                'severity': (severity or '').strip()[:20],
+                'overview': (overview or '').strip(),
+            },
+        )
+        return obj, created

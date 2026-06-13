@@ -368,6 +368,61 @@
         {% endif %}
       </div>
 
+      <!-- AI 지적사항 승인 (→ 자동 수정 PR) -->
+      <div class="mon-card">
+        <h2>
+          <i class="fas fa-code-pull-request"></i> 지적사항 승인 → 자동 수정 PR
+          {% if pending_findings %}
+          <span style="margin-left:auto; font-size:.7rem; padding:2px 10px; border-radius:20px; font-weight:700; background:#713f12; color:#fbbf24;">대기 {{ pending_findings|length }}</span>
+          {% endif %}
+        </h2>
+
+        {% for f in pending_findings %}
+        <div class="ai-finding">
+          <div class="t">{{ f.title }}</div>
+          {% if f.cause %}<div class="d"><span class="k">원인&nbsp;</span>{{ f.cause }}</div>{% endif %}
+          {% if f.action %}<div class="d"><span class="k">조치&nbsp;</span>{{ f.action }}</div>{% endif %}
+          <div style="display:flex; gap:8px; margin-top:10px;">
+            <form method="post" action="{% url 'common:finding_approve' f.id %}"
+                  onsubmit="return confirm('이 지적사항을 승인하고 자동 수정 PR을 생성할까요?');">
+              {% csrf_token %}
+              <button type="submit" style="background:#14532d; color:#4ade80; border:0; border-radius:8px; padding:6px 14px; font-weight:700; cursor:pointer;">
+                <i class="fas fa-check me-1"></i> 승인 → PR 생성
+              </button>
+            </form>
+            <form method="post" action="{% url 'common:finding_reject' f.id %}"
+                  onsubmit="return confirm('이 지적사항을 거부할까요?');">
+              {% csrf_token %}
+              <button type="submit" style="background:#3f1d1d; color:#f87171; border:0; border-radius:8px; padding:6px 14px; font-weight:700; cursor:pointer;">
+                <i class="fas fa-times me-1"></i> 거부
+              </button>
+            </form>
+          </div>
+        </div>
+        {% empty %}
+        <div style="color:#4ade80; font-size:.875rem; text-align:center; padding:20px 0;">
+          <i class="fas fa-check-circle me-1"></i> 승인 대기 중인 지적사항이 없습니다.
+        </div>
+        {% endfor %}
+
+        {% if recent_decided %}
+        <div style="font-size:.7rem; color:#64748b; margin-top:14px; border-top:1px solid #1e293b; padding-top:10px;">
+          <div style="margin-bottom:6px; font-weight:700; color:#94a3b8;">최근 처리 내역</div>
+          {% for f in recent_decided %}
+          <div style="display:flex; justify-content:space-between; gap:8px; padding:3px 0;">
+            <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">{{ f.title }}</span>
+            <span style="flex-shrink:0;
+              {% if f.status == 'dispatched' %}color:#4ade80;
+              {% elif f.status == 'approved' %}color:#fbbf24;
+              {% elif f.status == 'rejected' %}color:#f87171;{% endif %}">
+              {% if f.pr_url %}<a href="{{ f.pr_url }}" target="_blank" style="color:#60a5fa;">PR</a> · {% endif %}{{ f.get_status_display }}
+            </span>
+          </div>
+          {% endfor %}
+        </div>
+        {% endif %}
+      </div>
+
     </div><!-- /왼쪽 -->
 
     <!-- 오른쪽 컬럼 -->

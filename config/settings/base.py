@@ -224,6 +224,13 @@ LOGOUT_REDIRECT_URL = '/'  # 로그아웃 후 이동하는 URL
 # Anthropic Claude API 설정
 ANTHROPIC_API_KEY = os.environ.get('ANTHROPIC_API_KEY', '')
 
+# AI 로그 지적사항 → 자동 수정 PR 연동 (GitHub)
+#  관리자가 대시보드에서 지적사항을 '승인'하면 Django 가 repository_dispatch 로
+#  auto-fix 워크플로를 트리거한다. 토큰 미설정 시 승인은 되지만 PR 트리거는 건너뛴다.
+#  GITHUB_DISPATCH_TOKEN: fine-grained PAT (대상 repo, Contents read/write)
+GITHUB_DISPATCH_TOKEN = os.environ.get('GITHUB_DISPATCH_TOKEN', '')
+GITHUB_REPO = os.environ.get('GITHUB_REPO', 'inucreativehrd21/TechChang')  # owner/repo
+
 # 카카오 로그인 API 설정
 KAKAO_REST_API_KEY = os.environ.get('KAKAO_REST_API_KEY', '')
 KAKAO_CLIENT_SECRET = os.environ.get('KAKAO_CLIENT_SECRET', '')

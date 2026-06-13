@@ -1,5 +1,14 @@
 from django.contrib import admin
-from .models import Profile, Emoticon, UserEmoticon, DailyCheckIn, PointHistory, EmailVerification, KakaoUser, BlockedIP
+from .models import Profile, Emoticon, UserEmoticon, DailyCheckIn, PointHistory, EmailVerification, KakaoUser, BlockedIP, LogFinding
+
+
+@admin.register(LogFinding)
+class LogFindingAdmin(admin.ModelAdmin):
+    list_display = ['title', 'severity', 'status', 'created_at', 'decided_by', 'pr_url']
+    list_filter = ['status', 'severity', 'created_at']
+    search_fields = ['title', 'cause', 'action']
+    ordering = ['-created_at']
+    readonly_fields = ['fingerprint', 'created_at']
 
 
 @admin.register(Profile)

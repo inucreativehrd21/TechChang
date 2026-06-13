@@ -1129,6 +1129,92 @@ def admin_portfolio_reject(request, kind, obj_id):
     return redirect('common:admin_portfolio_approval')
 
 
+def _dispatch_finding_fix(finding):
+    """승인된 지적사항을 GitHub repository_dispatch 로 보내 auto-fix 워크플로를 트리거.
+
+    반환: (성공여부: bool, 메시지: str). 토큰 미설정/요청 실패 시 False.
+    """
+    token = getattr(settings, 'GITHUB_DISPATCH_TOKEN', '')
+    repo = getattr(settings, 'GITHUB_REPO', '')
+    if not token or not repo:
+        return False, 'GITHUB_DISPATCH_TOKEN/GITHUB_REPO 미설정 — PR 트리거를 건너뜁니다.'
+
+    try:
+        resp = requests.post(
+            f'https://api.github.com/repos/{repo}/dispatches',
+            headers={
+                'Authorization': f'Bearer {token}',
+                'Accept': 'application/vnd.github+json',
+                'X-GitHub-Api-Version': '2022-11-28',
+            },
+            json={
+                'event_type': 'log-finding-approved',
+                'client_payload': {
+                    'finding_id': finding.id,
+                    'title': finding.title,
+                    'cause': finding.cause,
+                    'action': finding.action,
+                    'severity': finding.severity,
+                },
+            },
+            timeout=10,
+        )
+    except requests.RequestException as e:
+        return False, f'GitHub 요청 실패: {e}'
+
+    if resp.status_code == 204:
+        return True, 'GitHub auto-fix 워크플로를 트리거했습니다.'
+    return False, f'GitHub 응답 오류 {resp.status_code}: {resp.text[:200]}'
+
+
+@admin_required
+@require_POST
+def finding_approve(request, finding_id):
+    """AI 지적사항 승인 → GitHub auto-fix 워크플로 트리거."""
+    from .models import LogFinding
+
+    finding = LogFinding.objects.filter(pk=finding_id).first()
+    if finding is None:
+        messages.error(request, '존재하지 않는 지적사항입니다.')
+        return redirect('common:server_monitor')
+
+    finding.status = LogFinding.STATUS_APPROVED
+    finding.decided_at = timezone.now()
+    finding.decided_by = request.user
+
+    ok, detail = _dispatch_finding_fix(finding)
+    if ok:
+        finding.status = LogFinding.STATUS_DISPATCHED
+        finding.note = detail[:300]
+        messages.success(request, f'"{finding.title}" 승인 — {detail}')
+    else:
+        finding.note = detail[:300]
+        messages.warning(request, f'"{finding.title}" 승인은 기록했으나 PR 트리거 실패: {detail}')
+
+    finding.save(update_fields=['status', 'decided_at', 'decided_by', 'note'])
+    return redirect('common:server_monitor')
+
+
+@admin_required
+@require_POST
+def finding_reject(request, finding_id):
+    """AI 지적사항 거부 (PR 생성 안 함)."""
+    from .models import LogFinding
+
+    finding = LogFinding.objects.filter(pk=finding_id).first()
+    if finding is None:
+        messages.error(request, '존재하지 않는 지적사항입니다.')
+        return redirect('common:server_monitor')
+
+    finding.status = LogFinding.STATUS_REJECTED
+    finding.decided_at = timezone.now()
+    finding.decided_by = request.user
+    finding.note = request.POST.get('reason', '').strip()[:300]
+    finding.save(update_fields=['status', 'decided_at', 'decided_by', 'note'])
+    messages.success(request, f'"{finding.title}"을(를) 거부했습니다.')
+    return redirect('common:server_monitor')
+
+
 @admin_required
 def admin_user_list(request):
     """사용자 목록 관리"""
@@ -1686,6 +1772,15 @@ def server_monitor(request):
         ai_analysis = cmd._analyze_errors(hours, journal_stats)
         cache.set(ai_key, ai_analysis, 1800 if ai_analysis.get('available') else 300)
 
+    # 분석된 findings 를 DB에 저장(중복 지문은 무시) → 승인 대기 목록으로 노출
+    from .models import LogFinding
+    if ai_analysis.get('available') and not ai_analysis.get('skipped'):
+        for f in ai_analysis.get('findings', []):
+            if isinstance(f, dict):
+                LogFinding.record(f, ai_analysis.get('severity', ''), ai_analysis.get('overview', ''))
+    pending_findings = LogFinding.objects.filter(status=LogFinding.STATUS_PENDING)
+    recent_decided = LogFinding.objects.exclude(status=LogFinding.STATUS_PENDING)[:10]
+
     # 최근 7일 방문자 추이
     today = date.today()
     visitor_trend = []
@@ -1713,6 +1808,8 @@ def server_monitor(request):
         'ai': ai_analysis,
         'visitor_trend': visitor_trend,
         'question_trend': question_trend,
+        'pending_findings': pending_findings,
+        'recent_decided': recent_decided,
     }
     return render(request, 'common/server_monitor.html', context)
 

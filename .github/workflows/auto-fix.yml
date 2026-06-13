@@ -1,0 +1,46 @@
+name: Auto-fix from log finding
+
+# 관리자가 서버 모니터 대시보드에서 AI 지적사항을 '승인'하면 Django 가
+# repository_dispatch(event_type: log-finding-approved) 를 발사한다.
+# 이 워크플로가 Claude 를 띄워 수정을 구현하고 PR 을 자동 생성한다.
+# (머지/배포는 사람이 — CI(ci.yml)가 PR에서 check+test 를 검증한다)
+
+on:
+  repository_dispatch:
+    types: [log-finding-approved]
+
+permissions:
+  contents: write          # 브랜치/커밋 생성
+  pull-requests: write     # PR 생성
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Implement fix with Claude
+        uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          claude_args: --max-turns 25
+          prompt: |
+            당신은 TechChang(Django 5.x / Gunicorn / Nginx, 앱 네임스페이스 community) 저장소의 메인테이너입니다.
+            서버 로그 분석관이 아래 문제를 보고했고 관리자가 수정을 승인했습니다.
+
+            [지적사항 #${{ github.event.client_payload.finding_id }}]
+            제목: ${{ github.event.client_payload.title }}
+            추정 원인: ${{ github.event.client_payload.cause }}
+            권장 조치: ${{ github.event.client_payload.action }}
+            심각도: ${{ github.event.client_payload.severity }}
+
+            작업 지침:
+            1. 먼저 코드베이스를 조사해 이 문제의 실제 원인을 특정하세요. 보고된 추정 원인이 틀릴 수 있으니 코드로 검증하세요.
+            2. 문제가 실재하면 최소·정확한 수정을 구현하세요. 관련 동작을 검증하는 테스트를 가능하면 추가하세요.
+            3. `python manage.py check` 가 통과해야 합니다. 마이그레이션이 필요한 모델 변경은 makemigrations 결과도 포함하세요.
+            4. CLAUDE.md 의 규칙(community 네임스페이스, base.html 상속 등)을 준수하세요.
+            5. 만약 코드 조사 결과 이것이 코드 버그가 아니라 외부 스캐너/인프라/운영 이슈로 판단되면, 코드를 바꾸지 말고 PR 본문(또는 요약)에 그 근거와 권장 운영 조치를 적어 보고하세요.
+            6. 변경사항을 새 브랜치에 커밋하고 PR 을 생성하세요. PR 제목은 한국어로, 본문에 [무엇을/왜/어떻게 검증했는지]와 이 지적사항 번호(#${{ github.event.client_payload.finding_id }})를 포함하세요.
