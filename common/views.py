@@ -1186,12 +1186,16 @@ def finding_approve(request, finding_id):
     if ok:
         finding.status = LogFinding.STATUS_DISPATCHED
         finding.note = detail[:300]
+        # 워크플로 진행/생성된 PR 을 바로 확인할 수 있는 링크 (Actions → 실행 → PR)
+        repo = getattr(settings, 'GITHUB_REPO', '')
+        if repo:
+            finding.pr_url = f'https://github.com/{repo}/actions/workflows/auto-fix.yml'
         messages.success(request, f'"{finding.title}" 승인 — {detail}')
     else:
         finding.note = detail[:300]
         messages.warning(request, f'"{finding.title}" 승인은 기록했으나 PR 트리거 실패: {detail}')
 
-    finding.save(update_fields=['status', 'decided_at', 'decided_by', 'note'])
+    finding.save(update_fields=['status', 'decided_at', 'decided_by', 'note', 'pr_url'])
     return redirect('common:server_monitor')
 
 

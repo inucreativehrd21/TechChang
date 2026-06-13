@@ -415,7 +415,7 @@
               {% if f.status == 'dispatched' %}
               <span style="flex-shrink:0; display:inline-flex; align-items:center; gap:5px; background:#14532d; color:#4ade80; border-radius:8px; padding:5px 12px; font-weight:700; font-size:.78rem;">
                 <i class="fas fa-check-circle"></i> 처리 완료
-                {% if f.pr_url %}<a href="{{ f.pr_url }}" target="_blank" style="color:#60a5fa; margin-left:4px;">PR&nbsp;보기</a>{% endif %}
+                {% if f.pr_url %}<a href="{{ f.pr_url }}" target="_blank" style="color:#60a5fa; margin-left:4px;">진행/PR&nbsp;보기 <i class="fas fa-arrow-up-right-from-square" style="font-size:.65rem;"></i></a>{% endif %}
               </span>
               {% elif f.status == 'approved' %}
               <span style="flex-shrink:0; display:inline-flex; align-items:center; gap:5px; background:#713f12; color:#fbbf24; border-radius:8px; padding:5px 12px; font-weight:700; font-size:.78rem;">
