@@ -1139,6 +1139,9 @@ def _dispatch_finding_fix(finding):
     if not token or not repo:
         return False, 'GITHUB_DISPATCH_TOKEN/GITHUB_REPO 미설정 — PR 트리거를 건너뜁니다.'
 
+    # 토큰 절약: 심각 건은 추론이 강한 Opus, 그 외는 Sonnet 으로 수정을 생성.
+    model = 'claude-opus-4-8' if (finding.severity or '').strip() == '심각' else 'claude-sonnet-4-6'
+
     try:
         resp = requests.post(
             f'https://api.github.com/repos/{repo}/dispatches',
@@ -1155,6 +1158,7 @@ def _dispatch_finding_fix(finding):
                     'cause': finding.cause,
                     'action': finding.action,
                     'severity': finding.severity,
+                    'model': model,
                 },
             },
             timeout=10,

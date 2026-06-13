@@ -132,10 +132,14 @@ class Command(BaseCommand):
                 'findings는 가장 중요한 것 위주로 최대 3개까지만 작성하세요.'
             )
 
+            # 모델 선택(토큰 절약): 실제 5xx/Error 가 있으면 더 강한 Opus, 그 외(4xx·Warning
+            # 위주 = 스캐너 노이즈)는 Sonnet 으로 분석한다.
+            model = ClaudeModel.OPUS if (status_5xx > 0 or error_count > 0) else ClaudeModel.SONNET
+
             data = ask_json(
                 prompt,
                 system=system,
-                model=ClaudeModel.SONNET,
+                model=model,
                 max_tokens=1500,
             )
 

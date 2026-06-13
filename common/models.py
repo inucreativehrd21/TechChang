@@ -309,9 +309,31 @@ class LogFinding(models.Model):
 
     @staticmethod
     def make_fingerprint(title: str, cause: str = '') -> str:
+        """오류 '종류' 기반 안정 시그니처. AI가 문구를 바꿔 써도 같은 종류는 같은 지문.
+
+        제목을 우선순위로 분류해 하나의 버킷에 매핑한다(500/4xx/Warning/스캔/기타).
+        500 은 경로(숫자→:id 정규화)까지 포함해 서로 다른 깨진 URL 을 구분한다.
+        """
         import hashlib
-        basis = f"{(title or '').strip().lower()}|{(cause or '').strip().lower()[:200]}"
-        return hashlib.sha256(basis.encode('utf-8')).hexdigest()
+        import re
+
+        t = (title or '').lower()
+        blob = f"{title or ''} {cause or ''}"
+
+        if '500' in t or 'internal server' in t:
+            m = re.search(r'/\S*\d\S*/?', blob)               # 예: /32/
+            path = re.sub(r'\d+', ':id', m.group(0).rstrip('/')) if m else ''
+            sig = f'error500|{path}'
+        elif '4xx' in t or '404' in t or 'not found' in t:
+            sig = '4xx-flood'
+        elif 'warning' in t or '경고' in t:
+            sig = 'warning-flood'
+        elif any(k in t for k in ('스캔', '스캐닝', '취약점', '탐색', 'scan')):
+            sig = 'vuln-scan'
+        else:
+            sig = 'misc|' + re.sub(r'\d+', '', t).strip()[:60]
+
+        return hashlib.sha256(sig.encode('utf-8')).hexdigest()
 
     @classmethod
     def record(cls, finding: dict, severity: str = '', overview: str = ''):
