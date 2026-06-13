@@ -164,15 +164,12 @@ def detail(request, question_id):
 
     # 잠금된 글은 로그인한 사용자만 볼 수 있음
     if question.is_locked and not request.user.is_authenticated:
-        from django.contrib import messages
-        from django.shortcuts import redirect
         messages.error(request, '회원 전용 글입니다. 로그인 후 이용해주세요.')
         return redirect('common:login')
 
     # 문의 게시판은 관리자/작성자만 열람 가능
     if question.category and question.category.name == '문의':
         if not (request.user.is_staff or request.user == question.author):
-            from django.contrib import messages
             messages.error(request, '문의글은 관리자만 확인할 수 있습니다.')
             return redirect('community:index')
 
