@@ -406,17 +406,28 @@
         {% endfor %}
 
         {% if recent_decided %}
-        <div style="font-size:.7rem; color:#64748b; margin-top:14px; border-top:1px solid #1e293b; padding-top:10px;">
-          <div style="margin-bottom:6px; font-weight:700; color:#94a3b8;">최근 처리 내역</div>
+        <div style="margin-top:14px; border-top:1px solid #1e293b; padding-top:12px;">
+          <div style="margin-bottom:8px; font-weight:700; color:#94a3b8; font-size:.75rem;">최근 처리 내역</div>
           {% for f in recent_decided %}
-          <div style="display:flex; justify-content:space-between; gap:8px; padding:3px 0;">
-            <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">{{ f.title }}</span>
-            <span style="flex-shrink:0;
-              {% if f.status == 'dispatched' %}color:#4ade80;
-              {% elif f.status == 'approved' %}color:#fbbf24;
-              {% elif f.status == 'rejected' %}color:#f87171;{% endif %}">
-              {% if f.pr_url %}<a href="{{ f.pr_url }}" target="_blank" style="color:#60a5fa;">PR</a> · {% endif %}{{ f.get_status_display }}
-            </span>
+          <div class="ai-finding" style="opacity:.85;">
+            <div style="display:flex; justify-content:space-between; align-items:center; gap:10px;">
+              <div class="t" style="margin:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">{{ f.title }}</div>
+              {% if f.status == 'dispatched' %}
+              <span style="flex-shrink:0; display:inline-flex; align-items:center; gap:5px; background:#14532d; color:#4ade80; border-radius:8px; padding:5px 12px; font-weight:700; font-size:.78rem;">
+                <i class="fas fa-check-circle"></i> 처리 완료
+                {% if f.pr_url %}<a href="{{ f.pr_url }}" target="_blank" style="color:#60a5fa; margin-left:4px;">PR&nbsp;보기</a>{% endif %}
+              </span>
+              {% elif f.status == 'approved' %}
+              <span style="flex-shrink:0; display:inline-flex; align-items:center; gap:5px; background:#713f12; color:#fbbf24; border-radius:8px; padding:5px 12px; font-weight:700; font-size:.78rem;">
+                <i class="fas fa-clock"></i> 승인됨
+              </span>
+              {% elif f.status == 'rejected' %}
+              <span style="flex-shrink:0; display:inline-flex; align-items:center; gap:5px; background:#3f1d1d; color:#f87171; border-radius:8px; padding:5px 12px; font-weight:700; font-size:.78rem;">
+                <i class="fas fa-times-circle"></i> 거부됨
+              </span>
+              {% endif %}
+            </div>
+            {% if f.note %}<div class="d" style="margin-top:6px; font-size:.72rem; color:#64748b;">{{ f.note }}</div>{% endif %}
           </div>
           {% endfor %}
         </div>
