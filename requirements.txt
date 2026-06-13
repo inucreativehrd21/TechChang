@@ -25,6 +25,13 @@ Pillow>=10.0.0,<11.0.0
 # 마크다운 렌더링 (템플릿 필터)
 Markdown>=3.5,<4.0
 
+# HTML 새니타이즈 (pybo_filter 의 mark 필터에서 마크다운 출력 XSS 방어 - 필수)
+bleach>=6.0,<7.0
+
+# 파일 업로드 MIME 검증 (community/validators.py)
+#  import 는 try/except 로 가드되어 libmagic 미설치 환경에서는 안전하게 폴백한다.
+python-magic>=0.4.27,<0.5
+
 # HTTP 요청 라이브러리 (카카오 로그인 API 호출)
 requests>=2.31.0,<3.0.0
 
