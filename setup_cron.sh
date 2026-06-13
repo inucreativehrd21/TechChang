@@ -20,6 +20,12 @@ MANAGE="$SITE_DIR/manage.py"
 LOG_FILE="/var/log/techchang_report.log"
 BACKUP_DIR="$SITE_DIR/backups"
 
+# 칼럼 로그는 ubuntu 소유의 프로젝트 내부 디렉터리에 기록한다.
+# (/var/log 는 root 소유라 ubuntu crontab 이 파일을 생성하지 못해
+#  리다이렉트 단계에서 명령 전체가 실패한다 → cron 이 발사돼도 칼럼이 안 올라감)
+LOG_DIR="$SITE_DIR/logs"
+mkdir -p "$LOG_DIR"
+
 # 수신 이메일 (.env에서 읽어오기)
 ADMIN_EMAIL=$(grep DJANGO_ADMIN_EMAIL "$SITE_DIR/.env" 2>/dev/null | cut -d '=' -f2 | tr -d '"' | tr -d "'")
 if [ -z "$ADMIN_EMAIL" ]; then
@@ -56,7 +62,7 @@ CRON_VISITOR_MONTHLY="0 9 1 * * cd $SITE_DIR && $VENV_PYTHON $MANAGE send_visito
 # 매주 화요일 오전 10시: HRD 칼럼
 # 매주 목요일 오전 10시: 데이터분석 칼럼
 # 매주 토요일 오전 10시: 프로그래밍 칼럼
-COLUMN_LOG="/var/log/techchang_columns.log"
+COLUMN_LOG="$LOG_DIR/techchang_columns.log"
 CRON_COLUMN_TUE="0 10 * * 2 cd $SITE_DIR && $VENV_PYTHON $MANAGE auto_write_columns --topic hrd >> $COLUMN_LOG 2>&1"
 CRON_COLUMN_THU="0 10 * * 4 cd $SITE_DIR && $VENV_PYTHON $MANAGE auto_write_columns --topic data >> $COLUMN_LOG 2>&1"
 CRON_COLUMN_SAT="0 10 * * 6 cd $SITE_DIR && $VENV_PYTHON $MANAGE auto_write_columns --topic coding >> $COLUMN_LOG 2>&1"
