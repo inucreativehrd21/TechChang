@@ -38,10 +38,13 @@ python manage.py runserver
 python manage.py makemigrations && python manage.py migrate
 ```
 
-**서버 배포**:
+**서버 배포** (자세한 절차는 README.md 배포 섹션):
 ```bash
-bash update_server.sh     # 풀 업데이트 (git pull + migrate + restart)
-bash quick_fix.sh         # 빠른 재시작 (코드만 업데이트)
+git pull origin main
+pip install -r requirements.txt
+python manage.py migrate
+python manage.py collectstatic --noinput
+sudo systemctl restart mysite
 ```
 
 **검증**:

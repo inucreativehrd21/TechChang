@@ -27,7 +27,7 @@ jobs:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           github_token: ${{ secrets.GITHUB_TOKEN }}
           # 심각도에 따라 Django 가 보낸 모델 사용(심각=Opus, 그 외=Sonnet). 기본 Sonnet.
-          claude_args: --max-turns 25 --model ${{ github.event.client_payload.model || 'claude-sonnet-4-6' }}
+          claude_args: --max-turns 80 --model ${{ github.event.client_payload.model || 'claude-sonnet-4-6' }}
           prompt: |
             당신은 TechChang(Django 5.x / Gunicorn / Nginx, 앱 네임스페이스 community) 저장소의 메인테이너입니다.
             서버 로그 분석관이 아래 문제를 보고했고 관리자가 수정을 승인했습니다.

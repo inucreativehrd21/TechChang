@@ -38,3 +38,6 @@ htmlcov/
 
 # 로그 파일
 *.log
+
+# collectstatic 산출물 (서버에서 재생성)
+staticfiles/
