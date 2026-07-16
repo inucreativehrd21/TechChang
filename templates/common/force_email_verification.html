@@ -14,6 +14,8 @@
         </div>
 
         <div class="card-body p-4 p-md-5">
+          {# CSRF 폴백: CSRF_COOKIE_HTTPONLY로 쿠키를 못 읽어도 hidden 필드에서 토큰 확보 #}
+          <form style="display:none">{% csrf_token %}</form>
           <div class="alert alert-info small" role="alert">
             <i class="fas fa-info-circle me-1"></i>
             {% if looks_dummy %}
@@ -75,6 +77,14 @@ function getCookie(name) {
   return v;
 }
 
+function getCSRFToken() {
+  // 1순위: csrftoken 쿠키(권장 설정). 2순위: hidden {% csrf_token %} 필드 폴백.
+  const fromCookie = getCookie('csrftoken');
+  if (fromCookie) return fromCookie;
+  const input = document.querySelector('[name=csrfmiddlewaretoken]');
+  return input ? input.value : '';
+}
+
 const emailInput = document.getElementById('emailInput');
 const codeInput  = document.getElementById('codeInput');
 const sendBtn    = document.getElementById('sendBtn');
@@ -89,7 +99,7 @@ function setStatus(msg, ok) {
 async function postJSON(url, body) {
   const res = await fetch(url, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
+    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCSRFToken() },
     body: JSON.stringify(body),
   });
   let data = {};

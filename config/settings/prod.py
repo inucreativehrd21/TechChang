@@ -88,9 +88,11 @@ CSP_INCLUDE_NONCE_IN = ['script-src', 'style-src']
 SESSION_COOKIE_SECURE = True
 CSRF_COOKIE_SECURE = True
 SESSION_COOKIE_HTTPONLY = True
-# CSRF 쿠키도 HttpOnly로 보호 (XSS 공격 시 토큰 탈취 방지)
-# Django는 템플릿의 {% csrf_token %}과 X-CSRFToken 헤더로 자동 처리
-CSRF_COOKIE_HTTPONLY = True
+# CSRF 쿠키는 HttpOnly로 두면 안 된다.
+# AJAX(fetch)에서 X-CSRFToken 헤더를 채우려면 JS가 csrftoken 쿠키를 읽어야 하는데,
+# HttpOnly=True면 document.cookie로 못 읽어 헤더가 비고 → 403 → 인증 코드 발송 실패.
+# Django 공식 권장값도 False다(CSRF는 교차도메인 방어용이라 HttpOnly의 실익이 없음).
+CSRF_COOKIE_HTTPONLY = False
 SESSION_COOKIE_SAMESITE = 'Lax'
 CSRF_COOKIE_SAMESITE = 'Lax'
 
