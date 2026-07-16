@@ -13,6 +13,54 @@ class Category(models.Model):
     def __str__(self):
         return self.name
 
+
+class ColumnSeries(models.Model):
+    """
+    연속 기획 칼럼 시리즈.
+
+    단편 칼럼(주기 발행)과 달리, 여러 회차가 하나의 주제로 이어지는 연재물.
+    각 회차는 별도 모델이 아니라 기존 Question(episodes)으로 저장되고,
+    이 모델은 시리즈 메타데이터 + 진행 상태만 관리한다.
+    예) 'AI가 짜준 Django, 이제 알고 씁니다'
+    """
+    slug = models.SlugField(max_length=60, unique=True)
+    title = models.CharField(max_length=200)
+    subtitle = models.CharField(max_length=200, blank=True)
+    description = models.TextField(blank=True)
+    audience = models.CharField(max_length=200, blank=True, help_text='대상 독자 (프롬프트에 사용)')
+    category = models.ForeignKey('Category', on_delete=models.PROTECT, related_name='series')
+    total_episodes = models.PositiveIntegerField(default=0, help_text='기획된 총 회차 수 (0편 포함)')
+    is_active = models.BooleanField(default=True, help_text='자동 발행 대상 여부')
+    create_date = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = '칼럼 시리즈'
+        verbose_name_plural = '칼럼 시리즈'
+        ordering = ['-create_date']
+
+    def __str__(self):
+        return self.title
+
+    @property
+    def published_episodes(self):
+        """발행된 회차 QuerySet (회차 순 정렬)."""
+        return self.episodes.filter(is_deleted=False).order_by('episode_number')
+
+    @property
+    def published_count(self):
+        return self.published_episodes.count()
+
+    @property
+    def next_episode_number(self):
+        """다음에 발행할 회차 번호. 아직 없으면 0(오리엔테이션)부터."""
+        last = self.published_episodes.values_list('episode_number', flat=True).last()
+        return 0 if last is None else last + 1
+
+    @property
+    def is_complete(self):
+        return bool(self.total_episodes) and self.published_count >= self.total_episodes
+
+
 class Question(models.Model):
     author = models.ForeignKey(User, on_delete=models.CASCADE, related_name='author_question')
     subject = models.CharField(max_length=200)
@@ -27,6 +75,13 @@ class Question(models.Model):
     is_deleted = models.BooleanField(default=False, db_index=True)  # 인덱스 추가 (필터링에 자주 사용)
     deleted_date = models.DateTimeField(null=True, blank=True)
     is_locked = models.BooleanField(default=False, help_text="회원 전용 글 (로그인 필요)")  # 글 잠금 기능
+    # 시리즈 연재 (단편 칼럼은 둘 다 NULL)
+    series = models.ForeignKey(
+        'ColumnSeries', on_delete=models.SET_NULL, null=True, blank=True, related_name='episodes'
+    )
+    episode_number = models.PositiveIntegerField(
+        null=True, blank=True, db_index=True, help_text='시리즈 내 회차 (0=오리엔테이션)'
+    )
 
     def __str__(self):
             return self.subject

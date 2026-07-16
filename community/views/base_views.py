@@ -199,10 +199,30 @@ def detail(request, question_id):
     # 페이지네이션 제거 - 모든 댓글을 한 페이지에 표시
     answer_list = list(answer_qs)
 
+    # 시리즈 연재 네비게이션 (연재 회차인 경우에만)
+    series_nav = None
+    if question.series_id and question.episode_number is not None:
+        episodes = list(
+            question.series.episodes.filter(is_deleted=False)
+                          .order_by('episode_number')
+                          .values('id', 'subject', 'episode_number')
+        )
+        idx = next((i for i, e in enumerate(episodes) if e['id'] == question.id), None)
+        if idx is not None:
+            series_nav = {
+                'series': question.series,
+                'episodes': episodes,
+                'prev': episodes[idx - 1] if idx > 0 else None,
+                'next': episodes[idx + 1] if idx < len(episodes) - 1 else None,
+                'position': idx + 1,
+                'total': len(episodes),
+            }
+
     context = {
         'question': question,
         'answer_list': answer_list,  # 템플릿에서 for answer in answer_list
         'sort': sort,
+        'series_nav': series_nav,
     }
     template = 'community/mobile/question_detail.html' if getattr(request, 'is_mobile', False) else 'community/question_detail.html'
     return render(request, template, context)
@@ -279,6 +299,47 @@ def download_file(request, question_id):
         return response
     except FileNotFoundError:
         raise Http404("파일이 존재하지 않습니다.")
+
+
+def series_index(request):
+    """연재 칼럼(시리즈) 목록 페이지."""
+    from ..models import ColumnSeries
+
+    series_list = list(
+        ColumnSeries.objects.select_related('category')
+                            .prefetch_related('episodes')
+                            .order_by('-create_date')
+    )
+    # 각 시리즈의 진행률과 최신 회차를 미리 계산
+    cards = []
+    for s in series_list:
+        published = s.published_episodes  # 회차순 정렬 QuerySet
+        cards.append({
+            'series': s,
+            'published_count': published.count(),
+            'first': published.first(),
+            'latest': published.last(),
+        })
+
+    context = {'cards': cards}
+    return render(request, 'community/series_list.html', context)
+
+
+def series_detail(request, slug):
+    """특정 시리즈의 목차(회차 리스트) 페이지."""
+    from ..models import ColumnSeries
+
+    series = get_object_or_404(
+        ColumnSeries.objects.select_related('category'), slug=slug
+    )
+    episodes = list(series.published_episodes.select_related('author'))
+
+    context = {
+        'series': series,
+        'episodes': episodes,
+        'published_count': len(episodes),
+    }
+    return render(request, 'community/series_detail.html', context)
 
 
 def games_index(request):

@@ -597,6 +597,24 @@
         </header>
 
         <div class="question-body">
+            {% if series_nav %}
+            <!-- 시리즈 배너 -->
+            <a href="{% url 'community:series_detail' series_nav.series.slug %}"
+               style="display:flex; align-items:center; gap:12px; text-decoration:none;
+                      padding:14px 18px; margin-bottom:20px; border-radius:var(--radius-lg);
+                      background:linear-gradient(135deg,#4f46e5,#4338ca); color:#fff;">
+                <span style="font-size:1.4rem;">📚</span>
+                <span style="flex:1; min-width:0;">
+                    <span style="display:block; font-size:0.75rem; opacity:0.85;">연재 시리즈</span>
+                    <strong style="display:block; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">{{ series_nav.series.title }}</strong>
+                </span>
+                <span style="flex-shrink:0; font-weight:700; background:rgba(255,255,255,0.2);
+                             padding:4px 12px; border-radius:var(--radius-full); font-size:0.85rem;">
+                    {{ series_nav.position }} / {{ series_nav.total }}
+                </span>
+            </a>
+            {% endif %}
+
             <!-- Content -->
             <div class="question-content">
                 {{ question.content|mark }}
@@ -664,6 +682,34 @@
                 </div>
                 {% endif %}
             </div>
+
+            {% if series_nav %}
+            <!-- 시리즈 이전/다음 네비게이션 -->
+            <nav style="display:flex; gap:12px; margin-top:28px; flex-wrap:wrap;">
+                {% if series_nav.prev %}
+                <a href="{% url 'community:detail' series_nav.prev.id %}"
+                   style="flex:1; min-width:200px; text-decoration:none; padding:14px 18px;
+                          border:1px solid var(--border-color); border-radius:var(--radius-lg); color:inherit;">
+                    <span style="font-size:0.75rem; color:var(--accent-primary); font-weight:700;">◀ 이전 {{ series_nav.prev.episode_number }}편</span>
+                    <span style="display:block; margin-top:4px; font-weight:600;">{{ series_nav.prev.subject }}</span>
+                </a>
+                {% endif %}
+                {% if series_nav.next %}
+                <a href="{% url 'community:detail' series_nav.next.id %}"
+                   style="flex:1; min-width:200px; text-decoration:none; padding:14px 18px; text-align:right;
+                          border:1px solid var(--border-color); border-radius:var(--radius-lg); color:inherit;">
+                    <span style="font-size:0.75rem; color:var(--accent-primary); font-weight:700;">다음 {{ series_nav.next.episode_number }}편 ▶</span>
+                    <span style="display:block; margin-top:4px; font-weight:600;">{{ series_nav.next.subject }}</span>
+                </a>
+                {% endif %}
+            </nav>
+            <div style="text-align:center; margin-top:16px;">
+                <a href="{% url 'community:series_detail' series_nav.series.slug %}"
+                   style="color:var(--accent-primary); text-decoration:none; font-weight:600; font-size:0.9rem;">
+                    <i class="fas fa-list-ul"></i> 시리즈 목차 전체 보기
+                </a>
+            </div>
+            {% endif %}
         </div>
     </article>
 

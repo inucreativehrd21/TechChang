@@ -1,0 +1,78 @@
+{% extends 'base.html' %}
+{% load common_tags %}
+{% load static %}
+
+{% block title %}{{ series.title }} - 연재 시리즈 - 테크창{% endblock %}
+
+{% block extra_css %}
+<style>
+.sd-wrap { max-width: 820px; margin: 0 auto; padding: var(--space-8) var(--space-4) var(--space-16); }
+.sd-hero {
+    border-radius: var(--radius-2xl); padding: var(--space-8); margin-bottom: var(--space-8); color: #fff;
+    background: linear-gradient(135deg, #4f46e5 0%, #4338ca 100%);
+}
+.sd-hero .cat { font-size: .78rem; font-weight: 700; opacity: .9; }
+.sd-hero h1 { font-size: 1.7rem; font-weight: 800; margin: var(--space-2) 0; color: #fff; }
+.sd-hero p { opacity: .92; margin: 0 0 var(--space-5); }
+.sd-hero .progress-line { height: 8px; background: rgba(255,255,255,.25); border-radius: var(--radius-full); overflow: hidden; }
+.sd-hero .progress-line > span { display: block; height: 100%; background: #fff; }
+.sd-hero .count { font-size: .85rem; margin-top: var(--space-2); font-weight: 600; }
+.sd-note {
+    background: var(--accent-wash); border-left: 3px solid var(--accent-primary);
+    padding: var(--space-3) var(--space-4); border-radius: var(--radius-md);
+    margin-bottom: var(--space-4); font-size: .9rem; color: var(--text-secondary);
+}
+.ep-item {
+    display: flex; align-items: center; gap: var(--space-4); text-decoration: none; color: inherit;
+    padding: var(--space-4); border: 1px solid var(--border-color); border-radius: var(--radius-lg); margin-bottom: var(--space-3);
+    transition: border-color .15s ease, transform .15s ease;
+}
+.ep-item:hover { border-color: var(--accent-primary); transform: translateX(3px); }
+.ep-num {
+    flex-shrink: 0; width: 44px; height: 44px; border-radius: var(--radius-full);
+    display: flex; align-items: center; justify-content: center; font-weight: 800;
+    background: rgba(79, 70, 229, .1); color: var(--accent-primary);
+}
+.ep-body { min-width: 0; }
+.ep-body .ep-title { font-weight: 700; color: var(--text-primary); }
+.ep-body .ep-date { font-size: .78rem; color: var(--text-tertiary); margin-top: 2px; }
+.ep-arrow { margin-left: auto; color: var(--text-muted); flex-shrink: 0; }
+.sd-empty { text-align: center; color: var(--text-tertiary); padding: var(--space-10) 0; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="sd-wrap">
+    <div class="sd-hero">
+        <div class="cat">📚 {{ series.category.name }} · 연재 시리즈</div>
+        <h1>{{ series.title }}</h1>
+        {% if series.subtitle %}<p>{{ series.subtitle }}</p>{% endif %}
+        {% if series.total_episodes %}
+        <div class="progress-line">
+            <span style="width: {% widthratio published_count series.total_episodes 100 %}%;"></span>
+        </div>
+        <div class="count">{{ published_count }} / {{ series.total_episodes }}편 발행{% if series.is_complete %} · ✅ 완결{% endif %}</div>
+        {% endif %}
+    </div>
+
+    {% if series.description %}
+    <div class="sd-note">{{ series.description }}</div>
+    {% endif %}
+    {% if series.audience %}
+    <div class="sd-note"><strong>이런 분께:</strong> {{ series.audience }}</div>
+    {% endif %}
+
+    {% for ep in episodes %}
+    <a href="{% url 'community:detail' ep.id %}" class="ep-item">
+        <span class="ep-num">{{ ep.episode_number }}</span>
+        <span class="ep-body">
+            <span class="ep-title">{{ ep.subject }}</span>
+            <span class="ep-date">{{ ep.create_date|date:"Y.m.d" }} · 조회 {{ ep.view_count }}</span>
+        </span>
+        <span class="ep-arrow"><i class="fas fa-chevron-right"></i></span>
+    </a>
+    {% empty %}
+    <div class="sd-empty">아직 발행된 회차가 없습니다. 곧 0편이 공개됩니다.</div>
+    {% endfor %}
+</div>
+{% endblock %}

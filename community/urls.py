@@ -15,6 +15,10 @@ urlpatterns = [
     path('recent-comments/', base_views.recent_comments, name='recent_comments'),
     path('games/', base_views.games_index, name='games_index'),  # 게임센터 메인
 
+    # 연재 칼럼(시리즈)
+    path('series/', base_views.series_index, name='series_index'),
+    re_path(r'^series/(?P<slug>[-\w]+)/$', base_views.series_detail, name='series_detail'),
+
     # question_views.py
     path('question/create/',
          question_views.question_create, name='question_create'),
