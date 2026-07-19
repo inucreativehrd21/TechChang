@@ -86,6 +86,17 @@
     <div class="m-board-sub">총 {{ total_questions }}개의 게시글</div>
 </div>
 
+<a href="{% url 'community:series_index' %}"
+   style="display:flex; align-items:center; gap:12px; text-decoration:none; margin:12px 16px 0;
+          padding:14px 16px; border-radius:12px; background:linear-gradient(135deg,#4f46e5,#4338ca); color:#fff;">
+    <span style="font-size:1.4rem;">📚</span>
+    <span style="flex:1; min-width:0;">
+        <span style="display:block; font-weight:800; font-size:0.95rem;">연재 시리즈</span>
+        <span style="display:block; font-size:0.75rem; opacity:0.85;">하나의 주제를 여러 회차로 깊이 있게</span>
+    </span>
+    <i class="fas fa-chevron-right" style="opacity:0.8;"></i>
+</a>
+
 {% for cat in categories %}
 {% with cat_data=category_posts|get_item:cat.name %}
 {% if cat_data %}

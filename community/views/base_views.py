@@ -55,7 +55,8 @@ def index(request):
     # 기본 쿼리셋 - select_related로 성능 최적화 (삭제되지 않은 질문만)
     # annotate로 voter_count, answer_count 미리 계산 (N+1 쿼리 방지)
     # distinct=True로 Cartesian product에 의한 중복 카운트 방지
-    question_list = Question.objects.filter(is_deleted=False)\
+    # series__isnull=True: 연재 시리즈 회차는 게시글 목록에서 제외 (별도 [시리즈] 탭에서 노출)
+    question_list = Question.objects.filter(is_deleted=False, series__isnull=True)\
         .select_related('author', 'category')\
         .prefetch_related('voter')\
         .annotate(
@@ -98,10 +99,10 @@ def index(request):
     
     # 카테고리 목록 및 각 카테고리별 글 개수 가져오기 (단일 쿼리로 최적화)
     categories = Category.objects.annotate(
-        question_count=Count('question', filter=Q(question__is_deleted=False))
+        question_count=Count('question', filter=Q(question__is_deleted=False) & Q(question__series__isnull=True))
     ).order_by('name')
     category_counts = {cat.name: cat.question_count for cat in categories}
-    total_count = Question.objects.filter(is_deleted=False).count()
+    total_count = Question.objects.filter(is_deleted=False, series__isnull=True).count()
 
     # 서비스 런칭일 기준 경과 일수 (2025-10-01)
     from datetime import date

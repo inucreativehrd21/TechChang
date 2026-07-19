@@ -7,8 +7,9 @@ from ..models import Category, Question
 def board_main(request):
     """커뮤니티 메인 페이지 - 카테고리별 최신 게시글 미리보기"""
     # 모든 카테고리 가져오기 (N+1 쿼리 방지: count를 미리 계산)
+    # 연재 시리즈 회차(series__isnull=False)는 게시글 집계/미리보기에서 제외
     categories = Category.objects.annotate(
-        question_count=Count('question', filter=Q(question__is_deleted=False))
+        question_count=Count('question', filter=Q(question__is_deleted=False) & Q(question__series__isnull=True))
     ).order_by('id')
 
     # 각 카테고리별 최신 게시글 5개씩 가져오기
@@ -16,7 +17,8 @@ def board_main(request):
     for category in categories:
         posts = Question.objects.filter(
             category=category,
-            is_deleted=False
+            is_deleted=False,
+            series__isnull=True
         ).select_related('author', 'author__profile').annotate(
             answer_count=Count('answer', filter=Q(answer__is_deleted=False), distinct=True),
             voter_count=Count('voter', distinct=True)
@@ -29,7 +31,7 @@ def board_main(request):
         }
 
     # 전체 통계
-    total_questions = Question.objects.filter(is_deleted=False).count()
+    total_questions = Question.objects.filter(is_deleted=False, series__isnull=True).count()
 
     context = {
         'categories': categories,
@@ -55,7 +57,8 @@ def board_category(request, category_name):
     # only()로 필요한 필드만 가져와 성능 향상
     questions = Question.objects.filter(
         category=category,
-        is_deleted=False
+        is_deleted=False,
+        series__isnull=True  # 연재 시리즈 회차는 카테고리 목록에서 제외
     ).select_related(
         'author',
         'author__profile',
@@ -94,7 +97,7 @@ def board_category(request, category_name):
 
     # 모든 카테고리 (사이드바용)
     all_categories = Category.objects.all().annotate(
-        post_count=Count('question', filter=Q(question__is_deleted=False))
+        post_count=Count('question', filter=Q(question__is_deleted=False) & Q(question__series__isnull=True))
     )
 
     context = {
