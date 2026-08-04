@@ -41,6 +41,9 @@
                 <div style="padding: var(--space-4); background: #fffbeb; border: 1px solid #fde68a; border-radius: var(--radius-md); color: #92400e; font-size: 0.85rem; line-height: 1.6; margin-bottom: var(--space-4);">
                     <i class="fas fa-shield-alt"></i> 업로드한 HTML은 <strong>격리된 샌드박스</strong>에서 표시되어 사이트 로그인·쿠키에 접근할 수 없습니다. 외부 통신·폼 전송은 차단되며, 이미지/스타일/스크립트는 페이지 안에서만 동작합니다. 게시 전 <strong>관리자가 소스 코드를 검토</strong>합니다.
                 </div>
+                <div style="padding: var(--space-3); background: #f0f9ff; border: 1px solid #bae6fd; border-radius: var(--radius-md); color: #0369a1; font-size: 0.82rem; line-height: 1.6; margin-bottom: var(--space-4);">
+                    <i class="fas fa-id-badge"></i> <strong>구성원 목록</strong>에 표시되는 이름·프로필 사진은 아래 <strong>기본 정보</strong> 항목에서 설정하세요. (업로드한 HTML 내용과 별개로 관리됩니다.)
+                </div>
                 <label style="display: block; font-weight: 700; margin-bottom: var(--space-3); color: var(--text-primary);">HTML 파일 업로드 <small style="font-weight: 400; color: var(--text-tertiary);">(.html, 최대 512KB)</small></label>
                 <input type="file" name="html_file" accept=".html,.htm,text/html" style="width: 100%; padding: var(--space-3); border: 1px solid var(--border-light); border-radius: var(--radius-md); margin-bottom: var(--space-4);">
                 {% if portfolio.html_filename %}
@@ -60,7 +63,11 @@
             </div>
             {% endif %}
 
-            <div id="builderModeFields">
+            <!-- ===== 기본 정보 (구성원 카드/프로필 표시 - 빌더·HTML 공통) ===== -->
+            <div id="identityFields">
+            <div style="margin-bottom: var(--space-6); padding: var(--space-4); background: #f0f9ff; border: 1px solid #bae6fd; border-radius: var(--radius-md); color: #0369a1; font-size: 0.85rem; line-height: 1.6;">
+                <i class="fas fa-id-badge"></i> 아래 <strong>이름·사진</strong> 등은 <strong>구성원 목록 카드</strong>와 포트폴리오 프로필 상단에 표시됩니다. (빌더·HTML 두 방식 모두 공통으로 적용됩니다.)
+            </div>
             <!-- Display Name -->
             <div style="margin-bottom: var(--space-6);">
                 <label style="display: block; font-weight: 700; margin-bottom: var(--space-3); color: var(--text-primary);">
@@ -113,6 +120,9 @@
                 <input type="email" name="email" value="{{ portfolio.email }}" placeholder="your@email.com" style="width: 100%; padding: var(--space-4); border: 1px solid var(--border-light); border-radius: var(--radius-md); font-size: 1rem;">
             </div>
 
+            </div><!-- /#identityFields -->
+
+            <div id="builderModeFields">
             <!-- Skills -->
             <div style="margin-bottom: var(--space-8); padding: var(--space-6); background: var(--bg-secondary); border-radius: var(--radius-lg);">
                 <h3 style="font-size: 1.125rem; font-weight: 700; margin-bottom: var(--space-4); color: var(--text-primary);">스킬 표시 옵션</h3>
