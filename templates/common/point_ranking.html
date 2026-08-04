@@ -3,426 +3,181 @@
 
 {% block title %}포인트 랭킹 - 테크창{% endblock %}
 
-{% block content %}
+{% block extra_css %}
 <style>
-:root {
-    --gold: #FFD700;
-    --silver: #C0C0C0;
-    --bronze: #CD7F32;
-    --gradient-gold: linear-gradient(135deg, #FFD700 0%, #FFA500 100%);
-    --gradient-silver: linear-gradient(135deg, #E8E8E8 0%, #A8A8A8 100%);
-    --gradient-bronze: linear-gradient(135deg, #CD7F32 0%, #8B4513 100%);
+.rk-wrap { max-width: 820px; margin: 0 auto; padding: var(--space-8) var(--space-4) var(--space-20); }
+
+/* Hero */
+.rk-hero { text-align: center; padding: var(--space-10) 0 var(--space-12); }
+.rk-eyebrow {
+    display: inline-block; font-size: .72rem; font-weight: 700; letter-spacing: .14em;
+    text-transform: uppercase; color: var(--accent-primary);
+    background: var(--accent-wash); border: 1px solid #e0e7ff;
+    padding: .35rem 1rem; border-radius: 999px; margin-bottom: var(--space-4);
 }
-
-.ranking-hero {
-    background: var(--bg-secondary);
-    border-bottom: 1px solid var(--border-color);
-    padding: var(--space-12) 0;
-    color: var(--text-primary);
-    text-align: center;
-    margin-bottom: var(--space-10);
-    position: relative;
-    overflow: hidden;
+.rk-hero h1 {
+    font-size: clamp(2rem, 5vw, 2.75rem); font-weight: 800; letter-spacing: -0.03em;
+    margin-bottom: var(--space-3); color: var(--text-primary);
 }
+.rk-hero p { color: var(--text-tertiary); font-size: 1.05rem; margin: 0; }
 
-.ranking-hero::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background-image: radial-gradient(circle at center, var(--border-color) 1px, transparent 1px);
-    background-size: 26px 26px;
-    -webkit-mask-image: radial-gradient(ellipse 70% 70% at 50% 40%, #000 0%, transparent 75%);
-            mask-image: radial-gradient(ellipse 70% 70% at 50% 40%, #000 0%, transparent 75%);
-    opacity: 0.5;
-    pointer-events: none;
+/* 내 순위 카드 */
+.rk-me {
+    display: grid; grid-template-columns: 1fr 1fr;
+    background: var(--bg-primary); border: 1px solid #c7d2fe;
+    border-radius: var(--radius-lg); box-shadow: var(--shadow-sm);
+    margin-bottom: var(--space-10); overflow: hidden;
 }
+.rk-me-box { text-align: center; padding: var(--space-6); }
+.rk-me-box + .rk-me-box { border-left: 1px solid var(--border-light); }
+.rk-me-box .label { font-size: .75rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--text-muted); margin-bottom: var(--space-2); }
+.rk-me-box .value { font-size: 2rem; font-weight: 800; letter-spacing: -0.02em; color: var(--accent-primary); line-height: 1.1; }
 
-.ranking-hero h1 {
-    font-size: clamp(2.5rem, 6vw, 4rem);
-    font-weight: 900;
-    margin-bottom: 0;
-    position: relative;
-    z-index: 1;
-    letter-spacing: -0.03em;
+/* 포디움 (Top 3) */
+.rk-podium {
+    display: grid; grid-template-columns: 1fr 1fr 1fr; gap: var(--space-4);
+    align-items: end; margin-bottom: var(--space-8);
 }
-
-.ranking-container {
-    max-width: 1000px;
-    margin: 0 auto;
-    padding: 0 var(--space-4);
+.rk-pod {
+    text-align: center; background: var(--bg-primary);
+    border: 1px solid var(--border-color); border-radius: var(--radius-lg);
+    padding: var(--space-6) var(--space-4); box-shadow: var(--shadow-sm);
+    transition: transform .18s ease, box-shadow .2s ease;
 }
+.rk-pod:hover { transform: translateY(-4px); box-shadow: var(--shadow-md); }
+.rk-pod.p1 { order: 2; padding: var(--space-8) var(--space-4); background: #fffbeb; border-color: #fde68a; }
+.rk-pod.p2 { order: 1; background: #fafafa; border-color: #e4e4e7; }
+.rk-pod.p3 { order: 3; background: #fff7ed; border-color: #fed7aa; }
 
-/* 현재 사용자 카드 - 프리미엄 글라스모피즘 */
-.current-user-card {
-    background: #ffffff;
-    border-radius: var(--radius-2xl);
-    padding: var(--space-8);
-    box-shadow: var(--shadow-md);
-    border: 1px solid var(--border-color);
-    margin-bottom: var(--space-10);
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: var(--space-6);
-    position: relative;
-    overflow: hidden;
+.rk-pod .medal { font-size: 2rem; margin-bottom: var(--space-2); }
+.rk-pod.p1 .medal { font-size: 2.5rem; }
+.rk-pod .name {
+    font-weight: 800; font-size: 1rem; letter-spacing: -0.01em;
+    color: var(--text-primary); margin-bottom: var(--space-1);
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
+.rk-pod.p1 .name { font-size: 1.15rem; }
+.rk-pod .pts { font-weight: 700; font-size: .95rem; color: var(--text-tertiary); }
+.rk-pod.p1 .pts { font-size: 1.1rem; color: #b45309; }
+.rk-pod.p2 .pts { color: #52525b; }
+.rk-pod.p3 .pts { color: #c2410c; }
 
-.user-stat-box {
-    text-align: center;
-    position: relative;
-    z-index: 1;
+/* 리스트 (4위~) */
+.rk-list {
+    background: var(--bg-primary); border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg); box-shadow: var(--shadow-sm); overflow: hidden;
 }
-
-.user-stat-box .label {
-    color: var(--text-secondary);
-    font-size: 0.875rem;
-    font-weight: 600;
-    margin-bottom: 0.5rem;
-    text-transform: uppercase;
-    letter-spacing: 1px;
+.rk-row {
+    display: flex; align-items: center; gap: var(--space-4);
+    padding: var(--space-4) var(--space-6);
+    transition: background .15s ease;
 }
+.rk-row + .rk-row { border-top: 1px solid var(--border-light); }
+.rk-row:hover { background: var(--bg-secondary); }
+.rk-row.me { background: var(--accent-wash); }
 
-.user-stat-box .value {
-    font-size: 3rem;
-    font-weight: 900;
-    color: var(--text-primary);
-    letter-spacing: -0.02em;
-    line-height: 1;
+.rk-num {
+    min-width: 2.2rem; text-align: center;
+    font-weight: 800; font-size: .95rem; color: var(--text-muted);
+    font-variant-numeric: tabular-nums;
 }
-
-/* 상위 3명 특별 디스플레이 - 포디움 스타일 */
-.top-three-podium {
-    display: grid;
-    grid-template-columns: 1fr 1fr 1fr;
-    gap: var(--space-4);
-    margin-bottom: var(--space-8);
-    align-items: flex-end;
+.rk-info { flex: 1; min-width: 0; }
+.rk-name { font-weight: 700; font-size: .98rem; color: var(--text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rk-name .handle { color: var(--text-muted); font-size: .82rem; font-weight: 400; }
+.rk-sub { font-size: .78rem; color: var(--text-muted); margin-top: 1px; }
+.rk-me-chip {
+    display: inline-block; font-size: .7rem; font-weight: 700; color: #fff;
+    background: var(--accent-primary); border-radius: 999px; padding: .1rem .55rem;
 }
+.rk-pts { font-weight: 800; font-size: 1rem; color: var(--text-primary); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.rk-pts small { font-weight: 600; color: var(--text-muted); margin-left: 1px; }
 
-.podium-rank {
-    text-align: center;
-    position: relative;
-    transition: transform 0.3s ease;
+/* Empty */
+.rk-empty { text-align: center; padding: var(--space-20) var(--space-4); color: var(--text-tertiary); }
+.rk-empty i { font-size: 3.5rem; color: var(--text-muted); opacity: .4; margin-bottom: var(--space-5); display: block; }
+.rk-empty h3 { font-size: 1.3rem; font-weight: 800; color: var(--text-primary); margin-bottom: var(--space-2); }
+
+/* Animation */
+.rk-fade { animation: rkFade .5s ease both; }
+@keyframes rkFade { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: translateY(0); } }
+
+@media (max-width: 640px) {
+    .rk-podium { grid-template-columns: 1fr; align-items: stretch; }
+    .rk-pod { order: unset !important; }
+    .rk-row { padding: var(--space-4); }
 }
-
-.podium-rank:hover {
-    transform: translateY(-8px);
-}
-
-.podium-rank.rank-1 {
-    order: 2;
-}
-
-.podium-rank.rank-2 {
-    order: 1;
-}
-
-.podium-rank.rank-3 {
-    order: 3;
-}
-
-.podium-platform {
-    background: white;
-    border-radius: var(--radius-xl);
-    padding: var(--space-6);
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
-    position: relative;
-    overflow: hidden;
-}
-
-.podium-rank.rank-1 .podium-platform {
-    background: var(--gradient-gold);
-    padding: var(--space-8);
-    box-shadow: 0 20px 40px rgba(255, 215, 0, 0.3);
-}
-
-.podium-rank.rank-2 .podium-platform {
-    background: var(--gradient-silver);
-    box-shadow: 0 10px 30px rgba(192, 192, 192, 0.3);
-}
-
-.podium-rank.rank-3 .podium-platform {
-    background: var(--gradient-bronze);
-    box-shadow: 0 10px 30px rgba(205, 127, 50, 0.3);
-}
-
-.podium-medal {
-    font-size: 3.5rem;
-    margin-bottom: var(--space-2);
-    display: inline-block;
-}
-
-.podium-rank.rank-1 .podium-medal {
-    font-size: 4.5rem;
-}
-
-.podium-name {
-    font-weight: 800;
-    font-size: 1.125rem;
-    margin-bottom: var(--space-2);
-    color: white;
-}
-
-.podium-rank.rank-1 .podium-name {
-    font-size: 1.5rem;
-}
-
-.podium-points {
-    font-weight: 700;
-    font-size: 1.25rem;
-    color: white;
-    opacity: 0.9;
-}
-
-.podium-rank.rank-1 .podium-points {
-    font-size: 1.75rem;
-}
-
-.crown-icon {
-    position: absolute;
-    top: -10px;
-    left: 50%;
-    transform: translateX(-50%);
-    font-size: 2rem;
-}
-
-/* 나머지 랭킹 카드 */
-.rank-card {
-    background: #ffffff;
-    border: 1px solid var(--border-color);
-    border-radius: var(--radius-lg);
-    padding: var(--space-5);
-    margin-bottom: var(--space-4);
-    box-shadow: var(--shadow-sm);
-    display: flex;
-    align-items: center;
-    gap: var(--space-4);
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    border: 2px solid transparent;
-}
-
-.rank-card:hover {
-    transform: translateY(-4px);
-    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.12);
-    border-color: var(--accent-blue);
-}
-
-.rank-badge {
-    min-width: 70px;
-    height: 70px;
-    border-radius: var(--radius-xl);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-weight: 900;
-    font-size: 1.75rem;
-    background: linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%);
-    color: var(--text-secondary);
-    box-shadow: inset 0 2px 4px rgba(0,0,0,0.1);
-}
-
-.user-info {
-    flex: 1;
-}
-
-.user-name {
-    font-weight: 700;
-    font-size: 1.25rem;
-    color: var(--text-primary);
-    margin-bottom: 0.5rem;
-}
-
-.user-stats {
-    font-size: 0.875rem;
-    color: var(--text-secondary);
-    display: flex;
-    align-items: center;
-    gap: var(--space-2);
-}
-
-.user-badge {
-    background: var(--accent-blue);
-    color: white;
-    padding: 0.25rem 0.75rem;
-    border-radius: var(--radius-md);
-    font-size: 0.75rem;
-    font-weight: 700;
-}
-
-.points-badge {
-    background: var(--accent-blue);
-    color: white;
-    padding: var(--space-3) var(--space-8);
-    border-radius: var(--radius-xl);
-    font-weight: 800;
-    font-size: 1.5rem;
-    box-shadow: var(--shadow-sm);
-    min-width: 120px;
-    text-align: center;
-}
-
-.empty-state {
-    text-align: center;
-    padding: var(--space-20) var(--space-4);
-    color: var(--text-secondary);
-}
-
-.empty-state i {
-    font-size: 5rem;
-    color: var(--text-tertiary);
-    margin-bottom: var(--space-6);
-    opacity: 0.5;
-}
-
-.empty-state h3 {
-    font-size: 1.5rem;
-    font-weight: 700;
-    margin-bottom: var(--space-3);
-}
-
-/* 반응형 디자인 */
-@media (max-width: 768px) {
-    .current-user-card {
-        grid-template-columns: 1fr;
-    }
-
-    .top-three-podium {
-        grid-template-columns: 1fr;
-    }
-
-    .podium-rank {
-        order: unset !important;
-    }
-
-    .rank-badge {
-        min-width: 60px;
-        height: 60px;
-        font-size: 1.5rem;
-    }
-
-    .points-badge {
-        font-size: 1.25rem;
-        padding: var(--space-2) var(--space-4);
-        min-width: 100px;
-    }
-}
-
-/* 애니메이션 효과 */
-.fade-in {
-    animation: fadeIn 0.5s ease-in;
-}
-
-@keyframes fadeIn {
-    from {
-        opacity: 0;
-        transform: translateY(20px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
-
-.rank-card:nth-child(1) { animation-delay: 0.1s; }
-.rank-card:nth-child(2) { animation-delay: 0.2s; }
-.rank-card:nth-child(3) { animation-delay: 0.3s; }
-.rank-card:nth-child(4) { animation-delay: 0.4s; }
-.rank-card:nth-child(5) { animation-delay: 0.5s; }
 </style>
+{% endblock %}
 
-<div class="ranking-hero">
-    <div class="container">
-        <h1>테크창 포인트 랭킹</h1>
+{% block content %}
+<div class="rk-wrap">
+    <div class="rk-hero">
+        <span class="rk-eyebrow">Leaderboard</span>
+        <h1>포인트 랭킹</h1>
+        <p>테크창에서 활발히 활동한 구성원들의 순위입니다.</p>
     </div>
-</div>
 
-<div class="ranking-container">
     {% if current_user_profile %}
-    <!-- 현재 사용자 카드 -->
-    <div class="current-user-card fade-in">
-        <div class="user-stat-box">
+    <!-- 내 순위 -->
+    <div class="rk-me rk-fade">
+        <div class="rk-me-box">
             <div class="label">내 순위</div>
             <div class="value">{{ current_user_rank }}위</div>
         </div>
-        <div class="user-stat-box">
+        <div class="rk-me-box">
             <div class="label">내 포인트</div>
             <div class="value">{{ current_user_profile.points }}P</div>
         </div>
     </div>
     {% endif %}
 
-    <!-- 랭킹 리스트 -->
     {% if top_users %}
-        <!-- 상위 3명 포디움 -->
+        <!-- Top 3 포디움 -->
         {% if top_users|length >= 3 %}
-        <div class="top-three-podium fade-in">
+        <div class="rk-podium rk-fade">
             {% for profile in top_users|slice:":3" %}
-            <div class="podium-rank rank-{{ forloop.counter }}">
-                <div class="podium-platform">
-                    {% if forloop.counter == 1 %}
-                    <div class="crown-icon">👑</div>
-                    {% endif %}
-                    <div class="podium-medal">
-                        {% if forloop.counter == 1 %}
-                            🥇
-                        {% elif forloop.counter == 2 %}
-                            🥈
-                        {% elif forloop.counter == 3 %}
-                            🥉
-                        {% endif %}
-                    </div>
-                    <div class="podium-name">
-                        {% if profile.nickname %}
-                            {{ profile.nickname }}
-                        {% else %}
-                            {{ profile.user.username }}
-                        {% endif %}
-                    </div>
-                    <div class="podium-points">{{ profile.points }}P</div>
-                </div>
+            <div class="rk-pod p{{ forloop.counter }}">
+                <div class="medal">{% if forloop.counter == 1 %}🥇{% elif forloop.counter == 2 %}🥈{% else %}🥉{% endif %}</div>
+                <div class="name">{% if profile.nickname %}{{ profile.nickname }}{% else %}{{ profile.user.username }}{% endif %}</div>
+                <div class="pts">{{ profile.points }}P</div>
             </div>
             {% endfor %}
         </div>
         {% endif %}
 
-        <!-- 나머지 순위 (4위부터) -->
-        {% for profile in top_users %}
-            {% if forloop.counter > 3 %}
-            <div class="rank-card fade-in">
-                <div class="rank-badge">
-                    {{ forloop.counter }}
-                </div>
-                <div class="user-info">
-                    <div class="user-name">
-                        {% if profile.nickname %}
-                            {{ profile.nickname }}
-                            <span style="color: var(--text-tertiary); font-size: 0.875rem; font-weight: 400;">(@{{ profile.user.username }})</span>
-                        {% else %}
-                            {{ profile.user.username }}
-                        {% endif %}
+        <!-- 4위 이후 -->
+        <div class="rk-list rk-fade">
+            {% for profile in top_users %}
+                {% if forloop.counter > 3 %}
+                <div class="rk-row{% if profile.user == request.user %} me{% endif %}">
+                    <div class="rk-num">{{ forloop.counter }}</div>
+                    <div class="rk-info">
+                        <div class="rk-name">
+                            {% if profile.nickname %}
+                                {{ profile.nickname }} <span class="handle">@{{ profile.user.username }}</span>
+                            {% else %}
+                                {{ profile.user.username }}
+                            {% endif %}
+                        </div>
+                        <div class="rk-sub">
+                            {% if profile.user == request.user %}
+                                <span class="rk-me-chip">나</span>
+                            {% else %}
+                                활동 회원
+                            {% endif %}
+                        </div>
                     </div>
-                    <div class="user-stats">
-                        {% if profile.user == request.user %}
-                            <span class="user-badge">👤 나</span>
-                        {% else %}
-                            <span style="color: var(--text-secondary);">활동 회원</span>
-                        {% endif %}
-                    </div>
+                    <div class="rk-pts">{{ profile.points }}<small>P</small></div>
                 </div>
-                <div class="points-badge">
-                    {{ profile.points }}P
-                </div>
-            </div>
-            {% endif %}
-        {% endfor %}
+                {% endif %}
+            {% endfor %}
+        </div>
     {% else %}
-    <div class="empty-state fade-in">
+    <div class="rk-empty rk-fade">
         <i class="fas fa-trophy"></i>
         <h3>아직 랭킹 데이터가 없습니다</h3>
         <p>활동을 시작하고 첫 번째 랭커가 되어보세요!</p>
     </div>
     {% endif %}
 </div>
-
-<div style="height: var(--space-16);"></div>
 {% endblock %}

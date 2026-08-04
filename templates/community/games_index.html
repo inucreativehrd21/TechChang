@@ -6,69 +6,123 @@
 
 {% block extra_css %}
 <style>
-/* 게임 센터 전용: 히어로~게임 그리드 간격 축소 */
-.games-index-page .hero-premium { padding-top: var(--space-16); padding-bottom: var(--space-8); }
-.games-index-page .stats-premium { margin-bottom: 0; }
-.games-index-page .games-premium { padding-top: var(--space-8); }
-/* 컬러 배너에 이모지 아이콘 크게 표시 */
-.games-index-page .game-card-icon { font-size: 2.25rem; padding: var(--space-5) var(--space-6); }
+.gx-wrap { max-width: 1100px; margin: 0 auto; padding: var(--space-8) var(--space-6) var(--space-20); }
+
+/* Hero */
+.gx-hero { text-align: center; padding: var(--space-10) 0 var(--space-10); }
+.gx-eyebrow {
+    display: inline-block; font-size: .72rem; font-weight: 700; letter-spacing: .14em;
+    text-transform: uppercase; color: var(--accent-primary);
+    background: var(--accent-wash); border: 1px solid #e0e7ff;
+    padding: .35rem 1rem; border-radius: 999px; margin-bottom: var(--space-4);
+}
+.gx-hero h1 {
+    font-size: clamp(2rem, 5vw, 2.75rem); font-weight: 800; letter-spacing: -0.03em;
+    margin-bottom: var(--space-3); color: var(--text-primary);
+}
+.gx-hero p { color: var(--text-tertiary); font-size: 1.05rem; margin: 0; }
+
+/* Stats pills */
+.gx-stats { display: flex; justify-content: center; gap: var(--space-3); flex-wrap: wrap; margin-bottom: var(--space-12); }
+.gx-stat {
+    display: inline-flex; align-items: baseline; gap: .5rem;
+    background: var(--bg-primary); border: 1px solid var(--border-color);
+    border-radius: 999px; padding: .55rem 1.25rem; box-shadow: var(--shadow-sm);
+}
+.gx-stat b { font-size: 1.05rem; font-weight: 800; color: var(--text-primary); letter-spacing: -0.01em; }
+.gx-stat span { font-size: .8rem; color: var(--text-muted); font-weight: 500; }
+
+/* Game cards */
+.gx-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-6); }
+.gx-card {
+    --gc: var(--accent-primary);
+    position: relative; display: flex; flex-direction: column;
+    background: var(--bg-primary); border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg); padding: var(--space-8);
+    text-decoration: none; color: inherit; box-shadow: var(--shadow-sm);
+    transition: transform .18s ease, box-shadow .2s ease, border-color .2s ease;
+    overflow: hidden;
+}
+.gx-card:hover { transform: translateY(-4px); box-shadow: var(--shadow-lg); border-color: color-mix(in srgb, var(--gc) 35%, var(--border-color)); }
+.gx-card::after {
+    content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 3px;
+    background: var(--gc); transform: scaleX(0); transform-origin: left;
+    transition: transform .25s ease;
+}
+.gx-card:hover::after { transform: scaleX(1); }
+
+.gx-icon {
+    width: 64px; height: 64px; border-radius: var(--radius-md);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.9rem; margin-bottom: var(--space-5);
+    background: color-mix(in srgb, var(--gc) 10%, #ffffff);
+    border: 1px solid color-mix(in srgb, var(--gc) 22%, #ffffff);
+}
+.gx-card h3 { font-size: 1.25rem; font-weight: 800; letter-spacing: -0.02em; margin-bottom: var(--space-2); color: var(--text-primary); }
+.gx-card p { color: var(--text-tertiary); font-size: .92rem; line-height: 1.6; margin-bottom: var(--space-6); flex: 1; }
+
+.gx-meta { display: flex; gap: var(--space-2); }
+.gx-meta span {
+    font-size: .75rem; font-weight: 600; color: var(--text-tertiary);
+    background: var(--bg-mute); border-radius: 999px; padding: .3rem .8rem;
+}
+
+/* Login CTA */
+.gx-cta {
+    margin-top: var(--space-16); text-align: center;
+    background: var(--bg-primary); border: 1px solid var(--border-color);
+    border-radius: var(--radius-xl); padding: var(--space-12) var(--space-8);
+    box-shadow: var(--shadow-sm);
+}
+.gx-cta h2 { font-size: 1.6rem; font-weight: 800; letter-spacing: -0.02em; margin-bottom: var(--space-3); color: var(--text-primary); }
+.gx-cta p { color: var(--text-tertiary); margin-bottom: var(--space-6); }
+.gx-cta-actions { display: flex; gap: var(--space-3); justify-content: center; flex-wrap: wrap; }
+
+@media (max-width: 900px) { .gx-grid { grid-template-columns: 1fr; } }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="games-index-page">
-<!-- Hero Section -->
-<section class="hero-premium">
-    <div class="hero-premium-content">
-        <h1 class="hero-premium-title">게임 센터</h1>
-        <p class="hero-premium-subtitle">
-            두뇌를 자극하는 퍼즐 게임
-        </p>
-
-        <!-- Stats -->
-        <div class="stats-premium">
-            <div class="stat-premium">
-                <div class="stat-premium-value">{{ recent_stats.total_games_played }}</div>
-                <div class="stat-premium-label">총 게임 플레이</div>
-            </div>
-            <div class="stat-premium">
-                <div class="stat-premium-value">{{ games_info|length }}</div>
-                <div class="stat-premium-label">게임 종류</div>
-            </div>
-        </div>
+<div class="gx-wrap">
+    <!-- Hero -->
+    <div class="gx-hero">
+        <span class="gx-eyebrow">Game Center</span>
+        <h1>게임 센터</h1>
+        <p>두뇌를 자극하는 퍼즐 게임</p>
     </div>
-</section>
 
-<!-- Games Grid -->
-<section class="games-premium">
-    <div class="games-grid">
+    <!-- Stats -->
+    <div class="gx-stats">
+        <div class="gx-stat"><b>{{ recent_stats.total_games_played }}</b><span>총 게임 플레이</span></div>
+        <div class="gx-stat"><b>{{ games_info|length }}</b><span>게임 종류</span></div>
+    </div>
+
+    <!-- Games Grid -->
+    <div class="gx-grid">
         {% for game in games_info %}
-        <a href="{% url game.url %}" class="game-card game-card-{% if 'baseball' in game.url %}baseball{% elif '2048' in game.url %}2048{% elif 'minesweeper' in game.url %}minesweeper{% endif %}">
-            <div class="game-card-icon">{{ game.icon }}</div>
-            <h3 class="game-card-title">{{ game.name }}</h3>
-            <p class="game-card-desc">{{ game.description }}</p>
-
-            <div class="post-card-meta" style="margin-top: var(--space-4); justify-content: center;">
+        <a href="{% url game.url %}" class="gx-card"
+           style="--gc: {% if 'baseball' in game.url %}var(--game-baseball){% elif '2048' in game.url %}var(--game-2048){% elif 'minesweeper' in game.url %}var(--game-minesweeper){% endif %};">
+            <div class="gx-icon">{{ game.icon }}</div>
+            <h3>{{ game.name }}</h3>
+            <p>{{ game.description }}</p>
+            <div class="gx-meta">
                 <span>총 {{ game.total_games }}</span>
                 <span>진행 중 {{ game.active_games }}</span>
             </div>
         </a>
         {% endfor %}
     </div>
-</section>
 
-<!-- Login CTA -->
-{% if not user.is_authenticated %}
-<section class="container-premium" style="padding: var(--space-16) var(--space-8);">
-    <div style="background: linear-gradient(135deg, var(--bg-secondary) 0%, var(--bg-tertiary) 100%); padding: var(--space-16); border-radius: var(--radius-2xl); text-align: center; max-width: 800px; margin: 0 auto;">
-        <h2 style="font-size: 2rem; font-weight: 800; margin-bottom: var(--space-4); color: var(--text-primary);">로그인하고 게임 시작</h2>
-        <p style="color: var(--text-secondary); margin-bottom: var(--space-8);">게임을 플레이하고 기록을 저장하려면 로그인이 필요합니다</p>
-        <div style="display: flex; gap: var(--space-4); justify-content: center; flex-wrap: wrap;">
+    <!-- Login CTA -->
+    {% if not user.is_authenticated %}
+    <div class="gx-cta">
+        <h2>로그인하고 게임 시작</h2>
+        <p>게임을 플레이하고 기록을 저장하려면 로그인이 필요합니다</p>
+        <div class="gx-cta-actions">
             <a href="{% url 'common:login' %}" class="btn-premium btn-premium-primary">로그인</a>
             <a href="{% url 'common:signup' %}" class="btn-premium btn-premium-secondary">회원가입</a>
         </div>
     </div>
-</section>
-{% endif %}
+    {% endif %}
 </div>
 {% endblock %}

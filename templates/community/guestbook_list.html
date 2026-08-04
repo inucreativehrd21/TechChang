@@ -24,9 +24,10 @@ body {
     position: absolute;
     width: 200px;
     min-height: 200px;
-    padding: 20px;
+    padding: 22px 20px 20px;
     background: #fff475;
-    box-shadow: 5px 5px 15px rgba(0,0,0,0.3);
+    border-radius: 3px;
+    box-shadow: 0 10px 24px rgba(16, 24, 40, 0.16), 0 2px 6px rgba(16, 24, 40, 0.08);
     font-family: 'Nanum Gothic', 'Noto Sans KR', sans-serif;
     cursor: pointer;
     transition: all 0.3s ease;
@@ -41,18 +42,23 @@ body {
 
 .postit:hover {
     transform: scale(1.05) !important;
-    box-shadow: 8px 8px 20px rgba(0,0,0,0.4);
+    box-shadow: 0 18px 40px rgba(16, 24, 40, 0.22), 0 4px 10px rgba(16, 24, 40, 0.10);
     z-index: 1000 !important;
 }
 
+/* 마스킹 테이프 디테일 */
 .postit::before {
     content: '';
     position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 30px;
-    background: linear-gradient(rgba(0,0,0,0.1), transparent);
+    top: -11px;
+    left: 50%;
+    transform: translateX(-50%) rotate(-2deg);
+    width: 86px;
+    height: 24px;
+    background: rgba(255, 255, 255, 0.6);
+    border: 1px solid rgba(0, 0, 0, 0.05);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+    backdrop-filter: blur(1px);
 }
 
 .postit-content {
@@ -74,20 +80,24 @@ body {
 
 .delete-btn {
     position: absolute;
-    top: 5px;
-    right: 5px;
-    background: rgba(255,255,255,0.7);
+    top: 6px;
+    right: 6px;
+    background: rgba(255,255,255,0.85);
     border: none;
     border-radius: 50%;
-    width: 25px;
-    height: 25px;
+    width: 24px;
+    height: 24px;
+    font-size: 11px;
     display: none;
+    align-items: center;
+    justify-content: center;
     cursor: pointer;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.15);
     transition: all 0.2s;
 }
 
 .postit:hover .delete-btn {
-    display: block;
+    display: flex;
 }
 
 .delete-btn:hover {
@@ -99,13 +109,13 @@ body {
     position: fixed;
     bottom: 30px;
     right: 30px;
-    width: 70px;
-    height: 70px;
+    width: 60px;
+    height: 60px;
     border-radius: 50%;
     background: var(--text-primary);
     border: none;
-    box-shadow: var(--shadow-lg);
-    font-size: 30px;
+    box-shadow: var(--shadow-xl);
+    font-size: 24px;
     color: #fff;
     cursor: pointer;
     transition: all 0.3s ease;
@@ -113,13 +123,16 @@ body {
 }
 
 .add-postit-btn:hover {
-    transform: scale(1.1) rotate(90deg);
+    transform: scale(1.08) rotate(90deg);
+    background: #000;
 }
 
 .modal-postit {
     background: #fff475;
     border: none;
-    box-shadow: 10px 10px 30px rgba(0,0,0,0.3);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-xl);
+    transition: background-color 0.25s ease;
 }
 
 .color-picker {
@@ -146,27 +159,28 @@ body {
     transform: scale(1.1);
 }
 
-.header-card {
-    background: var(--bg-primary);
-    border: 1px solid var(--border-color);
-    border-radius: 15px;
-    box-shadow: var(--shadow-sm);
-    padding: 30px;
-    margin-bottom: 40px;
+/* Hero */
+.gb-hero { text-align: center; padding: var(--space-8) 0 var(--space-10); }
+.gb-eyebrow {
+    display: inline-block; font-size: .72rem; font-weight: 700; letter-spacing: .14em;
+    text-transform: uppercase; color: var(--accent-primary);
+    background: var(--accent-wash); border: 1px solid #e0e7ff;
+    padding: .35rem 1rem; border-radius: 999px; margin-bottom: var(--space-4);
 }
+.gb-hero h1 {
+    font-size: clamp(2rem, 5vw, 2.75rem); font-weight: 800; letter-spacing: -0.03em;
+    margin-bottom: var(--space-3); color: var(--text-primary);
+}
+.gb-hero p { color: var(--text-tertiary); font-size: 1.05rem; margin: 0; }
 </style>
 {% endblock %}
 
 {% block content %}
 <div class="container my-5">
-    <div class="header-card">
-        <h1 class="text-center mb-3" style="color: var(--text-primary);">
-            <i class="fas fa-sticky-note me-2" style="color: var(--accent-blue);"></i>
-            방명록
-        </h1>
-        <p class="text-center mb-0" style="color: var(--text-tertiary);">
-            포스트잇에 메시지를 남겨주세요!
-        </p>
+    <div class="gb-hero">
+        <span class="gb-eyebrow">Guestbook</span>
+        <h1>방명록</h1>
+        <p>포스트잇에 메시지를 남겨주세요!</p>
     </div>
 
     <div class="guestbook-container" id="guestbookWall">

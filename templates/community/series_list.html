@@ -5,41 +5,92 @@
 
 {% block extra_css %}
 <style>
-.series-wrap { max-width: 900px; margin: 0 auto; padding: var(--space-8) var(--space-4) var(--space-16); }
-.series-hero { text-align: center; margin-bottom: var(--space-10); }
-.series-hero h1 { font-size: 1.9rem; font-weight: 800; margin-bottom: var(--space-2); color: var(--text-primary); }
-.series-hero p { color: var(--text-tertiary); }
+.series-wrap { max-width: 860px; margin: 0 auto; padding: var(--space-8) var(--space-4) var(--space-20); }
+
+/* Hero */
+.series-hero { text-align: center; padding: var(--space-10) 0 var(--space-12); }
+.series-eyebrow {
+    display: inline-block; font-size: .72rem; font-weight: 700; letter-spacing: .14em;
+    text-transform: uppercase; color: var(--accent-primary);
+    background: var(--accent-wash); border: 1px solid #e0e7ff;
+    padding: .35rem 1rem; border-radius: 999px; margin-bottom: var(--space-4);
+}
+.series-hero h1 {
+    font-size: clamp(2rem, 5vw, 2.75rem); font-weight: 800; letter-spacing: -0.03em;
+    margin-bottom: var(--space-3); color: var(--text-primary);
+}
+.series-hero p { color: var(--text-tertiary); font-size: 1.05rem; margin: 0; }
+
+/* Series Card */
 .series-card {
-    display: block; text-decoration: none; color: inherit;
-    border: 1px solid var(--border-color); border-radius: var(--radius-xl);
-    padding: var(--space-6); margin-bottom: var(--space-5);
-    transition: transform .15s ease, box-shadow .15s ease, border-color .15s ease;
+    display: block; position: relative; text-decoration: none; color: inherit;
+    background: var(--bg-primary);
+    border: 1px solid var(--border-color); border-radius: var(--radius-lg);
+    padding: var(--space-6) var(--space-8); margin-bottom: var(--space-4);
+    box-shadow: var(--shadow-sm);
+    transition: transform .18s ease, box-shadow .2s ease, border-color .2s ease;
 }
-.series-card:hover { transform: translateY(-3px); box-shadow: 0 12px 28px -8px rgba(79, 70, 229, .18); border-color: var(--accent-primary); }
-.series-card .badge-series {
-    display: inline-block; font-size: .72rem; font-weight: 800; color: var(--accent-primary);
-    background: rgba(79, 70, 229, .1); border: 1px solid rgba(79, 70, 229, .2);
-    padding: .25rem .75rem; border-radius: var(--radius-full); margin-bottom: var(--space-3);
+.series-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+    border-color: #c7d2fe;
 }
-.series-card h2 { font-size: 1.3rem; font-weight: 800; margin: 0 0 var(--space-1); color: var(--text-primary); }
-.series-card .subtitle { color: var(--text-tertiary); font-size: .95rem; margin-bottom: var(--space-4); }
-.series-progress { height: 8px; background: var(--accent-wash); border-radius: var(--radius-full); overflow: hidden; margin-bottom: var(--space-2); }
-.series-progress > span { display: block; height: 100%; background: linear-gradient(90deg, #4f46e5, #4338ca); }
-.series-meta { display: flex; justify-content: space-between; font-size: .82rem; color: var(--text-tertiary); }
+.series-card .sc-arrow {
+    position: absolute; top: var(--space-6); right: var(--space-6);
+    width: 34px; height: 34px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    background: var(--bg-mute); color: var(--text-muted); font-size: .8rem;
+    transition: background .2s ease, color .2s ease, transform .2s ease;
+}
+.series-card:hover .sc-arrow { background: var(--accent-primary); color: #fff; transform: translateX(2px); }
+
+.sc-chips { display: flex; gap: var(--space-2); align-items: center; margin-bottom: var(--space-3); flex-wrap: wrap; }
+.sc-chip {
+    display: inline-block; font-size: .72rem; font-weight: 700;
+    color: var(--accent-primary); background: var(--accent-wash);
+    padding: .25rem .7rem; border-radius: 999px;
+}
+.sc-chip-done { color: #047857; background: #ecfdf5; }
+
+.series-card h2 { font-size: 1.35rem; font-weight: 800; letter-spacing: -0.02em; margin: 0 0 var(--space-1); color: var(--text-primary); }
+.series-card .subtitle { color: var(--text-tertiary); font-size: .95rem; margin-bottom: var(--space-5); }
+
+.series-progress {
+    height: 6px; background: var(--bg-mute); border-radius: 999px;
+    overflow: hidden; margin-bottom: var(--space-3);
+}
+.series-progress > span { display: block; height: 100%; border-radius: 999px; background: var(--accent-primary); }
+
+.series-meta {
+    display: flex; justify-content: space-between; align-items: center;
+    font-size: .82rem; color: var(--text-muted);
+}
+.series-meta .sm-count strong { color: var(--text-secondary); font-weight: 700; }
+
 .series-empty { text-align: center; color: var(--text-tertiary); padding: var(--space-16) 0; }
+
+@media (max-width: 640px) {
+    .series-card { padding: var(--space-5) var(--space-6); }
+    .series-card .sc-arrow { display: none; }
+}
 </style>
 {% endblock %}
 
 {% block content %}
 <div class="series-wrap">
     <div class="series-hero">
-        <h1>📚 연재 시리즈</h1>
+        <span class="series-eyebrow">Series</span>
+        <h1>연재 시리즈</h1>
         <p>하나의 주제를 여러 회차에 걸쳐 깊이 있게 다루는 기획 칼럼입니다.</p>
     </div>
 
     {% for c in cards %}
     <a href="{% url 'community:series_detail' c.series.slug %}" class="series-card">
-        <span class="badge-series">{{ c.series.category.name }} · 연재</span>
+        <span class="sc-arrow"><i class="fas fa-arrow-right"></i></span>
+        <div class="sc-chips">
+            <span class="sc-chip">{{ c.series.category.name }} · 연재</span>
+            {% if c.series.is_complete %}<span class="sc-chip sc-chip-done">완결</span>{% endif %}
+        </div>
         <h2>{{ c.series.title }}</h2>
         {% if c.series.subtitle %}<div class="subtitle">{{ c.series.subtitle }}</div>{% endif %}
 
@@ -49,8 +100,8 @@
         </div>
         {% endif %}
         <div class="series-meta">
-            <span>{{ c.published_count }} / {{ c.series.total_episodes }}편 발행{% if c.series.is_complete %} · ✅ 완결{% endif %}</span>
-            {% if c.latest %}<span>최신: {{ c.latest.episode_number }}편</span>{% endif %}
+            <span class="sm-count"><strong>{{ c.published_count }}</strong> / {{ c.series.total_episodes }}편 발행</span>
+            {% if c.latest %}<span>최신 {{ c.latest.episode_number }}편</span>{% endif %}
         </div>
     </a>
     {% empty %}
