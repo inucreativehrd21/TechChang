@@ -13,6 +13,54 @@
         <form method="post" enctype="multipart/form-data" style="background: white; padding: var(--space-8); border-radius: var(--radius-2xl); box-shadow: var(--shadow-xl);">
             {% csrf_token %}
 
+            {% if is_collection %}
+            <!-- ===== 표현 방식 선택 (이원화 토글) ===== -->
+            <div style="margin-bottom: var(--space-8); padding: var(--space-6); background: var(--bg-secondary); border-radius: var(--radius-lg);">
+                <h3 style="font-size: 1.125rem; font-weight: 700; margin-bottom: var(--space-2); color: var(--text-primary);">표현 방식</h3>
+                <p style="font-size: 0.875rem; color: var(--text-tertiary); margin-bottom: var(--space-4);">포트폴리오를 어떻게 보여줄지 선택하세요. 언제든지 전환할 수 있으며, 각 방식의 내용은 따로 보관됩니다.</p>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: var(--space-4);">
+                    <label class="mode-option" style="display: flex; gap: var(--space-3); align-items: flex-start; padding: var(--space-4); border: 2px solid var(--border-light); border-radius: var(--radius-md); cursor: pointer;">
+                        <input type="radio" name="content_mode" value="builder" style="margin-top: 4px;" {% if portfolio.content_mode != 'html' %}checked{% endif %}>
+                        <div>
+                            <div style="font-weight: 700; color: var(--text-primary);"><i class="fas fa-sliders-h"></i> 빌더 (구성형)</div>
+                            <div style="font-size: 0.8rem; color: var(--text-tertiary); margin-top: var(--space-1);">아래 항목을 채워 자동으로 세련된 페이지를 생성합니다.</div>
+                        </div>
+                    </label>
+                    <label class="mode-option" style="display: flex; gap: var(--space-3); align-items: flex-start; padding: var(--space-4); border: 2px solid var(--border-light); border-radius: var(--radius-md); cursor: pointer;">
+                        <input type="radio" name="content_mode" value="html" style="margin-top: 4px;" {% if portfolio.content_mode == 'html' %}checked{% endif %}>
+                        <div>
+                            <div style="font-weight: 700; color: var(--text-primary);"><i class="fas fa-file-code"></i> HTML 직접 업로드</div>
+                            <div style="font-size: 0.8rem; color: var(--text-tertiary); margin-top: var(--space-1);">완성된 HTML 파일을 그대로 올려 페이지를 표현합니다.</div>
+                        </div>
+                    </label>
+                </div>
+            </div>
+
+            <!-- ===== HTML 업로드 패널 (html 모드일 때만 표시) ===== -->
+            <div id="htmlModePanel" style="margin-bottom: var(--space-8); {% if portfolio.content_mode != 'html' %}display: none;{% endif %}">
+                <div style="padding: var(--space-4); background: #fffbeb; border: 1px solid #fde68a; border-radius: var(--radius-md); color: #92400e; font-size: 0.85rem; line-height: 1.6; margin-bottom: var(--space-4);">
+                    <i class="fas fa-shield-alt"></i> 업로드한 HTML은 <strong>격리된 샌드박스</strong>에서 표시되어 사이트 로그인·쿠키에 접근할 수 없습니다. 외부 통신·폼 전송은 차단되며, 이미지/스타일/스크립트는 페이지 안에서만 동작합니다. 게시 전 <strong>관리자가 소스 코드를 검토</strong>합니다.
+                </div>
+                <label style="display: block; font-weight: 700; margin-bottom: var(--space-3); color: var(--text-primary);">HTML 파일 업로드 <small style="font-weight: 400; color: var(--text-tertiary);">(.html, 최대 512KB)</small></label>
+                <input type="file" name="html_file" accept=".html,.htm,text/html" style="width: 100%; padding: var(--space-3); border: 1px solid var(--border-light); border-radius: var(--radius-md); margin-bottom: var(--space-4);">
+                {% if portfolio.html_filename %}
+                <p style="font-size: 0.8rem; color: var(--text-tertiary); margin-bottom: var(--space-4);"><i class="fas fa-check-circle" style="color:#059669;"></i> 현재 저장된 파일: <strong>{{ portfolio.html_filename }}</strong> ({{ portfolio.html_content|length }}자)</p>
+                {% endif %}
+                <label style="display: block; font-weight: 700; margin-bottom: var(--space-3); color: var(--text-primary);">또는 HTML 코드 직접 붙여넣기</label>
+                <textarea name="html_content" rows="14" placeholder="<!DOCTYPE html>&#10;<html>...&#10;</html>&#10;&#10;(파일을 업로드하면 이 내용은 무시됩니다. 비워두고 저장하면 기존 내용이 유지됩니다.)" style="width: 100%; padding: var(--space-4); border: 1px solid var(--border-light); border-radius: var(--radius-md); font-family: 'Courier New', monospace; font-size: 0.85rem; line-height: 1.5; resize: vertical;">{{ portfolio.html_content }}</textarea>
+
+                <hr style="margin: var(--space-6) 0; border: none; border-top: 1px solid var(--border-light);">
+                <label style="display: block; font-weight: 700; margin-bottom: var(--space-3); color: var(--text-primary);">
+                    <i class="fas fa-images"></i> 함께 쓸 사진 업로드 <small style="font-weight: 400; color: var(--text-tertiary);">(여러 장 선택 가능 · 개당 5MB · 최대 30장)</small>
+                </label>
+                <input type="file" name="asset_files" accept="image/*" multiple style="width: 100%; padding: var(--space-3); border: 1px solid var(--border-light); border-radius: var(--radius-md); margin-bottom: var(--space-3);">
+                <div style="padding: var(--space-3); background: #eff6ff; border: 1px solid #bfdbfe; border-radius: var(--radius-md); color: #1d4ed8; font-size: 0.8rem; line-height: 1.6;">
+                    <i class="fas fa-lightbulb"></i> HTML 안에서는 <code>&lt;img src="파일명.jpg"&gt;</code> 처럼 <strong>파일명</strong>으로 참조하세요. 저장하면 업로드한 사진에 자동으로 연결됩니다. (<code>images/파일명.jpg</code>처럼 경로가 붙어 있어도 파일명만 같으면 연결됩니다.) 업로드한 사진은 아래 <strong>업로드한 사진</strong> 목록에서 확인·삭제할 수 있습니다.
+                </div>
+            </div>
+            {% endif %}
+
+            <div id="builderModeFields">
             <!-- Display Name -->
             <div style="margin-bottom: var(--space-6);">
                 <label style="display: block; font-weight: 700; margin-bottom: var(--space-3); color: var(--text-primary);">
@@ -406,6 +454,8 @@
                 </div>
             </div>
 
+            </div><!-- /#builderModeFields -->
+
             <!-- Settings -->
             <div style="margin-bottom: var(--space-6); padding: var(--space-6); background: var(--bg-secondary); border-radius: var(--radius-lg);">
                 <h3 style="font-size: 1.125rem; font-weight: 700; margin-bottom: var(--space-4); color: var(--text-primary);">표시 설정</h3>
@@ -450,6 +500,39 @@
             </div>
         </form>
 
+        {% if is_collection %}
+        <!-- ===== HTML 모드: 업로드한 사진 관리 (메인 폼 밖 - 개별 삭제 폼) ===== -->
+        <div id="htmlModeExtras" style="margin-top: var(--space-12); {% if portfolio.content_mode != 'html' %}display: none;{% endif %}">
+            <h2 style="font-size: 1.75rem; font-weight: 800; color: var(--text-primary); margin-bottom: var(--space-6);">
+                <i class="fas fa-images"></i> 업로드한 사진 ({{ portfolio.html_assets.count }})
+            </h2>
+            {% if portfolio.html_assets.all %}
+            <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: var(--space-4);">
+                {% for asset in portfolio.html_assets.all %}
+                <div style="background: white; border: 1px solid var(--border-light); border-radius: var(--radius-lg); overflow: hidden; box-shadow: var(--shadow-sm);">
+                    <img src="{% url 'community:portfolio_collection_asset' portfolio.slug asset.id %}" alt="{{ asset.original_name }}" loading="lazy" style="width: 100%; height: 120px; object-fit: cover; display: block; background: #f1f5f9;">
+                    <div style="padding: var(--space-3);">
+                        <div style="font-size: 0.78rem; color: var(--text-secondary); word-break: break-all; margin-bottom: var(--space-2);" title="{{ asset.original_name }}">{{ asset.original_name }}</div>
+                        <form method="post" action="{% url 'community:collection_asset_delete' portfolio.slug asset.id %}" onsubmit="return confirm('이 사진을 삭제할까요?');">
+                            {% csrf_token %}
+                            <button type="submit" style="width: 100%; padding: var(--space-2); border: none; border-radius: var(--radius-md); background: rgba(239,68,68,0.1); color: #dc2626; font-size: 0.78rem; font-weight: 600; cursor: pointer;">
+                                <i class="fas fa-trash"></i> 삭제
+                            </button>
+                        </form>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div style="text-align: center; padding: var(--space-12); background: white; border-radius: var(--radius-lg); color: var(--text-tertiary);">
+                <i class="fas fa-image" style="font-size: 3rem; margin-bottom: var(--space-4);"></i>
+                <p>아직 업로드한 사진이 없습니다. 위 폼에서 HTML과 함께 사진을 업로드하세요.</p>
+            </div>
+            {% endif %}
+        </div>
+        {% endif %}
+
+        <div id="builderModeExtras"{% if is_collection and portfolio.content_mode == 'html' %} style="display: none;"{% endif %}>
         <!-- Projects Section -->
         <div style="margin-top: var(--space-12);">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-6);">
@@ -603,10 +686,20 @@
             </div>
             {% endif %}
         </div>
+        </div><!-- /#builderModeExtras -->
     </div>
 </section>
 
 <style>
+/* 표현 방식 선택 카드 */
+.mode-option:has(input:checked) {
+    border-color: var(--accent-blue) !important;
+    background: rgba(79, 70, 229, 0.05);
+}
+.mode-option:hover {
+    border-color: var(--accent-blue) !important;
+}
+
 /* Background type option hover effect */
 .bg-type-option:has(input:checked) {
     border-color: var(--accent-blue);
@@ -641,6 +734,28 @@
     background: rgba(79, 70, 229, 0.02) !important;
 }
 </style>
+
+<script>
+// ===== 표현 방식(빌더 / HTML) 토글 =====
+(function() {
+    var modeRadios = document.querySelectorAll('input[name="content_mode"]');
+    if (!modeRadios.length) return;
+    var htmlPanel = document.getElementById('htmlModePanel');
+    var htmlExtras = document.getElementById('htmlModeExtras');
+    var builderFields = document.getElementById('builderModeFields');
+    var builderExtras = document.getElementById('builderModeExtras');
+    function apply() {
+        var checked = document.querySelector('input[name="content_mode"]:checked');
+        var isHtml = checked && checked.value === 'html';
+        if (htmlPanel) htmlPanel.style.display = isHtml ? 'block' : 'none';
+        if (htmlExtras) htmlExtras.style.display = isHtml ? 'block' : 'none';
+        if (builderFields) builderFields.style.display = isHtml ? 'none' : 'block';
+        if (builderExtras) builderExtras.style.display = isHtml ? 'none' : 'block';
+    }
+    modeRadios.forEach(function(r) { r.addEventListener('change', apply); });
+    apply();
+})();
+</script>
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {

@@ -809,12 +809,23 @@ class Experience(models.Model):
 class PortfolioCollection(models.Model):
     """다중 포트폴리오 지원 모델 - 한 사용자가 여러 포트폴리오를 관리"""
 
+    # 표현 방식 - 빌더(구성형) 또는 완성된 HTML 직접 업로드
+    CONTENT_MODE_CHOICES = [
+        ('builder', '빌더 (구성형)'),
+        ('html', 'HTML 직접 업로드'),
+    ]
+
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='portfolio_collections', verbose_name='사용자')
     portfolio_name = models.CharField(max_length=100, verbose_name='포트폴리오 이름')
     slug = models.SlugField(max_length=200, unique=True, verbose_name='URL 슬러그', allow_unicode=True)
     is_published = models.BooleanField(default=False, verbose_name='게시 여부')
     is_main = models.BooleanField(default=False, verbose_name='대표 포트폴리오')
     display_order = models.PositiveIntegerField(default=0, verbose_name='정렬 순서')
+
+    # 표현 방식 이원화 - builder: 아래 구성 필드로 렌더링 / html: 업로드한 HTML을 샌드박스 iframe으로 렌더링
+    content_mode = models.CharField(max_length=10, choices=CONTENT_MODE_CHOICES, default='builder', verbose_name='표현 방식')
+    html_content = models.TextField(blank=True, default='', verbose_name='업로드 HTML 원본')
+    html_filename = models.CharField(max_length=255, blank=True, default='', verbose_name='업로드 파일명')
 
     # 기본 정보 (Portfolio 모델과 동일)
     display_name = models.CharField(max_length=100, default='', blank=True, verbose_name='표시 이름')
@@ -879,6 +890,10 @@ class PortfolioCollection(models.Model):
         """공개 노출 가능 여부 - 관리자 승인 + 게시 설정이 모두 충족되어야 함"""
         return self.approval_status == 'approved' and self.is_published
 
+    def is_html_mode(self):
+        """완성된 HTML을 직접 업로드해 표현하는 방식인지 여부"""
+        return self.content_mode == 'html'
+
     def __str__(self):
         return f"{self.user.username} - {self.portfolio_name}"
 
@@ -892,6 +907,27 @@ class PortfolioCollection(models.Model):
             models.Index(fields=['slug']),
             models.Index(fields=['user', 'is_published']),
         ]
+
+
+class PortfolioAsset(models.Model):
+    """HTML 업로드 포트폴리오와 함께 쓰는 이미지 에셋.
+
+    업로드한 HTML이 참조하는 사진을 저장한다. raw 뷰에서 HTML 내
+    <img src="파일명"> / url(파일명) 참조를 이 에셋의 서빙 URL로 치환한다.
+    """
+    collection = models.ForeignKey(PortfolioCollection, on_delete=models.CASCADE, related_name='html_assets', verbose_name='포트폴리오')
+    image = models.ImageField(upload_to='portfolio/html_assets/', verbose_name='이미지')
+    original_name = models.CharField(max_length=255, verbose_name='원본 파일명')
+    create_date = models.DateTimeField(auto_now_add=True, verbose_name='업로드일')
+
+    def __str__(self):
+        return f"{self.collection.portfolio_name} - {self.original_name}"
+
+    class Meta:
+        db_table = 'community_portfolio_asset'
+        verbose_name = 'HTML 포트폴리오 이미지'
+        verbose_name_plural = 'HTML 포트폴리오 이미지 목록'
+        ordering = ['create_date']
 
 
 class CollectionProject(models.Model):

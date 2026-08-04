@@ -126,6 +126,24 @@
     font-weight: 700;
 }
 
+.badge-html {
+    padding: var(--space-1) var(--space-3);
+    background: #ecfeff;
+    color: #0891b2;
+    border-radius: var(--radius-full);
+    font-size: 0.75rem;
+    font-weight: 700;
+}
+
+.badge-builder {
+    padding: var(--space-1) var(--space-3);
+    background: #f5f3ff;
+    color: #6d28d9;
+    border-radius: var(--radius-full);
+    font-size: 0.75rem;
+    font-weight: 700;
+}
+
 .badge-pending {
     padding: var(--space-1) var(--space-3);
     background: #fef3c7;
@@ -430,6 +448,11 @@
                     <div class="card-badges">
                         {% if collection.is_main %}
                         <span class="badge-main"><i class="fas fa-star"></i> 대표</span>
+                        {% endif %}
+                        {% if collection.content_mode == 'html' %}
+                        <span class="badge-html"><i class="fas fa-file-code"></i> HTML</span>
+                        {% else %}
+                        <span class="badge-builder"><i class="fas fa-sliders-h"></i> 빌더</span>
                         {% endif %}
                         {% if collection.approval_status == 'approved' and collection.is_published %}
                         <span class="badge-published"><i class="fas fa-globe"></i> 공개</span>

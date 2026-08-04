@@ -1,13 +1,58 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
-from django.http import JsonResponse, HttpResponseForbidden
+from django.http import JsonResponse, HttpResponseForbidden, HttpResponse, FileResponse
 from django.utils import timezone
+from django.views.decorators.clickjacking import xframe_options_sameorigin
 from django.db import models
 from django.db.models import F, Max
 import json
+import re
+import posixpath
+import mimetypes
 
-from ..models import Portfolio, Project, Experience, PortfolioCollection, CollectionProject, CollectionExperience
+# 업로드 HTML 최대 크기 (바이트) - 과도한 용량 업로드 방지
+MAX_HTML_UPLOAD_BYTES = 512 * 1024  # 512KB
+# 함께 업로드하는 이미지 에셋 제한
+MAX_ASSET_BYTES = 5 * 1024 * 1024   # 개당 5MB
+MAX_ASSET_COUNT = 30                # 포트폴리오당 최대 이미지 수
+
+
+def _rewrite_asset_refs(html, asset_map):
+    """HTML 내 이미지 참조(src/href/poster/url(...))를 에셋 서빙 URL로 치환.
+
+    파일명(basename) 기준으로 매칭하므로 `me.jpg`, `./me.jpg`, `images/me.jpg`
+    모두 같은 에셋으로 연결된다.
+
+    Args:
+        html: 원본 HTML 문자열
+        asset_map: {소문자 파일명: 서빙 URL}
+    """
+    if not asset_map:
+        return html
+
+    def _match_url(path):
+        base = posixpath.basename(path.split('?')[0].split('#')[0]).strip().lower()
+        return asset_map.get(base)
+
+    def repl_attr(m):
+        pre, quote, path = m.group(1), m.group(2), m.group(3)
+        url = _match_url(path)
+        return f'{pre}={quote}{url}{quote}' if url else m.group(0)
+
+    html = re.sub(r'(src|href|poster|data-src)\s*=\s*(["\'])(.*?)\2', repl_attr, html, flags=re.I | re.S)
+
+    def repl_css_url(m):
+        quote, path = m.group(1), m.group(2)
+        url = _match_url(path)
+        return f'url({quote}{url}{quote})' if url else m.group(0)
+
+    html = re.sub(r'url\(\s*(["\']?)(.*?)\1\s*\)', repl_css_url, html, flags=re.I | re.S)
+    return html
+
+from django.urls import reverse
+
+from ..models import Portfolio, Project, Experience, PortfolioCollection, CollectionProject, CollectionExperience, PortfolioAsset
 
 
 def get_background_css(portfolio, section='hero'):
@@ -695,13 +740,194 @@ def portfolio_collection_detail(request, slug):
     return render(request, 'community/portfolio_view.html', context)
 
 
+def _can_view_collection(request, collection):
+    """detail/raw/asset 공통 접근 제어 - 공개(승인+게시) 또는 본인/관리자만."""
+    return (
+        collection.is_publicly_visible()
+        or request.user == collection.user
+        or request.user.is_staff
+    )
+
+
+def _build_raw_html_csp(request):
+    """업로드 HTML 격리 렌더링용 CSP 생성.
+
+    - 샌드박스 iframe(allow-scripts, no allow-same-origin)과 결합하여 세션/쿠키 탈취를 차단한다.
+    - default-src 'none' + connect/form 미허용으로 외부 통신·폼 전송(피싱)을 제한한다.
+    - img/media는 same-origin(에셋 서빙)·data·https 허용. sandbox opaque origin에서는 'self'가
+      매칭되지 않으므로 실제 origin을 명시(로컬 http 환경 포함) — https: 이미 허용이라 위험 증가 없음.
+    """
+    origin = f"{request.scheme}://{request.get_host()}"
+    return (
+        "default-src 'none'; "
+        f"img-src 'self' data: https: {origin}; "
+        f"media-src 'self' data: https: {origin}; "
+        "style-src 'unsafe-inline' https:; "
+        "font-src 'self' https: data:; "
+        "script-src 'unsafe-inline'; "
+        "frame-ancestors 'self'; "
+        "base-uri 'none'; "
+        "form-action 'none'"
+    )
+
+
+@xframe_options_sameorigin
+def portfolio_collection_raw(request, slug):
+    """업로드된 HTML 원본을 서빙 (샌드박스 iframe 전용).
+
+    detail 페이지가 이 응답을 sandbox iframe으로 임베드한다.
+    전역 X_FRAME_OPTIONS='DENY' / CSP frame-ancestors 'none' 를 이 뷰에서만
+    same-origin 프레이밍이 가능하도록 오버라이드한다. 함께 업로드한 이미지 참조는
+    에셋 서빙 URL로 치환한다.
+    """
+    collection = get_object_or_404(PortfolioCollection, slug=slug)
+
+    if not _can_view_collection(request, collection):
+        return HttpResponseForbidden("비공개이거나 관리자 승인 대기 중인 포트폴리오입니다.")
+
+    if collection.content_mode != 'html':
+        return HttpResponseForbidden("HTML 업로드 방식의 포트폴리오가 아닙니다.")
+
+    html = collection.html_content or (
+        '<!DOCTYPE html><html lang="ko"><head><meta charset="utf-8">'
+        '<meta name="viewport" content="width=device-width, initial-scale=1">'
+        '<style>body{font-family:sans-serif;color:#64748b;display:flex;'
+        'align-items:center;justify-content:center;height:100vh;margin:0;}</style>'
+        '</head><body><p>아직 업로드된 HTML이 없습니다.</p></body></html>'
+    )
+
+    # 함께 업로드한 이미지 참조를 에셋 서빙 URL로 치환
+    asset_map = {}
+    for asset in collection.html_assets.all():
+        url = reverse('community:portfolio_collection_asset', args=[collection.slug, asset.id])
+        asset_map[asset.original_name.strip().lower()] = url
+    html = _rewrite_asset_refs(html, asset_map)
+
+    response = HttpResponse(html, content_type='text/html; charset=utf-8')
+    # django-csp 미들웨어가 덮어쓰지 않도록 헤더를 직접 설정 (no_header 체크에 의해 보존됨)
+    response['Content-Security-Policy'] = _build_raw_html_csp(request)
+    response['X-Content-Type-Options'] = 'nosniff'
+    # 검색엔진 색인 방지 - iframe 원본이 단독 URL로 노출되지 않도록
+    response['X-Robots-Tag'] = 'noindex, nofollow'
+    return response
+
+
+def portfolio_collection_asset(request, slug, asset_id):
+    """HTML 포트폴리오가 참조하는 이미지 에셋 서빙 (접근 제어 포함).
+
+    비공개 포트폴리오의 이미지가 유출되지 않도록 raw/detail과 동일한 권한을 검사한다.
+    """
+    collection = get_object_or_404(PortfolioCollection, slug=slug)
+    if not _can_view_collection(request, collection):
+        return HttpResponseForbidden("비공개이거나 관리자 승인 대기 중인 포트폴리오입니다.")
+
+    asset = get_object_or_404(PortfolioAsset, id=asset_id, collection=collection)
+
+    # content-type을 image/* 로 강제 - 업로드 시 이미지 검증을 하지만, 방어적으로 한 번 더 제한
+    ctype, _ = mimetypes.guess_type(asset.image.name)
+    if not ctype or not ctype.startswith('image/'):
+        ctype = 'application/octet-stream'
+
+    response = FileResponse(asset.image.open('rb'), content_type=ctype)
+    response['X-Content-Type-Options'] = 'nosniff'
+    response['X-Robots-Tag'] = 'noindex, nofollow'
+    return response
+
+
+@login_required
+def collection_asset_delete(request, slug, asset_id):
+    """HTML 포트폴리오 이미지 에셋 삭제 (본인만)."""
+    collection = get_object_or_404(PortfolioCollection, slug=slug, user=request.user)
+    asset = get_object_or_404(PortfolioAsset, id=asset_id, collection=collection)
+
+    if request.method == 'POST':
+        from django.contrib import messages
+        name = asset.original_name
+        asset.delete()
+        # 승인/게시 후 내용이 바뀌면 재승인 필요
+        _reset_approval_on_change(collection, request)
+        messages.success(request, f'이미지 "{name}"을(를) 삭제했습니다.')
+
+    return redirect('community:portfolio_collection_edit', slug=slug)
+
+
+def _reset_approval_on_change(collection, request):
+    """승인/게시 이후 내용이 변경되면 비공개(draft)로 되돌려 재승인을 요구."""
+    if collection.approval_status in ('approved', 'pending', 'rejected'):
+        from django.contrib import messages
+        collection.approval_status = 'draft'
+        collection.approval_requested_at = None
+        collection.rejection_reason = ''
+        collection.is_published = False
+        collection.save(update_fields=['approval_status', 'approval_requested_at', 'rejection_reason', 'is_published'])
+        messages.info(request, '내용이 수정되어 비공개로 전환되었습니다. 다시 게시 요청을 해주세요.')
+
+
 @login_required
 def portfolio_collection_edit(request, slug):
     """포트폴리오 컬렉션 편집"""
     collection = get_object_or_404(PortfolioCollection, slug=slug, user=request.user)
 
     if request.method == 'POST':
-        # 기본 정보
+        from django.contrib import messages
+
+        # 표현 방식 (builder / html) 및 업로드 HTML 처리
+        content_mode = request.POST.get('content_mode', 'builder')
+        if content_mode not in ('builder', 'html'):
+            content_mode = 'builder'
+        collection.content_mode = content_mode
+
+        if content_mode == 'html':
+            # 파일 업로드가 있으면 우선, 없으면 textarea 값 사용
+            uploaded = request.FILES.get('html_file')
+            if uploaded:
+                if uploaded.size > MAX_HTML_UPLOAD_BYTES:
+                    messages.error(request, f'HTML 파일이 너무 큽니다. 최대 {MAX_HTML_UPLOAD_BYTES // 1024}KB까지 업로드할 수 있습니다.')
+                    return redirect('community:portfolio_collection_edit', slug=collection.slug)
+                try:
+                    collection.html_content = uploaded.read().decode('utf-8')
+                except UnicodeDecodeError:
+                    messages.error(request, 'HTML 파일을 UTF-8로 읽을 수 없습니다. UTF-8 인코딩 파일을 업로드해주세요.')
+                    return redirect('community:portfolio_collection_edit', slug=collection.slug)
+                collection.html_filename = uploaded.name[:255]
+            else:
+                pasted = request.POST.get('html_content', '')
+                if len(pasted.encode('utf-8')) > MAX_HTML_UPLOAD_BYTES:
+                    messages.error(request, f'HTML 내용이 너무 깁니다. 최대 {MAX_HTML_UPLOAD_BYTES // 1024}KB까지 저장할 수 있습니다.')
+                    return redirect('community:portfolio_collection_edit', slug=collection.slug)
+                # textarea를 비워 저장하면 기존 내용 유지(빈 값으로 덮어쓰지 않음)
+                if pasted.strip():
+                    collection.html_content = pasted
+
+            # 함께 쓸 이미지 업로드 (다중) - HTML이 참조하는 사진
+            asset_files = request.FILES.getlist('asset_files')
+            if asset_files:
+                from PIL import Image
+                # collection이 아직 저장 전이면 PK가 필요하므로 먼저 저장
+                if collection.pk is None:
+                    collection.save()
+                current = collection.html_assets.count()
+                added = 0
+                for f in asset_files:
+                    if current + added >= MAX_ASSET_COUNT:
+                        messages.warning(request, f'이미지는 최대 {MAX_ASSET_COUNT}개까지 업로드할 수 있어 일부는 저장되지 않았습니다.')
+                        break
+                    if f.size > MAX_ASSET_BYTES:
+                        messages.warning(request, f'"{f.name}"은(는) {MAX_ASSET_BYTES // (1024 * 1024)}MB를 초과하여 건너뛰었습니다.')
+                        continue
+                    # 실제 이미지인지 검증 (비이미지 파일 업로드로 인한 XSS/오용 방지, SVG도 차단됨)
+                    try:
+                        Image.open(f).verify()
+                        f.seek(0)
+                    except Exception:
+                        messages.warning(request, f'"{f.name}"은(는) 유효한 이미지 파일이 아니어서 건너뛰었습니다.')
+                        continue
+                    # 같은 파일명은 교체 (참조 매칭 모호성 방지)
+                    collection.html_assets.filter(original_name=f.name).delete()
+                    PortfolioAsset.objects.create(collection=collection, image=f, original_name=f.name[:255])
+                    added += 1
+
+        # 기본 정보 (빌더 필드는 모드와 무관하게 보존 - 모드 전환 시 데이터 유지)
         collection.portfolio_name = request.POST.get('portfolio_name', collection.portfolio_name)
         collection.display_name = request.POST.get('display_name', '')
         collection.title = request.POST.get('title', '')

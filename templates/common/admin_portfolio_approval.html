@@ -44,6 +44,32 @@
             <i class="fas fa-external-link-alt me-1"></i>내용 보기
           </a>
         </div>
+        {% if c.content_mode == 'html' %}
+        <div class="mt-3 p-2 rounded" style="background:rgba(8,145,178,0.08); border:1px solid rgba(8,145,178,0.25);">
+          <div style="color:#67e8f9; font-size:0.85rem; margin-bottom:0.4rem;">
+            <i class="fas fa-file-code me-1"></i><strong>HTML 직접 업로드</strong>
+            {% if c.html_filename %} · {{ c.html_filename }}{% endif %} · {{ c.html_content|length }}자
+            <a href="{% url 'community:portfolio_collection_raw' c.slug %}" target="_blank" style="color:#93c5fd; margin-left:0.5rem;"><i class="fas fa-external-link-alt me-1"></i>원본 새 탭</a>
+          </div>
+          <div style="color:#fca5a5; font-size:0.78rem; margin-bottom:0.4rem;"><i class="fas fa-exclamation-triangle me-1"></i>승인 전 아래 소스에 피싱·악성 스크립트·외부 유출 시도가 없는지 검토하세요. (표시 시 샌드박스 격리되지만, 부적절한 콘텐츠는 반려하세요.)</div>
+          <details>
+            <summary style="cursor:pointer; color:#cbd5e1; font-size:0.85rem;">소스 코드 검토 (펼치기)</summary>
+            <pre style="max-height:360px; overflow:auto; background:#020617; color:#e2e8f0; padding:0.75rem; border-radius:8px; font-size:0.75rem; margin-top:0.5rem; white-space:pre-wrap; word-break:break-all;">{{ c.html_content }}</pre>
+          </details>
+          {% if c.html_assets.all %}
+          <div class="mt-2">
+            <div style="color:#94a3b8; font-size:0.8rem; margin-bottom:0.4rem;"><i class="fas fa-images me-1"></i>함께 업로드한 사진 {{ c.html_assets.count }}장</div>
+            <div style="display:flex; flex-wrap:wrap; gap:0.4rem;">
+              {% for a in c.html_assets.all %}
+              <a href="{% url 'community:portfolio_collection_asset' c.slug a.id %}" target="_blank" title="{{ a.original_name }}">
+                <img src="{% url 'community:portfolio_collection_asset' c.slug a.id %}" alt="{{ a.original_name }}" style="width:64px; height:64px; object-fit:cover; border-radius:6px; border:1px solid rgba(255,255,255,0.15);">
+              </a>
+              {% endfor %}
+            </div>
+          </div>
+          {% endif %}
+        </div>
+        {% endif %}
         <div class="d-flex gap-2 mt-3 flex-wrap align-items-start">
           <form method="post" action="{% url 'common:admin_portfolio_approve' 'collection' c.id %}">
             {% csrf_token %}
@@ -129,6 +155,31 @@
             <i class="fas fa-external-link-alt me-1"></i>내용 보기
           </a>
         </div>
+        {% if c.content_mode == 'html' %}
+        <div class="mt-3 p-2 rounded" style="background:rgba(8,145,178,0.08); border:1px solid rgba(8,145,178,0.25);">
+          <div style="color:#67e8f9; font-size:0.85rem; margin-bottom:0.4rem;">
+            <i class="fas fa-file-code me-1"></i><strong>HTML 직접 업로드</strong>
+            {% if c.html_filename %} · {{ c.html_filename }}{% endif %} · {{ c.html_content|length }}자
+            <a href="{% url 'community:portfolio_collection_raw' c.slug %}" target="_blank" style="color:#93c5fd; margin-left:0.5rem;"><i class="fas fa-external-link-alt me-1"></i>원본 새 탭</a>
+          </div>
+          <details>
+            <summary style="cursor:pointer; color:#cbd5e1; font-size:0.85rem;">소스 코드 검토 (펼치기)</summary>
+            <pre style="max-height:360px; overflow:auto; background:#020617; color:#e2e8f0; padding:0.75rem; border-radius:8px; font-size:0.75rem; margin-top:0.5rem; white-space:pre-wrap; word-break:break-all;">{{ c.html_content }}</pre>
+          </details>
+          {% if c.html_assets.all %}
+          <div class="mt-2">
+            <div style="color:#94a3b8; font-size:0.8rem; margin-bottom:0.4rem;"><i class="fas fa-images me-1"></i>함께 업로드한 사진 {{ c.html_assets.count }}장</div>
+            <div style="display:flex; flex-wrap:wrap; gap:0.4rem;">
+              {% for a in c.html_assets.all %}
+              <a href="{% url 'community:portfolio_collection_asset' c.slug a.id %}" target="_blank" title="{{ a.original_name }}">
+                <img src="{% url 'community:portfolio_collection_asset' c.slug a.id %}" alt="{{ a.original_name }}" style="width:64px; height:64px; object-fit:cover; border-radius:6px; border:1px solid rgba(255,255,255,0.15);">
+              </a>
+              {% endfor %}
+            </div>
+          </div>
+          {% endif %}
+        </div>
+        {% endif %}
         <form method="post" action="{% url 'common:admin_portfolio_reject' 'collection' c.id %}" class="d-flex gap-2 mt-3 flex-wrap align-items-start">
           {% csrf_token %}
           <input type="text" name="reason" placeholder="회수 사유 (작성자에게 표시)" class="form-control form-control-sm flex-grow-1" style="min-width:240px; background:rgba(0,0,0,0.2); color:#e2e8f0; border:1px solid rgba(255,255,255,0.15);">

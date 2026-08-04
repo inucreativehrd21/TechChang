@@ -6,7 +6,7 @@
     <div class="premium-nav-inner">
         <!-- Brand -->
         <a class="premium-nav-brand" href="{% url 'community:index' %}">
-            <img src="{% static 'images/techwindow-logo.png' %}" alt="테크창" style="height: 36px; width: auto;">
+            <img src="{% static 'images/techwindow-logo.png' %}" alt="테크창" style="height: 26px; width: auto;">
             <span>테크창</span>
         </a>
 
@@ -26,11 +26,11 @@
             </a>
 
             {% if user.is_authenticated %}
-                <a href="{% url 'community:question_create' %}" class="btn-premium btn-premium-primary" style="padding: 0.625rem 1.25rem; font-size: 0.9375rem;">
+                <a href="{% url 'community:question_create' %}" class="btn-premium btn-premium-primary" style="padding: 0.45rem 1.05rem; font-size: 0.9375rem;">
                     글쓰기
                 </a>
                 <div style="position: relative;" class="user-menu">
-                    <button class="btn-premium btn-premium-secondary user-menu-btn" style="padding: 0.625rem 1.25rem; font-size: 0.9375rem;">
+                    <button class="btn-premium btn-premium-secondary user-menu-btn" style="padding: 0.45rem 1.05rem; font-size: 0.9375rem;">
                         {{ user|display_name }}
                     </button>
                     <div class="user-dropdown" style="position: absolute; right: 0; top: 100%; margin-top: var(--space-2); background: white; border-radius: var(--radius-lg); box-shadow: var(--shadow-xl); min-width: 200px; display: none; z-index: 100;">
@@ -53,7 +53,7 @@
                 </div>
             {% else %}
                 <a href="{% url 'common:login' %}" class="premium-nav-link">로그인</a>
-                <a href="{% url 'common:signup' %}" class="btn-premium btn-premium-primary" style="padding: 0.625rem 1.25rem; font-size: 0.9375rem;">
+                <a href="{% url 'common:signup' %}" class="btn-premium btn-premium-primary" style="padding: 0.45rem 1.05rem; font-size: 0.9375rem;">
                     회원가입
                 </a>
             {% endif %}
@@ -180,7 +180,7 @@
 </div>
 
 <style nonce="{{ csp_nonce }}">
-body { padding-top: 112px; }
+body { padding-top: 68px; }
 .user-dropdown.show { display: block !important; }
 .user-dropdown a:hover { background-color: var(--bg-secondary); }
 </style>
