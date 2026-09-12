@@ -1,0 +1,32 @@
+# TechChang OCI crontab — Lightsail 과 동일 레이아웃(~/projects/mysite, ~/venvs/mysite)이라 경로 그대로.
+# 적용:  crontab scripts/crontab.oci   (기존 crontab 을 통째로 교체)  →  crontab -l 로 확인
+# 주의:
+#   - 서버 타임존이 Asia/Seoul 이어야 아래 시각이 KST (deploy_oci.sh 가 설정)
+#   - crontab 에서 % 는 \% 로 이스케이프
+#   - .env 는 settings(base.py)가 로드하므로 export 불필요. DJANGO_SETTINGS_MODULE 미지정 → base.py (Lightsail 과 동일)
+#   - /var/log/techchang_report.log 는 deploy_oci.sh 가 ubuntu 소유로 미리 생성
+#   - 실제 Lightsail 의 `crontab -l` 출력과 대조해서 다른 줄(특히 시리즈 격주 게이트)은 그쪽을 우선한다
+SHELL=/bin/bash
+PY=/home/ubuntu/venvs/mysite/bin/python3
+APP=/home/ubuntu/projects/mysite
+RLOG=/var/log/techchang_report.log
+
+# DB 백업: 매일 03:00 (7개 보관), 매주 월 03:30 (4개 보관 + 이메일 첨부)
+0 3 * * *   cd $APP && $PY manage.py backup_db --keep 7 --dest $APP/backups >> $RLOG 2>&1
+30 3 * * 1  cd $APP && $PY manage.py backup_db --keep 4 --dest $APP/backups --email seunghyunmoon55@gmail.com >> $RLOG 2>&1
+
+# 로그 리포트: 매일 08:00 (24h), 매주 월 08:00 (168h)
+0 8 * * *   cd $APP && $PY manage.py send_log_report --hours 24 --to seunghyunmoon55@gmail.com >> $RLOG 2>&1
+0 8 * * 1   cd $APP && $PY manage.py send_log_report --hours 168 --to seunghyunmoon55@gmail.com >> $RLOG 2>&1
+
+# 방문자 리포트: 매주 월 08:30, 매월 1일 09:00
+30 8 * * 1  cd $APP && $PY manage.py send_visitor_report --period weekly --to seunghyunmoon55@gmail.com >> $RLOG 2>&1
+0 9 1 * *   cd $APP && $PY manage.py send_visitor_report --period monthly --to seunghyunmoon55@gmail.com >> $RLOG 2>&1
+
+# AI 칼럼: 화(hrd) / 목(data) / 토(coding) 10:00  — ANTHROPIC_API_KEY 필요
+0 10 * * 2  cd $APP && $PY manage.py auto_write_columns --topic hrd    >> $APP/logs/techchang_columns.log 2>&1
+0 10 * * 4  cd $APP && $PY manage.py auto_write_columns --topic data   >> $APP/logs/techchang_columns.log 2>&1
+0 10 * * 6  cd $APP && $PY manage.py auto_write_columns --topic coding >> $APP/logs/techchang_columns.log 2>&1
+
+# 연재 시리즈: 격주 월 10:00 (ISO 주차 홀수 주만). Lightsail 의 실제 게이트 식과 다르면 그쪽으로 맞출 것
+0 10 * * 1  [ $(( $(date +\%V) \% 2 )) -eq 1 ] && cd $APP && $PY manage.py auto_write_series >> $APP/logs/techchang_series.log 2>&1

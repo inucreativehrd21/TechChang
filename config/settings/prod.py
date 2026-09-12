@@ -51,7 +51,10 @@ SECURE_HSTS_INCLUDE_SUBDOMAINS = True
 SECURE_HSTS_PRELOAD = True
 
 # HTTPS 리다이렉트
-SECURE_SSL_REDIRECT = True
+#  기본 True. 서버 이전 직후 certbot 적용 전에 IP 로 HTTP 검증할 때만
+#  .env 에 DJANGO_SECURE_SSL_REDIRECT=false 를 두고, 검증이 끝나면 반드시 제거한다.
+#  (세션/CSRF 쿠키는 Secure 고정이라 HTTP 로는 로그인이 안 된다 — 페이지 렌더/정적/미디어 확인 용도)
+SECURE_SSL_REDIRECT = os.environ.get('DJANGO_SECURE_SSL_REDIRECT', 'true').lower() == 'true'
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
 # Referrer 정책

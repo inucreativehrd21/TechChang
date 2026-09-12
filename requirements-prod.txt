@@ -1,0 +1,10 @@
+# 운영 서버 전용 추가 의존성 (로컬/CI 는 SQLite 라 requirements.txt 만 사용)
+#
+#   pip install -r requirements-prod.txt
+#
+-r requirements.txt
+
+# MySQL 드라이버 — config/settings/base.py 의 django.db.backends.mysql 이 요구 (MySQLdb).
+#  aarch64(OCI A1) 에 바이너리 휠이 없어도 소스 빌드가 되도록 deploy_oci.sh 가
+#  build-essential python3-dev pkg-config default-libmysqlclient-dev 를 먼저 설치한다.
+mysqlclient>=2.2,<3
