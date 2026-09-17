@@ -5,6 +5,6 @@
 -r requirements.txt
 
 # MySQL 드라이버 — config/settings/base.py 의 django.db.backends.mysql 이 요구 (MySQLdb).
-#  aarch64(OCI A1) 에 바이너리 휠이 없어도 소스 빌드가 되도록 deploy_oci.sh 가
+#  바이너리 휠이 없는 아키텍처(aarch64 등)에서는 소스 빌드되므로 apt 로
 #  build-essential python3-dev pkg-config default-libmysqlclient-dev 를 먼저 설치한다.
 mysqlclient>=2.2,<3

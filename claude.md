@@ -2,10 +2,10 @@
 
 ## WHAT (기술 스택)
 
-**Backend**: Django 5.1.1, Python 3.12+, SQLite3
+**Backend**: Django 5.2.6, Python 3.12+, MySQL 8 (운영, `DJANGO_DB_ENGINE=mysql`) / SQLite3 (로컬·CI)
 **Frontend**: Bootstrap 5.3, Vanilla JavaScript, Django Templates
-**서버**: Ubuntu 24.04, Nginx, Gunicorn
-**배포**: 43.203.93.244 (techchang.com)
+**서버**: Ubuntu 24.04 (OCI A1 aarch64), Nginx, Gunicorn(WSGI)
+**배포**: 161.118.232.178 (techchang.com)
 
 ## WHY (프로젝트 목적)
 
@@ -38,12 +38,12 @@ python manage.py runserver
 python manage.py makemigrations && python manage.py migrate
 ```
 
-**서버 배포** (자세한 절차는 README.md 배포 섹션):
+**서버 배포** (자세한 절차는 README.md 배포 섹션. 서버 경로: 프로젝트 `~/projects/mysite`, venv `~/venvs/mysite`):
 ```bash
-git pull origin main
-pip install -r requirements.txt
-python manage.py migrate
-python manage.py collectstatic --noinput
+cd ~/projects/mysite && git pull origin main
+~/venvs/mysite/bin/pip install -r requirements-prod.txt
+DJANGO_SETTINGS_MODULE=config.settings.prod ~/venvs/mysite/bin/python3 manage.py migrate
+DJANGO_SETTINGS_MODULE=config.settings.prod ~/venvs/mysite/bin/python3 manage.py collectstatic --noinput
 sudo systemctl restart mysite
 ```
 
@@ -75,5 +75,7 @@ sudo systemctl status mysite nginx
 
 - **서비스**: `/etc/systemd/system/mysite.service`
 - **Nginx**: `/etc/nginx/sites-available/techchang`
-- **로그**: `sudo journalctl -u mysite -n 50`
+- **로그**: `sudo journalctl -u mysite -n 50`, `logs/django.log`
 - **정적파일**: `python manage.py collectstatic --clear`
+- **DB 백업**: `python manage.py backup_db` → `backups/db_<ts>.sql.gz` (cron 매일 03:00)
+- **cron**: ubuntu 계정 `crontab -l` (backup_db, send_log_report, send_visitor_report, auto_write_*)

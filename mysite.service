@@ -1,57 +1,41 @@
-# systemd 서비스 파일
+# systemd 서비스 파일 — 운영 서버(Ubuntu 24.04, OCI)에 설치된 유닛과 동일
 # 파일 위치: /etc/systemd/system/mysite.service
-# 
-# 설치 방법:
-# 1. sudo cp mysite.service /etc/systemd/system/
-# 2. sudo systemctl daemon-reload
-# 3. sudo systemctl enable mysite
-# 4. sudo systemctl start mysite
+#
+# 설치:
+#   sudo cp mysite.service /etc/systemd/system/
+#   sudo systemctl daemon-reload && sudo systemctl enable --now mysite
+#
+# 전제: 프로젝트 /home/ubuntu/projects/mysite, venv /home/ubuntu/venvs/mysite,
+#       .env 에 DJANGO_SECRET_KEY·DJANGO_DB_* 등 (README 참고). gunicorn 은 ubuntu 계정으로 실행
+#       (cron·수동 작업과 같은 계정이라 logs/·media/ 소유권 충돌 없음).
 
 [Unit]
-Description=Django mysite Gunicorn Application Server
+Description=TechChang Django Gunicorn (mysite)
 Documentation=https://docs.gunicorn.org/
-After=network.target postgresql.service
-Wants=postgresql.service
+After=network.target mysql.service
+Wants=mysql.service
 StartLimitIntervalSec=300
 StartLimitBurst=3
 
 [Service]
-# 서비스 타입
 Type=exec
 Restart=on-failure
 RestartSec=5
-
-# 사용자 설정 (보안)
-User=www-data
-Group=www-data
-
-# 환경 설정
+User=ubuntu
+Group=ubuntu
+WorkingDirectory=/home/ubuntu/projects/mysite
+# .env 를 systemd 가 직접 주입 (settings 의 python-dotenv 로드와 이중 안전)
+EnvironmentFile=/home/ubuntu/projects/mysite/.env
 Environment=DJANGO_SETTINGS_MODULE=config.settings.prod
 Environment=PYTHONPATH=/home/ubuntu/projects/mysite
 Environment=PYTHONUNBUFFERED=1
-
-# 작업 디렉토리
-WorkingDirectory=/home/ubuntu/projects/mysite
-
-# 실행 명령
-ExecStart=/home/ubuntu/projects/mysite/venv/bin/gunicorn \
-    --config /home/ubuntu/projects/mysite/gunicorn.conf.py \
-    config.wsgi:application
-    
+ExecStart=/home/ubuntu/venvs/mysite/bin/gunicorn --config /home/ubuntu/projects/mysite/gunicorn.conf.py config.wsgi:application
 ExecReload=/bin/kill -s HUP $MAINPID
-
-# 리소스 제한
 LimitNOFILE=65536
-LimitNPROC=4096
-
-# 보안 설정
 NoNewPrivileges=true
 PrivateTmp=true
 ProtectSystem=full
 ProtectHome=false
-ReadWritePaths=/home/ubuntu/projects/mysite/logs /home/ubuntu/projects/mysite/media /home/ubuntu/projects/mysite/staticfiles
-
-# 킬 시그널
 KillMode=mixed
 KillSignal=SIGTERM
 TimeoutStopSec=30

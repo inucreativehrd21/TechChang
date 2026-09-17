@@ -53,11 +53,11 @@ TechChang는 Stack Overflow 스타일의 질문/답변 커뮤니티에 인터랙
 
 ## 🔧 기술 스택
 
-**Backend** — Django 5.2.6, Python 3.12+, SQLite3, Channels(Daphne, WebSocket)
+**Backend** — Django 5.2.6, Python 3.12+, MySQL 8 (운영) / SQLite3 (로컬·CI), Channels(Daphne, WebSocket)
 **AI** — Anthropic Claude API (`anthropic` SDK)
 **Frontend** — Bootstrap 5.3, Vanilla JavaScript, Django Templates
 **인증** — Django Allauth, 카카오 OAuth, 이메일 인증 코드
-**배포** — Ubuntu 24.04, Nginx, Gunicorn(WSGI), Let's Encrypt SSL
+**배포** — Ubuntu 24.04 (OCI), Nginx, Gunicorn(WSGI), MySQL 8, Let's Encrypt SSL
 **CI** — GitHub Actions (`check` + `test`), AI 자동 수정 워크플로
 
 ---
@@ -123,7 +123,8 @@ mysite/
 ├── nginx.conf           # Nginx 설정
 ├── mysite.service       # systemd 유닛
 ├── gunicorn.conf.py     # Gunicorn 설정
-├── requirements.txt
+├── requirements.txt       # 공통 의존성 (로컬·CI)
+├── requirements-prod.txt  # 운영 추가 의존성 (mysqlclient)
 └── manage.py
 ```
 
@@ -133,18 +134,26 @@ mysite/
 
 ## 📦 배포
 
-프로덕션은 **Ubuntu + Nginx + Gunicorn(WSGI) + systemd** 구성으로 운영합니다.
+프로덕션은 **Ubuntu 24.04 (OCI, aarch64) + Nginx + Gunicorn(WSGI) + systemd + MySQL 8** 구성으로 운영합니다.
+
+| 항목 | 경로 |
+|------|------|
+| 프로젝트 | `/home/ubuntu/projects/mysite` |
+| 가상환경 | `/home/ubuntu/venvs/mysite` (프로젝트 밖) |
+| 서비스 | `/etc/systemd/system/mysite.service` ([mysite.service](mysite.service)) — `ubuntu` 계정, `EnvironmentFile=.env` |
+| Nginx | `/etc/nginx/sites-available/techchang` ([nginx.conf](nginx.conf)) |
+| 로그 | `sudo journalctl -u mysite`, `logs/django.log`, `logs/gunicorn_*.log`, `/var/log/nginx/techchang_*.log` |
+| 백업 | `backups/db_<ts>.sql.gz` (`manage.py backup_db`, cron 매일 03:00 / 주 1회 메일) |
 
 ### 기존 서버 코드 업데이트
 
 ```bash
-cd /home/ubuntu/projects/mysite
-git pull origin main
-source venv/bin/activate
-pip install -r requirements.txt
-python manage.py migrate
-python manage.py collectstatic --noinput
-sudo systemctl restart mysite
+cd ~/projects/mysite && git pull origin main
+~/venvs/mysite/bin/pip install -r requirements-prod.txt
+export DJANGO_SETTINGS_MODULE=config.settings.prod
+~/venvs/mysite/bin/python3 manage.py migrate
+~/venvs/mysite/bin/python3 manage.py collectstatic --noinput
+sudo systemctl restart mysite && systemctl is-active mysite
 ```
 
 > `staticfiles/` 는 `collectstatic` 산출물이므로 저장소에서 추적하지 않습니다(서버에서 생성).
@@ -152,91 +161,110 @@ sudo systemctl restart mysite
 ### 새 서버 구축
 
 <details>
-<summary><b>1) EC2 인스턴스 & 초기 설정</b></summary>
+<summary><b>1) 인스턴스 & 시스템 패키지</b></summary>
 
-추천 사양: Ubuntu 24.04 LTS, t3.small 이상, 스토리지 20GB+.
-Security Group — SSH(22, 본인 IP) / HTTP(80) / HTTPS(443).
+Ubuntu 24.04 LTS, 2 vCPU / 4GB+ 권장. 방화벽 22/80/443 개방
+(OCI 는 VCN 보안 목록 **과** 인스턴스 `iptables` 두 겹 — `sudo iptables -I INPUT 6 -p tcp -m state --state NEW --dport 80 -j ACCEPT` 등 + `sudo netfilter-persistent save`).
 
 ```bash
-ssh -i your-key.pem ubuntu@your-instance-ip
+sudo timedatectl set-timezone Asia/Seoul       # crontab 시각 기준
+sudo apt update && sudo apt install -y git curl rsync cron logrotate \
+    python3 python3-venv python3-dev build-essential pkg-config \
+    default-libmysqlclient-dev libjpeg-dev zlib1g-dev libmagic1 \
+    mysql-server mysql-client nginx certbot python3-certbot-nginx
+sudo usermod -aG adm,systemd-journal ubuntu    # send_log_report 가 nginx 로그·journalctl 읽음
+sudo chmod o+x /home/ubuntu                    # 24.04 는 홈이 750 → nginx 가 static/media 접근 불가
+```
 
-sudo apt update && sudo apt upgrade -y
-sudo timedatectl set-timezone Asia/Seoul
-sudo apt install -y python3-venv python3-dev nginx \
-    git curl build-essential certbot python3-certbot-nginx
+> Ubuntu **Minimal** 이미지에는 `cron`/`logrotate` 가 없으니 반드시 설치.
+
+</details>
+
+<details>
+<summary><b>2) MySQL</b></summary>
+
+```bash
+sudo mysql <<'SQL'
+CREATE DATABASE techchang CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+CREATE USER 'techchang'@'localhost' IDENTIFIED BY '<비밀번호>';
+CREATE USER 'techchang'@'127.0.0.1' IDENTIFIED BY '<비밀번호>';
+GRANT ALL PRIVILEGES ON techchang.* TO 'techchang'@'localhost', 'techchang'@'127.0.0.1';
+FLUSH PRIVILEGES;
+SQL
+# USE_TZ=True 환경에서 날짜 조회에 필요한 타임존 테이블
+mysql_tzinfo_to_sql /usr/share/zoneinfo 2>/dev/null | sudo mysql -D mysql
 ```
 
 </details>
 
 <details>
-<summary><b>2) 도메인(DNS) 설정</b></summary>
-
-도메인 제공업체(가비아, Route53 등)에서 A 레코드를 추가합니다.
-
-```
-Type    Name    Value
-A       @       <EC2 Public IP>
-A       www     <EC2 Public IP>
-```
-
-전파 확인: `nslookup techchang.com` / `dig techchang.com`
-
-</details>
-
-<details>
-<summary><b>3) 프로젝트 배포</b></summary>
+<summary><b>3) 프로젝트 · 환경변수 · Django</b></summary>
 
 ```bash
-# 코드 가져오기
-mkdir -p /home/ubuntu/projects && cd /home/ubuntu/projects
-git clone https://github.com/inucreativehrd21/TechChang.git mysite
-cd mysite
+mkdir -p ~/projects ~/venvs && cd ~/projects
+git clone https://github.com/inucreativehrd21/TechChang.git mysite && cd mysite
+python3 -m venv ~/venvs/mysite
+~/venvs/mysite/bin/pip install --upgrade pip wheel
+~/venvs/mysite/bin/pip install -r requirements-prod.txt      # mysqlclient 포함
 
-# 가상환경 & 패키지
-python3 -m venv venv
-source venv/bin/activate
-pip install --upgrade pip
-pip install -r requirements.txt
+cp .env.example .env && chmod 600 .env && nano .env
+#   DJANGO_SECRET_KEY, DJANGO_ALLOWED_HOSTS(도메인+서버 IP), DJANGO_DB_*(ENGINE=mysql),
+#   이메일(DJANGO_EMAIL_*, DJANGO_ADMIN_EMAIL), ANTHROPIC_API_KEY, KAKAO_* 등
+#   SECRET_KEY 생성: python -c 'from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())'
 
-# 환경변수 (SECRET_KEY 생성 예시)
-python -c 'from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())'
-cp .env.example .env && nano .env   # DJANGO_SECRET_KEY, DEBUG=False, ALLOWED_HOSTS, API 키 입력
+export DJANGO_SETTINGS_MODULE=config.settings.prod
+~/venvs/mysite/bin/python3 manage.py check
+~/venvs/mysite/bin/python3 manage.py migrate
+~/venvs/mysite/bin/python3 manage.py collectstatic --noinput
+~/venvs/mysite/bin/python3 manage.py createsuperuser        # 새 DB 일 때
+```
 
-# Django 초기화
-python manage.py collectstatic --noinput
-python manage.py migrate
-python manage.py createsuperuser
+기존 서버에서 옮기는 경우: `.env`, `media/`, `backups/`, `.env` 가 가리키는 외부 파일(GSC `token.json` 등)을 rsync 하고
+최신 `backups/db_*.sql.gz` 를 복원합니다.
+```bash
+gunzip -c backups/db_YYYYMMDD_HHMMSS.sql.gz | mysql -u techchang -p techchang
+~/venvs/mysite/bin/python3 manage.py migrate
 ```
 
 </details>
 
 <details>
-<summary><b>4) Gunicorn (systemd) & Nginx</b></summary>
-
-저장소의 [mysite.service](mysite.service)·[gunicorn.conf.py](gunicorn.conf.py)·[nginx.conf](nginx.conf) 를 사용합니다.
+<summary><b>4) Gunicorn(systemd) · Nginx · SSL</b></summary>
 
 ```bash
-# systemd 서비스 등록
 sudo cp mysite.service /etc/systemd/system/mysite.service
-sudo systemctl daemon-reload
-sudo systemctl enable --now mysite
-sudo systemctl status mysite
+sudo systemctl daemon-reload && sudo systemctl enable --now mysite
 
-# Nginx 설정
 sudo cp nginx.conf /etc/nginx/sites-available/techchang
-sudo rm -f /etc/nginx/sites-enabled/default
-sudo ln -sf /etc/nginx/sites-available/techchang /etc/nginx/sites-enabled/
-sudo nginx -t && sudo systemctl restart nginx
+sudo ln -sf /etc/nginx/sites-available/techchang /etc/nginx/sites-enabled/ && sudo rm -f /etc/nginx/sites-enabled/default
+# 인증서가 아직 없으면 nginx.conf 의 443 블록 때문에 nginx -t 가 실패한다 →
+# 먼저 80 만 있는 임시 설정으로 띄운 뒤 certbot 을 받거나, 기존 서버의 /etc/letsencrypt 를 rsync 로 가져온다.
+sudo certbot --nginx -d techchang.com -d www.techchang.com
+sudo nginx -t && sudo systemctl reload nginx
+sudo certbot renew --dry-run
 ```
+
+인증서 전에 IP 로 HTTP 검증이 필요하면 `.env` 에 `DJANGO_SECURE_SSL_REDIRECT=false` 를 잠시 두고(검증 후 삭제) 재시작합니다.
+세션/CSRF 쿠키는 Secure 고정이라 HTTP 로는 로그인이 되지 않습니다.
 
 </details>
 
 <details>
-<summary><b>5) SSL 인증서 (Let's Encrypt)</b></summary>
+<summary><b>5) cron (ubuntu 계정)</b></summary>
 
-```bash
-sudo certbot --nginx -d techchang.com -d www.techchang.com
-sudo systemctl status certbot.timer   # 자동 갱신 확인
+`crontab -e` — 경로는 절대경로, `%` 는 `\%` 로 이스케이프. 리포트 로그 `/var/log/techchang_report.log` 는 `sudo touch` 후 `chown ubuntu` 로 미리 생성.
+
+```
+0 3 * * *   cd /home/ubuntu/projects/mysite && /home/ubuntu/venvs/mysite/bin/python3 manage.py backup_db --keep 7 --dest /home/ubuntu/projects/mysite/backups >> /var/log/techchang_report.log 2>&1
+30 3 * * 1  ... backup_db --keep 4 --dest ... --email <admin@example.com>
+0 8 * * *   ... send_log_report --hours 24 --to <admin@example.com>
+0 8 * * 1   ... send_log_report --hours 168 --to <admin@example.com>
+30 8 * * 1  ... send_visitor_report --period weekly --to <admin@example.com>
+0 9 1 * *   ... send_visitor_report --period monthly --to <admin@example.com>
+0 10 * * 2  ... auto_write_columns --topic hrd    >> /home/ubuntu/projects/mysite/logs/techchang_columns.log 2>&1
+0 10 * * 4  ... auto_write_columns --topic data   >> .../logs/techchang_columns.log 2>&1
+0 10 * * 6  ... auto_write_columns --topic coding >> .../logs/techchang_columns.log 2>&1
+0 10 * * 1  [ $(( $(date +\%V) \% 2 )) -eq 1 ] && ... auto_write_series >> .../logs/techchang_series.log 2>&1
 ```
 
 </details>
@@ -246,26 +274,28 @@ sudo systemctl status certbot.timer   # 자동 갱신 확인
 
 **로그 확인**
 ```bash
-sudo journalctl -u mysite -n 50          # 애플리케이션
+sudo journalctl -u mysite -n 50
 sudo tail -f /var/log/nginx/techchang_error.log
-tail -f /home/ubuntu/projects/mysite/logs/django.log
+tail -f ~/projects/mysite/logs/django.log
 ```
 
-**DB 백업 (SQLite)**
+**DB 백업 / 복원 (MySQL)**
 ```bash
-mkdir -p ~/backups
-cp db.sqlite3 ~/backups/db_$(date +%Y%m%d_%H%M%S).sqlite3
-# 자동 백업 cron 예: 0 2 * * * cp .../db.sqlite3 ~/backups/db_$(date +\%Y\%m\%d).sqlite3
+~/venvs/mysite/bin/python3 manage.py backup_db --keep 7          # backups/db_<ts>.sql.gz
+gunzip -c backups/db_<ts>.sql.gz | mysql -u techchang -p techchang && ~/venvs/mysite/bin/python3 manage.py migrate
 ```
 
 | 증상 | 점검 |
 |------|------|
-| 502 Bad Gateway | `systemctl status mysite` → 재시작, Nginx 에러 로그 |
-| 정적 파일 미로드 | `collectstatic --noinput`, `staticfiles/` 권한(ubuntu:www-data) |
-| CSRF 에러 | `.env` 의 `DJANGO_ALLOWED_HOSTS`, prod.py `SECURE_PROXY_SSL_HEADER` |
+| 502 Bad Gateway | `systemctl status mysite` → 재시작, `journalctl -u mysite -n 50` |
+| 정적/미디어 403·404 | `collectstatic --noinput`, `ls -ld /home/ubuntu` 가 `o+x` 인지, nginx `alias` 경로 |
+| 빈 사이트(데이터 없음) | `.env` 에 `DJANGO_DB_ENGINE=mysql` 누락 → SQLite 로 기동됨 |
+| `Error loading MySQLdb` | `pip install -r requirements-prod.txt` (mysqlclient) + apt 빌드 의존성 |
+| 400 Bad Request | `.env` `DJANGO_ALLOWED_HOSTS` 에 도메인/IP 누락 |
+| CSRF 에러 | prod.py `SECURE_PROXY_SSL_HEADER`, nginx `X-Forwarded-Proto` |
 | 마이그레이션 에러 | `python manage.py showmigrations` 로 상태 확인 |
 
-**보안 체크리스트** — `.env` gitignore 포함 · `DEBUG=False` · 강력한 `SECRET_KEY` · `ALLOWED_HOSTS` 설정 · SSL 적용 · SSH 키 인증 · 정기 백업.
+**보안 체크리스트** — `.env` gitignore 포함·600 권한 · `DEBUG=False` · 강력한 `SECRET_KEY` · `ALLOWED_HOSTS` 설정 · SSL 적용 · SSH 키 인증 · 정기 백업.
 
 </details>
 

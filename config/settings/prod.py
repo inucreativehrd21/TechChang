@@ -29,7 +29,7 @@ ADMIN_URL = os.environ.get('DJANGO_ADMIN_URL', 'secret-control-panel/')
 ALLOWED_HOSTS = os.environ.get('DJANGO_ALLOWED_HOSTS', '').split(',') if os.environ.get('DJANGO_ALLOWED_HOSTS') else [
     'techchang.com',
     'www.techchang.com',
-    '43.203.93.244',  # 서버 IP 주소
+    '161.118.232.178',  # 서버 IP 주소 (OCI)
 ]
 
 # ===== 정적 파일 =====
@@ -55,7 +55,7 @@ SECURE_HSTS_INCLUDE_SUBDOMAINS = True
 SECURE_HSTS_PRELOAD = True
 
 # HTTPS 리다이렉트
-#  기본 True. 서버 이전 직후 certbot 적용 전에 IP 로 HTTP 검증할 때만
+#  기본 True. 새 서버에서 인증서 적용 전에 IP 로 HTTP 검증할 때만
 #  .env 에 DJANGO_SECURE_SSL_REDIRECT=false 를 두고, 검증이 끝나면 반드시 제거한다.
 #  (세션/CSRF 쿠키는 Secure 고정이라 HTTP 로는 로그인이 안 된다 — 페이지 렌더/정적/미디어 확인 용도)
 SECURE_SSL_REDIRECT = os.environ.get('DJANGO_SECURE_SSL_REDIRECT', 'true').lower() == 'true'

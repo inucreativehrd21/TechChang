@@ -1,3 +1,0 @@
-# 서버(리눅스)에서 실행되는 파일은 항상 LF (Windows autocrlf 로 CRLF 가 섞이면 bash/cron 이  오류)
-*.sh text eol=lf
-scripts/crontab.oci text eol=lf
