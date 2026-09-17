@@ -392,7 +392,7 @@ cd ~/projects/mysite && ~/venvs/mysite/bin/python3 manage.py backup_db --keep 7 
 | 1 | **`SECURE_SSL_REDIRECT=True`**: certbot 전엔 IP HTTP 요청이 `https://<IP>` 로 301 → 검증 불가. nginx 가 `X-Forwarded-Proto: http` 를 주므로 무한 리다이렉트는 아니지만 응답을 못 본다 | `.env` `DJANGO_SECURE_SSL_REDIRECT=false`(이번 prod.py 변경) → 검증 → **반드시 제거**. `deploy_oci.sh` 가 false 상태면 경고. 대안: 인증서 먼저 이관(8-A) + hosts 파일 |
 | 2 | Secure 쿠키(`SESSION_COOKIE_SECURE`, `CSRF_COOKIE_SECURE`) 는 토글 대상이 아님 → HTTP 로 로그인 불가 | 로그인 검증은 HTTPS(8-A + hosts) 로 |
 | 3 | **HSTS preload(1년, includeSubDomains)**: 브라우저가 `techchang.com` 을 HTTPS 로만 연다. 되돌릴 수 없으므로 전환 후 HTTPS 가 잠시라도 깨지면 사용자는 접속 불가(경고 우회도 불가) | DNS 전환 **전에** 인증서(8-A)를 옮겨 두면 전환 즉시 HTTPS 가 살아 있음. IP 검증은 hostname 이 아니라 IP 라 HSTS 영향 없음 |
-| 4 | **ManifestStaticFilesStorage**: `collectstatic` 실패/누락 → 템플릿 `{% static %}` 에서 `ValueError` → 전 페이지 500 | `deploy_oci.sh` 는 collectstatic 성공 + `staticfiles.json` 존재를 확인한 뒤에만 재시작. 실패 시 `python manage.py collectstatic --noinput -v 2` 로 누락 파일 확인 |
+| 4 | **ManifestStaticFilesStorage 는 사실 비활성** — `prod.py` 의 `STATICFILES_STORAGE` 는 Django 5.1 에서 제거된 설정이라 무시됨(OCI 첫 배포에서 확인). 라이브도 일반 `StaticFilesStorage`(해시 없음)로 동작 중 | 이전에서는 현행 유지. 스크립트는 실제 활성 백엔드가 Manifest 일 때만 `staticfiles.json` 을 요구. Manifest 전환은 `STORAGES['staticfiles']` 로 별도 작업 |
 | 5 | Ubuntu 24.04 홈 디렉터리 750 → nginx(www-data) 가 `/home/ubuntu/projects/mysite/staticfiles` 못 읽어 **403** | `deploy_oci.sh` 가 `chmod o+x /home/ubuntu` |
 | 6 | `.env` 에 `DJANGO_DB_ENGINE=mysql` 누락 → SQLite 로 조용히 기동, 빈 사이트 | 스크립트가 강제 검사 |
 | 7 | `mysqlclient` 가 requirements.txt 에 없음 → `pip install -r requirements.txt` 만 하면 `ImproperlyConfigured: Error loading MySQLdb` | `requirements-prod.txt` 사용. aarch64 는 소스 빌드 → apt 빌드 의존성 선설치 |

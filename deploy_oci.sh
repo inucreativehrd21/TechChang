@@ -239,9 +239,15 @@ fi
 export DJANGO_SETTINGS_MODULE="$SETTINGS"
 "$VENV_DIR/bin/python3" manage.py check || c_fail "manage.py check 실패"
 "$VENV_DIR/bin/python3" manage.py migrate --noinput || c_fail "migrate 실패"
-# ManifestStaticFilesStorage: 여기서 실패하면 staticfiles.json 이 깨져 전 페이지 500 → 서비스 재시작 전에 중단
+# collectstatic 실패 시 서비스 재시작 전에 중단. Manifest 스토리지가 활성(STORAGES['staticfiles'])이면
+# staticfiles.json 까지 확인 — 없으면 {% static %} 이 ValueError 를 내 전 페이지 500.
+# (주의: prod.py 의 STATICFILES_STORAGE 는 Django 5.1+ 에서 무시되는 죽은 설정 → 현재는 일반 스토리지)
 "$VENV_DIR/bin/python3" manage.py collectstatic --noinput | tail -n1 || c_fail "collectstatic 실패 — 서비스는 재시작하지 않았습니다"
-[ -f staticfiles/staticfiles.json ] || c_fail "staticfiles/staticfiles.json 이 없습니다 (Manifest 생성 실패)"
+static_backend="$("$VENV_DIR/bin/python3" -c 'from django.conf import settings; import django; django.setup(); print(settings.STORAGES.get("staticfiles", {}).get("BACKEND", ""))')"
+if grep -q Manifest <<<"$static_backend"; then
+  [ -f staticfiles/staticfiles.json ] || c_fail "staticfiles/staticfiles.json 이 없습니다 (Manifest 생성 실패)"
+fi
+c_info "static 스토리지: ${static_backend##*.}"
 c_ok "migrate / collectstatic 완료"
 
 # ----------------------------------------------------------------------------- 7. systemd

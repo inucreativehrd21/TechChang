@@ -36,7 +36,11 @@ ALLOWED_HOSTS = os.environ.get('DJANGO_ALLOWED_HOSTS', '').split(',') if os.envi
 STATIC_URL = '/static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 STATICFILES_DIRS = [BASE_DIR / 'static']
-STATICFILES_STORAGE = 'django.contrib.staticfiles.storage.ManifestStaticFilesStorage'
+# 주의: STATICFILES_STORAGE 는 Django 5.1 에서 제거된 설정이라 아래 줄은 무시된다(실제 활성 스토리지는
+# base STORAGES 기본값 = StaticFilesStorage, 해시 없는 파일명). 라이브도 이 상태로 운영 중이므로 그대로 둔다.
+# 해시 파일명(Manifest)으로 바꾸려면 STORAGES['staticfiles']['BACKEND'] 를 설정하고, collectstatic 실패 시
+# 전 페이지 500 이 되는 점을 감안해 별도 작업으로 진행할 것.
+STATICFILES_STORAGE = 'django.contrib.staticfiles.storage.ManifestStaticFilesStorage'  # (무효, 문서화용)
 
 # ===== 미디어 파일 =====
 MEDIA_URL = '/media/'
