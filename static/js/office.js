@@ -212,8 +212,17 @@
     if (a.blink > 0) a.blink--; else if (Math.random() < 0.005) a.blink = 6;
     if (mode === 'office') {
       if (!a.moving) { a.wait--; if (a.wait <= 0) planIdle(a); }
-      const ph = (tick + a.phase) % 1500; a.showStatus = ph < 220 && a.status && a.status.text;   // 250 간격 위상 → 동시 표시 없음
+      const ph = (tick + a.phase) % 1500; a.showStatus = ph < 220;   // 250 간격 위상 → 동시 표시 없음
     } else { const s = seatPos(a); a.tx = s.x; a.ty = s.y; a.showStatus = false; }
+  }
+
+  // 상태 말풍선 문구: 마지막 작업 + 경과 시간 (실시간 진행이 아니라 '마지막으로 한 일')
+  function statusText(a) {
+    const st = a.status || {};
+    if (!st.text) return '아직 기록된 작업이 없어요';
+    const m = st.age_min == null ? null : st.age_min;
+    const ago = m == null ? '' : m < 1 ? '방금' : m < 60 ? `${m}분 전` : m < 1440 ? `${Math.floor(m / 60)}시간 전` : `${Math.floor(m / 1440)}일 전`;
+    return ago ? `${st.text} (${ago})` : st.text;
   }
 
   function drawDynamic(c) {
@@ -249,7 +258,7 @@
       drawAgent(ctx, a, Math.round(a.x - 8), top, frame, sitting);
       nameTag(ctx, a, Math.round(a.x), top);
     }
-    for (const a of order) if (mode === 'office' && a.showStatus) bubble(ctx, a.status.text, Math.round(a.x), Math.round(a.y - 36), a.sprite.shirt);
+    for (const a of order) if (mode === 'office' && a.showStatus) bubble(ctx, statusText(a), Math.round(a.x), Math.round(a.y - 36), a.sprite.shirt);
     if (mode === 'meeting') renderMeeting();
     requestAnimationFrame(render);
   }

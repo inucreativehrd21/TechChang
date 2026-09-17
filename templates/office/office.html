@@ -59,7 +59,7 @@
   <div class="office-stage">
     <div class="office-bar">
       <span><span class="dot"></span><span class="mode" id="office-mode">연구실</span></span>
-      <span>에이전트를 클릭하면 지금 하는 일을 말해 줍니다</span>
+      <span>연구원을 클릭하면 마지막으로 한 일을 말해 줍니다 (작업 중엔 현재 단계)</span>
       <span class="spacer"></span>
       <button id="btn-replay" type="button">최근 편집회의 재생</button>
       <button id="btn-office" type="button" class="secondary" hidden>연구실로 돌아가기</button>
@@ -71,7 +71,7 @@
   <div class="roster">
     {% for a in roster %}
     <div class="agent-card" style="--accent: {{ a.sprite.shirt }};">
-      <b>{{ a.name }}</b><small>{{ a.title }}</small>
+      <b>{{ a.name }}</b><small>{% for line in a.title_lines %}{{ line }}{% if not forloop.last %}<br>{% endif %}{% endfor %}</small>
     </div>
     {% endfor %}
   </div>

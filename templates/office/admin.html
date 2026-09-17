@@ -50,14 +50,25 @@
   .meeting-pick .pick.active { background: #4f46e5; border-color: #4f46e5; color: #fff; }
   .minutes-head { margin-bottom: 14px; }
   .minutes-head .summary { margin: 8px 0 0; padding: 12px 14px; background: rgba(79,70,229,.06); border-left: 3px solid #4f46e5; border-radius: 0 8px 8px 0; max-width: 78ch; line-height: 1.65; }
-  .chat { display: grid; gap: 14px; max-width: 82ch; }
-  .round-sep { display: flex; align-items: center; gap: 10px; color: var(--text-secondary); font-size: .8rem; font-weight: 600; letter-spacing: .04em; }
+  .fold-bar { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; font-size: .82rem; }
+  .fold-btn { border: 1px solid var(--border-color, #e5e7eb); background: var(--bg-card, #fff); border-radius: 6px; padding: 3px 10px; font-size: .8rem; cursor: pointer; color: var(--text-primary, #111); }
+  .fold-btn:hover { border-color: #4f46e5; color: #4f46e5; }
+  .chat { display: grid; gap: 10px; max-width: 82ch; }
+  details.round > summary, details.turn > summary { list-style: none; cursor: pointer; }
+  details.round > summary::-webkit-details-marker, details.turn > summary::-webkit-details-marker { display: none; }
+  .round-sep { display: flex; align-items: center; gap: 10px; color: var(--text-secondary); font-size: .8rem; font-weight: 600; letter-spacing: .04em; padding: 4px 0; }
   .round-sep::before, .round-sep::after { content: ""; flex: 1; height: 1px; background: var(--border-color, #e5e7eb); }
-  .turn { display: grid; gap: 4px; }
-  .turn .who { display: flex; align-items: baseline; gap: 6px; }
+  details.round:not([open]) .round-sep { color: #4f46e5; }
+  details.round[open] > summary { margin-bottom: 10px; }
+  .turn { display: grid; gap: 4px; margin-bottom: 10px; }
+  .turn .who { display: flex; align-items: baseline; gap: 6px; flex-wrap: wrap; }
+  .turn .who::before { content: "▾"; color: var(--text-secondary); font-size: .8rem; width: 10px; }
+  details.turn:not([open]) .who::before { content: "▸"; }
   .turn .who .dot { width: 9px; height: 9px; border-radius: 50%; align-self: center; }
   .turn .who small { color: var(--text-secondary); }
-  .turn p { margin: 0; line-height: 1.7; font-size: .95rem; padding-left: 15px; }
+  .turn .who .preview { display: none; color: var(--text-secondary); font-size: .85rem; flex-basis: 100%; padding-left: 25px; }
+  details.turn:not([open]) .preview { display: block; }
+  .turn p { margin: 0; line-height: 1.7; font-size: .95rem; padding-left: 25px; }
   .brief { margin-top: 18px; font-size: .85rem; }
   .brief summary { cursor: pointer; color: var(--text-secondary); }
   .brief pre { white-space: pre-wrap; font-size: .8rem; margin-top: 8px; }
@@ -175,13 +186,23 @@
           <div><b>{{ m.week_start|date:"Y.m.d" }} 주차 편집회의</b> <span class="muted">{{ m.held_at|date:"m/d H:i" }} 개최 · 안건 {{ m.decisions.count }}건 · {{ m.get_status_display }}</span></div>
           {% if m.summary %}<p class="summary">{{ m.summary }}</p>{% endif %}
         </header>
+        <div class="fold-bar">
+          <button type="button" class="fold-btn" data-fold="open">모두 펴기</button>
+          <button type="button" class="fold-btn" data-fold="close">모두 접기</button>
+          <span class="muted">발언을 클릭하면 접고 펼 수 있습니다</span>
+        </div>
         <div class="chat">
-          {% for t in m.turns %}
-            {% ifchanged t.round %}<div class="round-sep"><span>{{ t.round }}라운드 · {% if t.round == 1 %}지표 해석과 제안{% else %}검토와 조율{% endif %}</span></div>{% endifchanged %}
-            <div class="turn">
-              <div class="who"><span class="dot" style="background:{{ t.color }}"></span><b>{{ t.name }}</b><small>{{ t.title }}</small></div>
+          {% regroup m.turns by round as rounds %}
+          {% for r in rounds %}
+          <details class="round" open>
+            <summary class="round-sep"><span>{{ r.grouper }}라운드 · {% if r.grouper == 1 %}지표 해석과 제안{% else %}검토와 조율{% endif %} · {{ r.list|length }}명</span></summary>
+            {% for t in r.list %}
+            <details class="turn" open>
+              <summary class="who"><span class="dot" style="background:{{ t.color }}"></span><b>{{ t.name }}</b><small>{{ t.title }}</small><span class="preview">{{ t.text|truncatechars:60 }}</span></summary>
               <p>{{ t.text }}</p>
-            </div>
+            </details>
+            {% endfor %}
+          </details>
           {% endfor %}
         </div>
         <details class="brief"><summary>팀장이 받은 지표 브리핑 원문</summary><pre>{{ m.briefing }}</pre></details>
@@ -219,6 +240,14 @@
   }
   tabs.forEach(function (t) { t.addEventListener('click', function () { showTab(t.dataset.tab); }); });
   try { var saved = localStorage.getItem('lab-admin-tab'); if (saved) showTab(saved); } catch (e) {}
+  // 회의록 접기/펴기
+  document.querySelectorAll('.fold-btn').forEach(function (b) {
+    b.addEventListener('click', function () {
+      var art = b.closest('.minutes'), open = b.dataset.fold === 'open';
+      art.querySelectorAll('details.turn').forEach(function (d) { d.open = open; });
+      art.querySelectorAll('details.round').forEach(function (d) { d.open = true; });
+    });
+  });
   // 회의 선택
   document.querySelectorAll('.meeting-pick .pick').forEach(function (b) {
     b.addEventListener('click', function () {

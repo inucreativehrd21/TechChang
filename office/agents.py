@@ -44,6 +44,7 @@ AGENTS = {
     'data': {
         'name': '수정',
         'title': '데이터분석 칼럼니스트',
+        'title_lines': ['데이터분석', '칼럼니스트'],   # 연구실 소개 카드에서 줄바꿈
         'topic': 'data',
         'system': TEAM_INTRO + (
             ' 당신은 데이터분석·AI/ML·HR Analytics 분야 칼럼니스트입니다. '
@@ -54,6 +55,7 @@ AGENTS = {
     'coding': {
         'name': '윤성',
         'title': '프로그래밍 칼럼니스트',
+        'title_lines': ['프로그래밍', '칼럼니스트'],
         'topic': 'coding',
         'system': TEAM_INTRO + (
             ' 당신은 프로그래밍 언어·프레임워크·개발 도구·AI 코딩 도구 분야 칼럼니스트입니다. '
@@ -99,6 +101,6 @@ def agent(key: str) -> dict:
 def public_roster() -> list:
     """오피스 페이지용 (프롬프트 제외)."""
     return [
-        {'key': k, 'name': v['name'], 'title': v['title'], 'sprite': v['sprite']}
+        {'key': k, 'name': v['name'], 'title': v['title'], 'title_lines': v.get('title_lines', [v['title']]), 'sprite': v['sprite']}
         for k, v in AGENTS.items()
     ]
