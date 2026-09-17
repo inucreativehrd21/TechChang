@@ -407,6 +407,9 @@ cd ~/projects/mysite && ~/venvs/mysite/bin/python3 manage.py backup_db --keep 7 
 | 16 | 카카오 로그인 Redirect URI, GSC 속성, Gmail 은 모두 도메인 기준 → IP 변경 무관. 단 **Route 53 이 아닌 곳에 IP 를 박아둔 것**(예: 외부 모니터링, 학교 방화벽 허용목록) 은 별도 갱신 | 목록 점검 |
 | 17 | OCI 방화벽 2겹: VCN 보안목록만 열고 iptables 를 안 열면 외부에서 timeout | 스크립트 3단계 + `sudo iptables -L INPUT -n --line-numbers` 로 80/443 ACCEPT 가 REJECT 보다 위에 있는지 확인 |
 | 18 | 전환 순간 사이의 신규 글/가입은 Lightsail DB 에만 남음 | 7-2 처럼 Lightsail `mysite` 를 멈춘 뒤 재덤프 → 복원 → DNS 변경 순서를 지키면 유실 0 |
+| 19 | OCI 기본 이미지는 **Ubuntu Minimal** — `cron`, `logrotate`, `dig` 가 없음. crontab 이관 단계에서 `crontab: command not found` | `deploy_oci.sh` 가 cron/logrotate 설치 + `systemctl enable --now cron`. DNS 확인은 `getent hosts` 또는 `apt install dnsutils` |
+| 20 | `sudo rsync … $LS:/etc/letsencrypt/` 는 sudo 가 ssh 에이전트 소켓을 잃어 `Permission denied` | 일반 사용자로 `~/letsencrypt_copy/` 에 받은 뒤 `sudo rsync -a` 로 옮기고 `chown -R root:root` |
+| 21 | 검증 중 모든 정상 요청에 `Suspicious request detected` 경고 | `RequestLoggingMiddleware` 의 "응답 0.1s 미만 = 의심" 규칙이 빠른 서버에서 전부 매칭. 로그만 남기고 차단은 없음 — 안정화 후 규칙 조정(후속 과제) |
 
 ## 롤백
 

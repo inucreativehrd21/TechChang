@@ -124,13 +124,15 @@ if [ "$SKIP_SYSTEM" -eq 0 ]; then
   sudo apt-get update -qq
   # build-essential/python3-dev/pkg-config/default-libmysqlclient-dev : mysqlclient 소스 빌드 (aarch64 휠 부재 대비)
   # libjpeg-dev/zlib1g-dev : Pillow 소스 빌드 대비, libmagic1 : python-magic (MIME 검증), certbot : 9단계
+  # cron/logrotate: Ubuntu Minimal 이미지(OCI 기본)에는 없음 — crontab 이관·로그 회전에 필수
   sudo apt-get install -y -qq \
-    git curl ca-certificates rsync \
+    git curl ca-certificates rsync cron logrotate \
     python3 python3-venv python3-dev build-essential pkg-config \
     default-libmysqlclient-dev libjpeg-dev zlib1g-dev libffi-dev libssl-dev libmagic1 \
     mysql-server mysql-client \
     nginx certbot python3-certbot-nginx \
     iptables-persistent netfilter-persistent
+  sudo systemctl enable --now cron >/dev/null 2>&1 || true
   c_ok "apt 패키지 설치 완료 ($($PYTHON_BIN --version 2>&1))"
 
   # send_log_report: journalctl -u mysite (systemd-journal), /var/log/nginx/*.log (adm)
