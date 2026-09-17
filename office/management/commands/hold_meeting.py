@@ -125,6 +125,10 @@ class Command(BaseCommand):
                 topic=d.get('topic', '') if d.get('topic') in ('hrd', 'data', 'coding') else '',
                 question=str(d.get('question', ''))[:300], options=opts_clean,
             )
+        # 연구원별 1라운드 발언을 작업 기록으로 (연구실 말풍선에서 "회의에서 한 말"로 보이게)
+        for t in transcript:
+            if t['round'] == 1 and t['agent'] != 'lead':
+                log(t['agent'], 'meeting', f"편집회의 발언: {t['text'][:120]}", meeting=meeting)
         log('lead', 'meeting', f'{week} 주차 편집회의 종료 — 안건 {meeting.decisions.count()}건, 관리자 결정 대기', meeting=meeting)
         self.stdout.write(self.style.SUCCESS(f'회의 저장 완료 (id={meeting.id}, 안건 {meeting.decisions.count()}건)'))
 

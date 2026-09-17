@@ -212,26 +212,42 @@
     if (a.blink > 0) a.blink--; else if (Math.random() < 0.005) a.blink = 6;
     if (mode === 'office') {
       if (!a.moving) { a.wait--; if (a.wait <= 0) planIdle(a); }
-      const ph = (tick + a.phase) % 1500; a.showStatus = ph < 220;   // 250 간격 위상 → 동시 표시 없음
+      const ph = (tick + a.phase) % 1500; const show = ph < 220;   // 250 간격 위상 → 동시 표시 없음
+      if (show && !a.showStatus) newRestLine(a);                      // 말풍선이 새로 뜰 때마다 멘트 갱신
+      a.showStatus = show;
     } else { const s = seatPos(a); a.tx = s.x; a.ty = s.y; a.showStatus = false; }
   }
 
   // 상태 말풍선 문구: 마지막 작업 + 경과 시간 (실시간 진행이 아니라 '마지막으로 한 일')
-  const REST = {   // 새 작업 전 쉬는 멘트 — 캔버스에서 지금 하고 있는 행동에 맞춰
-    work: ['자리에서 자료 읽으며 다음 작업을 기다리는 중이에요.', '메모 정리하면서 다음 일정을 확인하고 있어요.'],
-    coffee: ['지금은 커피 한 잔 하며 쉬는 중이에요 ☕', '정수기 앞에서 잠깐 숨 고르는 중.'],
-    sofa: ['소파에서 잠깐 쉬는 중이에요.', '라운지에서 다리 뻗고 쉬고 있어요.'],
-    board: ['화이트보드 앞에서 다음 주제를 궁리하는 중.', '보드에 적힌 안건을 다시 훑어보고 있어요.'],
-    plant: ['화분에 물 주며 머리 식히는 중 🌿', '창가에서 잠깐 바람 쐬는 중.'],
+  // 새 작업 전 쉬는 멘트 — 캔버스 행동별 + 역할별 풀에서 매번 무작위로 (같은 말 반복 방지)
+  const REST = {
+    work: ['자리에서 자료 읽으며 다음 작업을 기다리는 중이에요.', '메모 정리하면서 다음 일정을 확인하고 있어요.', '지난 칼럼 조회수를 다시 들여다보는 중.', '받은 편지함 정리하며 숨 고르는 중이에요.', '키보드 앞에 앉아 있지만 지금은 대기 중이에요.', '모니터 밝기만 만지작거리는 중… 곧 일 시작할게요.'],
+    coffee: ['지금은 커피 한 잔 하며 쉬는 중이에요 ☕', '정수기 앞에서 잠깐 숨 고르는 중.', '따뜻한 물 한 잔 마시며 머리 비우는 중.', '커피 내리는 김에 프린터도 한번 봐두는 중.', '탕비실에서 동료 오길 기다리며 수다 준비 중 ☕'],
+    sofa: ['소파에서 잠깐 쉬는 중이에요.', '라운지에서 다리 뻗고 쉬고 있어요.', '소파에 기대서 오늘 할 일을 머릿속으로 정리하는 중.', '잠깐 눈 붙이는 중… 5분만요.', '유리 테이블에 발 올리고 쉬는 중 (팀장님 안 보이죠?)'],
+    board: ['화이트보드 앞에서 다음 주제를 궁리하는 중.', '보드에 적힌 안건을 다시 훑어보고 있어요.', '마커 들고 아이디어를 낙서하는 중.', '화이트보드 지우다가 좋은 문장 발견해서 다시 적는 중.', '다음 회의 때 꺼낼 이야기를 정리하고 있어요.'],
+    plant: ['화분에 물 주며 머리 식히는 중 🌿', '창가에서 잠깐 바람 쐬는 중.', '화분 잎을 닦으며 딴생각 중이에요.', '창밖 도시 보면서 잠깐 멍 때리는 중.', '화분이 잘 크는지 확인하는 중 — 칼럼보다 잘 자라네요.'],
   };
+  const ROLE = {
+    lead: ['지표 대시보드 새로고침만 세 번째… 방문자 늘었나 보는 중.', '다음 회의 안건 초안을 머릿속으로 짜는 중이에요.', '팀원들 진행 상황을 슬쩍 체크하는 중.', '이번 주 QA 기준을 어떻게 잡을지 고민 중.'],
+    hrd: ['요즘 HR 커뮤니티에서 도는 이야기를 훑어보는 중.', '다음 칼럼에 넣을 현장 사례를 찾고 있어요.', '리더십 책 한 페이지 읽다 멈춘 상태예요.', '1on1 잘하는 팀장들 특징을 메모하는 중.'],
+    data: ['새로 나온 HR Analytics 사례를 스크랩하는 중.', '그래프 하나로 설명할 수 있는 주제를 찾고 있어요.', '비전공자 눈높이 표현을 고민하는 중.', 'AI 도구 벤치마크 결과를 읽어보는 중.'],
+    coding: ['새 프레임워크 릴리스 노트를 훑어보는 중.', '입문자가 헷갈릴 만한 개념을 리스트업하는 중.', 'AI 코딩 도구를 직접 써보며 메모하는 중.', 'Git 로그 보면서 글감을 찾고 있어요.'],
+    checker: ['지난 칼럼의 출처 링크가 살아 있는지 점검하는 중.', '통계 원문을 찾아 읽는 중 — 인용이 맞는지 확인!', '기존 칼럼 제목 목록을 다시 훑어보는 중 (중복 방지).', '검증 체크리스트를 다듬고 있어요.'],
+    charter: ['차트 색 팔레트를 만지작거리는 중.', '표로 만들 만한 수치가 있는 자료를 찾는 중.', '막대냐 꺾은선이냐… 고민하는 중.', '지난 차트의 축 라벨을 다시 보는 중.'],
+  };
+  function pick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+  function newRestLine(a) {
+    const pool = [...(REST[a.task] || REST.work), ...(ROLE[a.key] || [])];
+    let line = pick(pool); if (line === a.restLine && pool.length > 1) line = pick(pool);
+    a.restLine = line;
+  }
   function statusText(a) {
     const st = a.status || {};
-    if (!st.text) return '아직 기록된 작업이 없어요. 첫 일을 기다리는 중!';
+    if (!a.restLine) newRestLine(a);
+    if (!st.text) return `아직 기록된 작업이 없어요. ${a.restLine}`;
     const m = st.age_min == null ? null : st.age_min;
     if (m != null && m < 10) return `지금 하는 일: ${st.text}`;          // 10분 이내 기록 = 작업 진행 중
     const ago = m == null ? '' : m < 60 ? `${m}분 전` : m < 1440 ? `${Math.floor(m / 60)}시간 전` : `${Math.floor(m / 1440)}일 전`;
-    const rest = REST[a.task] || REST.work;
-    if (a.restLine == null || a.restTask !== a.task) { a.restLine = rest[Math.floor(Math.random() * rest.length)]; a.restTask = a.task; }
     return `${ago ? `${ago} ` : ''}마지막 작업: ${st.text} — ${a.restLine}`;
   }
 
