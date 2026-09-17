@@ -11,6 +11,20 @@
  */
 
 /* ============================================
+   Web Font — Pretendard Variable (self-hosted)
+   SIL OFL 1.1 — static/fonts/Pretendard-LICENSE.txt
+   가변 폰트 1개로 45~920 전 굵기 커버. base.html 에서 preload.
+   ============================================ */
+@font-face {
+    font-family: 'Pretendard Variable';
+    font-weight: 45 920;
+    font-style: normal;
+    font-display: swap;
+    src: url('../fonts/PretendardVariable.woff2') format('woff2-variations'),
+         url('../fonts/PretendardVariable.woff2') format('woff2');
+}
+
+/* ============================================
    색상 시스템 - Vibrant & Rich
    ============================================ */
 
@@ -89,7 +103,7 @@
     --radius-3xl: 2.5rem;
 
     /* Typography */
-    --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Noto Sans KR', sans-serif;
+    --font-sans: 'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Noto Sans KR', sans-serif;
 }
 
 /* ============================================
