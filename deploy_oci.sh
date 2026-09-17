@@ -219,7 +219,7 @@ if [ ! -x "$VENV_DIR/bin/python3" ]; then
 fi
 "$VENV_DIR/bin/pip" install -q --upgrade pip wheel
 "$VENV_DIR/bin/pip" install -q -r requirements-prod.txt
-"$VENV_DIR/bin/python3" -c 'import MySQLdb, django; print("mysqlclient", MySQLdb.__version__, "/ Django", django.get_version())' \
+"$VENV_DIR/bin/python3" -c 'import MySQLdb, django; from importlib.metadata import version; print("mysqlclient", version("mysqlclient"), "/ Django", django.get_version())' \
   || c_fail "mysqlclient import 실패 — apt: default-libmysqlclient-dev pkg-config build-essential python3-dev 확인"
 c_ok "의존성 설치 완료"
 
