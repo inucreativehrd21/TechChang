@@ -180,9 +180,9 @@
     if (!text) return;
     c.font = `8px ${FONT}`;
     const maxW = 150, lines = []; let line = '';
-    for (const ch of text) { const t = line + ch; if (c.measureText(t).width > maxW - 12) { lines.push(line); line = ch; } else line = t; if (lines.length >= 4) break; }
-    if (line && lines.length < 4) lines.push(line);
-    if (lines.length === 4 && text.length > lines.join('').length) lines[3] = lines[3].slice(0, -1) + '…';
+    for (const ch of text) { const t = line + ch; if (c.measureText(t).width > maxW - 12) { lines.push(line); line = ch; } else line = t; if (lines.length >= 5) break; }
+    if (line && lines.length < 5) lines.push(line);
+    if (lines.length === 5 && text.length > lines.join('').length) lines[4] = lines[4].slice(0, -1) + '…';
     const w = Math.min(maxW, Math.ceil(Math.max(...lines.map(l => c.measureText(l).width))) + 12), h = lines.length * 10 + 8;
     const x = Math.max(2, Math.min(AW - w - 2, Math.round(cx - w / 2))), y = Math.max(2, top - h - 8);
     roundRect(c, x, y, w, h, 3, '#ffffff', '#1f2430');
@@ -217,12 +217,22 @@
   }
 
   // 상태 말풍선 문구: 마지막 작업 + 경과 시간 (실시간 진행이 아니라 '마지막으로 한 일')
+  const REST = {   // 새 작업 전 쉬는 멘트 — 캔버스에서 지금 하고 있는 행동에 맞춰
+    work: ['자리에서 자료 읽으며 다음 작업을 기다리는 중이에요.', '메모 정리하면서 다음 일정을 확인하고 있어요.'],
+    coffee: ['지금은 커피 한 잔 하며 쉬는 중이에요 ☕', '정수기 앞에서 잠깐 숨 고르는 중.'],
+    sofa: ['소파에서 잠깐 쉬는 중이에요.', '라운지에서 다리 뻗고 쉬고 있어요.'],
+    board: ['화이트보드 앞에서 다음 주제를 궁리하는 중.', '보드에 적힌 안건을 다시 훑어보고 있어요.'],
+    plant: ['화분에 물 주며 머리 식히는 중 🌿', '창가에서 잠깐 바람 쐬는 중.'],
+  };
   function statusText(a) {
     const st = a.status || {};
-    if (!st.text) return '아직 기록된 작업이 없어요';
+    if (!st.text) return '아직 기록된 작업이 없어요. 첫 일을 기다리는 중!';
     const m = st.age_min == null ? null : st.age_min;
-    const ago = m == null ? '' : m < 1 ? '방금' : m < 60 ? `${m}분 전` : m < 1440 ? `${Math.floor(m / 60)}시간 전` : `${Math.floor(m / 1440)}일 전`;
-    return ago ? `${st.text} (${ago})` : st.text;
+    if (m != null && m < 10) return `지금 하는 일: ${st.text}`;          // 10분 이내 기록 = 작업 진행 중
+    const ago = m == null ? '' : m < 60 ? `${m}분 전` : m < 1440 ? `${Math.floor(m / 60)}시간 전` : `${Math.floor(m / 1440)}일 전`;
+    const rest = REST[a.task] || REST.work;
+    if (a.restLine == null || a.restTask !== a.task) { a.restLine = rest[Math.floor(Math.random() * rest.length)]; a.restTask = a.task; }
+    return `${ago ? `${ago} ` : ''}마지막 작업: ${st.text} — ${a.restLine}`;
   }
 
   function drawDynamic(c) {
