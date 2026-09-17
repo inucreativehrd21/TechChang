@@ -109,6 +109,12 @@ def office_admin(request):
     for m in meetings:
         for d in m.decisions.all():
             d.topic_name = TOPIC_LABEL.get(d.topic, '')
+        # 회의록 탭용: 발언에 이름·색 부여
+        m.turns = [
+            {'name': AGENTS[t['agent']]['name'], 'title': AGENTS[t['agent']]['title'],
+             'color': AGENTS[t['agent']]['sprite']['shirt'], 'round': t.get('round', 1), 'text': t['text']}
+            for t in m.transcript if t.get('agent') in AGENTS
+        ]
     job_log = ''
     p = os.path.join(settings.BASE_DIR, 'logs', 'office_jobs.log')
     if os.path.exists(p):
