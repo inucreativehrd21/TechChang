@@ -1,0 +1,129 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}연구팀 연구실 - 테크창{% endblock %}
+
+{% block extra_css %}
+<style>
+  .office-wrap { max-width: 1080px; margin: 0 auto; padding: var(--space-6) var(--space-4) var(--space-12); display: grid; gap: var(--space-6); }
+  .office-head { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: var(--space-3); }
+  .office-head h1 { font-size: 1.75rem; font-weight: 800; margin: 0; letter-spacing: -.01em; }
+  .office-head p { margin: .25rem 0 0; color: var(--text-secondary); }
+  .office-stage { background: #0f172a; border-radius: var(--radius-2xl); padding: 12px; box-shadow: 0 12px 40px rgba(15,23,42,.25); }
+  .office-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; color: #cbd5e1; font-size: .85rem; padding: 0 4px 10px; }
+  .office-bar .mode { font-weight: 700; color: #fff; }
+  .office-bar .dot { width: 8px; height: 8px; border-radius: 50%; background: #22c55e; display: inline-block; margin-right: 6px; animation: blink 2s infinite; }
+  @keyframes blink { 50% { opacity: .3; } }
+  .office-bar .spacer { flex: 1; }
+  .office-bar button { background: #4f46e5; color: #fff; border: 0; border-radius: 8px; padding: 6px 12px; font-weight: 600; font-size: .85rem; cursor: pointer; }
+  .office-bar button[disabled] { opacity: .4; cursor: default; }
+  .office-bar button.secondary { background: #334155; }
+  .office-stage .frame { display: flex; justify-content: center; }
+  #office-canvas { max-width: 100%; height: auto; image-rendering: pixelated; image-rendering: crisp-edges; border-radius: 10px; display: block; background: #efe8dc; }
+  #office-caption { min-height: 1.5em; color: #e2e8f0; font-size: .9rem; padding: 10px 4px 0; line-height: 1.5; }
+  #office-caption .muted { color: #94a3b8; font-weight: 400; }
+  .roster { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+  .agent-card { padding: 10px 14px; border: 1px solid var(--border-color, #e5e7eb); border-left: 4px solid var(--accent, #4f46e5); border-radius: 10px; background: var(--bg-card, #fff); }
+  .agent-card b { display: block; font-size: .95rem; }
+  .agent-card small { color: var(--text-secondary); }
+  .office-grid { display: grid; grid-template-columns: 1.3fr 1fr; gap: var(--space-5); }
+  @media (max-width: 860px) { .office-grid { grid-template-columns: 1fr; } }
+  .panel { border: 1px solid var(--border-color, #e5e7eb); border-radius: 14px; background: var(--bg-card, #fff); padding: 16px 18px; }
+  .panel h2 { font-size: 1.05rem; font-weight: 800; margin: 0 0 10px; }
+  .panel h2 small { font-weight: 500; color: var(--text-secondary); margin-left: 6px; }
+  .decision { padding: 10px 0; border-top: 1px dashed var(--border-color, #e5e7eb); }
+  .decision:first-of-type { border-top: 0; }
+  .decision .q { font-weight: 700; }
+  .decision .kind { font-size: .75rem; color: #4f46e5; font-weight: 700; letter-spacing: .04em; }
+  .decision ul { margin: 6px 0 0; padding-left: 1.1em; }
+  .decision li.chosen { font-weight: 700; }
+  .decision li.chosen::after { content: " ✓ 선택"; color: #16a34a; font-size: .8em; }
+  .decision li span { color: var(--text-secondary); font-size: .85em; }
+  .feed { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; max-height: 420px; overflow: auto; }
+  .feed li { display: grid; grid-template-columns: 8px 1fr; gap: 10px; font-size: .9rem; }
+  .feed li i { width: 8px; height: 8px; border-radius: 50%; margin-top: 7px; }
+  .feed li small { color: var(--text-secondary); margin-left: 6px; }
+  .cols li { margin-bottom: 6px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="office-wrap">
+  <div class="office-head">
+    <div>
+      <h1>테크창 연구팀 연구실</h1>
+      <p>여섯 명의 AI 에이전트가 매주 편집회의를 열어 칼럼 주제와 사이트 개선 방향을 정하고, 초안·검증·차트·품질검사를 거쳐 칼럼을 발행합니다. 최종 결정은 운영자가 합니다.</p>
+    </div>
+  </div>
+
+  <div class="office-stage">
+    <div class="office-bar">
+      <span><span class="dot"></span><span class="mode" id="office-mode">연구실</span></span>
+      <span>에이전트를 클릭하면 지금 하는 일을 말해 줍니다</span>
+      <span class="spacer"></span>
+      <button id="btn-replay" type="button">최근 편집회의 재생</button>
+      <button id="btn-office" type="button" class="secondary" hidden>연구실로 돌아가기</button>
+    </div>
+    <div class="frame"><canvas id="office-canvas" data-state-url="{% url 'office:state' %}" aria-label="픽셀 연구실"></canvas></div>
+    <div id="office-caption"></div>
+  </div>
+
+  <div class="roster">
+    {% for a in roster %}
+    <div class="agent-card" style="--accent: {{ a.sprite.shirt }};">
+      <b>{{ a.name }}</b><small>{{ a.title }}</small>
+    </div>
+    {% endfor %}
+  </div>
+
+  <div class="office-grid">
+    <div class="panel">
+      <h2>최근 편집회의{% if meeting %}<small>{{ meeting.week_start|date:"Y.m.d" }} 주차 · {{ meeting.held_at|date:"m/d H:i" }}</small>{% endif %}</h2>
+      {% if meeting %}
+        <p style="margin:0 0 8px;">{{ meeting.summary|default:"(요약 없음)" }}</p>
+        {% for d in public_decisions %}
+        <div class="decision">
+          <div class="kind">{{ d.get_kind_display }}{% if d.topic_name %} · {{ d.topic_name }}{% endif %}</div>
+          <div class="q">{{ d.question }}</div>
+          <ul>
+            {% for o in d.options %}
+            <li class="{% if o.key == d.chosen_key %}chosen{% endif %}">{{ o.title }} <span>— {{ o.proposed_by }}</span></li>
+            {% endfor %}
+          </ul>
+          {% if not d.chosen_key %}<small style="color:var(--text-secondary)">운영자 결정 대기</small>{% endif %}
+        </div>
+        {% endfor %}
+      {% else %}
+        <p style="color:var(--text-secondary); margin:0;">아직 열린 회의가 없습니다. 첫 회의는 일요일 저녁에 열립니다.</p>
+      {% endif %}
+    </div>
+
+    <div style="display:grid; gap: var(--space-5); align-content:start;">
+      <div class="panel">
+        <h2>팀이 발행한 칼럼</h2>
+        {% if recent_drafts %}
+        <ul class="cols" style="margin:0; padding-left:1.1em;">
+          {% for d in recent_drafts %}
+          <li><a href="{% url 'community:detail' d.question.id %}">{{ d.subject }}</a>
+            <small style="color:var(--text-secondary)">{{ d.topic_name }} · QA {{ d.qa_score|default:"-" }}/10{% if d.chart_path %} · 차트{% endif %}</small></li>
+          {% endfor %}
+        </ul>
+        {% else %}<p style="color:var(--text-secondary); margin:0;">아직 없습니다.</p>{% endif %}
+      </div>
+      <div class="panel">
+        <h2>작업 로그</h2>
+        <ul class="feed">
+          {% for l in logs %}
+          <li><i style="background: {{ l.agent_color }};"></i>
+            <div><b>{{ l.agent_name }}</b> {{ l.text }}<small>{{ l.created_at|date:"m/d H:i" }}</small></div></li>
+          {% empty %}<li><i></i><div style="color:var(--text-secondary)">활동 기록이 없습니다.</div></li>{% endfor %}
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block script %}
+<script src="{% static 'js/office.js' %}?v={{ 'now'|date:'YmdHis' }}" nonce="{{ csp_nonce }}"></script>
+{% endblock %}

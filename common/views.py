@@ -966,7 +966,15 @@ def admin_dashboard(request):
         + Portfolio.objects.filter(approval_status='pending').count()
     )
 
+    # 연구실: 결정 대기 안건 + 검수 대기 칼럼
+    from office.models import ColumnDraft, Decision
+    office_pending_count = (
+        Decision.objects.filter(chosen_key='').count()
+        + ColumnDraft.objects.filter(status=ColumnDraft.STATUS_HOLD).count()
+    )
+
     context = {
+        'office_pending_count': office_pending_count,
         'total_users': total_users,
         'active_users': active_users,
         'inactive_users': total_users - active_users,

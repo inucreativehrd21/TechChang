@@ -54,6 +54,7 @@ INSTALLED_APPS = [
     'django.contrib.sites',  # django-allauth 필수
     'django.contrib.sitemaps',
     'community.apps.CommunityConfig',
+    'office.apps.OfficeConfig',  # 가상 연구실 (에이전트 팀 회의·칼럼 제작)
     'channels',
     # django-allauth
     'allauth',

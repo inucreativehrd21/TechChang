@@ -1,0 +1,176 @@
+{% extends 'base.html' %}
+{% load pybo_filter %}
+
+{% block title %}연구실 관리 - 테크창{% endblock %}
+
+{% block extra_css %}
+<style>
+  .oa { max-width: 1100px; margin: 0 auto; padding: var(--space-6) var(--space-4) var(--space-12); display: grid; gap: var(--space-5); }
+  .oa-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px; }
+  .oa-head h1 { font-size: 1.5rem; font-weight: 800; margin: 0; }
+  .oa-head form { display: inline; }
+  .oa-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+  .oa-actions button { border: 0; border-radius: 8px; padding: 7px 12px; font-weight: 600; font-size: .85rem; color: #fff; background: #4f46e5; cursor: pointer; }
+  .oa-actions button.alt { background: #0f766e; }
+  .oa-actions button[disabled] { opacity: .4; }
+  .panel { border: 1px solid var(--border-color, #e5e7eb); border-radius: 14px; background: var(--bg-card, #fff); padding: 16px 18px; }
+  .panel h2 { font-size: 1.05rem; font-weight: 800; margin: 0 0 12px; display: flex; align-items: center; gap: 8px; }
+  .badge-n { background: #ef4444; color: #fff; border-radius: 999px; font-size: .72rem; padding: 1px 8px; }
+  .decision { border-top: 1px dashed var(--border-color, #e5e7eb); padding: 12px 0; display: grid; gap: 6px; }
+  .decision:first-of-type { border-top: 0; padding-top: 0; }
+  .decision .kind { font-size: .72rem; color: #4f46e5; font-weight: 700; letter-spacing: .04em; }
+  .decision .q { font-weight: 700; }
+  .opt { display: grid; grid-template-columns: 20px 1fr; gap: 8px; padding: 6px 8px; border-radius: 8px; border: 1px solid transparent; }
+  .opt:has(input:checked), .opt.chosen { border-color: #4f46e5; background: rgba(79,70,229,.06); }
+  .opt b { display: block; }
+  .opt small { color: var(--text-secondary); }
+  .decision .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  .decision input[type=text] { flex: 1; min-width: 160px; border: 1px solid var(--border-color, #e5e7eb); border-radius: 8px; padding: 5px 8px; font-size: .85rem; }
+  .decision button { border: 0; border-radius: 8px; padding: 6px 12px; font-weight: 600; font-size: .85rem; color: #fff; background: #111827; cursor: pointer; }
+  .draft { border-top: 1px dashed var(--border-color, #e5e7eb); padding: 12px 0; display: grid; gap: 8px; }
+  .draft:first-of-type { border-top: 0; padding-top: 0; }
+  .draft .meta { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: .85rem; color: var(--text-secondary); }
+  .score { font-weight: 800; color: #b45309; }
+  .score.ok { color: #16a34a; }
+  .issues { margin: 0; padding-left: 1.1em; font-size: .9rem; }
+  .draft details { font-size: .92rem; }
+  .draft details summary { cursor: pointer; color: #4f46e5; font-weight: 600; }
+  .draft .preview { border: 1px solid var(--border-color, #e5e7eb); border-radius: 10px; padding: 14px 16px; margin-top: 8px; max-height: 480px; overflow: auto; }
+  .draft .preview img { max-width: 100%; }
+  .draft .btns { display: flex; gap: 8px; }
+  .draft .btns button { border: 0; border-radius: 8px; padding: 6px 12px; font-weight: 600; font-size: .85rem; color: #fff; cursor: pointer; }
+  .pub { background: #16a34a; } .rej { background: #6b7280; }
+  .transcript { display: grid; gap: 8px; font-size: .9rem; }
+  .transcript div { display: grid; grid-template-columns: 96px 1fr; gap: 10px; }
+  .transcript b { font-weight: 700; }
+  table.logs { width: 100%; font-size: .85rem; border-collapse: collapse; }
+  table.logs td { padding: 4px 6px; border-top: 1px solid var(--border-color, #e5e7eb); vertical-align: top; }
+  table.logs td:first-child { white-space: nowrap; color: var(--text-secondary); }
+  pre.joblog { background: #0f172a; color: #cbd5e1; border-radius: 10px; padding: 12px; font-size: .78rem; max-height: 260px; overflow: auto; margin: 0; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-5); }
+  @media (max-width: 900px) { .grid2 { grid-template-columns: 1fr; } }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="oa">
+  <div class="oa-head">
+    <div>
+      <h1>연구팀 연구실 관리</h1>
+      <small style="color:var(--text-secondary)">회의 안건 결정 · 보류 칼럼 검수 · 수동 실행. 공개 페이지: <a href="{% url 'office:home' %}">/lab/</a></small>
+    </div>
+    <div class="oa-actions">
+      <form method="post" action="{% url 'office:run_job' %}">{% csrf_token %}<input type="hidden" name="job" value="meeting">
+        <button type="submit" {% if not has_api_key %}disabled title="ANTHROPIC_API_KEY 없음"{% endif %} data-confirm="편집회의를 지금 소집할까요? (API 호출 12회, 2~4분)">편집회의 소집</button></form>
+      {% for k, v in topic_label.items %}
+      <form method="post" action="{% url 'office:run_job' %}">{% csrf_token %}<input type="hidden" name="job" value="publish"><input type="hidden" name="topic" value="{{ k }}">
+        <button type="submit" class="alt" {% if not has_api_key %}disabled{% endif %} data-confirm="{{ v }} 칼럼 제작을 시작할까요? (초안→검증→차트→QA, 3~6분)">{{ v }} 칼럼 제작</button></form>
+      {% endfor %}
+      <a href="{% url 'common:admin_dashboard' %}" class="btn btn-sm btn-outline-secondary">대시보드</a>
+    </div>
+  </div>
+
+  <div class="grid2">
+    <div class="panel">
+      <h2>회의 안건 결정
+        {% for m in meetings %}{% if m.status == 'open' and forloop.first %}<span class="badge-n">{{ m.pending_count }}건 대기</span>{% endif %}{% endfor %}
+      </h2>
+      {% for m in meetings %}
+        {% if forloop.first %}
+          <p style="margin:0 0 10px; color:var(--text-secondary); font-size:.9rem;"><b>{{ m.week_start|date:"Y.m.d" }} 주차</b> · {{ m.held_at|date:"m/d H:i" }} 개최 · {{ m.get_status_display }}</p>
+          <p style="font-size:.92rem;">{{ m.summary }}</p>
+          {% for d in m.decisions.all %}
+          <div class="decision">
+            <div class="kind">{{ d.get_kind_display }}{% if d.topic_name %} · {{ d.topic_name }}{% endif %}{% if d.consumed_at %} · 칼럼 반영됨{% endif %}</div>
+            <div class="q">{{ d.question }}</div>
+            {% if d.chosen_key %}
+              {% for o in d.options %}
+              <div class="opt {% if o.key == d.chosen_key %}chosen{% endif %}"><span>{% if o.key == d.chosen_key %}✓{% else %}&nbsp;{% endif %}</span>
+                <div><b>{{ o.title }}</b><small>{{ o.detail }} — {{ o.proposed_by }}</small></div></div>
+              {% endfor %}
+              {% if d.note %}<small style="color:var(--text-secondary)">메모: {{ d.note }}</small>{% endif %}
+            {% else %}
+              <form method="post" action="{% url 'office:decision_choose' d.id %}">{% csrf_token %}
+                {% for o in d.options %}
+                <label class="opt"><input type="radio" name="key" value="{{ o.key }}" id="d{{ d.id }}-{{ o.key }}" required>
+                  <span><b>{{ o.title }}</b><small>{{ o.detail }} — {{ o.proposed_by }}</small></span></label>
+                {% endfor %}
+                <div class="row"><input type="text" name="note" id="note-{{ d.id }}" placeholder="메모 (선택)" maxlength="300"><button type="submit">결정</button></div>
+              </form>
+            {% endif %}
+          </div>
+          {% endfor %}
+        {% endif %}
+      {% empty %}
+        <p style="color:var(--text-secondary)">아직 회의가 없습니다. 위 "편집회의 소집"으로 시작하세요 (정기: 일요일 20:00).</p>
+      {% endfor %}
+    </div>
+
+    <div class="panel">
+      <h2>보류 칼럼 검수 {% if held %}<span class="badge-n">{{ held|length }}</span>{% endif %}</h2>
+      {% for d in held %}
+      <div class="draft">
+        <div><b>{{ d.subject }}</b></div>
+        <div class="meta">
+          <span>{{ d.topic_name }}</span>
+          <span>QA <span class="score {% if d.qa_score >= 7 %}ok{% endif %}">{{ d.qa_score|default:"-" }}/10</span></span>
+          <span>재작성 {{ d.revisions }}회</span>
+          {% if d.chart_path %}<span>차트 포함</span>{% endif %}
+          <span>{{ d.created_at|date:"m/d H:i" }}</span>
+        </div>
+        {% if d.qa_report.issues %}<ul class="issues">{% for i in d.qa_report.issues %}<li>{{ i }}</li>{% endfor %}</ul>{% endif %}
+        {% if d.qa_report.notes %}<div style="font-size:.9rem;">팀장: {{ d.qa_report.notes }}</div>{% endif %}
+        {% if d.check_report.notes %}<div style="font-size:.9rem;">검증관: {{ d.check_report.notes }}</div>{% endif %}
+        <details><summary>본문 미리보기</summary><div class="preview">{{ d.content|mark }}</div></details>
+        <div class="btns">
+          <form method="post" action="{% url 'office:draft_publish' d.id %}">{% csrf_token %}<button class="pub" type="submit">발행</button></form>
+          <form method="post" action="{% url 'office:draft_reject' d.id %}">{% csrf_token %}<button class="rej" type="submit" data-confirm="반려할까요?">반려</button></form>
+        </div>
+      </div>
+      {% empty %}<p style="color:var(--text-secondary)">검수 대기 칼럼이 없습니다.</p>{% endfor %}
+
+      <h2 style="margin-top:18px;">최근 제작 결과</h2>
+      <table class="logs">
+        {% for d in recent_drafts %}
+        <tr><td>{{ d.created_at|date:"m/d" }}</td><td>{{ d.topic_name }}</td>
+          <td>{% if d.question %}<a href="{% url 'community:detail' d.question.id %}">{{ d.subject }}</a>{% else %}{{ d.subject|default:d.brief|default:"(실패)" }}{% endif %}</td>
+          <td>{{ d.get_status_display }} · QA {{ d.qa_score|default:"-" }}</td></tr>
+        {% empty %}<tr><td colspan="4" style="color:var(--text-secondary)">없음</td></tr>{% endfor %}
+      </table>
+    </div>
+  </div>
+
+  <div class="grid2">
+    <div class="panel">
+      <h2>회의록</h2>
+      {% for m in meetings %}
+      <details {% if forloop.first %}open{% endif %}>
+        <summary style="cursor:pointer; font-weight:600;">{{ m.week_start|date:"Y.m.d" }} 주차 · {{ m.decisions.count }}건 · {{ m.get_status_display }}</summary>
+        <div class="transcript" style="margin-top:10px;">
+          {% for t in m.transcript %}
+          <div><b>{{ agents|get_item:t.agent|get_item:'name' }} <small style="color:var(--text-secondary)">R{{ t.round }}</small></b><span>{{ t.text }}</span></div>
+          {% endfor %}
+        </div>
+        <details style="margin-top:8px;"><summary style="font-size:.85rem; color:var(--text-secondary); cursor:pointer;">지표 브리핑 원문</summary><pre style="white-space:pre-wrap; font-size:.8rem;">{{ m.briefing }}</pre></details>
+      </details>
+      {% empty %}<p style="color:var(--text-secondary)">없음</p>{% endfor %}
+    </div>
+    <div class="panel">
+      <h2>작업 로그</h2>
+      <table class="logs">
+        {% for l in logs %}<tr><td>{{ l.created_at|date:"m/d H:i" }}</td><td><b style="color:{{ l.agent_color }}">{{ l.agent_name }}</b></td><td>{{ l.text }}</td></tr>{% endfor %}
+      </table>
+      <h2 style="margin-top:18px;">프로세스 출력 <small style="font-weight:400; color:var(--text-secondary)">logs/office_jobs.log</small></h2>
+      <pre class="joblog">{{ job_log|default:"(없음)" }}</pre>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block script %}
+<script nonce="{{ csp_nonce }}">
+  document.querySelectorAll('button[data-confirm]').forEach(function (b) {
+    b.addEventListener('click', function (e) { if (!confirm(b.dataset.confirm)) e.preventDefault(); });
+  });
+</script>
+{% endblock %}

@@ -23,6 +23,7 @@ community/           # 메인 앱 (구 pybo → community로 마이그레이션 
   ├── models.py      # Question, Answer, Comment, Games
   └── urls.py        # URL: namespace='community'
 common/              # 인증 및 프로필
+office/              # 가상 연구실 (에이전트 6명: agents.py, 회의 hold_meeting, 칼럼 파이프라인 office_publish, /lab/)
 templates/           # Django 템플릿 (base.html 상속 구조)
   ├── base.html      # 기본 레이아웃
   └── community/     # community 앱 템플릿
@@ -78,4 +79,5 @@ sudo systemctl status mysite nginx
 - **로그**: `sudo journalctl -u mysite -n 50`, `logs/django.log`
 - **정적파일**: `python manage.py collectstatic --clear`
 - **DB 백업**: `python manage.py backup_db` → `backups/db_<ts>.sql.gz` (cron 매일 03:00)
-- **cron**: ubuntu 계정 `crontab -l` (backup_db, send_log_report, send_visitor_report, auto_write_*)
+- **cron**: ubuntu 계정 `crontab -l` (backup_db, send_log_report, send_visitor_report, hold_meeting 일 20:00, office_publish 화/목/토, auto_write_series)
+- **에이전트 모델**: office 앱은 `ClaudeModel.SONNET_5`(claude-sonnet-5) 고정. `common/services/claude.ask` 는 text 블록만 합침(thinking 블록 대응)

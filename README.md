@@ -37,7 +37,10 @@ TechChang는 Stack Overflow 스타일의 질문/답변 커뮤니티에 인터랙
 | 끝말잇기 | 단어 잇기 대전 | — |
 
 ### AI 기능 (Anthropic Claude)
-- **AI 칼럼 자동 작성** — cron 기반 정기 칼럼 생성
+- **연구팀 가상 연구실** (`/lab/`) — 6명의 에이전트(팀장·HRD/데이터/프로그래밍 칼럼니스트·검증관·차트 담당)가
+  매주 편집회의로 칼럼 주제·개선 과제를 선택지로 올리고 운영자가 결정. 칼럼은 초안→검증→차트→QA 파이프라인으로 제작,
+  QA 미달은 운영자 검수. 픽셀 연구실에서 활동·회의를 재생
+- **AI 칼럼 자동 작성** — cron 기반 정기 칼럼 생성 (`office_publish`, 회의 결정 주제 반영)
 - **AI 답변 생성** — 질문에 대한 보조 답변
 - **로그 지적사항 → 자동 수정 PR 파이프라인** — 서버 로그를 분석해 지적사항을 도출하고,
   관리자 승인 시 GitHub Actions(`repository_dispatch`)로 Claude가 수정 PR을 생성, CI가 검증
@@ -115,6 +118,7 @@ mysite/
 │   ├── models.py        # Question, Answer, Portfolio, 게임 모델 등
 │   ├── consumers.py     # WebSocket consumer (실시간 게임)
 │   └── urls.py          # namespace='community'
+├── office/              # 가상 연구실: 에이전트 팀 회의(hold_meeting)·칼럼 파이프라인(office_publish)·/lab/
 ├── templates/           # base.html / base_mobile.html 상속 구조
 │   ├── common/          # (mobile/ 서브 디렉터리 포함)
 │   └── community/       # (mobile/ 서브 디렉터리 포함)
@@ -261,9 +265,10 @@ sudo certbot renew --dry-run
 0 8 * * 1   ... send_log_report --hours 168 --to <admin@example.com>
 30 8 * * 1  ... send_visitor_report --period weekly --to <admin@example.com>
 0 9 1 * *   ... send_visitor_report --period monthly --to <admin@example.com>
-0 10 * * 2  ... auto_write_columns --topic hrd    >> /home/ubuntu/projects/mysite/logs/techchang_columns.log 2>&1
-0 10 * * 4  ... auto_write_columns --topic data   >> .../logs/techchang_columns.log 2>&1
-0 10 * * 6  ... auto_write_columns --topic coding >> .../logs/techchang_columns.log 2>&1
+0 20 * * 0  ... hold_meeting --email <admin@example.com> >> .../logs/techchang_office.log 2>&1     # 주간 편집회의
+0 10 * * 2  ... office_publish --topic hrd    >> .../logs/techchang_columns.log 2>&1              # 팀 파이프라인 (구 auto_write_columns)
+0 10 * * 4  ... office_publish --topic data   >> .../logs/techchang_columns.log 2>&1
+0 10 * * 6  ... office_publish --topic coding >> .../logs/techchang_columns.log 2>&1
 0 10 * * 1  [ $(( $(date +\%V) \% 2 )) -eq 1 ] && ... auto_write_series >> .../logs/techchang_series.log 2>&1
 ```
 

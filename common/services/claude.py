@@ -33,6 +33,7 @@ class ClaudeModel(str, Enum):
     """사용 가능한 Claude 모델 목록. (str 믹스인으로 Python 3.10 호환)"""
     HAIKU  = 'claude-haiku-4-5-20251001'   # 빠르고 저렴 - 단순 응답, Q&A 자동 답변
     SONNET = 'claude-sonnet-4-6'            # 균형 - 칼럼 작성, 분석, 기획
+    SONNET_5 = 'claude-sonnet-5'            # 오피스 에이전트 팀(office 앱) 고정 모델
     OPUS   = 'claude-opus-4-8'             # 최고 성능 - 복잡한 추론, 장문 심층 분석
 
     def __str__(self):
@@ -95,7 +96,11 @@ def ask(
         kwargs['system'] = system
 
     response = client.messages.create(**kwargs)
-    return response.content[0].text
+    # 최신 모델은 text 앞에 thinking 블록이 올 수 있다 → text 블록만 이어 붙인다
+    return ''.join(
+        block.text for block in response.content
+        if getattr(block, 'type', '') == 'text'
+    )
 
 
 def ask_stream(

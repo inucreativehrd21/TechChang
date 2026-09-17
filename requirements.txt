@@ -44,3 +44,6 @@ google-auth-oauthlib>=1.1.0,<2.0.0
 
 # 데이터베이스: 현재 SQLite 사용. PostgreSQL 사용 시 아래 주석 해제
 # psycopg2-binary>=2.9,<3
+
+# 오피스 팀 차트 담당(office_publish)이 칼럼 표·차트 PNG 를 그릴 때 사용
+matplotlib>=3.8,<4.0
