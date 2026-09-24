@@ -21,7 +21,11 @@ BOT_USERNAME = 'techchang연구팀'
 
 # ───────────────────────────── 에이전트 호출
 def ask_agent(key: str, prompt: str, *, max_tokens: int = 2000) -> str:
-    return ask(prompt, system=AGENTS[key]['system'], model=MODEL, max_tokens=max_tokens).strip()
+    """에이전트 1회 호출. 적응형 thinking 이 출력 예산을 다 써서 본문이 비면 예산 2배로 1회 재시도한다."""
+    out = ask(prompt, system=AGENTS[key]['system'], model=MODEL, max_tokens=max_tokens).strip()
+    if not out:
+        out = ask(prompt, system=AGENTS[key]['system'], model=MODEL, max_tokens=max_tokens * 2).strip()
+    return out
 
 
 def ask_agent_json(key: str, prompt: str, *, max_tokens: int = 2000) -> dict:
@@ -179,11 +183,11 @@ def week_monday(d: date | None = None) -> date:
 
 
 # ───────────────────────────── 차트
-def render_chart(spec: dict, filename_stem: str) -> str | None:
+def render_chart(spec: dict, filename_stem: str) -> tuple:
     """
-    charter 에이전트의 spec 으로 PNG 를 만들어 media/columns/ 에 저장하고 media 상대경로를 돌려준다.
+    charter 에이전트의 spec 으로 PNG 를 만들어 media/columns/ 에 저장한다.
     spec: {type: bar|line|hbar, title, labels[], series:[{name, values[]}], unit, source}
-    matplotlib 미설치·데이터 불량이면 None.
+    반환: (media 상대경로, '') 성공 / (None, 실패 사유) — 사유는 관리 화면·로그에 그대로 노출한다.
     """
     try:
         import matplotlib
@@ -191,19 +195,19 @@ def render_chart(spec: dict, filename_stem: str) -> str | None:
         import matplotlib.pyplot as plt
         from matplotlib import font_manager
     except ImportError:
-        return None
+        return None, 'matplotlib 미설치 (pip install -r requirements-prod.txt)'
 
     labels = [str(x) for x in spec.get('labels') or []]
     series = [s for s in (spec.get('series') or []) if isinstance(s, dict) and s.get('values')]
     if not labels or not series:
-        return None
+        return None, 'spec 에 labels 또는 series 가 없음'
     for s in series:
         try:
             s['values'] = [float(v) for v in s['values']][:len(labels)]
         except (TypeError, ValueError):
-            return None
+            return None, f"계열 '{s.get('name', '')}' 값에 숫자가 아닌 항목이 있음"
         if len(s['values']) != len(labels):
-            return None
+            return None, f"계열 '{s.get('name', '')}' 값 개수({len(s['values'])})가 labels({len(labels)})와 다름"
 
     # 한글 폰트: 레포 동봉 Noto Sans KR (TTF)
     font_path = Path(settings.BASE_DIR) / 'static' / 'fonts' / 'NotoSansKR-VariableFont_wght.ttf'
@@ -255,12 +259,11 @@ def render_chart(spec: dict, filename_stem: str) -> str | None:
     rel = f'columns/{filename_stem}.png'
     fig.savefig(out_dir / f'{filename_stem}.png')
     plt.close(fig)
-    return rel
+    return rel, ''
 
 
 def chart_markdown(rel_path: str, spec: dict) -> str:
-    """이미지 + 표 마크다운. 표는 첫 시리즈 기준(다중이면 열 추가)."""
-    url = f"{settings.MEDIA_URL.rstrip('/')}/{rel_path}"
+    """이미지 + 표 마크다운. rel_path 가 비면 표만 만든다(차트 렌더 실패 시 폴백)."""
     labels = spec.get('labels') or []
     series = spec.get('series') or []
     head = '| 항목 | ' + ' | '.join(s.get('name') or '값' for s in series) + ' |'
@@ -273,7 +276,11 @@ def chart_markdown(rel_path: str, spec: dict) -> str:
             vals.append(f'{v:g}' if isinstance(v, (int, float)) else str(v))
         rows.append(f'| {lab} | ' + ' | '.join(vals) + ' |')
     unit = f" (단위: {spec['unit']})" if spec.get('unit') else ''
-    parts = [f"![{spec.get('title', '차트')}]({url})", '', f"**{spec.get('title', '')}**{unit}", '', head, sep, *rows]
+    parts = []
+    if rel_path:
+        url = f"{settings.MEDIA_URL.rstrip('/')}/{rel_path}"
+        parts += [f"![{spec.get('title', '차트')}]({url})", '']
+    parts += [f"**{spec.get('title', '')}**{unit}", '', head, sep, *rows]
     if spec.get('source'):
         parts += ['', f"*출처: {spec['source']}*"]
     return '\n'.join(parts)

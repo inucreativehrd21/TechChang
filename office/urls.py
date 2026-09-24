@@ -10,6 +10,8 @@ urlpatterns = [
     path('admin/', views.office_admin, name='admin'),
     path('admin/decision/<int:decision_id>/choose/', views.decision_choose, name='decision_choose'),
     path('admin/draft/<int:draft_id>/publish/', views.draft_publish, name='draft_publish'),
+    path('admin/activity.json', views.admin_activity, name='admin_activity'),
+    path('admin/draft/<int:draft_id>/revise/', views.draft_revise, name='draft_revise'),
     path('admin/draft/<int:draft_id>/reject/', views.draft_reject, name='draft_reject'),
     path('admin/run/', views.run_job, name='run_job'),
 ]

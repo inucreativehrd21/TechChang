@@ -77,6 +77,30 @@
   table.logs td:first-child { white-space: nowrap; color: var(--text-secondary); }
   pre.joblog { background: #0f172a; color: #cbd5e1; border-radius: 10px; padding: 12px; font-size: .78rem; max-height: 260px; overflow: auto; margin: 0; }
   .tab-pane.narrow { max-width: 760px; }
+  .chip { font-size: .72rem; font-weight: 700; border-radius: 999px; padding: 1px 9px; background: #e0e7ff; color: #4f46e5; }
+  .chip.live { background: #fef3c7; color: #b45309; }
+  .fatal { font-size: .85rem; color: #b91c1c; }
+  .fatal code { background: #fee2e2; color: #b91c1c; border-radius: 4px; padding: 0 5px; font-size: .95em; }
+  .rubric { display: flex; flex-wrap: wrap; gap: 6px; }
+  .rubric .r { font-size: .78rem; border: 1px solid var(--border-color, #e5e7eb); border-radius: 6px; padding: 2px 8px; color: var(--text-secondary); }
+  .rubric .r b { color: var(--text-primary, #111); font-weight: 600; }
+  .viz { font-size: .85rem; color: var(--text-secondary); }
+  .admin-note { font-size: .85rem; background: rgba(79,70,229,.06); border-left: 3px solid #4f46e5; padding: 6px 10px; border-radius: 0 6px 6px 0; }
+  .revise-form { display: grid; gap: 6px; }
+  .rv-label { font-size: .8rem; color: var(--text-secondary); }
+  .revise-form textarea { width: 100%; border: 1px solid var(--border-color, #e5e7eb); border-radius: 8px; padding: 8px 10px; font: inherit; font-size: .9rem; resize: vertical; }
+  .revise-form .rev { justify-self: start; border: 0; border-radius: 8px; padding: 6px 14px; font-weight: 600; font-size: .85rem; color: #fff; background: #4f46e5; cursor: pointer; }
+  .progress { display: flex; align-items: center; gap: 8px; font-size: .9rem; background: #fffbeb; border: 1px solid #fde68a; border-radius: 8px; padding: 8px 12px; }
+  .progress .spin { width: 12px; height: 12px; border: 2px solid #f59e0b; border-right-color: transparent; border-radius: 50%; animation: spin .8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .live-bar { display: flex; align-items: center; gap: 10px; font-size: .82rem; margin-bottom: 10px; }
+  .live-bar .spacer { flex: 1; }
+  .live-toggle { display: flex; align-items: center; gap: 6px; cursor: pointer; }
+  .dot-live { width: 8px; height: 8px; border-radius: 50%; background: #22c55e; animation: pulse 1.6s infinite; }
+  @keyframes pulse { 50% { opacity: .25; } }
+  tr.log-new { animation: flash 1.6s ease-out; }
+  @keyframes flash { from { background: rgba(79,70,229,.14); } to { background: transparent; } }
+  @media (prefers-reduced-motion: reduce) { .progress .spin, .dot-live, tr.log-new { animation: none; } }
   .tabs .tab .badge-n { margin-left: 4px; vertical-align: 1px; }
 </style>
 {% endblock %}
@@ -142,23 +166,40 @@
 
     <section class="tab-pane narrow" data-pane="held" hidden>
       {% for d in held %}
-      <div class="draft">
-        <div><b>{{ d.subject }}</b></div>
+      <div class="draft" data-draft="{{ d.id }}">
+        <div><b>{{ d.subject }}</b>{% if d.status == 'revising' %} <span class="chip live">재작성 중</span>{% endif %}</div>
         <div class="meta">
           <span>{{ d.topic_name }}</span>
-          <span>QA <span class="score {% if d.qa_score >= 7 %}ok{% endif %}">{{ d.qa_score|default:"-" }}/10</span></span>
+          <span>편집 심사 <span class="score {% if d.qa_score >= 85 %}ok{% endif %}">{{ d.qa_score|default:"-" }}/100</span></span>
+          {% if d.qa_verdict %}<span>판정 {{ d.qa_verdict }}</span>{% endif %}
+          <span>본문 {{ d.qa_report.length|default:"?" }}자</span>
           <span>재작성 {{ d.revisions }}회</span>
-          {% if d.chart_path %}<span>차트 포함</span>{% endif %}
           <span>{{ d.created_at|date:"m/d H:i" }}</span>
         </div>
+        {% if d.qa_fatal %}<div class="fatal">치명 결함: {% for f in d.qa_fatal %}<code>{{ f }}</code> {% endfor %}</div>{% endif %}
+        {% if d.rubric_rows %}
+        <div class="rubric">{% for name, sc in d.rubric_rows %}<span class="r"><b>{{ name }}</b> {{ sc }}/5</span>{% endfor %}</div>
+        {% endif %}
+        <div class="viz">시각화: {{ d.chart_note|default:"(기록 없음)" }}</div>
         {% if d.qa_report.issues %}<ul class="issues">{% for i in d.qa_report.issues %}<li>{{ i }}</li>{% endfor %}</ul>{% endif %}
-        {% if d.qa_report.notes %}<div style="font-size:.9rem;">팀장: {{ d.qa_report.notes }}</div>{% endif %}
-        {% if d.check_report.notes %}<div style="font-size:.9rem;">검증관: {{ d.check_report.notes }}</div>{% endif %}
+        {% if d.qa_report.notes %}<div style="font-size:.9rem;">편집장: {{ d.qa_report.notes }}</div>{% endif %}
+        {% if d.check_report.notes %}<div style="font-size:.9rem;">팩트체크: {{ d.check_report.notes }}</div>{% endif %}
+        {% if d.admin_note %}<div class="admin-note">직전 운영자 지시: {{ d.admin_note }}</div>{% endif %}
         <details><summary>본문 미리보기</summary><div class="preview">{{ d.content|mark }}</div></details>
-        <div class="btns">
-          <form method="post" action="{% url 'office:draft_publish' d.id %}">{% csrf_token %}<button class="pub" type="submit">발행</button></form>
-          <form method="post" action="{% url 'office:draft_reject' d.id %}">{% csrf_token %}<button class="rej" type="submit" data-confirm="반려할까요?">반려</button></form>
-        </div>
+
+        {% if d.status == 'revising' %}
+          <div class="progress" data-progress="{{ d.id }}"><span class="spin"></span> 연구팀이 재작성 중입니다… <small class="muted">진행 상황은 아래 작업 로그에 실시간으로 표시됩니다</small></div>
+        {% else %}
+          <form method="post" action="{% url 'office:draft_revise' d.id %}" class="revise-form">{% csrf_token %}
+            <label for="note-{{ d.id }}" class="rv-label">수정 지시 — 무엇을 어떻게 고칠지 적으면 담당 연구원이 반영해 다시 쓰고 재심받습니다</label>
+            <textarea id="note-{{ d.id }}" name="note" rows="3" placeholder="예) 사례를 국내 중심으로 바꾸고, 3번 섹션의 통계는 최신 조사로 교체해 주세요. 분량은 조금 더 늘려도 됩니다." required></textarea>
+            <button type="submit" class="rev">코멘트 반영해 재작성</button>
+          </form>
+          <div class="btns">
+            <form method="post" action="{% url 'office:draft_publish' d.id %}">{% csrf_token %}<button class="pub" type="submit">그대로 발행</button></form>
+            <form method="post" action="{% url 'office:draft_reject' d.id %}">{% csrf_token %}<button class="rej" type="submit" data-confirm="반려할까요?">반려</button></form>
+          </div>
+        {% endif %}
       </div>
       {% empty %}<p style="color:var(--text-secondary)">검수 대기 칼럼이 없습니다.</p>{% endfor %}
 
@@ -167,7 +208,7 @@
         {% for d in recent_drafts %}
         <tr><td>{{ d.created_at|date:"m/d" }}</td><td>{{ d.topic_name }}</td>
           <td>{% if d.question %}<a href="{% url 'community:detail' d.question.id %}">{{ d.subject }}</a>{% else %}{{ d.subject|default:d.brief|default:"(실패)" }}{% endif %}</td>
-          <td>{{ d.get_status_display }} · QA {{ d.qa_score|default:"-" }}</td></tr>
+          <td>{{ d.get_status_display }} · {{ d.qa_score|default:"-" }}점</td></tr>
         {% empty %}<tr><td colspan="4" style="color:var(--text-secondary)">없음</td></tr>{% endfor %}
       </table>
     </section>
@@ -212,15 +253,21 @@
     </section>
 
     <section class="tab-pane" data-pane="worklog" hidden>
-      <table class="logs">
-        {% for l in logs %}<tr><td>{{ l.created_at|date:"m/d H:i" }}</td><td><b style="color:{{ l.agent_color }}">{{ l.agent_name }}</b></td><td>{{ l.text }}</td></tr>
+      <div class="live-bar">
+        <label class="live-toggle"><input type="checkbox" id="live-logs" checked> <span class="dot-live"></span> 실시간 갱신</label>
+        <span class="muted" id="live-stamp"></span>
+        <span class="spacer"></span>
+        <span class="muted" id="live-running"></span>
+      </div>
+      <table class="logs" id="worklog-table">
+        {% for l in logs %}<tr data-log="{{ l.id }}"><td>{{ l.created_at|date:"m/d H:i:s" }}</td><td><b style="color:{{ l.agent_color }}">{{ l.agent_name }}</b></td><td>{{ l.text }}</td></tr>
         {% empty %}<tr><td class="muted" colspan="3">없음</td></tr>{% endfor %}
       </table>
     </section>
 
     <section class="tab-pane" data-pane="joblog" hidden>
       <p class="muted" style="margin:0 0 8px; font-size:.85rem;">logs/office_jobs.log 마지막 40줄 — 수동 소집·제작 버튼의 실행 출력</p>
-      <pre class="joblog">{{ job_log|default:"(없음)" }}</pre>
+      <pre class="joblog" id="joblog">{{ job_log|default:"(없음)" }}</pre>
     </section>
   </div>
 </div>
@@ -240,6 +287,53 @@
   }
   tabs.forEach(function (t) { t.addEventListener('click', function () { showTab(t.dataset.tab); }); });
   try { var saved = localStorage.getItem('lab-admin-tab'); if (saved) showTab(saved); } catch (e) {}
+  // 작업 로그 실시간 폴링 (재작성·제작 중이면 3초, 평소 15초)
+  var activityUrl = "{% url 'office:admin_activity' %}";
+  var tbl = document.getElementById('worklog-table'), stamp = document.getElementById('live-stamp'),
+      runEl = document.getElementById('live-running'), jobEl = document.getElementById('joblog'),
+      liveCb = document.getElementById('live-logs');
+  var lastId = tbl ? (tbl.querySelector('tr[data-log]') || {}).dataset : null;
+  lastId = lastId ? lastId.log : '0';
+  var timer = null;
+
+  function renderLogs(data) {
+    if (!tbl) return;
+    if (data.logs.length && data.logs[0].id != lastId) {
+      var seen = {};
+      tbl.querySelectorAll('tr[data-log]').forEach(function (tr) { seen[tr.dataset.log] = true; });
+      var html = data.logs.map(function (l) {
+        return '<tr data-log="' + l.id + '"' + (seen[l.id] ? '' : ' class="log-new"') + '>' +
+          '<td>' + l.at + '</td><td><b style="color:' + l.color + '">' + l.name + '</b></td>' +
+          '<td>' + l.text.replace(/[<>&]/g, function (c) { return { '<': '&lt;', '>': '&gt;', '&': '&amp;' }[c]; }) + '</td></tr>';
+      }).join('');
+      tbl.innerHTML = html || '<tr><td class="muted" colspan="3">없음</td></tr>';
+      lastId = data.logs.length ? data.logs[0].id : lastId;
+    }
+    if (stamp) stamp.textContent = data.now + ' 기준';
+    if (runEl) runEl.textContent = data.running.length
+      ? '진행 중: ' + data.running.map(function (r) { return r.topic + ' 「' + r.subject + '」 (' + r.since + '~)'; }).join(', ')
+      : '';
+    if (jobEl && data.job_log) jobEl.textContent = data.job_log;
+    document.querySelectorAll('.progress[data-progress]').forEach(function (el) {
+      var id = el.dataset.progress;
+      var mine = data.logs.filter(function (l) { return String(l.draft_id) === String(id); })[0];
+      if (mine) el.childNodes[2].textContent = ' ' + mine.name + ': ' + mine.text + ' ';
+      if (!data.running.some(function (r) { return String(r.id) === String(id); })) location.reload();
+    });
+    return data.running.length > 0;
+  }
+
+  function poll() {
+    if (liveCb && !liveCb.checked) return schedule(15000);
+    fetch(activityUrl + '?since=' + lastId, { headers: { Accept: 'application/json' } })
+      .then(function (r) { return r.json(); })
+      .then(function (d) { schedule(renderLogs(d) ? 3000 : 15000); })
+      .catch(function () { schedule(20000); });
+  }
+  function schedule(ms) { clearTimeout(timer); timer = setTimeout(poll, ms); }
+  if (tbl) { schedule(document.querySelector('.progress') ? 3000 : 15000); }
+  if (liveCb) liveCb.addEventListener('change', function () { if (liveCb.checked) poll(); });
+
   // 회의록 접기/펴기
   document.querySelectorAll('.fold-btn').forEach(function (b) {
     b.addEventListener('click', function () {

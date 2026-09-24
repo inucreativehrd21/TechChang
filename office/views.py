@@ -101,8 +101,10 @@ def office_state(request):
 @admin_required
 def office_admin(request):
     meetings = Meeting.objects.prefetch_related('decisions').order_by('-held_at')[:8]
-    held = ColumnDraft.objects.filter(status=ColumnDraft.STATUS_HOLD).select_related('decision')
-    recent_drafts = ColumnDraft.objects.exclude(status=ColumnDraft.STATUS_HOLD).select_related('question')[:12]
+    held = ColumnDraft.objects.filter(
+        status__in=[ColumnDraft.STATUS_HOLD, ColumnDraft.STATUS_REVISING]).select_related('decision')
+    recent_drafts = ColumnDraft.objects.exclude(
+        status__in=[ColumnDraft.STATUS_HOLD, ColumnDraft.STATUS_REVISING]).select_related('question')[:12]
     logs = decorate_logs(WorkLog.objects.select_related('draft', 'meeting')[:80])
     for d in list(held) + list(recent_drafts):
         d.topic_name = TOPIC_LABEL.get(d.topic, '')
@@ -115,11 +117,7 @@ def office_admin(request):
              'color': AGENTS[t['agent']]['sprite']['shirt'], 'round': t.get('round', 1), 'text': t['text']}
             for t in m.transcript if t.get('agent') in AGENTS
         ]
-    job_log = ''
-    p = os.path.join(settings.BASE_DIR, 'logs', 'office_jobs.log')
-    if os.path.exists(p):
-        with open(p, encoding='utf-8', errors='replace') as f:
-            job_log = ''.join(f.readlines()[-40:])
+    job_log = _job_log_tail()
     return render(request, 'office/admin.html', {
         'meetings': meetings, 'held': held, 'recent_drafts': recent_drafts, 'logs': logs,
         'agents': AGENTS, 'topic_label': TOPIC_LABEL, 'job_log': job_log,
@@ -183,29 +181,94 @@ def draft_reject(request, draft_id):
     return redirect('office:admin')
 
 
+def _spawn(request, args: list):
+    """manage.py <args> 를 백그라운드로 실행하고 출력을 logs/office_jobs.log 에 이어 쓴다."""
+    manage = os.path.join(settings.BASE_DIR, 'manage.py')
+    os.makedirs(os.path.join(settings.BASE_DIR, 'logs'), exist_ok=True)
+    logf = open(os.path.join(settings.BASE_DIR, 'logs', 'office_jobs.log'), 'a', encoding='utf-8')
+    logf.write(f"\n=== {timezone.localtime():%Y-%m-%d %H:%M:%S} {' '.join(args)} (by {request.user.username})\n")
+    logf.flush()
+    env = {**os.environ, 'DJANGO_SETTINGS_MODULE': os.environ.get('DJANGO_SETTINGS_MODULE', 'config.settings')}
+    subprocess.Popen([sys.executable, manage, *args], cwd=settings.BASE_DIR,
+                     stdout=logf, stderr=subprocess.STDOUT, env=env, start_new_session=True)
+
+
+def _job_log_tail(lines: int = 60) -> str:
+    p = os.path.join(settings.BASE_DIR, 'logs', 'office_jobs.log')
+    if not os.path.exists(p):
+        return ''
+    with open(p, encoding='utf-8', errors='replace') as f:
+        return ''.join(f.readlines()[-lines:])
+
+
+@admin_required
+def admin_activity(request):
+    """관리 화면이 폴링하는 실시간 활동 — 작업 로그 · 진행 중 작업 · 프로세스 출력."""
+    since_id = request.GET.get('since')
+    qs = WorkLog.objects.select_related('draft')[:60]
+    logs = []
+    for l in qs:
+        a = AGENTS.get(l.agent)
+        if not a:
+            continue
+        logs.append({
+            'id': l.id, 'agent': l.agent, 'name': a['name'], 'color': a['sprite']['shirt'],
+            'action': l.action, 'text': l.text, 'draft_id': l.draft_id,
+            'at': timezone.localtime(l.created_at).strftime('%m/%d %H:%M:%S'),
+        })
+    running = [
+        {'id': d.id, 'subject': d.subject or d.brief, 'topic': TOPIC_LABEL.get(d.topic, ''),
+         'since': timezone.localtime(d.decided_at or d.created_at).strftime('%H:%M')}
+        for d in ColumnDraft.objects.filter(status=ColumnDraft.STATUS_REVISING)
+    ]
+    return JsonResponse({
+        'now': timezone.localtime().strftime('%H:%M:%S'),
+        'logs': logs,
+        'latest_id': logs[0]['id'] if logs else 0,
+        'has_new': bool(logs and since_id and str(logs[0]['id']) != str(since_id)),
+        'running': running,
+        'job_log': _job_log_tail(),
+    })
+
+
+@admin_required
+@require_POST
+def draft_revise(request, draft_id):
+    """운영자 코멘트를 반영해 다시 쓰도록 연구팀에 되돌린다 (백그라운드 실행)."""
+    draft = get_object_or_404(ColumnDraft, pk=draft_id)
+    note = request.POST.get('note', '').strip()
+    if not note:
+        messages.error(request, '수정 지시 내용을 입력하세요.')
+        return redirect('office:admin')
+    if draft.status not in (ColumnDraft.STATUS_HOLD, ColumnDraft.STATUS_REJECTED):
+        messages.error(request, '검수 대기 중인 칼럼만 재작성할 수 있습니다.')
+        return redirect('office:admin')
+
+    draft.admin_note = note
+    draft.status = ColumnDraft.STATUS_REVISING
+    draft.decided_by, draft.decided_at = request.user, timezone.now()
+    draft.save(update_fields=['admin_note', 'status', 'decided_by', 'decided_at'])
+    _spawn(request, ['office_revise', '--draft', str(draft.id), '--note', note, '--by', request.user.username])
+    messages.success(request, '수정 지시를 전달했습니다. 작업 로그에서 진행 상황이 실시간으로 갱신됩니다.')
+    return redirect('office:admin')
+
+
 @admin_required
 @require_POST
 def run_job(request):
     """회의 소집 / 칼럼 제작을 백그라운드 프로세스로 실행 (API 호출이 수 분 걸려 요청 안에서 못 돈다)."""
     job = request.POST.get('job', '')
-    manage = os.path.join(settings.BASE_DIR, 'manage.py')
     if job == 'meeting':
-        cmd = [sys.executable, manage, 'hold_meeting', '--force']
+        cmd = ['hold_meeting', '--force']
         admin_email = os.environ.get('DJANGO_ADMIN_EMAIL', '')
         if admin_email:
             cmd += ['--email', admin_email]
     elif job == 'publish' and request.POST.get('topic') in TOPIC_LABEL:
-        cmd = [sys.executable, manage, 'office_publish', '--topic', request.POST['topic']]
+        cmd = ['office_publish', '--topic', request.POST['topic']]
     else:
         messages.error(request, '알 수 없는 작업입니다.')
         return redirect('office:admin')
 
-    os.makedirs(os.path.join(settings.BASE_DIR, 'logs'), exist_ok=True)
-    logf = open(os.path.join(settings.BASE_DIR, 'logs', 'office_jobs.log'), 'a', encoding='utf-8')
-    logf.write(f"\n=== {timezone.localtime():%Y-%m-%d %H:%M:%S} {' '.join(cmd[2:])} (by {request.user.username})\n")
-    logf.flush()
-    env = {**os.environ, 'DJANGO_SETTINGS_MODULE': os.environ.get('DJANGO_SETTINGS_MODULE', 'config.settings')}
-    subprocess.Popen(cmd, cwd=settings.BASE_DIR, stdout=logf, stderr=subprocess.STDOUT, env=env,
-                     start_new_session=True)
-    messages.success(request, '작업을 시작했습니다. 몇 분 뒤 새로고침하세요 (하단 작업 로그에 진행이 찍힙니다).')
+    _spawn(request, cmd)
+    messages.success(request, '작업을 시작했습니다. 작업 로그 탭에서 진행 상황이 실시간으로 갱신됩니다.')
     return redirect('office:admin')

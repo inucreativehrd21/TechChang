@@ -72,11 +72,12 @@ class Decision(models.Model):
 class ColumnDraft(models.Model):
     """연구팀이 제작한 칼럼 1편의 작업 기록. 발행되면 question 이 채워진다."""
     STATUS_PUBLISHED = 'published'
-    STATUS_HOLD = 'hold'          # 팀장 QA 미달 → 관리자 검수 대기
+    STATUS_HOLD = 'hold'          # 편집 심사 미달 → 운영자 검수 대기
+    STATUS_REVISING = 'revising'  # 운영자 코멘트 반영 재작성 진행 중
     STATUS_REJECTED = 'rejected'
     STATUS_FAILED = 'failed'
     STATUS_CHOICES = [
-        (STATUS_PUBLISHED, '발행'), (STATUS_HOLD, '검수 대기'),
+        (STATUS_PUBLISHED, '발행'), (STATUS_HOLD, '검수 대기'), (STATUS_REVISING, '재작성 중'),
         (STATUS_REJECTED, '반려'), (STATUS_FAILED, '실패'),
     ]
 
@@ -86,8 +87,10 @@ class ColumnDraft(models.Model):
     subject = models.CharField(max_length=200, blank=True)
     content = models.TextField(blank=True, verbose_name='최종 본문(마크다운)')
     chart_path = models.CharField(max_length=300, blank=True, verbose_name='차트 이미지 (media 상대경로)')
-    check_report = models.JSONField(default=dict, verbose_name='검증관 보고')
-    qa_report = models.JSONField(default=dict, verbose_name='팀장 QA')
+    check_report = models.JSONField(default=dict, verbose_name='팩트체크 보고')
+    qa_report = models.JSONField(default=dict, verbose_name='편집 심사 결과')
+    chart_note = models.CharField(max_length=300, blank=True, verbose_name='시각화 결과·사유')
+    admin_note = models.TextField(blank=True, verbose_name='운영자 수정 지시')
     revisions = models.PositiveSmallIntegerField(default=0)
     status = models.CharField(max_length=10, choices=STATUS_CHOICES, db_index=True)
     question = models.OneToOneField('community.Question', null=True, blank=True, on_delete=models.SET_NULL, related_name='office_draft')
@@ -103,7 +106,30 @@ class ColumnDraft(models.Model):
 
     @property
     def qa_score(self):
-        return self.qa_report.get('score')
+        """편집 심사 총점(100점). 구버전 레코드는 10점 척도라 100점으로 환산해 보여 준다."""
+        v = self.qa_report.get('score')
+        if v is None:
+            return None
+        try:
+            v = int(v)
+        except (TypeError, ValueError):
+            return None
+        return v * 10 if v <= 10 else v
+
+    @property
+    def qa_verdict(self):
+        return self.qa_report.get('verdict', '')
+
+    @property
+    def qa_fatal(self):
+        return self.qa_report.get('fatal') or []
+
+    @property
+    def rubric_rows(self):
+        """[(항목명, 1~5점)] — 관리 화면 표시용."""
+        from office.pipeline import RUBRIC
+        scores = self.qa_report.get('scores') or {}
+        return [(desc.split(' — ')[0], scores.get(k)) for k, (_, desc) in RUBRIC.items() if scores.get(k) is not None]
 
 
 class WorkLog(models.Model):
