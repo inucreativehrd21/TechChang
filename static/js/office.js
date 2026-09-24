@@ -733,7 +733,7 @@
   function step(a) {
     if (a.blink > 0) a.blink--; else if (Math.random() < 0.004) a.blink = 7;
 
-    if (mode === 'meeting') {                   // 회의: 자리로 모인다
+    if (mode === 'meeting' && !NAV.grid) {       // 폴백(에셋 없음): 회의 자리로 모인다
       const s = seatOf(a);
       a.moving = !moveToward(a, s.x, s.y, SPEED * 1.3);
       if (!a.moving) { a.dir = s.dir || 'up'; a.pose = 'sit'; }
@@ -773,20 +773,33 @@
         default: {
           a.moving = false;
           a.dir = a.face || 'down';
-          a.wait--;
-          if (a.wait <= 0) nextPlan(a);
+          if (mode === 'meeting') {
+            // 회의 재생 중에는 각자 자기 자리에 앉아 있는다 (용무 중이면 자리로 복귀)
+            if (a.state === 'doing') {
+              releaseAct(a);
+              const ap = approachOf(a);
+              a.task = 'return';
+              goTo(a, ap.x, ap.y, () => goSit(a));
+            } else {
+              a.face = 'up'; a.dir = 'up';
+            }
+          } else {
+            a.wait--;
+            if (a.wait <= 0) nextPlan(a);
+          }
           break;
         }
       }
     }
 
+    if (mode === 'meeting') { a.showStatus = false; return; }
     const ph = (tick + a.phase) % 1600, show = ph < 240;
     if (show && !a.showStatus) newRestLine(a);
     a.showStatus = show;
   }
 
   function poseOf(a) {
-    if (mode === 'meeting') return a.moving ? 'walk' : 'stand';
+    if (mode === 'meeting') return a.moving ? 'walk' : 'type';   // 각자 자리에 앉아 발언
     if (a.moving) return 'walk';
     if (a.state === 'work' || a.task === 'work') return 'type';
     return a.pose || 'stand';
@@ -882,7 +895,10 @@
     btnMeeting.hidden = m === 'meeting'; btnOffice.hidden = m !== 'meeting';
     if (sayEl) { sayEl.remove(); sayEl = null; }
     if (m === 'office') { captionEl.textContent = ''; busy.clear(); agents.forEach(planIdle); }
-    if (m === 'meeting') agents.forEach(a => { releaseAct(a); a.path = null; });
+    if (m === 'meeting') agents.forEach(a => {
+      releaseAct(a); a.path = null;
+      if (NAV.grid && a.state !== 'work') { const ap = approachOf(a); a.task = 'return'; goTo(a, ap.x, ap.y, () => goSit(a)); }
+    });
   }
   btnMeeting.addEventListener('click', () => setMode('meeting'));
   btnOffice.addEventListener('click', () => setMode('office'));
