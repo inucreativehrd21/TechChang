@@ -525,6 +525,9 @@
         SEATS.length = 0;
         man.seats_meet.forEach(([x, y]) => SEATS.push({ x, y, dir: 'up' }));
       }
+      if (man.nav) { NAV.cell = man.nav.cell; NAV.w = man.nav.w; NAV.h = man.nav.h; NAV.grid = man.nav.grid; }
+      if (man.approaches) APPROACH = man.approaches.map(([x, y]) => ({ x, y }));
+      if (man.activities) ACTS = man.activities;
       if (man.spots) Object.assign(SPOTS, {
         coffee: man.spots.coffee || SPOTS.coffee, cooler: man.spots.cooler || SPOTS.cooler,
         board: man.spots.board || SPOTS.board, plant: man.spots.plant || SPOTS.plant,
@@ -588,49 +591,201 @@
   }
   const escapeHtml = t => t.replace(/[<>&]/g, c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' }[c]));
 
-  // ── 상태 · 이동
+  // ── 상태 · 이동 · 행동
+  //  NAV: 방 이미지에서 뽑은 '걸을 수 있는 칸' 격자. 이게 있으면 A* 로 통로를 따라 걷고,
+  //  없으면(폴백 렌더러) 예전처럼 직선으로 움직인다.
   let agents = [], meeting = null, mode = 'office', tick = 0, k = 2, bg = null, light = null;
   let replay = { i: 0, t: 0 };
+  const NAV = { cell: 0, w: 0, h: 0, grid: null };
+  let APPROACH = [], ACTS = [];
+  const busy = new Map();                       // 행동 지점 점유 (key → agent.key)
   const rnd = (a, b) => a + Math.random() * (b - a);
   const deskPos = a => { const d = DESKS[a.sprite.desk % 6]; return { x: d.x + SEAT_OFF.x, y: d.y + SEAT_OFF.y }; };
   const seatOf = a => SEATS[a.sprite.desk % 6];
+  const approachOf = a => APPROACH[a.sprite.desk % APPROACH.length] || deskPos(a);
 
-  function planIdle(a) {
+  // ── 길찾기
+  const cellOf = (x, y) => ({ cx: Math.floor(x / NAV.cell), cy: Math.floor(y / NAV.cell) });
+  const posOf = (cx, cy) => ({ x: cx * NAV.cell + NAV.cell / 2, y: cy * NAV.cell + NAV.cell / 2 });
+  const canWalk = (cx, cy) => cx >= 0 && cy >= 0 && cx < NAV.w && cy < NAV.h && NAV.grid[cy][cx] === '.';
+
+  function nearestWalk(x, y) {                  // 막힌 칸이면 가장 가까운 통로 칸으로
+    const c = cellOf(x, y);
+    if (canWalk(c.cx, c.cy)) return c;
+    for (let r = 1; r < 12; r++)
+      for (let dy = -r; dy <= r; dy++)
+        for (let dx = -r; dx <= r; dx++)
+          if (Math.abs(dx) === r || Math.abs(dy) === r)
+            if (canWalk(c.cx + dx, c.cy + dy)) return { cx: c.cx + dx, cy: c.cy + dy };
+    return c;
+  }
+
+  function findPath(from, to) {                 // A* (4방향 + 대각선은 양옆이 뚫렸을 때만)
+    if (!NAV.grid) return null;
+    const a = nearestWalk(from.x, from.y), b = nearestWalk(to.x, to.y);
+    if (a.cx === b.cx && a.cy === b.cy) return [];
+    const key = (cx, cy) => cy * NAV.w + cx;
+    const open = [{ ...a, g: 0, f: 0, p: null }];
+    const seen = new Map([[key(a.cx, a.cy), open[0]]]);
+    const H = (cx, cy) => Math.abs(cx - b.cx) + Math.abs(cy - b.cy);
+    const DIRS = [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [1, -1], [-1, 1], [-1, -1]];
+    let guard = 6000;
+    while (open.length && guard--) {
+      open.sort((m, n) => m.f - n.f);
+      const cur = open.shift();
+      if (cur.cx === b.cx && cur.cy === b.cy) {
+        const path = [];
+        for (let n = cur; n; n = n.p) path.unshift(posOf(n.cx, n.cy));
+        path.shift();
+        return path;
+      }
+      for (const [dx, dy] of DIRS) {
+        const nx = cur.cx + dx, ny = cur.cy + dy;
+        if (!canWalk(nx, ny)) continue;
+        if (dx && dy && !(canWalk(cur.cx + dx, cur.cy) && canWalk(cur.cx, cur.cy + dy))) continue;
+        const g = cur.g + (dx && dy ? 1.41 : 1);
+        const kk = key(nx, ny), prev = seen.get(kk);
+        if (prev && prev.g <= g) continue;
+        const node = { cx: nx, cy: ny, g, f: g + H(nx, ny), p: cur };
+        seen.set(kk, node); open.push(node);
+      }
+    }
+    return null;
+  }
+
+  function goTo(a, x, y, onArrive) {
+    a.path = findPath({ x: a.x, y: a.y }, { x, y }) || [];
+    a.finalTarget = { x, y };
+    a.onArrive = onArrive || null;
+    a.state = 'goto';
+  }
+
+  // ── 행동 선택
+  function startWork(a) {                       // 자리에 앉아 작업
+    a.state = 'work'; a.task = 'work'; a.pose = 'type'; a.face = 'up';
+    a.wait = rnd(600, 1600);
+  }
+
+  function goSit(a) {                           // 통로 → 의자 (충돌 무시하고 살짝 들어간다)
+    const d = deskPos(a);
+    a.state = 'sitting'; a.task = 'work'; a.sitTarget = d; a.face = 'up';
+  }
+
+  function pickActivity(a) {
+    const free = ACTS.filter(t => !busy.has(t.key) || busy.get(t.key) === a.key);
+    if (!free.length) { startWork(a); return; }
+    const t = free[Math.floor(Math.random() * free.length)];
+    busy.set(t.key, a.key);
+    a.act = t;
+    a.state = 'goto'; a.task = t.key;
+    goTo(a, t.at[0], t.at[1], () => {
+      a.state = 'doing'; a.face = t.face || 'down'; a.pose = t.pose || 'stand';
+      a.wait = rnd(t.dur ? t.dur[0] : 200, t.dur ? t.dur[1] : 400);
+    });
+  }
+
+  function releaseAct(a) {
+    if (a.act) { if (busy.get(a.act.key) === a.key) busy.delete(a.act.key); a.act = null; }
+  }
+
+  function nextPlan(a) {                        // 작업이 끝나면: 자리 → 용무 → 자리
+    if (a.state === 'work') {
+      if (Math.random() < 0.75) { releaseAct(a); pickActivity(a); }
+      else a.wait = rnd(400, 900);
+      return;
+    }
+    releaseAct(a);
+    const ap = approachOf(a);
+    a.task = 'return';
+    goTo(a, ap.x, ap.y, () => goSit(a));
+  }
+
+  // 폴백(에셋 없음) 전용: 예전 방식의 단순 배회
+  function planIdleSimple(a) {
     const r = Math.random();
     if (r < 0.5) { const d = deskPos(a); a.task = 'work'; a.wait = rnd(360, 900); a.tx = d.x; a.ty = d.y; a.face = 'up'; }
-    else if (r < 0.66) { a.task = 'coffee'; a.wait = rnd(200, 360); a.tx = SPOTS.coffee[0] + rnd(-6, 14); a.ty = SPOTS.coffee[1] + 26; a.face = 'up'; }
-    else if (r < 0.76) { a.task = 'board'; a.wait = rnd(200, 340); a.tx = SPOTS.board[0] + rnd(-40, 40); a.ty = SPOTS.board[1] + 8; a.face = 'up'; }
-    else if (r < 0.9) { const s = pick(SPOTS.sofa); a.task = 'sofa'; a.wait = rnd(280, 520); a.tx = s[0]; a.ty = s[1]; a.face = 'down'; }
-    else { a.task = 'plant'; a.wait = rnd(150, 260); a.tx = SPOTS.plant[0] + rnd(-10, 30); a.ty = SPOTS.plant[1] + rnd(-4, 8); a.face = 'left'; }
+    else if (r < 0.7) { a.task = 'coffee'; a.wait = rnd(200, 360); a.tx = SPOTS.coffee[0]; a.ty = SPOTS.coffee[1]; a.face = 'up'; }
+    else if (r < 0.85) { a.task = 'board'; a.wait = rnd(200, 340); a.tx = SPOTS.board[0] + rnd(-30, 30); a.ty = SPOTS.board[1]; a.face = 'up'; }
+    else { a.task = 'plant'; a.wait = rnd(150, 260); a.tx = SPOTS.plant[0]; a.ty = SPOTS.plant[1]; a.face = 'left'; }
+  }
+
+  function planIdle(a) {                        // 외부(모드 전환)에서 호출
+    if (NAV.grid) { releaseAct(a); a.path = null; goSit(a); }
+    else planIdleSimple(a);
+  }
+
+  // ── 매 프레임 이동
+  const SPEED = 0.42;
+
+  function moveToward(a, x, y, speed) {
+    const dx = x - a.x, dy = y - a.y, d = Math.hypot(dx, dy);
+    if (d < 0.6) { a.x = x; a.y = y; return true; }
+    a.x += dx / d * speed; a.y += dy / d * speed;
+    a.dir = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'right' : 'left') : (dy > 0 ? 'down' : 'up');
+    a.walkT = (a.walkT + 0.17) % 4;
+    return false;
   }
 
   function step(a) {
-    const dx = a.tx - a.x, dy = a.ty - a.y, dist = Math.hypot(dx, dy);
-    if (dist > 1) {
-      const v = 0.55;
-      a.x += dx / dist * v; a.y += dy / dist * v; a.moving = true;
-      a.dir = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'right' : 'left') : (dy > 0 ? 'down' : 'up');
-      a.walkT = (a.walkT + 0.16) % 4;
-    } else {
-      a.moving = false; a.x = a.tx; a.y = a.ty; a.dir = a.face || 'down';
-    }
     if (a.blink > 0) a.blink--; else if (Math.random() < 0.004) a.blink = 7;
-    if (mode === 'office') {
-      if (!a.moving) { a.wait--; if (a.wait <= 0) planIdle(a); }
-      const ph = (tick + a.phase) % 1600, show = ph < 240;
-      if (show && !a.showStatus) newRestLine(a);
-      a.showStatus = show;
-    } else {
-      const s = seatOf(a); a.tx = s.x; a.ty = s.y; a.face = s.dir; a.showStatus = false;
+
+    if (mode === 'meeting') {                   // 회의: 자리로 모인다
+      const s = seatOf(a);
+      a.moving = !moveToward(a, s.x, s.y, SPEED * 1.3);
+      if (!a.moving) { a.dir = s.dir || 'up'; a.pose = 'sit'; }
+      a.showStatus = false;
+      return;
     }
+
+    if (!NAV.grid) {                            // 폴백: 직선 이동
+      a.moving = !moveToward(a, a.tx, a.ty, 0.55);
+      if (!a.moving) { a.dir = a.face || 'down'; a.wait--; if (a.wait <= 0) planIdleSimple(a); }
+    } else {
+      switch (a.state) {
+        case 'goto': {
+          a.moving = true;
+          if (!a.path || !a.path.length) {       // 길이 없으면 목표로 직접
+            if (moveToward(a, a.finalTarget.x, a.finalTarget.y, SPEED)) {
+              a.moving = false; const cb = a.onArrive; a.onArrive = null; if (cb) cb();
+            }
+            break;
+          }
+          const wp = a.path[0];
+          if (moveToward(a, wp.x, wp.y, SPEED)) a.path.shift();
+          if (!a.path.length) {
+            if (moveToward(a, a.finalTarget.x, a.finalTarget.y, SPEED)) {
+              a.moving = false; const cb = a.onArrive; a.onArrive = null; if (cb) cb();
+            }
+          }
+          break;
+        }
+        case 'sitting': {                        // 통로에서 의자로 들어가는 짧은 이동
+          a.moving = !moveToward(a, a.sitTarget.x, a.sitTarget.y, SPEED * 0.8);
+          if (!a.moving) startWork(a);
+          break;
+        }
+        case 'doing':
+        case 'work':
+        default: {
+          a.moving = false;
+          a.dir = a.face || 'down';
+          a.wait--;
+          if (a.wait <= 0) nextPlan(a);
+          break;
+        }
+      }
+    }
+
+    const ph = (tick + a.phase) % 1600, show = ph < 240;
+    if (show && !a.showStatus) newRestLine(a);
+    a.showStatus = show;
   }
 
   function poseOf(a) {
+    if (mode === 'meeting') return a.moving ? 'walk' : 'sit';
     if (a.moving) return 'walk';
-    if (mode === 'meeting') return 'sit';
-    if (a.task === 'work') return 'type';
-    if (a.task === 'sofa') return 'sit';
-    return 'stand';
+    if (a.state === 'work' || a.task === 'work') return 'type';
+    return a.pose || 'stand';
   }
 
   // ── 렌더
@@ -717,7 +872,8 @@
     modeLabel.textContent = m === 'meeting' ? '편집회의 재생 중' : '연구실';
     btnMeeting.hidden = m === 'meeting'; btnOffice.hidden = m !== 'meeting';
     if (sayEl) { sayEl.remove(); sayEl = null; }
-    if (m === 'office') { captionEl.textContent = ''; agents.forEach(planIdle); }
+    if (m === 'office') { captionEl.textContent = ''; busy.clear(); agents.forEach(planIdle); }
+    if (m === 'meeting') agents.forEach(a => { releaseAct(a); a.path = null; });
   }
   btnMeeting.addEventListener('click', () => setMode('meeting'));
   btnOffice.addEventListener('click', () => setMode('office'));
@@ -740,7 +896,8 @@
           const sprite = { ...a.sprite, style: a.sprite.style || styles[i % styles.length] };
           const d = DESKS[sprite.desk % 6];
           return { ...a, sprite, x: d.x + SEAT_OFF.x, y: d.y + SEAT_OFF.y, tx: d.x + SEAT_OFF.x, ty: d.y + SEAT_OFF.y,
-                   task: 'work', face: 'up', dir: 'up', wait: rnd(200, 600), blink: 0, walkT: 0,
+                   task: 'work', state: 'work', pose: 'type', face: 'up', dir: 'up',
+                   wait: rnd(240, 1400), blink: 0, walkT: 0, path: null, act: null,
                    phase: i * 266, moving: false };
         });
         btnMeeting.disabled = !(meeting && meeting.transcript.length);
