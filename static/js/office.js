@@ -546,11 +546,13 @@
     if (!c) return false;
     const sp = c.spec, fw = sp.fw || 16, fh = sp.fh || 32, per = sp.frames || 6;
     const dirs = sp.dirs || ['right', 'up', 'left', 'down'];
-    const sheet = pose === 'walk' ? (c.run || c.idle) : (pose === 'sit' || pose === 'type' ? (c.sit || c.idle) : c.idle);
+    const sheet = pose === 'walk' ? (c.run || c.idle) : c.idle;
     if (!sheet) return false;
     const di = Math.max(0, dirs.indexOf(dir));
-    const f = pose === 'walk' ? (frame % per) : (pose === 'stand' ? (Math.floor(tick / 12) % per) : 0);
-    const anim = pose === 'walk' ? 'run' : (pose === 'sit' || pose === 'type' ? 'sit' : 'idle');
+    // 서 있을 때·앉아 있을 때 모두 idle 을 천천히 돌려 숨쉬는 느낌을 준다
+    const f = pose === 'walk' ? (frame % per) : Math.floor(tick / (pose === 'type' ? 22 : 12)) % per;
+    // 앉아 작업하는 모습은 idle 의 뒷모습(dir=up)을 쓴다 — sit 시트는 소파용 옆모습이라 책상에선 어색하다
+    const anim = pose === 'walk' ? 'run' : 'idle';
     const ox = (sp.ox && sp.ox[anim]) || 0;      // 앉기 시트는 프레임이 6~7px 밀려 있다
     const sx = (di * per + f) * fw + ox;
     shadowEllipse(x, y - 1, 6, 2.4, 0.22);
@@ -782,7 +784,7 @@
   }
 
   function poseOf(a) {
-    if (mode === 'meeting') return a.moving ? 'walk' : 'sit';
+    if (mode === 'meeting') return a.moving ? 'walk' : 'stand';
     if (a.moving) return 'walk';
     if (a.state === 'work' || a.task === 'work') return 'type';
     return a.pose || 'stand';
