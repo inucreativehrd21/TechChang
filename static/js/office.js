@@ -491,7 +491,7 @@
   // ── 에셋 모드 — media/lab/manifest.json 이 있으면 구매 에셋(LimeZu)으로 그린다.
   //    방은 미리 조립한 6프레임 PNG, 인물은 레거시 캐릭터 시트(16x32, 4방향 x 6프레임).
   //    매니페스트가 없거나 로드 실패하면 아래 코드 렌더러로 자동 폴백한다.
-  const ASSETS = { on: false, base: canvas.dataset.assetsBase || '', img: {}, man: null, rooms: [] };
+  const ASSETS = { on: false, base: canvas.dataset.assetsBase || '', img: {}, man: null, rooms: [], chairs: null };
 
   const loadImage = src => new Promise(res => {
     const im = new Image();
@@ -506,6 +506,8 @@
       const man = await (await fetch(url, { headers: { Accept: 'application/json' } })).json();
       const rooms = await Promise.all((man.room?.frames || []).map(f => loadImage(ASSETS.base + f)));
       if (!rooms.length || !rooms[0]) return false;
+      // 의자 전경 레이어 — 인물보다 나중에 그려 등받이가 하반신을 가린다
+      ASSETS.chairs = man.chairs ? { meta: man.chairs, img: await loadImage(ASSETS.base + man.chairs.file) } : null;
       const chars = {};
       await Promise.all(Object.entries(man.characters || {}).map(async ([k, c]) => {
         const [idle, run, sit] = await Promise.all(
@@ -832,6 +834,11 @@
       if (!(ASSETS.on && drawPersonAsset(a, a.x, a.y, pose, a.dir || 'down', Math.floor(a.walkT), breathe)))
         drawPerson(a, a.x, a.y, pose, a.dir || 'down', Math.floor(a.walkT), breathe);
       // 이름표는 DOM 오버레이가 그린다
+    }
+    // 의자 전경: 앉은 사람의 하반신을 등받이가 가리도록 인물 위에 덧그린다
+    if (ASSETS.on && ASSETS.chairs && ASSETS.chairs.img) {
+      const { img, meta } = ASSETS.chairs;
+      meta.at.forEach(([cx, cy], i) => g.drawImage(img, i * meta.w, 0, meta.w, meta.h, cx, cy, meta.w, meta.h));
     }
     if (!ASSETS.on) drawParticles();
 
