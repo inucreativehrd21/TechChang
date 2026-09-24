@@ -22,6 +22,9 @@
   #office-canvas { max-width: 100%; height: auto; image-rendering: pixelated; image-rendering: crisp-edges; border-radius: 10px; display: block; background: #efe8dc; }
   #office-caption { min-height: 1.5em; color: #e2e8f0; font-size: .9rem; padding: 10px 4px 0; line-height: 1.5; }
   #office-caption .muted { color: #94a3b8; font-weight: 400; }
+  .office-stage .credit { color: #64748b; font-size: .72rem; padding: 8px 4px 0; text-align: right; }
+  .office-stage .credit a { color: #8595ab; text-decoration: none; }
+  .office-stage .credit a:hover { text-decoration: underline; }
   .roster { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
   .agent-card { padding: 10px 14px; border: 1px solid var(--border-color, #e5e7eb); border-left: 4px solid var(--accent, #4f46e5); border-radius: 10px; background: var(--bg-card, #fff); }
   .agent-card b { display: block; font-size: .95rem; }
@@ -64,8 +67,10 @@
       <button id="btn-replay" type="button">최근 편집회의 재생</button>
       <button id="btn-office" type="button" class="secondary" hidden>연구실로 돌아가기</button>
     </div>
-    <div class="frame"><canvas id="office-canvas" data-state-url="{% url 'office:state' %}" aria-label="픽셀 연구실"></canvas></div>
+    <div class="frame"><canvas id="office-canvas" data-state-url="{% url 'office:state' %}"
+              data-assets-url="{{ assets_url }}" data-assets-base="{{ media_url }}" aria-label="픽셀 연구실"></canvas></div>
     <div id="office-caption"></div>
+    {% if assets_url %}<div class="credit">픽셀 아트: <a href="https://limezu.itch.io/" target="_blank" rel="noopener noreferrer">Modern Office &amp; Modern Interiors — LimeZu</a></div>{% endif %}
   </div>
 
   <div class="roster">

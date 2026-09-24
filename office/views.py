@@ -67,6 +67,15 @@ def _agent_status():
     return result
 
 
+def _lab_assets_url():
+    """media/lab/manifest.json 이 있으면 그 URL — 캔버스가 타일 모드로 전환된다. 없으면 ''."""
+    path = os.path.join(settings.MEDIA_ROOT, 'lab', 'manifest.json')
+    if not os.path.exists(path):
+        return ''
+    ver = int(os.path.getmtime(path))
+    return f"{settings.MEDIA_URL.rstrip('/')}/lab/manifest.json?v={ver}"
+
+
 def office_home(request):
     meeting = Meeting.objects.prefetch_related('decisions').first()
     recent_drafts = list(ColumnDraft.objects.filter(status=ColumnDraft.STATUS_PUBLISHED, question__isnull=False)
@@ -82,6 +91,8 @@ def office_home(request):
         'public_decisions': decisions,
         'recent_drafts': recent_drafts,
         'logs': decorate_logs(WorkLog.objects.exclude(action='fail')[:30]),
+        'assets_url': _lab_assets_url(),
+        'media_url': settings.MEDIA_URL.rstrip('/') + '/lab/',
     })
 
 

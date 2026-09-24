@@ -39,7 +39,7 @@ AGENTS = {
             ' 당신은 HRD(인적자원개발)·조직학습·역량개발·리더십 분야 칼럼니스트입니다. '
             '학술 근거와 현장 사례를 균형 있게 결합해 실무 초보자에게 실질적 인사이트를 줍니다.'
         ),
-        'sprite': {'hair': '#4a2c17', 'style': 'short', 'shirt': '#d9534f', 'skin': '#f3d1b0', 'desk': 1},
+        'sprite': {'hair': '#4a2c17', 'style': 'curly', 'shirt': '#d9534f', 'skin': '#f3d1b0', 'desk': 1},
     },
     'data': {
         'name': '수정',
@@ -73,7 +73,7 @@ AGENTS = {
             '이미 발행한 칼럼과 핵심 소재가 겹치는지 판정합니다. 확인 불가한 것은 "확인 불가"로 분명히 말하며 '
             '추측으로 통과시키지 않습니다.'
         ),
-        'sprite': {'hair': '#7a4a1e', 'style': 'long', 'shirt': '#8e5cd9', 'skin': '#f3d1b0', 'desk': 4},
+        'sprite': {'hair': '#7a4a1e', 'style': 'tied', 'shirt': '#8e5cd9', 'skin': '#f3d1b0', 'desk': 4},
     },
     'charter': {
         'name': '재원',
