@@ -146,3 +146,78 @@ class WorkLog(models.Model):
 
     def __str__(self):
         return f'{self.agent}: {self.text}'
+
+
+class Task(models.Model):
+    """정비반 작업 카드 — 편집회의 결정·로그 지적사항·수동 등록을 한 백로그로 모은다.
+
+    흐름: backlog → (이슈 생성) → approved → working → pr_open → done
+    패치는 서버에서 git worktree 안에서만 만들고, 운영 코드와 배포는 건드리지 않는다.
+    """
+    SRC_MEETING = 'meeting'
+    SRC_FINDING = 'finding'
+    SRC_MANUAL = 'manual'
+    SRC_CHOICES = [(SRC_MEETING, '편집회의 결정'), (SRC_FINDING, '로그 지적사항'), (SRC_MANUAL, '직접 등록')]
+
+    KIND_DEV = 'dev'
+    KIND_OPS = 'ops'
+    KIND_BUG = 'bug'
+    KIND_CHORE = 'chore'
+    KIND_CHOICES = [(KIND_DEV, '개발·개선'), (KIND_OPS, '운영·보안'), (KIND_BUG, '버그'), (KIND_CHORE, '정리')]
+
+    ST_BACKLOG = 'backlog'        # 등록됨, 운영자 확인 대기
+    ST_APPROVED = 'approved'      # 운영자 승인 — 패치 대기
+    ST_WORKING = 'working'        # 서버에서 패치 생성 중
+    ST_PR = 'pr_open'             # PR 생성됨 (CI·머지는 사람)
+    ST_DONE = 'done'
+    ST_REJECTED = 'rejected'
+    ST_FAILED = 'failed'
+    ST_CHOICES = [
+        (ST_BACKLOG, '접수'), (ST_APPROVED, '승인'), (ST_WORKING, '작업 중'),
+        (ST_PR, 'PR 열림'), (ST_DONE, '완료'), (ST_REJECTED, '반려'), (ST_FAILED, '실패'),
+    ]
+
+    source = models.CharField(max_length=10, choices=SRC_CHOICES, default=SRC_MANUAL, db_index=True)
+    decision = models.ForeignKey(Decision, null=True, blank=True, on_delete=models.SET_NULL, related_name='tasks')
+    finding = models.ForeignKey('common.LogFinding', null=True, blank=True, on_delete=models.SET_NULL, related_name='tasks')
+
+    title = models.CharField(max_length=300)
+    body = models.TextField(blank=True, verbose_name='배경·완료 조건')
+    kind = models.CharField(max_length=10, choices=KIND_CHOICES, default=KIND_DEV, db_index=True)
+    priority = models.CharField(max_length=2, default='P2', db_index=True)   # P1 급함 / P2 보통 / P3 나중
+    status = models.CharField(max_length=10, choices=ST_CHOICES, default=ST_BACKLOG, db_index=True)
+
+    triage = models.JSONField(default=dict, verbose_name='분류 결과(담당·난이도·완료조건)')
+    hints = models.JSONField(default=list, verbose_name='관련 파일 후보')
+    plan = models.JSONField(default=dict, verbose_name='원인·수정 계획')
+    result = models.JSONField(default=dict, verbose_name='패치·검증 결과')
+    attempts = models.PositiveSmallIntegerField(default=0)
+
+    issue_number = models.PositiveIntegerField(null=True, blank=True)
+    issue_url = models.URLField(blank=True)
+    branch = models.CharField(max_length=120, blank=True)
+    pr_url = models.URLField(blank=True)
+    note = models.CharField(max_length=300, blank=True)
+
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+    decided_by = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL, related_name='+')
+    decided_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ['priority', '-created_at']
+        verbose_name = '정비 작업'
+        verbose_name_plural = '정비 작업'
+
+    def __str__(self):
+        return f'[{self.priority}] {self.title}'
+
+    @property
+    def is_open(self):
+        return self.status in (self.ST_BACKLOG, self.ST_APPROVED, self.ST_WORKING, self.ST_FAILED)
+
+    @property
+    def step_rows(self):
+        """관리 화면용: 단계별 진행 [(이름, 상태)]"""
+        r = self.result or {}
+        done = lambda k: 'ok' if r.get(k) else ''
+        return [('조사', done('plan')), ('패치', done('edits')), ('검증', done('verify')), ('PR', 'ok' if self.pr_url else '')]

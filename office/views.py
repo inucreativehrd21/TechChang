@@ -17,8 +17,9 @@ from django.utils import timezone
 from django.views.decorators.http import require_POST
 
 from common.views import admin_required
+from . import github
 from .agents import AGENTS, MEETING_ORDER, public_roster
-from .models import ColumnDraft, Decision, Meeting, WorkLog
+from .models import ColumnDraft, Decision, Meeting, Task, WorkLog
 
 TOPIC_LABEL = {'hrd': 'HRD', 'data': '데이터분석', 'coding': '프로그래밍'}
 
@@ -128,9 +129,15 @@ def office_admin(request):
              'color': AGENTS[t['agent']]['sprite']['shirt'], 'round': t.get('round', 1), 'text': t['text']}
             for t in m.transcript if t.get('agent') in AGENTS
         ]
+    tasks = list(Task.objects.exclude(status__in=[Task.ST_DONE, Task.ST_REJECTED])
+                 .select_related('decision', 'finding')[:30])
+    done_tasks = list(Task.objects.filter(status__in=[Task.ST_DONE, Task.ST_REJECTED, Task.ST_PR])
+                      .select_related('decision')[:10])
     job_log = _job_log_tail()
     return render(request, 'office/admin.html', {
         'meetings': meetings, 'held': held, 'recent_drafts': recent_drafts, 'logs': logs,
+        'tasks': tasks, 'done_tasks': done_tasks, 'github_ok': github.available(),
+        'crew_pending': sum(1 for t in tasks if t.status == Task.ST_BACKLOG),
         'agents': AGENTS, 'topic_label': TOPIC_LABEL, 'job_log': job_log,
         'has_api_key': bool(getattr(settings, 'ANTHROPIC_API_KEY', '')),
     })
@@ -153,7 +160,19 @@ def decision_choose(request, decision_id):
         m.save(update_fields=['status'])
     WorkLog.objects.create(agent='lead', action='decision', meeting=m,
                            text=f"관리자 결정: {d.question} → {(d.chosen or {}).get('title', '')}")
-    messages.success(request, f'결정 저장: {(d.chosen or {}).get("title", "")}')
+    msg = f'결정 저장: {(d.chosen or {}).get("title", "")}'
+    # 개발·운영 안건은 정비반 백로그로 넘긴다 (회의 결정이 작업으로 이어지게)
+    if d.kind in (Decision.KIND_DEV, Decision.KIND_OPS) and not d.tasks.exists():
+        ch = d.chosen or {}
+        t = Task.objects.create(
+            source=Task.SRC_MEETING, decision=d,
+            title=ch.get('title', d.question)[:300],
+            body=f"{ch.get('detail', '')}\n\n안건: {d.question}\n제안: {ch.get('proposed_by', '')}",
+            kind=Task.KIND_OPS if d.kind == Decision.KIND_OPS else Task.KIND_DEV,
+        )
+        WorkLog.objects.create(agent='coding', action='crew', text=f'정비 백로그 등록 #{t.id}: {t.title}')
+        msg += ' · 정비 백로그에 등록했습니다'
+    messages.success(request, msg)
     return redirect('office:admin')
 
 
@@ -232,6 +251,11 @@ def admin_activity(request):
          'since': timezone.localtime(d.decided_at or d.created_at).strftime('%H:%M')}
         for d in ColumnDraft.objects.filter(status=ColumnDraft.STATUS_REVISING)
     ]
+    running += [
+        {'id': f'T{t.id}', 'subject': t.title, 'topic': '정비',
+         'since': timezone.localtime(t.decided_at or t.created_at).strftime('%H:%M')}
+        for t in Task.objects.filter(status=Task.ST_WORKING)
+    ]
     return JsonResponse({
         'now': timezone.localtime().strftime('%H:%M:%S'),
         'logs': logs,
@@ -261,6 +285,79 @@ def draft_revise(request, draft_id):
     draft.save(update_fields=['admin_note', 'status', 'decided_by', 'decided_at'])
     _spawn(request, ['office_revise', '--draft', str(draft.id), '--note', note, '--by', request.user.username])
     messages.success(request, '수정 지시를 전달했습니다. 작업 로그에서 진행 상황이 실시간으로 갱신됩니다.')
+    return redirect('office:admin')
+
+
+@admin_required
+@require_POST
+def task_action(request, task_id):
+    """정비 작업 카드 조작: 이슈 생성 / 승인·착수 / 반려 / 재시도"""
+    t = get_object_or_404(Task, pk=task_id)
+    act = request.POST.get('act', '')
+
+    if act == 'issue':
+        from office.maintenance import issue_body, step_triage
+        if not t.triage:
+            try:
+                step_triage(t)
+            except Exception as ex:  # noqa: BLE001
+                messages.warning(request, f'분류 실패(이슈는 그대로 생성): {ex}')
+        issue, err = github.create_issue(
+            t.title, issue_body(t),
+            labels=['maintenance', t.kind, t.priority])
+        if issue:
+            t.issue_number = issue.get('number')
+            t.issue_url = issue.get('html_url', '')
+            t.save(update_fields=['issue_number', 'issue_url'])
+            WorkLog.objects.create(agent='coding', action='issue', text=f'GitHub 이슈 #{t.issue_number} 생성: {t.title}')
+            messages.success(request, f'이슈 #{t.issue_number} 생성')
+        else:
+            messages.error(request, f'이슈 생성 실패: {err}')
+
+    elif act == 'start':
+        t.status = Task.ST_APPROVED
+        t.decided_by, t.decided_at = request.user, timezone.now()
+        t.note = request.POST.get('note', '')[:300]
+        t.save(update_fields=['status', 'decided_by', 'decided_at', 'note'])
+        args = ['crew_work', '--task', str(t.id), '--by', request.user.username]
+        if request.POST.get('dry'):
+            args.append('--dry-run')
+        _spawn(request, args)
+        messages.success(request, '정비반이 작업을 시작했습니다. 진행 상황은 작업 로그에서 확인하세요.')
+
+    elif act == 'reject':
+        t.status = Task.ST_REJECTED
+        t.decided_by, t.decided_at = request.user, timezone.now()
+        t.note = request.POST.get('note', '')[:300]
+        t.save(update_fields=['status', 'decided_by', 'decided_at', 'note'])
+        if t.issue_number:
+            github.close_issue(t.issue_number, 'not_planned')
+        messages.info(request, '반려했습니다.')
+
+    elif act == 'done':
+        t.status = Task.ST_DONE
+        t.save(update_fields=['status'])
+        if t.issue_number:
+            github.close_issue(t.issue_number)
+        messages.success(request, '완료 처리했습니다.')
+
+    return redirect('office:admin')
+
+
+@admin_required
+@require_POST
+def task_create(request):
+    t = Task.objects.create(
+        source=Task.SRC_MANUAL,
+        title=request.POST.get('title', '').strip()[:300],
+        body=request.POST.get('body', '').strip(),
+        kind=request.POST.get('kind', Task.KIND_DEV),
+    )
+    if not t.title:
+        t.delete()
+        messages.error(request, '제목을 입력하세요.')
+    else:
+        messages.success(request, f'작업 #{t.id} 등록')
     return redirect('office:admin')
 
 

@@ -95,6 +95,14 @@ def ask(
     if system:
         kwargs['system'] = system
 
+    # 출력이 크면 비스트리밍 요청이 10분 제한에 걸린다 → 스트리밍으로 받아 이어 붙인다
+    if max_tokens > 8000:
+        parts = []
+        with client.messages.stream(**kwargs) as stream:
+            for chunk in stream.text_stream:
+                parts.append(chunk)
+        return ''.join(parts)
+
     response = client.messages.create(**kwargs)
     # 최신 모델은 text 앞에 thinking 블록이 올 수 있다 → text 블록만 이어 붙인다
     return ''.join(

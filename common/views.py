@@ -1137,48 +1137,6 @@ def admin_portfolio_reject(request, kind, obj_id):
     return redirect('common:admin_portfolio_approval')
 
 
-def _dispatch_finding_fix(finding):
-    """승인된 지적사항을 GitHub repository_dispatch 로 보내 auto-fix 워크플로를 트리거.
-
-    반환: (성공여부: bool, 메시지: str). 토큰 미설정/요청 실패 시 False.
-    """
-    token = getattr(settings, 'GITHUB_DISPATCH_TOKEN', '')
-    repo = getattr(settings, 'GITHUB_REPO', '')
-    if not token or not repo:
-        return False, 'GITHUB_DISPATCH_TOKEN/GITHUB_REPO 미설정 — PR 트리거를 건너뜁니다.'
-
-    # 토큰 절약: 심각 건은 추론이 강한 Opus, 그 외는 Sonnet 으로 수정을 생성.
-    model = 'claude-opus-4-8' if (finding.severity or '').strip() == '심각' else 'claude-sonnet-4-6'
-
-    try:
-        resp = requests.post(
-            f'https://api.github.com/repos/{repo}/dispatches',
-            headers={
-                'Authorization': f'Bearer {token}',
-                'Accept': 'application/vnd.github+json',
-                'X-GitHub-Api-Version': '2022-11-28',
-            },
-            json={
-                'event_type': 'log-finding-approved',
-                'client_payload': {
-                    'finding_id': finding.id,
-                    'title': finding.title,
-                    'cause': finding.cause,
-                    'action': finding.action,
-                    'severity': finding.severity,
-                    'model': model,
-                },
-            },
-            timeout=10,
-        )
-    except requests.RequestException as e:
-        return False, f'GitHub 요청 실패: {e}'
-
-    if resp.status_code == 204:
-        return True, 'GitHub auto-fix 워크플로를 트리거했습니다.'
-    return False, f'GitHub 응답 오류 {resp.status_code}: {resp.text[:200]}'
-
-
 @admin_required
 @require_POST
 def finding_approve(request, finding_id):
@@ -1194,20 +1152,24 @@ def finding_approve(request, finding_id):
     finding.decided_at = timezone.now()
     finding.decided_by = request.user
 
-    ok, detail = _dispatch_finding_fix(finding)
-    if ok:
-        finding.status = LogFinding.STATUS_DISPATCHED
-        finding.note = detail[:300]
-        # 워크플로 진행/생성된 PR 을 바로 확인할 수 있는 링크 (Actions → 실행 → PR)
-        repo = getattr(settings, 'GITHUB_REPO', '')
-        if repo:
-            finding.pr_url = f'https://github.com/{repo}/actions/workflows/auto-fix.yml'
-        messages.success(request, f'"{finding.title}" 승인 — {detail}')
-    else:
-        finding.note = detail[:300]
-        messages.warning(request, f'"{finding.title}" 승인은 기록했으나 PR 트리거 실패: {detail}')
-
+    # 정비반(office.Task)으로 넘긴다 — 서버에서 패치를 만들고 PR 까지 간다.
+    # (구 방식인 GitHub Actions repository_dispatch 는 턴 제한으로 중간에 끊겨 폐지)
+    from office.models import Task, WorkLog
+    task = Task.objects.filter(finding=finding).first()
+    if task is None:
+        task = Task.objects.create(
+            source=Task.SRC_FINDING, finding=finding, kind=Task.KIND_BUG,
+            priority='P1' if (finding.severity or '').strip() == '심각' else 'P2',
+            title=finding.title[:300],
+            body=f'추정 원인: {finding.cause}\n권장 조치: {finding.action}\n심각도: {finding.severity}',
+        )
+        WorkLog.objects.create(agent='coding', action='crew',
+                               text=f'정비 백로그 등록 #{task.id} (로그 지적 #{finding.id}): {task.title}')
+    finding.status = LogFinding.STATUS_DISPATCHED
+    finding.note = f'정비반 작업 카드 #{task.id} 등록'
+    finding.pr_url = ''
     finding.save(update_fields=['status', 'decided_at', 'decided_by', 'note', 'pr_url'])
+    messages.success(request, f'"{finding.title}" 승인 — 정비 백로그 #{task.id} 에 등록했습니다 (/lab/admin/ 정비 탭)')
     return redirect('common:server_monitor')
 
 

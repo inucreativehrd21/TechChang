@@ -36,7 +36,7 @@ def ask_agent_json(key: str, prompt: str, *, max_tokens: int = 2000) -> dict:
         return parse_json(raw)
     except json.JSONDecodeError:
         # 적응형 thinking 이 출력 예산을 잠식해 비거나 잘린 경우 → 예산 3배로 1회 재시도
-        raw = ask_agent(key, prompt + suffix, max_tokens=max_tokens * 3)
+        raw = ask_agent(key, prompt + suffix, max_tokens=min(max_tokens * 3, 24000))
         return parse_json(raw)
 
 

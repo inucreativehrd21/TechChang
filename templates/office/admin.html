@@ -77,6 +77,25 @@
   table.logs td:first-child { white-space: nowrap; color: var(--text-secondary); }
   pre.joblog { background: #0f172a; color: #cbd5e1; border-radius: 10px; padding: 12px; font-size: .78rem; max-height: 260px; overflow: auto; margin: 0; }
   .tab-pane.narrow { max-width: 760px; }
+  .task { border: 1px solid var(--border-color, #e5e7eb); border-radius: 12px; padding: 14px 16px; margin-bottom: 12px; display: grid; gap: 8px; }
+  .task .t-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .task .t-head b { flex: 1; min-width: 200px; }
+  .pri { font-size: .72rem; font-weight: 800; border-radius: 5px; padding: 1px 7px; }
+  .p-P1 { background: #fee2e2; color: #b91c1c; } .p-P2 { background: #e0e7ff; color: #4338ca; } .p-P3 { background: #f1f5f9; color: #64748b; }
+  .st { font-size: .74rem; border-radius: 999px; padding: 1px 9px; background: #f1f5f9; color: #475569; }
+  .st-working { background: #fef3c7; color: #b45309; } .st-pr_open { background: #dcfce7; color: #15803d; }
+  .st-failed { background: #fee2e2; color: #b91c1c; } .st-approved { background: #e0e7ff; color: #4338ca; }
+  .task .t-body { font-size: .9rem; color: var(--text-secondary); }
+  .task .t-plan { font-size: .9rem; line-height: 1.65; }
+  .task .t-plan code { background: rgba(79,70,229,.08); border-radius: 4px; padding: 0 5px; }
+  .t-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+  .btn-sm { border: 0; border-radius: 7px; padding: 5px 12px; font-size: .84rem; font-weight: 600; cursor: pointer; color: #fff; background: #111827; }
+  .btn-sm.go { background: #4f46e5; } .btn-sm.ok { background: #16a34a; } .btn-sm.rej { background: #6b7280; }
+  .btn-sm.ghost { background: transparent; color: var(--text-secondary); border: 1px solid var(--border-color, #e5e7eb); }
+  .new-task summary { cursor: pointer; font-weight: 600; color: #4f46e5; font-size: .9rem; }
+  .new-task form { display: grid; gap: 8px; max-width: 520px; margin-top: 10px; }
+  .new-task input, .new-task textarea, .new-task select { border: 1px solid var(--border-color, #e5e7eb); border-radius: 8px; padding: 7px 10px; font: inherit; font-size: .9rem; }
+  .new-task button { justify-self: start; }
   .chip { font-size: .72rem; font-weight: 700; border-radius: 999px; padding: 1px 9px; background: #e0e7ff; color: #4f46e5; }
   .chip.live { background: #fef3c7; color: #b45309; }
   .fatal { font-size: .85rem; color: #b91c1c; }
@@ -127,6 +146,7 @@
     <div class="tabs" role="tablist">
       <button type="button" class="tab active" data-tab="decisions" role="tab">회의 안건 결정 {% for m in meetings %}{% if m.status == 'open' and forloop.first %}<span class="badge-n">{{ m.pending_count }}</span>{% endif %}{% endfor %}</button>
       <button type="button" class="tab" data-tab="held" role="tab">보류 칼럼 검수 {% if held %}<span class="badge-n">{{ held|length }}</span>{% endif %}</button>
+      <button type="button" class="tab" data-tab="crew" role="tab">정비 백로그 {% if crew_pending %}<span class="badge-n">{{ crew_pending }}</span>{% endif %}</button>
       <button type="button" class="tab" data-tab="minutes" role="tab">회의록</button>
       <button type="button" class="tab" data-tab="worklog" role="tab">작업 로그</button>
       <button type="button" class="tab" data-tab="joblog" role="tab">프로세스 출력</button>
@@ -213,6 +233,100 @@
       </table>
     </section>
 
+
+    <section class="tab-pane narrow" data-pane="crew" hidden>
+      <p class="muted" style="margin:0 0 14px; font-size:.86rem;">
+        편집회의의 개발·운영 결정과 서버 로그 지적사항이 여기로 모입니다. 승인하면 연구팀이 서버에서 수정안을 만들고
+        검증(<code>check</code>+<code>test</code>)을 통과한 것만 PR 로 올립니다. <b>머지와 배포는 사람이 합니다.</b>
+        {% if not github_ok %}<br><b style="color:#b91c1c;">GITHUB_DISPATCH_TOKEN 미설정 — 이슈·PR 생성은 건너뜁니다.</b>{% endif %}
+      </p>
+
+      {% for t in tasks %}
+      <div class="task" data-task="{{ t.id }}">
+        <div class="t-head">
+          <span class="pri p-{{ t.priority }}">{{ t.priority }}</span>
+          <b>{{ t.title }}</b>
+          <span class="st st-{{ t.status }}">{{ t.get_status_display }}</span>
+        </div>
+        <div class="meta">
+          <span>{{ t.get_kind_display }}</span>
+          <span>{{ t.get_source_display }}</span>
+          {% if t.issue_number %}<a href="{{ t.issue_url }}" target="_blank" rel="noopener">이슈 #{{ t.issue_number }}</a>{% endif %}
+          {% if t.pr_url %}<a href="{{ t.pr_url }}" target="_blank" rel="noopener">PR 보기</a>{% endif %}
+          {% if t.attempts %}<span>시도 {{ t.attempts }}회</span>{% endif %}
+          <span>{{ t.created_at|date:"m/d H:i" }}</span>
+        </div>
+        {% if t.body %}<div class="t-body">{{ t.body|linebreaksbr }}</div>{% endif %}
+        {% if t.triage.acceptance %}
+        <ul class="issues">{% for a in t.triage.acceptance %}<li>{{ a }}</li>{% endfor %}</ul>
+        {% endif %}
+        {% if t.status == 'working' %}
+        <div class="progress"><span class="spin"></span> 연구팀이 수정안을 만들고 있습니다… <small class="muted">진행은 작업 로그 탭에서</small></div>
+        {% endif %}
+        {% if t.plan.root_cause %}
+        <details><summary>조사 결과 · 수정 내용</summary>
+          <div class="t-plan">
+            <p><b>원인</b><br>{{ t.plan.root_cause|linebreaksbr }}</p>
+            {% if t.result.files %}<p><b>수정한 파일</b><br>{% for f in t.result.files %}<code>{{ f }}</code> {% endfor %}</p>{% endif %}
+            {% if t.plan.test_hint %}<p><b>확인 방법</b><br>{{ t.plan.test_hint }}</p>{% endif %}
+            {% if t.result.verify %}<pre class="joblog" style="max-height:200px;">{{ t.result.verify }}</pre>{% endif %}
+          </div>
+        </details>
+        {% endif %}
+        {% if t.note %}<div class="muted" style="font-size:.85rem;">비고: {{ t.note }}</div>{% endif %}
+
+        {% if t.status != 'working' %}
+        <div class="t-actions">
+          {% if not t.issue_number and github_ok %}
+          <form method="post" action="{% url 'office:task_action' t.id %}">{% csrf_token %}
+            <input type="hidden" name="act" value="issue"><button class="btn-sm ghost" type="submit">이슈 생성</button></form>
+          {% endif %}
+          <form method="post" action="{% url 'office:task_action' t.id %}">{% csrf_token %}
+            <input type="hidden" name="act" value="start">
+            <button class="btn-sm go" type="submit" data-confirm="연구팀이 수정안을 만들고 검증 후 PR 까지 올립니다. 시작할까요? (3~10분)">
+              {% if t.status == 'failed' %}다시 시도{% else %}승인 → 패치 시작{% endif %}</button></form>
+          <form method="post" action="{% url 'office:task_action' t.id %}">{% csrf_token %}
+            <input type="hidden" name="act" value="start"><input type="hidden" name="dry" value="1">
+            <button class="btn-sm ghost" type="submit" data-confirm="PR 없이 패치·검증만 해볼까요?">시험 실행</button></form>
+          {% if t.pr_url %}
+          <form method="post" action="{% url 'office:task_action' t.id %}">{% csrf_token %}
+            <input type="hidden" name="act" value="done"><button class="btn-sm ok" type="submit">완료 처리</button></form>
+          {% endif %}
+          <form method="post" action="{% url 'office:task_action' t.id %}">{% csrf_token %}
+            <input type="hidden" name="act" value="reject">
+            <button class="btn-sm rej" type="submit" data-confirm="반려할까요?">반려</button></form>
+        </div>
+        {% endif %}
+      </div>
+      {% empty %}
+      <p class="muted">백로그가 비어 있습니다. 편집회의에서 개발·운영 안건을 결정하거나 아래에서 직접 등록하세요.</p>
+      {% endfor %}
+
+      <details class="new-task">
+        <summary>작업 직접 등록</summary>
+        <form method="post" action="{% url 'office:task_create' %}">{% csrf_token %}
+          <input type="text" name="title" id="nt-title" placeholder="제목 — 무엇을 고칠지" maxlength="300" required>
+          <textarea name="body" id="nt-body" rows="3" placeholder="배경·완료 조건 (선택)"></textarea>
+          <select name="kind" id="nt-kind">
+            <option value="dev">개발·개선</option><option value="bug">버그</option>
+            <option value="ops">운영·보안</option><option value="chore">정리</option>
+          </select>
+          <button type="submit" class="btn-sm go">등록</button>
+        </form>
+      </details>
+
+      {% if done_tasks %}
+      <h2 class="pane-title" style="margin-top:22px;">최근 처리</h2>
+      <table class="logs">
+        {% for t in done_tasks %}
+        <tr><td>{{ t.created_at|date:"m/d" }}</td><td>{{ t.get_status_display }}</td>
+          <td>{{ t.title }}</td>
+          <td>{% if t.pr_url %}<a href="{{ t.pr_url }}" target="_blank" rel="noopener">PR</a>{% endif %}
+              {% if t.issue_url %}<a href="{{ t.issue_url }}" target="_blank" rel="noopener">이슈</a>{% endif %}</td></tr>
+        {% endfor %}
+      </table>
+      {% endif %}
+    </section>
 
     <section class="tab-pane" data-pane="minutes" hidden>
       {% if meetings %}
