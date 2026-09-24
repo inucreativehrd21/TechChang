@@ -547,11 +547,46 @@
     if (!sheet) return false;
     const di = Math.max(0, dirs.indexOf(dir));
     const f = pose === 'walk' ? (frame % per) : (pose === 'stand' ? (Math.floor(tick / 12) % per) : 0);
-    const sx = (di * per + f) * fw;
+    const anim = pose === 'walk' ? 'run' : (pose === 'sit' || pose === 'type' ? 'sit' : 'idle');
+    const ox = (sp.ox && sp.ox[anim]) || 0;      // 앉기 시트는 프레임이 6~7px 밀려 있다
+    const sx = (di * per + f) * fw + ox;
     shadowEllipse(x, y - 1, 6, 2.4, 0.22);
     g.drawImage(sheet, sx, 0, fw, fh, Math.round(x - fw / 2), Math.round(y - fh) + bob, fw, fh);
     return true;
   }
+
+  // ── DOM 오버레이 (이름표·말풍선) — 캔버스 확대 배율과 무관하게 글자가 선명하다
+  const overlay = document.getElementById('office-overlay');
+  const tagEls = new Map();
+  let sayEl = null;
+
+  function syncOverlay(order) {
+    if (!overlay) return;
+    const scale = canvas.clientWidth / ART.w;
+    for (const a of order) {
+      let el = tagEls.get(a.key);
+      if (!el) {
+        el = document.createElement('div'); el.className = 'tag'; el.textContent = a.name;
+        overlay.appendChild(el); tagEls.set(a.key, el);
+      }
+      const head = a.y - (poseOf(a) === 'sit' || poseOf(a) === 'type' ? 26 : 32);
+      el.style.left = (a.x * scale) + 'px';
+      el.style.top = (head * scale) + 'px';
+      el.style.display = mode === 'meeting' ? 'none' : '';
+    }
+    // 말풍선: 한 번에 하나만
+    const talker = mode === 'office' ? order.find(a => a.showStatus) : null;
+    if (!talker) { if (sayEl) { sayEl.remove(); sayEl = null; } return; }
+    if (!sayEl) { sayEl = document.createElement('div'); sayEl.className = 'say'; overlay.appendChild(sayEl); }
+    const txt = statusText(talker);
+    if (sayEl.dataset.txt !== txt) { sayEl.dataset.txt = txt; sayEl.innerHTML = '<b>' + talker.name + '</b> ' + escapeHtml(txt); }
+    sayEl.style.setProperty('--accent', talker.sprite.shirt);
+    const w = sayEl.offsetWidth, half = w / 2;
+    const px = Math.min(Math.max(talker.x * scale, half + 6), canvas.clientWidth - half - 6);
+    sayEl.style.left = px + 'px';
+    sayEl.style.top = ((talker.y - 38) * scale) + 'px';
+  }
+  const escapeHtml = t => t.replace(/[<>&]/g, c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' }[c]));
 
   // ── 상태 · 이동
   let agents = [], meeting = null, mode = 'office', tick = 0, k = 2, bg = null, light = null;
@@ -639,7 +674,7 @@
       const breathe = (!a.moving && !reduceMotion && Math.floor(tick / 45) % 2) ? 1 : 0;
       if (!(ASSETS.on && drawPersonAsset(a, a.x, a.y, pose, a.dir || 'down', Math.floor(a.walkT), breathe)))
         drawPerson(a, a.x, a.y, pose, a.dir || 'down', Math.floor(a.walkT), breathe);
-      nameTag(a, Math.round(a.x), Math.round(a.y) - (pose === 'sit' || pose === 'type' ? 28 : 32) + breathe);
+      // 이름표는 DOM 오버레이가 그린다
     }
     if (!ASSETS.on) drawParticles();
 
@@ -652,9 +687,7 @@
       drawGlow();
     }
 
-    for (const a of order) {
-      if (mode === 'office' && a.showStatus) bubble(statusText(a), Math.round(a.x), Math.round(a.y) - 36, a.sprite.shirt);
-    }
+    syncOverlay(order);
     if (mode === 'meeting') renderMeeting();
     requestAnimationFrame(render);
   }
@@ -665,7 +698,16 @@
     const a = agents.find(x => x.key === line.agent);
     replay.t++;
     const shown = line.text.slice(0, Math.floor(replay.t / 2));
-    if (a && !a.moving) bubble(shown, Math.round(a.x), Math.round(a.y) - 34, a.sprite.shirt);
+    if (a && !a.moving && overlay) {
+      if (!sayEl) { sayEl = document.createElement('div'); sayEl.className = 'say'; overlay.appendChild(sayEl); }
+      const scale = canvas.clientWidth / ART.w;
+      sayEl.dataset.txt = shown;
+      sayEl.innerHTML = '<b>' + line.name + '</b> ' + escapeHtml(shown);
+      sayEl.style.setProperty('--accent', a.sprite.shirt);
+      const half = sayEl.offsetWidth / 2;
+      sayEl.style.left = Math.min(Math.max(a.x * scale, half + 6), canvas.clientWidth - half - 6) + 'px';
+      sayEl.style.top = ((a.y - 38) * scale) + 'px';
+    }
     captionEl.innerHTML = `<b>${line.name}</b> <span class="muted">${line.round}라운드 · ${replay.i + 1}/${meeting.transcript.length}</span><br>${shown}`;
     if (shown.length >= line.text.length && replay.t > line.text.length * 2 + 240) { replay.i = (replay.i + 1) % meeting.transcript.length; replay.t = 0; }
   }
@@ -674,6 +716,7 @@
     mode = m; replay = { i: 0, t: 0 };
     modeLabel.textContent = m === 'meeting' ? '편집회의 재생 중' : '연구실';
     btnMeeting.hidden = m === 'meeting'; btnOffice.hidden = m !== 'meeting';
+    if (sayEl) { sayEl.remove(); sayEl = null; }
     if (m === 'office') { captionEl.textContent = ''; agents.forEach(planIdle); }
   }
   btnMeeting.addEventListener('click', () => setMode('meeting'));

@@ -19,6 +19,14 @@
   .office-bar button[disabled] { opacity: .4; cursor: default; }
   .office-bar button.secondary { background: #334155; }
   .office-stage .frame { display: flex; justify-content: center; }
+  .stage-box { position: relative; width: 100%; line-height: 0; }
+  /* 이름표·말풍선은 캔버스가 아니라 DOM 으로 그린다 — 확대해도 글자가 선명하다 */
+  #office-overlay { position: absolute; inset: 0; pointer-events: none; line-height: 1.5; font-family: 'Pretendard Variable', Pretendard, -apple-system, 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif; }
+  #office-overlay .tag { position: absolute; transform: translate(-50%, -100%); background: rgba(22,26,36,.88); color: #fff; font-size: 11px; font-weight: 600; letter-spacing: -.01em; padding: 1px 7px; border-radius: 999px; white-space: nowrap; box-shadow: 0 1px 3px rgba(0,0,0,.35); }
+  #office-overlay .say { position: absolute; transform: translate(-50%, -100%); max-width: 300px; min-width: 150px; background: #fff; color: #1f2430; font-size: 13px; padding: 9px 12px 10px; border-radius: 10px; border: 1px solid rgba(31,36,48,.14); border-left: 4px solid var(--accent, #4f46e5); box-shadow: 0 6px 18px rgba(15,23,42,.22); word-break: keep-all; }
+  #office-overlay .say::after { content: ""; position: absolute; left: 50%; bottom: -7px; width: 12px; height: 12px; margin-left: -6px; background: #fff; border-right: 1px solid rgba(31,36,48,.14); border-bottom: 1px solid rgba(31,36,48,.14); transform: rotate(45deg); }
+  #office-overlay .say b { color: #4f46e5; }
+  @media (max-width: 640px) { #office-overlay .say { font-size: 12px; max-width: 230px; } #office-overlay .tag { font-size: 10px; } }
   #office-canvas { max-width: 100%; height: auto; image-rendering: pixelated; image-rendering: crisp-edges; border-radius: 10px; display: block; background: #efe8dc; }
   #office-caption { min-height: 1.5em; color: #e2e8f0; font-size: .9rem; padding: 10px 4px 0; line-height: 1.5; }
   #office-caption .muted { color: #94a3b8; font-weight: 400; }
@@ -67,8 +75,11 @@
       <button id="btn-replay" type="button">최근 편집회의 재생</button>
       <button id="btn-office" type="button" class="secondary" hidden>연구실로 돌아가기</button>
     </div>
-    <div class="frame"><canvas id="office-canvas" data-state-url="{% url 'office:state' %}"
-              data-assets-url="{{ assets_url }}" data-assets-base="{{ media_url }}" aria-label="픽셀 연구실"></canvas></div>
+    <div class="frame"><div class="stage-box">
+      <canvas id="office-canvas" data-state-url="{% url 'office:state' %}"
+              data-assets-url="{{ assets_url }}" data-assets-base="{{ media_url }}" aria-label="픽셀 연구실"></canvas>
+      <div id="office-overlay" aria-hidden="true"></div>
+    </div></div>
     <div id="office-caption"></div>
     {% if assets_url %}<div class="credit">픽셀 아트: <a href="https://limezu.itch.io/" target="_blank" rel="noopener noreferrer">Modern Office &amp; Modern Interiors — LimeZu</a></div>{% endif %}
   </div>
