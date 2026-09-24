@@ -905,6 +905,18 @@
     } catch (e) { /* 조용히 */ }
   }
 
+  // 디버그 훅 — 콘솔에서 __lab.agents() 로 연구원 상태 확인 (문제 진단용)
+  window.__lab = {
+    nav: () => ({ on: ASSETS.on, grid: !!NAV.grid, cells: NAV.grid ? NAV.grid.join('').split('.').length - 1 : 0,
+                  acts: ACTS.length, desks: DESKS.length, art: { ...ART } }),
+    agents: () => agents.map(a => ({
+      key: a.key, name: a.name, state: a.state, task: a.task, pose: poseOf(a),
+      x: Math.round(a.x), y: Math.round(a.y), dir: a.dir, moving: a.moving,
+      path: (a.path || []).length, wait: Math.round(a.wait || 0),
+    })),
+    walkable: (x, y) => canWalk(Math.floor(x / NAV.cell), Math.floor(y / NAV.cell)),
+  };
+
   loadAssets().then(() => { resize(); return load(); }).then(() => { setMode('office'); render(); });
   setInterval(load, 60000);
 })();

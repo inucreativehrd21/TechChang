@@ -97,28 +97,50 @@ class Command(BaseCommand):
 
         if opts['check']:
             if not os.path.exists(mpath):
-                out(self.style.ERROR('manifest.json 이 없습니다. --init 으로 만드세요.'))
+                out(self.style.ERROR('manifest.json 이 없습니다 — media/lab/ 에 에셋을 올리세요.'))
                 return
             man = json.load(open(mpath, encoding='utf-8'))
-            missing, ok = [], 0
-            def probe(rel):
-                nonlocal ok
-                if not rel or rel.startswith('<'):
-                    return
-                if os.path.exists(os.path.join(root, rel)):
-                    ok += 1
-                else:
-                    missing.append(rel)
-            for key in ('floor', 'wall', 'wainscot'):
-                probe(man.get(key, ''))
-            for v in (man.get('objects') or {}).values():
-                probe(v)
-            for k, v in (man.get('characters') or {}).items():
-                if k.startswith('_'):
+            problems = []
+
+            def probe(rel, label):
+                if rel and os.path.exists(os.path.join(root, rel)):
+                    return True
+                problems.append(f'{label}: {rel or "(경로 없음)"}')
+                return False
+
+            frames = (man.get('room') or {}).get('frames') or []
+            okf = sum(1 for f in frames if probe(f, '방 프레임'))
+            out(f'방 이미지 {okf}/{len(frames)} · 크기 {man.get("art", {}).get("w")}x{man.get("art", {}).get("h")}')
+
+            chars = man.get('characters') or {}
+            okc = 0
+            for key, c in chars.items():
+                if key.startswith('_'):
                     continue
-                probe((v or {}).get('sheet', ''))
-            out(f'확인됨 {ok}개' + (f' / 없음 {len(missing)}개' if missing else ''))
-            for m in missing:
-                out(self.style.ERROR(f'  없음: {m}'))
-            if not missing and ok:
-                out(self.style.SUCCESS('모두 정상 — /lab/ 이 타일 모드로 렌더링됩니다.'))
+                have = [a for a in ('idle', 'run', 'sit') if probe((c or {}).get(a, ''), f'{key} {a}')]
+                if len(have) == 3:
+                    okc += 1
+            out(f'연구원 스프라이트 {okc}/{len([k for k in chars if not k.startswith("_")])}명 (idle·run·sit)')
+
+            nav = man.get('nav') or {}
+            cells = sum(row.count('.') for row in (nav.get('grid') or []))
+            if cells:
+                out(f'길찾기 맵 {nav.get("w")}x{nav.get("h")} 격자 · 통로 {cells}칸 ({nav.get("cell")}px)')
+            else:
+                problems.append('길찾기 맵(nav) 없음 — 연구원이 통로를 따라 걷지 않고 직선 이동합니다')
+
+            seats = len(man.get('seats_desk') or [])
+            acts = len(man.get('activities') or [])
+            out(f'좌석 {seats}자리 · 접근점 {len(man.get("approaches") or [])} · 행동 지점 {acts}곳')
+            if seats < 6:
+                problems.append('좌석(seats_desk)이 6자리가 아님')
+            if not acts:
+                problems.append('행동 지점(activities) 없음 — 자리에만 앉아 있게 됩니다')
+
+            if problems:
+                out(self.style.ERROR(f'문제 {len(problems)}건:'))
+                for p_ in problems:
+                    out(self.style.ERROR(f'  - {p_}'))
+                out(self.style.WARNING('  → 최신 lab_assets.tar.gz 를 media/ 에 다시 풀어 주세요.'))
+            else:
+                out(self.style.SUCCESS('모두 정상 — /lab/ 이 구매 에셋 + 길찾기로 렌더링됩니다.'))
