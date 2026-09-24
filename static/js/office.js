@@ -516,11 +516,14 @@
       // 방 크기·좌표를 매니페스트에 맞춘다
       if (man.art) { ART.w = man.art.w; ART.h = man.art.h; }
       if (man.wall_h) ART.wall = man.wall_h;
-      if (man.desks) { DESKS.length = 0; man.desks.forEach(([x, y]) => DESKS.push({ x, y })); }
-      if (man.desk_seat) { SEAT_OFF.x = man.desk_seat[0]; SEAT_OFF.y = man.desk_seat[1]; }
-      if (man.seats) {
+      // 좌석: 책상 자리는 그대로 좌표로 (에셋 모드에선 DESKS 대신 seats_desk 를 쓴다)
+      if (man.seats_desk) {
+        DESKS.length = 0; SEAT_OFF.x = 0; SEAT_OFF.y = 0;
+        man.seats_desk.forEach(([x, y]) => DESKS.push({ x, y }));
+      }
+      if (man.seats_meet) {
         SEATS.length = 0;
-        man.seats.forEach(([x, y], i) => SEATS.push({ x, y, dir: i < 2 ? 'down' : 'up' }));
+        man.seats_meet.forEach(([x, y]) => SEATS.push({ x, y, dir: 'up' }));
       }
       if (man.spots) Object.assign(SPOTS, {
         coffee: man.spots.coffee || SPOTS.coffee, cooler: man.spots.cooler || SPOTS.cooler,
