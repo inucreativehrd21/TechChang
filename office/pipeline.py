@@ -25,7 +25,7 @@ from django.utils import timezone
 from common.management.commands.auto_write_columns import COLUMN_STRUCTURE, TOPICS
 from .agents import TOPIC_AGENT as TOPIC_AGENT_OF
 from .models import ColumnDraft
-from .services import ask_agent, ask_agent_json, chart_markdown, render_chart
+from .services import ask_agent, ask_agent_json, audit_chart, chart_markdown, render_chart
 
 # ───────────────────────────── 심사 기준 (편집 루브릭)
 #   항목: (가중치, 설명) — 각 항목을 1~5점으로 채점해 가중합 → 100점 환산
@@ -35,7 +35,9 @@ RUBRIC = {
     'evidence':   (0.25, '데이터 근거 — 비교 가능한 수치 3~5개와 출처 명시, 팩트체크 통과 여부'),
     'logic':      (0.15, '논리·정확성 — 주장과 근거의 연결, 과장·비약 없음'),
     'readability': (0.10, '가독성·문체 — 존댓말 일관, 용어 설명, 문장 길이'),
-    'visual':     (0.10, '시각자료 — 차트·표가 본문 수치와 일치하고 해석이 붙어 있는지'),
+    'visual':     (0.10, '시각자료 — 차트·표가 본문 수치와 일치하는지, 그 그림이 실제로 '
+                         '무엇을 말하는지(비교가 성립하는지·항목 선택이 적절한지), 해석 문장이 붙어 있는지. '
+                         '"차트가 있다"는 사실만으로 점수를 주지 마세요'),
 }
 ACCEPT_SCORE = 80          # 이상이면 발행 (전 항목 4점 = 80점 = 발행 가능 수준)
 MINOR_SCORE = 65           # 이상 80 미만이면 자동 1회 수정 후 재심, 미만이면 보류(Major)
@@ -130,7 +132,10 @@ QA_PROMPT = (
     '치명 결함(fatal)은 다음 중 해당하는 것만 배열로 적습니다: '
     '"unverified_data"(확인 불가 수치가 본문에 남아 있음), "duplicate"(기존 칼럼과 소재 중복), '
     '"too_short"(목표 분량에 크게 못 미침), "no_evidence"(비교 가능한 수치가 사실상 없음), '
-    '"structure_broken"(필수 섹션 누락), "overclaim"(근거 없는 단정)\n\n'
+    '"structure_broken"(필수 섹션 누락), "overclaim"(근거 없는 단정), '
+    '"visual_broken"(차트가 본문 수치와 어긋나거나, 비교가 성립하지 않아 아무것도 말해 주지 못함)\n\n'
+    '[시각자료] 항목에는 차트의 실제 항목·값·자동 점검 결과가 들어 있습니다. '
+    '그 값들이 본문 주장과 맞물리는지, 한 그림 안에 묶을 만한 비교인지 직접 판단하세요.\n\n'
     '출력 JSON: {{"scores": {{"structure": 1~5, "depth": 1~5, "evidence": 1~5, "logic": 1~5, '
     '"readability": 1~5, "visual": 1~5}}, "fatal": ["..."], "strengths": "한 줄", '
     '"issues": ["구체적 문제 — 어느 섹션의 무엇을 어떻게 고쳐야 하는지", ...], '
@@ -314,13 +319,17 @@ def step_author_revise(topic_key: str, subject: str, content: str, check: dict) 
 
 
 def step_visual(content: str, topic_key: str, *, rec, dry: bool = False) -> tuple:
-    """5) 데이터 시각화. 반환: (content, chart_rel, note)"""
+    """5) 데이터 시각화. 반환: (content, chart_rel, note, visual_report)
+
+    visual_report 는 검수 단계로 넘길 차트 설명 + 자동 점검 결과다. 모델에게 '차트 있음'
+    만 알려 주면 그림이 무엇을 말하는지 판단할 수 없어 부실한 차트가 그대로 통과한다.
+    """
     res = ask_agent_json('charter', CHART_PROMPT.format(content=content), max_tokens=3000)
     spec = res.get('spec') if isinstance(res.get('spec'), dict) else None
     if not res.get('has_data') or not spec:
         note = f"수치 부족으로 생략: {res.get('reason', '')}"[:200]
         rec('charter', 'chart', note)
-        return content, '', note
+        return content, '', note, '시각자료 없음 — ' + note
 
     chart_rel, err = '', ''
     if res.get('mode', 'chart') != 'table' and not dry:
@@ -333,19 +342,28 @@ def step_visual(content: str, topic_key: str, *, rec, dry: bool = False) -> tupl
         block += f"\n\n{res['caption']}"
     content = insert_after_heading(content, res.get('insert_after_heading', ''), block)
 
+    errors, warns, report = audit_chart(spec, content, chart_rel)
     if chart_rel:
         note = f"차트+표 삽입: {spec.get('title', '')} ({spec.get('type', 'bar')}, 항목 {len(spec.get('labels') or [])}개)"
     elif err:
         note = f"차트 렌더 실패 → 표만 삽입: {err}"
     else:
         note = f"표 삽입: {spec.get('title', '')}"
+    if errors:
+        note += f" · 자동점검 치명 {len(errors)}건"
+    elif warns:
+        note += f" · 자동점검 경고 {len(warns)}건"
     rec('charter', 'chart', note[:200])
-    return content, chart_rel, note[:200]
+    if errors:
+        rec('charter', 'chart', '차트 문제: ' + ' / '.join(errors)[:180])
+    return content, chart_rel, note[:200], report
 
 
-def step_review(subject: str, content: str, check: dict, chart_rel: str) -> dict:
+def step_review(subject: str, content: str, check: dict, chart_rel: str,
+                visual_report: str = '') -> dict:
     """6) 편집 심사 — 항목 점수를 받아 총점·판정은 시스템이 계산."""
-    visual = '차트 이미지 + 표 있음' if chart_rel else ('표 있음(차트 없음)' if has_visual(content) else '없음')
+    have = '차트 이미지 + 표 있음' if chart_rel else ('표 있음(차트 없음)' if has_visual(content) else '없음')
+    visual = f'{have}\n{visual_report}' if visual_report else have
     length = body_length(content)
     qa = ask_agent_json('lead', QA_PROMPT.format(
         check=json.dumps({k: v for k, v in check.items() if k != 'first'}, ensure_ascii=False)[:2500],
@@ -360,6 +378,11 @@ def step_review(subject: str, content: str, check: dict, chart_rel: str) -> dict
     if not has_visual(content) and 'no_evidence' not in fatal:
         fatal.append('no_evidence')
         qa.setdefault('issues', []).append('본문에 차트·표가 없음 — 데이터 근거 섹션을 보강해야 함')
+    # 자동 점검에서 걸린 차트 결함은 모델이 놓쳐도 강제한다
+    if '자동 점검 — 치명:' in (visual_report or '') and 'visual_broken' not in fatal:
+        fatal.append('visual_broken')
+        detail = visual_report.split('자동 점검 — 치명:', 1)[1].splitlines()[0].strip()
+        qa.setdefault('issues', []).append(f'차트 결함(자동 점검): {detail}')
 
     score = compute_score(scores)
     qa.update({'scores': scores, 'fatal': fatal, 'score': score, 'length': length,

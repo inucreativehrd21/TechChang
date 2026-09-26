@@ -85,12 +85,13 @@ class Command(BaseCommand):
                     rec(writer, 'revise', f'재작성 실패 — {why}')
 
             # 5) 데이터 시각화
-            chart_rel, chart_note = '', '옵션으로 생략(--no-chart)'
+            chart_rel, chart_note, visual_report = '', '옵션으로 생략(--no-chart)', ''
             if not opts['no_chart']:
-                content, chart_rel, chart_note = P.step_visual(content, topic_key, rec=rec, dry=dry)
+                content, chart_rel, chart_note, visual_report = P.step_visual(
+                    content, topic_key, rec=rec, dry=dry)
 
             # 6) 편집 심사 → 7) 판정 (Minor 는 자동 1회 재작성 후 재심)
-            qa = P.step_review(subject, content, check, chart_rel)
+            qa = P.step_review(subject, content, check, chart_rel, visual_report)
             rec('lead', 'qa', self._qa_line(qa))
             if qa['verdict'] == 'minor' and revisions < P.MAX_AUTO_REVISIONS + 1:
                 raw = ask_agent(writer, P.EDITOR_REVISE_PROMPT.format(
@@ -100,8 +101,9 @@ class Command(BaseCommand):
                 revisions += 1
                 rec(writer, 'revise', f'편집 심사 지적 반영해 재작성 ({P.body_length(content)}자)')
                 if not P.has_visual(content) and not opts['no_chart']:
-                    content, chart_rel, chart_note = P.step_visual(content, topic_key, rec=rec, dry=dry)
-                qa = P.step_review(subject, content, check, chart_rel)
+                    content, chart_rel, chart_note, visual_report = P.step_visual(
+                        content, topic_key, rec=rec, dry=dry)
+                qa = P.step_review(subject, content, check, chart_rel, visual_report)
                 # 재심에서는 '수정 요청'을 통과로 본다 (학술지의 minor revision 수리와 같은 처리).
                 # 치명 결함이 남아 있으면 verdict 가 major 라 그대로 보류된다.
                 if qa['verdict'] == 'minor':

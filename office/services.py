@@ -216,6 +216,69 @@ def effective_chart_type(requested: str, labels: list) -> str:
     return 'bar'
 
 
+def audit_chart(spec: dict, content: str, chart_rel: str) -> tuple:
+    """차트가 쓸모 있는지 코드로 점검한다. 반환 (치명 문제[], 경고[], 검수용 설명).
+
+    모델에게 "차트가 있다"고만 알려 주면 그림이 읽히는지·무엇을 말하는지 판단할 수 없어,
+    라벨이 통째로 겹친 차트가 87점으로 통과한 적이 있다. 기계로 확인할 수 있는 것은
+    여기서 확인하고, 그 결과를 검수 프롬프트에 그대로 넘긴다.
+
+    레이아웃(겹침·잘림)은 심사가 아니라 render_chart 가 보장한다 — 항목명이 길면 가로
+    막대로 돌리고 그림 크기를 늘린다. 그래서 여기서는 **내용**을 본다.
+    """
+    errors, warns = [], []
+    labels = [str(x) for x in spec.get('labels') or []]
+    series = spec.get('series') or []
+    values = [v for s in series for v in (s.get('values') or [])]
+
+    if not chart_rel:
+        warns.append('차트 이미지가 없어 표만 실렸습니다')
+
+    if len(labels) < 3:
+        errors.append(f'비교 항목이 {len(labels)}개뿐 — 차트로 보여 줄 만한 비교가 아닙니다')
+    elif len(labels) > 12:
+        warns.append(f'항목이 {len(labels)}개로 많아 한눈에 읽기 어렵습니다 (8개 이하 권장)')
+
+    if len(set(labels)) != len(labels):
+        errors.append('항목명이 중복됩니다 — 무엇을 비교하는지 알 수 없습니다')
+
+    if values:
+        if len(set(values)) == 1:
+            errors.append(f'모든 값이 {values[0]:g}으로 같습니다 — 차트가 아무것도 보여 주지 않습니다')
+        nonzero = [abs(v) for v in values if v]
+        if nonzero and max(nonzero) / min(nonzero) > 200:
+            warns.append(f'값의 차이가 너무 큽니다({min(nonzero):g}~{max(nonzero):g}) — '
+                         '작은 막대가 보이지 않으니 나누거나 로그 축을 고려하세요')
+
+    # 본문에 없는 수치가 차트에 있으면 출처 불명 데이터다
+    missing = [f'{v:g}' for v in values if f'{v:g}' not in content]
+    if missing:
+        errors.append(f'차트 수치 {", ".join(missing[:5])}이(가) 본문에 없습니다 — 근거 없는 값입니다')
+
+    if not spec.get('unit'):
+        warns.append('단위가 비어 있습니다')
+    if not spec.get('source'):
+        warns.append('출처가 비어 있습니다')
+    if not (spec.get('title') or '').strip():
+        warns.append('차트 제목이 비어 있습니다')
+
+    kind = effective_chart_type(spec.get('type', 'bar'), labels)
+    pairs = ', '.join(f'{lab}={v:g}' for lab, v in zip(labels, series[0].get('values', []))) if series else ''
+    lines = [
+        f"차트: {spec.get('title', '(제목 없음)')} · {kind} · 항목 {len(labels)}개 · "
+        f"계열 {len(series)}개 · 단위 {spec.get('unit') or '없음'}",
+        f"값: {pairs[:400]}",
+        f"출처: {spec.get('source') or '없음'}",
+    ]
+    if errors:
+        lines.append('자동 점검 — 치명: ' + ' / '.join(errors))
+    if warns:
+        lines.append('자동 점검 — 경고: ' + ' / '.join(warns))
+    if not errors and not warns:
+        lines.append('자동 점검: 이상 없음')
+    return errors, warns, '\n'.join(lines)
+
+
 def _wrap_label(text: str, width: int) -> str:
     """긴 축 라벨을 두 줄까지 접는다. 한글은 공백이 드물어 글자 수로 끊는다."""
     text = str(text)

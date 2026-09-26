@@ -83,10 +83,10 @@ class Command(BaseCommand):
 
             # 3) 시각화 — 본문이 다시 쓰였으므로 이전 차트·표를 걷어내고 현재 수치로 새로 만든다
             content = P.strip_visual_block(content)
-            content, chart_rel, chart_note = P.step_visual(content, topic_key, rec=rec)
+            content, chart_rel, chart_note, visual_report = P.step_visual(content, topic_key, rec=rec)
 
             # 4) 재심
-            qa = P.step_review(subject, content, check, chart_rel)
+            qa = P.step_review(subject, content, check, chart_rel, visual_report)
             verdict_ko = {'accept': '발행', 'minor': '수정 요청', 'major': '보류'}.get(qa['verdict'], qa['verdict'])
             rec('lead', 'qa', f"재심 {qa['score']}/100 ({qa['length']}자) → {verdict_ko}: {qa.get('notes', '')}")
 
