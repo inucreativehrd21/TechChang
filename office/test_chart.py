@@ -94,6 +94,65 @@ class RenderChartTests(TestCase):
             self.assertTrue((Path(self.tmp) / rel).exists(), kind)
 
 
+COLUMN_BODY = """## 숫자로 보는 현황
+
+본문 설명 문단입니다.
+
+![AI 코딩 도구 관련 주요 통계 비교](/media/columns/20260926_coding_010402.png)
+
+**AI 코딩 도구 관련 주요 통계 비교** (단위: %)
+
+| 항목 | 비율(%) |
+|---|---|
+| Copilot 보안취약점 포함률 | 40 |
+| ChatGPT 오답률 | 52 |
+| SO 매우 신뢰 응답 | 3 |
+
+*출처: NYU·Calgary 'Asleep at the Keyboard', Stack Overflow 2024 Developer Survey*
+"""
+
+
+class ExtractSpecTests(TestCase):
+    """발행된 칼럼 본문에서 차트 spec 복원 — API 없이 다시 그리기 위한 경로."""
+
+    def test_spec_is_rebuilt_from_the_table(self):
+        from office.management.commands.redraw_chart import extract_spec
+
+        spec, path = extract_spec(COLUMN_BODY)
+        self.assertEqual(path, 'columns/20260926_coding_010402.png')
+        self.assertEqual(spec['title'], 'AI 코딩 도구 관련 주요 통계 비교')
+        self.assertEqual(spec['labels'],
+                         ['Copilot 보안취약점 포함률', 'ChatGPT 오답률', 'SO 매우 신뢰 응답'])
+        self.assertEqual(spec['series'][0]['values'], [40, 52, 3])
+        self.assertEqual(spec['unit'], '%')
+        self.assertIn('Stack Overflow', spec['source'])
+
+    def test_separator_row_is_not_read_as_data(self):
+        from office.management.commands.redraw_chart import extract_spec
+
+        spec, _ = extract_spec(COLUMN_BODY)
+        self.assertNotIn('---', spec['labels'])
+
+    def test_multi_series_table(self):
+        from office.management.commands.redraw_chart import extract_spec
+
+        body = COLUMN_BODY.replace('| 항목 | 비율(%) |', '| 항목 | 대기업 | 중소기업 |') \
+                          .replace('|---|---|', '|---|---|---|') \
+                          .replace('| Copilot 보안취약점 포함률 | 40 |', '| 항목1 | 40 | 12 |') \
+                          .replace('| ChatGPT 오답률 | 52 |', '| 항목2 | 52 | 25 |') \
+                          .replace('| SO 매우 신뢰 응답 | 3 |', '| 항목3 | 3 | 9 |')
+        spec, _ = extract_spec(body)
+        self.assertEqual([s['name'] for s in spec['series']], ['대기업', '중소기업'])
+        self.assertEqual(spec['series'][1]['values'], [12, 25, 9])
+
+    def test_body_without_a_chart_is_reported(self):
+        from office.management.commands.redraw_chart import extract_spec
+
+        spec, reason = extract_spec('## 머리말\n\n표도 그림도 없는 본문.')
+        self.assertIsNone(spec)
+        self.assertTrue(reason)
+
+
 class ChartFontTests(TestCase):
     def test_pretendard_ttf_is_available_for_matplotlib(self):
         """matplotlib 은 woff2 를 못 읽는다 — TTF 인스턴스가 저장소에 있어야 한다."""
