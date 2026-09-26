@@ -112,7 +112,13 @@ CHART_PROMPT = (
     '"unit": "%", "source": "본문에 적힌 기관·보고서명"}}, '
     '"insert_after_heading": "삽입할 ## 헤더 텍스트(본문에 있는 그대로, 보통 \'숫자로 보는 현황\')", '
     '"caption": "차트가 보여주는 핵심 한 문장"}}\n'
-    '규칙: labels 와 각 series.values 개수는 반드시 같아야 합니다. values 에는 단위·기호 없이 숫자만 넣습니다.'
+    '규칙:\n'
+    '- labels 와 각 series.values 개수는 반드시 같아야 합니다. values 에는 단위·기호 없이 숫자만 넣습니다.\n'
+    '- **labels 는 12자 이내의 짧은 이름**으로 씁니다. 그래야 축에서 읽힙니다. '
+    '설명은 caption 에 쓰고 labels 에 넣지 마세요. '
+    '예: "Copilot 보안취약점 포함률 40%" (X) → "Copilot 취약점 포함" (O)\n'
+    '- 항목이 5개를 넘거나 이름이 길면 type 은 "hbar"(가로 막대)로 하세요.\n'
+    '- 계열이 하나면 name 은 측정값 이름(예: "비율")으로 짧게 씁니다.'
 )
 
 QA_PROMPT = (

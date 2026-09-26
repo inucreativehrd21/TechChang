@@ -183,6 +183,49 @@ def week_monday(d: date | None = None) -> date:
 
 
 # ───────────────────────────── 차트
+def _chart_font(font_manager) -> str:
+    """차트용 한글 폰트 이름. 사이트 본문과 같은 Pretendard 를 쓰고, 없으면 Noto Sans KR.
+
+    matplotlib 은 woff2 를 못 읽으므로 static/fonts 의 TTF 를 쓴다
+    (PretendardVariable.woff2 에서 400·700 인스턴스를 떠 둔 파일).
+    """
+    fonts = Path(settings.BASE_DIR) / 'static' / 'fonts'
+    found = None
+    for name in ('Pretendard-Regular.ttf', 'Pretendard-Bold.ttf', 'NotoSansKR-VariableFont_wght.ttf'):
+        path = fonts / name
+        if not path.exists():
+            continue
+        font_manager.fontManager.addfont(str(path))
+        if found is None:
+            found = font_manager.FontProperties(fname=str(path)).get_name()
+    return found or 'sans-serif'
+
+
+def effective_chart_type(requested: str, labels: list) -> str:
+    """실제로 그릴 차트 종류. 세로 막대가 읽히지 않을 상황이면 가로 막대로 돌린다.
+
+    한글 항목명은 대개 길어서 세로 막대의 x축에 나란히 두면 서로 겹친다(실제로 7개
+    항목이 통째로 겹친 차트가 칼럼에 실렸다). 줄바꿈으로 감당이 안 되는 길이면
+    가로 막대가 낫다 — 항목명을 줄바꿈 없이 그대로 읽을 수 있다.
+    """
+    if requested != 'bar':
+        return requested
+    longest = max((len(str(x)) for x in labels), default=0)
+    if longest > 10 or (longest > 6 and len(labels) > 4):
+        return 'hbar'
+    return 'bar'
+
+
+def _wrap_label(text: str, width: int) -> str:
+    """긴 축 라벨을 두 줄까지 접는다. 한글은 공백이 드물어 글자 수로 끊는다."""
+    text = str(text)
+    if len(text) <= width:
+        return text
+    cut = text.rfind(' ', 0, width + 1)
+    head, tail = (text[:cut], text[cut + 1:]) if cut > width // 2 else (text[:width], text[width:])
+    return f'{head}\n{tail if len(tail) <= width else tail[:width - 1] + "…"}'
+
+
 def render_chart(spec: dict, filename_stem: str) -> tuple:
     """
     charter 에이전트의 spec 으로 PNG 를 만들어 media/columns/ 에 저장한다.
@@ -209,55 +252,75 @@ def render_chart(spec: dict, filename_stem: str) -> tuple:
         if len(s['values']) != len(labels):
             return None, f"계열 '{s.get('name', '')}' 값 개수({len(s['values'])})가 labels({len(labels)})와 다름"
 
-    # 한글 폰트: 레포 동봉 Noto Sans KR (TTF)
-    font_path = Path(settings.BASE_DIR) / 'static' / 'fonts' / 'NotoSansKR-VariableFont_wght.ttf'
-    family = 'sans-serif'
-    if font_path.exists():
-        font_manager.fontManager.addfont(str(font_path))
-        family = font_manager.FontProperties(fname=str(font_path)).get_name()
-    plt.rcParams['font.family'] = family
+    plt.rcParams['font.family'] = _chart_font(font_manager)
     plt.rcParams['axes.unicode_minus'] = False
 
-    palette = ['#4f46e5', '#2aa876', '#f0a33a', '#d9534f', '#3aa7c9']
-    fig, ax = plt.subplots(figsize=(8, 4.5), dpi=150)
-    kind = spec.get('type', 'bar')
     n = len(series)
+    kind = effective_chart_type(spec.get('type', 'bar'), labels)
+
+    palette = ['#4f46e5', '#2aa876', '#f0a33a', '#d9534f', '#3aa7c9']
+    if kind == 'hbar':
+        # 항목 수에 맞춰 세로로 늘린다. 막대가 눌리면 값 라벨이 겹친다.
+        height = max(3.2, 0.62 * len(labels) * max(n, 1) + 1.4)
+        figsize = (9, min(height, 14))
+    else:
+        figsize = (max(8, 1.5 * len(labels)), 5)
+    fig, ax = plt.subplots(figsize=figsize, dpi=160)
+
+    import numpy as np
+
     if kind == 'line':
         for i, s in enumerate(series):
-            ax.plot(labels, s['values'], marker='o', linewidth=2, color=palette[i % 5], label=s.get('name', ''))
+            ax.plot([_wrap_label(x, 12) for x in labels], s['values'], marker='o', linewidth=2.2,
+                    color=palette[i % 5], label=s.get('name', ''))
     elif kind == 'hbar':
-        import numpy as np
         y = np.arange(len(labels))
-        h = 0.8 / n
+        h = 0.78 / n
         for i, s in enumerate(series):
-            ax.barh(y + i * h - 0.4 + h / 2, s['values'], height=h, color=palette[i % 5], label=s.get('name', ''))
-        ax.set_yticks(y, labels)
+            bars = ax.barh(y + i * h - 0.39 + h / 2, s['values'], height=h,
+                           color=palette[i % 5], label=s.get('name', ''))
+            ax.bar_label(bars, fmt='%g', fontsize=10, padding=4, color='#333')
+        ax.set_yticks(y, [_wrap_label(x, 18) for x in labels], fontsize=11)
         ax.invert_yaxis()
+        ax.margins(x=0.13)          # 값 라벨이 오른쪽 밖으로 잘리지 않게
     else:
-        import numpy as np
         x = np.arange(len(labels))
         w = 0.8 / n
         for i, s in enumerate(series):
-            bars = ax.bar(x + i * w - 0.4 + w / 2, s['values'], width=w, color=palette[i % 5], label=s.get('name', ''))
-            ax.bar_label(bars, fmt='%g', fontsize=8, padding=2)
-        ax.set_xticks(x, labels)
-    ax.set_title(spec.get('title', ''), fontsize=12, fontweight='bold', loc='left', pad=12)
+            bars = ax.bar(x + i * w - 0.4 + w / 2, s['values'], width=w,
+                          color=palette[i % 5], label=s.get('name', ''))
+            ax.bar_label(bars, fmt='%g', fontsize=10, padding=3, color='#333')
+        ax.set_xticks(x, [_wrap_label(v, 10) for v in labels], fontsize=11)
+        ax.margins(y=0.12)
+
+    ax.set_title(spec.get('title', ''), fontsize=14, fontweight='bold', loc='left', pad=14)
     if spec.get('unit'):
-        ax.set_ylabel(spec['unit'] if kind != 'hbar' else '')
-        if kind == 'hbar':
-            ax.set_xlabel(spec['unit'])
+        (ax.set_xlabel if kind == 'hbar' else ax.set_ylabel)(spec['unit'], fontsize=10, color='#555')
+    ax.tick_params(labelsize=11, colors='#333')
     ax.spines[['top', 'right']].set_visible(False)
-    ax.grid(axis='y' if kind != 'hbar' else 'x', alpha=.25)
-    if n > 1 or series[0].get('name'):
-        ax.legend(frameon=False, fontsize=9)
-    if spec.get('source'):
-        fig.text(0.01, 0.01, f"출처: {spec['source']}", fontsize=8, color='#666')
+    ax.spines[['left', 'bottom']].set_color('#ccc')
+    ax.grid(axis='x' if kind == 'hbar' else 'y', alpha=.25)
+    ax.set_axisbelow(True)
+    # 계열이 하나뿐이면 범례는 같은 말을 반복할 뿐이라 자리만 차지한다
+    if n > 1:
+        ax.legend(frameon=False, fontsize=10, loc='best')
+
     fig.tight_layout()
+    # 제목을 그림 왼쪽 끝에 맞춘다. 가로 막대는 항목명 폭만큼 축이 오른쪽으로 밀려서
+    # loc='left'(축 기준)로 두면 제목이 가운데 놓인 것처럼 보인다. 축 제목의 위치를
+    # 직접 옮기면 matplotlib 이 그릴 때 되돌리므로, 공간만 잡아 두고 그림에 다시 쓴다.
+    if spec.get('title'):
+        ax.set_title('', loc='left')   # loc 를 맞춰야 지워진다 (좌/중/우 제목 객체가 따로다)
+        fig.text(0.012, 0.975, spec['title'], fontsize=14, fontweight='bold',
+                 ha='left', va='top', color='#111')
+    if spec.get('source'):
+        fig.subplots_adjust(bottom=fig.subplotpars.bottom + 0.06)
+        fig.text(0.012, 0.015, f"출처: {spec['source']}", fontsize=9, color='#777')
 
     out_dir = Path(settings.MEDIA_ROOT) / 'columns'
     out_dir.mkdir(parents=True, exist_ok=True)
     rel = f'columns/{filename_stem}.png'
-    fig.savefig(out_dir / f'{filename_stem}.png')
+    fig.savefig(out_dir / f'{filename_stem}.png', facecolor='white')
     plt.close(fig)
     return rel, ''
 
