@@ -15,7 +15,7 @@
     <link rel="icon" href="/favicon.ico" sizes="any">
 
     <!-- OG Tags -->
-    <meta property="og:type" content="website">
+    <meta property="og:type" content="{% block og_type %}website{% endblock %}">
     <meta property="og:site_name" content="테크창">
     <meta property="og:title" content="{% block og_title %}테크창{% endblock %}">
     <meta property="og:description" content="{% block og_description %}테크창 - HRD & 테크놀로지 커뮤니티{% endblock %}">

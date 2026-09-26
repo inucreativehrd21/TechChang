@@ -4,6 +4,13 @@
 
 {% block title %}{{ series.title }} - 연재 시리즈 - 테크창{% endblock %}
 
+{# 시리즈마다 고유한 설명 — 비워 두면 사이트 기본 문구가 그대로 나간다 #}
+{% block meta_description %}{{ series.description|striptags|truncatechars:155|default:series.subtitle|default:series.title }}{% endblock %}
+{% block og_title %}{{ series.title }}{% endblock %}
+{% block og_description %}{{ series.description|striptags|truncatechars:155|default:series.subtitle|default:series.title }}{% endblock %}
+{% block twitter_title %}{{ series.title }}{% endblock %}
+{% block twitter_description %}{{ series.description|striptags|truncatechars:155|default:series.subtitle|default:series.title }}{% endblock %}
+
 {% block extra_css %}
 <style>
 .sd-wrap { max-width: 820px; margin: 0 auto; padding: var(--space-8) var(--space-4) var(--space-16); }

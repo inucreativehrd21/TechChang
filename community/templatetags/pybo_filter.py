@@ -1,4 +1,6 @@
 
+import json
+
 import markdown
 import bleach
 from django import template
@@ -43,6 +45,17 @@ def mark(value):
     # bleach로 위험한 HTML 태그/속성 제거 (XSS 방어)
     clean_html = bleach.clean(html, tags=ALLOWED_TAGS, attributes=ALLOWED_ATTRS, strip=True)
     return mark_safe(clean_html)
+
+
+@register.filter
+def as_json(value):
+    """문자열을 JSON 리터럴로 — JSON-LD 안에 안전하게 넣기 위한 필터.
+
+    따옴표·줄바꿈·백슬래시를 이스케이프하고, </script> 로 스크립트가 조기에 닫히는
+    것을 막는다. 값은 이미 JSON 문자열(따옴표 포함)이므로 템플릿에서 따로 감싸지 않는다.
+    """
+    dumped = json.dumps('' if value is None else str(value), ensure_ascii=False)
+    return mark_safe(dumped.replace('<', '\\u003c').replace('>', '\\u003e').replace('&', '\\u0026'))
 
 
 @register.filter

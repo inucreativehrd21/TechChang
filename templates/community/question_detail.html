@@ -5,6 +5,36 @@
 
 {% block title %}{{ question.subject }} - 테크창{% endblock %}
 
+{# 글마다 고유한 설명을 준다. 비워 두면 모든 글이 사이트 기본 문구를 공유해
+   검색결과에 같은 문구가 반복되고 CTR 이 떨어진다. #}
+{% block meta_description %}{{ question.seo_description|default:question.subject }}{% endblock %}
+{% block og_type %}article{% endblock %}
+{% block og_title %}{{ question.subject }}{% endblock %}
+{% block og_description %}{{ question.seo_description|default:question.subject }}{% endblock %}
+{% block twitter_title %}{{ question.subject }}{% endblock %}
+{% block twitter_description %}{{ question.seo_description|default:question.subject }}{% endblock %}
+{# block 은 {% if %} 안에 둬도 조건과 무관하게 항상 적용되므로, 분기는 block 안에서 한다 #}
+{% block og_image %}{% if question.image %}https://techchang.com{{ question.image.url }}{% else %}https://techchang.com{% static 'images/og-image.jpg' %}{% endif %}{% endblock %}
+{% block twitter_image %}{% if question.image %}https://techchang.com{{ question.image.url }}{% else %}https://techchang.com{% static 'images/og-image.jpg' %}{% endif %}{% endblock %}
+{% block og_image_alt %}{{ question.subject }}{% endblock %}
+
+{% block jsonld %}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Article",
+  "headline": {{ question.subject|as_json }},
+  "description": {{ question.seo_description|as_json }},
+  "datePublished": "{{ question.create_date|date:'c' }}",
+  {% if question.modify_date %}"dateModified": "{{ question.modify_date|date:'c' }}",{% endif %}
+  "author": {"@type": "Person", "name": {{ question.author.username|as_json }}},
+  "publisher": {"@type": "Organization", "name": "테크창", "url": "https://techchang.com"},
+  "mainEntityOfPage": {"@type": "WebPage", "@id": "https://techchang.com{{ request.path }}"},
+  "articleSection": {{ question.category.name|as_json }}
+}
+</script>
+{% endblock %}
+
 {% block extra_css %}
 <style>
 /* Premium Detail Page Styles */

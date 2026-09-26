@@ -98,6 +98,41 @@ class Question(models.Model):
         return None
 
     @property
+    def seo_description(self):
+        """검색결과·SNS 미리보기용 요약 (본문 마크다운을 걷어낸 첫 문단, 155자).
+
+        이게 없으면 모든 글이 base.html 의 사이트 기본 설명을 공유해서, 검색결과에
+        같은 문구가 반복되고 CTR 이 떨어진다(2026-09 회의 안건). 제목과 겹치지 않게
+        머리말(#) 줄은 건너뛰고 첫 본문 문단부터 쓴다.
+        """
+        import re
+
+        text = self.content or ''
+        text = re.sub(r'```.*?```', ' ', text, flags=re.DOTALL)      # 코드블록
+        text = re.sub(r'!\[[^\]]*\]\([^)]*\)', ' ', text)            # 이미지
+        text = re.sub(r'\[([^\]]*)\]\([^)]*\)', r'\1', text)         # 링크 → 글자만
+
+        parts = []
+        for line in text.splitlines():
+            line = line.strip()
+            # 머리말·표·구분선·인용부호는 요약에 넣지 않는다
+            if not line or line.startswith(('#', '|', '>')) or re.fullmatch(r'[-=*_\s]{3,}', line):
+                continue
+            line = re.sub(r'^\s*(?:[-*+]|\d+\.)\s+', '', line)       # 목록 기호
+            parts.append(line)
+            if sum(len(p) for p in parts) >= 200:
+                break
+
+        summary = re.sub(r'[*_`~#]', '', ' '.join(parts))
+        summary = re.sub(r'\s+', ' ', summary).strip()
+        if len(summary) <= 155:
+            return summary
+        cut = summary[:155]
+        # 가능하면 문장 끝에서 자른다
+        end = max(cut.rfind('. '), cut.rfind('다. '), cut.rfind('! '), cut.rfind('? '))
+        return (cut[:end + 1] if end > 80 else cut.rstrip()) + '…'
+
+    @property
     def all_images(self):
         """레거시 단일 image + 갤러리 image를 합쳐 반환 (표시용)"""
         images = []
