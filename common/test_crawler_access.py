@@ -19,6 +19,7 @@ from django.utils import timezone
 from common.middleware import SecurityMiddleware
 from community.models import Category, Question
 from community.sitemaps import QuestionSitemap, StaticViewSitemap
+from community.views.base_views import ROBOTS_PATH
 
 GOOGLEBOT = 'Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)'
 
@@ -120,3 +121,20 @@ class SitemapContentTests(TestCase):
     def test_static_sitemap_has_no_login_required_pages(self):
         names = [name for name, _p, _c in StaticViewSitemap.PAGES]
         self.assertNotIn('community:guestbook_list', names)
+
+
+class RobotsTxtTests(TestCase):
+    """운영에서는 nginx 가 static/robots.txt 를 서빙한다 — 뷰와 파일이 갈라지면 안 된다."""
+
+    def test_view_serves_the_same_file_nginx_serves(self):
+        served = self.client.get('/robots.txt').content.decode('utf-8')
+        self.assertEqual(served, ROBOTS_PATH.read_text(encoding='utf-8'))
+
+    def test_crawl_wasting_paths_are_disallowed(self):
+        served = self.client.get('/robots.txt').content.decode('utf-8')
+        for path in ('/common/toggle-version/', '/guestbook/', '/common/login/'):
+            self.assertIn(f'Disallow: {path}', served)
+
+    def test_sitemap_is_advertised(self):
+        self.assertIn('Sitemap: https://techchang.com/sitemap.xml',
+                      self.client.get('/robots.txt').content.decode('utf-8'))

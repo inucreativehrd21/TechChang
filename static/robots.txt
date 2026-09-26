@@ -3,5 +3,7 @@ Allow: /
 Disallow: /accounts/
 Disallow: /common/login/
 Disallow: /common/signup/
+Disallow: /common/toggle-version/
+Disallow: /guestbook/
 
 Sitemap: https://techchang.com/sitemap.xml

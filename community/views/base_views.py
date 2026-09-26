@@ -19,24 +19,22 @@ from ..models import Question, Answer, Comment, Category, DailyVisitor
 DEFAULT_CATEGORIES = ['HRD', '데이터분석', '프로그래밍', '자유게시판', '앨범', '공지사항', '문의']
 
 
+ROBOTS_PATH = settings.BASE_DIR / 'static' / 'robots.txt'
+
+
 def robots_txt(request):
-    """검색엔진 크롤러용 robots.txt — 사이트맵 위치 안내."""
-    from django.contrib.sites.shortcuts import get_current_site
-    domain = get_current_site(request).domain
-    lines = [
-        'User-agent: *',
-        'Allow: /',
-        'Disallow: /accounts/',   # allauth 로그인/가입 플로우 (색인 불필요)
-        'Disallow: /common/login/',
-        'Disallow: /common/signup/',
-        # PC↔모바일 전환은 쿠키를 심는 동작용 주소다. Googlebot 이 실제로 긁고 있어
-        # (2026-09 접근로그) 크롤링 예산만 쓰고 색인 가치는 없어 막는다.
-        'Disallow: /common/toggle-version/',
-        'Disallow: /guestbook/',  # 로그인 필요 — 크롤러에겐 로그인 리다이렉트 막다른 길
-        '',
-        f'Sitemap: https://{domain}/sitemap.xml',
-    ]
-    return HttpResponse('\n'.join(lines), content_type='text/plain; charset=utf-8')
+    """검색엔진 크롤러용 robots.txt.
+
+    **운영에서는 nginx 가 static/robots.txt 를 직접 서빙하므로 이 뷰를 타지 않는다**
+    (`location /robots.txt { alias .../static/robots.txt; }`). 예전에는 이 뷰가 내용을
+    따로 만들어 두 벌이 갈라졌고, 뷰만 고치면 운영에 반영되지 않았다. 그래서 같은
+    파일을 읽어 내보낸다 — 내용을 바꿀 곳은 static/robots.txt 한 곳뿐이다.
+    """
+    try:
+        body = ROBOTS_PATH.read_text(encoding='utf-8')
+    except OSError:
+        body = 'User-agent: *\nAllow: /\n\nSitemap: https://techchang.com/sitemap.xml\n'
+    return HttpResponse(body, content_type='text/plain; charset=utf-8')
 
 
 def sitemap_page(request):
