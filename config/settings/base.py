@@ -266,8 +266,31 @@ def _split_patterns(raw_value):
 SUSPICIOUS_USER_AGENT_PATTERNS = _split_patterns(
     os.environ.get('SUSPICIOUS_USER_AGENT_PATTERNS', 'bot,crawler,spider,scraper')
 )
+# 위 'bot' 패턴은 Googlebot·bingbot·Yeti(네이버) 같은 정상 검색 크롤러까지 전부 걸어
+# 의심 점수를 쌓고 결국 IP 를 차단한다(실측: Googlebot UA 로 20회 요청하면 차단됨).
+# 검색 유입이 곧 서비스 목표이므로 주요 검색엔진·SNS 미리보기 봇은 신뢰 목록에 둔다.
+# UA 는 위조 가능하지만, 스캐너는 아래 SCANNER_PATH_PATTERNS 가 경로로 잡는다.
 TRUSTED_USER_AGENT_PATTERNS = _split_patterns(
-    os.environ.get('TRUSTED_USER_AGENT_PATTERNS', 'curl,python-requests,wget,uptimerobot')
+    os.environ.get(
+        'TRUSTED_USER_AGENT_PATTERNS',
+        'curl,python-requests,wget,uptimerobot,'
+        'googlebot,google-inspectiontool,adsbot-google,bingbot,slurp,duckduckbot,'
+        'applebot,yandexbot,yeti,daumoa,naverbot,'
+        'facebookexternalhit,twitterbot,slackbot,linkedinbot,discordbot,telegrambot',
+    )
+)
+# 정상 서비스에는 존재하지 않는 경로 — 설정/비밀정보 탐색 스캐너가 긁는 자리다.
+# UA 를 Googlebot 으로 위조해도 여기서 잡힌다(실측: 34.x/35.x/20.x 대역 스캐너가
+# /credentials.json, /.streamlit/secrets.toml, /docker-compose.yaml 등을 훑었다).
+SCANNER_PATH_PATTERNS = _split_patterns(
+    os.environ.get(
+        'SCANNER_PATH_PATTERNS',
+        r'/\.env|/\.git/|/\.aws/|/\.ssh/|/\.svn/|id_rsa|'
+        r'/wp-admin|/wp-login|/wp-content|/xmlrpc\.php|/phpmyadmin|'
+        r'config\.php|credentials\.json|secrets?\.(toml|ya?ml|json)|'
+        r'docker-compose\.ya?ml|/actuator/|/server-status|/vendor/|'
+        r'/api/fs/exec|/proc/self/|\.\./',
+    )
 )
 TRUSTED_HEALTHCHECK_PATHS = _split_patterns(
     os.environ.get('TRUSTED_HEALTHCHECK_PATHS', '/health,/status')

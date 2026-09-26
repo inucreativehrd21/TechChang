@@ -27,6 +27,8 @@ class SecurityMiddleware:
         self.DDOS_THRESHOLD = getattr(settings, 'DDOS_THRESHOLD', 120)  # 1분에 120회 초과시 의심
         self.BLOCK_DURATION = getattr(settings, 'BLOCK_DURATION', 180)  # 3분간 차단
         self.SUSPICION_SCORE_THRESHOLD = getattr(settings, 'SUSPICION_SCORE_THRESHOLD', 10)
+        # 스캐너 경로 1회 = 의심 점수 5점 (기본 임계 20점이면 4회 만에 차단)
+        self.SCANNER_PROBE_WEIGHT = getattr(settings, 'SCANNER_PROBE_WEIGHT', 5)
         self.PROTECTED_PATH_ATTEMPTS_LIMIT = getattr(settings, 'PROTECTED_PATH_ATTEMPTS_LIMIT', 20)
         self.TRUSTED_PATHS = getattr(settings, 'TRUSTED_HEALTHCHECK_PATHS', ['/health', '/status'])
 
@@ -47,8 +49,10 @@ class SecurityMiddleware:
         trusted_patterns = getattr(settings, 'TRUSTED_USER_AGENT_PATTERNS', [
             'curl', 'python-requests', 'wget', 'uptimerobot'
         ])
+        scanner_patterns = getattr(settings, 'SCANNER_PATH_PATTERNS', [])
         self.SUSPICIOUS_AGENT_PATTERNS = [re.compile(pattern, re.IGNORECASE) for pattern in suspicious_patterns]
         self.TRUSTED_AGENT_PATTERNS = [re.compile(pattern, re.IGNORECASE) for pattern in trusted_patterns]
+        self.SCANNER_PATH_PATTERNS = [re.compile(pattern, re.IGNORECASE) for pattern in scanner_patterns]
         
         # 보호할 경로들
         self.PROTECTED_PATHS = [
@@ -103,7 +107,14 @@ class SecurityMiddleware:
                 logger.error(f"DDoS pattern detected from IP: {client_ip}")
                 return HttpResponse("Suspicious activity detected", status=403)
 
-        # 4. 의심스러운 User-Agent 확인 (신뢰 경로·게임 경로·인증된 관리자 IP 제외)
+        # 4. 설정/비밀정보 탐색 스캐너 — UA 와 무관하게 경로로 잡는다.
+        #    정상 크롤러를 신뢰 목록에 넣은 만큼, 위조 UA 로 들어오는 스캐너는 여기서 막는다.
+        if self.is_scanner_probe(request.path):
+            self.increase_suspicion_score(client_ip, weight=self.SCANNER_PROBE_WEIGHT)
+            logger.warning(f"Scanner probe from IP {client_ip}: {request.path[:120]}")
+            return HttpResponse("Access Denied", status=403)
+
+        # 5. 의심스러운 User-Agent 확인 (신뢰 경로·게임 경로·인증된 관리자 IP 제외)
         #    안심 IP 확인은 UA가 실제 의심될 때만 수행(불필요한 세션 조회 방지)
         if (not self.is_trusted_path(request.path) and not is_game_path
                 and self.is_suspicious_user_agent(request)
@@ -111,7 +122,7 @@ class SecurityMiddleware:
             self.increase_suspicion_score(client_ip)
             logger.info(f"Suspicious User-Agent from IP {client_ip}: {request.META.get('HTTP_USER_AGENT', '')}")
 
-        # 5. 보호된 경로에 대한 추가 검사
+        # 6. 보호된 경로에 대한 추가 검사
         if self.is_protected_path(request.path):
             if not self.check_protected_path_access(request, client_ip):
                 return HttpResponse("Access Denied", status=403)
@@ -199,14 +210,18 @@ class SecurityMiddleware:
 
         return any(pattern.search(user_agent) for pattern in self.SUSPICIOUS_AGENT_PATTERNS)
     
-    def increase_suspicion_score(self, ip):
-        """IP의 의심 점수 증가"""
+    def is_scanner_probe(self, path):
+        """설정/비밀정보 탐색 스캐너가 긁는 경로인지 확인"""
+        return any(pattern.search(path) for pattern in self.SCANNER_PATH_PATTERNS)
+
+    def increase_suspicion_score(self, ip, weight=1):
+        """IP의 의심 점수 증가 (weight 가 클수록 빨리 차단된다)"""
         cache_key = f"suspicion_score:{ip}"
         score = cache.get(cache_key, 0)
-        new_score = score + 1
-        
+        new_score = score + weight
+
         cache.set(cache_key, new_score, 3600)  # 1시간 유지
-        
+
         # 의심 점수가 높으면 차단
         if new_score >= self.SUSPICION_SCORE_THRESHOLD:
             self.block_ip(ip, "High suspicion score")

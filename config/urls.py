@@ -46,6 +46,9 @@ urlpatterns = [
     path('lab/', include('office.urls')),  # 연구팀 가상 연구실 (office 앱)
     path('accounts/', include('allauth.urls')),  # django-allauth URLs
     path('sitemap.xml', sitemap, {'sitemaps': sitemaps}, name='django.contrib.sitemaps.views.sitemap'),
+    # 사람이 보는 사이트맵. sitemap.xml 에 XSL 을 붙이는 방법도 있지만 Chrome 이 XSLT 를
+    # 제거 중이라 경고 배너가 뜨고 곧 깨진다. 별도 HTML 페이지가 내부링크에도 이득이다.
+    path('sitemap/', base_views.sitemap_page, name='sitemap_page'),
     path('robots.txt', base_views.robots_txt, name='robots_txt'),
 ]
 

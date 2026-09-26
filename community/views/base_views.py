@@ -29,10 +29,52 @@ def robots_txt(request):
         'Disallow: /accounts/',   # allauth 로그인/가입 플로우 (색인 불필요)
         'Disallow: /common/login/',
         'Disallow: /common/signup/',
+        # PC↔모바일 전환은 쿠키를 심는 동작용 주소다. Googlebot 이 실제로 긁고 있어
+        # (2026-09 접근로그) 크롤링 예산만 쓰고 색인 가치는 없어 막는다.
+        'Disallow: /common/toggle-version/',
+        'Disallow: /guestbook/',  # 로그인 필요 — 크롤러에겐 로그인 리다이렉트 막다른 길
         '',
         f'Sitemap: https://{domain}/sitemap.xml',
     ]
     return HttpResponse('\n'.join(lines), content_type='text/plain; charset=utf-8')
+
+
+def sitemap_page(request):
+    """사람이 보는 사이트맵 — sitemap.xml 과 같은 범위를 카테고리별로 묶어 보여준다.
+
+    크롤러용 XML 에 XSL 을 붙이는 방법도 있으나 Chrome 이 XSLT 를 제거하는 중이라
+    경고 배너가 뜨고 곧 깨진다. 별도 HTML 페이지면 방문자에게도, 내부링크에도 이득이다.
+    목록 기준은 QuestionSitemap 과 같아야 하므로 같은 쿼리셋을 가져다 쓴다.
+    """
+    from django.urls import reverse
+
+    from ..sitemaps import PortfolioCollectionSitemap, QuestionSitemap, StaticViewSitemap
+
+    posts = list(QuestionSitemap().items())
+    groups = {}
+    for q in posts:
+        groups.setdefault(q.category.name if q.category else '기타', []).append(q)
+
+    # 카테고리 순서는 사이트 기본 순서를 따르고, 그 밖의 것은 뒤에 붙인다
+    ordered = [(name, groups.pop(name)) for name in DEFAULT_CATEGORIES if name in groups]
+    ordered += sorted(groups.items())
+
+    labels = {
+        'community:index': '홈 — 최신 글',
+        'community:board_main': '게시판',
+        'community:games_index': '게임',
+        'community:members_list': '구성원',
+        'common:point_ranking': '포인트 랭킹',
+        'sitemap_page': '사이트맵',
+    }
+    return render(request, 'community/sitemap_page.html', {
+        # 이 페이지 자신은 뺀다 (자기 자신으로 가는 링크)
+        'static_pages': [(reverse(name), labels.get(name, name))
+                         for name, _p, _f in StaticViewSitemap.PAGES if name != 'sitemap_page'],
+        'groups': ordered,
+        'portfolios': PortfolioCollectionSitemap().items(),
+        'total': len(posts),
+    })
 
 
 def ensure_default_categories():

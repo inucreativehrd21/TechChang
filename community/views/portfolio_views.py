@@ -1,7 +1,7 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
-from django.http import JsonResponse, HttpResponseForbidden, HttpResponse, FileResponse
+from django.http import JsonResponse, HttpResponseForbidden, HttpResponse, FileResponse, Http404
 from django.utils import timezone
 from django.views.decorators.clickjacking import xframe_options_sameorigin
 from django.db import models
@@ -128,9 +128,12 @@ def portfolio_view(request, user_id):
     # 포트폴리오 가져오기 (없으면 생성)
     portfolio, created = Portfolio.objects.get_or_create(user=user)
 
-    # 승인되지 않았거나 비공개인 포트폴리오는 본인과 관리자만 볼 수 있음
+    # 승인되지 않았거나 비공개인 포트폴리오는 본인과 관리자만 볼 수 있음.
+    # 403 이 아니라 404 로 돌려준다 — 403 은 "있지만 막혔다" 라 Googlebot 이 매일 다시 긁어
+    # 크롤링 예산을 태우고(2026-09 접근로그에서 /portfolio/1/ 이 7일 연속 403), 비공개 계정의
+    # 존재 자체도 드러난다. 404 면 색인 대상에서 빠지고 정보 노출도 없다.
     if not portfolio.is_publicly_visible() and request.user != user and not request.user.is_staff:
-        return HttpResponseForbidden("이 포트폴리오는 비공개이거나 관리자 승인 대기 중입니다.")
+        raise Http404("이 포트폴리오는 비공개이거나 관리자 승인 대기 중입니다.")
 
     # 조회수 증가 (본인 제외)
     if request.user != user:
