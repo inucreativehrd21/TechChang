@@ -285,16 +285,46 @@ def verify(wt: str) -> tuple:
 
 
 # ───────────────────────────── 6) 커밋·PR
+BOT_NAME = 'TechChang 정비반'
+BOT_EMAIL = 'noreply@techchang.com'
+
+
+def _push_url() -> str:
+    """토큰을 담은 1회용 push URL.
+
+    서버에는 git 자격 증명 헬퍼가 없어 https push 가 그냥 실패한다. 토큰을 디스크의
+    git config 나 credential store 에 남기지 않도록, push 명령 인자로만 넘긴다.
+    """
+    token = getattr(settings, 'GITHUB_DISPATCH_TOKEN', '')
+    repo = getattr(settings, 'GITHUB_REPO', '')
+    if not token or not repo:
+        return ''
+    return f'https://x-access-token:{token}@github.com/{repo}.git'
+
+
+def _redact(text: str) -> str:
+    token = getattr(settings, 'GITHUB_DISPATCH_TOKEN', '')
+    return text.replace(token, '***') if token else text
+
+
 def commit_push(wt: str, branch: str, task, files: list) -> tuple:
     run(['git', 'add', '-A'], cwd=wt)
     msg = f"fix: {task.title[:60]}\n\n정비반 자동 수정 (작업 #{task.id}"
     if task.issue_number:
         msg += f", closes #{task.issue_number}"
     msg += ")\n\nCo-Authored-By: Claude Opus 5 <noreply@anthropic.com>"
-    r = run(['git', 'commit', '-m', msg], cwd=wt)
-    if r.returncode != 0 and 'nothing to commit' in (r.stdout or ''):
-        return False, '변경 사항이 없습니다'
-    r = run(['git', 'push', '-u', 'origin', branch], cwd=wt, timeout=180)
+    # 서버에 user.name/user.email 이 없어도 커밋되도록 이 호출에만 신원을 준다
+    r = run(['git', '-c', f'user.name={BOT_NAME}', '-c', f'user.email={BOT_EMAIL}',
+             'commit', '-m', msg], cwd=wt)
     if r.returncode != 0:
-        return False, f'push 실패: {(r.stderr or "")[-200:]}'
+        if 'nothing to commit' in (r.stdout or ''):
+            return False, '변경 사항이 없습니다'
+        return False, f'commit 실패: {((r.stderr or "") + (r.stdout or ""))[-200:]}'
+    url = _push_url()
+    if not url:
+        return False, 'GITHUB_DISPATCH_TOKEN/GITHUB_REPO 미설정 — push 할 수 없습니다'
+    # -u 는 쓰지 않는다 — upstream 을 기록하면 토큰이 박힌 URL 이 .git/config 에 남는다
+    r = run(['git', 'push', url, f'{branch}:{branch}'], cwd=wt, timeout=180)
+    if r.returncode != 0:
+        return False, f'push 실패: {_redact((r.stderr or ""))[-200:]}'
     return True, ''
