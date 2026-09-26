@@ -303,23 +303,24 @@ class RequestLoggingMiddleware:
         return ip if ip else '0.0.0.0'
     
     def is_suspicious_request(self, request, response, response_time):
-        """의심스러운 요청 패턴 확인"""
-        # 1. 너무 빠른 응답 (봇 가능성)
-        if response_time < 0.1:
-            return True
-        
-        # 2. 404 오류가 많은 경우 (스캐닝 가능성)
+        """의심스러운 요청 패턴 확인
+
+        응답 속도만으로는 판정하지 않는다 — 정적/캐시 응답도 0.1초 미만으로
+        끝나므로 빠른 응답 자체는 위협 지표가 아니라 정상 트래픽과 구분되지 않는다.
+        """
+        # 1. 404 오류가 많은 경우 (스캐닝 가능성)
         if response.status_code == 404:
             return True
-        
-        # 3. POST 요청에서 CSRF 오류
+
+        # 2. POST 요청에서 CSRF 오류
         if request.method == 'POST' and response.status_code == 403:
             return True
-        
-        # 4. 관리자 페이지 접근 시도
-        if '/admin' in request.path and not request.user.is_staff:
+
+        # 3. Django 관리자 페이지(/admin/) 접근 시도 — startswith 로 좁혀
+        #    /lab/admin/... 같은 앱 내부 경로(폴링 엔드포인트 포함)는 대상에서 제외
+        if request.path.startswith('/admin') and not request.user.is_staff:
             return True
-        
+
         return False
 
 
