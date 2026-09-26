@@ -249,7 +249,12 @@ def apply_edits(wt: str, edits: list) -> tuple:
                 if not os.path.exists(full):
                     errs.append(f'{rel}: 파일 없음')
                     continue
-                text = open(full, encoding='utf-8').read()
+                # 원본 줄바꿈을 유지한다. CRLF 파일을 LF 로 바꿔 쓰면 10줄짜리 수정이
+                # 파일 전체 diff 가 되어 PR 을 읽을 수 없게 된다.
+                with open(full, encoding='utf-8') as fh:
+                    text = fh.read()
+                    seen = fh.newlines
+                newline = seen[0] if isinstance(seen, tuple) else (seen or '\n')
                 find, repl = e.get('find', ''), e.get('replace', '')
                 n = text.count(find)
                 if not find or n == 0:
@@ -257,7 +262,7 @@ def apply_edits(wt: str, edits: list) -> tuple:
                 elif n > 1:
                     errs.append(f'{rel}: 찾는 코드가 {n}번 나타남 — 더 긴 조각 필요')
                 else:
-                    open(full, 'w', encoding='utf-8', newline='\n').write(text.replace(find, repl))
+                    open(full, 'w', encoding='utf-8', newline=newline).write(text.replace(find, repl))
                     done.append(rel)
         except Exception as ex:  # noqa: BLE001
             errs.append(f'{rel}: {ex}')
