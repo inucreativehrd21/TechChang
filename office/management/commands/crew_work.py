@@ -100,7 +100,7 @@ class Command(BaseCommand):
                 if not files:
                     feedback = ('[직전 시도 실패]\n' + '\n'.join(errs) +
                                 '\n위 문제를 고쳐서 edits 를 다시 만드세요. find 는 파일 원문 그대로여야 합니다.\n\n')
-                    M.run(['git', 'checkout', '--', '.'], cwd=wt)
+                    M.reset_worktree(wt)
                     continue
 
                 vok, vout = M.verify(wt)
@@ -112,8 +112,10 @@ class Command(BaseCommand):
                                    'verify': vout[-1200:], 'errors': errs}
                     break
                 feedback = ('[직전 시도 검증 실패 — 아래 오류를 반드시 해결하세요]\n' + vout[-2500:] +
-                            '\n\n같은 작업을 다시, 이번엔 오류가 나지 않게 수정하세요.\n\n')
-                M.run(['git', 'checkout', '--', '.'], cwd=wt)
+                            '\n\n같은 작업을 다시, 이번엔 오류가 나지 않게 수정하세요.\n'
+                            '이전 시도의 수정은 모두 되돌렸습니다 — 새로 만든 테스트 파일을 포함해\n'
+                            '필요한 파일을 처음부터 다시 내놓으세요.\n\n')
+                M.reset_worktree(wt)
 
             if not ok:
                 task.plan = plan

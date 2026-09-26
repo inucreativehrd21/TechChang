@@ -210,6 +210,17 @@ def make_worktree(task) -> tuple:
     return path, branch, ''
 
 
+def reset_worktree(wt: str):
+    """재시도 전 worktree 를 HEAD 상태로 되돌린다.
+
+    checkout 만으로는 직전 시도가 만든 **새 파일(추적 안 됨)** 이 남아, 다음 시도가 그 파일을
+    고치지 못한 채 같은 실패를 반복한다. 실제로 테스트 파일이 1차 시도 상태로 얼어붙어
+    4회 연속 같은 검증 실패가 나왔다. 그래서 untracked 까지 함께 지운다.
+    """
+    run(['git', 'checkout', '--', '.'], cwd=wt)
+    run(['git', 'clean', '-fd'], cwd=wt)
+
+
 def run(args, cwd=REPO, timeout=120, env=None):
     return subprocess.run(args, cwd=cwd, capture_output=True, text=True, timeout=timeout,
                           env={**os.environ, **(env or {})}, encoding='utf-8', errors='replace')
