@@ -78,7 +78,10 @@ class ScannerProbeTests(TestCase):
     def test_spoofed_googlebot_probing_secrets_is_blocked(self):
         """UA 를 Googlebot 으로 위조해도 경로로 잡힌다 — 실제 관측된 경로들."""
         for path in ('/credentials.json', '/.streamlit/secrets.toml', '/docker-compose.yaml',
-                     '/.env', '/.git/HEAD', '/wp-admin/setup.php', '/api/fs/exec'):
+                     '/.env', '/.git/HEAD', '/wp-admin/setup.php', '/api/fs/exec',
+                     # 2026-09-26 운영 로그에서 실제로 관측된 변형들
+                     '/.mail.env', '/.docker/laravel/app/.env', '/.env.anthropic',
+                     '/terraform.tfstate', '/.config/gcloud/application_default_credentials.json'):
             cache.clear()
             response = self._probe(path)
             self.assertIsNotNone(response, path)

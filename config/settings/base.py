@@ -285,7 +285,9 @@ TRUSTED_USER_AGENT_PATTERNS = _split_patterns(
 SCANNER_PATH_PATTERNS = _split_patterns(
     os.environ.get(
         'SCANNER_PATH_PATTERNS',
-        r'/\.env|/\.git/|/\.aws/|/\.ssh/|/\.svn/|id_rsa|'
+        # `/\.env` 가 아니라 `\.env` — 실제 스캔에서 /.mail.env, /app/.env 처럼
+        # 중간에 낀 형태가 더 많았다. 슬러그는 점을 못 쓰므로 정상 URL 과 겹치지 않는다.
+        r'\.env|\.tfstate|/\.git/|/\.aws/|/\.ssh/|/\.svn/|/\.config/|id_rsa|'
         r'/wp-admin|/wp-login|/wp-content|/xmlrpc\.php|/phpmyadmin|'
         r'config\.php|credentials\.json|secrets?\.(toml|ya?ml|json)|'
         r'docker-compose\.ya?ml|/actuator/|/server-status|/vendor/|'
