@@ -103,9 +103,16 @@ def office_home(request):
     meeting = Meeting.objects.prefetch_related('decisions').first()
     recent_drafts = list(ColumnDraft.objects.filter(status=ColumnDraft.STATUS_PUBLISHED, question__isnull=False)
                          .select_related('question')[:6])
-    decisions = [d for d in meeting.decisions.all() if d.is_public] if meeting else []
-    for d in decisions:
-        d.topic_name = TOPIC_LABEL.get(d.topic, '')
+    # 공개 페이지에는 '무엇을 쓰기로 했는지'만 보여 준다. 사이트 개선·운영 안건은
+    # 독자의 관심사가 아니고, 탈락 선택지와 그 사유는 내부 판단이라 내보내지 않는다.
+    decisions = []
+    if meeting:
+        for d in meeting.decisions.all():
+            if d.kind not in (Decision.KIND_COLUMN, Decision.KIND_SERIES) or not d.chosen_key:
+                continue
+            d.topic_name = TOPIC_LABEL.get(d.topic, '')
+            d.headline = (d.chosen or {}).get('title', '')
+            decisions.append(d)
     for d in recent_drafts:
         d.topic_name = TOPIC_LABEL.get(d.topic, '')
     return render(request, 'office/office.html', {
@@ -181,6 +188,9 @@ def decision_choose(request, decision_id):
     if m.pending_count == 0 and m.status != Meeting.STATUS_CLOSED:
         m.status = Meeting.STATUS_CLOSED
         m.save(update_fields=['status'])
+        # 안건이 다 정해진 지금이 공개용 문장을 만들 시점이다. 회의 직후에는 아직
+        # 고른 주제가 없어 다듬을 내용이 없다. 회의당 한 번만 돌아간다.
+        _spawn(request, ['polish_meeting', '--meeting', str(m.id)])
     WorkLog.objects.create(agent='lead', action='decision', meeting=m,
                            text=f"관리자 결정: {d.question} → {(d.chosen or {}).get('title', '')}")
     msg = f'결정 저장: {(d.chosen or {}).get("title", "")}'

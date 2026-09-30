@@ -42,6 +42,15 @@
   .panel { border: 1px solid var(--border-color, #e5e7eb); border-radius: 14px; background: var(--bg-card, #fff); padding: 16px 18px; }
   .panel h2 { font-size: 1.05rem; font-weight: 800; margin: 0 0 10px; }
   .panel h2 small { font-weight: 500; color: var(--text-secondary); margin-left: 6px; }
+  .meeting-lead { margin: 0 0 16px; line-height: 1.7; }
+  .next-head { font-size: .78rem; font-weight: 700; letter-spacing: .05em; color: #6b7280;
+               margin: 0 0 10px; text-transform: uppercase; }
+  .next-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
+  .next-list li { display: grid; gap: 3px; padding-left: 11px; border-left: 3px solid #e0e7ff; }
+  .next-list li b { font-size: .97rem; line-height: 1.45; }
+  .next-tag { justify-self: start; font-size: .7rem; font-weight: 700; letter-spacing: .04em;
+              color: #4f46e5; background: #eef2ff; border-radius: 999px; padding: 1px 8px; }
+  .next-note { color: var(--text-secondary, #6b7280); font-size: .87rem; line-height: 1.55; }
   .decision { padding: 10px 0; border-top: 1px dashed var(--border-color, #e5e7eb); }
   .decision:first-of-type { border-top: 0; }
   .decision .q { font-weight: 700; }
@@ -99,19 +108,22 @@
     <div class="panel">
       <h2>최근 편집회의{% if meeting %}<small>{{ meeting.week_start|date:"Y.m.d" }} 주차 · {{ meeting.held_at|date:"m/d H:i" }}</small>{% endif %}</h2>
       {% if meeting %}
-        <p style="margin:0 0 8px;">{{ meeting.summary|default:"(요약 없음)" }}</p>
-        {% for d in public_decisions %}
-        <div class="decision">
-          <div class="kind">{{ d.get_kind_display }}{% if d.topic_name %} · {{ d.topic_name }}{% endif %}</div>
-          <div class="q">{{ d.question }}</div>
-          <ul>
-            {% for o in d.options %}
-            <li class="{% if o.key == d.chosen_key %}chosen{% endif %}">{{ o.title }} <span>— {{ o.proposed_by }}</span></li>
-            {% endfor %}
-          </ul>
-          {% if not d.chosen_key %}<small style="color:var(--text-secondary)">운영자 결정 대기</small>{% endif %}
-        </div>
-        {% endfor %}
+        {% if meeting.public_summary %}<p class="meeting-lead">{{ meeting.public_summary }}</p>{% endif %}
+        {% if public_decisions %}
+        <h3 class="next-head">다음에 나올 글</h3>
+        <ul class="next-list">
+          {% for d in public_decisions %}
+          <li>
+            {% if d.topic_name %}<span class="next-tag">{{ d.topic_name }}</span>
+            {% else %}<span class="next-tag">{{ d.get_kind_display }}</span>{% endif %}
+            <b>{{ d.headline }}</b>
+            {% if d.public_note %}<span class="next-note">{{ d.public_note }}</span>{% endif %}
+          </li>
+          {% endfor %}
+        </ul>
+        {% elif not meeting.public_summary %}
+        <p style="color:var(--text-secondary); margin:0;">이번 회의 결과를 정리하고 있습니다.</p>
+        {% endif %}
       {% else %}
         <p style="color:var(--text-secondary); margin:0;">아직 열린 회의가 없습니다. 첫 회의는 일요일 저녁에 열립니다.</p>
       {% endif %}
@@ -123,8 +135,9 @@
         {% if recent_drafts %}
         <ul class="cols" style="margin:0; padding-left:1.1em;">
           {% for d in recent_drafts %}
+          {# 편집 심사 점수는 내부 기록이라 공개하지 않는다 (100점 만점인데 /10 으로 잘못 찍히고 있기도 했다) #}
           <li><a href="{% url 'community:detail' d.question.id %}">{{ d.subject }}</a>
-            <small style="color:var(--text-secondary)">{{ d.topic_name }} · QA {{ d.qa_score|default:"-" }}/10{% if d.chart_path %} · 차트{% endif %}</small></li>
+            <small style="color:var(--text-secondary)">{{ d.topic_name }}{% if d.chart_path %} · 도표{% endif %} · {{ d.created_at|date:"m/d" }}</small></li>
           {% endfor %}
         </ul>
         {% else %}<p style="color:var(--text-secondary); margin:0;">아직 없습니다.</p>{% endif %}

@@ -100,6 +100,70 @@ class PublicLogsListTests(TestCase):
             self.assertTrue(public_logs(WorkLog.objects.order_by('-created_at')))
 
 
+class MeetingPolishTests(TestCase):
+    """공개 회의 안내문 — 운영 지표와 내부 판단이 새면 안 된다."""
+
+    INTERNAL = ('방문자는 늘었지만 검색 CTR 3.6%·평균순위 14.4위로 검색 유입이 부진해 '
+                '제목·메타 재작성이 최우선 과제로 재확인됐습니다. 검증관 지적에 따라 일부는 보류합니다.')
+
+    def setUp(self):
+        from datetime import date
+
+        from office.models import Decision, Meeting
+        self.m = Meeting.objects.create(week_start=date(2026, 9, 27), summary=self.INTERNAL)
+        self.col = Decision.objects.create(
+            meeting=self.m, kind=Decision.KIND_COLUMN, topic='hrd', question='다음 주 HRD 칼럼 주제',
+            options=[{'key': 'a', 'title': '1on1 미팅, 형식만 있고 내용은 없는 이유',
+                      'detail': '회복탄력성 시리즈와 결을 이음', 'proposed_by': '한빈'}],
+            chosen_key='a')
+        self.ops = Decision.objects.create(
+            meeting=self.m, kind=Decision.KIND_OPS, question='운영·보안 점검 과제',
+            options=[{'key': 'a', 'title': '의심 IP 차단 로그 모니터링'}], chosen_key='a')
+        self.undecided = Decision.objects.create(
+            meeting=self.m, kind=Decision.KIND_COLUMN, topic='data', question='다음 주 데이터 주제',
+            options=[{'key': 'a', 'title': '미정 주제'}])
+
+    def _polish(self, response):
+        from unittest.mock import patch
+
+        from office.publiclog import polish_meeting
+        with patch('office.services.ask_agent_json', return_value=response) as m:
+            return polish_meeting(self.m), m
+
+    def test_only_decided_column_topics_are_sent_to_the_model(self):
+        captured = {}
+
+        def fake(agent, prompt, **kw):
+            captured['prompt'] = prompt
+            return {'summary': '', 'notes': {}}
+
+        from unittest.mock import patch
+
+        from office.publiclog import polish_meeting
+        with patch('office.services.ask_agent_json', side_effect=fake):
+            polish_meeting(self.m)
+        self.assertIn('1on1 미팅', captured['prompt'])
+        self.assertNotIn('의심 IP', captured['prompt'])     # 운영·보안 안건은 입력에 없다
+        self.assertNotIn('미정 주제', captured['prompt'])    # 아직 안 고른 안건도 없다
+
+    def test_notes_are_mapped_to_the_right_decision(self):
+        res, _ = self._polish({'summary': '이번 주에는 …', 'notes': {str(self.col.id): '대화가 비는 이유를 다룹니다.'}})
+        self.assertEqual(res['notes'], {self.col.id: '대화가 비는 이유를 다룹니다.'})
+
+    def test_notes_for_unknown_decisions_are_dropped(self):
+        res, _ = self._polish({'summary': 's', 'notes': {'99999': '엉뚱한 소개'}})
+        self.assertEqual(res['notes'], {})
+
+    def test_no_decided_topics_makes_no_call(self):
+        from unittest.mock import patch
+
+        from office.publiclog import polish_meeting
+        self.col.chosen_key = ''
+        self.col.save(update_fields=['chosen_key'])
+        with patch('office.services.ask_agent_json', side_effect=AssertionError('API 호출됨')):
+            self.assertEqual(polish_meeting(self.m), {'summary': '', 'notes': {}})
+
+
 class PolishTests(TestCase):
     ROWS = [(1, '은혜', '분석관·팀장', '칼럼을 발행했습니다 — 1on1의 역설.'),
             (2, '재원', '데이터·차트 담당', '도표를 만들었습니다.')]

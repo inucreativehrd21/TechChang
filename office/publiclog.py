@@ -133,6 +133,51 @@ POLISH_PROMPT = (
 )
 
 
+MEETING_PROMPT = (
+    '연구팀 공개 페이지에 올릴 편집회의 안내문을 씁니다. 독자는 이 사이트의 방문자입니다.\n'
+    '아래는 내부용 회의 결론과, 이번에 쓰기로 정한 칼럼 주제들입니다.\n\n'
+    '[내부 회의 결론]\n{summary}\n\n[정해진 주제]\n{topics}\n\n'
+    '지켜야 할 것:\n'
+    '- **운영 지표(방문자 수·CTR·검색 순위)와 사이트 개선 과제는 쓰지 마세요.** 독자의 관심사가 아닙니다\n'
+    '- 반려·보류된 안건, 그 사유, 내부 역할 이름(검증관·팀장 등)도 넣지 않습니다\n'
+    '- 요약은 "이번 주에 어떤 이야기를 준비하고 있는지" 2~3문장. 한국어 존댓말, 담백하게\n'
+    '- 주제별 소개는 **한 문장**으로, 그 글이 무엇을 다루는지만. 제목을 되풀이하지 마세요\n'
+    '- 사실을 지어내지 마세요. 주어진 내용 안에서만 씁니다\n\n'
+    '출력 JSON: {{"summary": "2~3문장", "notes": {{"<주제 번호>": "한 문장 소개", ...}}}}'
+)
+
+
+def polish_meeting(meeting) -> dict:
+    """회의 요약·주제 소개를 독자용으로 다듬는다. 반환 {'summary': str, 'notes': {decision_id: str}}.
+
+    주 1회 회의 때 한 번만 부른다(호출 1회). 공개 페이지는 저장된 결과만 읽는다.
+    모델에는 칼럼·시리즈 주제만 넘긴다 — 운영·보안 안건은 애초에 입력에 넣지 않는다.
+    """
+    from .models import Decision
+    from .services import ask_agent_json
+
+    topics = [d for d in meeting.decisions.all()
+              if d.kind in (Decision.KIND_COLUMN, Decision.KIND_SERIES) and d.chosen_key]
+    if not topics:
+        return {'summary': '', 'notes': {}}
+
+    lines = []
+    for d in topics:
+        c = d.chosen or {}
+        lines.append(f"{d.id}. [{d.get_kind_display()}] {c.get('title', '')} — {c.get('detail', '')}")
+    res = ask_agent_json('lead', MEETING_PROMPT.format(
+        summary=meeting.summary or '(없음)', topics='\n'.join(lines)), max_tokens=1500)
+
+    notes = {}
+    raw = res.get('notes') if isinstance(res.get('notes'), dict) else {}
+    valid = {str(d.id) for d in topics}
+    for key, value in raw.items():
+        key = str(key).strip().rstrip('.')
+        if key in valid and isinstance(value, str) and value.strip():
+            notes[int(key)] = ' '.join(value.split())[:300]
+    return {'summary': ' '.join(str(res.get('summary', '')).split())[:900], 'notes': notes}
+
+
 def polish(rows: list) -> dict:
     """[(id, 연구원 이름, 역할, 기계 문장)] → {id: 다듬은 문장}.
 

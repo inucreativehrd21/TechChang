@@ -15,6 +15,9 @@ class Meeting(models.Model):
     transcript = models.JSONField(default=list, verbose_name='회의록')
     snapshot = models.JSONField(default=dict, verbose_name='수집 데이터 스냅샷')
     summary = models.TextField(blank=True, verbose_name='결론 요약')
+    # 공개 연구실에 보여 줄 요약. summary 는 운영 지표(CTR·평균순위)와 내부 판단이 섞인
+    # 관리 문서라 그대로 내보낼 수 없다. 독자에게 "무엇을 쓰기로 했는지"만 전한다.
+    public_summary = models.TextField(blank=True, verbose_name='공개용 요약')
 
     class Meta:
         ordering = ['-held_at']
@@ -49,6 +52,9 @@ class Decision(models.Model):
     chosen_by = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL, related_name='+')
     chosen_at = models.DateTimeField(null=True, blank=True)
     note = models.CharField(max_length=300, blank=True, verbose_name='관리자 메모')
+    # 공개용 한 줄 소개. options[].detail 은 "프레임 중복을 피함" 처럼 편집 회의 내부
+    # 판단이라 독자에게는 의미가 없다. 무엇을 다루는 글인지만 남긴다.
+    public_note = models.CharField(max_length=300, blank=True, verbose_name='공개용 소개')
     consumed_at = models.DateTimeField(null=True, blank=True, verbose_name='칼럼에 반영된 시각')
 
     class Meta:
