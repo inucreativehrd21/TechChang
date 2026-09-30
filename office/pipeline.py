@@ -25,7 +25,8 @@ from django.utils import timezone
 from common.management.commands.auto_write_columns import COLUMN_STRUCTURE, TOPICS
 from .agents import TOPIC_AGENT as TOPIC_AGENT_OF
 from .models import ColumnDraft
-from .services import ask_agent, ask_agent_json, audit_chart, chart_markdown, render_chart
+from .services import (ask_agent, ask_agent_json, audit_chart, audit_style, chart_markdown,
+                       render_chart)
 
 # ───────────────────────────── 심사 기준 (편집 루브릭)
 #   항목: (가중치, 설명) — 각 항목을 1~5점으로 채점해 가중합 → 100점 환산
@@ -41,8 +42,11 @@ RUBRIC = {
 }
 ACCEPT_SCORE = 80          # 이상이면 발행 (전 항목 4점 = 80점 = 발행 가능 수준)
 MINOR_SCORE = 65           # 이상 80 미만이면 자동 1회 수정 후 재심, 미만이면 보류(Major)
-MIN_CHARS = 2200           # 본문 하한 (목표 2,500~3,500자)
+MIN_CHARS = 2200           # 본문 하한 — 미달은 치명(too_short)
+TARGET_MAX = 3500          # 권장 상한. **넘겨도 감점하지 않는다** — 밀도가 유지되면 괜찮다
+MAX_CHARS = 7000           # 이 위로는 편집이 필요하다고 본다(산만·중복 의심)
 MAX_AUTO_REVISIONS = 1     # Minor revision 자동 재작성 횟수
+PLAIN_STYLE_LIMIT = 0.15   # 평서체 문장이 이 비율을 넘으면 문체 미통일로 본다
 
 
 # ───────────────────────────── 프롬프트
@@ -125,7 +129,8 @@ CHART_PROMPT = (
 
 QA_PROMPT = (
     '편집 심사 단계입니다. 편집장으로서 아래 칼럼을 **항목별로** 채점하세요. 총점은 시스템이 계산하므로 매기지 마세요.\n\n'
-    '[팩트체크 보고]\n{check}\n\n[본문 글자 수] {length}자 (목표 2,500~3,500자)\n[시각자료] {visual}\n\n'
+    '[팩트체크 보고]\n{check}\n\n[본문 글자 수] {length}자\n{length_rule}\n[문체 점검] {style}\n'
+    '[시각자료] {visual}\n\n'
     '[칼럼]\nTITLE: {subject}\n{content}\n\n'
     '각 항목을 1~5점으로 채점합니다. 5=흠잡을 데 없음, 4=사소한 보완, 3=수정 필요, 2=상당한 결함, 1=기준 미달.\n'
     '{rubric}\n\n'
@@ -133,7 +138,8 @@ QA_PROMPT = (
     '"unverified_data"(확인 불가 수치가 본문에 남아 있음), "duplicate"(기존 칼럼과 소재 중복), '
     '"too_short"(목표 분량에 크게 못 미침), "no_evidence"(비교 가능한 수치가 사실상 없음), '
     '"structure_broken"(필수 섹션 누락), "overclaim"(근거 없는 단정), '
-    '"visual_broken"(차트가 본문 수치와 어긋나거나, 비교가 성립하지 않아 아무것도 말해 주지 못함)\n\n'
+    '"visual_broken"(차트가 본문 수치와 어긋나거나, 비교가 성립하지 않아 아무것도 말해 주지 못함), '
+    '"style_broken"(하우스 스타일인 존댓말을 벗어나 평서체가 섞이거나 전체가 평서체)\n\n'
     '[시각자료] 항목에는 차트의 실제 항목·값·자동 점검 결과가 들어 있습니다. '
     '그 값들이 본문 주장과 맞물리는지, 한 그림 안에 묶을 만한 비교인지 직접 판단하세요.\n\n'
     '출력 JSON: {{"scores": {{"structure": 1~5, "depth": 1~5, "evidence": 1~5, "logic": 1~5, '
@@ -337,12 +343,10 @@ def step_visual(content: str, topic_key: str, *, rec, dry: bool = False) -> tupl
         rel, err = render_chart(spec, stem)
         chart_rel = rel or ''
 
-    block = chart_markdown(chart_rel, spec)
-    if res.get('caption'):
-        block += f"\n\n{res['caption']}"
+    block = chart_markdown(chart_rel, spec, caption=res.get('caption', ''))
     content = insert_after_heading(content, res.get('insert_after_heading', ''), block)
 
-    errors, warns, report = audit_chart(spec, content, chart_rel)
+    errors, warns, report = audit_chart(spec, content, chart_rel, res.get('caption', ''))
     if chart_rel:
         note = f"차트+표 삽입: {spec.get('title', '')} ({spec.get('type', 'bar')}, 항목 {len(spec.get('labels') or [])}개)"
     elif err:
@@ -359,22 +363,57 @@ def step_visual(content: str, topic_key: str, *, rec, dry: bool = False) -> tupl
     return content, chart_rel, note[:200], report
 
 
+def length_rule(length: int) -> str:
+    """분량 지침. **하한만 감점 사유이고 상한 초과는 감점하지 않는다.**
+
+    편집장이 목표 상한(3,500자)을 넘겼다는 이유로 감점하는 일이 있었는데, 길다는 것
+    자체는 결함이 아니다. 밀도가 유지되면 긴 글은 깊은 글이다. 정말 손봐야 하는 것은
+    같은 말을 반복해 늘어진 경우뿐이므로, 그 판단 기준만 남긴다.
+    """
+    if length < MIN_CHARS:
+        return (f'하한 {MIN_CHARS:,}자에 미달합니다 — too_short 치명 결함입니다.')
+    if length > MAX_CHARS:
+        return (f'권장 상한 {TARGET_MAX:,}자를 크게 넘었습니다. 길이 자체는 감점 사유가 아니지만, '
+                '같은 내용이 반복되거나 곁가지가 늘어졌는지만 확인해 지적해 주세요.')
+    if length > TARGET_MAX:
+        return (f'권장 분량({MIN_CHARS:,}~{TARGET_MAX:,}자)보다 깁니다. **이것은 감점 사유가 아닙니다.** '
+                '밀도가 유지된다면 오히려 심층성의 근거이니 depth 점수에 반영하세요. '
+                '내용이 반복될 때만 지적합니다.')
+    return f'권장 분량({MIN_CHARS:,}~{TARGET_MAX:,}자) 안입니다.'
+
+
 def step_review(subject: str, content: str, check: dict, chart_rel: str,
                 visual_report: str = '') -> dict:
     """6) 편집 심사 — 항목 점수를 받아 총점·판정은 시스템이 계산."""
     have = '차트 이미지 + 표 있음' if chart_rel else ('표 있음(차트 없음)' if has_visual(content) else '없음')
     visual = f'{have}\n{visual_report}' if visual_report else have
     length = body_length(content)
+    offenders, st = audit_style(content)
+    if offenders:
+        style_note = (f"평서체 {st['plain']}/{st['total']}문장({st['plain_ratio']:.0%}) — "
+                      '하우스 스타일은 존댓말입니다. 예: ' + ' / '.join(offenders[:3]))
+    else:
+        style_note = f"존댓말로 통일됨 ({st['polite']}문장 확인)"
     qa = ask_agent_json('lead', QA_PROMPT.format(
         check=json.dumps({k: v for k, v in check.items() if k != 'first'}, ensure_ascii=False)[:2500],
-        length=length, visual=visual, subject=subject, content=content, rubric=rubric_text()), max_tokens=3000)
+        length=length, length_rule=length_rule(length), style=style_note,
+        visual=visual, subject=subject, content=content, rubric=rubric_text()), max_tokens=3000)
 
     scores = qa.get('scores') if isinstance(qa.get('scores'), dict) else {}
     fatal = [f for f in (qa.get('fatal') or []) if isinstance(f, str)]
     # 시스템이 직접 확인하는 결함 (모델이 놓쳐도 강제)
     if length < MIN_CHARS and 'too_short' not in fatal:
         fatal.append('too_short')
-        qa.setdefault('issues', []).append(f'본문 {length}자로 목표(2,500~3,500자) 미달 — 심층성 부족')
+        qa.setdefault('issues', []).append(f'본문 {length}자로 하한({MIN_CHARS:,}자) 미달 — 심층성 부족')
+    # 길다는 이유로 붙은 결함은 걷어낸다 — 분량 초과는 감점 사유가 아니다
+    if 'too_short' in fatal and length >= MIN_CHARS:
+        fatal.remove('too_short')
+    # 문체는 기계로 판별되므로 모델 판단과 무관하게 강제한다
+    if st['plain_ratio'] > PLAIN_STYLE_LIMIT and st['total'] >= 5 and 'style_broken' not in fatal:
+        fatal.append('style_broken')
+        qa.setdefault('issues', []).append(
+            f"문체 미통일: 평서체 {st['plain']}문장({st['plain_ratio']:.0%}) — "
+            f"전부 존댓말로 고쳐야 합니다. 예: {offenders[0][:50]}")
     if not has_visual(content) and 'no_evidence' not in fatal:
         fatal.append('no_evidence')
         qa.setdefault('issues', []).append('본문에 차트·표가 없음 — 데이터 근거 섹션을 보강해야 함')

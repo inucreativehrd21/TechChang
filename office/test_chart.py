@@ -160,9 +160,22 @@ class AuditChartTests(TestCase):
     OK_SPEC = {'type': 'bar', 'title': '비교', 'labels': ['가', '나', '다'], 'unit': '%',
                'source': 'Stack Overflow 2024', 'series': [{'name': '비율', 'values': [40, 52, 3]}]}
 
-    def _audit(self, spec=None, body=None, chart_rel='columns/x.png'):
+    CAPTION = '세 지표를 나란히 두면 형식과 효과의 간극이 드러납니다.'
+
+    def _audit(self, spec=None, body=None, chart_rel='columns/x.png', caption=None):
         from office.services import audit_chart
-        return audit_chart(spec or dict(self.OK_SPEC), body if body is not None else self.BODY, chart_rel)
+        return audit_chart(spec or dict(self.OK_SPEC), body if body is not None else self.BODY,
+                           chart_rel, self.CAPTION if caption is None else caption)
+
+    def test_missing_caption_is_fatal(self):
+        """도판은 무엇을 읽어야 하는지 알려 줘야 한다 — 편집장 지적사항."""
+        errors, _, _ = self._audit(caption='')
+        self.assertTrue(any('캡션' in e for e in errors))
+
+    def test_too_short_caption_is_a_warning(self):
+        errors, warns, _ = self._audit(caption='비교입니다.')
+        self.assertEqual(errors, [])
+        self.assertTrue(any('캡션' in w for w in warns))
 
     def test_clean_chart_has_no_findings(self):
         errors, warns, report = self._audit()
@@ -240,6 +253,99 @@ class ReviewUsesChartReportTests(TestCase):
         with patch.object(P, 'ask_agent_json', return_value=fake_qa):
             qa = P.step_review('제목', content, {'verdict': 'ok'}, 'columns/x.png', '자동 점검: 이상 없음')
         self.assertNotIn('visual_broken', qa['fatal'])
+
+
+class StyleAuditTests(TestCase):
+    """하우스 스타일은 존댓말 — 프롬프트만으로는 지켜지지 않아 기계로 확인한다."""
+
+    def _audit(self, text):
+        from office.services import audit_style
+        return audit_style(text)
+
+    def test_polite_body_passes(self):
+        offenders, st = self._audit('AI 도구가 빠르게 퍼지고 있습니다. 검증은 사람 몫으로 남습니다.')
+        self.assertEqual(offenders, [])
+        self.assertEqual(st['plain'], 0)
+
+    def test_plain_style_is_caught(self):
+        offenders, st = self._audit('회의는 열렸고 기록도 남았지만 대화는 없었다. 이것이 문제다.')
+        self.assertEqual(st['plain'], 2)
+        self.assertEqual(st['plain_ratio'], 1.0)
+        self.assertTrue(offenders)
+
+    def test_seupnida_is_not_mistaken_for_plain_style(self):
+        """'~습니다'도 '다'로 끝나므로 단순 검사는 오탐한다."""
+        _, st = self._audit('그렇게 되었습니다. 앞으로도 그럴 것입니다.')
+        self.assertEqual(st['plain'], 0)
+        self.assertEqual(st['polite'], 2)
+
+    def test_quotes_and_references_are_exempt(self):
+        text = ('본문은 존댓말입니다.\n'
+                '> 인용문은 평서체로 남는다.\n'
+                '## 참고 자료\n'
+                '- Grove, A. S. (1983), 『High Output Management』 — 관리자의 핵심 도구로 제시했다.\n')
+        offenders, st = self._audit(text)
+        self.assertEqual(offenders, [])
+        self.assertEqual(st['plain'], 0)
+
+    def test_figure_caption_lines_are_exempt(self):
+        text = ('본문입니다.\n'
+                '**그림 1. 지표 비교**\n'
+                '*단위: %. 출처: Gallup.*\n'
+                '| 항목 | 값 |\n')
+        _, st = self._audit(text)
+        self.assertEqual(st['plain'], 0)
+
+
+class LengthRuleTests(TestCase):
+    """분량 상한 초과는 감점 사유가 아니다 — 하한 미달만 결함이다."""
+
+    def test_below_minimum_is_a_defect(self):
+        from office.pipeline import MIN_CHARS, length_rule
+        self.assertIn('미달', length_rule(MIN_CHARS - 1))
+
+    def test_over_target_is_explicitly_not_a_deduction(self):
+        from office.pipeline import TARGET_MAX, length_rule
+        rule = length_rule(TARGET_MAX + 1500)
+        self.assertIn('감점 사유가 아닙니다', rule)
+
+    def test_within_target_is_fine(self):
+        from office.pipeline import length_rule
+        self.assertIn('안입니다', length_rule(3000))
+
+    def test_far_over_limit_asks_about_repetition_not_length(self):
+        from office.pipeline import MAX_CHARS, length_rule
+        rule = length_rule(MAX_CHARS + 1000)
+        self.assertIn('반복', rule)
+        self.assertNotIn('미달', rule)
+
+
+class ReviewEnforcesStyleAndLengthTests(TestCase):
+    LONG_PLAIN = '## 본론\n\n' + ('형식은 갖췄는데 효과는 나지 않는다. ' * 260) + \
+                 '\n\n| 항목 | 값 |\n|---|---|\n| 가 | 1 |\n'
+    LONG_POLITE = '## 본론\n\n' + ('형식은 갖췄는데 효과는 나지 않습니다. ' * 260) + \
+                  '\n\n| 항목 | 값 |\n|---|---|\n| 가 | 1 |\n'
+
+    def _review(self, content):
+        from unittest.mock import patch
+
+        from office import pipeline as P
+        fake = {'scores': {k: 5 for k in P.RUBRIC}, 'fatal': [], 'issues': [], 'notes': ''}
+        with patch.object(P, 'ask_agent_json', return_value=fake):
+            return P.step_review('제목', content, {'verdict': 'ok'}, 'columns/x.png', '자동 점검: 이상 없음')
+
+    def test_plain_style_body_is_held(self):
+        qa = self._review(self.LONG_PLAIN)
+        self.assertIn('style_broken', qa['fatal'])
+        self.assertEqual(qa['verdict'], 'major')
+
+    def test_long_polite_body_passes(self):
+        """길지만 존댓말로 통일된 글은 통과해야 한다 — 길이로 감점하지 않는다."""
+        qa = self._review(self.LONG_POLITE)
+        self.assertNotIn('style_broken', qa['fatal'])
+        self.assertNotIn('too_short', qa['fatal'])
+        self.assertGreater(qa['length'], 3500)
+        self.assertEqual(qa['verdict'], 'accept')
 
 
 class ChartFontTests(TestCase):

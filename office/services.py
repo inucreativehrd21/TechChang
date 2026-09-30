@@ -183,6 +183,14 @@ def week_monday(d: date | None = None) -> date:
 
 
 # ───────────────────────────── 차트
+# 사이트 액센트(premium.css #4f46e5)를 기준으로 한 차분한 팔레트. 계열이 늘어도
+# 채도를 낮춰 서로 싸우지 않게 하고, 눈금·격자는 거의 보이지 않을 만큼 옅게 쓴다.
+PALETTE = ['#4f46e5', '#0f9d8f', '#e0923a', '#c2476b', '#5b7cba']
+INK = '#1f2937'
+INK_SOFT = '#6b7280'
+GRID = '#e5e7eb'
+
+
 def _chart_font(font_manager) -> str:
     """차트용 한글 폰트 이름. 사이트 본문과 같은 Pretendard 를 쓰고, 없으면 Noto Sans KR.
 
@@ -216,7 +224,7 @@ def effective_chart_type(requested: str, labels: list) -> str:
     return 'bar'
 
 
-def audit_chart(spec: dict, content: str, chart_rel: str) -> tuple:
+def audit_chart(spec: dict, content: str, chart_rel: str, caption: str = "") -> tuple:
     """차트가 쓸모 있는지 코드로 점검한다. 반환 (치명 문제[], 경고[], 검수용 설명).
 
     모델에게 "차트가 있다"고만 알려 주면 그림이 읽히는지·무엇을 말하는지 판단할 수 없어,
@@ -261,6 +269,10 @@ def audit_chart(spec: dict, content: str, chart_rel: str) -> tuple:
         warns.append('출처가 비어 있습니다')
     if not (spec.get('title') or '').strip():
         warns.append('차트 제목이 비어 있습니다')
+    if not (caption or '').strip():
+        errors.append('캡션이 없습니다 — 도판은 무엇을 읽어야 하는지 한 문장으로 알려 줘야 합니다')
+    elif len((caption or '').strip()) < 15:
+        warns.append('캡션이 너무 짧아 그림을 설명하지 못합니다')
 
     kind = effective_chart_type(spec.get('type', 'bar'), labels)
     pairs = ', '.join(f'{lab}={v:g}' for lab, v in zip(labels, series[0].get('values', []))) if series else ''
@@ -277,6 +289,55 @@ def audit_chart(spec: dict, content: str, chart_rel: str) -> tuple:
     if not errors and not warns:
         lines.append('자동 점검: 이상 없음')
     return errors, warns, '\n'.join(lines)
+
+
+def audit_style(content: str) -> tuple:
+    """본문 문체가 하우스 스타일(존댓말)로 통일됐는지 검사. 반환 (평서체 문장[], 통계).
+
+    프롬프트에 '존댓말로 일관'이라 적어 두어도 작성자가 통째로 평서체(~다)로 쓰는 일이
+    실제로 있었다(2026-09-29 칼럼 전체가 평서체). 글은 멀쩡해 보이니 심사에서도 놓친다.
+    문장 끝만 보면 기계로 판별할 수 있으므로 여기서 확인한다.
+
+    인용문(>)·각주·참고 자료·표는 원문을 그대로 옮기는 자리라 검사 대상이 아니다.
+    """
+    import re
+
+    skip_section = False
+    sentences = []
+    for raw in content.splitlines():
+        line = raw.strip()
+        if line.startswith('## '):
+            skip_section = line.startswith('## 참고 자료')
+            continue
+        if skip_section or not line:
+            continue
+        if line.startswith(('>', '|', '[^', '---', '![', '*출처', '*단위')):
+            continue
+        if line.startswith('**그림 ') or line.startswith('**표 '):
+            continue
+        line = re.sub(r'^\s*[-*+]\s+', '', line)           # 목록 기호
+        line = re.sub(r'\*\*[^*]+\*\*:', '', line)          # **핵심어**: 뒤 설명만 본다
+        line = re.sub(r'\[\^\d+\]', '', line)               # 각주 표식
+        for sent in re.split(r'(?<=[.!?])\s+', line):
+            sent = sent.strip().rstrip('*_')
+            if len(sent) > 6:
+                sentences.append(sent)
+
+    polite = plain = 0
+    offenders = []
+    for sent in sentences:
+        tail = sent.rstrip('.!?"\'」』)')
+        if tail.endswith(('니다', '세요', '해요', '지요', '까요', '나요', '군요', '데요', '시오')):
+            polite += 1
+        elif tail.endswith('다') or tail.endswith(('함', '임', '음')):
+            plain += 1
+            if len(offenders) < 8:
+                offenders.append(sent[:70])
+
+    total = polite + plain
+    stats = {'polite': polite, 'plain': plain, 'total': total,
+             'plain_ratio': round(plain / total, 3) if total else 0.0}
+    return offenders, stats
 
 
 def _wrap_label(text: str, width: int) -> str:
@@ -321,75 +382,94 @@ def render_chart(spec: dict, filename_stem: str) -> tuple:
     n = len(series)
     kind = effective_chart_type(spec.get('type', 'bar'), labels)
 
-    palette = ['#4f46e5', '#2aa876', '#f0a33a', '#d9534f', '#3aa7c9']
+    unit = (spec.get('unit') or '').strip()
+    # 계열이 하나면 막대를 두껍게 — 얇은 막대에 여백만 넓으면 휑해 보인다.
+    thick = 0.62 if n == 1 else min(0.72 / n, 0.3)
     if kind == 'hbar':
-        # 항목 수에 맞춰 세로로 늘린다. 막대가 눌리면 값 라벨이 겹친다.
-        height = max(3.2, 0.62 * len(labels) * max(n, 1) + 1.4)
-        figsize = (9, min(height, 14))
+        figsize = (8.2, max(2.4, 0.52 * len(labels) + 0.8))
+    elif kind == 'line':
+        figsize = (8.2, 4.4)
     else:
-        figsize = (max(8, 1.5 * len(labels)), 5)
-    fig, ax = plt.subplots(figsize=figsize, dpi=160)
+        figsize = (max(5.6, 1.45 * len(labels) + 1.2), 4.2)
+    fig, ax = plt.subplots(figsize=(figsize[0], min(figsize[1], 13)), dpi=170)
 
     import numpy as np
 
+    def fmt(v):
+        """값 라벨. 축을 지웠으므로 단위를 값에 붙여 읽는 사람이 헷갈리지 않게 한다."""
+        return f'{v:g}{unit}' if unit and len(unit) <= 3 else f'{v:g}'
+
     if kind == 'line':
         for i, s in enumerate(series):
-            ax.plot([_wrap_label(x, 12) for x in labels], s['values'], marker='o', linewidth=2.2,
-                    color=palette[i % 5], label=s.get('name', ''))
+            ax.plot([_wrap_label(x, 12) for x in labels], s['values'], marker='o', markersize=5,
+                    linewidth=2, color=PALETTE[i % len(PALETTE)], label=s.get('name', ''))
+        ax.grid(axis='y', color=GRID, linewidth=.8)
+        ax.set_axisbelow(True)
+        ax.spines[['top', 'right', 'left']].set_visible(False)
+        ax.spines['bottom'].set_color(GRID)
+        ax.tick_params(length=0, labelsize=10.5, colors=INK_SOFT)
+        if unit:
+            ax.set_ylabel(unit, fontsize=10, color=INK_SOFT)
     elif kind == 'hbar':
         y = np.arange(len(labels))
-        h = 0.78 / n
+        h = thick
         for i, s in enumerate(series):
-            bars = ax.barh(y + i * h - 0.39 + h / 2, s['values'], height=h,
-                           color=palette[i % 5], label=s.get('name', ''))
-            ax.bar_label(bars, fmt='%g', fontsize=10, padding=4, color='#333')
-        ax.set_yticks(y, [_wrap_label(x, 18) for x in labels], fontsize=11)
+            bars = ax.barh(y + (i - (n - 1) / 2) * h, s['values'], height=h,
+                           color=PALETTE[i % len(PALETTE)], label=s.get('name', ''),
+                           zorder=3)
+            ax.bar_label(bars, labels=[fmt(v) for v in s['values']],
+                         fontsize=10.5, padding=6, color=INK, fontweight='bold')
+        ax.set_yticks(y, [_wrap_label(x, 20) for x in labels])
         ax.invert_yaxis()
-        ax.margins(x=0.13)          # 값 라벨이 오른쪽 밖으로 잘리지 않게
+        ax.margins(x=0.16, y=0.12 if len(labels) > 2 else 0.3)
+        # 값을 막대 옆에 직접 적었으므로 수치 축은 군더더기다 — 지운다
+        ax.xaxis.set_visible(False)
+        ax.spines[['top', 'right', 'bottom']].set_visible(False)
+        ax.spines['left'].set_color(GRID)
+        ax.spines['left'].set_bounds(y[0] - 0.5, y[-1] + 0.5)   # 축선이 여백까지 삐져나오지 않게
+        ax.tick_params(axis='y', length=0, pad=10, labelsize=11, colors=INK)
     else:
         x = np.arange(len(labels))
-        w = 0.8 / n
+        w = thick
         for i, s in enumerate(series):
-            bars = ax.bar(x + i * w - 0.4 + w / 2, s['values'], width=w,
-                          color=palette[i % 5], label=s.get('name', ''))
-            ax.bar_label(bars, fmt='%g', fontsize=10, padding=3, color='#333')
-        ax.set_xticks(x, [_wrap_label(v, 10) for v in labels], fontsize=11)
-        ax.margins(y=0.12)
+            bars = ax.bar(x + (i - (n - 1) / 2) * w, s['values'], width=w,
+                          color=PALETTE[i % len(PALETTE)], label=s.get('name', ''), zorder=3)
+            ax.bar_label(bars, labels=[fmt(v) for v in s['values']],
+                         fontsize=10.5, padding=5, color=INK, fontweight='bold')
+        ax.set_xticks(x, [_wrap_label(v, 11) for v in labels])
+        ax.margins(y=0.2)
+        ax.yaxis.set_visible(False)
+        ax.spines[['top', 'right', 'left']].set_visible(False)
+        ax.spines['bottom'].set_color(GRID)
+        ax.spines['bottom'].set_bounds(x[0] - 0.5, x[-1] + 0.5)
+        ax.tick_params(axis='x', length=0, pad=8, labelsize=11, colors=INK)
 
-    ax.set_title(spec.get('title', ''), fontsize=14, fontweight='bold', loc='left', pad=14)
-    if spec.get('unit'):
-        (ax.set_xlabel if kind == 'hbar' else ax.set_ylabel)(spec['unit'], fontsize=10, color='#555')
-    ax.tick_params(labelsize=11, colors='#333')
-    ax.spines[['top', 'right']].set_visible(False)
-    ax.spines[['left', 'bottom']].set_color('#ccc')
-    ax.grid(axis='x' if kind == 'hbar' else 'y', alpha=.25)
-    ax.set_axisbelow(True)
     # 계열이 하나뿐이면 범례는 같은 말을 반복할 뿐이라 자리만 차지한다
     if n > 1:
-        ax.legend(frameon=False, fontsize=10, loc='best')
+        ax.legend(frameon=False, fontsize=10.5, loc='upper right',
+                  bbox_to_anchor=(1, 1.08), ncol=min(n, 3), handlelength=1.1)
 
-    fig.tight_layout()
-    # 제목을 그림 왼쪽 끝에 맞춘다. 가로 막대는 항목명 폭만큼 축이 오른쪽으로 밀려서
-    # loc='left'(축 기준)로 두면 제목이 가운데 놓인 것처럼 보인다. 축 제목의 위치를
-    # 직접 옮기면 matplotlib 이 그릴 때 되돌리므로, 공간만 잡아 두고 그림에 다시 쓴다.
-    if spec.get('title'):
-        ax.set_title('', loc='left')   # loc 를 맞춰야 지워진다 (좌/중/우 제목 객체가 따로다)
-        fig.text(0.012, 0.975, spec['title'], fontsize=14, fontweight='bold',
-                 ha='left', va='top', color='#111')
-    if spec.get('source'):
-        fig.subplots_adjust(bottom=fig.subplotpars.bottom + 0.06)
-        fig.text(0.012, 0.015, f"출처: {spec['source']}", fontsize=9, color='#777')
+    # 제목·출처는 그림에 넣지 않는다. 본문 캡션 블록이 "그림 N. 제목 / 설명 / 출처" 를
+    # 맡으므로, 그림 안에 또 적으면 같은 문장이 두 번 보인다(저널 도판의 관행이기도 하다).
+    fig.tight_layout(pad=0.6)
 
     out_dir = Path(settings.MEDIA_ROOT) / 'columns'
     out_dir.mkdir(parents=True, exist_ok=True)
     rel = f'columns/{filename_stem}.png'
-    fig.savefig(out_dir / f'{filename_stem}.png', facecolor='white')
+    fig.savefig(out_dir / f'{filename_stem}.png', facecolor='white', bbox_inches='tight',
+                pad_inches=0.22)
     plt.close(fig)
     return rel, ''
 
 
-def chart_markdown(rel_path: str, spec: dict) -> str:
-    """이미지 + 표 마크다운. rel_path 가 비면 표만 만든다(차트 렌더 실패 시 폴백)."""
+def chart_markdown(rel_path: str, spec: dict, caption: str = '', figure_no: int = 1) -> str:
+    """도판 한 벌(그림 + 캡션 + 표)의 마크다운. rel_path 가 비면 표만 만든다.
+
+    학술지 도판 형식을 따른다 — 그림 아래에 **그림 N. 제목**, 그 다음 줄에 "이 그림에서
+    무엇을 읽어야 하는지" 한 문장, 마지막에 단위·출처. 제목과 출처를 그림 안에 또 넣지
+    않는 이유도 같다(중복). 캡션을 여기서 함께 만들기 때문에 호출부가 따로 덧붙이지
+    않으며, 예전처럼 설명이 그림 앞뒤로 두 번 들어가는 일이 없다.
+    """
     labels = spec.get('labels') or []
     series = spec.get('series') or []
     head = '| 항목 | ' + ' | '.join(s.get('name') or '값' for s in series) + ' |'
@@ -401,12 +481,26 @@ def chart_markdown(rel_path: str, spec: dict) -> str:
             v = s['values'][i]
             vals.append(f'{v:g}' if isinstance(v, (int, float)) else str(v))
         rows.append(f'| {lab} | ' + ' | '.join(vals) + ' |')
-    unit = f" (단위: {spec['unit']})" if spec.get('unit') else ''
+
+    title = (spec.get('title') or '').strip()
+    label = f'그림 {figure_no}' if rel_path else f'표 {figure_no}'
     parts = []
     if rel_path:
         url = f"{settings.MEDIA_URL.rstrip('/')}/{rel_path}"
-        parts += [f"![{spec.get('title', '차트')}]({url})", '']
-    parts += [f"**{spec.get('title', '')}**{unit}", '', head, sep, *rows]
+        parts += [f"![{label}. {title}]({url})", '']
+
+    parts.append(f"**{label}. {title}**" if title else f"**{label}**")
+    caption = (caption or '').strip()
+    if caption:
+        parts += ['', caption]
+
+    note = []
+    if spec.get('unit'):
+        note.append(f"단위: {spec['unit']}")
     if spec.get('source'):
-        parts += ['', f"*출처: {spec['source']}*"]
+        note.append(f"출처: {spec['source']}")
+    if note:
+        parts += ['', f"*{'. '.join(note)}.*"]
+
+    parts += ['', head, sep, *rows]
     return '\n'.join(parts)
