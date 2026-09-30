@@ -110,7 +110,9 @@ def office_home(request):
         for d in meeting.decisions.all():
             if d.kind not in (Decision.KIND_COLUMN, Decision.KIND_SERIES) or not d.chosen_key:
                 continue
-            d.topic_name = TOPIC_LABEL.get(d.topic, '')
+            # 시리즈는 분야가 없다. '시리즈 방향'(내부 안건명) 대신 독자가 읽을 말을 쓴다
+            d.topic_name = TOPIC_LABEL.get(d.topic, '') or (
+                '연재' if d.kind == Decision.KIND_SERIES else '')
             d.headline = (d.chosen or {}).get('title', '')
             decisions.append(d)
     for d in recent_drafts:

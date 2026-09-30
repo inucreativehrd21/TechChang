@@ -52,4 +52,8 @@ class Command(BaseCommand):
             if d:
                 d.public_note = note
                 d.save(update_fields=['public_note'])
+        missing = res.get('expected', 0) - len(res['notes'])
         out(self.style.SUCCESS(f'\n저장 완료 — 요약 1건 · 주제 소개 {len(res["notes"])}건'))
+        if missing > 0:
+            out(self.style.WARNING(f'{missing}개 주제는 소개 문장이 없어 제목만 나갑니다 — '
+                                   '다시 실행하면 채워질 수 있습니다.'))

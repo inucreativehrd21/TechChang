@@ -161,7 +161,13 @@ class MeetingPolishTests(TestCase):
         self.col.chosen_key = ''
         self.col.save(update_fields=['chosen_key'])
         with patch('office.services.ask_agent_json', side_effect=AssertionError('API 호출됨')):
-            self.assertEqual(polish_meeting(self.m), {'summary': '', 'notes': {}})
+            self.assertEqual(polish_meeting(self.m), {'summary': '', 'notes': {}, 'expected': 0})
+
+    def test_every_topic_is_expected_to_get_a_note(self):
+        """소개가 빠진 주제는 제목만 나가므로, 몇 개가 빠졌는지 셀 수 있어야 한다."""
+        res, _ = self._polish({'summary': 's', 'notes': {}})
+        self.assertEqual(res['expected'], 1)
+        self.assertEqual(len(res['notes']), 0)
 
 
 class PolishTests(TestCase):
