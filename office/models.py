@@ -137,6 +137,10 @@ class WorkLog(models.Model):
     agent = models.CharField(max_length=10, db_index=True)
     action = models.CharField(max_length=40, db_index=True)   # meeting/draft/chart/check/qa/publish/hold ...
     text = models.CharField(max_length=300)
+    # 공개 연구실에 보여 줄 문장. 원문(text)에는 운영자 지시문·점수·정비 내역이 섞여 있어
+    # 그대로 내보낼 수 없다. publiclog 가 걸러 다듬은 결과만 여기에 채운다.
+    # 페이지가 폴링하므로 조회 때마다 만들지 않고, 만들어 둔 것을 읽기만 한다.
+    public_text = models.CharField(max_length=300, blank=True, default='', verbose_name='공개용 문장')
     draft = models.ForeignKey(ColumnDraft, null=True, blank=True, on_delete=models.CASCADE, related_name='logs')
     meeting = models.ForeignKey(Meeting, null=True, blank=True, on_delete=models.CASCADE, related_name='logs')
     created_at = models.DateTimeField(auto_now_add=True, db_index=True)

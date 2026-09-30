@@ -18,6 +18,7 @@ cron:
 """
 import json
 
+from django.core.management import call_command
 from django.core.management.base import BaseCommand
 from django.utils import timezone
 
@@ -129,6 +130,14 @@ class Command(BaseCommand):
                 draft.save()
                 rec('lead', 'hold', f'보류({qa["verdict"]}, {qa["score"]}점): {subject} — 운영자 검수 대기')
                 out(self.style.WARNING(f'보류 [{label}] {subject} — /lab/admin/ 에서 검수'))
+
+            # 이번에 쌓인 활동 기록을 공개용 말투로 다듬어 둔다. 연구실 페이지가 폴링하므로
+            # 조회 시점에 만들 수 없고, 여기서 한 번(한 호출) 처리한다. 실패해도 본작업과
+            # 무관하므로 틀 문장으로 넘어간다.
+            try:
+                call_command('polish_logs', limit=24, verbosity=0)
+            except Exception as ex:  # noqa: BLE001
+                out(self.style.WARNING(f'활동 문장 다듬기 건너뜀: {str(ex)[:120]}'))
 
         except Exception as ex:  # noqa: BLE001 — 실패도 기록해 연구실에 보이게
             if draft:

@@ -54,6 +54,9 @@
   .feed li { display: grid; grid-template-columns: 8px 1fr; gap: 10px; font-size: .9rem; }
   .feed li i { width: 8px; height: 8px; border-radius: 50%; margin-top: 7px; }
   .feed li small { color: var(--text-secondary); margin-left: 6px; }
+  .feed-tag { display: inline-block; padding: 1px 7px; margin-right: 4px; border-radius: 999px;
+              background: #eef2ff; color: #4f46e5; font-size: .72rem; font-weight: 600;
+              vertical-align: 1px; }
   .cols li { margin-bottom: 6px; }
 </style>
 {% endblock %}
@@ -127,11 +130,11 @@
         {% else %}<p style="color:var(--text-secondary); margin:0;">아직 없습니다.</p>{% endif %}
       </div>
       <div class="panel">
-        <h2>작업 로그</h2>
+        <h2>연구실 활동</h2>
         <ul class="feed">
           {% for l in logs %}
           <li><i style="background: {{ l.agent_color }};"></i>
-            <div><b>{{ l.agent_name }}</b> {{ l.text }}<small>{{ l.created_at|date:"m/d H:i" }}</small></div></li>
+            <div><b>{{ l.agent_name }}</b> <span class="feed-tag">{{ l.label }}</span> {{ l.text }}<small>{{ l.created_at|date:"m/d H:i" }}</small></div></li>
           {% empty %}<li><i></i><div style="color:var(--text-secondary)">활동 기록이 없습니다.</div></li>{% endfor %}
         </ul>
       </div>

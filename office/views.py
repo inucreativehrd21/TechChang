@@ -20,6 +20,7 @@ from common.views import admin_required
 from . import github
 from .agents import AGENTS, MEETING_ORDER, public_roster
 from .models import ColumnDraft, Decision, Meeting, Task, WorkLog
+from .publiclog import public_line, public_logs
 
 TOPIC_LABEL = {'hrd': 'HRD', 'data': '데이터분석', 'coding': '프로그래밍'}
 
@@ -49,21 +50,42 @@ def decorate_logs(qs):
     return out
 
 
+def _public_log_rows(limit: int = 20) -> list:
+    """공개 연구실에 내보낼 활동 로그. 원문 대신 publiclog 가 다듬은 문장을 쓴다."""
+    rows = []
+    qs = WorkLog.objects.select_related('draft').order_by('-created_at')[:120]
+    for log, label, line in public_logs(qs, limit=limit):
+        a = AGENTS.get(log.agent)
+        if not a:
+            continue
+        rows.append({'agent': log.agent, 'agent_name': a['name'], 'agent_color': a['sprite']['shirt'],
+                     'action': log.action, 'label': label, 'text': line, 'created_at': log.created_at})
+    return rows
+
+
 def _agent_status():
-    """에이전트별 최근 활동 1건 → 상태 말풍선."""
+    """에이전트별 최근 '공개 가능한' 활동 1건 → 상태 말풍선.
+
+    말풍선도 로그 원문을 그대로 쓰면 운영자 지시문·정비 내역이 캔버스에 뜬다.
+    publiclog 를 통과한 문장만 쓴다.
+    """
     latest = {}
-    for wl in WorkLog.objects.order_by('-created_at')[:200]:
+    for wl in WorkLog.objects.select_related('draft').order_by('-created_at')[:300]:
         if wl.agent in AGENTS and wl.agent not in latest:
-            latest[wl.agent] = wl
+            line = public_line(wl)
+            if line:
+                latest[wl.agent] = (wl, line)
         if len(latest) == len(AGENTS):
             break
     now = timezone.now()
     result = []
     for a in public_roster():
-        wl = latest.get(a['key'])
+        found = latest.get(a['key'])
         status = {'action': 'idle', 'text': '', 'age_min': None}
-        if wl:
-            status = {'action': wl.action, 'text': wl.text, 'age_min': int((now - wl.created_at).total_seconds() // 60)}
+        if found:
+            wl, line = found
+            status = {'action': wl.action, 'text': line,
+                      'age_min': int((now - wl.created_at).total_seconds() // 60)}
         result.append({**a, 'status': status})
     return result
 
@@ -91,7 +113,7 @@ def office_home(request):
         'meeting': meeting,
         'public_decisions': decisions,
         'recent_drafts': recent_drafts,
-        'logs': decorate_logs(WorkLog.objects.exclude(action='fail')[:30]),
+        'logs': _public_log_rows(limit=20),
         'assets_url': _lab_assets_url(),
         'media_url': settings.MEDIA_URL.rstrip('/') + '/lab/',
     })
@@ -103,9 +125,10 @@ def office_state(request):
         'now': timezone.localtime().isoformat(),
         'agents': _agent_status(),
         'meeting': _public_meeting(meeting),
-        'recent_logs': [{'agent': l.agent, 'name': AGENTS.get(l.agent, {}).get('name', ''), 'action': l.action,
-                         'text': l.text, 'at': timezone.localtime(l.created_at).strftime('%m-%d %H:%M')}
-                        for l in WorkLog.objects.exclude(action='fail')[:20] if l.agent in AGENTS],
+        'recent_logs': [{'agent': r['agent'], 'name': r['agent_name'], 'action': r['action'],
+                         'label': r['label'], 'text': r['text'],
+                         'at': timezone.localtime(r['created_at']).strftime('%m-%d %H:%M')}
+                        for r in _public_log_rows(limit=20)],
     })
 
 
