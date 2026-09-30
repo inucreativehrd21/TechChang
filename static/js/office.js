@@ -604,9 +604,18 @@
   let APPROACH = [], ACTS = [];
   const busy = new Map();                       // 행동 지점 점유 (key → agent.key)
   const rnd = (a, b) => a + Math.random() * (b - a);
-  const deskPos = a => { const d = DESKS[a.sprite.desk % 6]; return { x: d.x + SEAT_OFF.x, y: d.y + SEAT_OFF.y }; };
-  const seatOf = a => SEATS[a.sprite.desk % 6];
-  const approachOf = a => APPROACH[a.sprite.desk % APPROACH.length] || deskPos(a);
+  // 연구원이 책상 수보다 많을 수 있다(현재 책상 7 · 연구원 8). 남는 사람은 창가·화이트보드
+  // 같은 '서서 일하는 자리'를 집으로 쓴다 — 같은 의자에 두 명을 겹쳐 앉히는 것보다 낫다.
+  const STAND_POSTS = [{ x: 60, y: 148, dir: 'up' }, { x: 244, y: 196, dir: 'up' }];
+  const hasDesk = a => a.sprite.desk < DESKS.length;
+  const standPost = a => STAND_POSTS[(a.sprite.desk - DESKS.length) % STAND_POSTS.length];
+  const deskPos = a => {
+    if (!hasDesk(a)) { const p = standPost(a); return { x: p.x, y: p.y }; }
+    const d = DESKS[a.sprite.desk % DESKS.length];
+    return { x: d.x + SEAT_OFF.x, y: d.y + SEAT_OFF.y };
+  };
+  const seatOf = a => SEATS[a.sprite.desk % Math.max(SEATS.length, 1)];
+  const approachOf = a => (hasDesk(a) ? APPROACH[a.sprite.desk % APPROACH.length] : null) || deskPos(a);
 
   // ── 길찾기
   const cellOf = (x, y) => ({ cx: Math.floor(x / NAV.cell), cy: Math.floor(y / NAV.cell) });
@@ -799,9 +808,11 @@
   }
 
   function poseOf(a) {
-    if (mode === 'meeting') return a.moving ? 'walk' : 'type';   // 각자 자리에 앉아 발언
+    // 책상이 없는 연구원은 서서 일하므로 앉은 자세(type)를 쓰면 허공에 앉은 것처럼 보인다
+    const work = hasDesk(a) ? 'type' : 'stand';
+    if (mode === 'meeting') return a.moving ? 'walk' : work;     // 각자 자리에서 발언
     if (a.moving) return 'walk';
-    if (a.state === 'work' || a.task === 'work') return 'type';
+    if (a.state === 'work' || a.task === 'work') return work;
     return a.pose || 'stand';
   }
 
@@ -919,9 +930,10 @@
         const styles = ['long', 'short', 'bob', 'curly', 'tied', 'short'];
         agents = data.agents.map((a, i) => {
           const sprite = { ...a.sprite, style: a.sprite.style || styles[i % styles.length] };
-          const d = DESKS[sprite.desk % 6];
-          return { ...a, sprite, x: d.x + SEAT_OFF.x, y: d.y + SEAT_OFF.y, tx: d.x + SEAT_OFF.x, ty: d.y + SEAT_OFF.y,
-                   task: 'work', state: 'work', pose: 'type', face: 'up', dir: 'up',
+          const home = deskPos({ sprite });
+          return { ...a, sprite, x: home.x, y: home.y, tx: home.x, ty: home.y,
+                   task: 'work', state: 'work', pose: sprite.desk < DESKS.length ? 'type' : 'stand',
+                   face: 'up', dir: 'up',
                    wait: rnd(240, 1400), blink: 0, walkT: 0, path: null, act: null,
                    phase: i * 266, moving: false };
         });

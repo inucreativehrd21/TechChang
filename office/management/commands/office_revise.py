@@ -86,9 +86,12 @@ class Command(BaseCommand):
             content, chart_rel, chart_note, visual_report = P.step_visual(content, topic_key, rec=rec)
 
             # 4) 재심
-            qa = P.step_review(subject, content, check, chart_rel, visual_report)
+            critique = P.step_critique(subject, content)
+            rec('critic', 'critique', f"평론 {critique['verdict']} · 지적 {len(critique.get('issues') or [])}건: "
+                                      f"{critique.get('reason', '')[:100]}")
+            qa = P.step_review(subject, content, check, chart_rel, visual_report, critique)
             verdict_ko = {'accept': '발행', 'minor': '수정 요청', 'major': '보류'}.get(qa['verdict'], qa['verdict'])
-            rec('lead', 'qa', f"재심 {qa['score']}/100 ({qa['length']}자) → {verdict_ko}: {qa.get('notes', '')}")
+            rec('editor', 'qa', f"재심 {qa['score']}/100 ({qa['length']}자) → {verdict_ko}: {qa.get('notes', '')}")
 
             draft.subject, draft.content, draft.chart_path, draft.chart_note = subject, content, chart_rel, chart_note
             draft.check_report, draft.qa_report = check, qa

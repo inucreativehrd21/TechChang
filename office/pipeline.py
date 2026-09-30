@@ -127,9 +127,46 @@ CHART_PROMPT = (
     '- 계열이 하나면 name 은 측정값 이름(예: "비율")으로 짧게 씁니다.'
 )
 
+METRICS_PROMPT = (
+    '기획 단계입니다. 아래 칼럼 주제를 **수치로** 말하려면 어떤 지표가 있어야 하는지 정하세요.\n'
+    '칼럼니스트가 이 목록을 보고 자료를 찾아 본문에 넣고, 나중에 당신이 그걸 차트로 그립니다.\n'
+    '따라서 "찾을 수 있고", "서로 비교가 되는" 지표여야 합니다.\n\n'
+    '[주제] {subject}\n[관점·근거] {detail}\n[기획 각도] {angle}\n[독자] {audience}\n\n'
+    '규칙:\n'
+    '- 3~5개. 각 항목은 "어느 기관의 무슨 조사에서 나오는 무슨 값인지"가 드러나게 씁니다.\n'
+    '  예: "Gallup State of the Global Workplace 의 직원 몰입도 비율(%)" (O) / "몰입도 관련 통계" (X)\n'
+    '- **같은 단위로 나란히 놓을 수 있는 값**을 우선합니다. 모집단이 제각각인 값을 한 그림에 묶으면 '
+    '비교가 성립하지 않습니다.\n'
+    '- 실제로 존재할 법한 조사만 적습니다. 없는 보고서를 지어내지 마세요.\n\n'
+    '출력 JSON: {{"metrics": ["지표1", ...], '
+    '"chart_plan": "이 지표들을 어떤 그림으로 보여 줄지 한 문장"}}'
+)
+
+CRITIQUE_PROMPT = (
+    '평론 단계입니다. 아래 칼럼을 읽고, **독자가 끝까지 읽을 이유가 있는 글인지** 평하세요.\n'
+    '사실 여부와 출처는 검증관이 따로 확인하므로 당신은 읽는 경험만 봅니다.\n\n'
+    '[제목] {subject}\n[본문]\n{content}\n\n'
+    '보는 것:\n'
+    '- 도입부가 독자를 붙잡는가, 아니면 일반론으로 시작하는가\n'
+    '- 이미 다들 아는 이야기의 되풀이는 아닌가. 이 글만의 관점이 있는가\n'
+    '- 논지가 중간에 흐려지거나 곁가지로 새지 않는가\n'
+    '- 문장이 읽히는가 (수식 과다, 같은 말 반복, 모호한 지시어)\n'
+    '- 다 읽고 나서 독자가 무엇을 가져가는가\n\n'
+    '**모든 지적과 칭찬에는 본문 인용이 있어야 합니다.** 인용 없는 항목은 버려집니다. '
+    '"밋밋하다", "설득력이 부족하다" 같은 인상 비평은 쓰지 마세요 — 그런 말로는 고칠 수 없습니다. '
+    '어디가, 왜, 어떻게 고쳐야 하는지를 적습니다.\n\n'
+    '출력 JSON: {{"verdict": "recommend|revise|reject", '
+    '"reason": "그 판정을 내린 이유 한두 문장", '
+    '"hook": "도입부 평가 — 무엇이 붙잡고 무엇이 놓치는지", '
+    '"takeaway": "독자가 실제로 가져가는 것 한 문장", '
+    '"issues": [{{"quote": "본문 그대로 인용", "why": "왜 문제인지", "fix": "어떻게 고칠지"}}, ...], '
+    '"strengths": [{{"quote": "본문 그대로 인용", "why": "왜 좋은지"}}, ...]}}'
+)
+
 QA_PROMPT = (
     '편집 심사 단계입니다. 편집장으로서 아래 칼럼을 **항목별로** 채점하세요. 총점은 시스템이 계산하므로 매기지 마세요.\n\n'
-    '[팩트체크 보고]\n{check}\n\n[본문 글자 수] {length}자\n{length_rule}\n[문체 점검] {style}\n'
+    '[팩트체크 보고]\n{check}\n\n[평론가 의견]\n{critique}\n\n'
+    '[본문 글자 수] {length}자\n{length_rule}\n[문체 점검] {style}\n'
     '[시각자료] {visual}\n\n'
     '[칼럼]\nTITLE: {subject}\n{content}\n\n'
     '각 항목을 1~5점으로 채점합니다. 5=흠잡을 데 없음, 4=사소한 보완, 3=수정 필요, 2=상당한 결함, 1=기준 미달.\n'
@@ -139,7 +176,10 @@ QA_PROMPT = (
     '"too_short"(목표 분량에 크게 못 미침), "no_evidence"(비교 가능한 수치가 사실상 없음), '
     '"structure_broken"(필수 섹션 누락), "overclaim"(근거 없는 단정), '
     '"visual_broken"(차트가 본문 수치와 어긋나거나, 비교가 성립하지 않아 아무것도 말해 주지 못함), '
-    '"style_broken"(하우스 스타일인 존댓말을 벗어나 평서체가 섞이거나 전체가 평서체)\n\n'
+    '"style_broken"(하우스 스타일인 존댓말을 벗어나 평서체가 섞이거나 전체가 평서체), '
+    '"unreadable"(평론가가 반대했고 그 근거가 타당해, 이대로는 독자가 읽을 이유가 없음)\n\n'
+    '[평론가 의견]은 사실 검증이 아니라 "읽을 만한가"에 대한 판단입니다. 인용이 붙은 지적이므로 '
+    '직접 본문에서 확인한 뒤 readability·depth 점수에 반영하고, 동의하지 않으면 그 이유를 notes 에 적으세요.\n\n'
     '[시각자료] 항목에는 차트의 실제 항목·값·자동 점검 결과가 들어 있습니다. '
     '그 값들이 본문 주장과 맞물리는지, 한 그림 안에 묶을 만한 비교인지 직접 판단하세요.\n\n'
     '출력 JSON: {{"scores": {{"structure": 1~5, "depth": 1~5, "evidence": 1~5, "logic": 1~5, '
@@ -274,14 +314,76 @@ def recent_titles(topic_key: str, limit: int = 20) -> list:
 
 
 # ───────────────────────────── 단계
-def step_brief(topic_key: str, brief_decision, recent: list) -> dict:
-    """1) 기획서 — 팀장이 집필 지시를 만든다."""
+def step_brief(topic_key: str, brief_decision, recent: list, *, rec=None) -> dict:
+    """1) 기획서 — 팀장이 집필 지시를 만들고, 데이터 담당이 필요한 지표를 얹는다.
+
+    지표를 집필 **전에** 정해 두는 이유: 예전에는 재원이 파이프라인 끝(집필 후)에만
+    붙어 있어서, 본문에 비교할 수치가 없으면 "수치 부족으로 생략"만 반복했다. 무엇을
+    찾아야 하는지 먼저 알려 주면 칼럼니스트가 그 지표를 찾아 쓰고, 재원은 나중에
+    그것을 그리기만 하면 된다.
+    """
     topic = TOPICS[topic_key]
     chosen = (brief_decision.chosen or {}) if brief_decision else {}
-    return ask_agent_json('lead', BRIEF_PROMPT.format(
-        topic_hint=topic['topic_hint'], audience=topic['audience'],
-        subject=chosen.get('title', '(편집회의 결정 없음 — 칼럼니스트가 직접 선정)'),
+    subject = chosen.get('title', '(편집회의 결정 없음 — 칼럼니스트가 직접 선정)')
+    brief = ask_agent_json('lead', BRIEF_PROMPT.format(
+        topic_hint=topic['topic_hint'], audience=topic['audience'], subject=subject,
         detail=chosen.get('detail', ''), recent='\n'.join(f'- {t}' for t in recent) or '(없음)'), max_tokens=3000)
+
+    metrics = ask_agent_json('charter', METRICS_PROMPT.format(
+        subject=subject, detail=chosen.get('detail', ''), angle=brief.get('angle', ''),
+        audience=topic['audience']), max_tokens=2000)
+    wanted = [m for m in (metrics.get('metrics') or []) if isinstance(m, str) and m.strip()][:5]
+    if wanted:
+        # 팀장 기획서의 data_needed 를 데이터 담당의 목록으로 바꾼다 (그리기까지 고려한 목록)
+        brief['data_needed'] = wanted
+        brief['chart_plan'] = str(metrics.get('chart_plan', ''))[:300]
+        if rec:
+            rec('charter', 'brief', f"필요 지표 {len(wanted)}개 제시: {'; '.join(wanted)[:150]}")
+    return brief
+
+
+def step_critique(subject: str, content: str) -> dict:
+    """3.5) 평론 — 독자가 읽을 이유가 있는 글인지 본다.
+
+    사실 여부는 검증관이 보므로 여기서는 읽히는가만 본다. 인상 비평을 막기 위해
+    지적마다 본문 인용을 요구하고, 인용이 없는 항목은 버린다.
+    """
+    res = ask_agent_json('critic', CRITIQUE_PROMPT.format(subject=subject, content=content), max_tokens=4000)
+
+    def keep(items):
+        out = []
+        for it in items or []:
+            if not isinstance(it, dict):
+                continue
+            quote = str(it.get('quote', '')).strip()
+            why = str(it.get('why', '')).strip()
+            if len(quote) >= 5 and why:      # 근거 없는 지적은 버린다
+                out.append({'quote': quote[:200], 'why': why[:300],
+                            'fix': str(it.get('fix', ''))[:300]})
+        return out[:6]
+
+    return {
+        'verdict': res.get('verdict') if res.get('verdict') in ('recommend', 'revise', 'reject') else 'revise',
+        'hook': str(res.get('hook', ''))[:300],
+        'takeaway': str(res.get('takeaway', ''))[:300],
+        'issues': keep(res.get('issues')),
+        'strengths': keep(res.get('strengths')),
+        'reason': str(res.get('reason', ''))[:400],
+    }
+
+
+def critique_text(cr: dict) -> str:
+    """편집장에게 넘길 평론 요약."""
+    if not cr:
+        return '(평론 없음)'
+    ko = {'recommend': '추천', 'revise': '수정 후 재검토', 'reject': '반대'}
+    lines = [f"평론가 판정: {ko.get(cr['verdict'], cr['verdict'])} — {cr.get('reason', '')}",
+             f"도입부: {cr.get('hook', '')}", f"독자가 얻는 것: {cr.get('takeaway', '')}"]
+    for i in cr.get('issues') or []:
+        lines.append(f"  · 지적 「{i['quote'][:60]}」 → {i['why']} (제안: {i.get('fix', '')})")
+    for s in cr.get('strengths') or []:
+        lines.append(f"  · 좋은 대목 「{s['quote'][:60]}」 → {s['why']}")
+    return '\n'.join(lines)
 
 
 def step_draft(topic_key: str, brief_decision, brief: dict, recent: list) -> tuple:
@@ -383,8 +485,12 @@ def length_rule(length: int) -> str:
 
 
 def step_review(subject: str, content: str, check: dict, chart_rel: str,
-                visual_report: str = '') -> dict:
-    """6) 편집 심사 — 항목 점수를 받아 총점·판정은 시스템이 계산."""
+                visual_report: str = '', critique: dict | None = None) -> dict:
+    """6) 편집 심사 — 편집장(승현)이 항목 점수를 매기고, 총점·판정은 시스템이 계산.
+
+    기획을 고른 팀장이 아니라 편집장이 본다. 같은 사람이 고르고 심사하면 기획 단계의
+    착오를 잡아낼 사람이 없어지기 때문이다.
+    """
     have = '차트 이미지 + 표 있음' if chart_rel else ('표 있음(차트 없음)' if has_visual(content) else '없음')
     visual = f'{have}\n{visual_report}' if visual_report else have
     length = body_length(content)
@@ -394,10 +500,11 @@ def step_review(subject: str, content: str, check: dict, chart_rel: str,
                       '하우스 스타일은 존댓말입니다. 예: ' + ' / '.join(offenders[:3]))
     else:
         style_note = f"존댓말로 통일됨 ({st['polite']}문장 확인)"
-    qa = ask_agent_json('lead', QA_PROMPT.format(
+    qa = ask_agent_json('editor', QA_PROMPT.format(
         check=json.dumps({k: v for k, v in check.items() if k != 'first'}, ensure_ascii=False)[:2500],
-        length=length, length_rule=length_rule(length), style=style_note,
-        visual=visual, subject=subject, content=content, rubric=rubric_text()), max_tokens=3000)
+        critique=critique_text(critique), length=length, length_rule=length_rule(length),
+        style=style_note, visual=visual, subject=subject, content=content,
+        rubric=rubric_text()), max_tokens=3000)
 
     scores = qa.get('scores') if isinstance(qa.get('scores'), dict) else {}
     fatal = [f for f in (qa.get('fatal') or []) if isinstance(f, str)]
@@ -408,6 +515,13 @@ def step_review(subject: str, content: str, check: dict, chart_rel: str,
     # 길다는 이유로 붙은 결함은 걷어낸다 — 분량 초과는 감점 사유가 아니다
     if 'too_short' in fatal and length >= MIN_CHARS:
         fatal.remove('too_short')
+    # 평론가가 반대하면 편집장이 놓쳐도 보류한다 — 읽을 이유가 없는 글은 발행 대상이 아니다
+    if critique and critique.get('verdict') == 'reject' and 'unreadable' not in fatal:
+        fatal.append('unreadable')
+        first = (critique.get('issues') or [{}])[0]
+        qa.setdefault('issues', []).append(
+            f"평론가 반대: {critique.get('reason', '')[:120]}"
+            + (f" — 「{first.get('quote', '')[:40]}」 {first.get('why', '')[:80]}" if first else ''))
     # 문체는 기계로 판별되므로 모델 판단과 무관하게 강제한다
     if st['plain_ratio'] > PLAIN_STYLE_LIMIT and st['total'] >= 5 and 'style_broken' not in fatal:
         fatal.append('style_broken')

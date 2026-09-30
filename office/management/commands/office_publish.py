@@ -60,8 +60,8 @@ class Command(BaseCommand):
             out(f'[{timezone.localtime():%H:%M:%S}] {label} — 제작 시작'
                 + (f' (회의 주제: {draft.brief})' if draft and draft.brief else ' (회의 결정 없음)'))
 
-            # 1) 기획서
-            brief = P.step_brief(topic_key, brief_decision, recent)
+            # 1) 기획서 (팀장 지시 + 데이터 담당이 필요한 지표 제시)
+            brief = P.step_brief(topic_key, brief_decision, recent, rec=rec)
             rec('lead', 'brief', f"집필 의뢰서: {brief.get('angle', '')[:120]}")
 
             # 2) 집필
@@ -85,15 +85,19 @@ class Command(BaseCommand):
                 else:
                     rec(writer, 'revise', f'재작성 실패 — {why}')
 
-            # 5) 데이터 시각화
+            # 5) 평론 — 읽을 이유가 있는 글인지
+            critique = P.step_critique(subject, content)
+            rec('critic', 'critique', self._critique_line(critique))
+
+            # 6) 데이터 시각화
             chart_rel, chart_note, visual_report = '', '옵션으로 생략(--no-chart)', ''
             if not opts['no_chart']:
                 content, chart_rel, chart_note, visual_report = P.step_visual(
                     content, topic_key, rec=rec, dry=dry)
 
-            # 6) 편집 심사 → 7) 판정 (Minor 는 자동 1회 재작성 후 재심)
-            qa = P.step_review(subject, content, check, chart_rel, visual_report)
-            rec('lead', 'qa', self._qa_line(qa))
+            # 7) 편집 심사 → 8) 판정 (Minor 는 자동 1회 재작성 후 재심)
+            qa = P.step_review(subject, content, check, chart_rel, visual_report, critique)
+            rec('editor', 'qa', self._qa_line(qa))
             if qa['verdict'] == 'minor' and revisions < P.MAX_AUTO_REVISIONS + 1:
                 raw = ask_agent(writer, P.EDITOR_REVISE_PROMPT.format(
                     issues='\n'.join(f'- {i}' for i in qa.get('issues', [])), notes=qa.get('notes', ''),
@@ -104,13 +108,15 @@ class Command(BaseCommand):
                 if not P.has_visual(content) and not opts['no_chart']:
                     content, chart_rel, chart_note, visual_report = P.step_visual(
                         content, topic_key, rec=rec, dry=dry)
-                qa = P.step_review(subject, content, check, chart_rel, visual_report)
+                critique = P.step_critique(subject, content)
+                rec('critic', 'critique', '재검토 ' + self._critique_line(critique))
+                qa = P.step_review(subject, content, check, chart_rel, visual_report, critique)
                 # 재심에서는 '수정 요청'을 통과로 본다 (학술지의 minor revision 수리와 같은 처리).
                 # 치명 결함이 남아 있으면 verdict 가 major 라 그대로 보류된다.
                 if qa['verdict'] == 'minor':
                     qa['verdict'] = 'accept'
                     qa['accepted_after_revision'] = True
-                rec('lead', 'qa', '재심 ' + self._qa_line(qa))
+                rec('editor', 'qa', '재심 ' + self._qa_line(qa))
 
             if dry:
                 out('=' * 60 + f'\nTITLE: {subject}\n' + content[:2000] + '\n' + '=' * 60)
@@ -145,6 +151,15 @@ class Command(BaseCommand):
                 draft.save(update_fields=['status'])
                 log('lead', 'fail', f'{label} 제작 실패: {str(ex)[:200]}', draft=draft)
             raise
+
+    @staticmethod
+    def _critique_line(cr: dict) -> str:
+        ko = {'recommend': '추천', 'revise': '수정 후 재검토', 'reject': '반대'}
+        head = f"평론 {ko.get(cr['verdict'], cr['verdict'])}"
+        issues = cr.get('issues') or []
+        if issues:
+            head += f" · 지적 {len(issues)}건 — 「{issues[0]['quote'][:32]}」 {issues[0]['why'][:60]}"
+        return f"{head}: {cr.get('reason', '')[:100]}"
 
     @staticmethod
     def _qa_line(qa: dict) -> str:
