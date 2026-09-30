@@ -530,6 +530,9 @@
       if (man.nav) { NAV.cell = man.nav.cell; NAV.w = man.nav.w; NAV.h = man.nav.h; NAV.grid = man.nav.grid; }
       if (man.approaches) APPROACH = man.approaches.map(([x, y]) => ({ x, y }));
       if (man.activities) ACTS = man.activities;
+      if (man.stand_posts && man.stand_posts.length) {
+        STAND_POSTS = man.stand_posts.map(p => ({ x: p.at[0], y: p.at[1], dir: p.dir || 'up', reserve: p.reserve }));
+      }
       if (man.spots) Object.assign(SPOTS, {
         coffee: man.spots.coffee || SPOTS.coffee, cooler: man.spots.cooler || SPOTS.cooler,
         board: man.spots.board || SPOTS.board, plant: man.spots.plant || SPOTS.plant,
@@ -599,14 +602,15 @@
   //  NAV: 방 이미지에서 뽑은 '걸을 수 있는 칸' 격자. 이게 있으면 A* 로 통로를 따라 걷고,
   //  없으면(폴백 렌더러) 예전처럼 직선으로 움직인다.
   let agents = [], meeting = null, mode = 'office', tick = 0, k = 2, bg = null, light = null;
-  let replay = { i: 0, t: 0 };
+  let replay = { i: 0, t: 0, beats: null };
   const NAV = { cell: 0, w: 0, h: 0, grid: null };
   let APPROACH = [], ACTS = [];
   const busy = new Map();                       // 행동 지점 점유 (key → agent.key)
   const rnd = (a, b) => a + Math.random() * (b - a);
-  // 연구원이 책상 수보다 많을 수 있다(현재 책상 7 · 연구원 8). 남는 사람은 창가·화이트보드
-  // 같은 '서서 일하는 자리'를 집으로 쓴다 — 같은 의자에 두 명을 겹쳐 앉히는 것보다 낫다.
-  const STAND_POSTS = [{ x: 60, y: 148, dir: 'up' }, { x: 244, y: 196, dir: 'up' }];
+  // 연구원이 책상 수보다 많을 수 있다(현재 책상 7 · 연구원 8). 남는 사람은 프린터 앞 같은
+  // '서서 일하는 자리'를 집으로 쓴다 — 같은 의자에 두 명을 겹쳐 앉히는 것보다 낫다.
+  // 자리는 매니페스트(stand_posts)가 정하고, 없으면 아래 기본값을 쓴다.
+  let STAND_POSTS = [{ x: 404, y: 172, dir: 'up', reserve: 'printer' }];
   const hasDesk = a => a.sprite.desk < DESKS.length;
   const standPost = a => STAND_POSTS[(a.sprite.desk - DESKS.length) % STAND_POSTS.length];
   const deskPos = a => {
@@ -790,7 +794,9 @@
               a.task = 'return';
               goTo(a, ap.x, ap.y, () => goSit(a));
             } else {
-              a.face = 'up'; a.dir = 'up';
+              // 회의 중에도 각자 제자리 — 서서 일하는 사람은 그 자리의 방향을 지킨다
+              const d = hasDesk(a) ? 'up' : standPost(a).dir;
+              a.face = d; a.dir = d;
             }
           } else {
             a.wait--;
@@ -880,9 +886,36 @@
     requestAnimationFrame(render);
   }
 
+  // 한 사람의 발언을 통째로 한 말풍선에 넣으면 화면 절반을 덮는다. 문장 단위로 끊어
+  // 여러 번에 나눠 말하게 한다 — 실제로 말하듯 호흡이 생기고 글자도 읽을 만해진다.
+  function splitSpeech(text, max = 95) {
+    const out = [];
+    let buf = '';
+    for (const part of String(text || '').split(/\n+|(?<=[.!?])\s+/)) {
+      const s = part.trim();
+      if (!s) continue;
+      if (buf && (buf + ' ' + s).length > max) { out.push(buf); buf = s; }
+      else buf = buf ? buf + ' ' + s : s;
+    }
+    if (buf) out.push(buf);
+    return out.length ? out : [String(text || '')];
+  }
+
+  function buildBeats(transcript) {
+    const beats = [];
+    transcript.forEach((line, li) => {
+      const parts = splitSpeech(line.text);
+      parts.forEach((text, pi) => beats.push({
+        ...line, text, lineIdx: li, part: pi + 1, parts: parts.length,
+      }));
+    });
+    return beats;
+  }
+
   function renderMeeting() {
     if (!meeting || !meeting.transcript.length) { captionEl.textContent = '재생할 회의록이 없습니다.'; return; }
-    const line = meeting.transcript[replay.i];
+    if (!replay.beats) replay.beats = buildBeats(meeting.transcript);
+    const line = replay.beats[replay.i];
     const a = agents.find(x => x.key === line.agent);
     replay.t++;
     const shown = line.text.slice(0, Math.floor(replay.t / 2));
@@ -896,12 +929,22 @@
       sayEl.style.left = Math.min(Math.max(a.x * scale, half + 6), canvas.clientWidth - half - 6) + 'px';
       sayEl.style.top = ((a.y - 38) * scale) + 'px';
     }
-    captionEl.innerHTML = `<b>${line.name}</b> <span class="muted">${line.round}라운드 · ${replay.i + 1}/${meeting.transcript.length}</span><br>${shown}`;
-    if (shown.length >= line.text.length && replay.t > line.text.length * 2 + 240) { replay.i = (replay.i + 1) % meeting.transcript.length; replay.t = 0; }
+    const step = line.parts > 1 ? ` <span class="muted">(${line.part}/${line.parts})</span>` : '';
+    captionEl.innerHTML = `<b>${line.name}</b> <span class="muted">${line.round}라운드 · `
+      + `${line.lineIdx + 1}/${meeting.transcript.length}</span>${step}<br>${shown}`;
+    // 다 타이핑된 뒤 잠깐 머문다. 같은 사람의 다음 토막은 짧게, 발언이 바뀔 때는 길게 쉰다.
+    if (shown.length >= line.text.length) {
+      const next = replay.beats[(replay.i + 1) % replay.beats.length];
+      const pause = next && next.lineIdx === line.lineIdx ? 90 : 240;
+      if (replay.t > line.text.length * 2 + pause) {
+        replay.i = (replay.i + 1) % replay.beats.length;
+        replay.t = 0;
+      }
+    }
   }
 
   function setMode(m) {
-    mode = m; replay = { i: 0, t: 0 };
+    mode = m; replay = { i: 0, t: 0, beats: null };
     modeLabel.textContent = m === 'meeting' ? '편집회의 재생 중' : '연구실';
     btnMeeting.hidden = m === 'meeting'; btnOffice.hidden = m !== 'meeting';
     if (sayEl) { sayEl.remove(); sayEl = null; }
@@ -930,10 +973,14 @@
         const styles = ['long', 'short', 'bob', 'curly', 'tied', 'short'];
         agents = data.agents.map((a, i) => {
           const sprite = { ...a.sprite, style: a.sprite.style || styles[i % styles.length] };
+          const seated = sprite.desk < DESKS.length;
           const home = deskPos({ sprite });
+          const post = seated ? null : standPost({ sprite });
+          // 서는 자리가 행동 지점 위라면 그 지점을 잡아 둔다 — 다른 연구원이 와서 겹치지 않게
+          if (post && post.reserve) busy.set(post.reserve, a.key);
           return { ...a, sprite, x: home.x, y: home.y, tx: home.x, ty: home.y,
-                   task: 'work', state: 'work', pose: sprite.desk < DESKS.length ? 'type' : 'stand',
-                   face: 'up', dir: 'up',
+                   task: 'work', state: 'work', pose: seated ? 'type' : 'stand',
+                   face: post ? post.dir : 'up', dir: post ? post.dir : 'up',
                    wait: rnd(240, 1400), blink: 0, walkT: 0, path: null, act: null,
                    phase: i * 266, moving: false };
         });
