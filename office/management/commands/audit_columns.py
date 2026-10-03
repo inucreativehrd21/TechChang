@@ -108,11 +108,12 @@ class Command(BaseCommand):
             out(f'  {label.get(t, t):22s} {n:3d}편')
 
         shown = dirty[:opts['worst']] if opts['worst'] else dirty
-        out(f'\n손볼 순서 (지적 많은 순, {len(shown)}편)')
+        order = '조회수 많은 순' if opts['by_views'] else '지적 많은 순'
+        out(f'\n손볼 순서 ({order}, {len(shown)}편)')
         for r in shown:
             q = r['q']
             out(f"  #{q.id:<4d} [{q.category.name if q.category else '-':6s}] "
-                f"{q.subject[:40]:42s} 지적 {len(r['flaws'])}건 · {r['chars']:,}자"
+                f"{q.subject[:36]:38s} 조회 {r['views']:>4d} · 지적 {len(r['flaws'])}건 · {r['chars']:,}자"
                 + (f" · 평서체 {r['plain']:.0%}" if r['plain'] > 0.15 else ''))
             if opts['detail']:
                 for f in r['flaws']:
