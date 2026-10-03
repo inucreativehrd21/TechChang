@@ -24,6 +24,13 @@ FOOTER = re.compile(r'^[ \t>*_]*본 칼럼은 AI[^\n]*\n?', re.M)
 
 
 def strip_footer(content: str) -> str:
+    """고지 문구가 있을 때만 손댄다.
+
+    공백 정리를 무조건 돌리면 문구가 없는 글까지 '바뀐 것'으로 잡혀, 몇 편을 고쳤는지가
+    실제와 어긋난다(검증은 45편인데 56편으로 셌다).
+    """
+    if not FOOTER.search(content):
+        return content
     text = FOOTER.sub('', content)
     text = re.sub(r'\n{3,}', '\n\n', text)
     return text.rstrip() + '\n'
