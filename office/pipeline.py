@@ -68,7 +68,32 @@ DRAFT_PROMPT = (
     '[팀장 집필 의뢰서]\n'
     '- 각도: {angle}\n- 반드시 답할 질문: {questions}\n- 넣어야 할 데이터: {data_needed}\n'
     '- 사례 후보: {cases}\n- 짚어야 할 반론: {counterpoint}\n- 피할 것: {avoid}\n'
-    '{avoid_titles}\n{structure}'
+    '{avoid_titles}\n{structure}\n\n{standard}'
+)
+
+# 집필자에게 **심사 기준을 미리** 보여 준다. 예전에는 루브릭·치명 결함·기계 검사가 전부
+# 집필 뒤에만 적용돼, 작성자는 무엇으로 평가되는지 모른 채 초안을 냈다. 그 결과 한 번에
+# 통과한 적이 없었다. 채점표를 쥐여 주는 것이 가장 싼 품질 개선이다.
+WRITING_STANDARD = (
+    '─────────────────────────────\n'
+    '이 원고는 아래 기준으로 심사됩니다. **쓰기 전에 읽고, 내보내기 전에 스스로 확인하세요.**\n\n'
+    '[기계가 자동으로 검사하는 것 — 하나라도 걸리면 그 자리에서 반려됩니다]\n'
+    '1. 본문 {min_chars:,}자 이상 (참고 자료 제외)\n'
+    '2. 처음부터 끝까지 존댓말. 평서체(~다/~이다/~한다)가 한 문장이라도 섞이면 반려.\n'
+    '   인용문(> )과 참고 자료 목록만 예외입니다\n'
+    '3. 필수 섹션: 왜 지금인가 / 숫자로 보는 현황 / 현장의 변화 / 시사점 / 맺음말 / 참고 자료\n'
+    '4. "숫자로 보는 현황"에 **서로 비교 가능한 수치 3개 이상**, 각각 기관·보고서명과 함께\n'
+    '5. 의뢰서의 "넣어야 할 데이터" 항목을 실제로 본문에 반영할 것\n\n'
+    '[편집장이 채점하는 항목]\n{rubric}\n\n'
+    '[치명 결함 — 하나라도 있으면 발행되지 않습니다]\n'
+    '- 확인 불가능한 수치나 출처를 쓴 경우. 모르면 쓰지 말고, 추정이면 추정이라고 밝히세요\n'
+    '- 이미 발행한 칼럼과 소재가 겹치는 경우\n'
+    '- 비교 가능한 수치가 사실상 없는 경우\n'
+    '- 근거 없이 단정하는 경우\n\n'
+    '[출고 전 자기 점검]\n'
+    '초안을 다 쓴 뒤 **직접 다시 읽으며** 위 1~5를 하나씩 확인하세요. '
+    '특히 문장 끝을 훑어 평서체가 섞이지 않았는지, 수치마다 출처가 붙었는지 보세요. '
+    '어긋난 곳이 있으면 고쳐서 내보냅니다. 초안이라고 생각하지 말고 **발행본**이라고 생각하고 쓰세요.'
 )
 
 CHECK_PROMPT = (
@@ -92,10 +117,16 @@ REVISE_PROMPT = (
 )
 
 EDITOR_REVISE_PROMPT = (
-    '편집 심사에서 수정 요청(Minor revision)을 받았습니다. 아래 지적을 모두 반영해 칼럼 전체를 다시 쓰세요.\n\n'
-    '[편집 심사 지적]\n{issues}\n[팀장 총평]\n{notes}\n\n'
+    '편집 심사에서 기준 미달 판정을 받았습니다. 아래를 **모두** 반영해 칼럼 전체를 다시 쓰세요.\n'
+    '이번이 자동 재작성 기회 한 번뿐입니다. 여기서도 기준에 못 미치면 사람 검수로 넘어갑니다.\n\n'
+    '[편집장 지적]\n{issues}\n[편집장 총평]\n{notes}\n\n'
+    '[팩트체크 보고 — 확인 불가·오류로 표시된 수치는 반드시 처리하세요]\n{check}\n\n'
+    '[평론가 의견]\n{critique}\n\n'
     '[현재 칼럼]\nTITLE: {subject}\n---\n{content}\n\n'
-    '주의: 본문에 이미 들어간 차트·표 마크다운은 그대로 두되, 수치를 고치면 표도 함께 고치세요.\n\n{structure}'
+    '처리 원칙:\n'
+    '- 확인 불가 수치는 **빼거나**, 출처를 명시하고 추정치임을 밝히세요. 그대로 두면 또 반려됩니다\n'
+    '- 본문에 이미 들어간 차트·표 마크다운은 그대로 두되, 수치를 고치면 표도 함께 고치세요\n'
+    '- 지적되지 않은 부분까지 헤집지 마세요\n\n{structure}\n\n{standard}'
 )
 
 ADMIN_REVISE_PROMPT = (
@@ -104,7 +135,7 @@ ADMIN_REVISE_PROMPT = (
     '[운영자 지시]\n{admin_note}\n\n[직전 편집 심사 지적]\n{qa_issues}\n\n[팩트체크 지적]\n{check_notes}\n\n'
     '[현재 칼럼]\nTITLE: {subject}\n---\n{content}\n\n'
     '주의: 운영자가 특정 부분만 고치라고 했다면 나머지 문장은 최대한 보존합니다. '
-    '본문에 이미 들어간 차트·표 마크다운은 유지하되, 수치가 바뀌면 함께 갱신하세요.\n\n{structure}'
+    '본문에 이미 들어간 차트·표 마크다운은 유지하되, 수치가 바뀌면 함께 갱신하세요.\n\n{structure}\n\n{standard}'
 )
 
 CHART_PROMPT = (
@@ -372,6 +403,22 @@ def step_critique(subject: str, content: str) -> dict:
     }
 
 
+def check_text(check: dict) -> str:
+    """재작성자에게 넘길 팩트체크 요약 — 처리해야 할 수치를 분명히 드러낸다."""
+    if not check:
+        return '(팩트체크 없음)'
+    claims = [c for c in (check.get('claims') or []) if isinstance(c, dict)]
+    bad = [c for c in claims if c.get('status') in ('unverifiable', 'wrong')]
+    lines = [f"판정: {check.get('verdict', '?')}"
+             + (' · 기존 칼럼과 소재 중복' if check.get('duplicate') else '')]
+    for c in bad[:8]:
+        lines.append(f"  · [{c.get('status')}] {str(c.get('claim', ''))[:90]}"
+                     f" — {str(c.get('note') or c.get('reason') or '')[:90]}")
+    if not bad:
+        lines.append('  확인 불가·오류로 표시된 항목 없음')
+    return '\n'.join(lines)
+
+
 def critique_text(cr: dict) -> str:
     """편집장에게 넘길 평론 요약."""
     if not cr:
@@ -407,8 +454,66 @@ def step_draft(topic_key: str, brief_decision, brief: dict, recent: list) -> tup
         today=datetime.now().strftime('%Y년 %m월 %d일'), topic_hint=topic['topic_hint'], audience=topic['audience'],
         subject_block=subject_block, angle=brief.get('angle', ''), questions=lst('questions'),
         data_needed=lst('data_needed'), cases=lst('cases'), counterpoint=brief.get('counterpoint', ''),
-        avoid=lst('avoid'), avoid_titles=avoid_titles, structure=COLUMN_STRUCTURE)
+        avoid=lst('avoid'), avoid_titles=avoid_titles, structure=COLUMN_STRUCTURE,
+        standard=WRITING_STANDARD.format(min_chars=MIN_CHARS, rubric=rubric_text()))
     return parse_output(ask_agent(TOPIC_AGENT_OF[topic_key], prompt, max_tokens=12000))
+
+
+FIX_PROMPT = (
+    '초안 자동 점검에서 아래 문제가 나왔습니다. **이것만 고쳐서** 칼럼 전체를 다시 내보내세요.\n'
+    '통과한 부분은 그대로 두고, 지적된 곳만 손봅니다.\n\n'
+    '[고쳐야 할 것]\n{issues}\n\n'
+    '[현재 칼럼]\nTITLE: {subject}\n---\n{content}\n\n{structure}'
+)
+
+
+def step_fix_draft(topic_key: str, subject: str, content: str, issues: list) -> tuple:
+    """초안 자동 점검 지적을 반영해 다시 쓴다. 반환 (subject, content, 남은 지적)."""
+    raw = ask_agent(TOPIC_AGENT_OF[topic_key], FIX_PROMPT.format(
+        issues='\n'.join(f'- {i}' for i in issues), subject=subject, content=content,
+        structure=COLUMN_STRUCTURE), max_tokens=12000)
+    new_subject, new_content = parse_output(raw)
+    # 고치려다 더 나빠지면 원고를 버리지 않는다 (safe_rewrite 와 같은 이유)
+    if body_length(new_content) < body_length(content) * 0.6:
+        return subject, content, issues
+    return new_subject, new_content, precheck_draft(new_content)
+
+
+REQUIRED_SECTIONS = ['왜 지금인가', '숫자로 보는 현황', '현장의 변화', '시사점', '맺음말', '참고 자료']
+
+
+def precheck_draft(content: str) -> list:
+    """초안이 기본 요건을 갖췄는지 코드로 확인. 반환: 지적 목록(비면 통과).
+
+    팩트체크·평론·심사는 모두 모델 호출이라, 뻔한 결함을 거기서 걸러내면 호출을 세 번 더
+    태운 뒤에야 재작성에 들어간다. 기계로 판별되는 것은 초안 직후 여기서 잡고, 바로 그
+    지적만 물려 다시 쓰게 한다 — 호출 한 번으로 끝난다.
+    """
+    import re
+
+    issues = []
+    length = body_length(content)
+    if length < MIN_CHARS:
+        issues.append(f'본문이 {length:,}자로 하한 {MIN_CHARS:,}자에 미달합니다. '
+                      '분량을 채우려 같은 말을 반복하지 말고 메커니즘·사례·반론을 더 파고드세요.')
+
+    missing = [s for s in REQUIRED_SECTIONS if s not in content]
+    if missing:
+        issues.append(f'필수 섹션이 없습니다: {", ".join(missing)}')
+
+    offenders, st = audit_style(content)
+    if st['plain_ratio'] > PLAIN_STYLE_LIMIT and st['total'] >= 5:
+        issues.append(f"평서체가 {st['plain']}문장({st['plain_ratio']:.0%}) 섞였습니다. "
+                      f"전부 존댓말로 고치세요. 예: {offenders[0][:60]}")
+
+    # '숫자로 보는 현황' 안의 수치 개수 — 비교할 값이 없으면 차트도 못 만들고 근거도 약하다
+    sec = re.split(r'\n##\s', content)
+    data_sec = next((s for s in sec if s.startswith('숫자로 보는 현황')), '')
+    numbers = re.findall(r'\d[\d,]*\.?\d*\s*(?:%|명|건|배|억|만|점|위|달러|원)', data_sec)
+    if len(numbers) < 3:
+        issues.append(f'"숫자로 보는 현황"에 단위가 붙은 수치가 {len(numbers)}개뿐입니다. '
+                      '비교 가능한 수치를 3개 이상, 기관·보고서명과 함께 넣으세요.')
+    return issues
 
 
 def step_check(subject: str, content: str, recent: list) -> dict:

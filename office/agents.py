@@ -17,7 +17,7 @@
 """
 from common.services.claude import ClaudeModel
 
-MODEL = ClaudeModel.SONNET_5
+MODEL = ClaudeModel.SONNET_5_5
 
 TEAM_INTRO = (
     '당신은 인천대학교 창의인재개발학과 전공심화연구모임 "테크창"(techchang.com) 연구팀의 일원입니다. '

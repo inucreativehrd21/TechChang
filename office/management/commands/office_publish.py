@@ -64,9 +64,20 @@ class Command(BaseCommand):
             brief = P.step_brief(topic_key, brief_decision, recent, rec=rec)
             rec('lead', 'brief', f"집필 의뢰서: {brief.get('angle', '')[:120]}")
 
-            # 2) 집필
+            # 2) 집필 → 자동 점검(코드) → 필요하면 즉시 보완
+            #    분량·문체·섹션·수치처럼 기계로 판별되는 결함을 여기서 잡는다. 팩트체크·평론·
+            #    심사는 전부 모델 호출이라, 거기까지 끌고 가면 호출 세 번을 더 태운 뒤에야
+            #    재작성에 들어간다.
             subject, content = P.step_draft(topic_key, brief_decision, brief, recent)
             rec(writer, 'draft', f'초안 완성: {subject} ({P.body_length(content)}자)')
+            flaws = P.precheck_draft(content)
+            if flaws:
+                rec('editor', 'precheck', f'초안 자동 점검 {len(flaws)}건: {flaws[0][:90]}')
+                subject, content, flaws = P.step_fix_draft(topic_key, subject, content, flaws)
+                rec(writer, 'revise', f'자동 점검 지적 반영 ({P.body_length(content)}자)'
+                    + (f' · 남은 지적 {len(flaws)}건' if flaws else ' · 모두 해소'))
+            else:
+                rec('editor', 'precheck', '초안 자동 점검 통과')
 
             # 3) 팩트체크 → 4) 수정
             check = P.step_check(subject, content, recent)
@@ -95,17 +106,26 @@ class Command(BaseCommand):
                 content, chart_rel, chart_note, visual_report = P.step_visual(
                     content, topic_key, rec=rec, dry=dry)
 
-            # 7) 편집 심사 → 8) 판정 (Minor 는 자동 1회 재작성 후 재심)
+            # 7) 편집 심사 → 8) 판정 (기준 미달이면 자동 1회 재작성 후 재심, 그 뒤는 사람 검수)
             qa = P.step_review(subject, content, check, chart_rel, visual_report, critique)
             rec('editor', 'qa', self._qa_line(qa))
-            if qa['verdict'] == 'minor' and revisions < P.MAX_AUTO_REVISIONS + 1:
+            # 기준 미달이면 — 보류든 수정 요청이든 — 자동으로 **한 번만** 다시 쓴다.
+            # 편집장 지적과 팩트체크 보고를 함께 물려 준다. 그 뒤로는 사람이 보고
+            # /lab/admin/ 에서 수정 지시를 내리는 기존 흐름으로 넘어간다.
+            if qa['verdict'] in ('minor', 'major'):
                 raw = ask_agent(writer, P.EDITOR_REVISE_PROMPT.format(
                     issues='\n'.join(f'- {i}' for i in qa.get('issues', [])), notes=qa.get('notes', ''),
-                    subject=subject, content=content, structure=COLUMN_STRUCTURE), max_tokens=8000)
+                    check=P.check_text(check), critique=P.critique_text(critique),
+                    subject=subject, content=content, structure=COLUMN_STRUCTURE,
+                    standard=P.WRITING_STANDARD.format(min_chars=P.MIN_CHARS, rubric=P.rubric_text())),
+                    max_tokens=12000)
                 subject, content = P.parse_output(raw)
                 revisions += 1
                 rec(writer, 'revise', f'편집 심사 지적 반영해 재작성 ({P.body_length(content)}자)')
-                if not P.has_visual(content) and not opts['no_chart']:
+                # 본문이 통째로 다시 쓰였으므로 도판도 다시 만든다. 옛 블록을 남겨 두면
+                # 표의 숫자만 고쳐지고 그림은 예전 수치 그대로 남는다.
+                if not opts['no_chart']:
+                    content = P.strip_visual_block(content)
                     content, chart_rel, chart_note, visual_report = P.step_visual(
                         content, topic_key, rec=rec, dry=dry)
                 critique = P.step_critique(subject, content)

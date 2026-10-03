@@ -33,7 +33,10 @@ class ClaudeModel(str, Enum):
     """사용 가능한 Claude 모델 목록. (str 믹스인으로 Python 3.10 호환)"""
     HAIKU  = 'claude-haiku-4-5-20251001'   # 빠르고 저렴 - 단순 응답, Q&A 자동 답변
     SONNET = 'claude-sonnet-4-6'            # 균형 - 칼럼 작성, 분석, 기획
-    SONNET_5 = 'claude-sonnet-5'            # 오피스 에이전트 팀(office 앱) 고정 모델
+    SONNET_5 = 'claude-sonnet-5'            # (구) 오피스 에이전트 모델
+    # 오피스 에이전트 팀(office 앱) 고정 모델. thinking 이 기본 adaptive 로 켜지고
+    # effort 기본값이 high 라, 같은 프롬프트에서도 Sonnet 5 보다 초안 완성도가 올라간다.
+    SONNET_5_5 = 'claude-sonnet-5-5'
     OPUS   = 'claude-opus-4-8'             # 최고 성능 - 복잡한 추론, 장문 심층 분석
 
     def __str__(self):
