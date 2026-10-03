@@ -503,9 +503,14 @@ def render_chart(spec: dict, filename_stem: str) -> tuple:
         ax.legend(frameon=False, fontsize=10.5, loc='upper right',
                   bbox_to_anchor=(1, 1.08), ncol=min(n, 3), handlelength=1.1)
 
-    # 제목·출처는 그림에 넣지 않는다. 본문 캡션 블록이 "그림 N. 제목 / 설명 / 출처" 를
-    # 맡으므로, 그림 안에 또 적으면 같은 문장이 두 번 보인다(저널 도판의 관행이기도 하다).
-    fig.tight_layout(pad=0.6)
+    # 그림 위에 짧은 제목을 둔다. 본문 캡션과 겹치지만, 이미지가 본문을 떠나 단독으로
+    # 공유될 때(SNS·검색 이미지) 무엇을 그린 그림인지 알 길이 없어진다. 출처·해석 문장은
+    # 본문 캡션 블록이 맡으므로 여기엔 제목만 올린다.
+    title = (spec.get('title') or '').strip()
+    fig.tight_layout(pad=0.6, rect=(0, 0, 1, 0.93) if title else None)
+    if title:
+        fig.text(0.012, 0.975, _wrap_label(title, 46).replace('\n', ' '),
+                 fontsize=12, fontweight='bold', ha='left', va='top', color=INK)
 
     out_dir = Path(settings.MEDIA_ROOT) / 'columns'
     out_dir.mkdir(parents=True, exist_ok=True)
