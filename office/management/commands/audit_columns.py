@@ -67,7 +67,8 @@ def audit_one(q) -> dict:
 
     _, st = audit_style(c)
     return {'q': q, 'flaws': flaws, 'tags': tags, 'chars': body_length(c),
-            'plain': st['plain_ratio'], 'imgs': imgs, 'tables': tables}
+            'plain': st['plain_ratio'], 'imgs': imgs, 'tables': tables,
+            'views': q.view_count or 0}
 
 
 class Command(BaseCommand):
@@ -77,6 +78,8 @@ class Command(BaseCommand):
         parser.add_argument('--detail', action='store_true', help='칼럼별 지적을 모두 출력')
         parser.add_argument('--worst', type=int, default=0, help='상위 N편만 출력')
         parser.add_argument('--csv', help='결과를 CSV 로 저장')
+        parser.add_argument('--by-views', action='store_true',
+                            help='지적 수 대신 조회수 순으로 — 손볼 가치가 큰 글부터 본다')
         parser.add_argument('--author', default=BOT, help='대상 작성자 (기본: 연구팀 봇)')
 
     def handle(self, *args, **opts):
@@ -89,7 +92,8 @@ class Command(BaseCommand):
             return
 
         clean = [r for r in rows if not r['flaws']]
-        dirty = sorted((r for r in rows if r['flaws']), key=lambda r: -len(r['flaws']))
+        key = (lambda r: -r['views']) if opts['by_views'] else (lambda r: -len(r['flaws']))
+        dirty = sorted((r for r in rows if r['flaws']), key=key)
 
         out(f'대상 {len(rows)}편 · 현재 기준 통과 {len(clean)}편 · 손봐야 할 글 {len(dirty)}편\n')
         counts = {}
