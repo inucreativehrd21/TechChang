@@ -118,7 +118,7 @@ class Command(BaseCommand):
                     check=P.check_text(check), critique=P.critique_text(critique),
                     subject=subject, content=content, structure=COLUMN_STRUCTURE,
                     standard=P.WRITING_STANDARD.format(min_chars=P.MIN_CHARS, rubric=P.rubric_text())),
-                    max_tokens=12000)
+                    max_tokens=P.COLUMN_MAX_TOKENS)
                 subject, content = P.parse_output(raw)
                 revisions += 1
                 rec(writer, 'revise', f'편집 심사 지적 반영해 재작성 ({P.body_length(content)}자)')

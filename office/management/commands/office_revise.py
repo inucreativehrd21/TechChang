@@ -69,7 +69,7 @@ class Command(BaseCommand):
                 check_notes=prev_check.get('notes', '') or '(없음)',
                 subject=draft.subject, content=draft.content, structure=COLUMN_STRUCTURE,
                 standard=P.WRITING_STANDARD.format(min_chars=P.MIN_CHARS, rubric=P.rubric_text())),
-                max_tokens=12000)
+                max_tokens=P.COLUMN_MAX_TOKENS)
             subject, content, ok, why = P.safe_rewrite(raw, draft.subject, draft.content)
             if not ok:
                 rec(writer, 'revise', f'재작성 실패 — {why}. 원고를 그대로 두고 검수 대기로 되돌립니다')

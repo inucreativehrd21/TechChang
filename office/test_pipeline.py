@@ -119,6 +119,73 @@ class CheckTextTests(TestCase):
         self.assertIn('중복', P.check_text({'verdict': 'pass', 'duplicate': True, 'claims': []}))
 
 
+FIGURE_NEW = (
+    '![그림 1. 협업량 증가와 몰입도 비교](/media/columns/x.png)\n\n'
+    '**그림 1. 협업량 증가와 몰입도 비교**\n\n'
+    '회의 시간이 늘어난 만큼 몰입도가 따라 오르지는 않았습니다.\n\n'
+    '*단위: %. 출처: Microsoft Work Trend Index(2022).*\n\n'
+    '| 항목 | 비율 |\n|---|---|\n| 회의시간 증가 | 148 |\n| 직원 몰입도 | 23 |\n'
+)
+FIGURE_OLD = (
+    '![협업 지표](/media/columns/old.png)\n\n'
+    '**협업 지표** (단위: %)\n\n'
+    '| 항목 | 비율 |\n|---|---|\n| 회의시간 | 148 |\n\n'
+    '*출처: Microsoft(2022)*\n'
+)
+
+
+class StripVisualBlockTests(TestCase):
+    """도판을 못 지우면 재작성 때 그림이 두 번 실린다 (draft #6 에서 실제로 발생)."""
+
+    def test_new_journal_format_is_removed(self):
+        body = '## 숫자로 보는 현황\n\n앞 문단입니다.\n\n' + FIGURE_NEW + '\n## 다음 절\n\n뒷 문단입니다.\n'
+        out = P.strip_visual_block(body)
+        for leftover in ('그림 1', '![', '| 항목', '단위: %', '회의 시간이 늘어난'):
+            self.assertNotIn(leftover, out, leftover)
+        self.assertIn('앞 문단입니다.', out)
+        self.assertIn('뒷 문단입니다.', out)
+
+    def test_old_format_is_still_removed(self):
+        out = P.strip_visual_block('본문입니다.\n\n' + FIGURE_OLD + '\n이어지는 본문입니다.\n')
+        self.assertNotIn('|', out)
+        self.assertNotIn('![', out)
+        self.assertIn('이어지는 본문입니다.', out)
+
+    def test_stripping_twice_is_stable(self):
+        body = '본문입니다.\n\n' + FIGURE_NEW
+        self.assertEqual(P.strip_visual_block(P.strip_visual_block(body)), P.strip_visual_block(body))
+
+    def test_bold_emphasis_in_prose_is_kept(self):
+        """본문 속 **강조**를 도판 제목으로 오인해 문단을 날리면 안 된다."""
+        body = '이것은 **핵심 개념**이라고 부르는 것이며 문장이 이어집니다. 두 번째 문장입니다.\n'
+        self.assertIn('핵심 개념', P.strip_visual_block(body))
+
+
+class TruncationTests(TestCase):
+    """max_tokens 에 걸려 끊긴 원고를 길이만 보고 통과시키면 안 된다."""
+
+    GOOD = BODY_OK
+
+    def test_complete_draft_is_not_flagged(self):
+        self.assertEqual(P.looks_truncated(self.GOOD), '')
+
+    def test_missing_reference_section_is_truncation(self):
+        body = self.GOOD.split('## 참고 자료')[0]
+        self.assertIn('참고 자료', P.looks_truncated(body))
+
+    def test_sentence_cut_mid_word_is_caught(self):
+        body = self.GOOD + '\n\n마지막 불릿이 여기서 끊기면서 역'
+        self.assertIn('끝맺지', P.looks_truncated(body))
+
+    def test_safe_rewrite_keeps_previous_when_truncated(self):
+        cut = self.GOOD.split('## 맺음말')[0] + '\n\n마지막 문장이 역'
+        subject, content, ok, why = P.safe_rewrite(
+            'TITLE: 새 제목\n---\n' + cut, '이전 제목', self.GOOD)
+        self.assertFalse(ok)
+        self.assertEqual(content, self.GOOD)
+        self.assertIn('잘려', why)
+
+
 class AgentModelTests(TestCase):
     def test_office_agents_use_sonnet_5_5(self):
         from common.services.claude import ClaudeModel

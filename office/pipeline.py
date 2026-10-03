@@ -47,6 +47,10 @@ TARGET_MAX = 3500          # 권장 상한. **넘겨도 감점하지 않는다**
 MAX_CHARS = 7000           # 이 위로는 편집이 필요하다고 본다(산만·중복 의심)
 MAX_AUTO_REVISIONS = 1     # Minor revision 자동 재작성 횟수
 PLAIN_STYLE_LIMIT = 0.15   # 평서체 문장이 이 비율을 넘으면 문체 미통일로 본다
+# 칼럼 생성·재작성 출력 한도. 한글은 글자당 토큰이 커서 5,800자 본문이면 1만 토큰을 넘고,
+# 여기에 제목·마크다운까지 더해지면 12,000 으로는 끝에서 잘린다. 실제로 맺음말·참고 자료가
+# 통째로 사라진 원고가 일곱 번 재작성을 돌았다. 넉넉히 두고, 잘림은 looks_truncated 가 잡는다.
+COLUMN_MAX_TOKENS = 24000
 
 
 # ───────────────────────────── 프롬프트
@@ -234,17 +238,39 @@ def body_length(content: str) -> int:
 
 
 def strip_visual_block(content: str) -> str:
-    """앞서 삽입한 차트·표 블록을 걷어낸다 (본문이 다시 쓰였을 때 수치와 맞는 시각화를 새로 만들기 위해)."""
-    # 삽입 블록의 모양: [이미지] + **제목**(단위) + 표 + *출처: …* + [캡션]
-    block = re.compile(
-        r'(?:^!\[[^\]]*\]\([^)]*\)[ \t]*\n+)?'      # 차트 이미지 (없을 수도)
-        r'(?:^\*\*[^\n]*\*\*[^\n]*\n+)?'            # 표 제목
-        r'(?:^\|[^\n]*\|[ \t]*\n)+'                 # 표 본체
-        r'(?:\n*^\*출처:[^\n]*\*[ \t]*\n)?',        # 출처 주석
-        re.M)
-    text = block.sub('', content)
-    text = re.sub(r'^!\[[^\]]*\]\([^)]*\)[ \t]*\n?', '', text, flags=re.M)   # 표 없이 이미지만 남은 경우
-    return re.sub(r'\n{3,}', '\n\n', text).strip() + '\n'
+    """앞서 삽입한 도판(그림·캡션·출처·표)을 걷어낸다.
+
+    본문이 다시 쓰였을 때 옛 수치의 그림이 남지 않도록 지우고 새로 만든다. 예전에는 하나의
+    정규식으로 '이미지 → 제목 → 표 → 출처' 순서를 통째로 잡았는데, 도판 형식을 학술지식
+    (그림 N. 제목 → 캡션 → 단위·출처 → 표)으로 바꾸면서 순서가 달라져 매칭이 실패했다.
+    그 결과 옛 블록이 남은 채 새 블록이 또 들어가 **그림이 두 번** 실렸다.
+
+    그래서 순서에 기대지 않고 빈 줄로 나눈 덩어리를 하나씩 보고 도판 조각이면 버린다.
+    캡션 문장은 바로 앞이 '그림/표 N.' 머리일 때만 도판으로 본다 — 그래야 본문을 안 먹는다.
+    """
+    IMG = re.compile(r'^!\[[^\]]*\]\([^)]*\)\s*$')
+    HEAD = re.compile(r'^\*\*(?:그림|표)\s*\d+\.?[^\n]*\*\*\s*$')     # 새 형식 도판 머리
+    OLD_HEAD = re.compile(r'^\*\*[^\n]{2,80}\*\*\s*(?:\(단위:[^\n]*\))?\s*$')  # 옛 표 제목
+    NOTE = re.compile(r'^\*[^\n]*(?:출처|단위)[^\n]*\*\s*$')
+    TABLE = re.compile(r'^\|.*\|\s*$')
+
+    out, after_head = [], False
+    for chunk in re.split(r'\n\s*\n', content):
+        body = chunk.strip()
+        if not body:
+            continue
+        lines = body.splitlines()
+        is_head = bool(HEAD.match(lines[0]) or (len(lines) == 1 and OLD_HEAD.match(lines[0])))
+        is_fig = (IMG.match(lines[0]) or is_head or NOTE.match(lines[0])
+                  or all(TABLE.match(ln) for ln in lines))
+        if is_fig:
+            after_head = is_head
+            continue
+        if after_head:          # 도판 머리 바로 다음 문단 = 캡션
+            after_head = False
+            continue
+        out.append(body)
+    return '\n\n'.join(out).strip() + '\n'
 
 
 def has_visual(content: str) -> bool:
@@ -303,9 +329,30 @@ def insert_after_heading(content: str, heading: str, block: str) -> str:
     return '\n'.join(lines[:end] + ['', block, ''] + lines[end:])
 
 
+def looks_truncated(content: str) -> str:
+    """출력이 중간에 잘렸는지 판별. 잘렸으면 사유, 멀쩡하면 ''.
+
+    max_tokens 에 걸려 생성이 끊기면 길이는 멀쩡한데 글이 문장 중간에서 멈춘다. 길이만
+    보던 안전장치는 이걸 통과시켜, 맺음말·참고 자료가 통째로 없는 원고가 일곱 번이나
+    재작성을 돌고도 계속 반려됐다(draft #6). 끝이 어떻게 생겼는지를 본다.
+    """
+    text = content.rstrip()
+    if not text:
+        return '응답이 비어 있습니다'
+    if '## 참고 자료' not in text:
+        return '참고 자료 섹션이 없습니다 — 생성이 중간에 끊긴 것으로 보입니다'
+    tail = text.splitlines()[-1].rstrip()
+    # 서명 줄·구분선·목록으로 끝나는 것은 정상
+    if tail.startswith(('*', '-', '|', '#', '>')) or tail.endswith(('---', '*')):
+        return ''
+    if not tail.endswith(('.', '!', '?', '다', '요', ')', '」', '』', '"', "'")):
+        return f'마지막 문장이 끝맺지 않았습니다: …{tail[-30:]}'
+    return ''
+
+
 def safe_rewrite(raw: str, prev_subject: str, prev_content: str) -> tuple:
-    """재작성 결과 검증 — 비었거나 직전 원고의 60% 미만이면 **이전 원고를 유지**한다.
-    (모델이 빈 응답·잘린 응답을 돌려줘도 좋은 초안을 잃지 않게 하는 안전장치.)
+    """재작성 결과 검증 — 비었거나, 직전 원고의 60% 미만이거나, 중간에 잘렸으면
+    **이전 원고를 유지**한다. (좋은 초안을 잃지 않게 하는 안전장치.)
     반환: (subject, content, ok, reason)"""
     subject, content = parse_output(raw)
     prev_len = body_length(prev_content)
@@ -314,6 +361,9 @@ def safe_rewrite(raw: str, prev_subject: str, prev_content: str) -> tuple:
         return prev_subject, prev_content, False, '재작성 응답이 비어 이전 원고 유지'
     if prev_len and new_len < prev_len * 0.6:
         return prev_subject, prev_content, False, f'재작성본이 너무 짧아({new_len}자 < {prev_len}자의 60%) 이전 원고 유지'
+    cut = looks_truncated(content)
+    if cut:
+        return prev_subject, prev_content, False, f'재작성본이 잘려 이전 원고 유지 — {cut}'
     return subject, content, True, ''
 
 
@@ -456,7 +506,7 @@ def step_draft(topic_key: str, brief_decision, brief: dict, recent: list) -> tup
         data_needed=lst('data_needed'), cases=lst('cases'), counterpoint=brief.get('counterpoint', ''),
         avoid=lst('avoid'), avoid_titles=avoid_titles, structure=COLUMN_STRUCTURE,
         standard=WRITING_STANDARD.format(min_chars=MIN_CHARS, rubric=rubric_text()))
-    return parse_output(ask_agent(TOPIC_AGENT_OF[topic_key], prompt, max_tokens=12000))
+    return parse_output(ask_agent(TOPIC_AGENT_OF[topic_key], prompt, max_tokens=COLUMN_MAX_TOKENS))
 
 
 FIX_PROMPT = (
@@ -471,7 +521,7 @@ def step_fix_draft(topic_key: str, subject: str, content: str, issues: list) -> 
     """초안 자동 점검 지적을 반영해 다시 쓴다. 반환 (subject, content, 남은 지적)."""
     raw = ask_agent(TOPIC_AGENT_OF[topic_key], FIX_PROMPT.format(
         issues='\n'.join(f'- {i}' for i in issues), subject=subject, content=content,
-        structure=COLUMN_STRUCTURE), max_tokens=12000)
+        structure=COLUMN_STRUCTURE), max_tokens=COLUMN_MAX_TOKENS)
     new_subject, new_content = parse_output(raw)
     # 고치려다 더 나빠지면 원고를 버리지 않는다 (safe_rewrite 와 같은 이유)
     if body_length(new_content) < body_length(content) * 0.6:
@@ -527,7 +577,7 @@ def step_author_revise(topic_key: str, subject: str, content: str, check: dict) 
     bad = [c for c in check.get('claims', []) if c.get('status') in ('unverifiable', 'wrong')]
     raw = ask_agent(TOPIC_AGENT_OF[topic_key], REVISE_PROMPT.format(
         notes=check.get('notes', ''), claims=json.dumps(bad, ensure_ascii=False),
-        subject=subject, content=content, structure=COLUMN_STRUCTURE), max_tokens=12000)
+        subject=subject, content=content, structure=COLUMN_STRUCTURE), max_tokens=COLUMN_MAX_TOKENS)
     return safe_rewrite(raw, subject, content)
 
 
