@@ -60,7 +60,24 @@ def _spool_ask(spool: str, key: str, prompt: str, max_tokens: int) -> str:
         waited += 2
         if waited > SPOOL_TIMEOUT:
             raise RuntimeError(f'spool 응답 대기 시간 초과({SPOOL_TIMEOUT}s): {reply}')
+
+    # scp 등으로 올리는 도중 파일이 먼저 생성되고 내용은 뒤늦게 채워질 수 있다. 실제로
+    # 폴링이 그 틈을 비집고 들어가 0자 응답을 읽은 적이 있다. 크기가 두 번 연속 같을
+    # 때까지(=전송이 끝났다고 볼 때까지) 기다린 뒤 읽는다.
+    last_size = -1
+    for _ in range(30):
+        try:
+            size = os.path.getsize(reply)
+        except OSError:
+            size = -1
+        if size == last_size and size > 0:
+            break
+        last_size = size
+        time.sleep(0.5)
     out = open(reply, encoding='utf-8').read().strip()
+    if not out:   # 안정화 이후에도 비면 마지막으로 한 번 더 — 느린 네트워크 대비 안전망
+        time.sleep(1.5)
+        out = open(reply, encoding='utf-8').read().strip()
     os.replace(os.path.join(spool, 'pending.md'), os.path.join(spool, f'done.{seq}.prompt.md'))
     os.replace(reply, os.path.join(spool, f'done.{seq}.reply.md'))
     print(f"  [spool] req {seq} replied ({len(out):,} chars)", flush=True)
