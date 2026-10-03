@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import json
+import os
 import re
 from datetime import date, timedelta
 from pathlib import Path
@@ -20,8 +21,56 @@ BOT_USERNAME = 'techchang연구팀'
 
 
 # ───────────────────────────── 에이전트 호출
+# ───────────────────────────── 에이전트 호출 전송 방식
+# 기본은 Anthropic API(별도 과금). OFFICE_AGENT_SPOOL 에 디렉터리를 주면 API 대신
+# **파일로 주고받는다** — 파이프라인은 그대로 돌고, 모델 응답만 사람(또는 Claude Code
+# 세션)이 채워 넣는다. 로직을 건드리지 않고 과금만 피하려는 용도다.
+SPOOL_ENV = 'OFFICE_AGENT_SPOOL'
+SPOOL_TIMEOUT = int(os.environ.get('OFFICE_AGENT_TIMEOUT', '3600'))   # 응답 대기 한도(초)
+
+
+def _spool_ask(spool: str, key: str, prompt: str, max_tokens: int) -> str:
+    """프롬프트를 파일로 내놓고 답이 올 때까지 기다린다.
+
+    주고받는 파일은 한 쌍뿐이라 단순하다:
+      pending.json / pending.md  — 지금 답해야 할 요청 (시스템 프롬프트 + 본문)
+      reply.<seq>.md             — 그 요청에 대한 답. 이 파일이 생기면 진행한다
+    """
+    import json as _json
+    import time
+
+    os.makedirs(spool, exist_ok=True)
+    seq = len([n for n in os.listdir(spool) if n.startswith('done.')]) + 1
+    agent = AGENTS[key]
+    meta = {'seq': seq, 'agent': key, 'name': agent['name'], 'title': agent['title'],
+            'max_tokens': max_tokens, 'chars': len(prompt)}
+    with open(os.path.join(spool, 'pending.json'), 'w', encoding='utf-8') as f:
+        _json.dump(meta, f, ensure_ascii=False)
+    with open(os.path.join(spool, 'pending.md'), 'w', encoding='utf-8') as f:
+        f.write(f"# 요청 {seq} — {agent['name']} ({agent['title']})\n\n"
+                f"## 역할(system)\n\n{agent['system']}\n\n## 지시\n\n{prompt}\n")
+
+    reply = os.path.join(spool, f'reply.{seq}.md')
+    # 콘솔 인코딩이 cp949 인 환경에서도 깨지지 않게 ASCII 기호만 쓴다
+    print(f'  [spool] req {seq} / {agent["name"]}({agent["title"]}) waiting -> {reply}', flush=True)
+    waited = 0
+    while not os.path.exists(reply):
+        time.sleep(2)
+        waited += 2
+        if waited > SPOOL_TIMEOUT:
+            raise RuntimeError(f'spool 응답 대기 시간 초과({SPOOL_TIMEOUT}s): {reply}')
+    out = open(reply, encoding='utf-8').read().strip()
+    os.replace(os.path.join(spool, 'pending.md'), os.path.join(spool, f'done.{seq}.prompt.md'))
+    os.replace(reply, os.path.join(spool, f'done.{seq}.reply.md'))
+    print(f"  [spool] req {seq} replied ({len(out):,} chars)", flush=True)
+    return out
+
+
 def ask_agent(key: str, prompt: str, *, max_tokens: int = 2000) -> str:
     """에이전트 1회 호출. 적응형 thinking 이 출력 예산을 다 써서 본문이 비면 예산 2배로 1회 재시도한다."""
+    spool = os.environ.get(SPOOL_ENV)
+    if spool:
+        return _spool_ask(spool, key, prompt, max_tokens)
     out = ask(prompt, system=AGENTS[key]['system'], model=MODEL, max_tokens=max_tokens).strip()
     if not out:
         out = ask(prompt, system=AGENTS[key]['system'], model=MODEL, max_tokens=max_tokens * 2).strip()

@@ -192,3 +192,70 @@ class AgentModelTests(TestCase):
         from office.agents import MODEL
         self.assertEqual(str(MODEL), 'claude-sonnet-5-5')
         self.assertEqual(ClaudeModel.SONNET_5_5.value, 'claude-sonnet-5-5')
+
+
+class SpoolTransportTests(TestCase):
+    """이 세션에서 돌릴 때 API 과금이 생기지 않아야 한다 — 호출이 파일로 나가는지 확인."""
+
+    def setUp(self):
+        import shutil
+        import tempfile
+        self.spool = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, self.spool, True)
+
+    def test_spool_mode_writes_a_prompt_and_never_calls_the_api(self):
+        import json
+        import os
+        import threading
+
+        from office import services as S
+
+        def answer():
+            import time
+            for _ in range(100):
+                if os.path.exists(os.path.join(self.spool, 'pending.json')):
+                    meta = json.load(open(os.path.join(self.spool, 'pending.json'), encoding='utf-8'))
+                    open(os.path.join(self.spool, f'reply.{meta["seq"]}.md'), 'w',
+                         encoding='utf-8').write('파일로 받은 답입니다.')
+                    return
+                time.sleep(0.02)
+
+        with patch.dict(os.environ, {S.SPOOL_ENV: self.spool}), \
+                patch.object(S, 'ask', side_effect=AssertionError('API 호출됨')):
+            t = threading.Thread(target=answer)
+            t.start()
+            out = S.ask_agent('lead', '테스트 지시입니다.')
+            t.join()
+        self.assertEqual(out, '파일로 받은 답입니다.')
+        self.assertTrue(os.path.exists(os.path.join(self.spool, 'done.1.prompt.md')))
+        body = open(os.path.join(self.spool, 'done.1.prompt.md'), encoding='utf-8').read()
+        self.assertIn('테스트 지시입니다.', body)
+        self.assertIn('분석관', body)          # 역할(system) 이 함께 실린다
+
+    def test_api_mode_is_unchanged_when_spool_is_not_set(self):
+        import os
+
+        from office import services as S
+        with patch.dict(os.environ, {}, clear=False), patch.object(S, 'ask', return_value='API 응답'):
+            os.environ.pop(S.SPOOL_ENV, None)
+            self.assertEqual(S.ask_agent('lead', 'x'), 'API 응답')
+
+
+class FabricatedDataGateTests(TestCase):
+    """지어낸 수치로 근거 섹션을 채우면 차트도 못 만들고 no_evidence 로 반려된다."""
+
+    def test_hypothetical_example_is_flagged(self):
+        body = BODY_OK.replace(
+            '- **70%** — Gallup 조사: 관리자 영향력 비중',
+            '아래는 이해를 돕기 위한 가상의 400명 조직 예시입니다.\n- **61%** 입력률')
+        issues = P.precheck_draft(body)
+        self.assertTrue(any('지어낸' in i for i in issues), issues)
+
+    def test_real_sourced_numbers_pass(self):
+        self.assertEqual(P.precheck_draft(BODY_OK), [])
+
+    def test_the_word_example_alone_is_not_enough_to_fail(self):
+        """'예를 들어' 같은 평범한 서술까지 막으면 글을 못 쓴다."""
+        body = BODY_OK.replace('이 수치들이 보여 주는 바를 풀어서 설명합니다. ',
+                               '예를 들어 설명하면 이렇습니다. ', 1)
+        self.assertEqual(P.precheck_draft(body), [])
