@@ -362,3 +362,23 @@ class ChartFontTests(TestCase):
 
         from office.services import _chart_font
         self.assertIn('Pretendard', _chart_font(font_manager))
+
+
+class TwoItemTableTests(TestCase):
+    """값이 둘뿐이면 표로 내는 것이 맞다 — 그림까지 그렸을 때만 결함이다."""
+
+    SPEC = {'type': 'bar', 'title': '비교', 'labels': ['가', '나'], 'unit': '%',
+            'source': 'Microsoft(2021)', 'series': [{'name': '비율', 'values': [148, 45]}]}
+    BODY = '회의 시간은 148% 늘었고 채팅은 45% 늘었습니다.'
+    CAP = '회의 시간 증가폭이 채팅보다 훨씬 컸습니다.'
+
+    def test_table_only_is_a_warning(self):
+        from office.services import audit_chart
+        errors, warns, _ = audit_chart(self.SPEC, self.BODY, '', self.CAP)
+        self.assertEqual([e for e in errors if '비교 항목' in e], [])
+        self.assertTrue(any('비교 항목' in w for w in warns))
+
+    def test_rendered_chart_with_two_items_is_still_fatal(self):
+        from office.services import audit_chart
+        errors, _, _ = audit_chart(self.SPEC, self.BODY, 'columns/x.png', self.CAP)
+        self.assertTrue(any('비교 항목' in e for e in errors))

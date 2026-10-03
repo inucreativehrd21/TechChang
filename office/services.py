@@ -40,7 +40,8 @@ def _spool_ask(spool: str, key: str, prompt: str, max_tokens: int) -> str:
     import time
 
     os.makedirs(spool, exist_ok=True)
-    seq = len([n for n in os.listdir(spool) if n.startswith('done.')]) + 1
+    # 완료된 요청은 prompt·reply 두 파일로 남으므로 요청 수는 그 절반이다
+    seq = len([n for n in os.listdir(spool) if n.endswith('.reply.md')]) + 1
     agent = AGENTS[key]
     meta = {'seq': seq, 'agent': key, 'name': agent['name'], 'title': agent['title'],
             'max_tokens': max_tokens, 'chars': len(prompt)}
@@ -292,7 +293,11 @@ def audit_chart(spec: dict, content: str, chart_rel: str, caption: str = "") -> 
         warns.append('차트 이미지가 없어 표만 실렸습니다')
 
     if len(labels) < 3:
-        errors.append(f'비교 항목이 {len(labels)}개뿐 — 차트로 보여 줄 만한 비교가 아닙니다')
+        # 값이 둘뿐이면 표로 내보내는 것이 맞다(CHART_PROMPT 도 그렇게 지시한다).
+        # 그림까지 그렸을 때만 결함으로 본다 — 예전에는 표도 함께 반려돼 버렸다.
+        (errors if chart_rel else warns).append(
+            f'비교 항목이 {len(labels)}개뿐 — 차트로 보여 줄 만한 비교가 아닙니다'
+            + ('' if chart_rel else ' (표로만 실었습니다)'))
     elif len(labels) > 12:
         warns.append(f'항목이 {len(labels)}개로 많아 한눈에 읽기 어렵습니다 (8개 이하 권장)')
 
