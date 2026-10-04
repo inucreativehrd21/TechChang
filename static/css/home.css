@@ -56,8 +56,13 @@
     position: relative;
     max-width: var(--tc-maxw);
     margin: 0 auto;
-    /* 높이는 콘텐츠만큼: 첫 화면 아래로 인기글이 살짝 보여서 스크롤 큐 없이도 이어짐이 드러난다 */
-    padding: clamp(2.5rem, 6vw, 5rem) 1.5rem clamp(2rem, 4vw, 3.5rem);
+    /* 첫 화면을 정확히 채움: 콘텐츠 높이만 쓰면 화면 크기에 따라 다음 섹션 제목만 어중간하게 걸친다.
+       콘텐츠가 화면보다 크면(작은 노트북) min-height 는 무시되고 자연스럽게 흐른다. */
+    min-height: calc(100vh - var(--tc-nav));
+    min-height: calc(100dvh - var(--tc-nav));
+    display: flex;
+    align-items: center;
+    padding: clamp(2rem, 5vw, 4rem) 1.5rem;
     box-sizing: border-box;
 }
 
