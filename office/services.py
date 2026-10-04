@@ -184,6 +184,7 @@ def collect_site_snapshot(days: int = 28) -> dict:
         'held_drafts': held,
         'last_meeting': last_decisions,
         'gsc': _collect_gsc(since, today),
+        'server_log': _collect_server_log(hours=24 * 7),
     }
     return snap
 
@@ -206,6 +207,23 @@ def _collect_gsc(start: date, end: date) -> dict:
         return {'available': False, 'error': str(ex)[:120]}
 
 
+def _collect_server_log(hours: int) -> dict:
+    """send_log_report 의 집계기를 재사용해 실제 장애와 정상 방어(IP 자동 차단)를 나눠 센다."""
+    try:
+        from common.management.commands.send_log_report import Command as LR
+        s = LR()._collect_journal(hours=hours)
+        if not s.get('available'):
+            return {'available': False}
+        return {
+            'available': True, 'hours': hours,
+            'status_5xx': s.get('status_5xx', 0),
+            'error_lines': s.get('error_count', 0),
+            'security_blocks': s.get('security_blocks', 0),
+        }
+    except Exception as ex:  # noqa: BLE001 — 로그 수집 실패는 회의를 막지 않는다
+        return {'available': False, 'error': str(ex)[:120]}
+
+
 def snapshot_as_text(snap: dict) -> str:
     """에이전트에게 주는 브리핑 원문."""
     v = snap['visitors']
@@ -215,8 +233,25 @@ def snapshot_as_text(snap: dict) -> str:
     if g.get('available'):
         lines.append(f"검색(GSC): 클릭 {g.get('clicks')} · 노출 {g.get('impressions')} · CTR {g.get('ctr')} · 평균순위 {g.get('position')}")
         if g.get('top_queries'):
-            qs = ', '.join(f"{q.get('k')}({q.get('clicks', 0)})" for q in g['top_queries'][:8] if isinstance(q, dict))
-            lines.append(f"상위 검색어: {qs}")
+            # 노출을 함께 줘야 '클릭 0이지만 노출이 큰 검색어'와 '수요가 없는 검색어'를 구분할 수 있다
+            lines.append('상위 검색어(클릭 / 노출 / CTR):')
+            for q in g['top_queries'][:10]:
+                if isinstance(q, dict):
+                    lines.append(f"  - {q.get('k')}: 클릭 {q.get('clicks', 0):.0f} / 노출 {q.get('impr', 0):.0f}"
+                                 f" / CTR {q.get('ctr', 0) * 100:.1f}%")
+    cols = snap['recent_columns']
+    if cols:
+        views = sum(c['views'] for c in cols)
+        votes = sum(c['votes'] for c in cols)
+        voted = sum(1 for c in cols if c['votes'] > 0)
+        per100 = votes / views * 100 if views else 0
+        lines.append(f"칼럼 반응 추적(최근 {len(cols)}편): 추천 1개 이상 {voted}편 · 추천 합 {votes} / "
+                     f"조회 합 {views} · 100조회당 추천 {per100:.2f}")
+    sl = snap.get('server_log') or {}
+    if sl.get('available'):
+        lines.append(f"서버 로그(최근 {sl['hours'] // 24}일): 5xx 응답 {sl['status_5xx']}건 · "
+                     f"실제 에러 라인 {sl['error_lines']}건 · IP 자동 차단 {sl['security_blocks']}건"
+                     f"(보안 미들웨어의 정상 방어, 장애 아님)")
     lines.append('최근 발행 칼럼(제목 | 분야 | 날짜 | 조회 | 추천):')
     for c in snap['recent_columns'][:16]:
         lines.append(f"  - {c['subject']} | {c['category']} | {c['date']} | {c['views']} | {c['votes']}")

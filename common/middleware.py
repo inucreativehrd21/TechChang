@@ -148,7 +148,9 @@ class SecurityMiddleware:
         """IP를 일시적으로 차단"""
         cache.set(f"blocked_ip:{ip}", True, self.BLOCK_DURATION)
         cache.set(f"block_reason:{ip}", reason, self.BLOCK_DURATION)
-        logger.error(f"IP {ip} blocked for {self.BLOCK_DURATION} seconds. Reason: {reason}")
+        # 의도된 방어 동작이지 장애가 아니다. ERROR 로 남기면 로그 리포트가 실제 에러로 집계하고
+        # AI 에러 분석까지 호출한다 (send_log_report 는 이 문구를 '보안 차단'으로 따로 센다).
+        logger.warning(f"IP {ip} blocked for {self.BLOCK_DURATION} seconds. Reason: {reason}")
     
     def is_rate_limited(self, ip):
         """Rate Limiting 확인"""

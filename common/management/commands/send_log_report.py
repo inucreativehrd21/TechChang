@@ -19,6 +19,14 @@ from django.utils import timezone
 COLUMN_BOT_USERNAME = 'techchang연구팀'
 
 
+# common.middleware.SecurityMiddleware.block_ip() 가 남기는 문구
+SECURITY_BLOCK_RE = re.compile(r'IP \S+ blocked for \d+ seconds')
+# 로그 레벨 표시(Django 포맷 'ERROR 2026-..', gunicorn '[ERROR]')와 예외 줄로만 판별한다.
+# 'error' 글자 포함 여부로 세면 스캐너가 찌른 /error.php 같은 경로(404 WARNING)까지 에러가 된다.
+ERROR_LINE_RE = re.compile(r'\b(?:ERROR|CRITICAL)\b|Traceback \(most recent call last\)|\b\w+(?:Error|Exception):')
+WARNING_LINE_RE = re.compile(r'\bWARN(?:ING)?\b')
+
+
 class Command(BaseCommand):
     help = '서버 로그를 분석하고 요약 이메일을 발송합니다.'
 
@@ -117,7 +125,9 @@ class Command(BaseCommand):
                 f'- 5xx 에러 응답: {status_5xx}건\n'
                 f'- 4xx 에러 응답: {journal.get("status_4xx", 0)}건\n'
                 f'- Error/Exception 라인: {error_count}건\n'
-                f'- Warning 라인: {journal.get("warning_count", 0)}건\n\n'
+                f'- Warning 라인: {journal.get("warning_count", 0)}건\n'
+                f'- 보안 미들웨어 IP 자동 차단: {journal.get("security_blocks", 0)}건 '
+                f'(정상 방어 동작, 위 에러 건수에 포함되지 않음)\n\n'
                 f'[에러 로그 샘플]\n{error_block}\n\n'
                 '치명적인 문제 위주로 분석해 아래 JSON 형식으로만 응답하세요.\n'
                 '```json\n'
@@ -216,10 +226,12 @@ class Command(BaseCommand):
 
     @staticmethod
     def _classify_level(line):
-        lower = line.lower()
-        if 'error' in lower or 'exception' in lower or 'traceback' in lower or '" 5' in line:
+        # 집계(_collect_journal)와 같은 기준: IP 자동 차단은 경고, 'error' 가 든 경로는 에러가 아니다
+        if SECURITY_BLOCK_RE.search(line):
+            return 'warn'
+        if ERROR_LINE_RE.search(line) or '" 5' in line:
             return 'error'
-        if 'warning' in lower or 'warn' in lower or '" 4' in line:
+        if WARNING_LINE_RE.search(line) or '" 4' in line:
             return 'warn'
         return 'info'
 
@@ -389,6 +401,7 @@ class Command(BaseCommand):
         stats = {
             'error_count': 0,
             'warning_count': 0,
+            'security_blocks': 0,   # 보안 미들웨어 IP 자동 차단 (정상 방어, 에러 아님)
             'request_count': 0,
             'status_5xx': 0,
             'status_4xx': 0,
@@ -432,11 +445,14 @@ class Command(BaseCommand):
             path_404 = Counter()
 
             for line in raw_lines:
-                lower = line.lower()
-                if 'error' in lower or 'exception' in lower or 'traceback' in lower:
+                # 레벨과 무관하게 문구로 판별 (예전 ERROR 레벨로 찍힌 줄도 에러로 세지 않는다)
+                if SECURITY_BLOCK_RE.search(line):
+                    stats['security_blocks'] += 1
+                    continue
+                if ERROR_LINE_RE.search(line):
                     stats['error_count'] += 1
                     errors.append(line[-120:])
-                elif 'warning' in lower or 'warn' in lower:
+                elif WARNING_LINE_RE.search(line):
                     stats['warning_count'] += 1
                     key, rep = self._warn_key(line)
                     warn_counter[key] += 1
@@ -733,6 +749,8 @@ class Command(BaseCommand):
                 '<span>{:,}</span></div>'.format(journal.get('status_4xx', 0)) +
                 '<div class="row"><span>Warning</span>'
                 '<span>{}</span></div>'.format(journal.get('warning_count', 0)) +
+                '<div class="row"><span>IP 자동 차단 (정상 방어)</span>'
+                '<span>{}</span></div>'.format(journal.get('security_blocks', 0)) +
                 '<div class="row"><span>Error/Exception</span>'
                 '<span style="color:{};">{}</span></div>'.format(
                     '#dc2626' if journal.get('error_count', 0) > 0 else '#374151',
@@ -1008,6 +1026,7 @@ class Command(BaseCommand):
                 f'(404 {journal.get("status_404", 0)} / 403 {journal.get("status_403", 0)} / 401 {journal.get("status_401", 0)})',
                 f'  Warning    : {journal.get("warning_count", 0)}',
                 f'  Error/Exc  : {journal.get("error_count", 0)}',
+                f'  IP 자동 차단: {journal.get("security_blocks", 0)} (정상 방어, 에러 아님)',
                 '',
                 '[보안 이벤트]',
                 f'  IP 차단    : {security.get("blocked_ips", 0)}',
