@@ -1,4 +1,5 @@
 import secrets
+from django.conf import settings
 from django.utils.functional import SimpleLazyObject
 from django.contrib.auth import get_user_model
 
@@ -17,6 +18,11 @@ def get_theme_for_request(request):
     if cookie_theme in {t[0] for t in Profile.THEME_CHOICES}:
         return cookie_theme
     return Profile.THEME_LIGHT
+
+
+def static_version(request):
+    """정적 파일 캐시 무효화 키 (settings.STATIC_VERSION)"""
+    return {'STATIC_VERSION': settings.STATIC_VERSION}
 
 
 def theme_context(request):

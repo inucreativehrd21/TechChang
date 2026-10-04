@@ -92,6 +92,7 @@ TEMPLATES = [
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
                 'common.context_processors.theme_context',
+                'common.context_processors.static_version',
             ],
             'loaders': [
                 # 모바일 자동 감지 로더 (mobile/ 서브 경로 우선 시도)
@@ -193,6 +194,30 @@ STATICFILES_DIRS = [
     BASE_DIR / 'static',
 ]
 STATIC_ROOT = BASE_DIR / 'staticfiles'
+
+
+def _git_head_version():
+    """배포된 git 커밋 해시 앞 10자리. 서버는 git pull 로 배포하므로 배포마다 바뀐다."""
+    git_dir = BASE_DIR / '.git'
+    try:
+        head = (git_dir / 'HEAD').read_text().strip()
+        if not head.startswith('ref: '):
+            return head[:10]
+        ref = head[5:]
+        ref_file = git_dir / ref
+        if ref_file.exists():
+            return ref_file.read_text().strip()[:10]
+        for line in (git_dir / 'packed-refs').read_text().splitlines():
+            if line.endswith(' ' + ref):
+                return line.split()[0][:10]
+    except OSError:
+        pass
+    return None
+
+
+# 템플릿의 ?v={{ STATIC_VERSION }} 캐시 무효화 키.
+# nginx 가 /static/ 을 1년 immutable 로 캐시하므로, 이 값이 바뀌어야 재방문자도 새 CSS/JS 를 받는다.
+STATIC_VERSION = os.environ.get('STATIC_VERSION') or _git_head_version() or 'dev'
 
 # 정적 파일 파인더 설정 (성능 향상)
 STATICFILES_FINDERS = [

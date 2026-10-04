@@ -65,3 +65,12 @@ def get_item(dictionary, key):
         return dictionary.get(key, 0)
     except Exception:
         return 0
+
+
+CATEGORY_SLUGS = {'HRD': 'hrd', '데이터분석': 'data', '프로그래밍': 'programming', '공지사항': 'notice'}
+
+
+@register.filter
+def category_slug(name):
+    """카테고리 이름 → 배지 CSS 접미사 (tc-badge-*, tc-m-badge-*)"""
+    return CATEGORY_SLUGS.get(name, 'free')

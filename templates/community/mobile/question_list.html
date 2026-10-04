@@ -5,22 +5,95 @@
 {% block title %}테크창{% endblock %}
 {% block tab_home %}active{% endblock %}
 
+{% block extra_css %}
+<link href="{% static 'css/home-mobile.css' %}?v={{ STATIC_VERSION }}" rel="stylesheet">
+{% endblock %}
+
 {% block content %}
+<div class="tc-mh">
+
+<!-- 인트로 -->
+<section class="tc-mh-intro">
+    <h1 class="tc-mh-title">HRD와 테크놀로지를 잇는<br><span>지식 플랫폼</span></h1>
+    <p class="tc-mh-meta">오늘 방문 <strong>{{ visitors_today }}</strong> · 회원 <strong>{{ total_users }}</strong></p>
+    {% if not user.is_authenticated %}
+    <div class="tc-mh-actions">
+        <a href="{% url 'common:signup' %}" class="tc-mh-btn tc-mh-btn-primary">회원가입</a>
+        <a href="{% url 'common:login' %}" class="tc-mh-btn tc-mh-btn-ghost">로그인</a>
+    </div>
+    {% endif %}
+</section>
+
+<!-- 라이브 레일: 랭킹 / 게임 -->
+<div class="tc-mh-rail" aria-label="랭킹과 게임">
+    <section class="tc-mh-card">
+        <div class="tc-mh-card-head">
+            <h2>포인트 랭킹</h2>
+            <a href="{% url 'common:point_ranking' %}">전체</a>
+        </div>
+        <ol class="tc-mh-rank">
+            {% for r in top_rankers %}
+            <li class="{% if forloop.first %}is-top{% endif %}">
+                <span class="tc-mh-rank-no">{{ forloop.counter }}</span>
+                {% if r.avatar_url %}
+                <img class="tc-mh-avatar" src="{{ r.avatar_url }}" alt="" width="26" height="26" loading="lazy">
+                {% else %}
+                <span class="tc-mh-avatar tc-mh-avatar-fallback" aria-hidden="true">{{ r.display_name|first|upper }}</span>
+                {% endif %}
+                <span class="tc-mh-rank-name">{{ r.display_name }}</span>
+                <span class="tc-mh-rank-pt">{{ r.points }}P</span>
+            </li>
+            {% empty %}
+            <li class="tc-mh-empty">아직 포인트를 모은 회원이 없습니다.</li>
+            {% endfor %}
+        </ol>
+    </section>
+
+    <section class="tc-mh-card tc-mh-card-games">
+        <div class="tc-mh-card-head">
+            <h2>브라우저 게임</h2>
+            <a href="{% url 'community:games_index' %}">전체</a>
+        </div>
+        <p class="tc-mh-games-count">지금까지 <strong>{{ games_played_total }}</strong>판 플레이됨</p>
+        <div class="tc-mh-games">
+            <a href="{% url 'community:baseball_start' %}"><i class="fas fa-baseball" aria-hidden="true"></i>숫자야구</a>
+            <a href="{% url 'community:game2048_start' %}"><i class="fas fa-table-cells" aria-hidden="true"></i>2048</a>
+            <a href="{% url 'community:minesweeper_start' %}"><i class="fas fa-bomb" aria-hidden="true"></i>지뢰찾기</a>
+        </div>
+    </section>
+</div>
+
+<!-- 인기 게시글 TOP 5 -->
+{% if popular_posts %}
+<div class="tc-mh-head">
+    <h2>인기 게시글</h2>
+</div>
+<div class="tc-mh-rail tc-mh-rail-popular">
+    {% for question in popular_posts %}
+    <a href="{% url 'community:detail' question.id %}" class="tc-mh-pop">
+        <span class="tc-mh-pop-rank">{{ forloop.counter|stringformat:"02d" }}</span>
+        <span class="tc-mh-pop-title">{{ question.subject }}</span>
+        <span class="tc-mh-pop-meta"><i class="far fa-eye" aria-hidden="true"></i> {{ question.view_count }}{% if question.is_locked and not user.is_authenticated %}<span class="tc-mh-member-only"><i class="fas fa-lock" aria-hidden="true"></i> 회원 전용</span>{% endif %}</span>
+    </a>
+    {% endfor %}
+</div>
+{% endif %}
+
 <!-- 검색바 -->
-<form method="get" action="/" class="tc-m-searchbar">
+<form method="get" action="{% url 'community:index' %}" class="tc-m-searchbar" id="tc-mh-board" role="search">
     {% if category %}<input type="hidden" name="category" value="{{ category }}">{% endif %}
-    {% if sort %}<input type="hidden" name="sort" value="{{ sort }}">{% endif %}
-    <input type="text" name="kw" value="{{ kw }}" placeholder="질문 검색..." class="tc-m-search-input">
-    <button type="submit" class="tc-m-search-btn"><i class="fas fa-search"></i></button>
+    {% if sort != 'recent' %}<input type="hidden" name="sort" value="{{ sort }}">{% endif %}
+    <input type="search" name="kw" value="{{ kw }}" placeholder="질문 검색" aria-label="질문 검색" class="tc-m-search-input">
+    <button type="submit" class="tc-m-search-btn" aria-label="검색"><i class="fas fa-search" aria-hidden="true"></i></button>
 </form>
 
-<!-- 카테고리 칩 -->
+<!-- 카테고리 칩 (정렬 유지) -->
 <div class="tc-m-chips">
-    <a href="/?sort={{ sort }}" class="tc-m-chip {% if not category %}is-active{% endif %}">
+    <a href="?{% if sort != 'recent' %}sort={{ sort }}{% endif %}#tc-mh-board" class="tc-m-chip {% if not category %}is-active{% endif %}">
         전체 <small>{{ total_count }}</small>
     </a>
     {% for cat in categories %}
-    <a href="/?category={{ cat.name }}&sort={{ sort }}" class="tc-m-chip {% if category == cat.name %}is-active{% endif %}">
+    <a href="?category={{ cat.name|urlencode }}{% if sort != 'recent' %}&sort={{ sort }}{% endif %}#tc-mh-board" class="tc-m-chip {% if category == cat.name %}is-active{% endif %}">
         {{ cat.name }} <small>{{ category_counts|get_item:cat.name|default:0 }}</small>
     </a>
     {% endfor %}
@@ -28,89 +101,70 @@
 
 <!-- 정렬 탭 -->
 <div class="tc-m-tabs">
-    <a href="?{% if kw %}kw={{ kw }}&{% endif %}{% if category %}category={{ category }}&{% endif %}sort=recent" class="tc-m-tab {% if sort == 'recent' or not sort %}is-active{% endif %}">최신</a>
-    <a href="?{% if kw %}kw={{ kw }}&{% endif %}{% if category %}category={{ category }}&{% endif %}sort=recommend" class="tc-m-tab {% if sort == 'recommend' %}is-active{% endif %}">추천</a>
-    <a href="?{% if kw %}kw={{ kw }}&{% endif %}{% if category %}category={{ category }}&{% endif %}sort=popular" class="tc-m-tab {% if sort == 'popular' %}is-active{% endif %}">인기</a>
-</div>
-
-<!-- 스탯 -->
-<div class="tc-m-stats">
-    <div class="tc-m-stat">
-        <div class="tc-m-stat-num">{{ total_count }}</div>
-        <div class="tc-m-stat-label">질문</div>
-    </div>
-    <div class="tc-m-stat">
-        <div class="tc-m-stat-num">{{ total_users }}</div>
-        <div class="tc-m-stat-label">회원</div>
-    </div>
-    <div class="tc-m-stat">
-        <div class="tc-m-stat-num">{{ visitors_today }}</div>
-        <div class="tc-m-stat-label">오늘 방문</div>
-    </div>
+    <a href="?{% if kw %}kw={{ kw|urlencode }}&{% endif %}{% if category %}category={{ category|urlencode }}&{% endif %}sort=recent#tc-mh-board" class="tc-m-tab {% if sort == 'recent' %}is-active{% endif %}">최신</a>
+    <a href="?{% if kw %}kw={{ kw|urlencode }}&{% endif %}{% if category %}category={{ category|urlencode }}&{% endif %}sort=recommend#tc-mh-board" class="tc-m-tab {% if sort == 'recommend' %}is-active{% endif %}">추천</a>
+    <a href="?{% if kw %}kw={{ kw|urlencode }}&{% endif %}{% if category %}category={{ category|urlencode }}&{% endif %}sort=popular#tc-mh-board" class="tc-m-tab {% if sort == 'popular' %}is-active{% endif %}">인기</a>
 </div>
 
 <!-- 질문 목록 -->
 <div class="tc-m-page tc-m-list">
-    {% if question_list %}
     {% for question in question_list %}
     <a href="{% url 'community:detail' question.id %}" class="tc-m-card tc-m-qcard">
         {% if question.category %}
-            {% if question.category.name == 'HRD' %}
-                <span class="tc-m-badge tc-m-badge-hrd">{{ question.category.name }}</span>
-            {% elif question.category.name == '데이터분석' %}
-                <span class="tc-m-badge tc-m-badge-data">{{ question.category.name }}</span>
-            {% elif question.category.name == '프로그래밍' %}
-                <span class="tc-m-badge tc-m-badge-programming">{{ question.category.name }}</span>
-            {% elif question.category.name == '공지사항' %}
-                <span class="tc-m-badge tc-m-badge-notice">{{ question.category.name }}</span>
-            {% else %}
-                <span class="tc-m-badge tc-m-badge-free">{{ question.category.name }}</span>
-            {% endif %}
+        <span class="tc-m-badge tc-m-badge-{{ question.category.name|category_slug }}">{{ question.category.name }}</span>
         {% endif %}
         <div class="tc-m-qcard-title">{{ question.subject }}</div>
         <div class="tc-m-qcard-meta">
-            <span class="tc-m-stat"><i class="far fa-thumbs-up"></i> {{ question.voter_count }}</span>
-            <span class="tc-m-stat"><i class="far fa-comment"></i> {{ question.answer_count }}</span>
-            <span class="tc-m-stat"><i class="far fa-eye"></i> {{ question.view_count }}</span>
+            <span class="tc-m-stat"><i class="far fa-thumbs-up" aria-hidden="true"></i> {{ question.voter_count }}</span>
+            <span class="tc-m-stat"><i class="far fa-comment" aria-hidden="true"></i> {{ question.answer_count }}</span>
+            <span class="tc-m-stat"><i class="far fa-eye" aria-hidden="true"></i> {{ question.view_count }}</span>
+            {% if question.is_locked and not user.is_authenticated %}<span class="tc-mh-member-only"><i class="fas fa-lock" aria-hidden="true"></i> 회원 전용</span>{% endif %}
             <span class="tc-m-author">{{ question.author.username }}</span>
         </div>
     </a>
-    {% endfor %}
-    {% else %}
+    {% empty %}
     <div class="tc-m-empty">
-        <i class="far fa-folder-open"></i>
+        <i class="far fa-folder-open" aria-hidden="true"></i>
+        {% if kw %}
+        “{{ kw }}”에 맞는 글이 없습니다.
+        <br><br>
+        <a href="?#tc-mh-board">검색 지우기</a>
+        {% else %}
         질문이 없습니다.
         <br><br>
         <a href="{% url 'community:question_create' %}">첫 질문 작성하기</a>
+        {% endif %}
     </div>
-    {% endif %}
+    {% endfor %}
 </div>
 
 <!-- 페이징 -->
 {% if question_list.paginator.num_pages > 1 %}
-<div class="tc-m-paging">
+<nav class="tc-m-paging" aria-label="페이지">
     {% if question_list.has_previous %}
-    <a href="?page={{ question_list.previous_page_number }}{% if kw %}&kw={{ kw }}{% endif %}{% if category %}&category={{ category }}{% endif %}&sort={{ sort }}">
-        <i class="fas fa-chevron-left"></i>
+    <a href="?page={{ question_list.previous_page_number }}{% if page_qs %}&{{ page_qs }}{% endif %}#tc-mh-board" aria-label="이전 페이지">
+        <i class="fas fa-chevron-left" aria-hidden="true"></i>
     </a>
     {% else %}
-    <span class="is-disabled"><i class="fas fa-chevron-left"></i></span>
+    <span class="is-disabled"><i class="fas fa-chevron-left" aria-hidden="true"></i></span>
     {% endif %}
 
     {% for p in question_list.paginator.page_range %}
     {% if p >= question_list.number|add:"-2" and p <= question_list.number|add:"2" %}
-    <a href="?page={{ p }}{% if kw %}&kw={{ kw }}{% endif %}{% if category %}&category={{ category }}{% endif %}&sort={{ sort }}"
-       class="{% if p == question_list.number %}is-current{% endif %}">{{ p }}</a>
+    <a href="?page={{ p }}{% if page_qs %}&{{ page_qs }}{% endif %}#tc-mh-board"
+       class="{% if p == question_list.number %}is-current{% endif %}"{% if p == question_list.number %} aria-current="page"{% endif %}>{{ p }}</a>
     {% endif %}
     {% endfor %}
 
     {% if question_list.has_next %}
-    <a href="?page={{ question_list.next_page_number }}{% if kw %}&kw={{ kw }}{% endif %}{% if category %}&category={{ category }}{% endif %}&sort={{ sort }}">
-        <i class="fas fa-chevron-right"></i>
+    <a href="?page={{ question_list.next_page_number }}{% if page_qs %}&{{ page_qs }}{% endif %}#tc-mh-board" aria-label="다음 페이지">
+        <i class="fas fa-chevron-right" aria-hidden="true"></i>
     </a>
     {% else %}
-    <span class="is-disabled"><i class="fas fa-chevron-right"></i></span>
+    <span class="is-disabled"><i class="fas fa-chevron-right" aria-hidden="true"></i></span>
     {% endif %}
-</div>
+</nav>
 {% endif %}
+
+</div>
 {% endblock %}

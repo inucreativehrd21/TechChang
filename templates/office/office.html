@@ -157,5 +157,5 @@
 {% endblock %}
 
 {% block script %}
-<script src="{% static 'js/office.js' %}?v={{ 'now'|date:'YmdHis' }}" nonce="{{ csp_nonce }}"></script>
+<script src="{% static 'js/office.js' %}?v={{ STATIC_VERSION }}" nonce="{{ csp_nonce }}"></script>
 {% endblock %}

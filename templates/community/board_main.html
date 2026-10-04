@@ -3,7 +3,7 @@
 {% load common_tags %}
 
 {% block extra_css %}
-<link href="{% static 'css/premium.css' %}?v={{ 'now'|date:'YmdHis' }}" rel="stylesheet">
+<link href="{% static 'css/premium.css' %}?v={{ STATIC_VERSION }}" rel="stylesheet">
 <style>
 /* 게시글 카드 배지(카테고리/첨부/회원전용) 높이·정렬 통일 */
 .post-card-badge {

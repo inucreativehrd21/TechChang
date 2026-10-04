@@ -1,13 +1,14 @@
 {% extends 'base_mobile.html' %}
 {% load static %}
+{% load pybo_filter %}
 
 {% block title %}{{ question.subject }}{% endblock %}
 
 {% block content %}
 <!-- 질문 헤더 -->
 <div class="tc-m-detail-head">
-    <a href="javascript:history.back()" class="tc-m-back">
-        <i class="fas fa-arrow-left"></i> 목록
+    <a href="{% url 'community:index' %}" class="tc-m-back" id="tc-m-back">
+        <i class="fas fa-arrow-left" aria-hidden="true"></i> 목록
     </a>
     {% if question.category %}
     <div>
@@ -49,7 +50,7 @@
                      padding:3px 10px; border-radius:999px; font-size:0.8rem;">{{ series_nav.position }}/{{ series_nav.total }}</span>
     </a>
     {% endif %}
-    {{ question.content|linebreaksbr }}
+    <div class="tc-m-md">{{ question.content|mark }}</div>
     {% if question.all_images %}
     <div class="tc-m-gallery">
         {% for img in question.all_images %}
@@ -92,7 +93,7 @@
     <a href="{% url 'community:question_modify' question.id %}" class="tc-m-vote-btn" style="flex:0 0 80px;">수정</a>
     {% endif %}
     {% else %}
-    <a href="{% url 'common:login' %}" class="tc-m-vote-btn">
+    <a href="{% url 'common:login' %}?next={{ request.get_full_path|urlencode }}" class="tc-m-vote-btn">
         <i class="fas fa-thumbs-up"></i> 추천 {{ question.voter.count }}
     </a>
     {% endif %}
@@ -156,7 +157,24 @@
 </div>
 {% else %}
 <div class="tc-m-login-cta">
-    <a href="{% url 'common:login' %}">로그인 후 답변 작성</a>
+    <a href="{% url 'common:login' %}?next={{ request.get_full_path|urlencode }}">로그인 후 답변 작성</a>
 </div>
 {% endif %}
+{% endblock %}
+
+{% block script %}
+<script>
+// 사이트 안에서 들어왔으면 이전 화면(스크롤 위치 유지)으로, 공유 링크로 바로 들어왔으면 홈으로
+(function () {
+    var back = document.getElementById('tc-m-back');
+    if (!back) return;
+    back.addEventListener('click', function (e) {
+        var ref = document.referrer;
+        if (ref && ref.indexOf(location.origin + '/') === 0 && history.length > 1) {
+            e.preventDefault();
+            history.back();
+        }
+    });
+})();
+</script>
 {% endblock %}

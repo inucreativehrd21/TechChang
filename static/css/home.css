@@ -1,39 +1,39 @@
 /**
- * TechChang Homepage — Minimal & Clean (Figma / Linear / Vercel 계열)
- * 대문 전용 스타일. 전역 premium.css와 충돌하지 않도록 모든 클래스에 tc- 접두사 사용.
+ * TechChang Homepage (PC): 대문 전용 스타일.
+ * 전역 premium.css와 충돌하지 않도록 모든 클래스에 tc- 접두사, 토큰은 .tc-home 스코프에만 선언.
  *
- * 원칙:
- * - 뉴트럴 팔레트 + 단일 인디고 포인트
- * - 넉넉한 여백, 1px 보더, 은은한 그림자
- * - 회전 그라디언트/비비드 효과 제거, 정제된 타이포그래피
+ * 원칙: 뉴트럴 + 단일 인디고 포인트, 라이트 전용, Pretendard 고정.
+ * 반경 체계: 카드·패널 16px(--tc-r-lg) / 패널 안쪽 요소·버튼 12px(--tc-r-md) / pill·세그먼트 999px.
+ * 읽어야 하는 텍스트는 --tc-ink-3 이상(흰 배경 대비 4.5:1 이상). --tc-ink-4는 아이콘·장식 전용.
  */
 
 .tc-home {
-    /* ── 디자인 토큰 (대문 스코프 한정) ── */
     --tc-bg:        #ffffff;
     --tc-bg-soft:   #fafafa;
     --tc-bg-mute:   #f4f4f5;
-    --tc-ink:       #18181b;   /* 헤드라인 */
-    --tc-ink-2:     #3f3f46;   /* 본문 */
-    --tc-ink-3:     #71717a;   /* 보조 */
-    --tc-ink-4:     #a1a1aa;   /* 흐린 라벨 */
-    --tc-line:      #e4e4e7;   /* 기본 보더 */
+    --tc-ink:       #18181b;
+    --tc-ink-2:     #3f3f46;
+    --tc-ink-3:     #71717a;
+    --tc-ink-4:     #a1a1aa;
+    --tc-line:      #e4e4e7;
     --tc-line-soft: #f0f0f1;
-    --tc-accent:    #4f46e5;   /* 단일 포인트 (인디고) */
+    --tc-accent:    #4f46e5;
     --tc-accent-2:  #6366f1;
-    --tc-accent-wash:#eef2ff;
+    --tc-accent-wash: #eef2ff;
+    --tc-accent-line: #e0e7ff;
 
-    --tc-shadow-xs: 0 1px 2px rgba(16, 24, 40, 0.04);
-    --tc-shadow-sm: 0 1px 3px rgba(16, 24, 40, 0.06), 0 1px 2px rgba(16, 24, 40, 0.04);
-    --tc-shadow-md: 0 4px 12px rgba(16, 24, 40, 0.06), 0 2px 4px rgba(16, 24, 40, 0.04);
-    --tc-shadow-lg: 0 12px 32px rgba(16, 24, 40, 0.08), 0 4px 8px rgba(16, 24, 40, 0.04);
+    --tc-shadow-xs: 0 1px 2px rgba(24, 24, 60, 0.04);
+    --tc-shadow-sm: 0 1px 3px rgba(24, 24, 60, 0.06), 0 1px 2px rgba(24, 24, 60, 0.04);
+    --tc-shadow-md: 0 4px 12px rgba(24, 24, 60, 0.07), 0 2px 4px rgba(24, 24, 60, 0.04);
+    --tc-shadow-lg: 0 16px 40px rgba(49, 46, 129, 0.09), 0 4px 10px rgba(24, 24, 60, 0.04);
 
     --tc-r-sm: 8px;
     --tc-r-md: 12px;
     --tc-r-lg: 16px;
-    --tc-r-xl: 20px;
 
     --tc-maxw: 1120px;
+    --tc-nav: 68px;   /* navbar_modern.html 의 body padding-top 과 같은 값 */
+    --tc-ease: cubic-bezier(0.16, 1, 0.3, 1);
 
     background: var(--tc-bg);
     color: var(--tc-ink-2);
@@ -43,73 +43,52 @@
 
 .tc-home a { text-decoration: none; }
 
-/* ============================================
-   Panel snap (대문 ↔ 최신 게시글)
-   ============================================ */
-/* 홈 첫 화면에서만 활성화 (JS가 <html>.tc-snap 부여) */
-html.tc-snap {
-    --tc-nav: 104px;
-    scroll-snap-type: y proximity;
-    scroll-padding-top: var(--tc-nav);
-    scroll-behavior: smooth;
-}
-@media (max-width: 768px) {
-    html.tc-snap { --tc-nav: 72px; }
-}
-html.tc-snap .tc-panel { scroll-snap-align: start; }
-/* 대문 패널: 첫 화면을 가득 채워 명확히 분리 */
-html.tc-snap .tc-hero {
-    min-height: 100vh;
-    box-sizing: border-box;
-    justify-content: center;
-    padding-top: calc(var(--tc-nav) + 1rem);
-    padding-bottom: 5.5rem;
-}
-html.tc-snap .tc-section.tc-panel {
-    min-height: calc(100vh - var(--tc-nav));
-}
-@media (prefers-reduced-motion: reduce) {
-    html.tc-snap { scroll-behavior: auto; scroll-snap-type: none; }
+.tc-home a:focus-visible,
+.tc-home button:focus-visible {
+    outline: 2px solid var(--tc-accent);
+    outline-offset: 2px;
 }
 
 /* ============================================
-   Hero
+   Hero: 좌 소개 / 우 라이브 패널
    ============================================ */
 .tc-hero {
     position: relative;
     max-width: var(--tc-maxw);
     margin: 0 auto;
-    padding: clamp(4rem, 9vw, 7rem) 1.5rem clamp(2.5rem, 5vw, 4rem);
-    text-align: center;
-    overflow: hidden;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
+    /* 높이는 콘텐츠만큼: 첫 화면 아래로 인기글이 살짝 보여서 스크롤 큐 없이도 이어짐이 드러난다 */
+    padding: clamp(2.5rem, 6vw, 5rem) 1.5rem clamp(2rem, 4vw, 3.5rem);
+    box-sizing: border-box;
 }
 
-/* 은은한 도트 그리드 배경 (Figma 캔버스 느낌) */
+/* 은은한 도트 그리드 (소개 문구 쪽에 무게) */
 .tc-hero::before {
     content: "";
     position: absolute;
     inset: 0;
     background-image: radial-gradient(circle at center, var(--tc-line) 1px, transparent 1px);
     background-size: 26px 26px;
-    -webkit-mask-image: radial-gradient(ellipse 70% 60% at 50% 35%, #000 0%, transparent 75%);
-            mask-image: radial-gradient(ellipse 70% 60% at 50% 35%, #000 0%, transparent 75%);
-    opacity: 0.55;
-    z-index: 0;
+    -webkit-mask-image: radial-gradient(ellipse 60% 70% at 25% 45%, #000 0%, transparent 75%);
+            mask-image: radial-gradient(ellipse 60% 70% at 25% 45%, #000 0%, transparent 75%);
+    opacity: 0.6;
     pointer-events: none;
 }
 
-.tc-hero > * { position: relative; z-index: 1; }
+.tc-hero-grid {
+    position: relative;
+    width: 100%;
+    display: grid;
+    grid-template-columns: 7fr 5fr;
+    gap: clamp(2rem, 5vw, 4.5rem);
+    align-items: center;
+}
 
 .tc-eyebrow {
     display: inline-flex;
     align-items: center;
-    gap: 0.5rem;
-    padding: 0.5rem 1.125rem;
+    padding: 0.4375rem 0.875rem;
     margin-bottom: 1.5rem;
-    font-size: 1rem;
+    font-size: 0.875rem;
     font-weight: 600;
     color: var(--tc-ink-2);
     background: var(--tc-bg);
@@ -117,27 +96,23 @@ html.tc-snap .tc-section.tc-panel {
     border-radius: 999px;
     box-shadow: var(--tc-shadow-xs);
 }
-.tc-eyebrow .tc-dot {
-    width: 7px; height: 7px; border-radius: 50%;
-    background: var(--tc-accent);
-    box-shadow: 0 0 0 3px var(--tc-accent-wash);
-}
 
 .tc-hero-title {
-    font-size: clamp(2.5rem, 6vw, 4rem);
+    font-size: clamp(2.25rem, 4.5vw, 3.5rem);
     font-weight: 800;
-    line-height: 1.05;
+    line-height: 1.15;
     letter-spacing: -0.035em;
     color: var(--tc-ink);
     margin: 0 0 1.25rem;
+    word-break: keep-all;
 }
 .tc-hero-title .tc-accent-text { color: var(--tc-accent); }
 
 .tc-hero-sub {
-    max-width: 640px;
-    margin: 0 auto 2.25rem;
-    font-size: clamp(1rem, 2.2vw, 1.1875rem);
-    line-height: 1.65;
+    max-width: 32em;
+    margin: 0 0 2rem;
+    font-size: clamp(1rem, 1.6vw, 1.125rem);
+    line-height: 1.7;
     color: var(--tc-ink-3);
     word-break: keep-all;
 }
@@ -145,34 +120,36 @@ html.tc-snap .tc-section.tc-panel {
 .tc-hero-actions {
     display: flex;
     gap: 0.75rem;
-    justify-content: center;
     flex-wrap: wrap;
-    margin-bottom: 3.5rem;
 }
 
 /* ── 버튼 ── */
 .tc-btn {
     display: inline-flex;
     align-items: center;
+    justify-content: center;
     gap: 0.5rem;
-    padding: 0.75rem 1.375rem;
+    padding: 0.8125rem 1.375rem;
     font-size: 0.9375rem;
     font-weight: 600;
+    line-height: 1;
+    white-space: nowrap;
     border-radius: var(--tc-r-md);
-    transition: transform 0.15s ease, box-shadow 0.2s ease, background 0.2s ease, border-color 0.2s ease;
     border: 1px solid transparent;
     cursor: pointer;
-    line-height: 1;
+    transition: transform 0.15s ease, box-shadow 0.2s ease, background-color 0.2s ease, border-color 0.2s ease;
 }
+.tc-btn:active { transform: translateY(0) scale(0.98); }
 .tc-btn-primary {
     background: var(--tc-ink);
     color: #fff;
     box-shadow: var(--tc-shadow-sm);
 }
 .tc-btn-primary:hover {
+    color: #fff;
+    background: #09090b;
     transform: translateY(-1px);
     box-shadow: var(--tc-shadow-md);
-    background: #000;
 }
 .tc-btn-ghost {
     background: var(--tc-bg);
@@ -181,99 +158,166 @@ html.tc-snap .tc-section.tc-panel {
     box-shadow: var(--tc-shadow-xs);
 }
 .tc-btn-ghost:hover {
-    transform: translateY(-1px);
+    color: var(--tc-ink);
     border-color: var(--tc-ink-4);
+    transform: translateY(-1px);
     box-shadow: var(--tc-shadow-sm);
 }
-.tc-btn-admin {
-    background: var(--tc-accent);
-    color: #fff;
-}
-.tc-btn-admin:hover { transform: translateY(-1px); background: var(--tc-accent-2); }
 
-/* ── Stats (구분선으로 나눈 미니멀 인라인) ── */
-.tc-stats {
-    display: inline-flex;
-    align-items: stretch;
-    gap: 0;
-    padding: 0.25rem 0;
+/* ── 라이브 패널 ── */
+.tc-live {
+    background: var(--tc-bg);
     border: 1px solid var(--tc-line);
     border-radius: var(--tc-r-lg);
-    background: var(--tc-bg);
-    box-shadow: var(--tc-shadow-sm);
+    box-shadow: var(--tc-shadow-lg);
     overflow: hidden;
 }
-.tc-stat {
-    padding: 1.125rem 2rem;
-    text-align: center;
-    position: relative;
-}
-.tc-stat + .tc-stat::before {
-    content: "";
-    position: absolute;
-    left: 0; top: 50%;
-    transform: translateY(-50%);
-    height: 56%;
-    width: 1px;
-    background: var(--tc-line);
-}
-.tc-stat-value {
-    font-size: 1.75rem;
-    font-weight: 800;
-    letter-spacing: -0.02em;
-    color: var(--tc-ink);
-    line-height: 1.1;
-}
-.tc-stat-label {
-    margin-top: 0.25rem;
-    font-size: 0.8125rem;
-    font-weight: 500;
-    color: var(--tc-ink-4);
-}
-
-/* ── 스크롤 큐 (대문 → 게시글 이동 안내) ── */
-.tc-scroll-cue { display: none; }
-html.tc-snap .tc-scroll-cue {
-    margin-top: 2.75rem;
-    align-self: center;
-    display: inline-flex;
-    flex-direction: column;
+.tc-live-head {
+    display: flex;
     align-items: center;
-    gap: 0.5rem;
-    background: none;
-    border: 0;
-    padding: 0;
-    cursor: pointer;
-    color: var(--tc-ink-4);
+    justify-content: space-between;
+    padding: 1rem 1.25rem;
+    border-bottom: 1px solid var(--tc-line-soft);
+}
+.tc-live-title {
+    margin: 0;
+    font-size: 0.9375rem;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    color: var(--tc-ink);
+}
+.tc-live-admin {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
     font-size: 0.8125rem;
     font-weight: 600;
-    letter-spacing: 0.02em;
-    transition: color 0.15s ease;
-    z-index: 2;
+    color: var(--tc-ink-3);
 }
-html.tc-snap .tc-scroll-cue:hover { color: var(--tc-accent); }
-.tc-scroll-cue-arrow {
-    width: 34px; height: 34px;
+.tc-live-admin:hover { color: var(--tc-accent); }
+
+.tc-live-block { padding: 0.875rem 1.25rem 0.75rem; }
+.tc-live-block + .tc-live-block { border-top: 1px solid var(--tc-line-soft); }
+
+.tc-live-label {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: var(--tc-ink-3);
+}
+.tc-live-label a { color: var(--tc-ink-3); font-weight: 500; }
+.tc-live-label a:hover { color: var(--tc-accent); }
+
+.tc-live-list {
+    list-style: none;
+    margin: 0.375rem 0 0;
+    padding: 0;
+}
+
+.tc-live-post {
+    display: flex;
+    align-items: baseline;
+    gap: 0.75rem;
+    padding: 0.4375rem 0;
+}
+.tc-live-post-title {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    font-size: 0.9375rem;
+    font-weight: 500;
+    color: var(--tc-ink-2);
+    transition: color 0.15s ease;
+}
+.tc-live-post:hover .tc-live-post-title { color: var(--tc-accent); }
+.tc-live-post time {
+    flex-shrink: 0;
+    font-size: 0.75rem;
+    color: var(--tc-ink-3);
+    font-variant-numeric: tabular-nums;
+}
+
+.tc-rank-row {
+    display: flex;
+    align-items: center;
+    gap: 0.625rem;
+    padding: 0.375rem 0;
+}
+.tc-rank-no {
+    width: 1.125rem;
+    flex-shrink: 0;
+    font-size: 0.875rem;
+    font-weight: 700;
+    color: var(--tc-ink-3);
+    font-variant-numeric: tabular-nums;
+}
+.tc-avatar {
+    width: 28px;
+    height: 28px;
+    flex-shrink: 0;
+    border-radius: 50%;
+    object-fit: cover;
+    background: var(--tc-bg-mute);
+}
+.tc-avatar-fallback {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    border: 1px solid var(--tc-line);
-    border-radius: 999px;
-    background: var(--tc-bg);
-    box-shadow: var(--tc-shadow-xs);
-    animation: tcBounce 1.8s ease-in-out infinite;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--tc-ink-3);
 }
-html.tc-snap .tc-scroll-cue:hover .tc-scroll-cue-arrow { border-color: var(--tc-accent); }
-@keyframes tcBounce {
-    0%, 100% { transform: translateY(0); }
-    50% { transform: translateY(5px); }
+.tc-rank-name {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    font-size: 0.9375rem;
+    font-weight: 500;
+    color: var(--tc-ink-2);
 }
-@media (prefers-reduced-motion: reduce) {
-    .tc-scroll-cue-arrow { animation: none; }
+.tc-rank-pt {
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: var(--tc-ink-3);
+    font-variant-numeric: tabular-nums;
 }
-/* 세로가 짧은 화면에서는 큐가 콘텐츠와 겹치므로 숨김 (스냅 기능은 유지) */
-@media (max-height: 900px) {
-    html.tc-snap .tc-scroll-cue { display: none; }
+.tc-rank-row.is-top .tc-rank-no,
+.tc-rank-row.is-top .tc-rank-pt { color: var(--tc-accent); }
+.tc-rank-row.is-top .tc-rank-name { color: var(--tc-ink); font-weight: 600; }
+
+.tc-live-empty {
+    padding: 0.5rem 0;
+    font-size: 0.875rem;
+    color: var(--tc-ink-3);
+}
+
+.tc-live-stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    margin: 0;
+    border-top: 1px solid var(--tc-line-soft);
+    background: var(--tc-bg-soft);
+}
+.tc-live-stats > div { padding: 0.875rem 1.25rem; }
+.tc-live-stats > div + div { border-left: 1px solid var(--tc-line-soft); }
+.tc-live-stats dt {
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: var(--tc-ink-3);
+}
+.tc-live-stats dd {
+    margin: 0.125rem 0 0;
+    font-size: 1.25rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    color: var(--tc-ink);
+    font-variant-numeric: tabular-nums;
 }
 
 /* ============================================
@@ -282,14 +326,16 @@ html.tc-snap .tc-scroll-cue:hover .tc-scroll-cue-arrow { border-color: var(--tc-
 .tc-section {
     max-width: var(--tc-maxw);
     margin: 0 auto;
-    padding: clamp(2.5rem, 5vw, 4rem) 1.5rem;
+    padding: clamp(1.5rem, 3vw, 2.25rem) 1.5rem;
 }
+#tc-board { scroll-margin-top: calc(var(--tc-nav) + 0.5rem); }
+
 .tc-section-head {
     display: flex;
-    align-items: flex-end;
+    align-items: center;
     justify-content: space-between;
     gap: 1rem;
-    margin-bottom: 1.75rem;
+    margin-bottom: 1.5rem;
 }
 .tc-section-title {
     font-size: 1.375rem;
@@ -299,19 +345,94 @@ html.tc-snap .tc-scroll-cue:hover .tc-scroll-cue-arrow { border-color: var(--tc-
     margin: 0;
 }
 .tc-section-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
     font-size: 0.875rem;
     font-weight: 500;
     color: var(--tc-ink-3);
     transition: color 0.15s ease;
 }
+.tc-section-link i { font-size: 0.75em; }
 .tc-section-link:hover { color: var(--tc-accent); }
 
-/* ── Category pills (고스트 → 인디고 액티브) ── */
+/* ── 게시판 도구: 검색 + 정렬 ── */
+.tc-board-tools {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+.tc-search {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+.tc-search i {
+    position: absolute;
+    left: 0.875rem;
+    font-size: 0.8125rem;
+    color: var(--tc-ink-3);
+    pointer-events: none;
+}
+.tc-search input {
+    width: 15rem;
+    height: 38px;
+    padding: 0 0.875rem 0 2.25rem;
+    font-size: 0.875rem;
+    color: var(--tc-ink);
+    background: var(--tc-bg);
+    border: 1px solid var(--tc-line);
+    border-radius: 999px;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.tc-search input::placeholder { color: var(--tc-ink-3); }
+.tc-search input:focus {
+    outline: none;
+    border-color: var(--tc-accent);
+    box-shadow: 0 0 0 3px var(--tc-accent-wash);
+}
+
+/* ── 회원 전용 표시 (비회원에게만) ── */
+.tc-member-only {
+    font-weight: 600;
+    color: var(--tc-ink-2);
+}
+.tc-member-only i { font-size: 0.85em; }
+.tc-lock {
+    margin-right: 0.375rem;
+    font-size: 0.75em;
+    color: var(--tc-ink-3);
+}
+
+/* ── 정렬 세그먼트 ── */
+.tc-sort {
+    display: inline-flex;
+    gap: 2px;
+    padding: 3px;
+    background: var(--tc-bg-mute);
+    border-radius: 999px;
+}
+.tc-sort a {
+    padding: 0.375rem 0.875rem;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: var(--tc-ink-3);
+    border-radius: 999px;
+    transition: color 0.15s ease, background-color 0.15s ease;
+}
+.tc-sort a:hover { color: var(--tc-ink); }
+.tc-sort a.is-active {
+    background: var(--tc-bg);
+    color: var(--tc-ink);
+    box-shadow: var(--tc-shadow-xs);
+}
+
+/* ── Category pills ── */
 .tc-pills {
     display: flex;
     gap: 0.5rem;
     flex-wrap: wrap;
-    margin-bottom: 1.75rem;
+    margin-bottom: 1.5rem;
 }
 .tc-pill {
     padding: 0.5rem 1rem;
@@ -321,7 +442,7 @@ html.tc-snap .tc-scroll-cue:hover .tc-scroll-cue-arrow { border-color: var(--tc-
     background: var(--tc-bg);
     color: var(--tc-ink-3);
     border: 1px solid var(--tc-line);
-    transition: all 0.15s ease;
+    transition: color 0.15s ease, border-color 0.15s ease, background-color 0.15s ease;
 }
 .tc-pill:hover {
     color: var(--tc-ink);
@@ -335,23 +456,152 @@ html.tc-snap .tc-scroll-cue:hover .tc-scroll-cue-arrow { border-color: var(--tc-
 }
 
 /* ============================================
-   Post grid — clean cards
+   인기 게시글 TOP 5: 가로 레일 (줄바꿈 없이 넘치면 스크롤, 고아 카드 방지)
+   ============================================ */
+.tc-popular {
+    display: flex;
+    gap: 0.875rem;
+    overflow-x: auto;
+    scroll-snap-type: x proximity;
+    padding: 0.25rem 0.125rem 0.5rem;
+    margin: -0.25rem -0.125rem 0;
+}
+.tc-popular-card {
+    flex: 1 1 0;
+    min-width: 196px;
+    scroll-snap-align: start;
+    display: flex;
+    gap: 0.75rem;
+    padding: 1.125rem;
+    background: var(--tc-bg);
+    border: 1px solid var(--tc-line);
+    border-radius: var(--tc-r-lg);
+    box-shadow: var(--tc-shadow-xs);
+    transition: transform 0.18s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+.tc-popular-card:hover {
+    transform: translateY(-3px);
+    border-color: #d4d4d8;
+    box-shadow: var(--tc-shadow-md);
+}
+.tc-popular-rank {
+    font-size: 1.375rem;
+    font-weight: 800;
+    line-height: 1;
+    color: var(--tc-accent);
+    letter-spacing: -0.02em;
+    flex-shrink: 0;
+    font-variant-numeric: tabular-nums;
+}
+.tc-popular-body {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+.tc-popular-body .tc-card-badge { margin-bottom: 0.625rem; }
+.tc-popular-title {
+    font-size: 0.9375rem;
+    font-weight: 650;
+    line-height: 1.4;
+    letter-spacing: -0.01em;
+    color: var(--tc-ink);
+    word-break: keep-all;
+    overflow-wrap: anywhere;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+.tc-popular-card:hover .tc-popular-title { color: var(--tc-accent); }
+.tc-popular-meta span { display: inline-flex; align-items: center; gap: 0.3125rem; }
+.tc-popular-meta {
+    display: inline-flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.25rem 0.75rem;
+    margin-top: 0.625rem;
+    font-size: 0.75rem;
+    color: var(--tc-ink-3);
+}
+
+/* ============================================
+   게임 밴드: 인디고 워시 배경으로 섹션 리듬 전환
+   ============================================ */
+.tc-games {
+    display: grid;
+    grid-template-columns: 4fr 8fr;
+    gap: clamp(1.5rem, 4vw, 3rem);
+    align-items: center;
+    padding: clamp(1.5rem, 3vw, 2.25rem);
+    background: var(--tc-accent-wash);
+    border: 1px solid var(--tc-accent-line);
+    border-radius: var(--tc-r-lg);
+}
+.tc-games-count {
+    margin: 0.5rem 0 1rem;
+    font-size: 0.9375rem;
+    color: var(--tc-ink-2);
+}
+.tc-games-count strong {
+    color: var(--tc-accent);
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+}
+.tc-games-tiles {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.75rem;
+}
+.tc-game {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    padding: 1.125rem;
+    background: var(--tc-bg);
+    border: 1px solid var(--tc-accent-line);
+    border-radius: var(--tc-r-md);
+    transition: transform 0.18s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+.tc-game i {
+    margin-bottom: 0.5rem;
+    font-size: 1.25rem;
+    color: var(--tc-accent);
+}
+.tc-game-name {
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--tc-ink);
+}
+.tc-game-desc {
+    font-size: 0.8125rem;
+    color: var(--tc-ink-3);
+    word-break: keep-all;
+}
+.tc-game:hover {
+    transform: translateY(-2px);
+    border-color: #c7d2fe;
+    box-shadow: var(--tc-shadow-md);
+}
+.tc-game:active { transform: scale(0.98); }
+
+/* ============================================
+   Post grid: 3열 → 2열 → 1열 고정 (12개/페이지와 맞물림)
    ============================================ */
 .tc-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(330px, 1fr));
+    grid-template-columns: repeat(3, 1fr);
     gap: 1rem;
 }
 .tc-card {
     display: flex;
     flex-direction: column;
+    min-height: 152px;
+    padding: 1.375rem;
     background: var(--tc-bg);
     border: 1px solid var(--tc-line);
     border-radius: var(--tc-r-lg);
-    padding: 1.375rem;
     box-shadow: var(--tc-shadow-xs);
     transition: transform 0.18s ease, box-shadow 0.2s ease, border-color 0.2s ease;
-    min-height: 152px;
 }
 .tc-card:hover {
     transform: translateY(-3px);
@@ -362,18 +612,12 @@ html.tc-snap .tc-scroll-cue:hover .tc-scroll-cue-arrow { border-color: var(--tc-
     display: inline-flex;
     align-items: center;
     align-self: flex-start;
-    gap: 0.375rem;
     padding: 0.25rem 0.625rem;
     margin-bottom: 0.875rem;
     font-size: 0.75rem;
     font-weight: 600;
     letter-spacing: -0.01em;
     border-radius: 6px;
-}
-.tc-card-badge::before {
-    content: "";
-    width: 6px; height: 6px; border-radius: 50%;
-    background: currentColor;
 }
 .tc-card-title {
     font-size: 1.0625rem;
@@ -382,6 +626,8 @@ html.tc-snap .tc-scroll-cue:hover .tc-scroll-cue-arrow { border-color: var(--tc-
     letter-spacing: -0.01em;
     color: var(--tc-ink);
     margin: 0 0 1rem;
+    word-break: keep-all;
+    overflow-wrap: anywhere;
     display: -webkit-box;
     -webkit-line-clamp: 2;
     -webkit-box-orient: vertical;
@@ -396,32 +642,37 @@ html.tc-snap .tc-scroll-cue:hover .tc-scroll-cue-arrow { border-color: var(--tc-
     padding-top: 0.875rem;
     border-top: 1px solid var(--tc-line-soft);
     font-size: 0.8125rem;
-    color: var(--tc-ink-4);
+    color: var(--tc-ink-3);
 }
 .tc-card-meta span { display: inline-flex; align-items: center; gap: 0.3125rem; }
-.tc-card-meta .tc-date { margin-left: auto; }
+.tc-card-meta .tc-date { margin-left: auto; font-variant-numeric: tabular-nums; }
 
-/* ── 카테고리별 배지 색 (뮤트 톤) ── */
-.tc-badge-hrd        { background: #eef2ff; color: #4f46e5; }
-.tc-badge-data       { background: #fff7ed; color: #ea580c; }
-.tc-badge-programming{ background: #ecfdf5; color: #059669; }
-.tc-badge-notice     { background: #fef2f2; color: #dc2626; }
-.tc-badge-free       { background: #f4f4f5; color: #52525b; }
+/* ── 카테고리 배지 (같은 색상 계열의 진한 톤: 12px 글자 대비 4.5:1 이상) ── */
+.tc-badge-hrd         { background: #eef2ff; color: #4338ca; }
+.tc-badge-data        { background: #fff7ed; color: #c2410c; }
+.tc-badge-programming { background: #ecfdf5; color: #047857; }
+.tc-badge-notice      { background: #fef2f2; color: #b91c1c; }
+.tc-badge-free        { background: #f4f4f5; color: #52525b; }
 
 /* ── Empty state ── */
 .tc-empty {
     grid-column: 1 / -1;
-    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.75rem;
     padding: 4rem 1.5rem;
-    color: var(--tc-ink-4);
+    text-align: center;
+    color: var(--tc-ink-3);
     border: 1px dashed var(--tc-line);
     border-radius: var(--tc-r-lg);
     background: var(--tc-bg-soft);
 }
-.tc-empty i { font-size: 1.75rem; margin-bottom: 0.75rem; display: block; color: var(--tc-line); }
+.tc-empty i { font-size: 1.75rem; color: var(--tc-ink-4); }
+.tc-empty p { margin: 0; }
 
 /* ============================================
-   Pagination — minimal
+   Pagination
    ============================================ */
 .tc-pagination {
     display: flex;
@@ -435,16 +686,17 @@ html.tc-snap .tc-scroll-cue:hover .tc-scroll-cue-arrow { border-color: var(--tc-
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    min-width: 38px;
-    height: 38px;
-    padding: 0 0.625rem;
+    min-width: 40px;
+    height: 40px;
+    padding: 0 0.75rem;
     font-size: 0.875rem;
     font-weight: 600;
     border-radius: var(--tc-r-sm);
     background: var(--tc-bg);
     color: var(--tc-ink-3);
     border: 1px solid var(--tc-line);
-    transition: all 0.15s ease;
+    font-variant-numeric: tabular-nums;
+    transition: color 0.15s ease, border-color 0.15s ease;
 }
 .tc-pagination a:hover {
     color: var(--tc-ink);
@@ -457,16 +709,55 @@ html.tc-snap .tc-scroll-cue:hover .tc-scroll-cue-arrow { border-color: var(--tc-
 }
 
 /* ============================================
-   Responsive
+   Motion: transform/opacity만, 모션 감소 설정이면 전부 정지
+   animation-fill-mode: backwards 라 끝난 뒤엔 hover transform 을 막지 않는다.
    ============================================ */
-@media (max-width: 768px) {
-    .tc-stats { width: 100%; }
-    .tc-stat { flex: 1; padding: 1rem 0.75rem; }
-    .tc-grid { grid-template-columns: 1fr; }
-    .tc-section-head { align-items: center; }
+@keyframes tcRise {
+    from { opacity: 0; transform: translateY(16px); }
+    to   { opacity: 1; transform: none; }
 }
 
-@media (max-width: 420px) {
-    .tc-hero-actions { flex-direction: column; }
-    .tc-hero-actions .tc-btn { width: 100%; justify-content: center; }
+@media (prefers-reduced-motion: no-preference) {
+    /* 히어로: 로드 시 한 번 순차 등장 */
+    .tc-hero-copy > *,
+    .tc-live { animation: tcRise 0.7s var(--tc-ease) backwards; }
+    .tc-hero-copy > :nth-child(2) { animation-delay: 60ms; }
+    .tc-hero-copy > :nth-child(3) { animation-delay: 120ms; }
+    .tc-hero-copy > :nth-child(4) { animation-delay: 180ms; }
+    .tc-live { animation-delay: 240ms; }
+
+    /* 스크롤 리빌: JS가 html.tc-reveal-on 을 붙였을 때만 숨김 → JS 실패 시엔 처음부터 보임 */
+    html.tc-reveal-on .tc-home [data-reveal]:not(.is-visible) { opacity: 0; }
+    .tc-home [data-reveal].is-visible { animation: tcRise 0.6s var(--tc-ease) backwards; }
+    .tc-popular > :nth-child(2).is-visible,
+    .tc-grid > :nth-child(3n+2).is-visible { animation-delay: 60ms; }
+    .tc-popular > :nth-child(3).is-visible,
+    .tc-grid > :nth-child(3n).is-visible { animation-delay: 120ms; }
+    .tc-popular > :nth-child(4).is-visible { animation-delay: 180ms; }
+    .tc-popular > :nth-child(5).is-visible { animation-delay: 240ms; }
+}
+
+/* ============================================
+   Responsive
+   ============================================ */
+@media (max-width: 1024px) {
+    .tc-hero-grid { grid-template-columns: 1fr; }
+    .tc-grid { grid-template-columns: repeat(2, 1fr); }
+    .tc-games { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 900px) {
+    .tc-popular-card { flex: 0 0 72%; }
+}
+
+@media (max-width: 640px) {
+    .tc-hero,
+    .tc-section { padding-left: 1rem; padding-right: 1rem; }
+    .tc-grid { grid-template-columns: 1fr; }
+    .tc-games-tiles { grid-template-columns: 1fr; }
+    .tc-section-head { flex-wrap: wrap; }
+    .tc-board-tools { width: 100%; flex-wrap: wrap; }
+    .tc-search, .tc-search input { width: 100%; }
+    .tc-popular-card { flex: 0 0 85%; }
+    .tc-hero-actions .tc-btn { flex: 1; }
 }

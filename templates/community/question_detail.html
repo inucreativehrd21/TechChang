@@ -868,7 +868,7 @@
         <p style="color: var(--text-secondary); margin-bottom: var(--space-4);">
             댓글을 작성하려면 로그인해주세요
         </p>
-        <a href="{% url 'common:login' %}" class="btn-premium btn-premium-primary">
+        <a href="{% url 'common:login' %}?next={{ request.get_full_path|urlencode }}" class="btn-premium btn-premium-primary">
             <i class="fas fa-sign-in-alt"></i> 로그인
         </a>
     </section>

@@ -1,0 +1,263 @@
+/**
+ * TechChang Homepage (Mobile): 모바일 홈 전용. home.css 와 같은 언어를 1열로.
+ * 모든 클래스는 tc-mh- 접두사, 토큰은 .tc-mh 스코프에만 선언.
+ * 하단 목록·칩·탭·페이징은 공유 시트 mobile.css 의 tc-m-* 를 그대로 쓴다.
+ */
+
+.tc-mh {
+    --tc-bg:        #ffffff;
+    --tc-bg-soft:   #fafafa;
+    --tc-bg-mute:   #f4f4f5;
+    --tc-ink:       #18181b;
+    --tc-ink-2:     #3f3f46;
+    --tc-ink-3:     #71717a;
+    --tc-line:      #e4e4e7;
+    --tc-line-soft: #f0f0f1;
+    --tc-accent:    #4f46e5;
+    --tc-accent-wash: #eef2ff;
+    --tc-accent-line: #e0e7ff;
+    --tc-shadow-xs: 0 1px 2px rgba(24, 24, 60, 0.04);
+    --tc-r-md: 12px;
+    --tc-r-lg: 16px;
+}
+
+.tc-mh a { text-decoration: none; }
+.tc-mh a:focus-visible,
+.tc-mh button:focus-visible,
+.tc-mh input:focus-visible {
+    outline: 2px solid var(--tc-accent);
+    outline-offset: 2px;
+}
+
+/* ── 인트로 ── */
+.tc-mh-intro { padding: 22px 16px 16px; }
+.tc-mh-title {
+    margin: 0 0 8px;
+    font-size: 1.5rem;
+    font-weight: 800;
+    line-height: 1.25;
+    letter-spacing: -0.03em;
+    color: var(--tc-ink);
+    word-break: keep-all;
+}
+.tc-mh-title span { color: var(--tc-accent); }
+.tc-mh-meta {
+    margin: 0;
+    font-size: 0.8125rem;
+    color: var(--tc-ink-3);
+}
+.tc-mh-meta strong {
+    color: var(--tc-ink);
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+}
+.tc-mh-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-top: 16px;
+}
+.tc-mh-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 44px;
+    font-size: 0.9375rem;
+    font-weight: 600;
+    border-radius: var(--tc-r-md);
+    border: 1px solid transparent;
+}
+.tc-mh-btn:active { transform: scale(0.98); }
+.tc-mh-btn-primary { background: var(--tc-ink); color: #fff; }
+.tc-mh-btn-primary:hover { color: #fff; }
+.tc-mh-btn-ghost { background: var(--tc-bg); color: var(--tc-ink-2); border-color: var(--tc-line); }
+
+/* ── 가로 레일 (홀수 개 카드가 줄바꿈되지 않도록) ── */
+.tc-mh-rail {
+    display: flex;
+    gap: 12px;
+    padding: 4px 16px 16px;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    scroll-padding: 0 16px;
+    scrollbar-width: none;
+}
+.tc-mh-rail::-webkit-scrollbar { display: none; }
+
+.tc-mh-card {
+    flex: 0 0 82%;
+    scroll-snap-align: start;
+    padding: 14px 16px;
+    background: var(--tc-bg);
+    border: 1px solid var(--tc-line);
+    border-radius: var(--tc-r-lg);
+    box-shadow: var(--tc-shadow-xs);
+}
+.tc-mh-card-games {
+    background: var(--tc-accent-wash);
+    border-color: var(--tc-accent-line);
+}
+.tc-mh-card-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 6px;
+}
+.tc-mh-card-head h2 {
+    margin: 0;
+    font-size: 0.9375rem;
+    font-weight: 700;
+    color: var(--tc-ink);
+}
+.tc-mh-card-head a {
+    padding: 4px 0 4px 12px;
+    font-size: 0.8125rem;
+    color: var(--tc-ink-3);
+}
+
+.tc-mh-rank { list-style: none; margin: 0; padding: 0; }
+.tc-mh-rank li {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 5px 0;
+}
+.tc-mh-rank-no {
+    width: 14px;
+    font-size: 0.8125rem;
+    font-weight: 700;
+    color: var(--tc-ink-3);
+    font-variant-numeric: tabular-nums;
+}
+.tc-mh-avatar {
+    width: 26px;
+    height: 26px;
+    flex-shrink: 0;
+    border-radius: 50%;
+    object-fit: cover;
+    background: var(--tc-bg-mute);
+}
+.tc-mh-avatar-fallback {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.6875rem;
+    font-weight: 700;
+    color: var(--tc-ink-3);
+}
+.tc-mh-rank-name {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    font-size: 0.875rem;
+    color: var(--tc-ink-2);
+}
+.tc-mh-rank-pt {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--tc-ink-3);
+    font-variant-numeric: tabular-nums;
+}
+.tc-mh-rank li.is-top .tc-mh-rank-no,
+.tc-mh-rank li.is-top .tc-mh-rank-pt { color: var(--tc-accent); }
+.tc-mh-rank li.is-top .tc-mh-rank-name { color: var(--tc-ink); font-weight: 600; }
+.tc-mh-empty { font-size: 0.8125rem; color: var(--tc-ink-3); }
+
+.tc-mh-games-count {
+    margin: 0 0 10px;
+    font-size: 0.8125rem;
+    color: var(--tc-ink-2);
+}
+.tc-mh-games-count strong {
+    color: var(--tc-accent);
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+}
+.tc-mh-games {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 6px;
+}
+.tc-mh-games a {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    padding: 12px 4px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--tc-ink);
+    background: var(--tc-bg);
+    border: 1px solid var(--tc-accent-line);
+    border-radius: var(--tc-r-md);
+}
+.tc-mh-games a:active { transform: scale(0.97); }
+.tc-mh-games i { font-size: 1.125rem; color: var(--tc-accent); }
+
+/* ── 인기 게시글 레일 ── */
+.tc-mh-head { padding: 4px 16px 8px; }
+.tc-mh-head h2 {
+    margin: 0;
+    font-size: 0.9375rem;
+    font-weight: 700;
+    color: var(--tc-ink);
+}
+.tc-mh-pop {
+    flex: 0 0 72%;
+    scroll-snap-align: start;
+    display: grid;
+    grid-template-columns: auto 1fr;
+    column-gap: 10px;
+    row-gap: 8px;
+    padding: 14px;
+    background: var(--tc-bg);
+    border: 1px solid var(--tc-line);
+    border-radius: var(--tc-r-lg);
+    box-shadow: var(--tc-shadow-xs);
+}
+.tc-mh-pop-rank {
+    grid-row: span 2;
+    font-size: 1.125rem;
+    font-weight: 800;
+    line-height: 1.2;
+    color: var(--tc-accent);
+    font-variant-numeric: tabular-nums;
+}
+.tc-mh-pop-title {
+    font-size: 0.875rem;
+    font-weight: 600;
+    line-height: 1.4;
+    color: var(--tc-ink);
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+.tc-mh-pop-meta {
+    font-size: 0.75rem;
+    color: var(--tc-ink-3);
+}
+
+/* ── 회원 전용 표시 (비회원에게만) ── */
+.tc-mh-member-only {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    margin-left: 8px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--tc-ink-2);
+}
+.tc-mh-member-only i { font-size: 0.85em; }
+
+/* ── 공유 목록 위젯의 홈 한정 보정 ── */
+#tc-mh-board { scroll-margin-top: 56px; }
+.tc-mh .tc-m-search-input { -webkit-appearance: none; appearance: none; }
+.tc-mh .tc-m-badge::before { display: none; }
+/* 같은 색상 계열의 진한 톤: 11px 글자도 대비 4.5:1 이상 */
+.tc-mh .tc-m-badge-hrd         { color: #4338ca; }
+.tc-mh .tc-m-badge-data        { color: #c2410c; }
+.tc-mh .tc-m-badge-programming { color: #047857; }
+.tc-mh .tc-m-badge-notice      { color: #b91c1c; }

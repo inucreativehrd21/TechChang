@@ -7,8 +7,10 @@ from django.core.cache import cache
 from django.conf import settings
 from django.contrib.auth.models import User
 from django.contrib.auth.decorators import login_required
+from django.contrib.auth.views import redirect_to_login
 from django.contrib import messages
 from django.db import transaction
+from django.utils.http import urlencode
 import time
 import os
 import mimetypes
@@ -80,9 +82,42 @@ def ensure_default_categories():
     for name in DEFAULT_CATEGORIES:
         Category.objects.get_or_create(name=name, defaults={'description': name})
 
+def _home_live_data():
+    """홈 라이브 패널의 랭킹 TOP3·게임 누적 판수 (5분 캐시)."""
+    from common.models import Profile
+    from ..models import NumberBaseballGame, Game2048, MinesweeperGame
+
+    # 필터는 common.views.point_ranking 과 같아야 랭킹 페이지 상위 3명과 일치한다
+    top_rankers = list(
+        Profile.objects.select_related('user', 'selected_emoticon')
+        .filter(points__gt=0)
+        .exclude(user__is_staff=True)
+        .exclude(user__is_superuser=True)
+        .order_by('-points')[:3]
+    )
+    games_played_total = (
+        NumberBaseballGame.objects.count()
+        + Game2048.objects.count()
+        + MinesweeperGame.objects.count()
+    )
+    return {'top_rankers': top_rankers, 'games_played_total': games_played_total}
+
+
+def _hidden_inquiry_q(user):
+    """홈 목록에서 숨길 문의글 조건. 문의글은 관리자·작성자만 열람 가능하므로
+    누를 수 없는 제목을 보여주지 않는다 (관리자: 전부 보임, 회원: 본인 글만, 비회원: 숨김)."""
+    if user.is_staff or user.is_superuser:
+        return None
+    hidden = Q(category__name='문의')
+    if user.is_authenticated:
+        hidden &= ~Q(author=user)
+    return hidden
+
+
 def index(request):
     """메인 질문 목록 페이지 - 검색, 카테고리 필터링, 페이징 기능"""
     ensure_default_categories()
+    hidden_inquiry = _hidden_inquiry_q(request.user)
     try:
         page = int(request.GET.get('page', '1'))
     except (ValueError, TypeError):
@@ -90,13 +125,19 @@ def index(request):
     
     kw = request.GET.get('kw', '').strip()  # 검색어
     category_name = request.GET.get('category', '').strip()  # 카테고리
-    sort = request.GET.get('sort', 'recent')  # 정렬 방식
-    
+    sort = request.GET.get('sort', 'recent')
+    if sort not in ('recent', 'recommend', 'popular'):
+        sort = 'recent'
+
     # 기본 쿼리셋 - select_related로 성능 최적화 (삭제되지 않은 질문만)
     # annotate로 voter_count, answer_count 미리 계산 (N+1 쿼리 방지)
     # distinct=True로 Cartesian product에 의한 중복 카운트 방지
     # series__isnull=True: 연재 시리즈 회차는 게시글 목록에서 제외 (별도 [시리즈] 탭에서 노출)
-    question_list = Question.objects.filter(is_deleted=False, series__isnull=True)\
+    visible = Question.objects.filter(is_deleted=False, series__isnull=True)
+    if hidden_inquiry is not None:
+        visible = visible.exclude(hidden_inquiry)
+
+    question_list = visible\
         .select_related('author', 'category')\
         .prefetch_related('voter')\
         .annotate(
@@ -130,19 +171,42 @@ def index(request):
         except Category.DoesNotExist:
             pass  # 잘못된 카테고리는 무시
     
-    # 페이징 처리
-    paginator = Paginator(question_list, 10)
+    # 페이징 처리 (3열/2열 그리드 어느 쪽에서도 마지막 줄이 혼자 남지 않도록 12 = 3과 2의 공배수)
+    paginator = Paginator(question_list, 12)
     try:
         page_obj = paginator.get_page(page)
     except (EmptyPage, PageNotAnInteger):
         page_obj = paginator.get_page(1)
     
     # 카테고리 목록 및 각 카테고리별 글 개수 가져오기 (단일 쿼리로 최적화)
-    categories = Category.objects.annotate(
-        question_count=Count('question', filter=Q(question__is_deleted=False) & Q(question__series__isnull=True))
-    ).order_by('name')
+    # 개수도 같은 노출 기준(visible)으로 센다. 볼 수 있는 문의글이 없으면 문의 카테고리 자체를 숨긴다.
+    counts = dict(visible.order_by().values_list('category__name').annotate(n=Count('id')))
+    categories = []
+    for cat in Category.objects.order_by('name'):
+        cat.question_count = counts.get(cat.name, 0)
+        if cat.name == '문의' and hidden_inquiry is not None and not cat.question_count:
+            continue
+        categories.append(cat)
     category_counts = {cat.name: cat.question_count for cat in categories}
-    total_count = Question.objects.filter(is_deleted=False, series__isnull=True).count()
+    total_count = sum(counts.values())
+
+    # 인기 게시글 TOP 5 (조회수 기준, 필터/검색과 무관하게 항상 전체 기준)
+    popular_posts = visible\
+        .select_related('author', 'category')\
+        .order_by('-view_count', '-create_date')[:5]
+
+    # 히어로 라이브 패널용 최신 글 (문의글 제목은 새 노출면에 내보내지 않음)
+    recent_posts = Question.objects.filter(is_deleted=False, series__isnull=True)\
+        .exclude(category__name='문의')\
+        .select_related('category')\
+        .order_by('-create_date')[:3]
+
+    live = cache.get_or_set('home:live', _home_live_data, 300)
+
+    # 페이지 링크가 검색어·카테고리·정렬을 잃지 않도록 미리 인코딩
+    page_qs = urlencode({k: v for k, v in (
+        ('kw', kw), ('category', category_name), ('sort', '' if sort == 'recent' else sort)
+    ) if v})
 
     # 서비스 런칭일 기준 경과 일수 (2025-10-01)
     from datetime import date
@@ -187,6 +251,11 @@ def index(request):
         'categories': categories,
         'category_counts': category_counts,
         'total_count': total_count,
+        'popular_posts': popular_posts,
+        'recent_posts': recent_posts,
+        'top_rankers': live['top_rankers'],
+        'games_played_total': live['games_played_total'],
+        'page_qs': page_qs,
         'launch_days': launch_days,
         'total_users': total_users,
         'visitors_today': visitors_today,
@@ -203,10 +272,10 @@ def detail(request, question_id):
         pk=question_id
     )
 
-    # 잠금된 글은 로그인한 사용자만 볼 수 있음
+    # 잠금된 글은 로그인한 사용자만 볼 수 있음 (로그인 후 이 글로 돌아오도록 next 전달)
     if question.is_locked and not request.user.is_authenticated:
         messages.error(request, '회원 전용 글입니다. 로그인 후 이용해주세요.')
-        return redirect('common:login')
+        return redirect_to_login(request.get_full_path())
 
     # 문의 게시판은 관리자/작성자만 열람 가능
     if question.category and question.category.name == '문의':

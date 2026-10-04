@@ -22,9 +22,9 @@
     <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
     <!-- Premium Design System -->
-    <link href="{% static 'css/premium.css' %}?v={{ 'now'|date:'YmdHis' }}" rel="stylesheet">
+    <link href="{% static 'css/premium.css' %}?v={{ STATIC_VERSION }}" rel="stylesheet">
     <!-- Mobile Design System (Figma 톤) -->
-    <link href="{% static 'css/mobile.css' %}?v={{ 'now'|date:'YmdHis' }}" rel="stylesheet">
+    <link href="{% static 'css/mobile.css' %}?v={{ STATIC_VERSION }}" rel="stylesheet">
 
 <style>
 /* ===== 모바일 전용 기본 스타일 ===== */
@@ -199,7 +199,7 @@ body {
         <i class="fas fa-comments"></i><span>커뮤니티</span>
     </a>
     <a href="{% url 'community:question_create' %}" class="m-tabbar-item" style="color: var(--accent-primary,#4f46e5);">
-        <i class="fas fa-plus-circle" style="font-size:1.75rem; margin-top:-6px;"></i><span>질문</span>
+        <i class="fas fa-plus-circle" style="font-size:1.75rem; margin-top:-6px;"></i><span>글쓰기</span>
     </a>
     <a href="{% url 'community:games_index' %}" class="m-tabbar-item {% block tab_games %}{% endblock %}">
         <i class="fas fa-gamepad"></i><span>게임</span>
