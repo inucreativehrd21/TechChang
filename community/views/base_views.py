@@ -1,7 +1,7 @@
 
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from django.shortcuts import render, get_object_or_404, redirect
-from django.db.models import Q, Count, F
+from django.db.models import Q, Count, F, Sum
 from django.http import Http404, FileResponse, HttpResponse
 from django.core.cache import cache
 from django.conf import settings
@@ -114,10 +114,30 @@ def _hidden_inquiry_q(user):
     return hidden
 
 
+def visible_questions(user):
+    """목록에 노출할 글 (삭제·연재 회차 제외, 열람 불가 문의글 제외). 홈과 커뮤니티 공용."""
+    qs = Question.objects.filter(is_deleted=False, series__isnull=True)
+    hidden = _hidden_inquiry_q(user)
+    return qs.exclude(hidden) if hidden is not None else qs
+
+
+def category_counts_for(visible, user):
+    """(카테고리 목록, {이름: 개수}, 전체 개수). 개수는 노출 기준으로 세고,
+    볼 수 있는 문의글이 없는 사용자에게는 문의 카테고리를 숨긴다."""
+    counts = dict(visible.order_by().values_list('category__name').annotate(n=Count('id')))
+    hide_inquiry = _hidden_inquiry_q(user) is not None
+    categories = []
+    for cat in Category.objects.order_by('name'):
+        cat.question_count = counts.get(cat.name, 0)
+        if cat.name == '문의' and hide_inquiry and not cat.question_count:
+            continue
+        categories.append(cat)
+    return categories, {c.name: c.question_count for c in categories}, sum(counts.values())
+
+
 def index(request):
     """메인 질문 목록 페이지 - 검색, 카테고리 필터링, 페이징 기능"""
     ensure_default_categories()
-    hidden_inquiry = _hidden_inquiry_q(request.user)
     try:
         page = int(request.GET.get('page', '1'))
     except (ValueError, TypeError):
@@ -133,9 +153,7 @@ def index(request):
     # annotate로 voter_count, answer_count 미리 계산 (N+1 쿼리 방지)
     # distinct=True로 Cartesian product에 의한 중복 카운트 방지
     # series__isnull=True: 연재 시리즈 회차는 게시글 목록에서 제외 (별도 [시리즈] 탭에서 노출)
-    visible = Question.objects.filter(is_deleted=False, series__isnull=True)
-    if hidden_inquiry is not None:
-        visible = visible.exclude(hidden_inquiry)
+    visible = visible_questions(request.user)
 
     question_list = visible\
         .select_related('author', 'category')\
@@ -179,16 +197,7 @@ def index(request):
         page_obj = paginator.get_page(1)
     
     # 카테고리 목록 및 각 카테고리별 글 개수 가져오기 (단일 쿼리로 최적화)
-    # 개수도 같은 노출 기준(visible)으로 센다. 볼 수 있는 문의글이 없으면 문의 카테고리 자체를 숨긴다.
-    counts = dict(visible.order_by().values_list('category__name').annotate(n=Count('id')))
-    categories = []
-    for cat in Category.objects.order_by('name'):
-        cat.question_count = counts.get(cat.name, 0)
-        if cat.name == '문의' and hidden_inquiry is not None and not cat.question_count:
-            continue
-        categories.append(cat)
-    category_counts = {cat.name: cat.question_count for cat in categories}
-    total_count = sum(counts.values())
+    categories, category_counts, total_count = category_counts_for(visible, request.user)
 
     # 인기 게시글 TOP 5 (조회수 기준, 필터/검색과 무관하게 항상 전체 기준)
     popular_posts = visible\
@@ -241,6 +250,7 @@ def index(request):
         visitors_today = DailyVisitor.objects.get(date=today).visitor_count
     except DailyVisitor.DoesNotExist:
         visitors_today = 0
+    visitors_total = DailyVisitor.objects.aggregate(s=Sum('visitor_count'))['s'] or 0
 
     context = {
         'question_list': page_obj,
@@ -259,6 +269,7 @@ def index(request):
         'launch_days': launch_days,
         'total_users': total_users,
         'visitors_today': visitors_today,
+        'visitors_total': f'{visitors_total:,}',
     }
     template = 'community/mobile/question_list.html' if getattr(request, 'is_mobile', False) else 'community/question_list.html'
     return render(request, template, context)

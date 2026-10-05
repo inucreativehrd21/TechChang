@@ -1,111 +1,89 @@
-from django.shortcuts import render, get_object_or_404
 from django.core.paginator import Paginator
 from django.db.models import Count, Q
-from ..models import Category, Question
+from django.shortcuts import get_object_or_404, render
+from django.utils.http import urlencode
+
+from ..models import Category
+from .base_views import category_counts_for, visible_questions
+
+# 공지는 맨 앞, 문의는 맨 뒤. 목록에 없는 카테고리는 그 사이에 이름순.
+CATEGORY_ORDER = ['공지사항', 'HRD', '데이터분석', '프로그래밍', '자유게시판', '앨범', '문의']
+SORTS = {
+    'latest': ('-create_date',),
+    'popular': ('-voter_count', '-create_date'),
+    'views': ('-view_count', '-create_date'),
+}
+
+
+def _ordered(categories):
+    def key(cat):
+        return (CATEGORY_ORDER.index(cat.name) if cat.name in CATEGORY_ORDER else len(CATEGORY_ORDER) - 1, cat.name)
+    return sorted(categories, key=key)
+
+
+def _with_counts(qs):
+    return qs.select_related('author', 'author__profile', 'category').annotate(
+        answer_count=Count('answer', filter=Q(answer__is_deleted=False), distinct=True),
+        voter_count=Count('voter', distinct=True),
+    )
 
 
 def board_main(request):
-    """커뮤니티 메인 페이지 - 카테고리별 최신 게시글 미리보기"""
-    # 모든 카테고리 가져오기 (N+1 쿼리 방지: count를 미리 계산)
-    # 연재 시리즈 회차(series__isnull=False)는 게시글 집계/미리보기에서 제외
-    categories = Category.objects.annotate(
-        question_count=Count('question', filter=Q(question__is_deleted=False) & Q(question__series__isnull=True))
-    ).order_by('id')
+    """커뮤니티 메인 - 카테고리별 최신 글 5개 (홈과 같은 노출 기준: 열람 불가 문의글 제외)"""
+    visible = visible_questions(request.user)
+    categories, _, total = category_counts_for(visible, request.user)
+    categories = _ordered(categories)
 
-    # 각 카테고리별 최신 게시글 5개씩 가져오기
-    category_posts = {}
-    for category in categories:
-        posts = Question.objects.filter(
-            category=category,
-            is_deleted=False,
-            series__isnull=True
-        ).select_related('author', 'author__profile').annotate(
-            answer_count=Count('answer', filter=Q(answer__is_deleted=False), distinct=True),
-            voter_count=Count('voter', distinct=True)
-        ).order_by('-create_date')[:5]
-
-        category_posts[category.name] = {
-            'category': category,
-            'posts': posts,
-            'total_count': category.question_count  # 미리 계산된 count 사용
+    sections = [
+        {
+            'category': cat,
+            'posts': _with_counts(visible.filter(category=cat)).order_by('-create_date')[:5],
+            'total_count': cat.question_count,
         }
-
-    # 전체 통계
-    total_questions = Question.objects.filter(is_deleted=False, series__isnull=True).count()
+        for cat in categories
+    ]
 
     context = {
+        'sections': sections,
         'categories': categories,
-        'category_posts': category_posts,
-        'total_questions': total_questions,
+        'total_questions': total,
     }
-
     template = 'community/mobile/board_main.html' if getattr(request, 'is_mobile', False) else 'community/board_main.html'
     return render(request, template, context)
 
 
 def board_category(request, category_name):
-    """카테고리별 게시글 목록 (N+1 쿼리 최적화)"""
+    """카테고리별 게시글 목록 - 홈 게시판과 같은 카드 그리드 (12개/페이지 = 3열·2열 공배수)"""
     category = get_object_or_404(Category, name=category_name)
+    visible = visible_questions(request.user)
 
-    # 검색어
-    search_query = request.GET.get('search', '')
+    search_query = request.GET.get('search', '').strip()
+    sort = request.GET.get('sort', 'latest')
+    if sort not in SORTS:
+        sort = 'latest'
 
-    # 정렬 기준
-    sort = request.GET.get('sort', 'latest')  # latest, popular, views
-
-    # N+1 방지: select_related로 author, profile, category 조인
-    # only()로 필요한 필드만 가져와 성능 향상
-    questions = Question.objects.filter(
-        category=category,
-        is_deleted=False,
-        series__isnull=True  # 연재 시리즈 회차는 카테고리 목록에서 제외
-    ).select_related(
-        'author',
-        'author__profile',
-        'category'
-    ).annotate(
-        answer_count=Count('answer', filter=Q(answer__is_deleted=False), distinct=True),
-        voter_count=Count('voter', distinct=True)
-    ).only(
-        'id', 'subject', 'content', 'create_date', 'view_count', 'file',
-        'is_locked',
-        'author__username',
-        'author__profile__nickname',
-        'category__name'
-    )
-
-    # 검색
+    questions = _with_counts(visible.filter(category=category))
     if search_query:
         questions = questions.filter(
-            Q(subject__icontains=search_query) |
-            Q(content__icontains=search_query) |
-            Q(author__username__icontains=search_query)
+            Q(subject__icontains=search_query)
+            | Q(content__icontains=search_query)
+            | Q(author__username__icontains=search_query)
         )
+    questions = questions.order_by(*SORTS[sort])
 
-    # 정렬
-    if sort == 'popular':
-        questions = questions.order_by('-voter_count', '-create_date')
-    elif sort == 'views':
-        questions = questions.order_by('-view_count', '-create_date')
-    else:  # latest
-        questions = questions.order_by('-create_date')
+    page_obj = Paginator(questions, 12).get_page(request.GET.get('page', 1))
 
-    # 페이지네이션
-    paginator = Paginator(questions, 20)
-    page_number = request.GET.get('page', 1)
-    page_obj = paginator.get_page(page_number)
-
-    # 모든 카테고리 (사이드바용)
-    all_categories = Category.objects.all().annotate(
-        post_count=Count('question', filter=Q(question__is_deleted=False) & Q(question__series__isnull=True))
-    )
+    all_categories, _, total = category_counts_for(visible, request.user)
 
     context = {
         'category': category,
         'page_obj': page_obj,
         'search_query': search_query,
         'sort': sort,
-        'all_categories': all_categories,
+        'all_categories': _ordered(all_categories),
+        'total_questions': total,
+        # 페이지 링크가 검색어·정렬을 잃지 않도록 미리 인코딩
+        'page_qs': urlencode({k: v for k, v in (
+            ('search', search_query), ('sort', '' if sort == 'latest' else sort)) if v}),
     }
-
     return render(request, 'community/board_category.html', context)

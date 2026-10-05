@@ -1,13 +1,14 @@
 /**
- * TechChang Homepage (PC): 대문 전용 스타일.
- * 전역 premium.css와 충돌하지 않도록 모든 클래스에 tc- 접두사, 토큰은 .tc-home 스코프에만 선언.
+ * TechChang Homepage (PC): 홈 + 커뮤니티(board.css 와 함께) 공용 스타일.
+ * 전역 premium.css와 충돌하지 않도록 모든 클래스에 tc- 접두사, 토큰은 .tc-home / .tc-board 스코프에만 선언.
  *
  * 원칙: 뉴트럴 + 단일 인디고 포인트, 라이트 전용, Pretendard 고정.
  * 반경 체계: 카드·패널 16px(--tc-r-lg) / 패널 안쪽 요소·버튼 12px(--tc-r-md) / pill·세그먼트 999px.
  * 읽어야 하는 텍스트는 --tc-ink-3 이상(흰 배경 대비 4.5:1 이상). --tc-ink-4는 아이콘·장식 전용.
  */
 
-.tc-home {
+.tc-home,
+.tc-board {
     --tc-bg:        #ffffff;
     --tc-bg-soft:   #fafafa;
     --tc-bg-mute:   #f4f4f5;
@@ -41,10 +42,13 @@
     -webkit-font-smoothing: antialiased;
 }
 
-.tc-home a { text-decoration: none; }
+.tc-home a,
+.tc-board a { text-decoration: none; }
 
 .tc-home a:focus-visible,
-.tc-home button:focus-visible {
+.tc-home button:focus-visible,
+.tc-board a:focus-visible,
+.tc-board button:focus-visible {
     outline: 2px solid var(--tc-accent);
     outline-offset: 2px;
 }
@@ -126,6 +130,45 @@
     display: flex;
     gap: 0.75rem;
     flex-wrap: wrap;
+}
+
+/* ── 운영 지표: 운영 일수·누적 방문·오늘 방문을 크게 ── */
+.tc-hero-stats {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1.25rem clamp(1.75rem, 4vw, 3rem);
+    max-width: 34em;
+    margin: 2.5rem 0 0;
+    padding-top: 1.75rem;
+    border-top: 1px solid var(--tc-line);
+}
+/* 읽는 순서는 '운영 368일'(dt→dd), 보이는 순서는 숫자가 위 */
+.tc-hero-stats > div { display: flex; flex-direction: column; }
+.tc-hero-stats dd {
+    order: 1;
+    margin: 0;
+    font-size: clamp(1.875rem, 3.2vw, 2.5rem);
+    font-weight: 800;
+    line-height: 1.1;
+    letter-spacing: -0.035em;
+    color: var(--tc-ink);
+    font-variant-numeric: tabular-nums;
+}
+.tc-hero-stats dd small {
+    margin-left: 0.125rem;
+    font-size: 0.5em;
+    font-weight: 700;
+    letter-spacing: 0;
+    color: var(--tc-ink-2);
+}
+.tc-hero-stats > div:first-child dd,
+.tc-hero-stats > div:first-child dd small { color: var(--tc-accent); }
+.tc-hero-stats dt {
+    order: 2;
+    margin-top: 0.375rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--tc-ink-3);
 }
 
 /* ── 버튼 ── */
@@ -300,29 +343,6 @@
     padding: 0.5rem 0;
     font-size: 0.875rem;
     color: var(--tc-ink-3);
-}
-
-.tc-live-stats {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    margin: 0;
-    border-top: 1px solid var(--tc-line-soft);
-    background: var(--tc-bg-soft);
-}
-.tc-live-stats > div { padding: 0.875rem 1.25rem; }
-.tc-live-stats > div + div { border-left: 1px solid var(--tc-line-soft); }
-.tc-live-stats dt {
-    font-size: 0.75rem;
-    font-weight: 500;
-    color: var(--tc-ink-3);
-}
-.tc-live-stats dd {
-    margin: 0.125rem 0 0;
-    font-size: 1.25rem;
-    font-weight: 700;
-    letter-spacing: -0.02em;
-    color: var(--tc-ink);
-    font-variant-numeric: tabular-nums;
 }
 
 /* ============================================
@@ -729,11 +749,12 @@
     .tc-hero-copy > :nth-child(2) { animation-delay: 60ms; }
     .tc-hero-copy > :nth-child(3) { animation-delay: 120ms; }
     .tc-hero-copy > :nth-child(4) { animation-delay: 180ms; }
-    .tc-live { animation-delay: 240ms; }
+    .tc-hero-copy > :nth-child(5) { animation-delay: 240ms; }
+    .tc-live { animation-delay: 300ms; }
 
     /* 스크롤 리빌: JS가 html.tc-reveal-on 을 붙였을 때만 숨김 → JS 실패 시엔 처음부터 보임 */
-    html.tc-reveal-on .tc-home [data-reveal]:not(.is-visible) { opacity: 0; }
-    .tc-home [data-reveal].is-visible { animation: tcRise 0.6s var(--tc-ease) backwards; }
+    html.tc-reveal-on :is(.tc-home, .tc-board) [data-reveal]:not(.is-visible) { opacity: 0; }
+    :is(.tc-home, .tc-board) [data-reveal].is-visible { animation: tcRise 0.6s var(--tc-ease) backwards; }
     .tc-popular > :nth-child(2).is-visible,
     .tc-grid > :nth-child(3n+2).is-visible { animation-delay: 60ms; }
     .tc-popular > :nth-child(3).is-visible,

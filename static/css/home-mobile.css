@@ -41,15 +41,35 @@
     word-break: keep-all;
 }
 .tc-mh-title span { color: var(--tc-accent); }
-.tc-mh-meta {
-    margin: 0;
-    font-size: 0.8125rem;
-    color: var(--tc-ink-3);
+/* 운영 지표: PC 히어로와 같은 강조 (숫자 위, 라벨 아래, 첫 값만 인디고) */
+.tc-mh-stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    margin: 16px 0 0;
+    padding: 14px 0 2px;
+    border-top: 1px solid var(--tc-line);
 }
-.tc-mh-meta strong {
+.tc-mh-stats > div { display: flex; flex-direction: column; min-width: 0; }
+.tc-mh-stats dd {
+    order: 1;
+    margin: 0;
+    font-size: 1.5rem;
+    font-weight: 800;
+    line-height: 1.15;
+    letter-spacing: -0.03em;
     color: var(--tc-ink);
-    font-weight: 700;
     font-variant-numeric: tabular-nums;
+}
+.tc-mh-stats dd small { margin-left: 1px; font-size: 0.55em; font-weight: 700; color: var(--tc-ink-2); }
+.tc-mh-stats > div:first-child dd,
+.tc-mh-stats > div:first-child dd small { color: var(--tc-accent); }
+.tc-mh-stats dt {
+    order: 2;
+    margin-top: 2px;
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: var(--tc-ink-3);
 }
 .tc-mh-actions {
     display: grid;

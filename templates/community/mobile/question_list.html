@@ -15,7 +15,11 @@
 <!-- 인트로 -->
 <section class="tc-mh-intro">
     <h1 class="tc-mh-title">HRD와 테크놀로지를 잇는<br><span>지식 플랫폼</span></h1>
-    <p class="tc-mh-meta">오늘 방문 <strong>{{ visitors_today }}</strong> · 회원 <strong>{{ total_users }}</strong></p>
+    <dl class="tc-mh-stats">
+        <div><dt>운영</dt><dd>{{ launch_days }}<small>일</small></dd></div>
+        <div><dt>누적 방문</dt><dd>{{ visitors_total }}</dd></div>
+        <div><dt>오늘 방문</dt><dd>{{ visitors_today }}</dd></div>
+    </dl>
     {% if not user.is_authenticated %}
     <div class="tc-mh-actions">
         <a href="{% url 'common:signup' %}" class="tc-mh-btn tc-mh-btn-primary">회원가입</a>

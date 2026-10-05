@@ -1,0 +1,117 @@
+/**
+ * TechChang Community (PC): 커뮤니티 허브·카테고리 목록 전용.
+ * 토큰과 공용 컴포넌트(.tc-card, .tc-pills, .tc-sort, .tc-search, .tc-pagination 등)는
+ * home.css 를 그대로 쓰고(.tc-board 스코프), 여기에는 커뮤니티에만 있는 요소만 둔다 (tc-bd- 접두사).
+ */
+
+/* ── 페이지 머리: 큰 히어로 대신 제목 + 한 줄 설명 + 행동 ── */
+.tc-bd-head {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 1.5rem;
+    padding-top: clamp(2rem, 4vw, 3rem);
+    padding-bottom: 0.5rem;
+}
+.tc-bd-title {
+    margin: 0;
+    font-size: clamp(1.75rem, 3vw, 2.25rem);
+    font-weight: 800;
+    line-height: 1.2;
+    letter-spacing: -0.03em;
+    color: var(--tc-ink);
+}
+.tc-bd-sub {
+    margin: 0.5rem 0 0;
+    font-size: 1rem;
+    color: var(--tc-ink-3);
+    word-break: keep-all;
+}
+.tc-bd-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex-shrink: 0;
+}
+.tc-bd-cats { padding-top: 1rem; padding-bottom: 0; }
+.tc-bd-cats .tc-pills { margin-bottom: 0; }
+.tc-pills a small {
+    margin-left: 0.25rem;
+    font-size: 0.8em;
+    font-weight: 500;
+    opacity: 0.75;
+}
+
+/* ── 카테고리 섹션 ── */
+/* 섹션 구분은 선 대신 여백으로 (선은 섹션 패딩까지 그어져 카드 폭보다 삐져나온다) */
+.tc-bd-section { padding-top: clamp(1.5rem, 3vw, 2.25rem); padding-bottom: 0.5rem; }
+.tc-bd-section:last-child { padding-bottom: clamp(2.5rem, 5vw, 4rem); }
+.tc-bd-count {
+    margin-left: 0.5rem;
+    font-size: 0.9375rem;
+    font-weight: 500;
+    color: var(--tc-ink-3);
+    font-variant-numeric: tabular-nums;
+}
+
+/* 최신 5개: 데스크톱은 5열 고정(항상 한 줄), 좁아지면 가로 레일 */
+.tc-bd-rail {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 0.875rem;
+}
+.tc-bd-rail .tc-card {
+    min-height: 0;
+    padding: 1.125rem;
+}
+.tc-bd-rail .tc-card-title {
+    font-size: 0.9375rem;
+    margin-bottom: 0.875rem;
+}
+.tc-bd-rail .tc-card-meta {
+    gap: 0.625rem;
+    font-size: 0.75rem;
+    padding-top: 0.75rem;
+}
+
+/* 카드 공통: 작성자 (길면 말줄임) */
+.tc-bd-author {
+    min-width: 0;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+.tc-card-meta .tc-bd-author { flex: 1; display: block; }
+
+.tc-bd-empty {
+    grid-column: 1 / -1;
+    padding: 1rem;
+    font-size: 0.875rem;
+    text-align: center;
+    color: var(--tc-ink-3);
+    border: 1px dashed var(--tc-line);
+    border-radius: var(--tc-r-lg);
+    background: var(--tc-bg-soft);
+}
+
+/* ── Responsive ── */
+@media (max-width: 1024px) {
+    .tc-bd-rail {
+        display: flex;
+        overflow-x: auto;
+        scroll-snap-type: x proximity;
+        padding-bottom: 0.25rem;
+    }
+    .tc-bd-rail .tc-card {
+        flex: 0 0 42%;
+        scroll-snap-align: start;
+    }
+}
+
+@media (max-width: 640px) {
+    .tc-bd-head { flex-direction: column; align-items: stretch; }
+    .tc-bd-actions { width: 100%; flex-wrap: wrap; }
+    .tc-bd-actions .tc-search,
+    .tc-bd-actions .tc-search input { width: 100%; }
+    .tc-bd-rail .tc-card { flex-basis: 78%; }
+}

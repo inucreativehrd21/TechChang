@@ -41,6 +41,12 @@
                         <a href="{% url 'common:login' %}" class="tc-btn tc-btn-ghost">로그인</a>
                     {% endif %}
                 </div>
+
+                <dl class="tc-hero-stats">
+                    <div><dt>운영</dt><dd>{{ launch_days }}<small>일</small></dd></div>
+                    <div><dt>누적 방문</dt><dd>{{ visitors_total }}</dd></div>
+                    <div><dt>오늘 방문</dt><dd>{{ visitors_today }}</dd></div>
+                </dl>
             </div>
 
             <aside class="tc-live" aria-label="지금 테크창">
@@ -95,11 +101,6 @@
                     </ol>
                 </div>
 
-                <dl class="tc-live-stats">
-                    <div><dt>오늘 방문</dt><dd>{{ visitors_today }}</dd></div>
-                    <div><dt>회원</dt><dd>{{ total_users }}</dd></div>
-                    <div><dt>운영 일수</dt><dd>{{ launch_days }}</dd></div>
-                </dl>
             </aside>
         </div>
     </section>
