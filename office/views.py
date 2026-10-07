@@ -18,7 +18,7 @@ from django.views.decorators.http import require_POST
 
 from common.views import admin_required
 from . import github
-from .agents import AGENTS, MEETING_ORDER, public_roster
+from .agents import AGENTS, MEETING_ORDER, public_roster, public_roster_groups
 from .models import ColumnDraft, Decision, Meeting, Task, WorkLog
 from .publiclog import public_line, public_logs
 
@@ -118,7 +118,8 @@ def office_home(request):
     for d in recent_drafts:
         d.topic_name = TOPIC_LABEL.get(d.topic, '')
     return render(request, 'office/office.html', {
-        'roster': public_roster(),
+        'roster_groups': public_roster_groups(),
+        'agent_count': len(AGENTS),
         'meeting': meeting,
         'public_decisions': decisions,
         'recent_drafts': recent_drafts,

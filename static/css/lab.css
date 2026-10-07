@@ -1,0 +1,314 @@
+/**
+ * TechChang Lab (/lab/): 연구실 페이지 전용 (tc-lb- 접두사).
+ * 토큰·버튼(.tc-btn)·섹션 프레임은 home.css(.tc-labpage 스코프)를 그대로 쓴다.
+ * 캔버스 스크립트(office.js)는 #office-canvas/#office-overlay/#office-mode/#office-caption/
+ * #btn-replay/#btn-office 만 쓰므로 이 ID 들은 유지한다.
+ */
+
+.tc-labpage { padding-bottom: clamp(2.5rem, 5vw, 4rem); }
+
+/* ── 머리 ── */
+.tc-lb-head { padding-top: clamp(2rem, 4vw, 3rem); padding-bottom: 1rem; }
+.tc-lb-title {
+    margin: 0;
+    font-size: clamp(1.75rem, 3vw, 2.25rem);
+    font-weight: 800;
+    line-height: 1.2;
+    letter-spacing: -0.03em;
+    color: var(--tc-ink);
+}
+.tc-lb-sub {
+    max-width: 44em;
+    margin: 0.625rem 0 0;
+    font-size: 1rem;
+    line-height: 1.7;
+    color: var(--tc-ink-3);
+    word-break: keep-all;
+}
+
+/* ── 무대(픽셀 연구실) ── */
+.tc-lb-stage {
+    overflow: hidden;
+    background: var(--tc-bg);
+    border: 1px solid var(--tc-line);
+    border-radius: var(--tc-r-lg);
+    box-shadow: var(--tc-shadow-md);
+}
+.tc-lb-bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem 1rem;
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid var(--tc-line-soft);
+}
+.tc-lb-mode { font-size: 0.9375rem; font-weight: 700; color: var(--tc-ink); }
+.tc-lb-hint { font-size: 0.8125rem; color: var(--tc-ink-3); }
+.tc-lb-bar .spacer { flex: 1; }
+.tc-lb-bar .tc-btn { padding: 0.5625rem 0.875rem; font-size: 0.8125rem; }
+.tc-lb-bar .tc-btn[hidden] { display: none; }
+.tc-lb-frame { padding: 0.75rem; background: var(--tc-bg-soft); }
+.stage-box { position: relative; width: 100%; line-height: 0; }
+#office-canvas {
+    display: block;
+    max-width: 100%;
+    height: auto;
+    margin: 0 auto;
+    border-radius: var(--tc-r-md);
+    background: #efe8dc;
+    image-rendering: pixelated;
+    image-rendering: crisp-edges;
+}
+#office-caption {
+    min-height: 1.5em;
+    padding: 0.75rem 1rem;
+    font-size: 0.9375rem;
+    line-height: 1.6;
+    color: var(--tc-ink-2);
+    border-top: 1px solid var(--tc-line-soft);
+}
+#office-caption:empty { display: none; }
+#office-caption .muted { color: var(--tc-ink-3); font-weight: 400; }
+.tc-lb-credit {
+    padding: 0 1rem 0.75rem;
+    font-size: 0.75rem;
+    text-align: right;
+    color: var(--tc-ink-3);
+}
+.tc-lb-credit a { color: var(--tc-ink-3); text-decoration: underline; text-underline-offset: 2px; }
+
+/* 이름표·말풍선: 캔버스 위 DOM (확대해도 글자가 선명) */
+#office-overlay { position: absolute; inset: 0; pointer-events: none; line-height: 1.5; font-family: inherit; }
+#office-overlay .tag {
+    position: absolute; transform: translate(-50%, -100%);
+    padding: 1px 7px; border-radius: 999px;
+    font-size: 11px; font-weight: 600; letter-spacing: -0.01em; white-space: nowrap;
+    color: #fff; background: rgba(24, 24, 27, 0.86);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+#office-overlay .say {
+    position: absolute; transform: translate(-50%, -100%);
+    min-width: 150px; max-width: 300px; padding: 9px 12px 10px;
+    font-size: 13px; color: var(--tc-ink); word-break: keep-all;
+    background: #fff; border: 1px solid var(--tc-line); border-radius: 12px;
+    box-shadow: 0 8px 20px rgba(24, 24, 60, 0.18);
+}
+#office-overlay .say::after {
+    content: ""; position: absolute; left: 50%; bottom: -7px;
+    width: 12px; height: 12px; margin-left: -6px;
+    background: #fff; border-right: 1px solid var(--tc-line); border-bottom: 1px solid var(--tc-line);
+    transform: rotate(45deg);
+}
+#office-overlay .say b { color: var(--tc-accent); }
+
+/* ── 연구원: 작업 흐름대로 세 팀 ── */
+.tc-lb-team {
+    display: grid;
+    grid-template-columns: 2fr 3fr 3fr;
+    gap: 1rem;
+}
+.tc-lb-group {
+    padding: 1.125rem 1.25rem 0.5rem;
+    background: var(--tc-bg);
+    border: 1px solid var(--tc-line);
+    border-radius: var(--tc-r-lg);
+}
+.tc-lb-group-name {
+    margin: 0 0 0.25rem;
+    font-size: 0.8125rem;
+    font-weight: 700;
+    color: var(--tc-accent);
+}
+.tc-lb-members { list-style: none; margin: 0; padding: 0; }
+.tc-lb-member {
+    display: grid;
+    grid-template-columns: 2.25rem 1fr;
+    gap: 0.75rem;
+    align-items: start;
+    padding: 0.75rem 0;
+}
+.tc-lb-member + .tc-lb-member { border-top: 1px solid var(--tc-line-soft); }
+/* 캔버스 속 캐릭터 옷 색 = 같은 연구원이라는 표시 */
+.tc-lb-avatar {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.25rem;
+    height: 2.25rem;
+    border-radius: 50%;
+    font-size: 0.875rem;
+    font-weight: 700;
+    color: #fff;
+    background: var(--who, var(--tc-ink-3));
+}
+.tc-lb-who { display: flex; align-items: baseline; gap: 0.5rem; flex-wrap: wrap; }
+.tc-lb-name { font-size: 1rem; font-weight: 700; color: var(--tc-ink); }
+.tc-lb-role { font-size: 0.8125rem; font-weight: 500; color: var(--tc-ink-3); }
+.tc-lb-duty {
+    margin: 0.1875rem 0 0;
+    font-size: 0.875rem;
+    line-height: 1.5;
+    color: var(--tc-ink-2);
+    word-break: keep-all;
+}
+
+/* ── 칼럼 제작 과정 ── */
+.tc-lb-flow {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+.tc-lb-flow li {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--tc-ink-2);
+}
+.tc-lb-flow li span {
+    padding: 0.4375rem 0.875rem;
+    background: var(--tc-bg);
+    border: 1px solid var(--tc-line);
+    border-radius: 999px;
+}
+.tc-lb-flow li:last-child span {
+    color: #fff;
+    background: var(--tc-ink);
+    border-color: var(--tc-ink);
+}
+.tc-lb-flow li + li::before {
+    content: "\f054";
+    font-family: "Font Awesome 6 Free";
+    font-weight: 900;
+    font-size: 0.625rem;
+    color: var(--tc-ink-4);
+}
+
+/* ── 회의·칼럼·활동 ── */
+.tc-lb-grid {
+    display: grid;
+    grid-template-columns: 7fr 5fr;
+    gap: 1rem;
+    align-items: start;
+}
+.tc-lb-side { display: grid; gap: 1rem; }
+.tc-lb-panel {
+    padding: 1.25rem 1.375rem;
+    background: var(--tc-bg);
+    border: 1px solid var(--tc-line);
+    border-radius: var(--tc-r-lg);
+}
+.tc-lb-panel-title {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.75rem;
+    margin: 0 0 0.875rem;
+    font-size: 1.0625rem;
+    font-weight: 700;
+    color: var(--tc-ink);
+}
+.tc-lb-panel-title small { font-size: 0.8125rem; font-weight: 500; color: var(--tc-ink-3); }
+.tc-lb-lead {
+    margin: 0 0 1.25rem;
+    font-size: 0.9375rem;
+    line-height: 1.75;
+    color: var(--tc-ink-2);
+    word-break: keep-all;
+}
+.tc-lb-sub-title { margin: 0 0 0.625rem; font-size: 0.875rem; font-weight: 700; color: var(--tc-ink); }
+.tc-lb-next { list-style: none; margin: 0; padding: 0; }
+.tc-lb-next li { padding: 0.875rem 0; }
+.tc-lb-next li + li { border-top: 1px solid var(--tc-line-soft); }
+.tc-lb-tag {
+    display: inline-block;
+    margin-bottom: 0.375rem;
+    padding: 0.125rem 0.5rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--tc-accent);
+    background: var(--tc-accent-wash);
+    border-radius: 6px;
+}
+.tc-lb-headline {
+    display: block;
+    font-size: 1rem;
+    font-weight: 650;
+    line-height: 1.5;
+    color: var(--tc-ink);
+    word-break: keep-all;
+}
+.tc-lb-note {
+    display: block;
+    margin-top: 0.25rem;
+    font-size: 0.875rem;
+    line-height: 1.6;
+    color: var(--tc-ink-3);
+    word-break: keep-all;
+}
+.tc-lb-empty { margin: 0; font-size: 0.875rem; color: var(--tc-ink-3); }
+
+.tc-lb-cols { list-style: none; margin: 0; padding: 0; }
+.tc-lb-cols li + li { border-top: 1px solid var(--tc-line-soft); }
+.tc-lb-cols a { display: block; padding: 0.625rem 0; }
+.tc-lb-cols b {
+    display: block;
+    font-size: 0.9375rem;
+    font-weight: 600;
+    line-height: 1.45;
+    color: var(--tc-ink);
+    word-break: keep-all;
+}
+.tc-lb-cols a:hover b { color: var(--tc-accent); }
+.tc-lb-cols small { font-size: 0.75rem; color: var(--tc-ink-3); }
+
+.tc-lb-feed {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    max-height: 26rem;
+    overflow: auto;
+}
+.tc-lb-feed li {
+    display: grid;
+    grid-template-columns: 1.75rem 1fr;
+    gap: 0.625rem;
+    padding: 0.5625rem 0;
+}
+.tc-lb-feed li + li { border-top: 1px solid var(--tc-line-soft); }
+.tc-lb-feed .tc-lb-avatar { width: 1.75rem; height: 1.75rem; font-size: 0.75rem; }
+.tc-lb-feed-text { font-size: 0.875rem; line-height: 1.55; color: var(--tc-ink-2); word-break: keep-all; }
+.tc-lb-feed-text b { color: var(--tc-ink); }
+.tc-lb-feed-text .tc-lb-tag { margin: 0 0.25rem; vertical-align: 1px; }
+.tc-lb-feed-text time {
+    display: block;
+    margin-top: 0.125rem;
+    font-size: 0.75rem;
+    color: var(--tc-ink-3);
+    font-variant-numeric: tabular-nums;
+}
+
+/* ── Responsive ── */
+@media (max-width: 1024px) {
+    .tc-lb-team { grid-template-columns: 1fr 1fr; }
+    .tc-lb-group:first-child { grid-column: 1 / -1; }
+    .tc-lb-grid { grid-template-columns: 1fr; }
+}
+@media (max-width: 640px) {
+    .tc-lb-team { grid-template-columns: 1fr; }
+    /* 줄바꿈되면 새 줄이 화살표로 시작해 어색하다 → 한 줄 가로 스크롤 */
+    .tc-lb-flow { flex-wrap: nowrap; overflow-x: auto; padding-bottom: 0.25rem; scrollbar-width: none; }
+    .tc-lb-flow::-webkit-scrollbar { display: none; }
+    .tc-lb-flow li { flex-shrink: 0; }
+    .tc-lb-hint { display: none; }
+    #office-overlay .say { font-size: 12px; max-width: 230px; }
+    #office-overlay .tag { font-size: 10px; }
+}
+
+.tc-lb-stage-wrap { padding-top: 0; }
+.tc-lb-bar .tc-btn:disabled { opacity: 0.45; cursor: default; transform: none; box-shadow: none; }

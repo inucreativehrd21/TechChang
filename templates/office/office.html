@@ -1,158 +1,147 @@
 {% extends 'base.html' %}
 {% load static %}
 
-{% block title %}연구팀 연구실 - 테크창{% endblock %}
+{% block title %}연구실 - 테크창{% endblock %}
 
 {% block extra_css %}
-<style>
-  .office-wrap { max-width: 1080px; margin: 0 auto; padding: var(--space-6) var(--space-4) var(--space-12); display: grid; gap: var(--space-6); }
-  .office-head { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: var(--space-3); }
-  .office-head h1 { font-size: 1.75rem; font-weight: 800; margin: 0; letter-spacing: -.01em; }
-  .office-head p { margin: .25rem 0 0; color: var(--text-secondary); }
-  .office-stage { background: #0f172a; border-radius: var(--radius-2xl); padding: 12px; box-shadow: 0 12px 40px rgba(15,23,42,.25); }
-  .office-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; color: #cbd5e1; font-size: .85rem; padding: 0 4px 10px; }
-  .office-bar .mode { font-weight: 700; color: #fff; }
-  .office-bar .dot { width: 8px; height: 8px; border-radius: 50%; background: #22c55e; display: inline-block; margin-right: 6px; animation: blink 2s infinite; }
-  @keyframes blink { 50% { opacity: .3; } }
-  .office-bar .spacer { flex: 1; }
-  .office-bar button { background: #4f46e5; color: #fff; border: 0; border-radius: 8px; padding: 6px 12px; font-weight: 600; font-size: .85rem; cursor: pointer; }
-  .office-bar button[disabled] { opacity: .4; cursor: default; }
-  .office-bar button.secondary { background: #334155; }
-  .office-stage .frame { display: flex; justify-content: center; }
-  .stage-box { position: relative; width: 100%; line-height: 0; }
-  /* 이름표·말풍선은 캔버스가 아니라 DOM 으로 그린다 — 확대해도 글자가 선명하다 */
-  #office-overlay { position: absolute; inset: 0; pointer-events: none; line-height: 1.5; font-family: 'Pretendard Variable', Pretendard, -apple-system, 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif; }
-  #office-overlay .tag { position: absolute; transform: translate(-50%, -100%); background: rgba(22,26,36,.88); color: #fff; font-size: 11px; font-weight: 600; letter-spacing: -.01em; padding: 1px 7px; border-radius: 999px; white-space: nowrap; box-shadow: 0 1px 3px rgba(0,0,0,.35); }
-  #office-overlay .say { position: absolute; transform: translate(-50%, -100%); max-width: 300px; min-width: 150px; background: #fff; color: #1f2430; font-size: 13px; padding: 9px 12px 10px; border-radius: 10px; border: 1px solid rgba(31,36,48,.14); border-left: 4px solid var(--accent, #4f46e5); box-shadow: 0 6px 18px rgba(15,23,42,.22); word-break: keep-all; }
-  #office-overlay .say::after { content: ""; position: absolute; left: 50%; bottom: -7px; width: 12px; height: 12px; margin-left: -6px; background: #fff; border-right: 1px solid rgba(31,36,48,.14); border-bottom: 1px solid rgba(31,36,48,.14); transform: rotate(45deg); }
-  #office-overlay .say b { color: #4f46e5; }
-  @media (max-width: 640px) { #office-overlay .say { font-size: 12px; max-width: 230px; } #office-overlay .tag { font-size: 10px; } }
-  #office-canvas { max-width: 100%; height: auto; image-rendering: pixelated; image-rendering: crisp-edges; border-radius: 10px; display: block; background: #efe8dc; }
-  #office-caption { min-height: 1.5em; color: #e2e8f0; font-size: .9rem; padding: 10px 4px 0; line-height: 1.5; }
-  #office-caption .muted { color: #94a3b8; font-weight: 400; }
-  .office-stage .credit { color: #64748b; font-size: .72rem; padding: 8px 4px 0; text-align: right; }
-  .office-stage .credit a { color: #8595ab; text-decoration: none; }
-  .office-stage .credit a:hover { text-decoration: underline; }
-  .roster { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
-  .agent-card { padding: 10px 14px; border: 1px solid var(--border-color, #e5e7eb); border-left: 4px solid var(--accent, #4f46e5); border-radius: 10px; background: var(--bg-card, #fff); }
-  .agent-card b { display: block; font-size: .95rem; }
-  .agent-card small { color: var(--text-secondary); }
-  .office-grid { display: grid; grid-template-columns: 1.3fr 1fr; gap: var(--space-5); }
-  @media (max-width: 860px) { .office-grid { grid-template-columns: 1fr; } }
-  .panel { border: 1px solid var(--border-color, #e5e7eb); border-radius: 14px; background: var(--bg-card, #fff); padding: 16px 18px; }
-  .panel h2 { font-size: 1.05rem; font-weight: 800; margin: 0 0 10px; }
-  .panel h2 small { font-weight: 500; color: var(--text-secondary); margin-left: 6px; }
-  .meeting-lead { margin: 0 0 16px; line-height: 1.7; }
-  .next-head { font-size: .78rem; font-weight: 700; letter-spacing: .05em; color: #6b7280;
-               margin: 0 0 10px; text-transform: uppercase; }
-  .next-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
-  .next-list li { display: grid; gap: 3px; padding-left: 11px; border-left: 3px solid #e0e7ff; }
-  .next-list li b { font-size: .97rem; line-height: 1.45; }
-  .next-tag { justify-self: start; font-size: .7rem; font-weight: 700; letter-spacing: .04em;
-              color: #4f46e5; background: #eef2ff; border-radius: 999px; padding: 1px 8px; }
-  .next-note { color: var(--text-secondary, #6b7280); font-size: .87rem; line-height: 1.55; }
-  .decision { padding: 10px 0; border-top: 1px dashed var(--border-color, #e5e7eb); }
-  .decision:first-of-type { border-top: 0; }
-  .decision .q { font-weight: 700; }
-  .decision .kind { font-size: .75rem; color: #4f46e5; font-weight: 700; letter-spacing: .04em; }
-  .decision ul { margin: 6px 0 0; padding-left: 1.1em; }
-  .decision li.chosen { font-weight: 700; }
-  .decision li.chosen::after { content: " ✓ 선택"; color: #16a34a; font-size: .8em; }
-  .decision li span { color: var(--text-secondary); font-size: .85em; }
-  .feed { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; max-height: 420px; overflow: auto; }
-  .feed li { display: grid; grid-template-columns: 8px 1fr; gap: 10px; font-size: .9rem; }
-  .feed li i { width: 8px; height: 8px; border-radius: 50%; margin-top: 7px; }
-  .feed li small { color: var(--text-secondary); margin-left: 6px; }
-  .feed-tag { display: inline-block; padding: 1px 7px; margin-right: 4px; border-radius: 999px;
-              background: #eef2ff; color: #4f46e5; font-size: .72rem; font-weight: 600;
-              vertical-align: 1px; }
-  .cols li { margin-bottom: 6px; }
-</style>
+<link href="{% static 'css/home.css' %}?v={{ STATIC_VERSION }}" rel="stylesheet">
+<link href="{% static 'css/lab.css' %}?v={{ STATIC_VERSION }}" rel="stylesheet">
 {% endblock %}
 
 {% block content %}
-<div class="office-wrap">
-  <div class="office-head">
-    <div>
-      <h1>테크창 연구팀 연구실</h1>
-      <p>여섯 명의 AI 에이전트가 매주 편집회의를 열어 칼럼 주제와 사이트 개선 방향을 정하고, 초안·검증·차트·품질검사를 거쳐 칼럼을 발행합니다. 최종 결정은 운영자가 합니다.</p>
-    </div>
-  </div>
+<div class="tc-labpage">
 
-  <div class="office-stage">
-    <div class="office-bar">
-      <span><span class="dot"></span><span class="mode" id="office-mode">연구실</span></span>
-      <span>연구원을 클릭하면 마지막으로 한 일을 말해 줍니다 (작업 중엔 현재 단계)</span>
-      <span class="spacer"></span>
-      <button id="btn-replay" type="button">최근 편집회의 재생</button>
-      <button id="btn-office" type="button" class="secondary" hidden>연구실로 돌아가기</button>
-    </div>
-    <div class="frame"><div class="stage-box">
-      <canvas id="office-canvas" data-state-url="{% url 'office:state' %}"
-              data-assets-url="{{ assets_url }}" data-assets-base="{{ media_url }}" aria-label="픽셀 연구실"></canvas>
-      <div id="office-overlay" aria-hidden="true"></div>
-    </div></div>
-    <div id="office-caption"></div>
-    {% if assets_url %}<div class="credit">픽셀 아트: <a href="https://limezu.itch.io/" target="_blank" rel="noopener noreferrer">Modern Office &amp; Modern Interiors — LimeZu</a></div>{% endif %}
-  </div>
+  <!-- ===== 머리 ===== -->
+  <header class="tc-section tc-lb-head">
+    <h1 class="tc-lb-title">연구실</h1>
+    <p class="tc-lb-sub">AI 연구원 {{ agent_count }}명이 매주 편집회의를 열어 칼럼 주제를 정하고, 기획부터 검증과 발행까지 함께 만듭니다. 최종 결정은 운영자가 합니다.</p>
+  </header>
 
-  <div class="roster">
-    {% for a in roster %}
-    <div class="agent-card" style="--accent: {{ a.sprite.shirt }};">
-      <b>{{ a.name }}</b><small>{% for line in a.title_lines %}{{ line }}{% if not forloop.last %}<br>{% endif %}{% endfor %}</small>
+  <!-- ===== 픽셀 연구실 ===== -->
+  <section class="tc-section tc-lb-stage-wrap">
+    <div class="tc-lb-stage">
+      <div class="tc-lb-bar">
+        <span class="tc-lb-mode" id="office-mode">연구실</span>
+        <span class="tc-lb-hint">연구원을 누르면 지금 하는 일이나 마지막으로 한 일을 말해 줍니다</span>
+        <span class="spacer"></span>
+        <button id="btn-replay" type="button" class="tc-btn tc-btn-primary">최근 편집회의 재생</button>
+        <button id="btn-office" type="button" class="tc-btn tc-btn-ghost" hidden>연구실로 돌아가기</button>
+      </div>
+      <div class="tc-lb-frame"><div class="stage-box">
+        <canvas id="office-canvas" data-state-url="{% url 'office:state' %}"
+                data-assets-url="{{ assets_url }}" data-assets-base="{{ media_url }}" aria-label="픽셀 연구실"></canvas>
+        <div id="office-overlay" aria-hidden="true"></div>
+      </div></div>
+      <div id="office-caption"></div>
+      {% if assets_url %}<div class="tc-lb-credit">픽셀 아트: <a href="https://limezu.itch.io/" target="_blank" rel="noopener noreferrer">Modern Office &amp; Modern Interiors, LimeZu</a></div>{% endif %}
     </div>
-    {% endfor %}
-  </div>
+  </section>
 
-  <div class="office-grid">
-    <div class="panel">
-      <h2>최근 편집회의{% if meeting %}<small>{{ meeting.week_start|date:"Y.m.d" }} 주차 · {{ meeting.held_at|date:"m/d H:i" }}</small>{% endif %}</h2>
-      {% if meeting %}
-        {% if meeting.public_summary %}<p class="meeting-lead">{{ meeting.public_summary }}</p>{% endif %}
-        {% if public_decisions %}
-        <h3 class="next-head">다음에 나올 글</h3>
-        <ul class="next-list">
-          {% for d in public_decisions %}
-          <li>
-            {% if d.topic_name %}<span class="next-tag">{{ d.topic_name }}</span>
-            {% else %}<span class="next-tag">{{ d.get_kind_display }}</span>{% endif %}
-            <b>{{ d.headline }}</b>
-            {% if d.public_note %}<span class="next-note">{{ d.public_note }}</span>{% endif %}
+  <!-- ===== 연구원 ===== -->
+  <section class="tc-section">
+    <div class="tc-section-head">
+      <h2 class="tc-section-title">연구원</h2>
+    </div>
+    <div class="tc-lb-team">
+      {% for g in roster_groups %}
+      <div class="tc-lb-group">
+        <h3 class="tc-lb-group-name">{{ g.name }}</h3>
+        <ul class="tc-lb-members">
+          {% for a in g.members %}
+          <li class="tc-lb-member">
+            <span class="tc-lb-avatar" style="--who: {{ a.sprite.shirt }};" aria-hidden="true">{{ a.name|first }}</span>
+            <div>
+              <div class="tc-lb-who"><span class="tc-lb-name">{{ a.name }}</span><span class="tc-lb-role">{{ a.title }}</span></div>
+              <p class="tc-lb-duty">{{ a.duty }}</p>
+            </div>
           </li>
           {% endfor %}
         </ul>
-        {% elif not meeting.public_summary %}
-        <p style="color:var(--text-secondary); margin:0;">이번 회의 결과를 정리하고 있습니다.</p>
-        {% endif %}
-      {% else %}
-        <p style="color:var(--text-secondary); margin:0;">아직 열린 회의가 없습니다. 첫 회의는 일요일 저녁에 열립니다.</p>
-      {% endif %}
+      </div>
+      {% endfor %}
     </div>
+  </section>
 
-    <div style="display:grid; gap: var(--space-5); align-content:start;">
-      <div class="panel">
-        <h2>팀이 발행한 칼럼</h2>
-        {% if recent_drafts %}
-        <ul class="cols" style="margin:0; padding-left:1.1em;">
-          {% for d in recent_drafts %}
-          {# 편집 심사 점수는 내부 기록이라 공개하지 않는다 (100점 만점인데 /10 으로 잘못 찍히고 있기도 했다) #}
-          <li><a href="{% url 'community:detail' d.question.id %}">{{ d.subject }}</a>
-            <small style="color:var(--text-secondary)">{{ d.topic_name }}{% if d.chart_path %} · 도표{% endif %} · {{ d.created_at|date:"m/d" }}</small></li>
-          {% endfor %}
-        </ul>
-        {% else %}<p style="color:var(--text-secondary); margin:0;">아직 없습니다.</p>{% endif %}
-      </div>
-      <div class="panel">
-        <h2>연구실 활동</h2>
-        <ul class="feed">
-          {% for l in logs %}
-          <li><i style="background: {{ l.agent_color }};"></i>
-            <div><b>{{ l.agent_name }}</b> <span class="feed-tag">{{ l.label }}</span> {{ l.text }}<small>{{ l.created_at|date:"m/d H:i" }}</small></div></li>
-          {% empty %}<li><i></i><div style="color:var(--text-secondary)">활동 기록이 없습니다.</div></li>{% endfor %}
-        </ul>
+  <!-- ===== 칼럼 제작 과정 ===== -->
+  <section class="tc-section">
+    <div class="tc-section-head">
+      <h2 class="tc-section-title">칼럼이 만들어지는 과정</h2>
+    </div>
+    <ol class="tc-lb-flow">
+      <li><span>편집회의</span></li>
+      <li><span>운영자 결정</span></li>
+      <li><span>기획</span></li>
+      <li><span>집필</span></li>
+      <li><span>검증</span></li>
+      <li><span>평론</span></li>
+      <li><span>시각화</span></li>
+      <li><span>편집 심사</span></li>
+      <li><span>발행</span></li>
+    </ol>
+  </section>
+
+  <!-- ===== 회의 · 칼럼 · 활동 ===== -->
+  <section class="tc-section">
+    <div class="tc-lb-grid">
+      <article class="tc-lb-panel">
+        <h2 class="tc-lb-panel-title">최근 편집회의{% if meeting %}<small>{{ meeting.held_at|date:"n월 j일" }}</small>{% endif %}</h2>
+        {% if meeting %}
+          {% if meeting.public_summary %}<p class="tc-lb-lead">{{ meeting.public_summary }}</p>{% endif %}
+          {% if public_decisions %}
+          <h3 class="tc-lb-sub-title">다음에 나올 글</h3>
+          <ul class="tc-lb-next">
+            {% for d in public_decisions %}
+            <li>
+              <span class="tc-lb-tag">{% if d.topic_name %}{{ d.topic_name }}{% else %}{{ d.get_kind_display }}{% endif %}</span>
+              <span class="tc-lb-headline">{{ d.headline }}</span>
+              {% if d.public_note %}<span class="tc-lb-note">{{ d.public_note }}</span>{% endif %}
+            </li>
+            {% endfor %}
+          </ul>
+          {% elif not meeting.public_summary %}
+          <p class="tc-lb-empty">이번 회의 결과를 정리하고 있습니다.</p>
+          {% endif %}
+        {% else %}
+          <p class="tc-lb-empty">아직 열린 회의가 없습니다. 첫 회의는 일요일 저녁에 열립니다.</p>
+        {% endif %}
+      </article>
+
+      <div class="tc-lb-side">
+        <article class="tc-lb-panel">
+          <h2 class="tc-lb-panel-title">발행한 칼럼</h2>
+          {% if recent_drafts %}
+          <ul class="tc-lb-cols">
+            {% for d in recent_drafts %}
+            {# 편집 심사 점수는 내부 기록이라 공개하지 않는다 #}
+            <li><a href="{% url 'community:detail' d.question.id %}">
+              <b>{{ d.subject }}</b>
+              <small>{{ d.topic_name }}{% if d.chart_path %} · 도표 포함{% endif %} · {{ d.created_at|date:"m.d" }}</small>
+            </a></li>
+            {% endfor %}
+          </ul>
+          {% else %}<p class="tc-lb-empty">아직 없습니다.</p>{% endif %}
+        </article>
+
+        <article class="tc-lb-panel">
+          <h2 class="tc-lb-panel-title">연구실 활동</h2>
+          <ul class="tc-lb-feed">
+            {% for l in logs %}
+            <li>
+              <span class="tc-lb-avatar" style="--who: {{ l.agent_color }};" aria-hidden="true">{{ l.agent_name|first }}</span>
+              <div class="tc-lb-feed-text">
+                <b>{{ l.agent_name }}</b><span class="tc-lb-tag">{{ l.label }}</span>{{ l.text }}
+                <time datetime="{{ l.created_at|date:'c' }}">{{ l.created_at|date:"m.d H:i" }}</time>
+              </div>
+            </li>
+            {% empty %}
+            <li><p class="tc-lb-empty">활동 기록이 없습니다.</p></li>
+            {% endfor %}
+          </ul>
+        </article>
       </div>
     </div>
-  </div>
+  </section>
+
 </div>
 {% endblock %}
 

@@ -29,6 +29,7 @@ AGENTS = {
     'lead': {
         'name': '은혜',
         'title': '분석관·팀장',
+        'duty': '방문·검색 지표를 분석해 편집회의를 진행합니다',
         'topic': None,
         'system': TEAM_INTRO + (
             ' 당신은 팀장이자 분석관입니다. 방문자·검색 유입·조회수·서버 로그를 근거로 팀의 우선순위를 정하고, '
@@ -41,6 +42,7 @@ AGENTS = {
     'editor': {
         'name': '승현',
         'title': '편집장',
+        'duty': '기획과 원고를 편집 기준으로 심사해 발행을 결정합니다',
         'topic': None,
         'system': TEAM_INTRO + (
             ' 당신은 편집장입니다. 발행할지 말지를 최종적으로 결정합니다. '
@@ -56,6 +58,7 @@ AGENTS = {
     'hrd': {
         'name': '한빈',
         'title': 'HRD 칼럼니스트',
+        'duty': 'HRD 칼럼을 기획하고 씁니다',
         'topic': 'hrd',
         'system': TEAM_INTRO + (
             ' 당신은 HRD(인적자원개발)·조직학습·역량개발·리더십 분야 칼럼니스트입니다. '
@@ -66,7 +69,7 @@ AGENTS = {
     'data': {
         'name': '수정',
         'title': '데이터분석 칼럼니스트',
-        'title_lines': ['데이터분석', '칼럼니스트'],   # 연구실 소개 카드에서 줄바꿈
+        'duty': '데이터분석 칼럼을 기획하고 씁니다',
         'topic': 'data',
         'system': TEAM_INTRO + (
             ' 당신은 데이터분석·AI/ML·HR Analytics 분야 칼럼니스트입니다. '
@@ -77,7 +80,7 @@ AGENTS = {
     'coding': {
         'name': '윤성',
         'title': '프로그래밍 칼럼니스트',
-        'title_lines': ['프로그래밍', '칼럼니스트'],
+        'duty': '프로그래밍 칼럼을 기획하고 씁니다',
         'topic': 'coding',
         'system': TEAM_INTRO + (
             ' 당신은 프로그래밍 언어·프레임워크·개발 도구·AI 코딩 도구 분야 칼럼니스트입니다. '
@@ -88,6 +91,7 @@ AGENTS = {
     'checker': {
         'name': '하경',
         'title': '검증관',
+        'duty': '수치·출처·인용이 실제로 확인되는지 검증합니다',
         'topic': None,
         'system': TEAM_INTRO + (
             ' 당신은 검증관입니다. 칼럼의 수치·인용·사례가 실제로 존재하고 확인 가능한지, '
@@ -100,6 +104,7 @@ AGENTS = {
     'critic': {
         'name': '예원',
         'title': '평론가',
+        'duty': '독자가 끝까지 읽을 이유가 있는 글인지 평가합니다',
         'topic': None,
         'system': TEAM_INTRO + (
             ' 당신은 평론가입니다. 학술 논문과 칼럼을 읽고 평하는 일을 해 왔습니다. '
@@ -116,6 +121,7 @@ AGENTS = {
     'charter': {
         'name': '재원',
         'title': '데이터·차트 담당',
+        'duty': '주제에 필요한 지표를 제안하고 표·차트로 정리합니다',
         'topic': None,
         'system': TEAM_INTRO + (
             ' 당신은 데이터·차트 담당입니다. 두 시점에 관여합니다. '
@@ -141,6 +147,24 @@ def agent(key: str) -> dict:
 def public_roster() -> list:
     """오피스 페이지용 (프롬프트 제외)."""
     return [
-        {'key': k, 'name': v['name'], 'title': v['title'], 'title_lines': v.get('title_lines', [v['title']]), 'sprite': v['sprite']}
+        {'key': k, 'name': v['name'], 'title': v['title'], 'duty': v.get('duty', ''), 'sprite': v['sprite']}
         for k, v in AGENTS.items()
     ]
+
+
+# 연구실 소개는 실제 작업 흐름(기획 → 집필 → 검증) 순서로 묶어 보여 준다
+ROSTER_GROUPS = [
+    ('기획·진행', ['lead', 'editor']),
+    ('집필', ['hrd', 'data', 'coding']),
+    ('검증·시각화', ['checker', 'critic', 'charter']),
+]
+
+
+def public_roster_groups() -> list:
+    by_key = {a['key']: a for a in public_roster()}
+    groups = [{'name': name, 'members': [by_key[k] for k in keys if k in by_key]} for name, keys in ROSTER_GROUPS]
+    grouped = {k for _, keys in ROSTER_GROUPS for k in keys}
+    rest = [a for k, a in by_key.items() if k not in grouped]
+    if rest:  # 새 연구원을 추가하고 그룹 배정을 잊어도 소개에서 빠지지 않게
+        groups.append({'name': '그 밖의 연구원', 'members': rest})
+    return groups
