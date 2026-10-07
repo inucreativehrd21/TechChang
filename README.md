@@ -100,6 +100,7 @@ python manage.py runserver
 | `DEBUG` | 개발 시 `True`, 운영 시 `False` |
 | `DJANGO_ALLOWED_HOSTS` | 허용 호스트 |
 | `ANTHROPIC_API_KEY` | Claude API 키 (AI 기능) |
+| `CLAUDE_BACKEND` / `CLAUDE_CODE_OAUTH_TOKEN` | `cli` 면 Claude Code 구독으로 먼저 호출, 실패 시 API 폴백 |
 | `KAKAO_REST_API_KEY` / `KAKAO_CLIENT_SECRET` | 카카오 로그인 |
 | `RATE_LIMIT_REQUESTS` / `DDOS_THRESHOLD` | Rate limit / DDoS 임계값 |
 

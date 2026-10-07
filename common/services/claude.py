@@ -22,11 +22,19 @@
 """
 from __future__ import annotations
 
+import json
+import logging
 import os
+import shutil
+import subprocess
+import tempfile
+import time
 from enum import Enum
 from typing import Generator
 
 from django.conf import settings
+
+logger = logging.getLogger(__name__)
 
 
 class ClaudeModel(str, Enum):
@@ -87,7 +95,19 @@ def ask(
 
     Raises:
         RuntimeError: API 키 미설정 또는 anthropic 패키지 없음
+
+    CLAUDE_BACKEND=cli 이면 API 대신 Claude Code CLI(구독)로 먼저 보내고,
+    실패(사용량 한도·토큰 만료·CLI 없음)하면 API 로 넘어간다.
     """
+    if os.environ.get(BACKEND_ENV, 'api').lower() == 'cli':
+        try:
+            return _cli_ask(prompt, system=system, model=model)
+        except CliUnavailable as exc:
+            if os.environ.get(FALLBACK_ENV, 'true').lower() == 'false':
+                raise RuntimeError(f'Claude CLI 호출 실패(API 폴백 꺼짐): {exc}') from exc
+            logger.warning('claude backend=cli 실패 → api 폴백: %s', exc)
+
+    started = time.monotonic()
     client = _get_client()
 
     kwargs = dict(
@@ -104,14 +124,80 @@ def ask(
         with client.messages.stream(**kwargs) as stream:
             for chunk in stream.text_stream:
                 parts.append(chunk)
-        return ''.join(parts)
+        out = ''.join(parts)
+    else:
+        response = client.messages.create(**kwargs)
+        # 최신 모델은 text 앞에 thinking 블록이 올 수 있다 → text 블록만 이어 붙인다
+        out = ''.join(
+            block.text for block in response.content
+            if getattr(block, 'type', '') == 'text'
+        )
+    logger.info('claude backend=api model=%s %.1fs', model, time.monotonic() - started)
+    return out
 
-    response = client.messages.create(**kwargs)
-    # 최신 모델은 text 앞에 thinking 블록이 올 수 있다 → text 블록만 이어 붙인다
-    return ''.join(
-        block.text for block in response.content
-        if getattr(block, 'type', '') == 'text'
-    )
+
+# ───────────────────────────── Claude Code CLI(구독) 백엔드
+BACKEND_ENV = 'CLAUDE_BACKEND'        # 'api'(기본) | 'cli'
+FALLBACK_ENV = 'CLAUDE_CLI_FALLBACK'  # 'false' 면 CLI 실패 시 API 로 넘기지 않고 예외
+CLI_BIN_ENV = 'CLAUDE_CLI_BIN'        # cron 의 PATH 에 claude 가 없을 때 절대 경로
+CLI_TIMEOUT = int(os.environ.get('CLAUDE_CLI_TIMEOUT', '1200'))
+# 인자 하나의 길이 상한(Linux MAX_ARG_STRLEN 128KB) 아래로 여유를 둔다
+_SYSTEM_ARG_LIMIT = 100_000
+
+
+class CliUnavailable(Exception):
+    """CLI 경로로 답을 받지 못함 — 호출부는 API 로 폴백한다."""
+
+
+def _cli_ask(prompt: str, *, system: str, model: ClaudeModel | str) -> str:
+    """
+    `claude -p` 로 1회 호출. Claude Code 기본 시스템 프롬프트·도구·설정·MCP 를 모두 끄고
+    빈 임시 디렉터리에서 돌려, API 호출과 같은 '시스템+사용자 메시지 1턴'만 남긴다.
+    인증은 CLAUDE_CODE_OAUTH_TOKEN(`claude setup-token`) 또는 로그인 세션.
+    """
+    binary = os.environ.get(CLI_BIN_ENV) or shutil.which('claude')
+    if not binary:
+        raise CliUnavailable('claude 실행 파일을 찾을 수 없음')
+
+    if len(system.encode('utf-8')) > _SYSTEM_ARG_LIMIT:
+        prompt = f'{system}\n\n---\n\n{prompt}'
+        system = ''
+
+    cmd = [
+        binary, '-p', '--output-format', 'json', '--model', str(model),
+        '--tools', '', '--setting-sources', '', '--strict-mcp-config',
+        '--disable-slash-commands', '--no-session-persistence',
+    ]
+    if system:
+        cmd += ['--system-prompt', system]
+
+    env = os.environ.copy()
+    # API 키가 보이면 CLI 가 구독 대신 API 키로 과금한다 → 반드시 지운다
+    env.pop('ANTHROPIC_API_KEY', None)
+    env.pop(BACKEND_ENV, None)
+
+    started = time.monotonic()
+    with tempfile.TemporaryDirectory(prefix='claude-cli-') as cwd:
+        try:
+            proc = subprocess.run(
+                cmd, input=prompt, capture_output=True, text=True, encoding='utf-8',
+                cwd=cwd, env=env, timeout=CLI_TIMEOUT,
+            )
+        except (OSError, subprocess.TimeoutExpired) as exc:
+            raise CliUnavailable(f'실행 오류: {exc}') from exc
+
+    try:
+        data = json.loads(proc.stdout)
+    except json.JSONDecodeError:
+        raise CliUnavailable(f'exit={proc.returncode} 출력 해석 불가: {(proc.stderr or proc.stdout)[:300]}')
+
+    out = (data.get('result') or '').strip()
+    if proc.returncode != 0 or data.get('is_error') or data.get('subtype') != 'success' or not out:
+        raise CliUnavailable(f"exit={proc.returncode} subtype={data.get('subtype')} {out[:300]}")
+
+    logger.info('claude backend=cli model=%s %.1fs in=%s out=%s', model, time.monotonic() - started,
+                (data.get('usage') or {}).get('input_tokens'), (data.get('usage') or {}).get('output_tokens'))
+    return out
 
 
 def ask_stream(
