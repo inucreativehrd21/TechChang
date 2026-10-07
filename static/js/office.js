@@ -671,7 +671,12 @@
   }
 
   function goTo(a, x, y, onArrive) {
-    a.path = findPath({ x: a.x, y: a.y }, { x, y }) || [];
+    // 의자에서 일어날 땐 앉을 때와 같은 진입점으로 먼저 나온다 — 가장 가까운 통로 칸으로
+    // 바로 가면 책상·옆 의자를 대각선으로 가로지른다
+    const d = hasDesk(a) ? deskPos(a) : null;
+    const ap = d && Math.hypot(a.x - d.x, a.y - d.y) < 3 ? approachOf(a) : null;
+    const from = ap || { x: a.x, y: a.y };
+    a.path = (ap ? [ap] : []).concat(findPath(from, { x, y }) || []);
     a.finalTarget = { x, y };
     a.onArrive = onArrive || null;
     a.state = 'goto';
