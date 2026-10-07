@@ -2,6 +2,7 @@ import json
 from types import SimpleNamespace
 from unittest import mock
 
+from django.core import mail
 from django.test import SimpleTestCase
 
 from common.services import claude
@@ -20,6 +21,8 @@ def cli_env(**extra):
 
 
 class CliBackendTests(SimpleTestCase):
+    def setUp(self):
+        claude._fallback_alerted = False
     def test_cli_answer_is_returned_without_touching_api(self):
         with cli_env(), mock.patch('common.services.claude.subprocess.run', return_value=cli_result('서울')) as run, \
                 mock.patch('common.services.claude._get_client') as client:
@@ -37,13 +40,30 @@ class CliBackendTests(SimpleTestCase):
             claude.ask('q')
         self.assertNotIn('ANTHROPIC_API_KEY', run.call_args.kwargs['env'])
 
-    def test_usage_limit_falls_back_to_api(self):
+    def test_usage_limit_falls_back_to_api_and_alerts_once(self):
         limited = cli_result('Claude AI usage limit reached', returncode=1, is_error=True)
         api = mock.Mock()
         api.messages.create.return_value = SimpleNamespace(content=[SimpleNamespace(type='text', text='API답')])
         with cli_env(), mock.patch('common.services.claude.subprocess.run', return_value=limited), \
-                mock.patch('common.services.claude._get_client', return_value=api):
-            self.assertEqual(claude.ask('q'), 'API답')
+                mock.patch('common.services.claude._get_client', return_value=api), \
+                self.settings(ADMINS=[('Admin', 'admin@example.com')]):
+            with claude.track_calls() as calls:
+                self.assertEqual(claude.ask('q'), 'API답')
+                claude.ask('q2')
+        self.assertEqual(len(mail.outbox), 1)  # 같은 작업 안의 두 번째 폴백은 메일 생략
+        self.assertIn('API 폴백 발생', mail.outbox[0].subject)
+        self.assertIn('usage limit reached', mail.outbox[0].body)
+        self.assertEqual([c['backend'] for c in calls], ['api', 'api'])
+        self.assertTrue(all(c['fallback'] for c in calls))
+
+    def test_tracker_records_cli_calls(self):
+        with cli_env(), mock.patch('common.services.claude.subprocess.run', return_value=cli_result()):
+            with claude.track_calls() as calls:
+                claude.ask('q')
+        self.assertEqual(calls[0]['backend'], 'cli')
+        self.assertEqual(calls[0]['input_tokens'], 10)
+        self.assertEqual(calls[0]['fallback'], '')
+        self.assertEqual(len(mail.outbox), 0)
 
     def test_fallback_can_be_disabled(self):
         limited = cli_result('', returncode=1, is_error=True)

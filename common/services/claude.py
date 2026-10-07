@@ -29,6 +29,7 @@ import shutil
 import subprocess
 import tempfile
 import time
+from contextlib import contextmanager
 from enum import Enum
 from typing import Generator
 
@@ -98,16 +99,41 @@ def ask(
 
     CLAUDE_BACKEND=cli 이면 API 대신 Claude Code CLI(구독)로 먼저 보내고,
     실패(사용량 한도·토큰 만료·CLI 없음)하면 API 로 넘어간다.
+    호출마다 경로·시간·토큰을 track_calls() 기록기에 남기고, 폴백은 관리자에게 메일로 알린다.
     """
-    if os.environ.get(BACKEND_ENV, 'api').lower() == 'cli':
-        try:
-            return _cli_ask(prompt, system=system, model=model)
-        except CliUnavailable as exc:
-            if os.environ.get(FALLBACK_ENV, 'true').lower() == 'false':
-                raise RuntimeError(f'Claude CLI 호출 실패(API 폴백 꺼짐): {exc}') from exc
-            logger.warning('claude backend=cli 실패 → api 폴백: %s', exc)
-
+    rec = {'model': str(model), 'backend': '', 'seconds': 0.0, 'fallback': '', 'error': '',
+           'input_tokens': None, 'output_tokens': None}
     started = time.monotonic()
+    try:
+        if os.environ.get(BACKEND_ENV, 'api').lower() == 'cli':
+            try:
+                out, usage = _cli_ask(prompt, system=system, model=model)
+                rec.update(backend='cli', **usage)
+                return out
+            except CliUnavailable as exc:
+                rec['fallback'] = str(exc)[:300]
+                if os.environ.get(FALLBACK_ENV, 'true').lower() == 'false':
+                    _alert_fallback(rec, fallback_enabled=False)
+                    raise RuntimeError(f'Claude CLI 호출 실패(API 폴백 꺼짐): {exc}') from exc
+                logger.warning('claude backend=cli 실패 → api 폴백: %s', exc)
+                _alert_fallback(rec, fallback_enabled=True)
+
+        out, usage = _api_ask(prompt, system=system, model=model, max_tokens=max_tokens)
+        rec.update(backend='api', **usage)
+        return out
+    except Exception as exc:
+        rec['error'] = f'{type(exc).__name__}: {exc}'[:300]
+        raise
+    finally:
+        rec['seconds'] = round(time.monotonic() - started, 1)
+        logger.info('claude backend=%s model=%s %.1fs in=%s out=%s%s', rec['backend'] or 'error', model,
+                    rec['seconds'], rec['input_tokens'], rec['output_tokens'],
+                    ' (fallback)' if rec['fallback'] else '')
+        for calls, _alert in _trackers:
+            calls.append(rec)
+
+
+def _api_ask(prompt: str, *, system: str, model: ClaudeModel | str, max_tokens: int) -> tuple[str, dict]:
     client = _get_client()
 
     kwargs = dict(
@@ -124,16 +150,74 @@ def ask(
         with client.messages.stream(**kwargs) as stream:
             for chunk in stream.text_stream:
                 parts.append(chunk)
-        out = ''.join(parts)
-    else:
-        response = client.messages.create(**kwargs)
-        # 최신 모델은 text 앞에 thinking 블록이 올 수 있다 → text 블록만 이어 붙인다
-        out = ''.join(
-            block.text for block in response.content
-            if getattr(block, 'type', '') == 'text'
-        )
-    logger.info('claude backend=api model=%s %.1fs', model, time.monotonic() - started)
-    return out
+        return ''.join(parts), {}
+
+    response = client.messages.create(**kwargs)
+    # 최신 모델은 text 앞에 thinking 블록이 올 수 있다 → text 블록만 이어 붙인다
+    out = ''.join(
+        block.text for block in response.content
+        if getattr(block, 'type', '') == 'text'
+    )
+    usage = getattr(response, 'usage', None)
+    return out, {'input_tokens': getattr(usage, 'input_tokens', None),
+                 'output_tokens': getattr(usage, 'output_tokens', None)}
+
+
+# ───────────────────────────── 호출 기록 · 폴백 알림
+_trackers: list[tuple[list, bool]] = []
+_fallback_alerted = False
+
+
+@contextmanager
+def track_calls(*, alert: bool = True):
+    """
+    블록 안의 ask() 호출 기록을 모은다. 각 항목: model, backend(cli|api|''), seconds,
+    fallback(CLI 실패 사유), error, input_tokens, output_tokens.
+    alert=False 면 폴백 즉시 알림 메일을 생략한다 — 호출부가 자체 리포트에 담을 때.
+    """
+    calls: list[dict] = []
+    entry = (calls, alert)
+    _trackers.append(entry)
+    try:
+        yield calls
+    finally:
+        _trackers.remove(entry)
+
+
+def _alert_fallback(rec: dict, *, fallback_enabled: bool) -> None:
+    """CLI 실패를 관리자에게 알린다. 한 프로세스(=cron 작업 1회)에 한 통만 보낸다."""
+    global _fallback_alerted
+    if _fallback_alerted or any(not alert for _calls, alert in _trackers):
+        return
+    _fallback_alerted = True
+    try:
+        import sys
+
+        from django.core.mail import send_mail
+
+        recipients = [email for _name, email in getattr(settings, 'ADMINS', []) if email]
+        if not recipients:
+            return
+        job = ' '.join([os.path.basename(sys.argv[0])] + sys.argv[1:4]) if sys.argv else '?'
+        what = 'API 로 폴백해 처리했습니다(과금 발생).' if fallback_enabled else 'API 폴백이 꺼져 있어 작업이 실패했습니다.'
+        body = '\n'.join([
+            f'Claude Code 구독(CLI) 호출이 실패해 {what}',
+            '',
+            f'작업: {job}',
+            f'모델: {rec["model"]}',
+            f'사유: {rec["fallback"]}',
+            '',
+            '흔한 원인:',
+            '- 사용량 한도(5시간/주간) 소진 → 한도가 풀리면 다음 호출부터 자동으로 구독 경로로 돌아옵니다.',
+            '- 토큰 만료·취소 → 로컬에서 `claude setup-token` 재발급 후 서버 .env 의 CLAUDE_CODE_OAUTH_TOKEN 교체.',
+            '- CLI 미설치·경로 변경 → 서버 .env 의 CLAUDE_CLI_BIN 확인.',
+            '',
+            '같은 작업 안의 이후 폴백은 메일을 생략합니다. 전체 내역: grep "claude backend=" logs/*.log',
+        ])
+        subject = '[TechChang] Claude 구독 호출 실패 → ' + ('API 폴백 발생' if fallback_enabled else '작업 실패')
+        send_mail(subject, body, settings.DEFAULT_FROM_EMAIL, recipients, fail_silently=True)
+    except Exception:  # noqa: BLE001 — 알림 실패가 본 작업을 막으면 안 된다
+        logger.exception('폴백 알림 메일 발송 실패')
 
 
 # ───────────────────────────── Claude Code CLI(구독) 백엔드
@@ -149,7 +233,7 @@ class CliUnavailable(Exception):
     """CLI 경로로 답을 받지 못함 — 호출부는 API 로 폴백한다."""
 
 
-def _cli_ask(prompt: str, *, system: str, model: ClaudeModel | str) -> str:
+def _cli_ask(prompt: str, *, system: str, model: ClaudeModel | str) -> tuple[str, dict]:
     """
     `claude -p` 로 1회 호출. Claude Code 기본 시스템 프롬프트·도구·설정·MCP 를 모두 끄고
     빈 임시 디렉터리에서 돌려, API 호출과 같은 '시스템+사용자 메시지 1턴'만 남긴다.
@@ -176,7 +260,6 @@ def _cli_ask(prompt: str, *, system: str, model: ClaudeModel | str) -> str:
     env.pop('ANTHROPIC_API_KEY', None)
     env.pop(BACKEND_ENV, None)
 
-    started = time.monotonic()
     with tempfile.TemporaryDirectory(prefix='claude-cli-') as cwd:
         try:
             proc = subprocess.run(
@@ -195,9 +278,8 @@ def _cli_ask(prompt: str, *, system: str, model: ClaudeModel | str) -> str:
     if proc.returncode != 0 or data.get('is_error') or data.get('subtype') != 'success' or not out:
         raise CliUnavailable(f"exit={proc.returncode} subtype={data.get('subtype')} {out[:300]}")
 
-    logger.info('claude backend=cli model=%s %.1fs in=%s out=%s', model, time.monotonic() - started,
-                (data.get('usage') or {}).get('input_tokens'), (data.get('usage') or {}).get('output_tokens'))
-    return out
+    usage = data.get('usage') or {}
+    return out, {'input_tokens': usage.get('input_tokens'), 'output_tokens': usage.get('output_tokens')}
 
 
 def ask_stream(

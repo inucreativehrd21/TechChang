@@ -11,12 +11,17 @@ cron (일요일 20:00 → 다음 주 월요일 주차로 기록):
   0 20 * * 0  .../python manage.py hold_meeting --email seunghyunmoon55@gmail.com
 """
 import json
+import time
+import traceback
 from datetime import timedelta
 
-from django.core.mail import EmailMessage
+from django.conf import settings
+from django.core.mail import EmailMultiAlternatives
 from django.core.management.base import BaseCommand
 from django.utils import timezone
+from django.utils.html import escape
 
+from common.services.claude import track_calls
 from office.agents import AGENTS, MEETING_ORDER
 from office.models import Decision, Meeting
 from office.services import ask_agent, ask_agent_json, collect_site_snapshot, log, snapshot_as_text, week_monday
@@ -72,18 +77,52 @@ class Command(BaseCommand):
         parser.add_argument('--dry-run', action='store_true', help='API 는 호출하되 DB 에 저장하지 않음')
 
     def handle(self, *args, **opts):
+        # 단계별 실행 기록 — 메일의 "실행 결과" 표가 된다. 폴백은 메일 본문에 담으므로 즉시 알림은 끈다
+        self.steps = []
+        self.started_at = timezone.localtime()
+        with track_calls(alert=False) as calls:
+            self.calls = calls
+            try:
+                meeting = self._hold(opts)
+            except Exception:
+                if opts['email'] and not opts['dry_run']:
+                    self._send_failure_mail(opts['email'], traceback.format_exc())
+                raise
+        if meeting and opts['email']:
+            self._send_mail(opts['email'], meeting)
+
+    def _step(self, label, fn):
+        """fn 을 실행하고 그 사이 일어난 Claude 호출을 단계에 묶어 기록한다."""
+        first = len(self.calls)
+        started = time.monotonic()
+        step = {'label': label, 'ok': False, 'seconds': 0.0, 'calls': [], 'note': ''}
+        self.steps.append(step)
+        try:
+            result = fn()
+            step['ok'] = True
+            return result
+        except Exception as ex:
+            step['note'] = f'{type(ex).__name__}: {ex}'[:300]
+            raise
+        finally:
+            step['seconds'] = round(time.monotonic() - started, 1)
+            step['calls'] = self.calls[first:]
+
+    def _hold(self, opts):
         # 일요일 저녁에 돌리면 '다음 주' 회의로 기록
         today = timezone.localdate()
         week = week_monday(today + timedelta(days=1)) if today.weekday() == 6 else week_monday(today)
         if not opts['force'] and Meeting.objects.filter(week_start=week).exists():
             self.stdout.write(f'{week} 주차 회의가 이미 있습니다. --force 로 다시 개최할 수 있습니다.')
-            return
+            return None
 
+        self.week = week
         self.stdout.write(f'[{timezone.localtime():%H:%M:%S}] {week} 주차 편집회의 소집 — 지표 수집 중...')
-        snap = collect_site_snapshot()
+        snap = self._step('지표 수집', collect_site_snapshot)
         brief = snapshot_as_text(snap)
 
         transcript = []
+        self.transcript = transcript  # 실패 메일에 "어디까지 말했는지" 남기기 위해
 
         def tx():
             return '\n'.join(f"{AGENTS[t['agent']]['name']}({AGENTS[t['agent']]['title']}): {t['text']}" for t in transcript) or '(아직 없음)'
@@ -96,19 +135,23 @@ class Command(BaseCommand):
                 if rnd == 2 and key == 'lead':
                     continue  # 팀장은 2라운드 대신 결론 정리를 맡는다
                 prompt = template.format(who=who(key), brief=brief, transcript=tx(), task=TASKS.get(key, ''))
-                text = ask_agent(key, prompt, max_tokens=1500)
+                text = self._step(f'{rnd}라운드 · {who(key)}', lambda: ask_agent(key, prompt, max_tokens=1500))
                 transcript.append({'agent': key, 'round': rnd, 'text': text})
                 self.stdout.write(f'  R{rnd} {who(key)}: {text[:60]}...')
 
-        result = ask_agent_json('lead', SYNTHESIS.format(brief=brief, transcript=tx()), max_tokens=8000)
+        result = self._step('결론 정리 · ' + who('lead'),
+                            lambda: ask_agent_json('lead', SYNTHESIS.format(brief=brief, transcript=tx()), max_tokens=8000))
         decisions = [d for d in result.get('decisions', []) if isinstance(d, dict) and d.get('options')]
         summary = str(result.get('summary', '')).strip()
         self.stdout.write(f'  결론: {summary[:80]}... / 안건 {len(decisions)}건')
 
         if opts['dry_run']:
             self.stdout.write(json.dumps(result, ensure_ascii=False, indent=2)[:3000])
-            return
+            return None
 
+        return self._step('회의록·안건 저장', lambda: self._save(week, brief, transcript, snap, summary, decisions))
+
+    def _save(self, week, brief, transcript, snap, summary, decisions):
         meeting = Meeting.objects.create(week_start=week, briefing=brief, transcript=transcript,
                                          snapshot=snap, summary=summary)
         for d in decisions:
@@ -131,20 +174,153 @@ class Command(BaseCommand):
                 log(t['agent'], 'meeting', f"편집회의 발언: {t['text'][:120]}", meeting=meeting)
         log('lead', 'meeting', f'{week} 주차 편집회의 종료 — 안건 {meeting.decisions.count()}건, 관리자 결정 대기', meeting=meeting)
         self.stdout.write(self.style.SUCCESS(f'회의 저장 완료 (id={meeting.id}, 안건 {meeting.decisions.count()}건)'))
+        return meeting
 
-        if opts['email']:
-            self._send_mail(opts['email'], meeting)
-
+    # ───────────────────────────── 메일
+    # 섹션은 (제목, 텍스트 본문, HTML 본문) 묶음으로 만들어 평문·HTML 두 판을 같은 순서로 낸다.
     def _send_mail(self, to, meeting):
-        lines = [f'{meeting.week_start} 주차 편집회의가 끝났습니다.', '', meeting.summary, '', '안건:']
-        for d in meeting.decisions.all():
-            lines.append(f"- [{d.get_kind_display()}{' · ' + d.topic if d.topic else ''}] {d.question}")
+        decisions = list(meeting.decisions.all())
+        usage = self._usage()
+        sections = [
+            ('결론 요약', meeting.summary or '(요약 없음)', _br(meeting.summary or '(요약 없음)')),
+            self._execution_section(usage),
+            self._decisions_section(decisions),
+            self._transcript_section(meeting.transcript),
+            ('지표 브리핑 (회의에 제공된 자료)', meeting.briefing, f'<pre style="{PRE}">{escape(meeting.briefing)}</pre>'),
+        ]
+        warn = f" · ⚠ API 폴백 {usage['fallbacks']}회" if usage['fallbacks'] else ''
+        subject = f'[TechChang] {meeting.week_start} 편집회의 결과 — 결정 {len(decisions)}건 대기{warn}'
+        lead = f'{meeting.week_start} 주차 편집회의가 끝났습니다. 안건 {len(decisions)}건이 결정을 기다립니다.'
+        self._deliver(to, subject, lead, sections)
+
+    def _send_failure_mail(self, to, tb):
+        usage = self._usage()
+        week = getattr(self, 'week', '')
+        transcript = getattr(self, 'transcript', [])
+        failed = next((s for s in reversed(self.steps) if not s['ok']), None)
+        where = failed['label'] if failed else '단계 밖(준비·메일 단계)'
+        sections = [
+            ('실패 지점', f'{where}\n\n{tb[-3000:]}', f'<b>{escape(where)}</b><pre style="{PRE}">{escape(tb[-3000:])}</pre>'),
+            self._execution_section(usage),
+        ]
+        if transcript:
+            sections.append(self._transcript_section(transcript))
+        lead = (f'{week} 주차 편집회의가 도중에 실패해 회의록이 저장되지 않았습니다. '
+                '원인을 확인한 뒤 `manage.py hold_meeting --force` 로 다시 열 수 있습니다.')
+        self._deliver(to, f'[TechChang] {week} 편집회의 실패 — {where}', lead, sections)
+
+    def _usage(self):
+        calls = self.calls
+        return {
+            'total': len(calls),
+            'cli': sum(1 for c in calls if c['backend'] == 'cli'),
+            'api': sum(1 for c in calls if c['backend'] == 'api'),
+            'errors': sum(1 for c in calls if not c['backend']),
+            'fallbacks': sum(1 for c in calls if c['fallback']),
+            'reasons': sorted({c['fallback'] for c in calls if c['fallback']}),
+            'input': sum(c['input_tokens'] or 0 for c in calls),
+            'output': sum(c['output_tokens'] or 0 for c in calls),
+            'seconds': round((timezone.localtime() - self.started_at).total_seconds()),
+        }
+
+    def _execution_section(self, u):
+        mins, secs = divmod(u['seconds'], 60)
+        head = (f"Claude 호출 {u['total']}회 — 구독(CLI) {u['cli']}회 · API {u['api']}회"
+                f"{' · 실패 ' + str(u['errors']) + '회' if u['errors'] else ''} / "
+                f"토큰 입력 {u['input']:,} · 출력 {u['output']:,} / 총 소요 {mins}분 {secs}초")
+        if u['fallbacks']:
+            fb = f"⚠ API 폴백 {u['fallbacks']}회 (과금 발생). 사유:\n" + '\n'.join(f'- {r}' for r in u['reasons'])
+        else:
+            fb = '폴백 없음 — 모든 호출이 구독 경로로 처리되었습니다.' if u['cli'] else 'CLI 백엔드를 쓰지 않았습니다(CLAUDE_BACKEND=api).'
+
+        rows_txt, rows_html = [], []
+        for s in self.steps:
+            backends = '·'.join(c['backend'] or '실패' for c in s['calls']) or '-'
+            if any(c['fallback'] for c in s['calls']):
+                backends += ' (폴백)'
+            tokens = (f"{sum(c['input_tokens'] or 0 for c in s['calls']):,}/{sum(c['output_tokens'] or 0 for c in s['calls']):,}"
+                      if s['calls'] else '-')
+            result = '성공' if s['ok'] else '실패'
+            rows_txt.append(f"  {result} | {s['label']} | {backends} | {s['seconds']}s | {tokens}"
+                            + (f" | {s['note']}" if s['note'] else ''))
+            color = '#15803d' if s['ok'] else '#b91c1c'
+            rows_html.append(
+                f'<tr><td style="{TD};color:{color};font-weight:600">{result}</td><td style="{TD}">{escape(s["label"])}'
+                + (f'<br><small style="color:#b91c1c">{escape(s["note"])}</small>' if s['note'] else '')
+                + f'</td><td style="{TD}">{escape(backends)}</td><td style="{TD};text-align:right">{s["seconds"]}s</td>'
+                f'<td style="{TD};text-align:right">{tokens}</td></tr>')
+
+        text = f"{head}\n{fb}\n\n  결과 | 단계 | 경로 | 소요 | 토큰(입/출)\n" + '\n'.join(rows_txt)
+        fb_color = '#b45309' if u['fallbacks'] else '#15803d'
+        th = ''.join(f'<th style="{TD};background:#f3f4f6;text-align:left">{h}</th>'
+                     for h in ('결과', '단계', '경로', '소요', '토큰(입/출)'))
+        html = (f'<p style="margin:0 0 6px">{escape(head)}</p>'
+                f'<p style="margin:0 0 10px;color:{fb_color};font-weight:600">{_br(fb)}</p>'
+                f'<table style="border-collapse:collapse;width:100%;font-size:13px"><tr>{th}</tr>'
+                + ''.join(rows_html) + '</table>')
+        return '실행 결과', text, html
+
+    def _decisions_section(self, decisions):
+        txt, html = [], []
+        for d in decisions:
+            label = f"[{d.get_kind_display()}{' · ' + d.topic if d.topic else ''}] {d.question}"
+            txt.append(label)
+            html.append(f'<p style="margin:14px 0 4px;font-weight:600">{escape(label)}</p><ul style="margin:0;padding-left:20px">')
             for o in d.options:
-                lines.append(f"    ({o['key']}) {o['title']} — {o.get('proposed_by', '')}")
-        lines += ['', '결정: https://techchang.com/lab/admin/']
+                by = f" — 제안 {o['proposed_by']}" if o.get('proposed_by') else ''
+                txt.append(f"  ({o['key']}) {o['title']}{by}")
+                if o.get('detail'):
+                    txt.append(f"      {o['detail']}")
+                html.append(f'<li style="margin-bottom:6px"><b>({escape(o["key"])}) {escape(o["title"])}</b>'
+                            f'<span style="color:#6b7280">{escape(by)}</span>'
+                            + (f'<br><span style="color:#374151">{escape(o["detail"])}</span>' if o.get('detail') else '')
+                            + '</li>')
+            txt.append('')
+            html.append('</ul>')
+        link = f'{SITE}/lab/admin/'
+        txt.append(f'결정하러 가기: {link}')
+        html.append(f'<p style="margin-top:14px"><a href="{link}">결정하러 가기 →</a></p>')
+        return f'안건과 선택지 ({len(decisions)}건)', '\n'.join(txt), ''.join(html)
+
+    def _transcript_section(self, transcript):
+        txt, html = [], []
+        for rnd, title in ((1, '1라운드 — 제안'), (2, '2라운드 — 검토·조율')):
+            turns = [t for t in transcript if t.get('round') == rnd]
+            if not turns:
+                continue
+            txt.append(f'■ {title}')
+            html.append(f'<p style="margin:14px 0 6px;font-weight:700">{title}</p>')
+            for t in turns:
+                a = AGENTS.get(t['agent'], {'name': t['agent'], 'title': ''})
+                txt += [f"{a['name']}({a['title']}):", t['text'], '']
+                html.append(f'<div style="margin:0 0 10px;padding:8px 12px;border-left:3px solid #4f46e5;background:#f9fafb">'
+                            f'<b>{escape(a["name"])}</b> <span style="color:#6b7280">{escape(a["title"])}</span>'
+                            f'<div style="margin-top:4px">{_br(t["text"])}</div></div>')
+        return '회의 내용 (발언 전문)', '\n'.join(txt), ''.join(html)
+
+    def _deliver(self, to, subject, lead, sections):
+        text = [lead, '']
+        html = [f'<div style="font-family:-apple-system,Segoe UI,Malgun Gothic,sans-serif;font-size:14px;'
+                f'line-height:1.6;color:#111827;max-width:760px"><p>{escape(lead)}</p>']
+        for n, (title, body_txt, body_html) in enumerate(sections, 1):
+            text += [f'{"=" * 8} {n}. {title} {"=" * 8}', body_txt, '']
+            html.append(f'<h3 style="margin:28px 0 8px;padding-bottom:4px;border-bottom:2px solid #e5e7eb">'
+                        f'{n}. {escape(title)}</h3>{body_html}')
+        html.append('</div>')
         try:
-            EmailMessage(subject=f'[TechChang] {meeting.week_start} 편집회의 결과 — 결정 {meeting.decisions.count()}건 대기',
-                         body='\n'.join(lines), to=[to]).send()
+            msg = EmailMultiAlternatives(subject=subject, body='\n'.join(text),
+                                         from_email=settings.DEFAULT_FROM_EMAIL, to=[to])
+            msg.attach_alternative(''.join(html), 'text/html')
+            msg.send()
             self.stdout.write(f'메일 발송 → {to}')
         except Exception as ex:  # noqa: BLE001
             self.stderr.write(f'메일 발송 실패: {ex}')
+
+
+SITE = 'https://techchang.com'
+TD = 'padding:6px 8px;border:1px solid #e5e7eb;vertical-align:top'
+PRE = 'white-space:pre-wrap;font-size:12px;background:#f9fafb;padding:10px;border-radius:6px'
+
+
+def _br(text):
+    return escape(text).replace('\n', '<br>')
