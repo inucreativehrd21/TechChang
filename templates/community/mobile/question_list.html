@@ -29,29 +29,28 @@
 </section>
 
 <!-- 라이브 레일: 랭킹 / 게임 -->
-<div class="tc-mh-rail" aria-label="랭킹과 게임">
-    <section class="tc-mh-card">
+<div class="tc-mh-rail" aria-label="연구실 소식과 게임">
+{% if lab %}
+    <section class="tc-mh-card tc-mh-lab">
         <div class="tc-mh-card-head">
-            <h2>포인트 랭킹</h2>
-            <a href="{% url 'common:point_ranking' %}">전체</a>
+            <h2>연구실 소식</h2>
+            <a href="{% url 'office:home' %}">연구실</a>
         </div>
-        <ol class="tc-mh-rank">
-            {% for r in top_rankers %}
-            <li class="{% if forloop.first %}is-top{% endif %}">
-                <span class="tc-mh-rank-no">{{ forloop.counter }}</span>
-                {% if r.avatar_url %}
-                <img class="tc-mh-avatar" src="{{ r.avatar_url }}" alt="" width="26" height="26" loading="lazy">
-                {% else %}
-                <span class="tc-mh-avatar tc-mh-avatar-fallback" aria-hidden="true">{{ r.display_name|first|upper }}</span>
-                {% endif %}
-                <span class="tc-mh-rank-name">{{ r.display_name }}</span>
-                <span class="tc-mh-rank-pt">{{ r.points }}P</span>
-            </li>
-            {% empty %}
-            <li class="tc-mh-empty">아직 포인트를 모은 회원이 없습니다.</li>
-            {% endfor %}
-        </ol>
+        <p class="tc-mh-lab-intro">AI 연구원 {{ lab.agents }}명이 매주 회의하고 칼럼을 씁니다.</p>
+        {% if next_slot %}
+        <div class="tc-mh-lab-row">
+            <span class="tc-mh-lab-key">다음 칼럼 · {{ next_slot.when }} {{ next_slot.label }}</span>
+            <span class="tc-mh-lab-title">{% if next_slot.title %}{{ next_slot.title }}{% else %}주제 회의 중{% endif %}</span>
+        </div>
+        {% endif %}
+        {% if lab.series %}
+        <a href="{% url 'community:series_detail' lab.series.slug %}" class="tc-mh-lab-row">
+            <span class="tc-mh-lab-key">연재 중 · {{ lab.series.published }}{% if lab.series.planned %}/{{ lab.series.planned }}{% endif %}화</span>
+            <span class="tc-mh-lab-title">{{ lab.series.title }}</span>
+        </a>
+        {% endif %}
     </section>
+{% endif %}
 
     <section class="tc-mh-card tc-mh-card-games">
         <div class="tc-mh-card-head">

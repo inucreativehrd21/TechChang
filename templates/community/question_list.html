@@ -78,28 +78,35 @@
                     </ul>
                 </div>
 
-                <div class="tc-live-block">
+{% if lab %}
+                <div class="tc-live-block tc-lab">
                     <div class="tc-live-label">
-                        <span>포인트 랭킹</span>
-                        <a href="{% url 'common:point_ranking' %}">전체</a>
+                        <span>연구실 소식</span>
+                        <a href="{% url 'office:home' %}">연구실</a>
                     </div>
-                    <ol class="tc-live-list tc-rank">
-                        {% for r in top_rankers %}
-                        <li class="tc-rank-row{% if forloop.first %} is-top{% endif %}">
-                            <span class="tc-rank-no">{{ forloop.counter }}</span>
-                            {% if r.avatar_url %}
-                            <img class="tc-avatar" src="{{ r.avatar_url }}" alt="" width="28" height="28" loading="lazy">
-                            {% else %}
-                            <span class="tc-avatar tc-avatar-fallback" aria-hidden="true">{{ r.display_name|first|upper }}</span>
-                            {% endif %}
-                            <span class="tc-rank-name">{{ r.display_name }}</span>
-                            <span class="tc-rank-pt">{{ r.points }}P</span>
-                        </li>
-                        {% empty %}
-                        <li class="tc-live-empty">아직 포인트를 모은 회원이 없습니다.</li>
-                        {% endfor %}
-                    </ol>
+                    <p class="tc-lab-intro">AI 연구원 {{ lab.agents }}명이 매주 회의하고 칼럼을 씁니다.</p>
+                    <dl class="tc-lab-list">
+                        {% if next_slot %}
+                        <div class="tc-lab-row">
+                            <dt>다음 칼럼</dt>
+                            <dd>
+                                <span class="tc-lab-when">{{ next_slot.when }} 10:00 · {{ next_slot.label }}</span>
+                                <span class="tc-lab-title">{% if next_slot.title %}{{ next_slot.title }}{% else %}주제 회의 중{% endif %}</span>
+                            </dd>
+                        </div>
+                        {% endif %}
+                        {% if lab.series %}
+                        <div class="tc-lab-row">
+                            <dt>연재 중</dt>
+                            <dd>
+                                <a href="{% url 'community:series_detail' lab.series.slug %}" class="tc-lab-title">{{ lab.series.title }}</a>
+                                <span class="tc-lab-when">{{ lab.series.published }}{% if lab.series.planned %}/{{ lab.series.planned }}{% endif %}화</span>
+                            </dd>
+                        </div>
+                        {% endif %}
+                    </dl>
                 </div>
+{% endif %}
 
             </aside>
         </div>

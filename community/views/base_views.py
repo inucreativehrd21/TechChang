@@ -4,6 +4,7 @@ from django.shortcuts import render, get_object_or_404, redirect
 from django.db.models import Q, Count, F, Sum
 from django.http import Http404, FileResponse, HttpResponse
 from django.core.cache import cache
+from django.utils import timezone
 from django.conf import settings
 from django.contrib.auth.models import User
 from django.contrib.auth.decorators import login_required
@@ -11,6 +12,7 @@ from django.contrib.auth.views import redirect_to_login
 from django.contrib import messages
 from django.db import transaction
 from django.utils.http import urlencode
+import logging
 import time
 import os
 import mimetypes
@@ -82,25 +84,56 @@ def ensure_default_categories():
     for name in DEFAULT_CATEGORIES:
         Category.objects.get_or_create(name=name, defaults={'description': name})
 
-def _home_live_data():
-    """홈 라이브 패널의 랭킹 TOP3·게임 누적 판수 (5분 캐시)."""
-    from common.models import Profile
-    from ..models import NumberBaseballGame, Game2048, MinesweeperGame
+# 연구실 칼럼 발행 일정 (office_publish cron: 화 HRD / 목 데이터분석 / 토 프로그래밍, 10:00)
+LAB_SLOTS = [(1, 'hrd', 'HRD'), (3, 'data', '데이터분석'), (5, 'coding', '프로그래밍')]
+WEEKDAYS = '월화수목금토일'
 
-    # 필터는 common.views.point_ranking 과 같아야 랭킹 페이지 상위 3명과 일치한다
-    top_rankers = list(
-        Profile.objects.select_related('user', 'selected_emoticon')
-        .filter(points__gt=0)
-        .exclude(user__is_staff=True)
-        .exclude(user__is_superuser=True)
-        .order_by('-points')[:3]
-    )
+
+def _home_live_data():
+    """홈 라이브 패널의 연구실 소식(다음 칼럼 주제·연재 진행)·게임 누적 판수 (5분 캐시)."""
+    from office.agents import MEETING_ORDER
+    from office.services import take_column_brief
+    from ..models import ColumnSeries, NumberBaseballGame, Game2048, MinesweeperGame
+
+    # 회의에서 정해졌고 아직 쓰지 않은 분야별 주제 (공개 페이지에 쓰는 것과 같은 값).
+    # 연구실은 별도 하위 시스템이라 여기서 실패해도 홈은 떠야 한다 → 실패 시 블록만 숨김.
+    try:
+        briefs = {}
+        for _wd, key, _label in LAB_SLOTS:
+            d = take_column_brief(key)
+            briefs[key] = (d.chosen or {}).get('title', '') if d else ''
+        s = ColumnSeries.objects.filter(is_active=True).first()
+        series = ({'title': s.title, 'slug': s.slug, 'published': s.published_count, 'planned': s.total_episodes}
+                  if s else None)
+        lab = {'agents': len(MEETING_ORDER), 'briefs': briefs, 'series': series}
+    except Exception:  # noqa: BLE001
+        logging.getLogger(__name__).exception('home lab block unavailable')
+        lab = None
+
     games_played_total = (
         NumberBaseballGame.objects.count()
         + Game2048.objects.count()
         + MinesweeperGame.objects.count()
     )
-    return {'top_rankers': top_rankers, 'games_played_total': games_played_total}
+    return {'lab': lab,
+            'games_played_total': games_played_total}
+
+
+def _next_column_slot(briefs):
+    """지금 이후 가장 가까운 칼럼 발행 시각 + 그 분야의 예정 주제. 캐시와 별개로 요청마다 계산."""
+    from datetime import datetime, time as dtime, timedelta
+    now = timezone.localtime()
+    for add in range(8):
+        day = now.date() + timedelta(days=add)
+        for wd, key, label in LAB_SLOTS:
+            if day.weekday() != wd:
+                continue
+            at = datetime.combine(day, dtime(10), tzinfo=now.tzinfo)
+            if at <= now:
+                continue
+            when = '오늘' if add == 0 else '내일' if add == 1 else WEEKDAYS[wd]
+            return {'when': when, 'label': label, 'title': briefs.get(key, '')}
+    return None
 
 
 def _hidden_inquiry_q(user):
@@ -210,7 +243,7 @@ def index(request):
         .select_related('category')\
         .order_by('-create_date')[:3]
 
-    live = cache.get_or_set('home:live', _home_live_data, 300)
+    live = cache.get_or_set('home:live:v2', _home_live_data, 300)
 
     # 페이지 링크가 검색어·카테고리·정렬을 잃지 않도록 미리 인코딩
     page_qs = urlencode({k: v for k, v in (
@@ -263,7 +296,8 @@ def index(request):
         'total_count': total_count,
         'popular_posts': popular_posts,
         'recent_posts': recent_posts,
-        'top_rankers': live['top_rankers'],
+        'lab': live['lab'],
+        'next_slot': _next_column_slot(live['lab']['briefs']) if live['lab'] else None,
         'games_played_total': live['games_played_total'],
         'page_qs': page_qs,
         'launch_days': launch_days,
