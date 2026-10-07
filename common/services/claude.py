@@ -22,12 +22,14 @@
 """
 from __future__ import annotations
 
+import contextvars
 import json
 import logging
 import os
 import shutil
 import subprocess
 import tempfile
+import threading
 import time
 from contextlib import contextmanager
 from enum import Enum
@@ -81,6 +83,7 @@ def ask(
     system: str = '',
     model: ClaudeModel | str = DEFAULT_MODEL,
     max_tokens: int = 2048,
+    timeout: int | None = None,
 ) -> str:
     """
     Claude에게 단일 질문을 보내고 응답 문자열을 반환합니다.
@@ -102,12 +105,14 @@ def ask(
     호출마다 경로·시간·토큰을 track_calls() 기록기에 남기고, 폴백은 관리자에게 메일로 알린다.
     """
     rec = {'model': str(model), 'backend': '', 'seconds': 0.0, 'fallback': '', 'error': '',
-           'input_tokens': None, 'output_tokens': None}
+           'input_tokens': None, 'output_tokens': None, 'tags': dict(_call_tags.get())}
     started = time.monotonic()
+    # 기본값이 아닐 때만 넘긴다 — 기존 호출·테스트의 _cli_ask(prompt, system=, model=) 형태를 유지
+    cli_extra = {'timeout': timeout} if timeout else {}
     try:
         if os.environ.get(BACKEND_ENV, 'api').lower() == 'cli':
             try:
-                out, usage = _cli_ask(prompt, system=system, model=model)
+                out, usage = _cli_ask(prompt, system=system, model=model, **cli_extra)
                 rec.update(backend='cli', **usage)
                 return out
             except CliUnavailable as exc:
@@ -129,8 +134,11 @@ def ask(
         logger.info('claude backend=%s model=%s %.1fs in=%s out=%s%s', rec['backend'] or 'error', model,
                     rec['seconds'], rec['input_tokens'], rec['output_tokens'],
                     ' (fallback)' if rec['fallback'] else '')
-        for calls, _alert in _trackers:
-            calls.append(rec)
+        with _lock:
+            snapshot = list(_trackers)
+        for calls, _alert, flt in snapshot:
+            if not flt or all(rec['tags'].get(k) == v for k, v in flt.items()):
+                calls.append(rec)
 
 
 def _api_ask(prompt: str, *, system: str, model: ClaudeModel | str, max_tokens: int) -> tuple[str, dict]:
@@ -164,32 +172,50 @@ def _api_ask(prompt: str, *, system: str, model: ClaudeModel | str, max_tokens: 
 
 
 # ───────────────────────────── 호출 기록 · 폴백 알림
-_trackers: list[tuple[list, bool]] = []
+# 여러 스레드가 동시에 ask() 를 부를 수 있다(office 병렬 단계). 목록 변경·순회는 잠금으로 보호한다.
+_trackers: list[tuple[list, bool, dict | None]] = []
 _fallback_alerted = False
+_lock = threading.Lock()
+# 호출에 붙는 꼬리표(단계 이름·run_id 등). ContextVar 라 스레드마다 따로 유지된다.
+_call_tags: contextvars.ContextVar[dict] = contextvars.ContextVar('claude_call_tags', default={})
 
 
 @contextmanager
-def track_calls(*, alert: bool = True):
+def call_tags(**tags):
+    """블록 안의 ask() 기록에 꼬리표를 붙인다 (중첩되면 합쳐진다)."""
+    token = _call_tags.set({**_call_tags.get(), **tags})
+    try:
+        yield
+    finally:
+        _call_tags.reset(token)
+
+
+@contextmanager
+def track_calls(*, alert: bool = True, filter: dict | None = None):  # noqa: A002 — 호출부 가독성
     """
     블록 안의 ask() 호출 기록을 모은다. 각 항목: model, backend(cli|api|''), seconds,
-    fallback(CLI 실패 사유), error, input_tokens, output_tokens.
+    fallback(CLI 실패 사유), error, input_tokens, output_tokens, tags.
     alert=False 면 폴백 즉시 알림 메일을 생략한다 — 호출부가 자체 리포트에 담을 때.
+    filter 를 주면 꼬리표가 그 값과 모두 일치하는 호출만 모은다 (다른 작업의 동시 호출 제외).
     """
     calls: list[dict] = []
-    entry = (calls, alert)
-    _trackers.append(entry)
+    entry = (calls, alert, filter)
+    with _lock:
+        _trackers.append(entry)
     try:
         yield calls
     finally:
-        _trackers.remove(entry)
+        with _lock:
+            _trackers.remove(entry)
 
 
 def _alert_fallback(rec: dict, *, fallback_enabled: bool) -> None:
     """CLI 실패를 관리자에게 알린다. 한 프로세스(=cron 작업 1회)에 한 통만 보낸다."""
     global _fallback_alerted
-    if _fallback_alerted or any(not alert for _calls, alert in _trackers):
-        return
-    _fallback_alerted = True
+    with _lock:
+        if _fallback_alerted or any(not alert for _calls, alert, _flt in _trackers):
+            return
+        _fallback_alerted = True
     try:
         import sys
 
@@ -233,7 +259,8 @@ class CliUnavailable(Exception):
     """CLI 경로로 답을 받지 못함 — 호출부는 API 로 폴백한다."""
 
 
-def _cli_ask(prompt: str, *, system: str, model: ClaudeModel | str) -> tuple[str, dict]:
+def _cli_ask(prompt: str, *, system: str, model: ClaudeModel | str,
+             timeout: int | None = None) -> tuple[str, dict]:
     """
     `claude -p` 로 1회 호출. Claude Code 기본 시스템 프롬프트·도구·설정·MCP 를 모두 끄고
     빈 임시 디렉터리에서 돌려, API 호출과 같은 '시스템+사용자 메시지 1턴'만 남긴다.
@@ -264,7 +291,7 @@ def _cli_ask(prompt: str, *, system: str, model: ClaudeModel | str) -> tuple[str
         try:
             proc = subprocess.run(
                 cmd, input=prompt, capture_output=True, text=True, encoding='utf-8',
-                cwd=cwd, env=env, timeout=CLI_TIMEOUT,
+                cwd=cwd, env=env, timeout=timeout or CLI_TIMEOUT,
             )
         except (OSError, subprocess.TimeoutExpired) as exc:
             raise CliUnavailable(f'실행 오류: {exc}') from exc

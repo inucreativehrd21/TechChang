@@ -3,11 +3,13 @@
 
   1) 기획서(Commissioning brief)  팀장이 주제·논점·필요한 데이터·피해야 할 것을 지시
   2) 집필(Drafting)               담당 칼럼니스트
-  3) 팩트체크(Fact-check)         검증관이 주장 단위로 verified / unverifiable / wrong 판정
+  3) 팩트체크(Fact-check)         검증관이 주장 단위로 verified / unverifiable / wrong / outdated(더 새 자료 있음) 판정
   4) 수정(Author revision)        팩트체크 지적 반영 (필요 시 1회)
-  5) 데이터 시각화(Data desk)     차트 담당이 본문 수치를 차트·표로
-  6) 편집 심사(Editorial review)  팀장이 루브릭 6개 항목을 1~5점으로 채점 → 가중 100점 환산
-  7) 판정(Decision)               Accept(발행) / Minor revision(자동 1회 재작성 후 재심) / Major revision(보류)
+  5) 평론(Critique)               평론가가 '독자가 끝까지 읽을 이유'를 인용 근거와 함께 판단
+  6) 데이터 시각화(Data desk)     차트 담당이 본문 수치를 차트·표로
+  7) 편집 심사(Editorial review)  편집장(승현)이 루브릭 6개 항목을 1~5점으로 채점 → 가중 100점 환산
+  8) 판정(Decision)               Accept(발행) / 기준 미달이면 자동 재작성(MAX_AUTO_REVISIONS) 후 재심 / 그래도 미달이면 보류
+                                  재작성으로 수치 문장이 바뀌면 팩트체크를 다시 한다
 
 점수 공식은 파이썬에서 계산한다(모델이 총점을 임의로 매기지 못하게). 치명 결함이 하나라도 있으면
 점수와 무관하게 보류한다.
@@ -54,13 +56,24 @@ COLUMN_MAX_TOKENS = 24000
 
 
 # ───────────────────────────── 프롬프트
+def recency_rule() -> str:
+    """자료 최신성 규칙 (올해 기준). 급변하는 분야라 몇 년 전 자료도 이미 낡았을 수 있다."""
+    from .quality import RECENT_YEARS
+    year = datetime.now().year
+    return (f'[자료 최신성 — 올해는 {year}년]\n'
+            f'- 현황 수치와 근거는 **{year - RECENT_YEARS}년 이후 자료부터** 찾습니다. 매년 나오는 조사는 가장 최근 판을 씁니다\n'
+            '- 오래된 문헌은 그 분야의 고전·원전이라 빼놓을 수 없을 때만, **개념의 출처**나 장기 추이의 시작점으로 씁니다. '
+            '현재 상황의 근거로 쓰지 않습니다\n'
+            '- 최신 자료가 정말 없으면 자료 연도를 본문에 밝히고, 그 뒤 달라졌을 수 있다고 적습니다')
+
+
 BRIEF_PROMPT = (
     '팀장으로서 이번 칼럼의 **집필 의뢰서**를 작성하세요. 칼럼니스트가 이것만 보고 바로 쓸 수 있어야 합니다.\n\n'
     '[분야] {topic_hint}\n[독자] {audience}\n[결정된 주제] {subject}\n[회의에서 나온 관점·근거] {detail}\n'
-    '[최근 발행 칼럼 제목 — 소재가 겹치면 안 됨]\n{recent}\n\n'
+    '[최근 발행 칼럼 제목 — 소재가 겹치면 안 됨]\n{recent}\n\n{recency}\n\n'
     '출력 JSON: {{"angle": "이 칼럼만의 각도 한 문장 — 흔한 소개글과 어떻게 다른지", '
     '"questions": ["본문이 반드시 답해야 할 질문", ...3~4개], '
-    '"data_needed": ["찾아 넣어야 할 지표·통계 (기관·보고서 수준으로 구체적으로)", ...3~5개], '
+    '"data_needed": ["찾아 넣어야 할 지표·통계 (기관·보고서 수준으로 구체적으로, 가장 최근 판 기준)", ...3~5개], '
     '"cases": ["다룰 만한 국내외 사례 후보", ...2~3개], '
     '"counterpoint": "반드시 짚어야 할 반론·한계 한 문장", '
     '"avoid": ["피해야 할 서술·소재", ...2~3개]}}'
@@ -88,6 +101,7 @@ WRITING_STANDARD = (
     '3. 필수 섹션: 왜 지금인가 / 숫자로 보는 현황 / 현장의 변화 / 시사점 / 맺음말 / 참고 자료\n'
     '4. "숫자로 보는 현황"에 **서로 비교 가능한 수치 3개 이상**, 각각 기관·보고서명과 함께\n'
     '5. 의뢰서의 "넣어야 할 데이터" 항목을 실제로 본문에 반영할 것\n\n'
+    '{recency}\n\n'
     '[편집장이 채점하는 항목]\n{rubric}\n\n'
     '[치명 결함 — 하나라도 있으면 발행되지 않습니다]\n'
     '- 확인 불가능한 수치나 출처를 쓴 경우. 모르면 쓰지 말고, 추정이면 추정이라고 밝히세요\n'
@@ -104,18 +118,21 @@ CHECK_PROMPT = (
     '팩트체크 단계입니다. 아래 칼럼 초안을 주장 단위로 검증하세요.\n\n'
     '[이미 발행한 칼럼 제목]\n{titles}\n\n[초안]\nTITLE: {subject}\n{content}\n\n'
     '판정 기준: (1) 핵심 소재가 기존 칼럼과 겹치면 중복. (2) 수치·인용·사례는 실재하고 널리 공표된 것이어야 하며, '
-    '확인 불가하거나 지어낸 것으로 보이면 지목. (3) 과장·최신성 오류.\n'
+    '확인 불가하거나 지어낸 것으로 보이면 지목. (3) 과장. (4) **최신성**: 더 새로운 판이나 값이 있는데 '
+    '옛 자료로 현재를 말하면 status "outdated"로 지목하고, note 에 최신 판·값을 제시하세요. '
+    '고전·원전을 개념의 출처로만 인용한 것은 문제 삼지 않습니다.\n\n{recency}\n'
     '**중요**: 수치를 문제 삼을 때는 "삭제하라"가 아니라 **어떤 공표 통계로 바꾸면 되는지**를 제시하세요. '
     '이 칼럼은 데이터 근거 섹션과 차트를 포함해야 하므로, 수치를 모두 걷어내는 방향의 지적은 하지 않습니다.\n'
     '출력 JSON: {{"verdict": "pass" 또는 "revise", "duplicate": true/false, "similar_titles": ["..."], '
-    '"claims": [{{"claim": "문장 요약", "status": "verified|unverifiable|wrong", "note": "근거 또는 대체할 통계 제안"}}], '
+    '"claims": [{{"claim": "문장 요약", "status": "verified|unverifiable|wrong|outdated", "note": "근거 또는 대체할 통계 제안"}}], '
     '"notes": "수정이 필요하면 무엇을 어떻게 고칠지 구체적으로 3~6줄"}}\n'
-    'unverifiable 이나 wrong 이 2개 이상이거나 duplicate 이면 revise.'
+    'unverifiable·wrong·outdated 가 합쳐 2개 이상이거나 duplicate 이면 revise.'
 )
 
 REVISE_PROMPT = (
     '팩트체크에서 수정 요청을 받았습니다. 지적을 모두 반영해 칼럼 전체를 다시 쓰세요. '
-    '확인 불가한 수치는 삭제하지 말고 **검증 가능한 공표 통계로 교체**하고, 중복 지적이 있으면 관점을 바꾸세요. '
+    '확인 불가한 수치는 삭제하지 말고 **검증 가능한 공표 통계로 교체**하고, outdated(낡은 자료)는 지적에 적힌 '
+    '최신 판·값으로 바꾸며, 중복 지적이 있으면 관점을 바꾸세요. '
     '"## 숫자로 보는 현황"의 비교 가능한 수치 3~5개는 반드시 유지합니다.\n\n'
     '[팩트체크 지적]\n{notes}\n[문제 항목]\n{claims}\n\n[원래 초안]\nTITLE: {subject}\n---\n{content}\n\n{structure}'
 )
@@ -172,7 +189,8 @@ METRICS_PROMPT = (
     '  예: "Gallup State of the Global Workplace 의 직원 몰입도 비율(%)" (O) / "몰입도 관련 통계" (X)\n'
     '- **같은 단위로 나란히 놓을 수 있는 값**을 우선합니다. 모집단이 제각각인 값을 한 그림에 묶으면 '
     '비교가 성립하지 않습니다.\n'
-    '- 실제로 존재할 법한 조사만 적습니다. 없는 보고서를 지어내지 마세요.\n\n'
+    '- 실제로 존재할 법한 조사만 적습니다. 없는 보고서를 지어내지 마세요.\n'
+    '- 매년 나오는 조사는 **가장 최근 판**을 지목합니다 (연도까지 적기).\n\n{recency}\n\n'
     '출력 JSON: {{"metrics": ["지표1", ...], '
     '"chart_plan": "이 지표들을 어떤 그림으로 보여 줄지 한 문장"}}'
 )
@@ -367,6 +385,17 @@ def safe_rewrite(raw: str, prev_subject: str, prev_content: str) -> tuple:
     return subject, content, True, ''
 
 
+def numeric_sentences(content: str) -> set:
+    """수치(숫자+단위)가 들어간 문장들 — 재작성 뒤 팩트체크를 다시 돌릴지 판단하는 데 쓴다."""
+    from .quality import _NUM, _SENT_END, prose
+    return {s.strip() for s in _SENT_END.split(prose(content)) if _NUM.search(s)}
+
+
+def new_numeric_sentences(old: str, new: str) -> list:
+    """재작성으로 새로 생기거나 바뀐 수치 문장. 비어 있으면 기존 팩트체크가 그대로 유효하다."""
+    return sorted(numeric_sentences(new) - numeric_sentences(old))
+
+
 def parse_output(raw: str) -> tuple:
     """TITLE: … / --- / 본문 분리."""
     lines = raw.splitlines()
@@ -408,11 +437,12 @@ def step_brief(topic_key: str, brief_decision, recent: list, *, rec=None) -> dic
     subject = chosen.get('title', '(편집회의 결정 없음 — 칼럼니스트가 직접 선정)')
     brief = ask_agent_json('lead', BRIEF_PROMPT.format(
         topic_hint=topic['topic_hint'], audience=topic['audience'], subject=subject,
-        detail=chosen.get('detail', ''), recent='\n'.join(f'- {t}' for t in recent) or '(없음)'), max_tokens=3000)
+        detail=chosen.get('detail', ''), recent='\n'.join(f'- {t}' for t in recent) or '(없음)',
+        recency=recency_rule()), max_tokens=3000)
 
     metrics = ask_agent_json('charter', METRICS_PROMPT.format(
         subject=subject, detail=chosen.get('detail', ''), angle=brief.get('angle', ''),
-        audience=topic['audience']), max_tokens=2000)
+        audience=topic['audience'], recency=recency_rule()), max_tokens=2000)
     wanted = [m for m in (metrics.get('metrics') or []) if isinstance(m, str) and m.strip()][:5]
     if wanted:
         # 팀장 기획서의 data_needed 를 데이터 담당의 목록으로 바꾼다 (그리기까지 고려한 목록)
@@ -458,7 +488,7 @@ def check_text(check: dict) -> str:
     if not check:
         return '(팩트체크 없음)'
     claims = [c for c in (check.get('claims') or []) if isinstance(c, dict)]
-    bad = [c for c in claims if c.get('status') in ('unverifiable', 'wrong')]
+    bad = [c for c in claims if c.get('status') in BAD_CLAIMS]
     lines = [f"판정: {check.get('verdict', '?')}"
              + (' · 기존 칼럼과 소재 중복' if check.get('duplicate') else '')]
     for c in bad[:8]:
@@ -505,7 +535,7 @@ def step_draft(topic_key: str, brief_decision, brief: dict, recent: list) -> tup
         subject_block=subject_block, angle=brief.get('angle', ''), questions=lst('questions'),
         data_needed=lst('data_needed'), cases=lst('cases'), counterpoint=brief.get('counterpoint', ''),
         avoid=lst('avoid'), avoid_titles=avoid_titles, structure=COLUMN_STRUCTURE,
-        standard=WRITING_STANDARD.format(min_chars=MIN_CHARS, rubric=rubric_text()))
+        standard=writing_standard())
     return parse_output(ask_agent(TOPIC_AGENT_OF[topic_key], prompt, max_tokens=COLUMN_MAX_TOKENS))
 
 
@@ -572,18 +602,30 @@ def precheck_draft(content: str) -> list:
         issues.append(f'"숫자로 보는 현황"을 지어낸 수치로 채웠습니다("{fake.group(0)[:30]}"). '
                       '근거 섹션에는 실제 조사·보고서의 값만 씁니다. '
                       '쓸 수치가 없으면 주제를 좁히거나 다른 지표를 찾으세요.')
+
+    # 운영 심사에서 반복된 지적(같은 수치 3회 반복·없는 표 언급)도 여기서 잡는다
+    from .quality import precheck_issues
+    issues += precheck_issues(content)
     return issues
+
+
+def writing_standard() -> str:
+    return WRITING_STANDARD.format(min_chars=MIN_CHARS, rubric=rubric_text(), recency=recency_rule())
+
+
+BAD_CLAIMS = ('unverifiable', 'wrong', 'outdated')
 
 
 def step_check(subject: str, content: str, recent: list) -> dict:
     """3) 팩트체크."""
     return ask_agent_json('checker', CHECK_PROMPT.format(
-        titles='\n'.join(f'- {t}' for t in recent) or '(없음)', subject=subject, content=content), max_tokens=4000)
+        titles='\n'.join(f'- {t}' for t in recent) or '(없음)', subject=subject, content=content,
+        recency=recency_rule()), max_tokens=4000)
 
 
 def step_author_revise(topic_key: str, subject: str, content: str, check: dict) -> tuple:
     """4) 팩트체크 지적 반영. 반환: (subject, content, ok, reason)"""
-    bad = [c for c in check.get('claims', []) if c.get('status') in ('unverifiable', 'wrong')]
+    bad = [c for c in check.get('claims', []) if c.get('status') in BAD_CLAIMS]
     raw = ask_agent(TOPIC_AGENT_OF[topic_key], REVISE_PROMPT.format(
         notes=check.get('notes', ''), claims=json.dumps(bad, ensure_ascii=False),
         subject=subject, content=content, structure=COLUMN_STRUCTURE), max_tokens=COLUMN_MAX_TOKENS)

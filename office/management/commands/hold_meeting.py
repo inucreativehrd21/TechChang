@@ -21,7 +21,7 @@ from django.core.management.base import BaseCommand
 from django.utils import timezone
 from django.utils.html import escape
 
-from common.services.claude import track_calls
+from common.services.claude import call_tags, track_calls
 from office.agents import AGENTS, MEETING_ORDER
 from office.models import Decision, Meeting
 from office.services import ask_agent, ask_agent_json, collect_site_snapshot, log, snapshot_as_text, week_monday
@@ -92,13 +92,14 @@ class Command(BaseCommand):
             self._send_mail(opts['email'], meeting)
 
     def _step(self, label, fn):
-        """fn 을 실행하고 그 사이 일어난 Claude 호출을 단계에 묶어 기록한다."""
-        first = len(self.calls)
+        """fn 을 실행하고 그 안의 Claude 호출을 단계에 묶어 기록한다.
+        호출은 꼬리표(step)로 모은다 — 목록 위치로 자르면 병렬로 돈 단계의 호출이 섞인다."""
         started = time.monotonic()
         step = {'label': label, 'ok': False, 'seconds': 0.0, 'calls': [], 'note': ''}
         self.steps.append(step)
         try:
-            result = fn()
+            with call_tags(step=label):
+                result = fn()
             step['ok'] = True
             return result
         except Exception as ex:
@@ -106,7 +107,7 @@ class Command(BaseCommand):
             raise
         finally:
             step['seconds'] = round(time.monotonic() - started, 1)
-            step['calls'] = self.calls[first:]
+            step['calls'] = [c for c in self.calls if c.get('tags', {}).get('step') == label]
 
     def _hold(self, opts):
         # 일요일 저녁에 돌리면 '다음 주' 회의로 기록

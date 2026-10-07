@@ -5,8 +5,9 @@
 그대로 두고 내용만 갱신한다 — URL·조회수·유입이 유지된다.
 
 흐름은 발행 파이프라인과 같다: 재집필 → 자동 점검 → 팩트체크 → 도판 → 평론 → 편집 심사.
-기준 미달이면 자동으로 한 번 더 쓰고, 그래도 미달이면 **원문을 그대로 두고** 보고만 한다.
-(발행된 글을 더 나쁜 판본으로 덮어쓰지 않기 위해서다.)
+자동 재작성은 하지 않는다 — 심사에서 기준 미달이면 **원문을 그대로 두고** 보고만 한다.
+(발행된 글을 더 나쁜 판본으로 덮어쓰지 않기 위해서다. 다시 돌리려면 명령을 한 번 더 실행.)
+단계별 산출물은 StageRun(question=…)에 남는다.
 
 OFFICE_AGENT_SPOOL 을 걸면 API 대신 파일로 주고받는다 — 과금 없이 돌릴 때 쓴다.
 
@@ -21,6 +22,8 @@ from django.utils import timezone
 from common.management.commands.auto_write_columns import COLUMN_STRUCTURE
 from community.models import Question
 from office import pipeline as P
+from office import quality
+from office.recorder import StageRecorder
 from office.agents import TOPIC_AGENT
 from office.management.commands.audit_columns import audit_one
 from office.services import ask_agent, log
@@ -66,7 +69,10 @@ class Command(BaseCommand):
             out(self.style.SUCCESS('  이미 현재 기준을 통과합니다 — 손대지 않습니다.'))
             return
 
-        standard = P.WRITING_STANDARD.format(min_chars=P.MIN_CHARS, rubric=P.rubric_text())
+        standard = P.writing_standard()
+        # 단계별 산출물 기록 (내부 전용). 발행된 글을 갱신하므로 question 에 묶는다
+        stages = StageRecorder(question=q, dry=opts['dry_run'])
+        stages.record('audit', 'editor', {'flaws': flaws}, text=q.content)
 
         def rec(agent, action, text):
             out(f'  [{agent}] {text[:120]}')
@@ -77,31 +83,42 @@ class Command(BaseCommand):
             flaws='\n'.join(f'- {f}' for f in flaws), subject=q.subject, content=q.content,
             structure=COLUMN_STRUCTURE, standard=standard), max_tokens=P.COLUMN_MAX_TOKENS)
         subject, content, ok, why = P.safe_rewrite(raw, q.subject, q.content)
+        stages.record('draft', writer, {'subject': subject, 'content': content, 'ok': ok, 'why': why},
+                      status='ok' if ok else 'failed', text=content)
         if not ok:
             out(self.style.ERROR(f'  재집필 실패 — {why}'))
             return
         rec(writer, 'revise', f'리메이크 재집필: {subject} ({P.body_length(content)}자)')
 
         left = P.precheck_draft(content)
+        stages.record('precheck', 'editor', {'issues': left, 'quality': quality.report(subject, content)})
         if left:
             subject, content, left = P.step_fix_draft(topic_key, subject, content, left)
+            stages.record('fix', writer, {'subject': subject, 'content': content, 'remaining': left},
+                          text=content)
             rec(writer, 'revise', f'자동 점검 보완 — 남은 지적 {len(left)}건')
 
         # 2) 팩트체크 → 3) 도판 → 4) 평론 → 5) 편집 심사
         recent = list(Question.objects.filter(is_deleted=False).exclude(pk=q.pk)
                       .order_by('-create_date').values_list('subject', flat=True)[:20])
         check = P.step_check(subject, content, recent)
+        stages.record('check', 'checker', check, kind='report', sender='checker', recipient='editor')
         rec('checker', 'check', f"팩트체크 {check.get('verdict')}")
 
         chart_rel, visual_report = '', ''
         if not opts['no_chart']:
             content = P.strip_visual_block(content)
             content, chart_rel, _note, visual_report = P.step_visual(content, topic_key, rec=rec)
+            stages.record('chart', 'charter', {'chart': chart_rel, 'note': _note, 'report': visual_report})
 
         critique = P.step_critique(subject, content)
+        stages.record('critique', 'critic', critique, kind='report', sender='critic', recipient='editor')
         rec('critic', 'critique', f"평론 {critique['verdict']} · 지적 {len(critique.get('issues') or [])}건")
 
         qa = P.step_review(subject, content, check, chart_rel, visual_report, critique)
+        stages.record('review', 'editor', qa)
+        stages.record('final', 'editor', {'verdict': qa['verdict'], 'score': qa.get('score'),
+                                          'quality': quality.report(subject, content)}, text=content)
         rec('editor', 'qa', f"심사 {qa['score']}/100 ({qa['length']}자) → {qa['verdict']}"
                             + (f" · 치명 {','.join(qa['fatal'])}" if qa.get('fatal') else ''))
 

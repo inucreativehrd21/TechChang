@@ -231,3 +231,40 @@ class Task(models.Model):
         r = self.result or {}
         done = lambda k: 'ok' if r.get(k) else ''
         return [('조사', done('plan')), ('패치', done('edits')), ('검증', done('verify')), ('PR', 'ok' if self.pr_url else '')]
+
+
+class StageRun(models.Model):
+    """칼럼 제작·회의의 단계별 산출물 기록 (내부 전용 — 공개 페이지에 내보내지 않는다).
+
+    ColumnDraft 는 최종본만 담아, 평론·1차 심사·초고·자료집이 덮어써져 사라졌다.
+    단계마다 한 줄씩 쌓아 무엇이 어떻게 바뀌었는지 남긴다. 기록은 메인 스레드만 한다
+    (office.recorder.StageRecorder) — 병렬 단계의 워커는 결과만 돌려준다.
+    """
+    run_id = models.UUIDField(db_index=True)
+    draft = models.ForeignKey(ColumnDraft, null=True, blank=True, on_delete=models.CASCADE, related_name='stages')
+    question = models.ForeignKey('community.Question', null=True, blank=True, on_delete=models.SET_NULL,
+                                 related_name='+')
+    meeting = models.ForeignKey(Meeting, null=True, blank=True, on_delete=models.CASCADE, related_name='stages')
+    seq = models.PositiveSmallIntegerField()
+    stage = models.CharField(max_length=40, db_index=True)
+    agent = models.CharField(max_length=10, blank=True)
+    # 에이전트 간 메시지(의뢰·반려·자료집·메모·이의·판정)면 보낸 쪽·받는 쪽과 종류
+    sender = models.CharField(max_length=10, blank=True)
+    recipient = models.CharField(max_length=10, blank=True)
+    kind = models.CharField(max_length=20, blank=True)
+    attempt = models.PositiveSmallIntegerField(default=1)
+    status = models.CharField(max_length=10, default='ok')   # ok|failed|skipped|degraded
+    output = models.JSONField(default=dict)
+    text_digest = models.CharField(max_length=64, blank=True)
+    seconds = models.FloatField(default=0)
+    calls = models.JSONField(default=list)
+    error = models.CharField(max_length=300, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['run_id', 'seq']
+        verbose_name = '제작 단계 기록'
+        verbose_name_plural = '제작 단계 기록'
+
+    def __str__(self):
+        return f'{self.stage}#{self.seq} ({self.agent or "-"}, {self.status})'

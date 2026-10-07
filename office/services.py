@@ -6,6 +6,7 @@ from __future__ import annotations
 import json
 import os
 import re
+import threading
 from datetime import date, timedelta
 from pathlib import Path
 
@@ -29,27 +30,79 @@ SPOOL_ENV = 'OFFICE_AGENT_SPOOL'
 SPOOL_TIMEOUT = int(os.environ.get('OFFICE_AGENT_TIMEOUT', '3600'))   # 응답 대기 한도(초)
 
 
-def _spool_ask(spool: str, key: str, prompt: str, max_tokens: int) -> str:
+_spool_lock = threading.Lock()
+_SPOOL_SEQ = re.compile(r'^(?:req|done|reply)\.(\d+)\.')
+
+
+def _spool_next_seq(spool: str) -> int:
+    nums = [int(m.group(1)) for n in os.listdir(spool) if (m := _SPOOL_SEQ.match(n))]
+    return max(nums, default=0) + 1
+
+
+def _spool_refresh_index(spool: str) -> None:
+    """열린 요청 목록을 pending.* 에 반영한다 (_spool_lock 안에서만 호출).
+
+    열린 요청이 하나면 pending.md/json 은 **그 요청 자체** — 예전 도구(pending.json 의 seq 를
+    읽어 reply.<seq>.md 로 답하는 방식)가 그대로 동작한다. 여러 개면 목록으로 바뀐다."""
+    import json as _json
+
+    metas = []
+    for n in sorted(os.listdir(spool)):
+        if n.startswith('req.') and n.endswith('.json'):
+            try:
+                metas.append(_json.load(open(os.path.join(spool, n), encoding='utf-8')))
+            except (OSError, ValueError):
+                continue
+    metas.sort(key=lambda m: m['seq'])
+    pmd, pjs = os.path.join(spool, 'pending.md'), os.path.join(spool, 'pending.json')
+    if not metas:
+        for f in (pmd, pjs):
+            if os.path.exists(f):
+                os.remove(f)
+        return
+    if len(metas) == 1:
+        body = open(os.path.join(spool, f"req.{metas[0]['seq']}.md"), encoding='utf-8').read()
+        index_json = metas[0]
+    else:
+        body = '# 열린 요청 %d건 — 각각 reply.<seq>.md 로 답하세요\n\n' % len(metas) + ''.join(
+            f"- req.{m['seq']}.md — {m['name']}({m['title']})"
+            f"{' · ' + m['tags'].get('stage', '') if m.get('tags', {}).get('stage') else ''}"
+            f"{' · 도구: ' + ','.join(m['tools']) if m.get('tools') else ''}\n" for m in metas)
+        index_json = {'open': metas}
+    for path, data in ((pmd, body), (pjs, _json.dumps(index_json, ensure_ascii=False))):
+        tmp = path + '.tmp'
+        with open(tmp, 'w', encoding='utf-8') as f:
+            f.write(data)
+        os.replace(tmp, path)
+
+
+def _spool_ask(spool: str, key: str, prompt: str, max_tokens: int, tools: tuple = ()) -> str:
     """프롬프트를 파일로 내놓고 답이 올 때까지 기다린다.
 
-    주고받는 파일은 한 쌍뿐이라 단순하다:
-      pending.json / pending.md  — 지금 답해야 할 요청 (시스템 프롬프트 + 본문)
-      reply.<seq>.md             — 그 요청에 대한 답. 이 파일이 생기면 진행한다
+    요청마다 req.<seq>.md / req.<seq>.json 을 만들고, 답은 reply.<seq>.md 로 받는다.
+    끝나면 done.<seq>.prompt.md / done.<seq>.reply.md 로 남긴다. 번호는 잠금 아래에서 매겨
+    여러 스레드가 동시에 요청해도 겹치지 않는다(office.concurrency). pending.* 는 열린 요청 목록.
+    메타에는 호출 꼬리표(stage·run_id)와 허용 도구가 실린다 — 답하는 쪽이 웹 검색을 써도 되는지 안다.
     """
     import json as _json
     import time
 
+    from common.services.claude import _call_tags
+
     os.makedirs(spool, exist_ok=True)
-    # 완료된 요청은 prompt·reply 두 파일로 남으므로 요청 수는 그 절반이다
-    seq = len([n for n in os.listdir(spool) if n.endswith('.reply.md')]) + 1
     agent = AGENTS[key]
-    meta = {'seq': seq, 'agent': key, 'name': agent['name'], 'title': agent['title'],
-            'max_tokens': max_tokens, 'chars': len(prompt)}
-    with open(os.path.join(spool, 'pending.json'), 'w', encoding='utf-8') as f:
-        _json.dump(meta, f, ensure_ascii=False)
-    with open(os.path.join(spool, 'pending.md'), 'w', encoding='utf-8') as f:
-        f.write(f"# 요청 {seq} — {agent['name']} ({agent['title']})\n\n"
-                f"## 역할(system)\n\n{agent['system']}\n\n## 지시\n\n{prompt}\n")
+    with _spool_lock:
+        seq = _spool_next_seq(spool)
+        meta = {'seq': seq, 'agent': key, 'name': agent['name'], 'title': agent['title'],
+                'max_tokens': max_tokens, 'chars': len(prompt), 'tags': dict(_call_tags.get()),
+                'tools': list(tools)}
+        with open(os.path.join(spool, f'req.{seq}.md'), 'w', encoding='utf-8') as f:
+            f.write(f"# 요청 {seq} — {agent['name']} ({agent['title']})\n\n"
+                    + (f"> 허용 도구: {', '.join(tools)}\n\n" if tools else '')
+                    + f"## 역할(system)\n\n{agent['system']}\n\n## 지시\n\n{prompt}\n")
+        with open(os.path.join(spool, f'req.{seq}.json'), 'w', encoding='utf-8') as f:
+            _json.dump(meta, f, ensure_ascii=False)
+        _spool_refresh_index(spool)
 
     reply = os.path.join(spool, f'reply.{seq}.md')
     # 콘솔 인코딩이 cp949 인 환경에서도 깨지지 않게 ASCII 기호만 쓴다
@@ -78,8 +131,11 @@ def _spool_ask(spool: str, key: str, prompt: str, max_tokens: int) -> str:
     if not out:   # 안정화 이후에도 비면 마지막으로 한 번 더 — 느린 네트워크 대비 안전망
         time.sleep(1.5)
         out = open(reply, encoding='utf-8').read().strip()
-    os.replace(os.path.join(spool, 'pending.md'), os.path.join(spool, f'done.{seq}.prompt.md'))
-    os.replace(reply, os.path.join(spool, f'done.{seq}.reply.md'))
+    with _spool_lock:
+        os.replace(os.path.join(spool, f'req.{seq}.md'), os.path.join(spool, f'done.{seq}.prompt.md'))
+        os.replace(os.path.join(spool, f'req.{seq}.json'), os.path.join(spool, f'done.{seq}.meta.json'))
+        os.replace(reply, os.path.join(spool, f'done.{seq}.reply.md'))
+        _spool_refresh_index(spool)
     print(f"  [spool] req {seq} replied ({len(out):,} chars)", flush=True)
     return out
 

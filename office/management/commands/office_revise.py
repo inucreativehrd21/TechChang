@@ -68,7 +68,7 @@ class Command(BaseCommand):
                 qa_issues='\n'.join(f'- {i}' for i in prev_qa.get('issues', [])) or '(없음)',
                 check_notes=prev_check.get('notes', '') or '(없음)',
                 subject=draft.subject, content=draft.content, structure=COLUMN_STRUCTURE,
-                standard=P.WRITING_STANDARD.format(min_chars=P.MIN_CHARS, rubric=P.rubric_text())),
+                standard=P.writing_standard()),
                 max_tokens=P.COLUMN_MAX_TOKENS)
             subject, content, ok, why = P.safe_rewrite(raw, draft.subject, draft.content)
             if not ok:
@@ -80,7 +80,7 @@ class Command(BaseCommand):
 
             # 2) 팩트체크
             check = P.step_check(subject, content, recent)
-            bad = [c for c in check.get('claims', []) if c.get('status') in ('unverifiable', 'wrong')]
+            bad = [c for c in check.get('claims', []) if c.get('status') in P.BAD_CLAIMS]
             rec('checker', 'check', f"팩트체크 {check.get('verdict')}: 확인 필요 {len(bad)}건")
 
             # 3) 시각화 — 본문이 다시 쓰였으므로 이전 차트·표를 걷어내고 현재 수치로 새로 만든다
