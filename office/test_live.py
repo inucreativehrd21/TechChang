@@ -149,7 +149,8 @@ class WebToolsTests(TestCase):
         with mock.patch('office.pipeline.ask_agent_json', side_effect=fake):
             P.step_check('제목', '본문', [])
         self.assertEqual(seen['tools'], ('WebSearch', 'WebFetch'))
-        self.assertIn('원문 문장을 직접 읽은 경우에만', seen['prompt'])
+        self.assertIn('검색 결과 요약 한 줄만 보고 verified 하지 마세요', seen['prompt'])
+        self.assertIn('api.crossref.org', seen['prompt'])
 
     def test_charter_web_data_becomes_writer_material(self):
         from office import pipeline as P
