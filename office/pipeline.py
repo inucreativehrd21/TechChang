@@ -758,11 +758,12 @@ def step_visual(content: str, topic_key: str, *, rec, dry: bool = False) -> tupl
         chart_rel = rel or ''
 
     block = chart_markdown(chart_rel, spec, caption=res.get('caption', ''))
+    prose = content     # 도판을 넣기 전 본문 — 도판 속 숫자가 '본문에 있다'로 잡히지 않게
     content = insert_after_heading(content, res.get('insert_after_heading', ''), block)
 
-    errors, warns, report = audit_chart(spec, content, chart_rel, res.get('caption', ''))
+    errors, warns, report = audit_chart(spec, prose, chart_rel, res.get('caption', ''))
     if chart_rel:
-        note = f"차트+표 삽입: {spec.get('title', '')} ({spec.get('type', 'bar')}, 항목 {len(spec.get('labels') or [])}개)"
+        note = f"차트 삽입: {spec.get('title', '')} ({spec.get('type', 'bar')}, 항목 {len(spec.get('labels') or [])}개)"
     elif err:
         note = f"차트 렌더 실패 → 표만 삽입: {err}"
     else:

@@ -382,3 +382,37 @@ class TwoItemTableTests(TestCase):
         from office.services import audit_chart
         errors, _, _ = audit_chart(self.SPEC, self.BODY, 'columns/x.png', self.CAP)
         self.assertTrue(any('비교 항목' in e for e in errors))
+
+
+class ChartWithoutDuplicateTableTests(TestCase):
+    """그림이 있으면 같은 숫자의 표를 붙이지 않는다 — '수치 반복' 감점의 단골 원인(원고 #8)."""
+    SPEC = {'title': '전이 비율', 'unit': '%', 'source': 'Saks & Belcourt(2006)',
+            'labels': ['직후', '6개월', '1년'], 'series': [{'name': '비율', 'values': [62, 44, 34]}]}
+
+    def test_chart_block_has_no_table_but_alt_has_values(self):
+        from office.services import chart_markdown
+        md = chart_markdown('columns/x.png', self.SPEC, caption='하락은 처음 반년에 몰립니다.')
+        self.assertNotIn('| 항목 |', md)
+        self.assertIn('![그림 1. 전이 비율 — 직후 62%, 6개월 44%, 1년 34%](', md)
+        self.assertIn('**그림 1. 전이 비율**', md)
+
+    def test_table_only_mode_keeps_table(self):
+        from office.services import chart_markdown
+        md = chart_markdown('', self.SPEC, caption='세 시점 비교입니다.')
+        self.assertIn('| 항목 | 비율 |', md)
+        self.assertIn('**표 1. 전이 비율**', md)
+
+    def test_chart_block_without_table_is_still_stripped(self):
+        from office.services import chart_markdown
+        from office import pipeline
+        md = chart_markdown('columns/x.png', self.SPEC, caption='하락은 처음 반년에 몰립니다.')
+        out = pipeline.strip_visual_block('앞 문단입니다.\n\n' + md + '\n\n뒷 문단입니다.\n')
+        self.assertNotIn('![', out)
+        self.assertNotIn('그림 1', out)
+        self.assertIn('뒷 문단입니다.', out)
+
+    def test_values_missing_from_prose_are_now_caught(self):
+        """예전엔 도판을 넣은 뒤 본문을 검사해, 도판 표의 숫자 덕에 늘 통과했다."""
+        from office.services import audit_chart
+        errors, _w, _r = audit_chart(self.SPEC, '본문에는 62%만 나옵니다.', 'columns/x.png', '하락은 처음 반년에 몰립니다.')
+        self.assertTrue(any('44' in e and '본문에 없습니다' in e for e in errors))

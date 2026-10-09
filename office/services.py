@@ -658,8 +658,15 @@ def chart_markdown(rel_path: str, spec: dict, caption: str = '', figure_no: int 
     label = f'그림 {figure_no}' if rel_path else f'표 {figure_no}'
     parts = []
     if rel_path:
+        # 그림이 있으면 같은 숫자의 표를 또 붙이지 않는다 — 편집장이 '수치 반복'으로 매번 감점했다
+        # (원고 #8). 값은 대체 텍스트에 담아 화면낭독기·이미지 미표시 환경에서도 읽히게 한다.
+        unit = spec.get('unit') or ''
+        first = (series[0].get('values') or []) if series else []
+        values = ', '.join(f"{lab} {v:g}{unit}" if isinstance(v, (int, float)) else f'{lab} {v}'
+                           for lab, v in zip(labels, first))
+        alt = f"{label}. {title}" + (f" — {values}" if values else '')
         url = f"{settings.MEDIA_URL.rstrip('/')}/{rel_path}"
-        parts += [f"![{label}. {title}]({url})", '']
+        parts += [f"![{alt.replace('[', '(').replace(']', ')')}]({url})", '']
 
     parts.append(f"**{label}. {title}**" if title else f"**{label}**")
     caption = (caption or '').strip()
@@ -674,5 +681,6 @@ def chart_markdown(rel_path: str, spec: dict, caption: str = '', figure_no: int 
     if note:
         parts += ['', f"*{'. '.join(note)}.*"]
 
-    parts += ['', head, sep, *rows]
+    if not rel_path:                      # 그림이 없을 때만 표로 싣는다
+        parts += ['', head, sep, *rows]
     return '\n'.join(parts)
