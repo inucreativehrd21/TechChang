@@ -1,0 +1,35 @@
+{% load pybo_filter %}{# 글 상세 구조화 데이터 — PC·모바일 상세가 함께 쓴다 #}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": {% if question.is_column %}"Article"{% else %}"DiscussionForumPosting"{% endif %},
+  "headline": {{ question.subject|as_json }},
+  "description": {{ question.seo_description|as_json }},
+  "inLanguage": "ko-KR",
+  "datePublished": "{{ question.create_date|date:'c' }}",
+  "dateModified": "{{ question.modify_date|default:question.create_date|date:'c' }}",
+  {% if question.lead_image_url %}"image": [{{ question.lead_image_url|as_json }}],{% endif %}
+  {% if question.is_column %}
+  "author": {"@type": "Organization", "name": "테크창 연구팀", "url": "https://techchang.com/lab/"},
+  {% else %}
+  "author": {"@type": "Person", "name": {{ question.author.username|as_json }}},
+  {% endif %}
+  "publisher": {"@type": "Organization", "name": "테크창", "url": "https://techchang.com",
+                "logo": {"@type": "ImageObject", "url": "https://techchang.com/favicon.ico"}},
+  "mainEntityOfPage": {"@type": "WebPage", "@id": {{ canonical_url|as_json }}},
+  {% if question.category %}"articleSection": {{ question.category.name|as_json }},{% endif %}
+  "commentCount": {{ answer_list|length|default:0 }}
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {"@type": "ListItem", "position": 1, "name": "테크창", "item": "https://techchang.com/"}
+    {% if series_nav %},{"@type": "ListItem", "position": 2, "name": {{ series_nav.series.title|as_json }}, "item": "https://techchang.com{% url 'community:series_detail' series_nav.series.slug %}"}
+    {% elif question.category %},{"@type": "ListItem", "position": 2, "name": {{ question.category.name|as_json }}, "item": "https://techchang.com/?category={{ question.category.name|urlencode }}"}{% endif %}
+    ,{"@type": "ListItem", "position": {% if series_nav or question.category %}3{% else %}2{% endif %}, "name": {{ question.subject|as_json }}, "item": {{ canonical_url|as_json }}}
+  ]
+}
+</script>

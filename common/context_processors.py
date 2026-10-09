@@ -39,3 +39,29 @@ def theme_context(request):
         'is_mobile': getattr(request, 'is_mobile', False),
         'is_forced_version': getattr(request, 'is_forced', False),
     }
+
+
+# 목록(홈)에서 '다른 내용'을 만드는 쿼리만 대표 주소에 남긴다. sort·kw 등은 같은 글을
+# 다르게 늘어놓을 뿐이라 대표 주소에서 뺀다 — GSC '사용자가 선택한 표준이 없는 중복 페이지'
+# 41건의 주 원인이 /N/?sort=…, /?category=…&sort=… 같은 변형이었다(2026-10-09).
+CANONICAL_KEEP_PARAMS = ('category', 'page')
+# 검색 결과만 noindex. 정렬 변형은 canonical 로 묶는다(canonical+noindex 동시 사용은 구글이 상충 신호로 본다).
+NOINDEX_PARAMS = ('kw',)
+
+
+def seo(request):
+    """대표 주소(canonical)와 기본 robots 지시 — PC·모바일 베이스가 같은 값을 쓴다."""
+    path = request.path
+    keep = []
+    if path == '/':
+        for key in CANONICAL_KEEP_PARAMS:
+            value = request.GET.get(key)
+            if value and not (key == 'page' and value == '1'):
+                keep.append((key, value))
+    from urllib.parse import urlencode
+    canonical = f'https://techchang.com{path}' + (f'?{urlencode(keep)}' if keep else '')
+    noindex = any(request.GET.get(p) for p in NOINDEX_PARAMS)
+    return {
+        'canonical_url': canonical,
+        'seo_robots': 'noindex, follow' if noindex else 'index, follow',
+    }

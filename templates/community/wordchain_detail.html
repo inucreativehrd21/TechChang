@@ -397,7 +397,7 @@
                   {% endif %}
                 {% endif %}
               {% else %}
-                <a href="{% url 'common:login' %}?next={{ request.path }}" class="btn btn-primary btn-lg">
+                <a rel="nofollow" href="{% url 'common:login' %}?next={{ request.path }}" class="btn btn-primary btn-lg">
                   <i class="fas fa-sign-in-alt me-2"></i>로그인하고 참여하기
                 </a>
               {% endif %}
@@ -494,7 +494,7 @@
         {% else %}
           <div class="alert alert-warning text-center">
             <h5><i class="fas fa-lock me-2"></i>로그인이 필요합니다</h5>
-            <a href="{% url 'common:login' %}?next={{ request.path }}" class="btn btn-primary mt-2">
+            <a rel="nofollow" href="{% url 'common:login' %}?next={{ request.path }}" class="btn btn-primary mt-2">
               <i class="fas fa-sign-in-alt me-2"></i>로그인하고 참여하기
             </a>
           </div>

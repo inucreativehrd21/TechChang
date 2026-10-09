@@ -13,27 +13,12 @@
 {% block og_description %}{{ question.seo_description|default:question.subject }}{% endblock %}
 {% block twitter_title %}{{ question.subject }}{% endblock %}
 {% block twitter_description %}{{ question.seo_description|default:question.subject }}{% endblock %}
-{# block 은 {% if %} 안에 둬도 조건과 무관하게 항상 적용되므로, 분기는 block 안에서 한다 #}
-{% block og_image %}{% if question.image %}https://techchang.com{{ question.image.url }}{% else %}https://techchang.com{% static 'images/og-image.jpg' %}{% endif %}{% endblock %}
-{% block twitter_image %}{% if question.image %}https://techchang.com{{ question.image.url }}{% else %}https://techchang.com{% static 'images/og-image.jpg' %}{% endif %}{% endblock %}
+{% block og_image %}{{ question.lead_image_url|default:'https://techchang.com/static/images/og-image.jpg' }}{% endblock %}
+{% block twitter_image %}{{ question.lead_image_url|default:'https://techchang.com/static/images/og-image.jpg' }}{% endblock %}
 {% block og_image_alt %}{{ question.subject }}{% endblock %}
-
-{% block jsonld %}
-<script type="application/ld+json">
-{
-  "@context": "https://schema.org",
-  "@type": "Article",
-  "headline": {{ question.subject|as_json }},
-  "description": {{ question.seo_description|as_json }},
-  "datePublished": "{{ question.create_date|date:'c' }}",
-  {% if question.modify_date %}"dateModified": "{{ question.modify_date|date:'c' }}",{% endif %}
-  "author": {"@type": "Person", "name": {{ question.author.username|as_json }}},
-  "publisher": {"@type": "Organization", "name": "테크창", "url": "https://techchang.com"},
-  "mainEntityOfPage": {"@type": "WebPage", "@id": "https://techchang.com{{ request.path }}"},
-  "articleSection": {{ question.category.name|as_json }}
-}
-</script>
-{% endblock %}
+{# 본문이 빈약한 회원 글은 검색엔진에 내놓지 않는다 (Question.is_indexable) #}
+{% block meta_robots %}{% if question.is_indexable %}index, follow{% else %}noindex, follow{% endif %}{% endblock %}
+{% block jsonld %}{% include 'community/_question_jsonld.html' %}{% endblock %}
 
 {% block extra_css %}
 {% if making %}<link href="{% static 'css/making.css' %}?v={{ STATIC_VERSION }}" rel="stylesheet">{% endif %}
@@ -757,10 +742,10 @@
             </h2>
 
             <div class="sort-buttons">
-                <a href="?sort=recent" class="sort-btn {% if sort == 'recent' or not sort %}active{% endif %}">
+                <a rel="nofollow" href="?sort=recent" class="sort-btn {% if sort == 'recent' or not sort %}active{% endif %}">
                     <i class="fas fa-clock"></i> 최신순
                 </a>
-                <a href="?sort=recommend" class="sort-btn {% if sort == 'recommend' %}active{% endif %}">
+                <a rel="nofollow" href="?sort=recommend" class="sort-btn {% if sort == 'recommend' %}active{% endif %}">
                     <i class="fas fa-fire"></i> 추천순
                 </a>
             </div>
@@ -873,7 +858,7 @@
         <p style="color: var(--text-secondary); margin-bottom: var(--space-4);">
             댓글을 작성하려면 로그인해주세요
         </p>
-        <a href="{% url 'common:login' %}?next={{ request.get_full_path|urlencode }}" class="btn-premium btn-premium-primary">
+        <a rel="nofollow" href="{% url 'common:login' %}?next={{ request.get_full_path|urlencode }}" class="btn-premium btn-premium-primary">
             <i class="fas fa-sign-in-alt"></i> 로그인
         </a>
     </section>

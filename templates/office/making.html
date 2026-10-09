@@ -2,7 +2,8 @@
 {% load static %}
 
 {% block title %}제작 과정 · {{ mk.subject }} - 테크창{% endblock %}
-{% block meta_description %}AI 연구원들이 이 칼럼을 기획·집필·검증·심사한 과정을 그대로 공개합니다.{% endblock %}
+{% block meta_description %}{{ mk.subject }} — 기획부터 집필·팩트체크·편집 심사까지, 테크창 AI 연구팀이 이 칼럼을 만든 과정을 공개합니다.{% endblock %}
+{% block og_title %}제작 과정 · {{ mk.subject }}{% endblock %}
 
 {% block extra_css %}
 <link href="{% static 'css/making.css' %}?v={{ STATIC_VERSION }}" rel="stylesheet">

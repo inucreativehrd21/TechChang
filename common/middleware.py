@@ -409,9 +409,14 @@ class MobileDetectionMiddleware:
         # thread-local에 모바일 여부 설정 (템플릿 로더에서 사용)
         set_mobile_request(request)
         try:
-            return self.get_response(request)
+            response = self.get_response(request)
         finally:
             clear_mobile_request()
+        # 같은 주소가 기기에 따라 다른 HTML 을 내는 '동적 서빙'임을 캐시·크롤러에 알린다
+        # (구글 권장. 없으면 PC/모바일 응답이 섞여 캐시되거나 색인될 수 있다)
+        from django.utils.cache import patch_vary_headers
+        patch_vary_headers(response, ('User-Agent',))
+        return response
 
 
 # 안전한 설정 검사

@@ -38,7 +38,7 @@
         <h2 class="gm-h2">로그인하면 기록이 남습니다</h2>
         <p class="gm-note" style="margin-top:0;">게임을 하려면 로그인이 필요합니다.</p>
         <div class="gm-actions">
-            <a class="gm-btn is-primary" href="{% url 'common:login' %}?next={{ request.get_full_path|urlencode }}">로그인</a>
+            <a rel="nofollow" class="gm-btn is-primary" href="{% url 'common:login' %}?next={{ request.get_full_path|urlencode }}">로그인</a>
             <a class="gm-btn" href="{% url 'common:signup' %}">회원가입</a>
         </div>
     </div>

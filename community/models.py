@@ -109,6 +109,38 @@ class Question(models.Model):
         return bool((user.is_staff or user.is_superuser)
                     and getattr(self.author, 'username', '') == self.BOT_USERNAME)
 
+    # 이보다 짧은 회원 글은 검색엔진에 내놓지 않는다(noindex + 사이트맵 제외).
+    # GSC '크롤링됨 - 현재 색인이 생성되지 않음' 25건 = 짧은 질문·테스트 글이 품질 신호를 깎는 자리(2026-10-09).
+    INDEX_MIN_CHARS = 200
+
+    @property
+    def is_column(self) -> bool:
+        return getattr(self.author, 'username', '') == self.BOT_USERNAME
+
+    @property
+    def is_indexable(self) -> bool:
+        """검색엔진 색인 대상인가 — 연구팀 칼럼은 항상, 회원 글은 본문이 충분히 길 때만."""
+        if self.is_deleted or self.is_locked:
+            return False
+        if self.is_column:
+            return True
+        import re
+        body = re.sub(r'\s+', '', re.sub(r'!\[[^\]]*\]\([^)]*\)', '', self.content or ''))
+        return len(body) >= self.INDEX_MIN_CHARS
+
+    @property
+    def lead_image_url(self) -> str:
+        """대표 이미지 절대 주소 — 첨부 이미지, 없으면 본문 첫 그림(칼럼 차트). 없으면 ''."""
+        import re
+        if self.image:
+            url = self.image.url
+        else:
+            m = re.search(r'!\[[^\]]*\]\(\s*([^)\s]+)', self.content or '')
+            url = m.group(1) if m else ''
+        if url.startswith('/'):
+            url = 'https://techchang.com' + url
+        return url if url.startswith('http') else ''
+
     @property
     def seo_description(self):
         """검색결과·SNS 미리보기용 요약 (본문 마크다운을 걷어낸 첫 문단, 155자).

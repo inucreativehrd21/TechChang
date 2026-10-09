@@ -1,9 +1,56 @@
+{% load static %}
 <!DOCTYPE html>
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <meta name="description" content="테크창 - HRD와 테크놀로지 지식을 공유하는 플랫폼">
+    {% comment %}검색엔진용 머리말 — base.html 과 블록 이름·내용을 똑같이 유지한다. 구글은 모바일 화면으로 색인하므로
+       여기가 빠지면 대표 주소·요약문·구조화 데이터가 전부 사라진다(2026-10-09 GSC 중복 41건의 원인).{% endcomment %}
+    <meta name="description" content="{% block meta_description %}테크창 - HRD & 테크놀로지 커뮤니티{% endblock %}">
+    <meta name="keywords" content="HRD, 데이터분석, 프로그래밍, 테크놀로지, 지식공유">
+    <meta name="robots" content="{% block meta_robots %}{{ seo_robots }}{% endblock %}">
+
+    <!-- Canonical -->
+    <link rel="canonical" href="{{ canonical_url }}">
+
+    <!-- Favicon -->
+    <link rel="icon" href="/favicon.ico" sizes="any">
+
+    <!-- OG Tags -->
+    <meta property="og:type" content="{% block og_type %}website{% endblock %}">
+    <meta property="og:site_name" content="테크창">
+    <meta property="og:title" content="{% block og_title %}테크창{% endblock %}">
+    <meta property="og:description" content="{% block og_description %}테크창 - HRD & 테크놀로지 커뮤니티{% endblock %}">
+    <meta property="og:url" content="{{ canonical_url }}">
+    <meta property="og:locale" content="ko_KR">
+    <meta property="og:image" content="{% block og_image %}https://techchang.com{% static 'images/og-image.jpg' %}{% endblock %}">
+    <meta property="og:image:width" content="{% block og_image_width %}1200{% endblock %}">
+    <meta property="og:image:height" content="{% block og_image_height %}630{% endblock %}">
+    <meta property="og:image:alt" content="{% block og_image_alt %}테크창 - HRD와 테크놀로지를 잇는 지식 플랫폼{% endblock %}">
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="{% block twitter_title %}테크창{% endblock %}">
+    <meta name="twitter:description" content="{% block twitter_description %}테크창 - HRD & 테크놀로지 커뮤니티{% endblock %}">
+    <meta name="twitter:image" content="{% block twitter_image %}https://techchang.com{% static 'images/og-image.jpg' %}{% endblock %}">
+
+    <!-- JSON-LD -->
+    {% block jsonld %}
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebSite",
+      "name": "테크창",
+      "url": "https://techchang.com",
+      "description": "테크창 - HRD & 테크놀로지 커뮤니티",
+      "potentialAction": {
+        "@type": "SearchAction",
+        "target": "https://techchang.com/?kw={search_term_string}",
+        "query-input": "required name=search_term_string"
+      }
+    }
+    </script>
+    {% endblock %}
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
 

@@ -2,7 +2,10 @@
 {% load static %}
 {% load pybo_filter %}
 
-{% block title %}테크창{% endblock %}
+{% block title %}{% if category %}{{ category }} 칼럼·글 - 테크창{% else %}테크창 - HRD·데이터분석·프로그래밍 검증 칼럼{% endif %}{% endblock %}
+{% block meta_description %}{% if category %}테크창 {{ category }} 칼럼과 커뮤니티 글 모음. {% endif %}팩트체크와 편집 심사를 통과한 HRD·데이터분석·프로그래밍 칼럼을 누구나 무료로 읽을 수 있는 지식 플랫폼, 테크창.{% endblock %}
+{% block og_title %}{% if category %}{{ category }} - 테크창{% else %}테크창{% endif %}{% endblock %}
+{% block og_description %}팩트체크와 편집 심사를 통과한 HRD·데이터분석·프로그래밍 칼럼을 누구나 무료로.{% endblock %}
 {% block tab_home %}active{% endblock %}
 
 {% block extra_css %}
@@ -105,9 +108,9 @@
 
 <!-- 정렬 탭 -->
 <div class="tc-m-tabs">
-    <a href="?{% if kw %}kw={{ kw|urlencode }}&{% endif %}{% if category %}category={{ category|urlencode }}&{% endif %}sort=recent#tc-mh-board" class="tc-m-tab {% if sort == 'recent' %}is-active{% endif %}">최신</a>
-    <a href="?{% if kw %}kw={{ kw|urlencode }}&{% endif %}{% if category %}category={{ category|urlencode }}&{% endif %}sort=recommend#tc-mh-board" class="tc-m-tab {% if sort == 'recommend' %}is-active{% endif %}">추천</a>
-    <a href="?{% if kw %}kw={{ kw|urlencode }}&{% endif %}{% if category %}category={{ category|urlencode }}&{% endif %}sort=popular#tc-mh-board" class="tc-m-tab {% if sort == 'popular' %}is-active{% endif %}">인기</a>
+    <a rel="nofollow" href="?{% if kw %}kw={{ kw|urlencode }}&{% endif %}{% if category %}category={{ category|urlencode }}&{% endif %}sort=recent#tc-mh-board" class="tc-m-tab {% if sort == 'recent' %}is-active{% endif %}">최신</a>
+    <a rel="nofollow" href="?{% if kw %}kw={{ kw|urlencode }}&{% endif %}{% if category %}category={{ category|urlencode }}&{% endif %}sort=recommend#tc-mh-board" class="tc-m-tab {% if sort == 'recommend' %}is-active{% endif %}">추천</a>
+    <a rel="nofollow" href="?{% if kw %}kw={{ kw|urlencode }}&{% endif %}{% if category %}category={{ category|urlencode }}&{% endif %}sort=popular#tc-mh-board" class="tc-m-tab {% if sort == 'popular' %}is-active{% endif %}">인기</a>
 </div>
 
 <!-- 질문 목록 -->

@@ -19,13 +19,17 @@ from django.urls import include, path
 from django.conf import settings
 from django.conf.urls.static import static
 from django.views.generic import RedirectView
-from django.contrib.sitemaps.views import sitemap
+from django.contrib.sitemaps.views import index as sitemap_index, sitemap
 from community.views import base_views
-from community.sitemaps import StaticViewSitemap, QuestionSitemap, PortfolioCollectionSitemap
+from community.sitemaps import (StaticViewSitemap, ColumnSitemap, PostSitemap, SeriesSitemap,
+                                MakingSitemap, PortfolioCollectionSitemap)
 
 sitemaps = {
     'static': StaticViewSitemap,
-    'questions': QuestionSitemap,
+    'columns': ColumnSitemap,
+    'series': SeriesSitemap,
+    'posts': PostSitemap,
+    'making': MakingSitemap,
     'portfolios': PortfolioCollectionSitemap,
 }
 
@@ -45,7 +49,10 @@ urlpatterns = [
     path('common/', include('common.urls')),
     path('lab/', include('office.urls')),  # 연구팀 가상 연구실 (office 앱)
     path('accounts/', include('allauth.urls')),  # django-allauth URLs
-    path('sitemap.xml', sitemap, {'sitemaps': sitemaps}, name='django.contrib.sitemaps.views.sitemap'),
+    # sitemap.xml = 묶음 색인(index). GSC 에서 칼럼·시리즈·회원 글 등 묶음별 색인 비율을 따로 본다.
+    path('sitemap.xml', sitemap_index, {'sitemaps': sitemaps, 'sitemap_url_name': 'sitemap_section'},
+         name='sitemap_index'),
+    path('sitemap-<section>.xml', sitemap, {'sitemaps': sitemaps}, name='sitemap_section'),
     # 사람이 보는 사이트맵. sitemap.xml 에 XSL 을 붙이는 방법도 있지만 Chrome 이 XSLT 를
     # 제거 중이라 경고 배너가 뜨고 곧 깨진다. 별도 HTML 페이지가 내부링크에도 이득이다.
     path('sitemap/', base_views.sitemap_page, name='sitemap_page'),

@@ -2,8 +2,10 @@
 {% load pybo_filter %}
 {% load static %}
 
-{% block title %}테크창{% endblock %}
-{% block meta_description %}테크창 - HRD & 테크놀로지 커뮤니티{% endblock %}
+{% block title %}{% if category %}{{ category }} 칼럼·글 - 테크창{% else %}테크창 - HRD·데이터분석·프로그래밍 검증 칼럼{% endif %}{% endblock %}
+{% block meta_description %}{% if category %}테크창 {{ category }} 칼럼과 커뮤니티 글 모음. {% endif %}팩트체크와 편집 심사를 통과한 HRD·데이터분석·프로그래밍 칼럼을 누구나 무료로 읽을 수 있는 지식 플랫폼, 테크창.{% endblock %}
+{% block og_title %}{% if category %}{{ category }} - 테크창{% else %}테크창{% endif %}{% endblock %}
+{% block og_description %}팩트체크와 편집 심사를 통과한 HRD·데이터분석·프로그래밍 칼럼을 누구나 무료로.{% endblock %}
 
 {% block extra_css %}
 <link href="{% static 'css/home.css' %}?v={{ STATIC_VERSION }}" rel="stylesheet">
@@ -116,7 +118,7 @@
     <section class="tc-section" id="tc-posts">
         <div class="tc-section-head">
             <h2 class="tc-section-title">인기 게시글</h2>
-            <a href="?sort=popular#tc-board" class="tc-section-link">더보기 <i class="fas fa-arrow-right" aria-hidden="true"></i></a>
+            <a rel="nofollow" href="?sort=popular#tc-board" class="tc-section-link">더보기 <i class="fas fa-arrow-right" aria-hidden="true"></i></a>
         </div>
         <div class="tc-popular">
             {% for question in popular_posts %}
@@ -177,11 +179,11 @@
                 <input type="search" name="kw" value="{{ kw }}" placeholder="제목, 내용, 작성자 검색" aria-label="게시글 검색">
             </form>
             <nav class="tc-sort" aria-label="정렬">
-                <a href="?{% if category %}category={{ category|urlencode }}&{% endif %}{% if kw %}kw={{ kw|urlencode }}&{% endif %}sort=recent#tc-board"
+                <a rel="nofollow" href="?{% if category %}category={{ category|urlencode }}&{% endif %}{% if kw %}kw={{ kw|urlencode }}&{% endif %}sort=recent#tc-board"
                    class="{% if sort == 'recent' %}is-active{% endif %}"{% if sort == 'recent' %} aria-current="true"{% endif %}>최신</a>
-                <a href="?{% if category %}category={{ category|urlencode }}&{% endif %}{% if kw %}kw={{ kw|urlencode }}&{% endif %}sort=recommend#tc-board"
+                <a rel="nofollow" href="?{% if category %}category={{ category|urlencode }}&{% endif %}{% if kw %}kw={{ kw|urlencode }}&{% endif %}sort=recommend#tc-board"
                    class="{% if sort == 'recommend' %}is-active{% endif %}"{% if sort == 'recommend' %} aria-current="true"{% endif %}>추천</a>
-                <a href="?{% if category %}category={{ category|urlencode }}&{% endif %}{% if kw %}kw={{ kw|urlencode }}&{% endif %}sort=popular#tc-board"
+                <a rel="nofollow" href="?{% if category %}category={{ category|urlencode }}&{% endif %}{% if kw %}kw={{ kw|urlencode }}&{% endif %}sort=popular#tc-board"
                    class="{% if sort == 'popular' %}is-active{% endif %}"{% if sort == 'popular' %} aria-current="true"{% endif %}>인기</a>
             </nav>
             </div>

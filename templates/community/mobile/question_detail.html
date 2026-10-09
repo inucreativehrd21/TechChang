@@ -2,7 +2,22 @@
 {% load static %}
 {% load pybo_filter %}
 
-{% block title %}{{ question.subject }}{% endblock %}
+{% block title %}{{ question.subject }} - 테크창{% endblock %}
+
+{# 글마다 고유한 설명을 준다. 비워 두면 모든 글이 사이트 기본 문구를 공유해
+   검색결과에 같은 문구가 반복되고 CTR 이 떨어진다. #}
+{% block meta_description %}{{ question.seo_description|default:question.subject }}{% endblock %}
+{% block og_type %}article{% endblock %}
+{% block og_title %}{{ question.subject }}{% endblock %}
+{% block og_description %}{{ question.seo_description|default:question.subject }}{% endblock %}
+{% block twitter_title %}{{ question.subject }}{% endblock %}
+{% block twitter_description %}{{ question.seo_description|default:question.subject }}{% endblock %}
+{% block og_image %}{{ question.lead_image_url|default:'https://techchang.com/static/images/og-image.jpg' }}{% endblock %}
+{% block twitter_image %}{{ question.lead_image_url|default:'https://techchang.com/static/images/og-image.jpg' }}{% endblock %}
+{% block og_image_alt %}{{ question.subject }}{% endblock %}
+{# 본문이 빈약한 회원 글은 검색엔진에 내놓지 않는다 (Question.is_indexable) #}
+{% block meta_robots %}{% if question.is_indexable %}index, follow{% else %}noindex, follow{% endif %}{% endblock %}
+{% block jsonld %}{% include 'community/_question_jsonld.html' %}{% endblock %}
 
 {% block extra_css %}
 {% if making %}<link href="{% static 'css/making.css' %}?v={{ STATIC_VERSION }}" rel="stylesheet">{% endif %}
@@ -98,7 +113,7 @@
     <a href="{% url 'community:question_modify' question.id %}" class="tc-m-vote-btn" style="flex:0 0 80px;">수정</a>
     {% endif %}
     {% else %}
-    <a href="{% url 'common:login' %}?next={{ request.get_full_path|urlencode }}" class="tc-m-vote-btn">
+    <a rel="nofollow" href="{% url 'common:login' %}?next={{ request.get_full_path|urlencode }}" class="tc-m-vote-btn">
         <i class="fas fa-thumbs-up"></i> 추천 {{ question.voter.count }}
     </a>
     {% endif %}
@@ -108,8 +123,8 @@
 <div class="tc-m-answers-head">
     <span class="tc-m-answers-title">답변 {{ answer_list|length }}개</span>
     <div class="tc-m-sortlinks">
-        <a href="?sort=recent" class="{% if sort == 'recent' or not sort %}is-active{% endif %}">최신</a>
-        <a href="?sort=recommend" class="{% if sort == 'recommend' %}is-active{% endif %}">추천순</a>
+        <a rel="nofollow" href="?sort=recent" class="{% if sort == 'recent' or not sort %}is-active{% endif %}">최신</a>
+        <a rel="nofollow" href="?sort=recommend" class="{% if sort == 'recommend' %}is-active{% endif %}">추천순</a>
     </div>
 </div>
 
@@ -162,7 +177,7 @@
 </div>
 {% else %}
 <div class="tc-m-login-cta">
-    <a href="{% url 'common:login' %}?next={{ request.get_full_path|urlencode }}">로그인 후 답변 작성</a>
+    <a rel="nofollow" href="{% url 'common:login' %}?next={{ request.get_full_path|urlencode }}">로그인 후 답변 작성</a>
 </div>
 {% endif %}
 {% endblock %}

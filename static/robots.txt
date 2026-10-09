@@ -5,5 +5,8 @@ Disallow: /common/login/
 Disallow: /common/signup/
 Disallow: /common/toggle-version/
 Disallow: /guestbook/
+# 연구실 화면이 주기적으로 부르는 상태 JSON·관리자 화면 — 문서가 아니다
+Disallow: /lab/*.json$
+Disallow: /lab/admin/
 
 Sitemap: https://techchang.com/sitemap.xml

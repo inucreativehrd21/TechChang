@@ -52,7 +52,7 @@ class SeoDescriptionTests(TestCase):
 
 class QuestionDetailMetaTests(TestCase):
     def setUp(self):
-        author = User.objects.create_user('writer', password='x')
+        author = User.objects.create_user(Question.BOT_USERNAME, password='x')   # 연구팀 칼럼 → Article
         category = Category.objects.create(name='HRD', description='HRD')
         self.q = Question.objects.create(
             subject='스킬 인벤토리로 보는 인재 재배치', category=category, author=author,
@@ -85,3 +85,72 @@ class QuestionDetailMetaTests(TestCase):
         start = html.index('application/ld+json')
         block = html[html.index('>', start) + 1:html.index('</script>', start)]
         self.assertEqual(json.loads(block)['headline'], self.q.subject)
+
+
+MOBILE_BOT = ('Mozilla/5.0 (Linux; Android 6.0.1; Nexus 5X Build/MMB29P) AppleWebKit/537.36 '
+              '(KHTML, like Gecko) Chrome/130 Mobile Safari/537.36 (compatible; Googlebot/2.1)')
+
+
+def jsonld_blocks(html):
+    out, pos = [], 0
+    while (start := html.find('application/ld+json', pos)) != -1:
+        body = html[html.index('>', start) + 1:html.index('</script>', start)]
+        out.append(json.loads(body))
+        pos = start + 1
+    return out
+
+
+class MobileFirstIndexingTests(TestCase):
+    """구글은 스마트폰 크롤러로 색인한다 — 모바일 화면에도 같은 검색엔진 머리말이 있어야 한다.
+    (2026-10-09 GSC '표준이 없는 중복 페이지' 41건: 모바일 베이스에 canonical 이 없었다)"""
+
+    def setUp(self):
+        self.bot = User.objects.create_user(Question.BOT_USERNAME, password='x')
+        self.member = User.objects.create_user('member', password='x')
+        self.cat = Category.objects.create(name='HRD', description='HRD')
+        self.column = Question.objects.create(subject='칼럼 제목', category=self.cat, author=self.bot,
+                                              create_date=timezone.now(),
+                                              content='첫 문단 요약입니다.' + chr(10) * 2 + '![차트](/media/c.png)')
+        self.thin = Question.objects.create(subject='짧은 질문', category=self.cat, author=self.member,
+                                            create_date=timezone.now(), content='이거 뭐예요?')
+
+    def get(self, url, ua=MOBILE_BOT):
+        return self.client.get(url, HTTP_USER_AGENT=ua)
+
+    def test_mobile_detail_has_canonical_description_and_jsonld(self):
+        html = self.get(f'/{self.column.id}/?sort=recommend').content.decode()
+        self.assertIn(f'<link rel="canonical" href="https://techchang.com/{self.column.id}/">', html)
+        self.assertIn('<meta name="description" content="첫 문단 요약입니다.">', html)
+        types = [b['@type'] for b in jsonld_blocks(html)]
+        self.assertIn('Article', types)
+        self.assertIn('BreadcrumbList', types)
+        article = next(b for b in jsonld_blocks(html) if b['@type'] == 'Article')
+        self.assertEqual(article['image'], ['https://techchang.com/media/c.png'])
+        self.assertEqual(article['author']['name'], '테크창 연구팀')
+
+    def test_home_canonical_keeps_category_and_page_only(self):
+        html = self.get('/?category=HRD&sort=popular&page=2').content.decode()
+        self.assertIn('<link rel="canonical" href="https://techchang.com/?category=HRD&amp;page=2">', html)
+        self.assertIn('content="index, follow"', html)
+
+    def test_search_results_are_noindex(self):
+        html = self.get('/?kw=HRD').content.decode()
+        self.assertIn('<meta name="robots" content="noindex, follow">', html)
+
+    def test_thin_member_post_is_noindex_but_column_is_indexed(self):
+        for ua in (MOBILE_BOT, 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/130'):
+            self.assertIn('content="noindex, follow"', self.get(f'/{self.thin.id}/', ua).content.decode())
+            self.assertIn('<meta name="robots" content="index, follow">',
+                          self.get(f'/{self.column.id}/', ua).content.decode())
+
+    def test_dynamic_serving_sends_vary_user_agent(self):
+        self.assertIn('User-Agent', self.get('/')['Vary'])
+
+    def test_sitemap_index_splits_sections_and_drops_thin_posts(self):
+        index = self.client.get('/sitemap.xml').content.decode()
+        for section in ('static', 'columns', 'series', 'posts', 'making', 'portfolios'):
+            self.assertIn(f'/sitemap-{section}.xml', index)
+        columns = self.client.get('/sitemap-columns.xml').content.decode()
+        self.assertIn(f'https://techchang.com/{self.column.id}/', columns)
+        posts = self.client.get('/sitemap-posts.xml').content.decode()
+        self.assertNotIn(f'/{self.thin.id}/', posts)

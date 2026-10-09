@@ -107,7 +107,7 @@ class SitemapContentTests(TestCase):
         self.inquiry_cat = Category.objects.create(name='문의', description='문의')
 
     def _q(self, subject, category, **kw):
-        return Question.objects.create(subject=subject, content='본문', author=self.author,
+        return Question.objects.create(subject=subject, content='충분히 긴 본문 ' * 40, author=self.author,
                                        category=category, create_date=timezone.now(), **kw)
 
     def test_locked_and_inquiry_posts_are_excluded(self):

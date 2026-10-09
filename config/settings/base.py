@@ -93,6 +93,7 @@ TEMPLATES = [
                 'django.contrib.messages.context_processors.messages',
                 'common.context_processors.theme_context',
                 'common.context_processors.static_version',
+                'common.context_processors.seo',
             ],
             'loaders': [
                 # 모바일 자동 감지 로더 (mobile/ 서브 경로 우선 시도)
