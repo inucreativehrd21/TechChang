@@ -268,3 +268,28 @@ class StageRun(models.Model):
 
     def __str__(self):
         return f'{self.stage}#{self.seq} ({self.agent or "-"}, {self.status})'
+
+
+class VerifiedFact(models.Model):
+    """검증 원장 — 검증관이 웹에서 원문을 대조한 주장(office.ledger).
+
+    같은 통계가 칼럼마다 다시 나오는데, 매번 처음부터 확인하면 판정이 흔들린다(같은 수치가 한 번은
+    verified, 다음엔 unverifiable). 확인한 사실과 근거 URL 을 쌓아 다음 팩트체크에 함께 보여 준다.
+    """
+    claim = models.CharField(max_length=500, verbose_name='주장')
+    claim_key = models.CharField(max_length=200, db_index=True, verbose_name='중복 판별 키')
+    status = models.CharField(max_length=15, db_index=True)       # verified|wrong|outdated
+    note = models.TextField(blank=True)
+    urls = models.JSONField(default=list)
+    method = models.CharField(max_length=20, blank=True, verbose_name='확인 방법')
+    times_seen = models.PositiveIntegerField(default=1)
+    first_seen = models.DateTimeField(auto_now_add=True)
+    last_seen = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-last_seen']
+        verbose_name = '검증 원장'
+        verbose_name_plural = '검증 원장'
+
+    def __str__(self):
+        return f'[{self.status}] {self.claim[:60]}'

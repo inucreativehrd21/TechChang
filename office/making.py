@@ -337,7 +337,8 @@ def _claims(check: dict) -> list:
         if not isinstance(c, dict) or not c.get('claim'):
             continue
         label, tone = CLAIM_STATUS.get(c.get('status'), (c.get('status', ''), 'neutral'))
-        out.append({'claim': c['claim'], 'status': label, 'tone': tone})
+        url = next(iter(re.findall(r'https?://[^\s)\]」>,]+', str(c.get('note') or ''))), '')
+        out.append({'claim': c['claim'], 'status': label, 'tone': tone, 'url': url})
     return out[:12]
 
 

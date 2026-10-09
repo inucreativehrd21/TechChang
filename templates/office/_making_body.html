@@ -117,7 +117,7 @@
         <p class="mk-sub">검증관 하경이 본문의 수치·사실 주장을 하나씩 확인한 최종 결과입니다.</p>
         <ul class="mk-claims">
             {% for c in mk.claims %}
-            <li><span class="mk-pill tone-{{ c.tone }}">{{ c.status }}</span><span>{{ c.claim }}</span></li>
+            <li><span class="mk-pill tone-{{ c.tone }}">{{ c.status }}</span><span>{{ c.claim }}{% if c.url %} <a class="mk-src" href="{{ c.url }}" target="_blank" rel="noopener nofollow">원문</a>{% endif %}</span></li>
             {% endfor %}
         </ul>
     </section>
