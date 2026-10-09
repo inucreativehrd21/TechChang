@@ -125,3 +125,14 @@ class KosisLabelTests(TestCase):
             out = DS.kosis_latest('387', 'DT_Y')
         self.assertEqual([r['label'] for r in out['rows']], ['직무능력 향상', '동기부여'])
         self.assertEqual([r['value'] for r in out['rows']], ['3.92', '3.71'])
+
+
+class KosisBaseRowTests(TestCase):
+    def test_hundred_percent_base_rows_are_dropped(self):
+        cache.clear()
+        rows = [{'PRD_DE': '2024', 'C1_NM': c1, 'ITM_NM': '비율', 'DT': dt, 'UNIT_NM': '%'}
+                for c1, dt in (('전체', '100'), ('예', '60.2'), ('아니오', '39.8'))]
+        with mock.patch.dict('os.environ', KEYS), mock.patch('office.datasources.time.sleep'), \
+                mock.patch('office.datasources.urllib.request.urlopen', return_value=resp(rows)):
+            out = DS.kosis_latest('387', 'DT_Z')
+        self.assertEqual([(r['label'], r['value']) for r in out['rows']], [('예', '60.2'), ('아니오', '39.8')])

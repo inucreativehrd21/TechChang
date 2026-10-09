@@ -124,6 +124,11 @@ def kosis_latest(org_id: str, tbl_id: str, max_rows: int = 10) -> dict:
 
     non_count = [r for r in data if not any(p in COUNT_WORDS for p in pieces(r))]
     data = non_count or data
+    # '비율 100%'는 응답 기준(분모) 행이라 정보가 없고 오해만 부른다 — 다른 값이 있으면 뺀다
+    def is_base(r):
+        return r.get('UNIT_NM') == '%' and str(r.get('DT', '')).strip() in ('100', '100.0')
+    informative = [r for r in data if not is_base(r)]
+    data = informative or data
     constant = set(pieces(data[0]))
     for r in data[1:]:
         constant &= set(pieces(r))
