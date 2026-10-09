@@ -13,7 +13,7 @@
         <ul class="mk-stats mk-stats-lg">
             <li><b>{{ mk.reviews }}</b><span>편집 심사</span></li>
             <li><b>{{ mk.rewrites }}</b><span>재집필</span></li>
-            <li><b>{{ mk.critiques }}</b><span>평론</span></li>
+            {% if mk.critiques %}<li><b>{{ mk.critiques }}</b><span>평론</span></li>{% endif %}
             {% if mk.had_human %}<li><b>{{ mk.human_steps }}</b><span>운영자 검토</span></li>{% endif %}
             <li><b>{{ mk.duration }}</b><span>제작 기간</span></li>
             {% if mk.final_score %}<li class="is-accent"><b>{{ mk.final_score }}</b><span>최종 점수</span></li>{% endif %}

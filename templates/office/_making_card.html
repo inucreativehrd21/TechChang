@@ -10,7 +10,7 @@
         <ul class="mk-stats">
             <li><b>{{ making.reviews }}</b><span>편집 심사</span></li>
             <li><b>{{ making.rewrites }}</b><span>재집필</span></li>
-            <li><b>{{ making.critiques }}</b><span>평론</span></li>
+            {% if making.critiques %}<li><b>{{ making.critiques }}</b><span>평론</span></li>{% endif %}
             {% if making.had_human %}<li><b>{{ making.human_steps }}</b><span>운영자 검토</span></li>{% endif %}
             <li><b>{{ making.duration }}</b><span>제작 기간</span></li>
         </ul>
