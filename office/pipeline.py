@@ -637,12 +637,26 @@ def writing_standard() -> str:
 BAD_CLAIMS = ('unverifiable', 'wrong', 'outdated')
 
 
+def verified_block(verified: str, role: str) -> str:
+    """운영자가 원문을 직접 대조한 사실. 연구원들은 웹을 볼 수 없어, 이게 없으면 사람이 확인한
+    수치도 매번 '확인 불가'로 떨어지고 판정이 회차마다 흔들린다(2026-10-09 원고 #8·#9)."""
+    if not verified.strip():
+        return ''
+    rule = {
+        'checker': ('아래와 일치하는 주장은 status "verified"로 판정하고 note 에 "운영자 원문 확인"이라고 적으세요. '
+                    '중복 여부도 아래 대조 결과를 따르세요. 아래에 없는 주장은 평소대로 검증합니다.'),
+        'editor': ('아래 항목에 해당하는 수치·사실은 확인 불가나 최신성 사유로 감점하거나 치명 결함으로 잡지 마세요. '
+                   '아래에 없는 수치는 평소대로 판단합니다.'),
+    }[role]
+    return f'\n\n[운영자 확인 사항 — 사람이 원문을 직접 대조한 사실입니다]\n{rule}\n{verified.strip()}\n'
+
+
 @live_step('check', 'checker')
-def step_check(subject: str, content: str, recent: list) -> dict:
-    """3) 팩트체크."""
+def step_check(subject: str, content: str, recent: list, verified: str = '') -> dict:
+    """3) 팩트체크. verified: 운영자가 원문을 확인한 사실(office_revise --facts)."""
     return ask_agent_json('checker', CHECK_PROMPT.format(
         titles='\n'.join(f'- {t}' for t in recent) or '(없음)', subject=subject, content=content,
-        recency=recency_rule()), max_tokens=4000)
+        recency=recency_rule()) + verified_block(verified, 'checker'), max_tokens=4000)
 
 
 @live_step('revise')
@@ -716,7 +730,7 @@ def length_rule(length: int) -> str:
 
 @live_step('review', 'editor')
 def step_review(subject: str, content: str, check: dict, chart_rel: str,
-                visual_report: str = '', critique: dict | None = None) -> dict:
+                visual_report: str = '', critique: dict | None = None, verified: str = '') -> dict:
     """6) 편집 심사 — 편집장(승현)이 항목 점수를 매기고, 총점·판정은 시스템이 계산.
 
     기획을 고른 팀장이 아니라 편집장이 본다. 같은 사람이 고르고 심사하면 기획 단계의
@@ -735,7 +749,7 @@ def step_review(subject: str, content: str, check: dict, chart_rel: str,
         check=json.dumps({k: v for k, v in check.items() if k != 'first'}, ensure_ascii=False)[:2500],
         critique=critique_text(critique), length=length, length_rule=length_rule(length),
         style=style_note, visual=visual, subject=subject, content=content,
-        rubric=rubric_text()), max_tokens=3000)
+        rubric=rubric_text()) + verified_block(verified, 'editor'), max_tokens=3000)
 
     scores = qa.get('scores') if isinstance(qa.get('scores'), dict) else {}
     fatal = [f for f in (qa.get('fatal') or []) if isinstance(f, str)]

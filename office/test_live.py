@@ -103,3 +103,37 @@ class LiveTests(TestCase):
         self.assertEqual(res.status_code, 200)
         self.assertEqual(res['Cache-Control'], 'no-store')
         self.assertEqual(res.json()['step'], 'chart')
+
+
+class VerifiedFactsTests(TestCase):
+    """운영자 확인 사항이 검증관·편집장 프롬프트에 실려 가는지 (office_revise --facts)."""
+
+    def test_block_is_empty_without_facts(self):
+        from office.pipeline import verified_block
+        self.assertEqual(verified_block('  ', 'checker'), '')
+
+    def test_checker_and_editor_receive_facts(self):
+        from office import pipeline as P
+        prompts = {}
+
+        def fake(key, prompt, **kw):
+            prompts[key] = prompt
+            if key == 'checker':
+                return {'verdict': 'pass', 'claims': []}
+            return {'scores': {k: 4 for k in P.RUBRIC}, 'fatal': [], 'issues': [], 'notes': ''}
+
+        with mock.patch('office.pipeline.ask_agent_json', side_effect=fake):
+            P.step_check('제목', '본문', [], verified='- 51.8%는 원문 확인')
+            P.step_review('제목', '본문', {'verdict': 'pass'}, '', verified='- 51.8%는 원문 확인')
+        for key in ('checker', 'editor'):
+            self.assertIn('[운영자 확인 사항', prompts[key])
+            self.assertIn('51.8%는 원문 확인', prompts[key])
+        self.assertIn('"verified"', prompts['checker'])
+        self.assertIn('감점하거나 치명 결함으로 잡지 마세요', prompts['editor'])
+
+    def test_without_facts_prompts_are_unchanged(self):
+        from office import pipeline as P
+        seen = []
+        with mock.patch('office.pipeline.ask_agent_json', side_effect=lambda k, p, **kw: seen.append(p) or {'verdict': 'pass', 'claims': []}):
+            P.step_check('제목', '본문', [])
+        self.assertNotIn('운영자 확인 사항', seen[0])

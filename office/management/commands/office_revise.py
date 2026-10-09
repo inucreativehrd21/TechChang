@@ -31,6 +31,7 @@ class Command(BaseCommand):
         parser.add_argument('--note', default='', help='운영자 수정 지시 (없으면 저장된 admin_note 사용)')
         parser.add_argument('--by', default='', help='지시한 관리자 username (기록용)')
         parser.add_argument('--no-publish', action='store_true', help='Accept 여도 자동 발행하지 않음')
+        parser.add_argument('--facts', default='', help='운영자가 원문을 확인한 사실 — 칼럼니스트·검증관·편집장에게 모두 전달')
 
     def handle(self, *args, **opts):
         # 어떻게 끝나든(발행·보류·실패) 연구실 라이브 표시를 정리한다
@@ -47,6 +48,7 @@ class Command(BaseCommand):
             raise CommandError('이미 발행된 칼럼입니다.')
 
         admin_note = (opts['note'] or draft.admin_note or '').strip()
+        facts = (opts['facts'] or '').strip()
         if not admin_note:
             raise CommandError('운영자 수정 지시(--note)가 필요합니다.')
 
@@ -73,7 +75,8 @@ class Command(BaseCommand):
             # 1) 운영자 지시 반영 재작성
             live.mark('revise', writer, topic_key)
             raw = ask_agent(writer, P.ADMIN_REVISE_PROMPT.format(
-                admin_note=admin_note,
+                admin_note=admin_note + (f'\n\n[운영자가 원문을 확인한 사실 — 이것만 새로 쓸 수 있습니다]\n{facts}'
+                                         if facts else ''),
                 qa_issues='\n'.join(f'- {i}' for i in prev_qa.get('issues', [])) or '(없음)',
                 check_notes=prev_check.get('notes', '') or '(없음)',
                 subject=draft.subject, content=draft.content, structure=COLUMN_STRUCTURE,
@@ -88,7 +91,7 @@ class Command(BaseCommand):
             rec(writer, 'revise', f'운영자 지시 반영해 재작성: {subject} ({P.body_length(content)}자)')
 
             # 2) 팩트체크
-            check = P.step_check(subject, content, recent)
+            check = P.step_check(subject, content, recent, verified=facts)
             bad = [c for c in check.get('claims', []) if c.get('status') in P.BAD_CLAIMS]
             rec('checker', 'check', f"팩트체크 {check.get('verdict')}: 확인 필요 {len(bad)}건")
 
@@ -100,7 +103,7 @@ class Command(BaseCommand):
             critique = P.step_critique(subject, content)
             rec('critic', 'critique', f"평론 {critique['verdict']} · 지적 {len(critique.get('issues') or [])}건: "
                                       f"{critique.get('reason', '')[:100]}")
-            qa = P.step_review(subject, content, check, chart_rel, visual_report, critique)
+            qa = P.step_review(subject, content, check, chart_rel, visual_report, critique, verified=facts)
             verdict_ko = {'accept': '발행', 'minor': '수정 요청', 'major': '보류'}.get(qa['verdict'], qa['verdict'])
             rec('editor', 'qa', f"재심 {qa['score']}/100 ({qa['length']}자) → {verdict_ko}: {qa.get('notes', '')}")
 
