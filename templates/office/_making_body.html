@@ -104,8 +104,11 @@
             <p class="mk-note">{{ mk.strengths }}</p>
             {% endif %}
             {% if mk.suggestions %}
-            <h3 class="mk-h3">발행 후에도 남은 개선 제안</h3>
-            <ul class="mk-list">{% for s in mk.suggestions %}<li>{{ s }}</li>{% endfor %}</ul>
+            <details class="mk-more">
+                <summary>남은 개선 제안 {{ mk.suggestions_total }}건</summary>
+                <ul class="mk-list">{% for s in mk.suggestions %}<li>{{ s }}</li>{% endfor %}</ul>
+                {% if mk.suggestions_total > mk.suggestions|length %}<p class="mk-more-note">외 {{ mk.suggestions_total|add:"-3" }}건은 다음 칼럼 기획에 반영됩니다.</p>{% endif %}
+            </details>
             {% endif %}
         </div>
     </section>

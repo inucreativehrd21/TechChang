@@ -120,3 +120,19 @@ class CliToolsTests(SimpleTestCase):
         self.assertEqual(cmd[cmd.index('--tools') + 1], 'WebSearch')
         self.assertNotIn('Bash', cmd)
         self.assertNotIn('Edit', cmd)
+
+
+class StandardModelTests(SimpleTestCase):
+    def test_default_model_is_sonnet_5_5(self):
+        self.assertEqual(str(claude.DEFAULT_MODEL), 'claude-sonnet-5-5')
+
+    def test_empty_api_answer_is_retried_with_bigger_budget(self):
+        calls = []
+
+        def fake(prompt, *, system, model, max_tokens):
+            calls.append(max_tokens)
+            return ('' if len(calls) == 1 else '본문'), {}
+        with mock.patch.dict('os.environ', {'CLAUDE_BACKEND': 'api'}), \
+                mock.patch('common.services.claude._api_ask', side_effect=fake):
+            self.assertEqual(claude.ask('q', max_tokens=3000), '본문')
+        self.assertEqual(calls, [3000, 6000])

@@ -823,3 +823,8 @@ a.tc-lab-title:hover { color: var(--tc-accent); }
 .tc-card-tags .tc-pick { margin-bottom: 0; }
 .tc-popular-body .tc-card-tags .tc-card-badge { margin-bottom: 0; }
 .tc-hero-sub { word-break: keep-all; }
+
+/* 히어로 설명 — 의미 단위로 줄을 나눈다(메인 문구 + 작은 보조 줄) */
+.tc-hero-sub .tc-line { display: block; }
+.tc-hero-sub-note { margin-top: 0.5rem; font-size: 0.9375rem; color: var(--tc-ink-3); }
+.tc-hero-sub .tc-line:not(.tc-hero-sub-note) { color: var(--tc-ink-2); font-weight: 500; }

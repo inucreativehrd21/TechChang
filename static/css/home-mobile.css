@@ -288,3 +288,4 @@
     border-color: #e0e7ff;
     background: linear-gradient(180deg, #eef2ff 0%, #ffffff 60%);
 }
+.tc-mh-sub span { display: inline-block; }   /* 문장 덩어리 단위로만 줄이 바뀌게 */

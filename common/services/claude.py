@@ -13,7 +13,7 @@
     reply = ask(
         prompt="이 Q&A에 답변해줘: ...",
         system="당신은 HRD 전문가입니다.",
-        model=ClaudeModel.SONNET,
+        model=ClaudeModel.SONNET_5_5,
     )
 
     # 스트리밍 (제너레이터)
@@ -42,19 +42,21 @@ logger = logging.getLogger(__name__)
 
 class ClaudeModel(str, Enum):
     """사용 가능한 Claude 모델 목록. (str 믹스인으로 Python 3.10 호환)"""
-    HAIKU  = 'claude-haiku-4-5-20251001'   # 빠르고 저렴 - 단순 응답, Q&A 자동 답변
-    SONNET = 'claude-sonnet-4-6'            # 균형 - 칼럼 작성, 분석, 기획
-    SONNET_5 = 'claude-sonnet-5'            # (구) 오피스 에이전트 모델
-    # 오피스 에이전트 팀(office 앱) 고정 모델. thinking 이 기본 adaptive 로 켜지고
-    # effort 기본값이 high 라, 같은 프롬프트에서도 Sonnet 5 보다 초안 완성도가 올라간다.
+    # 사이트 전체 표준 모델(2026-10-09 운영자 결정: 4.x 모델을 모두 Sonnet 5.5 로 통일).
+    # thinking 이 기본 adaptive 로 켜지고 effort 기본값이 high 라, 출력 예산이 작으면 본문이
+    # 비어 돌아올 수 있다 — ask() 가 빈 응답이면 예산을 늘려 한 번 더 부른다.
     SONNET_5_5 = 'claude-sonnet-5-5'
-    OPUS   = 'claude-opus-4-8'             # 최고 성능 - 복잡한 추론, 장문 심층 분석
+    # ── 이하 구버전: 코드에서 더 쓰지 않는다(기록·비교용으로만 남김)
+    SONNET_5 = 'claude-sonnet-5'
+    SONNET = 'claude-sonnet-4-6'
+    HAIKU  = 'claude-haiku-4-5-20251001'
+    OPUS   = 'claude-opus-4-8'
 
     def __str__(self):
         return self.value
 
 
-DEFAULT_MODEL = ClaudeModel.SONNET
+DEFAULT_MODEL = ClaudeModel.SONNET_5_5
 
 
 def _get_client():
@@ -129,6 +131,9 @@ def ask(
                 _alert_fallback(rec, fallback_enabled=True)
 
         out, usage = _api_ask(prompt, system=system, model=model, max_tokens=max_tokens)
+        if not out.strip() and max_tokens < 32000:
+            # adaptive thinking 이 출력 예산을 다 써서 본문이 빈 경우 — 예산을 늘려 한 번 더
+            out, usage = _api_ask(prompt, system=system, model=model, max_tokens=min(max_tokens * 2, 32000))
         rec.update(backend='api', **usage)
         return out
     except Exception as exc:

@@ -232,7 +232,7 @@ def _generate_episode(series_key: str, series_obj, outline: dict) -> dict:
         f'\n위 내용으로 아래 형식에 맞춰 회차를 작성하세요.\n{structure}'
     )
 
-    raw = ask(user_prompt, system=cfg['system_prompt'], model=ClaudeModel.SONNET, max_tokens=4000)
+    raw = ask(user_prompt, system=cfg['system_prompt'], model=ClaudeModel.SONNET_5_5, max_tokens=4000)
     subject, body = _parse_output(raw.strip())
     return {'subject': subject, 'content': body}
 

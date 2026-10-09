@@ -133,3 +133,12 @@ class BuildAndViewTests(TestCase):
         res = self.client.get(f'/{plain.id}/', HTTP_USER_AGENT='Mozilla/5.0')
         self.assertEqual(res.status_code, 200)
         self.assertNotContains(res, 'mk-card')
+
+
+class SuggestionGistTests(TestCase):
+    def test_gist_keeps_first_sentence_without_section_tag(self):
+        from office.making import _gist
+        self.assertEqual(_gist('[점검의 계단 설계] 핵심 산출물인 시점별 일정표가 없습니다. 아래 표는 없고'),
+                         '핵심 산출물인 시점별 일정표가 없습니다.')
+        self.assertEqual(_gist('수치가 세 번 반복됨 — 한두 번으로 압축 필요'), '수치가 세 번 반복됨')
+        self.assertTrue(_gist('가' * 200).endswith('…'))

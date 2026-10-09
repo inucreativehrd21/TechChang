@@ -286,7 +286,9 @@ def build_making(draft) -> dict | None:
         'duration': _duration(started, finished),
         'rubric': _rubric(final),
         'strengths': final.get('strengths', ''),
-        'suggestions': [s for s in (final.get('issues') or []) if isinstance(s, str)][:5],
+        # 남은 개선 제안은 접어서 핵심 한 문장만 — 전문(최대 5개)이 페이지의 큰 비중을 차지했다
+        'suggestions': [_gist(s) for s in (final.get('issues') or []) if isinstance(s, str)][:3],
+        'suggestions_total': len([s for s in (final.get('issues') or []) if isinstance(s, str)]),
         'claims': _claims(draft.check_report or {}),
     }
 
@@ -322,6 +324,13 @@ def _rounds(events: list) -> list:
             'open': i == 1 or i == len(rounds),
         })
     return out
+
+
+def _gist(text: str, limit: int = 90) -> str:
+    """제안 하나를 핵심 한 문장으로 — 첫 문장(마침표·대시 앞)만, 길면 자른다."""
+    t = re.sub(r'^\s*[\[「][^\]」]{1,30}[\]」]\s*:?\s*', '', text.strip())   # 앞머리 [섹션명] 꼬리표
+    t = re.split(r'(?<=[.다요])\s|\s—\s', t, maxsplit=1)[0].strip()
+    return t if len(t) <= limit else t[:limit].rstrip() + '…'
 
 
 def _rubric(qa: dict) -> list:

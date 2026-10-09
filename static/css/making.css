@@ -248,3 +248,12 @@
 
 /* 그리드 자식이 긴 내용에 밀려 넘치지 않도록 */
 .mk-card > * { min-width: 0; }
+
+/* 남은 개선 제안 — 기본 접힘, 핵심 한 문장씩 */
+.mk-more { margin-top: 4px; border-top: 1px solid var(--mk-line-soft); padding-top: 10px; }
+.mk-more summary { cursor: pointer; font-size: 0.85rem; font-weight: 700; color: var(--mk-ink-3); list-style: none; }
+.mk-more summary::-webkit-details-marker { display: none; }
+.mk-more summary::after { content: ' ▾'; font-size: 0.75rem; }
+.mk-more[open] summary::after { content: ' ▴'; }
+.mk-more .mk-list { margin-top: 8px; font-size: 0.82rem; }
+.mk-more-note { margin: 6px 0 0; font-size: 0.75rem; color: var(--mk-ink-4); }

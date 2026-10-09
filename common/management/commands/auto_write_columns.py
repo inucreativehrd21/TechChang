@@ -236,7 +236,7 @@ def _generate_column(topic_key: str, recent_titles: list | None = None) -> dict:
     raw_content = ask(
         user_prompt,
         system=topic['system_prompt'],
-        model=ClaudeModel.SONNET,
+        model=ClaudeModel.SONNET_5_5,
         max_tokens=3000,
     )
 
@@ -276,7 +276,7 @@ class Command(BaseCommand):
         for key in target_keys:
             topic = TOPICS[key]
             label = topic['label']
-            self.stdout.write(f'[{datetime.now():%H:%M:%S}] {label} 칼럼 생성 중 (claude-sonnet-4-6)...')
+            self.stdout.write(f'[{datetime.now():%H:%M:%S}] {label} 칼럼 생성 중 (claude-sonnet-5-5)...')
 
             recent_titles = _recent_subjects(key)
             if recent_titles:
