@@ -49,7 +49,7 @@ class KosisTests(TestCase):
         with mock.patch('office.datasources.urllib.request.urlopen', side_effect=self.fake_urlopen) as op:
             out = DS.kosis_latest('387', 'DT_A')
         self.assertEqual(out['period'], '2024')
-        self.assertEqual(out['rows'], [{'label': '전체 · 실시 비율', 'value': '51.8', 'unit': '%'}])
+        self.assertEqual(out['rows'], [{'label': '실시 비율', 'value': '51.8', 'unit': '%'}])
         self.assertEqual(op.call_count, 3)                  # 1·2단계 실패 후 3단계
 
     def test_brief_gets_official_lines_and_facts(self):
@@ -112,4 +112,16 @@ class KosisLabelTests(TestCase):
         with mock.patch.dict('os.environ', KEYS), mock.patch('office.datasources.time.sleep'), \
                 mock.patch('office.datasources.urllib.request.urlopen', return_value=resp(rows)):
             out = DS.kosis_latest('387', 'DT_X')
-        self.assertEqual(out['rows'], [{'label': '직원의 직무능력 향상 · 점수', 'value': '3.92', 'unit': '점'}])
+        self.assertEqual(out['rows'], [{'label': '점수', 'value': '3.92', 'unit': '점'}])
+
+    def test_measure_in_class_column_is_handled(self):
+        # 실제 표(DT_118041_B020 류): 측정값이 C2 에, 표 이름이 항목명에 들어 있다
+        cache.clear()
+        rows = [{'PRD_DE': '2024', 'C1_NM': c1, 'C2_NM': c2, 'ITM_NM': '재직근로자 교육훈련 미치는 효과', 'DT': dt, 'UNIT_NM': u}
+                for c1, c2, dt, u in (('직무능력 향상', '사례수', '72267', '개'), ('직무능력 향상', '점수', '3.92', '점'),
+                                      ('동기부여', '사례수', '72267', '개'), ('동기부여', '점수', '3.71', '점'))]
+        with mock.patch.dict('os.environ', KEYS), mock.patch('office.datasources.time.sleep'), \
+                mock.patch('office.datasources.urllib.request.urlopen', return_value=resp(rows)):
+            out = DS.kosis_latest('387', 'DT_Y')
+        self.assertEqual([r['label'] for r in out['rows']], ['직무능력 향상', '동기부여'])
+        self.assertEqual([r['value'] for r in out['rows']], ['3.92', '3.71'])

@@ -113,18 +113,29 @@ def kosis_latest(org_id: str, tbl_id: str, max_rows: int = 10) -> dict:
     if not data:
         return {}
 
-    title = str(data[0].get('TBL_NM', ''))
+    # 통계표마다 '사례수·비율' 같은 측정값이 항목(ITM)에 있기도, 분류(C2 등)에 있기도 하다.
+    # 그래서 칸 이름에 기대지 않는다: 각 행의 라벨 조각(분류들 + 항목)을 모으고,
+    #  - 응답자 수(사례수)를 뜻하는 행은 다른 값이 있으면 빼고
+    #  - 모든 행에서 똑같은 조각(표 이름을 되풀이하는 항목명 등)은 정보가 없으니 뺀다
+    COUNT_WORDS = ('사례수', '응답자수', '응답자 수')
+
+    def pieces(r):
+        return [r.get(f'C{i}_NM', '') for i in range(1, 9) if r.get(f'C{i}_NM')] + [r.get('ITM_NM', '')]
+
+    non_count = [r for r in data if not any(p in COUNT_WORDS for p in pieces(r))]
+    data = non_count or data
+    constant = set(pieces(data[0]))
+    for r in data[1:]:
+        constant &= set(pieces(r))
 
     def label(r):
-        parts = [r.get(f'C{i}_NM', '') for i in range(1, 9) if r.get(f'C{i}_NM')]
-        # '전체' 같은 총괄 분류와 표 이름을 되풀이하는 분류명은 라벨에서 뺀다
-        parts = [p for p in parts if p not in TOTAL_WORDS and p not in title] or ['전체']
-        return ' · '.join(parts + [r.get('ITM_NM', '')]).strip(' ·')
+        meaningful = [p for p in pieces(r) if p and p not in TOTAL_WORDS]
+        parts = [p for p in meaningful if p not in constant]
+        if parts:
+            return ' · '.join(parts)
+        # 다 공통이면(예: '전체' 행의 '실시 비율') 무엇의 값인지 알 수 있게 가장 짧은 조각을 남긴다
+        return min(meaningful, key=len) if meaningful else '전체'
 
-    # 응답자 수(사례수)는 다른 항목이 있으면 뺀다 — 독자에게 필요한 건 비율·금액 같은 값이다
-    items = {r.get('ITM_NM', '') for r in data}
-    if len(items) > 1:
-        data = [r for r in data if r.get('ITM_NM') not in ('사례수', '응답자수')] or data
     totals = [r for r in data if r.get('C1_NM', '') in TOTAL_WORDS]   # 첫 분류가 '전체'인 행 = 총괄값
     picked, seen = [], set()
     for r in (totals or data):
