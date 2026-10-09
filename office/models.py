@@ -100,6 +100,11 @@ class ColumnDraft(models.Model):
     revisions = models.PositiveSmallIntegerField(default=0)
     status = models.CharField(max_length=10, choices=STATUS_CHOICES, db_index=True)
     question = models.OneToOneField('community.Question', null=True, blank=True, on_delete=models.SET_NULL, related_name='office_draft')
+    # 연재 회차 원고면 채운다(office.series_pipeline). target_question 은 리메이크 대상 — 발행 시 그 글을 제자리 갱신
+    series_key = models.CharField(max_length=20, blank=True, db_index=True, verbose_name='연재 시리즈 키')
+    episode_number = models.PositiveSmallIntegerField(null=True, blank=True, verbose_name='연재 회차')
+    target_question = models.ForeignKey('community.Question', null=True, blank=True, on_delete=models.SET_NULL,
+                                        related_name='+', verbose_name='리메이크 대상 글')
     created_at = models.DateTimeField(auto_now_add=True)
     decided_by = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL, related_name='+')
     decided_at = models.DateTimeField(null=True, blank=True)
@@ -134,6 +139,8 @@ class ColumnDraft(models.Model):
     def rubric_rows(self):
         """[(항목명, 1~5점)] — 관리 화면 표시용."""
         from office.pipeline import RUBRIC
+        if self.qa_report.get('rubric') == 'series':
+            from office.series_pipeline import SERIES_RUBRIC as RUBRIC
         scores = self.qa_report.get('scores') or {}
         return [(desc.split(' — ')[0], scores.get(k)) for k, (_, desc) in RUBRIC.items() if scores.get(k) is not None]
 

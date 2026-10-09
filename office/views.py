@@ -240,6 +240,13 @@ def draft_publish(request, draft_id):
     from community.models import Category, Question
 
     draft = get_object_or_404(ColumnDraft, pk=draft_id, status=ColumnDraft.STATUS_HOLD)
+    if draft.series_key:      # 연재 원고 — 새 회차로 발행하거나, 리메이크면 대상 글을 제자리 갱신
+        from office.series_pipeline import publish as publish_series
+        q = publish_series(draft, by=request.user)
+        WorkLog.objects.create(agent='lead', action='publish', draft=draft,
+                               text=f'관리자 검수 후 발행: {draft.subject} (id={q.pk})')
+        messages.success(request, f'발행: {draft.subject}')
+        return redirect('office:admin')
     category = Category.objects.filter(name=TOPICS[draft.topic]['category_name']).first()
     if category is None:
         messages.error(request, '카테고리를 찾을 수 없습니다.')
@@ -340,7 +347,11 @@ def draft_revise(request, draft_id):
     draft.status = ColumnDraft.STATUS_REVISING
     draft.decided_by, draft.decided_at = request.user, timezone.now()
     draft.save(update_fields=['admin_note', 'status', 'decided_by', 'decided_at'])
-    _spawn(request, ['office_revise', '--draft', str(draft.id), '--note', note, '--by', request.user.username])
+    if draft.series_key:      # 연재 원고는 연재 기준(골격·기준표)으로 다시 검증한다
+        _spawn(request, ['auto_write_series', '--revise-draft', str(draft.id), '--note', note,
+                         '--by', request.user.username])
+    else:
+        _spawn(request, ['office_revise', '--draft', str(draft.id), '--note', note, '--by', request.user.username])
     messages.success(request, '수정 지시를 전달했습니다. 작업 로그에서 진행 상황이 실시간으로 갱신됩니다.')
     return redirect('office:admin')
 

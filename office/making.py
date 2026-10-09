@@ -335,6 +335,8 @@ def _gist(text: str, limit: int = 90) -> str:
 
 def _rubric(qa: dict) -> list:
     from office.pipeline import RUBRIC
+    if qa.get('rubric') == 'series':           # 연재 회차는 연재용 기준표로 심사했다
+        from office.series_pipeline import SERIES_RUBRIC as RUBRIC
     scores = qa.get('scores') or {}
     rows = []
     for key, (weight, desc) in RUBRIC.items():

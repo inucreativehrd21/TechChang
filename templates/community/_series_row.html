@@ -1,0 +1,19 @@
+{# 연재 목차 한 줄 — row = base_views._series_toc() 의 rows 항목 (목록 미리보기·목차 페이지 공용) #}
+<li class="sr-row is-{{ row.state }}">
+    <span class="sr-num" aria-hidden="true">{{ row.no }}</span>
+    <div>
+        {% if row.state == 'published' %}
+        <a class="sr-row-title" href="{% url 'community:detail' row.id %}">{{ row.title }}</a>
+        <span class="sr-row-meta">
+            {% if row.is_new %}<span class="sr-new">NEW</span>{% endif %}
+            <span>{{ row.date|date:"Y.m.d" }}</span><span>· {{ row.minutes }}분</span><span>· 조회 {{ row.views }}</span>
+        </span>
+        {% else %}
+        <span class="sr-row-title">{{ row.title }}</span>
+        <span class="sr-row-meta">
+            {% if row.state == 'next' and row.date %}<span class="sr-chip">다음 공개 {{ row.date_label }}</span>
+            {% else %}<span>공개 예정</span>{% endif %}
+        </span>
+        {% endif %}
+    </div>
+</li>

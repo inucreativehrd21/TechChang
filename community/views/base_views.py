@@ -486,44 +486,70 @@ def download_file(request, question_id):
         raise Http404("파일이 존재하지 않습니다.")
 
 
+def _kdate(dt) -> str:
+    """'10월 26일(월)' — 공개 예정일 표기."""
+    if not dt:
+        return ''
+    dt = timezone.localtime(dt)
+    return f"{dt.month}월 {dt.day}일({'월화수목금토일'[dt.weekday()]})"
+
+
+def _series_toc(series):
+    """시리즈 목차 행 — 발행된 회차와 기획서(series_catalog)의 예정 회차를 한 줄로 잇는다.
+
+    반환 dict: rows(목차), count(발행 수), total(기획 회차 수), first·latest(발행 회차), next_at(다음 공개 예정),
+    views(누적 조회). 기획서에 없는 시리즈는 발행된 회차만 보여 준다.
+    """
+    from ..series_catalog import OUTLINES, key_for_slug, next_publish_at
+
+    episodes = list(series.published_episodes.only('id', 'subject', 'content', 'episode_number',
+                                                   'create_date', 'view_count'))
+    by_no = {e.episode_number: e for e in episodes}
+    key = key_for_slug(series.slug)
+    outline = OUTLINES.get(key, [])
+    last = episodes[-1] if episodes else None
+    planned = [o for o in outline if o['no'] not in by_no and (last is None or o['no'] > last.episode_number)]
+    next_at = next_publish_at(key, last.create_date if last else None) if (planned and series.is_active) else None
+
+    rows = []
+    for e in episodes:
+        rows.append({'no': e.episode_number, 'title': e.subject, 'id': e.id, 'state': 'published',
+                     'date': e.create_date, 'views': e.view_count,
+                     'minutes': max(1, round(len(e.content or '') / 500)),
+                     'is_new': (timezone.now() - e.create_date).days < 14})
+    for i, o in enumerate(planned):
+        rows.append({'no': o['no'], 'title': o['title'], 'state': 'next' if i == 0 else 'planned',
+                     'date': next_at if i == 0 else None, 'date_label': _kdate(next_at) if i == 0 else ''})
+    return {'rows': rows, 'count': len(episodes), 'total': series.total_episodes or len(outline) or len(episodes),
+            'first': episodes[0] if episodes else None, 'latest': last, 'next_at': next_at, 'next_label': _kdate(next_at),
+            'views': sum(e.view_count for e in episodes)}
+
+
 def series_index(request):
-    """연재 칼럼(시리즈) 목록 페이지."""
+    """연재 시리즈 목록 — 가장 최근에 시작한 연재를 크게, 나머지는 아래 목록으로."""
     from ..models import ColumnSeries
 
-    series_list = list(
-        ColumnSeries.objects.select_related('category')
-                            .prefetch_related('episodes')
-                            .order_by('-create_date')
-    )
-    # 각 시리즈의 진행률과 최신 회차를 미리 계산
-    cards = []
-    for s in series_list:
-        published = s.published_episodes  # 회차순 정렬 QuerySet
-        cards.append({
-            'series': s,
-            'published_count': published.count(),
-            'first': published.first(),
-            'latest': published.last(),
-        })
-
-    context = {'cards': cards}
+    cards = [{'series': s, **_series_toc(s)}
+             for s in ColumnSeries.objects.select_related('category').order_by('-create_date')]
+    # 회차가 하나도 없는 시리즈는 목록에 내놓지 않는다(빈 표지). 가장 최근에 시작한(0편이 새로운) 연재가 맨 위
+    cards = sorted([c for c in cards if c['count']], key=lambda c: c['first'].create_date, reverse=True)
+    context = {
+        'featured': cards[0] if cards else None,
+        'others': cards[1:],
+        'stats': {'series': len(cards), 'episodes': sum(c['count'] for c in cards),
+                  'views': sum(c['views'] for c in cards)},
+    }
     return render(request, 'community/series_list.html', context)
 
 
 def series_detail(request, slug):
-    """특정 시리즈의 목차(회차 리스트) 페이지."""
+    """특정 시리즈의 목차 — 발행 회차 + 예정 회차 + 다음 공개일."""
     from ..models import ColumnSeries
+    from ..series_catalog import SCHEDULE, key_for_slug
 
-    series = get_object_or_404(
-        ColumnSeries.objects.select_related('category'), slug=slug
-    )
-    episodes = list(series.published_episodes.select_related('author'))
-
-    context = {
-        'series': series,
-        'episodes': episodes,
-        'published_count': len(episodes),
-    }
+    series = get_object_or_404(ColumnSeries.objects.select_related('category'), slug=slug)
+    toc = _series_toc(series)
+    context = {'series': series, 'has_schedule': key_for_slug(slug) in SCHEDULE, **toc}
     return render(request, 'community/series_detail.html', context)
 
 
