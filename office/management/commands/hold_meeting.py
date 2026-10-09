@@ -56,7 +56,8 @@ SYNTHESIS = (
     '  "summary": "회의 결론 3~4문장",\n'
     '  "decisions": [\n'
     '    {{"kind": "column", "topic": "hrd", "question": "다음 주 HRD 칼럼 주제",\n'
-    '      "options": [{{"key": "a", "title": "칼럼 주제(구체적)", "detail": "다룰 관점·근거·예상 출처 한두 문장", "proposed_by": "한빈"}}, ...2~3개]}},\n'
+    '      "options": [{{"key": "a", "title": "칼럼 주제(구체적)", "detail": "다룰 관점·근거·예상 출처 한두 문장", "proposed_by": "한빈", '
+    '"keywords": ["독자가 네이버에 실제로 칠 검색어 2~3개"]}}, ...2~3개]}},\n'
     '    {{"kind": "column", "topic": "data", ...}},\n'
     '    {{"kind": "column", "topic": "coding", ...}},\n'
     '    {{"kind": "series", "topic": "", "question": "연재 시리즈 다음 방향", "options": [...2개]}},\n'
@@ -147,6 +148,7 @@ class Command(BaseCommand):
         result = self._step('결론 정리 · ' + who('lead'),
                             lambda: ask_agent_json('lead', SYNTHESIS.format(brief=brief, transcript=tx()), max_tokens=8000))
         decisions = [d for d in result.get('decisions', []) if isinstance(d, dict) and d.get('options')]
+        self._step('검색 수요 비교', lambda: self._attach_demand(decisions))
         summary = str(result.get('summary', '')).strip()
         self.stdout.write(f'  결론: {summary[:80]}... / 안건 {len(decisions)}건')
 
@@ -155,6 +157,20 @@ class Command(BaseCommand):
             return None
 
         return self._step('회의록·안건 저장', lambda: self._save(week, brief, transcript, snap, summary, decisions))
+
+    @staticmethod
+    def _attach_demand(decisions):
+        """안건마다 후보 주제의 네이버 검색 수요를 한 번에 비교해 붙인다(같은 요청 안에서만 비교 가능)."""
+        from office.datasources import demand_note, naver_trend
+        for d in decisions:
+            opts = [o for o in d.get('options') or [] if isinstance(o, dict) and o.get('title')]
+            groups = [{'name': o['title'][:40], 'keywords': [k for k in (o.get('keywords') or []) if isinstance(k, str)]}
+                      for o in opts]
+            trend = naver_trend(groups)
+            for o in opts:
+                note = demand_note(trend.get(o['title'][:40], {}))
+                if note:
+                    o['demand_note'] = note
 
     def _save(self, week, brief, transcript, snap, summary, decisions):
         meeting = Meeting.objects.create(week_start=week, briefing=brief, transcript=transcript,
@@ -165,7 +181,9 @@ class Command(BaseCommand):
                 if not isinstance(o, dict) or not o.get('title'):
                     continue
                 opts_clean.append({'key': o.get('key') or 'abc'[i], 'title': str(o['title'])[:200],
-                                   'detail': str(o.get('detail', ''))[:600], 'proposed_by': str(o.get('proposed_by', ''))[:20]})
+                                   'detail': str(o.get('detail', ''))[:600], 'proposed_by': str(o.get('proposed_by', ''))[:20],
+                                   'keywords': [str(k)[:30] for k in (o.get('keywords') or [])][:3],
+                                   'demand_note': str(o.get('demand_note', ''))[:160]})
             if not opts_clean:
                 continue
             Decision.objects.create(
@@ -276,9 +294,13 @@ class Command(BaseCommand):
                 txt.append(f"  ({o['key']}) {o['title']}{by}")
                 if o.get('detail'):
                     txt.append(f"      {o['detail']}")
+                if o.get('demand_note'):
+                    txt.append(f"      ▸ {o['demand_note']}")
                 html.append(f'<li style="margin-bottom:6px"><b>({escape(o["key"])}) {escape(o["title"])}</b>'
                             f'<span style="color:#6b7280">{escape(by)}</span>'
                             + (f'<br><span style="color:#374151">{escape(o["detail"])}</span>' if o.get('detail') else '')
+                            + (f'<br><span style="color:#4f46e5;font-size:12px">▸ {escape(o["demand_note"])}</span>'
+                               if o.get('demand_note') else '')
                             + '</li>')
             txt.append('')
             html.append('</ul>')

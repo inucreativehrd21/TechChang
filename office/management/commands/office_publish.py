@@ -90,6 +90,8 @@ class Command(BaseCommand):
             brief = timed('brief', 'lead', lambda: P.step_brief(topic_key, brief_decision, recent, rec=rec),
                           kind='commission', sender='lead', recipient=writer)
             rec('lead', 'brief', f"집필 의뢰서: {brief.get('angle', '')[:120]}")
+            # 코드가 공식 API 로 직접 받은 통계는 검증관·편집장에게 확인 사실로 넘긴다
+            facts = P.brief_facts(brief)
 
             # 2) 집필 → 자동 점검(코드) → 필요하면 즉시 보완
             #    분량·문체·섹션·수치처럼 기계로 판별되는 결함을 여기서 잡는다. 팩트체크·평론·
@@ -113,7 +115,7 @@ class Command(BaseCommand):
                 rec('editor', 'precheck', '초안 자동 점검 통과')
 
             # 3) 팩트체크 → 4) 수정
-            check = timed('check', 'checker', lambda: P.step_check(subject, content, recent),
+            check = timed('check', 'checker', lambda: P.step_check(subject, content, recent, verified=facts),
                           kind='report', sender='checker', recipient='editor')
             bad = [c for c in check.get('claims', []) if c.get('status') in P.BAD_CLAIMS]
             rec('checker', 'check', f"팩트체크 {check.get('verdict')}: 확인 필요 {len(bad)}건"
@@ -127,7 +129,7 @@ class Command(BaseCommand):
                 if ok:
                     revisions = 1
                     rec(writer, 'revise', f'팩트체크 {len(bad)}건 반영해 재작성 ({P.body_length(content)}자)')
-                    check2 = timed('recheck', 'checker', lambda: P.step_check(subject, content, recent))
+                    check2 = timed('recheck', 'checker', lambda: P.step_check(subject, content, recent, verified=facts))
                     check = {'first': check, **check2}
                     rec('checker', 'check', f"재검증 {check2.get('verdict')}")
                 else:
@@ -147,7 +149,8 @@ class Command(BaseCommand):
 
             # 7) 편집 심사 → 8) 판정
             qa = timed('review', 'editor',
-                       lambda: P.step_review(subject, content, check, chart_rel, visual_report, critique))
+                       lambda: P.step_review(subject, content, check, chart_rel, visual_report, critique,
+                                             verified=facts))
             rec('editor', 'qa', self._qa_line(qa))
 
             # 기준 미달이면 — 보류든 수정 요청이든 — 자동으로 MAX_AUTO_REVISIONS 번까지 다시 쓴다.
@@ -177,7 +180,7 @@ class Command(BaseCommand):
                 # 새로 들어온 숫자가 검증 없이 발행될 수 있었다.
                 changed = P.new_numeric_sentences(prev_content, content)
                 if changed:
-                    check2 = timed('reverify', 'checker', lambda: P.step_check(subject, content, recent),
+                    check2 = timed('reverify', 'checker', lambda: P.step_check(subject, content, recent, verified=facts),
                                    attempt=attempt)
                     check = {'first': check.get('first', check), **check2}
                     rec('checker', 'check', f"재작성 수치 {len(changed)}문장 재검증 {check2.get('verdict')}")
@@ -193,7 +196,8 @@ class Command(BaseCommand):
                                  attempt=attempt + 1)
                 rec('critic', 'critique', '재검토 ' + self._critique_line(critique))
                 qa = timed('review', 'editor',
-                           lambda: P.step_review(subject, content, check, chart_rel, visual_report, critique),
+                           lambda: P.step_review(subject, content, check, chart_rel, visual_report, critique,
+                                             verified=facts),
                            attempt=attempt + 1)
                 # 마지막 재심에서는 '수정 요청'을 통과로 본다 (학술지의 minor revision 수리와 같은 처리).
                 # 치명 결함이 남아 있으면 verdict 가 major 라 그대로 보류된다.

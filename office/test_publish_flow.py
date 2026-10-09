@@ -35,7 +35,7 @@ class PublishFlowTests(TestCase):
         checks = list(checks or [{'verdict': 'pass', 'claims': []}] * 3)
         check_calls = []
 
-        def fake_check(subject, content, recent):
+        def fake_check(subject, content, recent, verified=""):
             check_calls.append(content)
             return checks.pop(0) if checks else {'verdict': 'pass', 'claims': []}
 

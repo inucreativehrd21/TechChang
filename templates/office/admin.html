@@ -164,14 +164,14 @@
             {% if d.chosen_key %}
               {% for o in d.options %}
               <div class="opt {% if o.key == d.chosen_key %}chosen{% endif %}"><span>{% if o.key == d.chosen_key %}✓{% else %}&nbsp;{% endif %}</span>
-                <div><b>{{ o.title }}</b><small>{{ o.detail }} — {{ o.proposed_by }}</small></div></div>
+                <div><b>{{ o.title }}</b><small>{{ o.detail }} — {{ o.proposed_by }}</small>{% if o.demand_note %}<small style="color:#4f46e5">▸ {{ o.demand_note }}</small>{% endif %}</div></div>
               {% endfor %}
               {% if d.note %}<small style="color:var(--text-secondary)">메모: {{ d.note }}</small>{% endif %}
             {% else %}
               <form method="post" action="{% url 'office:decision_choose' d.id %}">{% csrf_token %}
                 {% for o in d.options %}
                 <label class="opt"><input type="radio" name="key" value="{{ o.key }}" id="d{{ d.id }}-{{ o.key }}" required>
-                  <span><b>{{ o.title }}</b><small>{{ o.detail }} — {{ o.proposed_by }}</small></span></label>
+                  <span><b>{{ o.title }}</b><small>{{ o.detail }} — {{ o.proposed_by }}</small>{% if o.demand_note %}<small style="color:#4f46e5">▸ {{ o.demand_note }}</small>{% endif %}</span></label>
                 {% endfor %}
                 <div class="row"><input type="text" name="note" id="note-{{ d.id }}" placeholder="메모 (선택)" maxlength="300"><button type="submit">결정</button></div>
               </form>

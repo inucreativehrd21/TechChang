@@ -245,6 +245,7 @@ def collect_site_snapshot(days: int = 28) -> dict:
         'held_drafts': held,
         'last_meeting': last_decisions,
         'gsc': _collect_gsc(since, today),
+        'gsc_gaps': _gsc_gaps(),
         'server_log': _collect_server_log(hours=24 * 7),
     }
     return snap
@@ -266,6 +267,14 @@ def _collect_gsc(start: date, end: date) -> dict:
         }
     except Exception as ex:  # noqa: BLE001 — 지표 수집 실패는 회의를 막지 않는다
         return {'available': False, 'error': str(ex)[:120]}
+
+
+def _gsc_gaps() -> list:
+    try:
+        from office.datasources import gsc_opportunities
+        return gsc_opportunities()
+    except Exception:  # noqa: BLE001 — 회의를 막지 않는다
+        return []
 
 
 def _collect_server_log(hours: int) -> dict:
@@ -300,6 +309,12 @@ def snapshot_as_text(snap: dict) -> str:
                 if isinstance(q, dict):
                     lines.append(f"  - {q.get('k')}: 클릭 {q.get('clicks', 0):.0f} / 노출 {q.get('impr', 0):.0f}"
                                  f" / CTR {q.get('ctr', 0) * 100:.1f}%")
+    gaps = snap.get('gsc_gaps') or []
+    if gaps:
+        # 노출은 되는데 클릭이 적은 검색어 — 맞는 글이 없거나 제목·설명이 약하다는 신호
+        lines.append('기회 검색어(노출 많고 클릭 적음 — 새 글·보강 후보, 노출 / 클릭 / 평균순위):')
+        for q in gaps[:8]:
+            lines.append(f"  - {q['query']}: {q['impr']} / {q['clicks']} / {q['position']}위")
     cols = snap['recent_columns']
     if cols:
         views = sum(c['views'] for c in cols)
