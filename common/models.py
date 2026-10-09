@@ -62,6 +62,9 @@ class Profile(models.Model):
 	points = models.IntegerField(default=0, verbose_name='포인트')
 	selected_emoticon = models.ForeignKey('Emoticon', on_delete=models.SET_NULL, null=True, blank=True, verbose_name='선택한 이모티콘', related_name='selected_by')
 	is_email_verified = models.BooleanField(default=False, verbose_name='이메일 인증 여부', help_text='이메일 인증을 완료한 사용자인지 여부')
+	# 약관·개인정보 수집·이용 동의 기록 (common.legal.consent_version) — 동의 사실 입증용
+	terms_agreed_at = models.DateTimeField(null=True, blank=True, verbose_name='약관 동의 일시')
+	terms_version = models.CharField(max_length=60, blank=True, default='', verbose_name='동의한 약관 버전')
 	updated_at = models.DateTimeField(auto_now=True)
 	created_at = models.DateTimeField(auto_now_add=True)
 

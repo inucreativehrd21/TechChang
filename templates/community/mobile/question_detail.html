@@ -45,6 +45,7 @@
     </div>
     {% endif %}
     <h1 class="tc-m-detail-title">{{ question.subject }}</h1>
+    {% include 'community/_ai_notice.html' %}
     <div class="tc-m-detail-meta">
         <span><i class="fas fa-user fa-xs"></i> {{ question.author.username }}</span>
         <span><i class="fas fa-clock fa-xs"></i> {{ question.create_date|date:"m.d H:i" }}</span>

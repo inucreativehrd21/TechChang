@@ -26,6 +26,17 @@ SECURITY_BLOCK_RE = re.compile(r'IP \S+ blocked for \d+ seconds')
 ERROR_LINE_RE = re.compile(r'\b(?:ERROR|CRITICAL)\b|Traceback \(most recent call last\)|\b\w+(?:Error|Exception):')
 WARNING_LINE_RE = re.compile(r'\bWARN(?:ING)?\b')
 
+_IPV4_RE = re.compile(r'\b\d{1,3}(?:\.\d{1,3}){3}\b')
+_IPV6_RE = re.compile(r'\b(?:[0-9a-fA-F]{1,4}:){2,7}[0-9a-fA-F]{1,4}\b')
+_EMAIL_RE = re.compile(r'[\w.+-]+@[\w-]+(?:\.[\w-]+)+')
+
+
+def mask_personal(text: str) -> str:
+    """로그 한 줄에서 IP·이메일 주소를 가린다(외부 AI 분석 전송용)."""
+    text = _EMAIL_RE.sub('[email]', str(text))
+    text = _IPV4_RE.sub('[ip]', text)
+    return _IPV6_RE.sub('[ip]', text)
+
 
 class Command(BaseCommand):
     help = '서버 로그를 분석하고 요약 이메일을 발송합니다.'
@@ -109,8 +120,9 @@ class Command(BaseCommand):
         try:
             from common.services.claude import ask_json, ClaudeModel
 
+            # 외부(AI) 로 보내기 전에 개인정보를 가린다 — 개인정보 처리방침 제6·7조(IP·이메일 마스킹 후 전송)
             error_block = '\n'.join(
-                f'{i}. {e}' for i, e in enumerate(top_errors, 1)
+                f'{i}. {mask_personal(e)}' for i, e in enumerate(top_errors, 1)
             ) or '(개별 에러 라인은 수집되지 않았으나 5xx 응답이 발생함)'
 
             system = (

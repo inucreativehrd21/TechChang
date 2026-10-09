@@ -73,6 +73,7 @@ MIDDLEWARE = [
     'common.middleware.SecurityMiddleware',  # 보안 미들웨어
     'common.middleware.RequestLoggingMiddleware',  # 요청 로깅 미들웨어
     'common.middleware.EmailVerificationRequiredMiddleware',  # 비카카오·미인증 사용자 이메일 인증 강제
+    'common.middleware.TermsConsentRequiredMiddleware',  # 카카오 회원 약관 동의 강제
     'common.middleware.MobileDetectionMiddleware',  # 모바일 감지
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',

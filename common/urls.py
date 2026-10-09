@@ -1,7 +1,7 @@
 
 from django.urls import path
 from django.contrib.auth import views as auth_views
-from . import views
+from . import legal_views, views
 
 app_name = 'common'
 
@@ -9,6 +9,7 @@ urlpatterns = [
     path('login/', auth_views.LoginView.as_view(template_name='common/login.html'), name='login'),
     path('logout/', views.logout_view, name='logout'),
     path('signup/', views.signup_with_email_verification, name='signup'),
+    path('consent/', legal_views.consent, name='consent'),   # 소셜 로그인 회원 약관 동의
     path('email/send/', views.send_verification_email, name='send_verification_email'),
     path('email/verify/', views.verify_email_code, name='verify_email_code'),
     path('email/profile/send/', views.send_profile_verification_email, name='send_profile_verification_email'),

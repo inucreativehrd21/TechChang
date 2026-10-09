@@ -18,6 +18,7 @@ import secrets
 from datetime import timedelta
 from django.contrib.auth.models import User
 from common.forms import UserForm, ProfileForm
+from . import legal
 from .models import Profile, EmailVerification, KakaoUser
 from community.utils import award_points, deduct_points
 
@@ -97,63 +98,34 @@ def profile_edit(request):
 
 @login_required(login_url='common:login')
 def account_delete(request):
-    """안전한 회원 탈퇴 기능"""
-    if request.method == 'POST':
-        # 비밀번호 확인
-        password = request.POST.get('password', '')
-        if not request.user.check_password(password):
-            messages.error(request, '비밀번호가 일치하지 않습니다.')
-            return render(request, 'common/account_delete_confirm.html')
-        
-        # 확인 문구 검증
-        confirm_text = request.POST.get('confirm_delete', '')
-        if confirm_text != '회원탈퇴':
-            messages.error(request, '확인 문구를 정확히 입력해주세요.')
-            return render(request, 'common/account_delete_confirm.html')
-        
-        try:
-            # 사용자 데이터 처리
-            user = request.user
-            
-            # 프로필 이미지 삭제
-            try:
-                if hasattr(user, 'profile') and user.profile.profile_image:
-                    user.profile.profile_image.delete(save=False)
-            except Exception:
-                pass  # 이미지 삭제 실패해도 계속 진행
-            
-            # 작성한 질문들을 삭제로 마킹 (soft delete)
-            from community.models import Question, Answer
-            
-            user.author_question.filter(is_deleted=False).update(
-                is_deleted=True, 
-                deleted_date=timezone.now()
-            )
-            
-            # 작성한 답변들을 삭제로 마킹 (soft delete)
-            user.author_answer.filter(is_deleted=False).update(
-                is_deleted=True, 
-                deleted_date=timezone.now()
-            )
-            
-            # 로그아웃 처리
-            logout(request)
-            
-            # 계정 비활성화 (실제 삭제 대신 안전한 방법)
-            user.is_active = False
-            user.email = f"deleted_{user.id}_{user.email}"  # 이메일 중복 방지
-            user.username = f"deleted_{user.id}_{user.username}"  # 사용자명 중복 방지
-            user.save()
+    """회원 탈퇴 — 개인정보 즉시 파기(common.services.account.withdraw).
 
-            messages.success(request, '회원 탈퇴가 완료되었습니다. 그동안 테크창을 이용해주셔서 감사합니다.')
+    카카오 회원은 사이트 비밀번호가 없으므로(무작위 값) 비밀번호 대신 확인 문구만 받는다.
+    """
+    is_social = request.user.username.startswith('kakao_')
+    ctx = {'is_social': is_social}
+    if request.method == 'POST':
+        if not is_social and not request.user.check_password(request.POST.get('password', '')):
+            messages.error(request, '비밀번호가 일치하지 않습니다.')
+            return render(request, 'common/account_delete_confirm.html', ctx)
+
+        if request.POST.get('confirm_delete', '') != '회원탈퇴':
+            messages.error(request, '확인 문구를 정확히 입력해주세요.')
+            return render(request, 'common/account_delete_confirm.html', ctx)
+
+        try:
+            from .services.account import withdraw
+            user = request.user
+            logout(request)
+            withdraw(user)
+            messages.success(request, '회원 탈퇴가 완료되었습니다. 개인정보는 즉시 파기되었습니다. 그동안 테크창을 이용해주셔서 감사합니다.')
             return redirect('community:index')
-            
-        except Exception as e:
+        except Exception:
+            logging.getLogger(__name__).exception('회원 탈퇴 처리 실패')
             messages.error(request, '회원 탈퇴 처리 중 오류가 발생했습니다. 관리자에게 문의해주세요.')
-            return render(request, 'common/account_delete_confirm.html')
-    
-    # GET 요청시 확인 페이지 표시
-    return render(request, 'common/account_delete_confirm.html')
+            return render(request, 'common/account_delete_confirm.html', ctx)
+
+    return render(request, 'common/account_delete_confirm.html', ctx)
 
 def send_verification_email(request):
     """이메일 인증 코드 발송 (AJAX)"""
@@ -434,10 +406,19 @@ def force_email_verification(request):
     })
 
 
+def _signup_ctx(form):
+    """가입 화면 컨텍스트 — 약관 본문은 common.legal 의 최신 공고본."""
+    return {'form': form, 'terms_template': legal.info('terms', legal.latest('terms'))['template']}
+
+
 def signup_with_email_verification(request):
     """이메일 인증이 포함된 회원가입"""
     if request.method == "POST":
         form = UserForm(request.POST)
+        # 필수 동의(만 14세 이상·이용약관·개인정보 수집·이용)는 화면 체크와 별개로 서버에서도 확인한다
+        if not all(request.POST.get(k) for k in ('agree_age', 'agree_terms', 'agree_privacy')):
+            messages.error(request, '만 14세 이상 확인, 이용약관, 개인정보 수집·이용에 모두 동의해야 가입할 수 있습니다.')
+            return render(request, 'common/signup_with_verification.html', _signup_ctx(form))
         if form.is_valid():
             email = form.cleaned_data.get('email')
 
@@ -449,14 +430,14 @@ def signup_with_email_verification(request):
 
             if not verification:
                 messages.error(request, '이메일 인증을 먼저 완료해주세요.')
-                return render(request, 'common/signup_with_verification.html', {'form': form})
+                return render(request, 'common/signup_with_verification.html', _signup_ctx(form))
 
             # 인증 후 30분 이내인지 확인 (보안상)
             from datetime import timedelta
             if timezone.now() > verification.verified_at + timedelta(minutes=30):
                 messages.error(request, '이메일 인증이 만료되었습니다. 다시 인증해주세요.')
                 verification.delete()
-                return render(request, 'common/signup_with_verification.html', {'form': form})
+                return render(request, 'common/signup_with_verification.html', _signup_ctx(form))
 
             # 사용자 생성
             user = form.save()
@@ -467,6 +448,8 @@ def signup_with_email_verification(request):
             if nickname:
                 profile.nickname = nickname
             profile.is_email_verified = True  # 이메일 인증 완료
+            profile.terms_agreed_at = timezone.now()      # 동의 사실 기록(입증용)
+            profile.terms_version = legal.consent_version()
             profile.save()
 
             # 인증 기록 삭제
@@ -483,7 +466,7 @@ def signup_with_email_verification(request):
     else:
         form = UserForm()
 
-    return render(request, 'common/signup_with_verification.html', {'form': form})
+    return render(request, 'common/signup_with_verification.html', _signup_ctx(form))
 
 
 # ==================== 카카오 로그인 ====================

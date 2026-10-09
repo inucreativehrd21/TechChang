@@ -10,6 +10,11 @@
             <div><dt>이메일</dt><dd><a href="mailto:seunghyunmoon55@gmail.com">seunghyunmoon55@gmail.com</a></dd></div>
             <div><dt>전화</dt><dd><a href="tel:+821030605948">010-3060-5948</a></dd></div>
         </dl>
+        <nav class="tc-footer-links" aria-label="정책">
+            <a href="{% url 'terms' %}">이용약관</a>
+            <a href="{% url 'privacy' %}"><strong>개인정보 처리방침</strong></a>
+            <a href="/rss.xml">RSS</a>
+        </nav>
         <p class="tc-footer-copy">© {% now "Y" %} 테크창 · techchang.com</p>
     </div>
 </footer>
@@ -24,7 +29,11 @@
 .tc-footer-contact small { color: #71717a; }
 .tc-footer-contact a { color: #3f3f46; text-decoration: none; }
 .tc-footer-contact a:hover { color: #4f46e5; text-decoration: underline; }
-.tc-footer-copy { grid-column: 1 / -1; margin: 16px 0 0; font-size: 0.75rem; color: #a1a1aa; }
+.tc-footer-links { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 4px 16px; margin-top: 12px; }
+.tc-footer-links a { color: #52525b; text-decoration: none; }
+.tc-footer-links a:hover { color: #4f46e5; text-decoration: underline; }
+.tc-footer-links strong { color: #18181b; }
+.tc-footer-copy { grid-column: 1 / -1; margin: 8px 0 0; font-size: 0.75rem; color: #a1a1aa; }
 @media (max-width: 767.98px) {
     .tc-footer { margin-top: 40px; padding: 24px 16px 32px; }   /* 하단 탭바 여백은 base_mobile 본문 패딩이 이미 확보 */
     .tc-footer-inner { grid-template-columns: 1fr; }

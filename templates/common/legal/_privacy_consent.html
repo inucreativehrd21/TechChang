@@ -1,0 +1,19 @@
+{% comment %}개인정보 수집·이용 동의 고지 — 「개인정보 보호법」 제15조 제2항의 네 가지(목적·항목·보유기간·거부권과 불이익)를 빠짐없이 적는다.
+   가입 화면과 소셜 로그인 동의 화면이 함께 쓴다. 전문은 /privacy/{% endcomment %}
+<div class="tc-legal-table"><table>
+    <thead><tr><th>수집·이용 목적</th><th>수집 항목</th><th>보유·이용 기간</th></tr></thead>
+    <tbody>
+        <tr>
+            <td>회원 식별·가입 의사 확인, 이메일 인증, 계정 관리, 서비스 제공, 부정 이용 방지</td>
+            <td><strong>(필수)</strong> 이메일 주소, 아이디, 비밀번호<br>
+                <small>카카오 로그인: 카카오 회원번호, 닉네임, 프로필 이미지(이메일은 동의 시)</small></td>
+            <td><strong>회원 탈퇴 시 즉시 파기</strong></td>
+        </tr>
+        <tr>
+            <td>서비스 보안·장애 대응</td>
+            <td>접속 IP 주소, 접속 일시, 브라우저 정보 (자동 생성)</td>
+            <td>3개월</td>
+        </tr>
+    </tbody>
+</table></div>
+<p class="tc-legal-note">위 개인정보 수집·이용에 동의하지 않을 권리가 있습니다. 다만 필수 항목은 회원 서비스 제공에 꼭 필요하므로, 동의하지 않으면 회원가입을 할 수 없습니다. 자세한 내용은 <a href="{% url 'privacy' %}" target="_blank" rel="noopener">개인정보 처리방침</a>을 확인해 주세요.</p>

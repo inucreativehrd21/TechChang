@@ -1,0 +1,63 @@
+{% extends is_mobile|yesno:'base_mobile.html,base.html' %}{# 소셜 로그인 회원의 약관 동의 — PC·모바일 공용 #}
+{% block title %}약관 동의 - 테크창{% endblock %}
+{% block meta_robots %}noindex, nofollow{% endblock %}
+{% block extra_css %}{% include 'common/legal/_styles.html' %}
+<style nonce="{{ csp_nonce }}">
+.tc-cs { max-width: 720px; margin: 32px auto 0; padding: 0 16px; }
+.tc-cs-card { background: #fff; border: 1px solid #e4e4e7; border-radius: 14px; padding: 24px; }
+.tc-cs-title { font-size: 1.25rem; font-weight: 800; margin: 0 0 6px; }
+.tc-cs-lead { color: #52525b; margin: 0 0 18px; font-size: 0.92rem; }
+.tc-cs-box { max-height: 220px; overflow-y: auto; border: 1px solid #e4e4e7; border-radius: 10px; padding: 14px 16px; background: #fafafa; margin-bottom: 8px; }
+.tc-cs-item { display: flex; align-items: flex-start; gap: 10px; padding: 12px 0; border-top: 1px solid #f4f4f5; font-size: 0.92rem; }
+.tc-cs-item input { margin-top: 4px; width: 18px; height: 18px; flex: 0 0 auto; accent-color: #4f46e5; }
+.tc-cs-all { font-weight: 800; border-top: 0; }
+.tc-cs-req { color: #4f46e5; font-weight: 700; }
+.tc-cs-err { background: #fef2f2; color: #b91c1c; border-radius: 10px; padding: 10px 12px; margin-bottom: 12px; font-size: 0.88rem; }
+.tc-cs-btn { width: 100%; margin-top: 16px; padding: 13px; border: 0; border-radius: 10px; background: #18181b; color: #fff; font-weight: 700; }
+.tc-cs-btn:disabled { background: #a1a1aa; }
+.tc-cs-out { display: block; text-align: center; margin-top: 12px; color: #71717a; font-size: 0.85rem; }
+</style>
+{% endblock %}
+{% block content %}
+<div class="tc-cs">
+    <form method="post" class="tc-cs-card" id="tc-cs-form">
+        {% csrf_token %}
+        <input type="hidden" name="next" value="{{ next }}">
+        <h1 class="tc-cs-title">테크창 이용을 위한 동의</h1>
+        <p class="tc-cs-lead">카카오 계정으로 처음 오셨네요. 서비스를 이용하기 전에 아래 내용을 확인하고 동의해 주세요.</p>
+        {% if error %}<div class="tc-cs-err" role="alert">{{ error }}</div>{% endif %}
+
+        <label class="tc-cs-item tc-cs-all"><input type="checkbox" id="tc-cs-all"> 아래 필수 항목에 모두 동의합니다</label>
+
+        <label class="tc-cs-item"><input type="checkbox" name="agree_age" value="1" class="tc-cs-req-box" required>
+            <span><span class="tc-cs-req">[필수]</span> 만 14세 이상입니다</span></label>
+
+        <label class="tc-cs-item"><input type="checkbox" name="agree_terms" value="1" class="tc-cs-req-box" required>
+            <span><span class="tc-cs-req">[필수]</span> 이용약관에 동의합니다 · <a href="{% url 'terms' %}" target="_blank" rel="noopener">전문 보기</a></span></label>
+        <div class="tc-cs-box tc-legal">{% include terms_template %}</div>
+
+        <label class="tc-cs-item"><input type="checkbox" name="agree_privacy" value="1" class="tc-cs-req-box" required>
+            <span><span class="tc-cs-req">[필수]</span> 개인정보 수집·이용에 동의합니다</span></label>
+        <div class="tc-cs-box tc-legal">{% include 'common/legal/_privacy_consent.html' %}</div>
+
+        <button type="submit" class="tc-cs-btn" id="tc-cs-submit" disabled>동의하고 시작하기</button>
+        <a href="{% url 'common:kakao_logout' %}" class="tc-cs-out">동의하지 않고 로그아웃</a>
+    </form>
+</div>
+{% endblock %}
+{% block script %}
+<script nonce="{{ csp_nonce }}">
+(function () {
+    var all = document.getElementById('tc-cs-all');
+    var boxes = Array.prototype.slice.call(document.querySelectorAll('.tc-cs-req-box'));
+    var btn = document.getElementById('tc-cs-submit');
+    function sync() {
+        var ok = boxes.every(function (b) { return b.checked; });
+        btn.disabled = !ok; all.checked = ok;
+    }
+    all.addEventListener('change', function () { boxes.forEach(function (b) { b.checked = all.checked; }); sync(); });
+    boxes.forEach(function (b) { b.addEventListener('change', sync); });
+    sync();
+})();
+</script>
+{% endblock %}

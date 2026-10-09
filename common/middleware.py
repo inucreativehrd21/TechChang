@@ -379,6 +379,47 @@ class EmailVerificationRequiredMiddleware:
         return True
 
 
+class TermsConsentRequiredMiddleware:
+    """약관 동의 기록이 없는 카카오 소셜 로그인 회원을 동의 화면으로 보낸다.
+
+    일반 가입은 가입 화면에서 동의하지만, 카카오 로그인은 동의 절차 없이 계정이 만들어졌다(2026-10-09 이전).
+    첫 이용 전에 이용약관·개인정보 수집·이용·만 14세 이상 확인을 받는다. 관리자는 잠금 방지로 제외.
+    """
+
+    def __init__(self, get_response):
+        from django.urls import reverse
+        self.get_response = get_response
+        self.exempt_paths = {
+            reverse('common:consent'), reverse('common:logout'), reverse('common:kakao_logout'),
+            reverse('terms'), reverse('privacy'), '/robots.txt', '/favicon.ico',
+        }
+        self.exempt_prefixes = tuple(p for p in (
+            getattr(settings, 'STATIC_URL', '') or '/static/',
+            getattr(settings, 'MEDIA_URL', '') or '/media/',
+            '/terms/', '/privacy/',
+        ) if p)
+
+    def __call__(self, request):
+        if self._needs_consent(request):
+            from urllib.parse import urlencode
+            from django.shortcuts import redirect
+            from django.urls import reverse
+            return redirect(f"{reverse('common:consent')}?{urlencode({'next': request.get_full_path()})}")
+        return self.get_response(request)
+
+    def _needs_consent(self, request):
+        user = getattr(request, 'user', None)
+        if not (user and user.is_authenticated) or user.is_staff or user.is_superuser:
+            return False
+        if not user.username.startswith('kakao_'):
+            return False
+        path = request.path
+        if path in self.exempt_paths or path.startswith(self.exempt_prefixes):
+            return False
+        profile = getattr(user, 'profile', None)
+        return profile is not None and profile.terms_agreed_at is None
+
+
 class MobileDetectionMiddleware:
     """모바일 기기 감지 미들웨어 - User-Agent 기반 + 쿠키 수동 전환"""
 

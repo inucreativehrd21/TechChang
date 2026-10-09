@@ -1,0 +1,13 @@
+{# 연구팀 칼럼의 인공지능 활용 표시 (이용약관 제13조, 「인공지능 기본법」 투명성 취지). PC·모바일 상세 공용 #}
+{% if question.is_column %}
+<p class="tc-ai-note">
+    <span class="tc-ai-chip">AI 활용</span>
+    테크창 연구팀이 인공지능을 활용해 작성하고, 사실 확인과 편집 심사를 거쳐 발행한 칼럼입니다.
+    {% if making %}<a href="{% url 'office:making' question.id %}">제작 과정 보기</a>{% endif %}
+</p>
+<style nonce="{{ csp_nonce }}">
+.tc-ai-note { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; margin: 8px 0 14px; font-size: 0.8rem; color: #52525b; line-height: 1.5; }
+.tc-ai-chip { font-size: 0.7rem; font-weight: 700; color: #4f46e5; background: #eef2ff; border-radius: 999px; padding: 2px 8px; }
+.tc-ai-note a { color: #4f46e5; font-weight: 600; text-decoration: none; }
+</style>
+{% endif %}

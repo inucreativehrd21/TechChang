@@ -1,0 +1,57 @@
+{% extends is_mobile|yesno:'base_mobile.html,base.html' %}{# PC·모바일 공용 페이지 #}
+{% block title %}{{ title }} - 테크창{% endblock %}
+{% block meta_description %}테크창 {{ title }} — {{ doc.effective|date:"Y년 n월 j일" }} 시행{% endblock %}
+{% block meta_robots %}{% if is_archive %}noindex, follow{% else %}index, follow{% endif %}{% endblock %}
+{% block extra_css %}{% include 'common/legal/_styles.html' %}
+<style nonce="{{ csp_nonce }}">
+.tc-lp { max-width: 820px; margin: 32px auto 0; padding: 0 16px; }
+.tc-lp-tabs { display: flex; gap: 6px; margin-bottom: 18px; }
+.tc-lp-tab { padding: 8px 14px; border-radius: 999px; border: 1px solid #e4e4e7; color: #3f3f46; text-decoration: none; font-weight: 600; font-size: 0.88rem; }
+.tc-lp-tab.is-active { background: #18181b; border-color: #18181b; color: #fff; }
+.tc-lp-card { background: #fff; border: 1px solid #e4e4e7; border-radius: 14px; padding: 28px; }
+.tc-lp-notice { background: #eef2ff; color: #3730a3; border-radius: 10px; padding: 12px 14px; font-size: 0.86rem; margin-bottom: 18px; }
+.tc-lp-notice a { color: #3730a3; font-weight: 700; }
+.tc-lp-versions { margin-top: 18px; font-size: 0.84rem; color: #52525b; }
+.tc-lp-versions select { margin-left: 6px; padding: 4px 8px; border: 1px solid #d4d4d8; border-radius: 8px; }
+@media (max-width: 767.98px) { .tc-lp { margin-top: 16px; } .tc-lp-card { padding: 18px 16px; } }
+</style>
+{% endblock %}
+{% block content %}
+<div class="tc-lp">
+    <nav class="tc-lp-tabs" aria-label="약관 문서">
+        <a href="{% url 'terms' %}" class="tc-lp-tab {% if kind == 'terms' %}is-active{% endif %}">이용약관</a>
+        <a href="{% url 'privacy' %}" class="tc-lp-tab {% if kind == 'privacy' %}is-active{% endif %}"><strong>개인정보 처리방침</strong></a>
+    </nav>
+
+    {% if pending %}
+    <div class="tc-lp-notice" role="note">
+        이 {{ title }}은 {{ doc.announced|date:"Y년 n월 j일" }}에 공고되어 <strong>{{ doc.effective|date:"Y년 n월 j일" }}부터 적용</strong>됩니다.
+        그 전까지는 <a href="{% url kind|add:'_version' current.key %}">{{ current.effective|date:"Y년 n월 j일" }} 시행본</a>이 적용됩니다.
+    </div>
+    {% elif is_archive %}
+    <div class="tc-lp-notice" role="note">
+        지난 버전({{ doc.effective|date:"Y년 n월 j일" }} 시행)입니다. <a href="{% url kind %}">최신 {{ title }} 보기</a>
+    </div>
+    {% endif %}
+
+    <article class="tc-lp-card tc-legal">
+        {% include doc.template %}
+    </article>
+
+    <form class="tc-lp-versions" method="get" action="" id="tc-lp-ver">
+        <label for="tc-lp-ver-sel">지난 버전 보기</label>
+        <select id="tc-lp-ver-sel">
+            {% for v in versions %}
+            <option value="{% url kind|add:'_version' v.key %}" {% if v.key == doc.key %}selected{% endif %}>
+                {{ v.effective|date:"Y.m.d" }} 시행{% if forloop.first %} (최신){% endif %}
+            </option>
+            {% endfor %}
+        </select>
+    </form>
+</div>
+{% endblock %}
+{% block script %}
+<script nonce="{{ csp_nonce }}">
+document.getElementById('tc-lp-ver-sel').addEventListener('change', function () { location.href = this.value; });
+</script>
+{% endblock %}
