@@ -124,6 +124,47 @@ class SeriesPipelineTests(TestCase):
         self.assertEqual(S.looks_truncated('django', episode()), '')
         self.assertIn('서명', S.looks_truncated('django', episode().rsplit('---', 1)[0]))
 
+    def test_code_changed_by_editor_rewrite_is_rechecked(self):
+        """편집장 지적으로 코드가 바뀐 재작성본은 검증관이 다시 본다(10/10 0편: 재검증 없이 발행됐다)."""
+        calls, scores = [], iter([3, 5])
+
+        def ask_json(key, prompt, **kw):
+            calls.append(key)
+            if key == 'checker':
+                return fake_json()(key, prompt)
+            score = next(scores)
+            return {'scores': {k: score for k in S.SERIES_RUBRIC}, 'fatal': [], 'issues': ['코드 보강'], 'notes': ''}
+
+        new_code = episode().replace('path("", views.index)', 'path("", views.index, name="index")')
+        with mock.patch('office.series_pipeline.ask_agent', side_effect=[episode(), new_code]), \
+             mock.patch('office.series_pipeline.ask_agent_json', side_effect=ask_json):
+            S.produce_episode('django', 2, out=lambda *_: None)
+        self.assertEqual(calls.count('checker'), 2)
+
+    def test_full_outline_reaches_writer_and_checker(self):
+        prompts = {}
+
+        def ask(key, prompt, **kw):
+            prompts['writer'] = prompt
+            return episode()
+
+        def ask_json(key, prompt, **kw):
+            prompts.setdefault(key, prompt)
+            return fake_json()(key, prompt)
+
+        with mock.patch('office.series_pipeline.ask_agent', side_effect=ask), \
+             mock.patch('office.series_pipeline.ask_agent_json', side_effect=ask_json):
+            S.produce_episode('django', 2, out=lambda *_: None)
+        last = C.OUTLINES['django'][-1]['title']
+        for who in ('writer', 'checker', 'editor'):
+            self.assertIn(last, prompts[who])
+        self.assertIn('2편: URL 한 줄의 정체 (라우팅)  ← 이번 회차', prompts['writer'])
+
+    def test_precheck_ignores_comments_inside_code(self):
+        text = episode().replace('path("", views.index)', '# config/urls.py\npath("", views.index)')
+        self.assertFalse(any('H1' in i for i in S.precheck('django', text)))
+        self.assertTrue(any('H1' in i for i in S.precheck('django', '# 제목\n' + text)))
+
     def test_precheck_catches_structure_and_length(self):
         issues = S.precheck('django', '짧은 글입니다.')
         self.assertTrue(any('하한' in i for i in issues))

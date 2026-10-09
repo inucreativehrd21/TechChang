@@ -50,8 +50,9 @@ CHECK_PROMPT = (
     '(1) 코드·설치 명령·라이브러리·API 이름과 사용법이 실제로 존재하고 현재 버전과 맞는가 — 웹 검색으로 공식 문서를 확인\n'
     '(2) 코드를 그대로 따라 하면 동작하는가(빠진 import·설정, 오타, 존재하지 않는 옵션)\n'
     '(3) 수치·사실 주장에 근거가 있는가\n'
-    '(4) 테크창 코드·연구실에 대한 서술이 아래 자료(발췌·사실 자료)와 맞는가\n\n'
-    '{context}{sources}\n[원고]\nTITLE: {subject}\n{content}\n\n'
+    '(4) 테크창 코드·연구실에 대한 서술이 아래 자료(발췌·사실 자료)와 맞는가\n'
+    '(5) 회차 번호·다음 편 예고·연재 지도가 아래 전체 목차와 맞는가 — 어긋나면 critical\n\n'
+    '{toc}{context}{sources}\n[원고]\nTITLE: {subject}\n{content}\n\n'
     '출력 JSON: {{"verdict": "pass" 또는 "revise", '
     '"claims": [{{"claim": "확인한 주장·코드 요약", "status": "verified|unverifiable|wrong|outdated", '
     '"note": "근거(공식 문서 URL) 또는 정확한 수정안"}}], '
@@ -129,6 +130,17 @@ def outline_of(key: str, no: int) -> dict | None:
     return next((o for o in OUTLINES[key] if o['no'] == no), None)
 
 
+def toc_text(key: str, no: int) -> str:
+    """연재 전체 목차 — 회차 번호·예고·'연재 지도'가 실제 목차와 어긋나지 않게 집필·검증·심사에 모두 준다.
+    (2026-10-10 에이전트 0편: 이번 회차 계획만 줬더니 연재 지도와 다음 편 예고가 한 칸씩 밀렸다)"""
+    lines = [f"- {o['no']}편: {o['title']}" + ('  ← 이번 회차' if o['no'] == no else '') for o in OUTLINES[key]]
+    return '\n[연재 전체 목차 — 회차 번호·제목·다음 편 예고는 반드시 이 목차를 따르세요]\n' + '\n'.join(lines) + '\n'
+
+
+def code_blocks(content: str) -> list:
+    return re.findall(r'```.*?```', content or '', re.S)
+
+
 def plan_text(key: str, outline: dict) -> str:
     labels = SERIES[key].get('outline_labels') or DEFAULT_OUTLINE_LABELS
     lines = [f'{no_title(outline)}'] + [f'{label}: {outline[k]}' for k, label in labels.items() if outline.get(k)]
@@ -166,7 +178,7 @@ def precheck(key: str, content: str) -> list:
     missing = [h for h in REQUIRED_HEADINGS.get(key, []) if h not in content]
     if missing:
         issues.append('필수 소제목 누락: ' + ', '.join(missing))
-    if re.search(r'^# ', content, re.M):
+    if re.search(r'^# ', re.sub(r'```.*?```', '', content, flags=re.S), re.M):   # 코드 속 주석(# …)은 제외
         issues.append('본문에 H1(#) 머리말 — 제목은 TITLE 줄에만')
     if key == 'django' and '```' not in content:
         issues.append('코드 블록 없음 — 이 연재는 실제 코드를 보여 줘야 함')
@@ -219,7 +231,8 @@ def _fix(writer, key, no, subject, content, who, issues) -> tuple:
 
 def check_episode(key: str, no: int, subject: str, content: str) -> dict:
     res = ask_agent_json('checker', CHECK_PROMPT.format(
-        context=SERIES[key].get('context', ''), sources=source_block(key, no), subject=subject, content=content),
+        toc=toc_text(key, no), context=SERIES[key].get('context', ''), sources=source_block(key, no),
+        subject=subject, content=content),
         max_tokens=6000, tools=WEB_TOOLS)
     claims = [c for c in (res.get('claims') or []) if isinstance(c, dict) and c.get('claim')]
     bad = [c for c in claims if c.get('status') in P.BAD_CLAIMS]
@@ -235,7 +248,7 @@ def review_episode(key: str, no: int, subject: str, content: str, check: dict, c
     style = (f"평서체 {st['plain']}/{st['total']}문장" if st['plain_ratio'] > P.PLAIN_STYLE_LIMIT
              else f"존댓말 통일 ({st['polite']}문장)")
     prompt = QA_PROMPT.format(
-        series=cfg['title'], audience=cfg['audience'], plan=plan_text(key, outline),
+        series=cfg['title'], audience=cfg['audience'], plan=plan_text(key, outline) + toc_text(key, no),
         check=json.dumps({k: check.get(k) for k in ('verdict', 'bad', 'critical')}, ensure_ascii=False)[:2500],
         critique=P.critique_text(critique), length=length, target=TARGET[key], style=style,
         rubric=series_rubric_text(), subject=subject, content=content)
@@ -337,7 +350,7 @@ def produce_episode(key: str, no: int, *, target=None, dry: bool = False, out=pr
         live.mark('draft', writer, TOPIC_KEY)
         prompt = (f"[연재 지침]\n{cfg['system_prompt']}\n\n시리즈: {cfg['title']} — {cfg['subtitle']}\n"
                   f"독자: {cfg['audience']}\n\n이번 회차:\n{plan_text(key, outline)}\n{cfg.get('context', '')}"
-                  f'{source_block(key, no)}{previous_summaries(series_obj, no)}')
+                  f'{toc_text(key, no)}{source_block(key, no)}{previous_summaries(series_obj, no)}')
         if target is not None:
             prompt += REMAKE_RULE.format(target=TARGET[key], subject=target.subject, content=target.content)
         prompt += f'\n위 내용으로 아래 형식에 맞춰 회차를 작성하세요.\n{structure(key, no)}'
@@ -429,10 +442,12 @@ def gate(draft, key: str, no: int, subject: str, content: str, *, target=None, b
     if qa['verdict'] != 'accept':
         notes = qa['issues'] + [f"평론: 「{i.get('quote', '')[:40]}」 — {i.get('fix', '')}"
                                 for i in (critique.get('issues') or [])[:3] if isinstance(i, dict)]
+        before_code = code_blocks(content)
         subject, content, ok, why = _fix(writer, key, no, subject, content, '편집 심사에서', notes)
         if ok:
             rec(writer, 'revise', f'편집 심사 지적 반영해 재작성 ({P.body_length(content)}자)')
-            if check.get('critical'):
+            # 코드가 바뀌었으면 검증관이 다시 본다 — 검증받지 않은 코드가 그대로 나가지 않게
+            if check.get('critical') or code_blocks(content) != before_code:
                 live.mark('check', 'checker', TOPIC_KEY)
                 check = check_episode(key, no, subject, content)
                 rec('checker', 'check', f"재검증 {check['verdict']}")
