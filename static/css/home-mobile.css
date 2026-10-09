@@ -258,3 +258,33 @@
 .tc-mh .tc-m-badge-data        { color: #c2410c; }
 .tc-mh .tc-m-badge-programming { color: #047857; }
 .tc-mh .tc-m-badge-notice      { color: #b91c1c; }
+
+/* ===== 추천 칼럼 (편집 심사 85점 이상, office/picks.py) ===== */
+.tc-mh-sub {
+    margin: 8px 0 0;
+    font-size: 0.875rem;
+    line-height: 1.55;
+    color: var(--tc-ink-2, #3f3f46);
+    word-break: keep-all;
+}
+.tc-m-pick {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    margin-right: 6px;
+    padding: 2px 8px 2px 7px;
+    font-size: 0.6875rem;
+    font-weight: 700;
+    line-height: 1.5;
+    vertical-align: 1px;
+    color: #fff;
+    background: linear-gradient(135deg, #4f46e5 0%, #6366f1 100%);
+    border-radius: 999px;
+    box-shadow: 0 2px 6px rgba(79, 70, 229, 0.25);
+}
+.tc-m-pick i { font-size: 0.5625rem; }
+.tc-mh-pop.is-pick,
+.tc-m-qcard.is-pick {
+    border-color: #e0e7ff;
+    background: linear-gradient(180deg, #eef2ff 0%, #ffffff 60%);
+}

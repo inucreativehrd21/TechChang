@@ -15,6 +15,7 @@
 <!-- 인트로 -->
 <section class="tc-mh-intro">
     <h1 class="tc-mh-title">HRD와 테크놀로지를 잇는<br><span>지식 플랫폼</span></h1>
+    <p class="tc-mh-sub">팩트체크와 편집 심사를 통과한 칼럼, 누구나 무료로 읽을 수 있습니다.</p>
     <dl class="tc-mh-stats">
         <div><dt>운영</dt><dd>{{ launch_days }}<small>일</small></dd></div>
         <div><dt>누적 방문</dt><dd>{{ visitors_total }}</dd></div>
@@ -73,9 +74,9 @@
 </div>
 <div class="tc-mh-rail tc-mh-rail-popular">
     {% for question in popular_posts %}
-    <a href="{% url 'community:detail' question.id %}" class="tc-mh-pop">
+    <a href="{% url 'community:detail' question.id %}" class="tc-mh-pop{% if question.id in picks %} is-pick{% endif %}">
         <span class="tc-mh-pop-rank">{{ forloop.counter|stringformat:"02d" }}</span>
-        <span class="tc-mh-pop-title">{{ question.subject }}</span>
+        <span class="tc-mh-pop-title">{% if question.id in picks %}<span class="tc-m-pick" title="연구팀 편집 심사 {{ picks|get_item:question.id }}점 — 추천 칼럼"><i class="fas fa-star" aria-hidden="true"></i> 추천</span>{% endif %}{{ question.subject }}</span>
         <span class="tc-mh-pop-meta"><i class="far fa-eye" aria-hidden="true"></i> {{ question.view_count }}{% if question.is_locked and not user.is_authenticated %}<span class="tc-mh-member-only"><i class="fas fa-lock" aria-hidden="true"></i> 회원 전용</span>{% endif %}</span>
     </a>
     {% endfor %}
@@ -112,7 +113,8 @@
 <!-- 질문 목록 -->
 <div class="tc-m-page tc-m-list">
     {% for question in question_list %}
-    <a href="{% url 'community:detail' question.id %}" class="tc-m-card tc-m-qcard">
+    <a href="{% url 'community:detail' question.id %}" class="tc-m-card tc-m-qcard{% if question.id in picks %} is-pick{% endif %}">
+        {% if question.id in picks %}<span class="tc-m-pick" title="연구팀 편집 심사 {{ picks|get_item:question.id }}점 — 추천 칼럼"><i class="fas fa-star" aria-hidden="true"></i> 추천</span>{% endif %}
         {% if question.category %}
         <span class="tc-m-badge tc-m-badge-{{ question.category.name|category_slug }}">{{ question.category.name }}</span>
         {% endif %}

@@ -24,8 +24,8 @@
                 </h1>
 
                 <p class="tc-hero-sub">
-                    질문하고 답하며 함께 성장하는 테크창 커뮤니티.
-                    HRD, 데이터분석, 프로그래밍 인사이트를 한곳에서.
+                    팩트체크와 편집 심사를 통과한 HRD·데이터분석·프로그래밍 칼럼,
+                    누구나 무료로 읽을 수 있습니다. 궁금한 점은 커뮤니티에서 함께 나눠요.
                 </p>
 
                 <div class="tc-hero-actions">
@@ -121,12 +121,10 @@
         </div>
         <div class="tc-popular">
             {% for question in popular_posts %}
-            <a href="{% url 'community:detail' question.id %}" class="tc-popular-card" data-reveal>
+            <a href="{% url 'community:detail' question.id %}" class="tc-popular-card{% if question.id in picks %} is-pick{% endif %}" data-reveal>
                 <span class="tc-popular-rank">{{ forloop.counter|stringformat:"02d" }}</span>
                 <span class="tc-popular-body">
-                    {% if question.category %}
-                    <span class="tc-card-badge tc-badge-{{ question.category.name|category_slug }}">{{ question.category.name }}</span>
-                    {% endif %}
+                    <span class="tc-card-tags">{% if question.id in picks %}<span class="tc-pick" title="연구팀 편집 심사 {{ picks|get_item:question.id }}점 — 추천 칼럼"><i class="fas fa-star" aria-hidden="true"></i> 추천</span>{% endif %}{% if question.category %}<span class="tc-card-badge tc-badge-{{ question.category.name|category_slug }}">{{ question.category.name }}</span>{% endif %}</span>
                     <span class="tc-popular-title">{{ question.subject }}</span>
                     <span class="tc-popular-meta">
                         <span><i class="far fa-eye" aria-hidden="true"></i> {{ question.view_count }}</span>
@@ -206,10 +204,8 @@
         <!-- Grid (12개/페이지 = 3열·2열 공배수) -->
         <div class="tc-grid">
             {% for question in question_list %}
-            <a href="{% url 'community:detail' question.id %}" class="tc-card" data-reveal>
-                {% if question.category %}
-                <span class="tc-card-badge tc-badge-{{ question.category.name|category_slug }}">{{ question.category.name }}</span>
-                {% endif %}
+            <a href="{% url 'community:detail' question.id %}" class="tc-card{% if question.id in picks %} is-pick{% endif %}" data-reveal>
+                <span class="tc-card-tags">{% if question.id in picks %}<span class="tc-pick" title="연구팀 편집 심사 {{ picks|get_item:question.id }}점 — 추천 칼럼"><i class="fas fa-star" aria-hidden="true"></i> 추천</span>{% endif %}{% if question.category %}<span class="tc-card-badge tc-badge-{{ question.category.name|category_slug }}">{{ question.category.name }}</span>{% endif %}</span>
 
                 <h3 class="tc-card-title">{{ question.subject }}</h3>
 

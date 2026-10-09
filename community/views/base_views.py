@@ -169,6 +169,11 @@ def category_counts_for(visible, user):
     return categories, {c.name: c.question_count for c in categories}, sum(counts.values())
 
 
+def _pick_scores():
+    from office.picks import pick_scores
+    return pick_scores()
+
+
 def index(request):
     """메인 질문 목록 페이지 - 검색, 카테고리 필터링, 페이징 기능"""
     ensure_default_categories()
@@ -297,6 +302,7 @@ def index(request):
         'total_count': total_count,
         'popular_posts': popular_posts,
         'recent_posts': recent_posts,
+        'picks': _pick_scores(),       # {question_id: 점수} — 편집 심사 85점 이상 칼럼에 '추천' 표시
         'lab': live['lab'],
         'next_slot': _next_column_slot(live['lab']['briefs']) if live['lab'] else None,
         'games_played_total': live['games_played_total'],
