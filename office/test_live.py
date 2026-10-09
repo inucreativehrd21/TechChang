@@ -137,3 +137,36 @@ class VerifiedFactsTests(TestCase):
         with mock.patch('office.pipeline.ask_agent_json', side_effect=lambda k, p, **kw: seen.append(p) or {'verdict': 'pass', 'claims': []}):
             P.step_check('제목', '본문', [])
         self.assertNotIn('운영자 확인 사항', seen[0])
+
+
+class WebToolsTests(TestCase):
+    def test_checker_gets_web_tools_and_rules(self):
+        from office import pipeline as P
+        seen = {}
+        def fake(key, prompt, **kw):
+            seen.update(prompt=prompt, tools=kw.get('tools'))
+            return {'verdict': 'pass', 'claims': []}
+        with mock.patch('office.pipeline.ask_agent_json', side_effect=fake):
+            P.step_check('제목', '본문', [])
+        self.assertEqual(seen['tools'], ('WebSearch', 'WebFetch'))
+        self.assertIn('원문 문장을 직접 읽은 경우에만', seen['prompt'])
+
+    def test_charter_web_data_becomes_writer_material(self):
+        from office import pipeline as P
+        def fake(key, prompt, **kw):
+            if key == 'lead':
+                return {'angle': '각도', 'data_needed': ['옛 목록']}
+            self.assertEqual(kw.get('tools'), ('WebSearch', 'WebFetch'))
+            return {'metrics': ['재직자 교육훈련 실시 기업 비율', '원격훈련 비율'], 'chart_plan': '막대',
+                    'data': [{'metric': '재직자 교육훈련 실시 기업 비율', 'value': '51.8%', 'year': '2024',
+                              'source': '기업직업훈련 실태조사', 'url': 'https://example.go.kr/x'},
+                             {'metric': '지어낸 값', 'value': '99%'}]}   # url 없는 값은 버린다
+        logs = []
+        with mock.patch('office.pipeline.ask_agent_json', side_effect=fake):
+            brief = P.step_brief('data', None, [], rec=lambda *a: logs.append(a))
+        self.assertTrue(brief['data_needed'][0].startswith('재직자 교육훈련 실시 기업 비율: 51.8% (2024'))
+        self.assertIn('https://example.go.kr/x', brief['data_needed'][0])
+        self.assertNotIn('99%', ' '.join(brief['data_needed']))
+        self.assertIn('원격훈련 비율', brief['data_needed'])          # 확인 못 한 지표는 목록으로 남는다
+        self.assertTrue(any('웹에서 원문 확인한 지표 1개' in a[2] for a in logs))
+        self.assertTrue(any('필요 지표 2개 제시' in a[2] for a in logs))

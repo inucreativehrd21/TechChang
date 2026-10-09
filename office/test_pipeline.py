@@ -155,6 +155,24 @@ class StripVisualBlockTests(TestCase):
         body = '본문입니다.\n\n' + FIGURE_NEW
         self.assertEqual(P.strip_visual_block(P.strip_visual_block(body)), P.strip_visual_block(body))
 
+    def test_author_table_is_kept(self):
+        """칼럼니스트가 쓴 표는 도판이 아니다 — 지우면 '약속한 표가 없다'로 반려된다(원고 #8)."""
+        author = ('**표 1. 시점별 점검표**\n\n'
+                  '| 시점 | 묻는 대상 | 질문 |\n|---|---|---|\n| 복귀 1~2주 | 수료자 | 써 볼 기회가 있었나요? |')
+        body = '앞 문단입니다.\n\n' + author + '\n\n뒷 문단입니다.\n\n' + FIGURE_NEW
+        out = P.strip_visual_block(body)
+        self.assertIn('| 시점 | 묻는 대상 | 질문 |', out)
+        self.assertIn('**표 1. 시점별 점검표**', out)
+        self.assertIn('써 볼 기회가 있었나요?', out)
+        self.assertNotIn('| 항목 |', out)            # 차트 담당 도판은 지운다
+        self.assertNotIn('![', out)
+
+    def test_author_table_right_after_figure_is_kept(self):
+        body = FIGURE_NEW + '\n| 시점 | 질문 |\n|---|---|\n| 4주 | 장애물이 바뀌었나요? |\n'
+        out = P.strip_visual_block(body)
+        self.assertIn('장애물이 바뀌었나요?', out)
+        self.assertNotIn('회의시간 증가', out)
+
     def test_bold_emphasis_in_prose_is_kept(self):
         """본문 속 **강조**를 도판 제목으로 오인해 문단을 날리면 안 된다."""
         body = '이것은 **핵심 개념**이라고 부르는 것이며 문장이 이어집니다. 두 번째 문장입니다.\n'

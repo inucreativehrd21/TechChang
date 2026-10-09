@@ -91,3 +91,32 @@ class CliBackendTests(SimpleTestCase):
             os.environ.pop('CLAUDE_BACKEND', None)
             self.assertEqual(claude.ask('q'), 'ok')
         run.assert_not_called()
+
+
+class CliToolsTests(SimpleTestCase):
+    def setUp(self):
+        claude._fallback_alerted = False
+
+    def test_no_tools_disables_everything(self):
+        with cli_env(), mock.patch('common.services.claude.subprocess.run', return_value=cli_result()) as run:
+            claude.ask('q')
+        cmd = run.call_args.args[0]
+        self.assertEqual(cmd[cmd.index('--tools') + 1], '')
+        self.assertNotIn('--allowedTools', cmd)
+
+    def test_web_tools_are_enabled_and_allowed(self):
+        with cli_env(), mock.patch('common.services.claude.subprocess.run', return_value=cli_result()) as run:
+            claude.ask('q', tools=('WebSearch', 'WebFetch'))
+        cmd = run.call_args.args[0]
+        self.assertEqual(cmd[cmd.index('--tools') + 1], 'WebSearch,WebFetch')
+        i = cmd.index('--allowedTools')
+        self.assertEqual(cmd[i + 1:i + 3], ['WebSearch', 'WebFetch'])
+
+    def test_unsafe_tools_are_never_enabled(self):
+        # 에이전트에게 파일 수정·셸 실행은 열지 않는다
+        with cli_env(), mock.patch('common.services.claude.subprocess.run', return_value=cli_result()) as run:
+            claude.ask('q', tools=('Bash', 'Edit', 'WebSearch'))
+        cmd = run.call_args.args[0]
+        self.assertEqual(cmd[cmd.index('--tools') + 1], 'WebSearch')
+        self.assertNotIn('Bash', cmd)
+        self.assertNotIn('Edit', cmd)

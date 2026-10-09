@@ -84,6 +84,7 @@ def ask(
     model: ClaudeModel | str = DEFAULT_MODEL,
     max_tokens: int = 2048,
     timeout: int | None = None,
+    tools: tuple = (),
 ) -> str:
     """
     Claude에게 단일 질문을 보내고 응답 문자열을 반환합니다.
@@ -103,12 +104,16 @@ def ask(
     CLAUDE_BACKEND=cli 이면 API 대신 Claude Code CLI(구독)로 먼저 보내고,
     실패(사용량 한도·토큰 만료·CLI 없음)하면 API 로 넘어간다.
     호출마다 경로·시간·토큰을 track_calls() 기록기에 남기고, 폴백은 관리자에게 메일로 알린다.
+    tools: CLI 경로에서만 켜는 Claude Code 내장 도구(예: ('WebSearch', 'WebFetch')).
+           API 폴백에서는 쓰지 않는다 — 웹 검색은 API 에서 별도 과금이라 비용 정책상 막는다.
     """
     rec = {'model': str(model), 'backend': '', 'seconds': 0.0, 'fallback': '', 'error': '',
-           'input_tokens': None, 'output_tokens': None, 'tags': dict(_call_tags.get())}
+           'input_tokens': None, 'output_tokens': None, 'tags': dict(_call_tags.get()), 'tools': list(tools)}
     started = time.monotonic()
     # 기본값이 아닐 때만 넘긴다 — 기존 호출·테스트의 _cli_ask(prompt, system=, model=) 형태를 유지
     cli_extra = {'timeout': timeout} if timeout else {}
+    if tools:
+        cli_extra['tools'] = tuple(tools)
     try:
         if os.environ.get(BACKEND_ENV, 'api').lower() == 'cli':
             try:
@@ -253,6 +258,8 @@ CLI_BIN_ENV = 'CLAUDE_CLI_BIN'        # cron 의 PATH 에 claude 가 없을 때 
 CLI_TIMEOUT = int(os.environ.get('CLAUDE_CLI_TIMEOUT', '1200'))
 # 인자 하나의 길이 상한(Linux MAX_ARG_STRLEN 128KB) 아래로 여유를 둔다
 _SYSTEM_ARG_LIMIT = 100_000
+# 에이전트에게 열어 줄 수 있는 도구는 읽기 전용 웹 도구뿐이다 — 파일 수정·셸 실행은 열지 않는다
+CLI_SAFE_TOOLS = ('WebSearch', 'WebFetch')
 
 
 class CliUnavailable(Exception):
@@ -260,10 +267,11 @@ class CliUnavailable(Exception):
 
 
 def _cli_ask(prompt: str, *, system: str, model: ClaudeModel | str,
-             timeout: int | None = None) -> tuple[str, dict]:
+             timeout: int | None = None, tools: tuple = ()) -> tuple[str, dict]:
     """
     `claude -p` 로 1회 호출. Claude Code 기본 시스템 프롬프트·도구·설정·MCP 를 모두 끄고
     빈 임시 디렉터리에서 돌려, API 호출과 같은 '시스템+사용자 메시지 1턴'만 남긴다.
+    tools 를 주면 그 도구만 켜고 허용한다(웹 검색·열람). 파일·셸 도구는 어떤 경우에도 켜지 않는다.
     인증은 CLAUDE_CODE_OAUTH_TOKEN(`claude setup-token`) 또는 로그인 세션.
     """
     binary = os.environ.get(CLI_BIN_ENV) or shutil.which('claude')
@@ -276,9 +284,13 @@ def _cli_ask(prompt: str, *, system: str, model: ClaudeModel | str,
 
     cmd = [
         binary, '-p', '--output-format', 'json', '--model', str(model),
-        '--tools', '', '--setting-sources', '', '--strict-mcp-config',
+        '--tools', ','.join(t for t in tools if t in CLI_SAFE_TOOLS),
+        '--setting-sources', '', '--strict-mcp-config',
         '--disable-slash-commands', '--no-session-persistence',
     ]
+    allowed = [t for t in tools if t in CLI_SAFE_TOOLS]
+    if allowed:
+        cmd += ['--allowedTools', *allowed]
     if system:
         cmd += ['--system-prompt', system]
 

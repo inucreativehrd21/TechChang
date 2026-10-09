@@ -140,26 +140,31 @@ def _spool_ask(spool: str, key: str, prompt: str, max_tokens: int, tools: tuple 
     return out
 
 
-def ask_agent(key: str, prompt: str, *, max_tokens: int = 2000) -> str:
-    """에이전트 1회 호출. 적응형 thinking 이 출력 예산을 다 써서 본문이 비면 예산 2배로 1회 재시도한다."""
+# 웹 검색·열람 — 구독(CLI) 경로에서만 실제로 켜진다(common.services.claude.CLI_SAFE_TOOLS)
+WEB_TOOLS = ('WebSearch', 'WebFetch')
+
+
+def ask_agent(key: str, prompt: str, *, max_tokens: int = 2000, tools: tuple = ()) -> str:
+    """에이전트 1회 호출. 적응형 thinking 이 출력 예산을 다 써서 본문이 비면 예산 2배로 1회 재시도한다.
+    tools: 이 호출에만 허용할 도구(WEB_TOOLS). spool 이면 요청 파일에 '허용 도구'로 실린다."""
     spool = os.environ.get(SPOOL_ENV)
     if spool:
-        return _spool_ask(spool, key, prompt, max_tokens)
-    out = ask(prompt, system=AGENTS[key]['system'], model=MODEL, max_tokens=max_tokens).strip()
+        return _spool_ask(spool, key, prompt, max_tokens, tools=tuple(tools))
+    out = ask(prompt, system=AGENTS[key]['system'], model=MODEL, max_tokens=max_tokens, tools=tuple(tools)).strip()
     if not out:
-        out = ask(prompt, system=AGENTS[key]['system'], model=MODEL, max_tokens=max_tokens * 2).strip()
+        out = ask(prompt, system=AGENTS[key]['system'], model=MODEL, max_tokens=max_tokens * 2, tools=tuple(tools)).strip()
     return out
 
 
-def ask_agent_json(key: str, prompt: str, *, max_tokens: int = 2000) -> dict:
+def ask_agent_json(key: str, prompt: str, *, max_tokens: int = 2000, tools: tuple = ()) -> dict:
     """JSON 만 답하도록 요청하고 파싱. 코드펜스·앞뒤 잡음은 걷어낸다."""
     suffix = '\n\n반드시 유효한 JSON 객체 하나만 출력하세요. 설명·코드펜스 금지.'
-    raw = ask_agent(key, prompt + suffix, max_tokens=max_tokens)
+    raw = ask_agent(key, prompt + suffix, max_tokens=max_tokens, tools=tools)
     try:
         return parse_json(raw)
     except json.JSONDecodeError:
         # 적응형 thinking 이 출력 예산을 잠식해 비거나 잘린 경우 → 예산 3배로 1회 재시도
-        raw = ask_agent(key, prompt + suffix, max_tokens=min(max_tokens * 3, 24000))
+        raw = ask_agent(key, prompt + suffix, max_tokens=min(max_tokens * 3, 24000), tools=tools)
         return parse_json(raw)
 
 
