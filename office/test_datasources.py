@@ -100,3 +100,16 @@ class NaverTrendTests(TestCase):
             Command._attach_demand(decisions)
         self.assertIn('네이버 검색 수요 55', decisions[0]['options'][0]['demand_note'])
         self.assertNotIn('demand_note', decisions[0]['options'][1])
+
+
+class KosisLabelTests(TestCase):
+    def test_case_counts_and_repeated_title_are_dropped(self):
+        cache.clear()
+        rows = [{'PRD_DE': '2024', 'TBL_NM': '재직근로자 교육훈련 미치는 효과', 'C1_NM': '직원의 직무능력 향상',
+                 'C2_NM': '재직근로자 교육훈련 미치는 효과', 'ITM_NM': '사례수', 'DT': '72267', 'UNIT_NM': '개'},
+                {'PRD_DE': '2024', 'TBL_NM': '재직근로자 교육훈련 미치는 효과', 'C1_NM': '직원의 직무능력 향상',
+                 'C2_NM': '재직근로자 교육훈련 미치는 효과', 'ITM_NM': '점수', 'DT': '3.92', 'UNIT_NM': '점'}]
+        with mock.patch.dict('os.environ', KEYS), mock.patch('office.datasources.time.sleep'), \
+                mock.patch('office.datasources.urllib.request.urlopen', return_value=resp(rows)):
+            out = DS.kosis_latest('387', 'DT_X')
+        self.assertEqual(out['rows'], [{'label': '직원의 직무능력 향상 · 점수', 'value': '3.92', 'unit': '점'}])

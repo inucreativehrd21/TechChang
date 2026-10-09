@@ -11,6 +11,7 @@
 """
 from __future__ import annotations
 
+import hashlib
 import json
 import logging
 import os
@@ -29,6 +30,11 @@ KOSIS_DATA = 'https://kosis.kr/openapi/Param/statisticsParameterData.do'
 NAVER_TREND = 'https://naverapihub.apigw.ntruss.com/search-trend/v1/search'
 TOTAL_WORDS = ('전체', '계', '합계', '소계', '전국')
 _last_call = [0.0]
+
+
+def _ck(*parts) -> str:
+    """캐시 키 — 한글 검색어가 그대로 들어가면 memcached 호환 경고가 난다."""
+    return 'ds:' + hashlib.md5('|'.join(map(str, parts)).encode('utf-8')).hexdigest()
 
 
 def _key(name: str) -> str:
@@ -51,7 +57,7 @@ def kosis_search(term: str, limit: int = 3) -> list:
     key = _key('KOSIS_API_KEY')
     if not key or not term.strip():
         return []
-    ck = f'kosis:search:{term}:{limit}'
+    ck = _ck('kosis-search', term, limit)
     hit = cache.get(ck)
     if hit is not None:
         return hit
@@ -81,7 +87,7 @@ def kosis_latest(org_id: str, tbl_id: str, max_rows: int = 10) -> dict:
     key = _key('KOSIS_API_KEY')
     if not key:
         return {}
-    ck = f'kosis:latest:{org_id}:{tbl_id}'
+    ck = _ck('kosis-latest', org_id, tbl_id)
     hit = cache.get(ck)
     if hit is not None:
         return hit
@@ -107,11 +113,18 @@ def kosis_latest(org_id: str, tbl_id: str, max_rows: int = 10) -> dict:
     if not data:
         return {}
 
+    title = str(data[0].get('TBL_NM', ''))
+
     def label(r):
         parts = [r.get(f'C{i}_NM', '') for i in range(1, 9) if r.get(f'C{i}_NM')]
-        parts = [p for p in parts if p not in TOTAL_WORDS] or ['전체']
+        # '전체' 같은 총괄 분류와 표 이름을 되풀이하는 분류명은 라벨에서 뺀다
+        parts = [p for p in parts if p not in TOTAL_WORDS and p not in title] or ['전체']
         return ' · '.join(parts + [r.get('ITM_NM', '')]).strip(' ·')
 
+    # 응답자 수(사례수)는 다른 항목이 있으면 뺀다 — 독자에게 필요한 건 비율·금액 같은 값이다
+    items = {r.get('ITM_NM', '') for r in data}
+    if len(items) > 1:
+        data = [r for r in data if r.get('ITM_NM') not in ('사례수', '응답자수')] or data
     totals = [r for r in data if r.get('C1_NM', '') in TOTAL_WORDS]   # 첫 분류가 '전체'인 행 = 총괄값
     picked, seen = [], set()
     for r in (totals or data):
