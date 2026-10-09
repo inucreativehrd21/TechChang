@@ -100,7 +100,7 @@ class Command(BaseCommand):
                     qa_issues='\n'.join(f'- {i}' for i in prev_qa.get('issues', [])) or '(없음)',
                     check_notes=prev_check.get('notes', '') or '(없음)',
                     subject=draft.subject, content=draft.content, structure=COLUMN_STRUCTURE,
-                    standard=P.writing_standard()),
+                    standard=P.writing_standard(topic_key)),
                     max_tokens=P.COLUMN_MAX_TOKENS)
                 subject, content, ok, why = P.safe_rewrite(raw, draft.subject, draft.content)
                 if not ok:
@@ -137,6 +137,11 @@ class Command(BaseCommand):
             draft.revisions += 1
 
             if qa['verdict'] == 'accept' and not opts['no_publish']:
+                keywords = list(((draft.decision.chosen or {}) if draft.decision else {}).get('keywords') or [])
+                new_title, why = P.step_headline(subject, content, keywords=keywords, recent=recent)
+                if new_title != subject:
+                    rec('editor', 'headline', f'제목 다듬기: 「{subject}」 → 「{new_title}」 — {why}'[:300])
+                    subject = draft.subject = new_title
                 q = P.publish_draft(draft, by=by)
                 rec('lead', 'publish', f'운영자 지시 반영 후 발행: {subject} (id={q.pk}, {qa["score"]}점)')
                 out(self.style.SUCCESS(f'발행 완료 [{label}] {subject} (id={q.pk}, {qa["score"]}점)'))

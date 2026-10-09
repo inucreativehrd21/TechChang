@@ -164,7 +164,7 @@ class Command(BaseCommand):
                     issues='\n'.join(f'- {i}' for i in qa.get('issues', [])), notes=qa.get('notes', ''),
                     check=P.check_text(check), critique=P.critique_text(critique),
                     subject=subject, content=content, structure=COLUMN_STRUCTURE,
-                    standard=P.writing_standard()),
+                    standard=P.writing_standard(topic_key)),
                     max_tokens=P.COLUMN_MAX_TOKENS), attempt=attempt, kind='memo', sender='editor', recipient=writer)
                 # 잘리거나 짧아진 재작성본은 버리고 이전 원고를 지킨다 (팩트체크 재작성과 같은 안전장치)
                 subject, content, ok, why = P.safe_rewrite(raw, subject, content)
@@ -220,6 +220,12 @@ class Command(BaseCommand):
             draft.chart_note = chart_note
 
             if qa['verdict'] == 'accept' and not opts['no_publish']:
+                # 발행 직전 제목 실험실 — 코드 검사를 통과한 후보만 쓴다
+                keywords = list(((brief_decision.chosen or {}) if brief_decision else {}).get('keywords') or [])
+                new_title, why = P.step_headline(subject, content, keywords=keywords, recent=recent)
+                if new_title != subject:
+                    rec('editor', 'headline', f'제목 다듬기: 「{subject}」 → 「{new_title}」 — {why}'[:300])
+                    subject = draft.subject = new_title
                 q = P.publish_draft(draft)
                 rec('lead', 'publish', f'발행: {subject} (id={q.pk}, {qa["score"]}점)')
                 out(self.style.SUCCESS(f'발행 완료 [{label}] {subject} (id={q.pk}, {qa["score"]}점)'))

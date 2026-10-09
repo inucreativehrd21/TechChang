@@ -77,7 +77,7 @@ class Command(BaseCommand):
             out(self.style.SUCCESS('  이미 현재 기준을 통과합니다 — 손대지 않습니다.'))
             return
 
-        standard = P.writing_standard()
+        standard = P.writing_standard(topic_key)
         # 단계별 산출물 기록 (내부 전용). 발행된 글을 갱신하므로 question 에 묶는다
         stages = StageRecorder(question=q, dry=opts['dry_run'])
         stages.record('audit', 'editor', {'flaws': flaws}, text=q.content)

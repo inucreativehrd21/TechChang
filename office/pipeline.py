@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import functools
 import json
+import logging
 import re
 from datetime import datetime
 
@@ -27,6 +28,8 @@ from django.utils import timezone
 
 from common.management.commands.auto_write_columns import COLUMN_STRUCTURE, TOPICS
 from . import live
+
+logger = logging.getLogger(__name__)
 from .agents import TOPIC_AGENT as TOPIC_AGENT_OF
 from .models import ColumnDraft
 from .services import (WEB_TOOLS, ask_agent, ask_agent_json, audit_chart, audit_style, chart_markdown,
@@ -660,7 +663,7 @@ def step_draft(topic_key: str, brief_decision, brief: dict, recent: list) -> tup
         subject_block=subject_block, angle=brief.get('angle', ''), questions=lst('questions'),
         data_needed=lst('data_needed'), cases=lst('cases'), counterpoint=brief.get('counterpoint', ''),
         avoid=lst('avoid'), avoid_titles=avoid_titles, structure=COLUMN_STRUCTURE,
-        standard=writing_standard())
+        standard=writing_standard(topic_key))
     return parse_output(ask_agent(TOPIC_AGENT_OF[topic_key], prompt, max_tokens=COLUMN_MAX_TOKENS))
 
 
@@ -735,8 +738,54 @@ def precheck_draft(content: str) -> list:
     return issues
 
 
-def writing_standard() -> str:
-    return WRITING_STANDARD.format(min_chars=MIN_CHARS, rubric=rubric_text(), recency=recency_rule())
+def writing_standard(topic_key: str = '') -> str:
+    """집필 기준 + (분야를 알면) 분야 지식 팩과 모범 칼럼. 집필·재작성·운영자 재작성·리메이크가 모두 거친다."""
+    base = WRITING_STANDARD.format(min_chars=MIN_CHARS, rubric=rubric_text(), recency=recency_rule())
+    if not topic_key:
+        return base
+    from .arsenal import exemplar_block, knowledge_pack
+    return base + '\n\n' + knowledge_pack(topic_key) + exemplar_block(topic_key)
+
+
+HEADLINE_PROMPT = (
+    '발행 직전 제목 다듬기입니다. 편집장으로서 아래 칼럼의 제목 후보 5개를 내고 하나를 고르세요.\n\n'
+    '[현재 제목] {subject}\n[독자가 검색할 만한 말] {keywords}\n[이미 쓴 제목들]\n{recent}\n\n'
+    '[본문 앞부분]\n{head}\n\n'
+    '좋은 제목: 본문이 실제로 답하는 질문이나 주장을 담고, 독자가 검색할 말을 자연스럽게 포함하며, '
+    '12~40자, 과장·단정(반드시·유일한·결정적) 없이, 이미 쓴 제목과 겹치지 않습니다. '
+    '현재 제목이 가장 낫다면 keep 을 true 로 두세요.\n'
+    '출력 JSON: {{"candidates": ["제목1", "제목2", "제목3", "제목4", "제목5"], "pick": 0, "keep": false, '
+    '"reason": "고른 이유 한 문장"}}'
+)
+
+
+def step_headline(subject: str, content: str, *, keywords=(), recent=()) -> tuple:
+    """발행 직전 제목 실험실 → (최종 제목, 사유). 코드 검사를 통과한 후보만 쓰고, 아니면 원래 제목을 지킨다."""
+    from .quality import _ASSERT
+    try:
+        res = ask_agent_json('editor', HEADLINE_PROMPT.format(
+            subject=subject, keywords=', '.join(k for k in keywords if k) or '(없음)',
+            recent='\n'.join(f'- {t}' for t in list(recent)[:20]) or '(없음)',
+            head=strip_visual_block(content)[:1500]), max_tokens=1500)
+    except Exception:  # noqa: BLE001 — 제목 다듬기 실패로 발행을 막지 않는다
+        logger.exception('제목 실험실 실패')
+        return subject, ''
+    cands = [str(c).strip().strip('"「」') for c in (res.get('candidates') or []) if str(c).strip()]
+    if res.get('keep') or not cands:
+        return subject, str(res.get('reason', ''))[:200]
+    try:
+        pick = int(res.get('pick', 0))
+    except (TypeError, ValueError):
+        pick = 0
+    order = [pick] + [i for i in range(len(cands)) if i != pick]
+    taken = {t.strip() for t in recent}
+    for i in order:
+        if not 0 <= i < len(cands):
+            continue
+        t = cands[i]
+        if 12 <= len(t) <= 40 and not _ASSERT.search(t) and t not in taken:
+            return t, str(res.get('reason', ''))[:200]
+    return subject, '후보가 길이·단정·중복 검사를 통과하지 못해 원래 제목 유지'
 
 
 BAD_CLAIMS = ('unverifiable', 'wrong', 'outdated')
@@ -803,12 +852,16 @@ def step_check(subject: str, content: str, recent: list, verified: str = '') -> 
     사실)을 함께 넘기고, 근거 URL 이 붙은 판정은 원장에 다시 쌓는다.
     """
     from . import ledger
+    from .arsenal import dead_links, link_block
     from .similarity import similarity_block
+    links = dead_links(content)           # 본문 URL 을 실제로 열어 본다(죽은 출처를 검증관에게 알림)
     check = ask_agent_json('checker', CHECK_PROMPT.format(
         titles='\n'.join(f'- {t}' for t in recent) or '(없음)', subject=subject, content=content,
-        recency=recency_rule()) + similarity_block(content) + ledger.ledger_block(content)
+        recency=recency_rule()) + similarity_block(content) + ledger.ledger_block(content) + link_block(links)
         + WEB_CHECK_RULE + verified_block(verified, 'checker'),
         max_tokens=4000, tools=WEB_TOOLS)
+    if isinstance(check, dict):
+        check['dead_links'] = [u for u, _c in links.get('dead', [])]
     ledger.record(check)
     return check
 
@@ -905,6 +958,8 @@ def step_review(subject: str, content: str, check: dict, chart_rel: str,
         critique=critique_text(critique), length=length, length_rule=length_rule(length),
         style=style_note, visual=visual, subject=subject, content=content,
         rubric=rubric_text()) + verified_block(verified, 'editor')
+    from .arsenal import exemplar_block
+    prompt += exemplar_block(for_editor=True)      # 채점 기준점 — 발행된 모범 칼럼과 비교해 매긴다
     qa = ask_agent_json('editor', prompt, max_tokens=3000)
     # 기준선 근처면 두 번 더 심사해 항목별 중앙값으로 정한다. 같은 원고가 회차마다 ±5점씩 흔들려
     # (원고 #8: 78→75) 80점 근처에서는 통과 여부가 사실상 운이었다.

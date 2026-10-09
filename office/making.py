@@ -29,6 +29,7 @@ STAGES = {
     'qa':         ('편집 심사', 'qa'),
     'hold':       ('발행 보류', 'hold'),
     'admin_note': ('운영자 검토', 'human'),
+    'headline':   ('제목 다듬기', 'qa'),
     'publish':    ('발행', 'publish'),
 }
 
@@ -204,6 +205,10 @@ def _event(log) -> dict | None:
     elif action == 'hold':
         ev['summary'] = '기준에 못 미쳐 자동 발행을 멈추고 운영자 검토로 넘겼습니다.'
         ev['tone'] = 'fail'
+    elif action == 'headline':
+        m = re.match(r'제목 다듬기: 「(.+?)」 → 「(.+?)」', text)
+        ev['summary'] = '발행 직전 제목을 다듬었습니다.'
+        ev['detail'] = f'「{m.group(1)}」 → 「{m.group(2)}」' if m else ''
     elif action == 'publish':
         m = re.search(r'(\d+)점', log.text or '')
         ev['summary'] = '칼럼을 발행했습니다.'
