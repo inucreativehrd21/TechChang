@@ -182,6 +182,38 @@ class SeriesPipelineTests(TestCase):
         self.assertTrue(all(c.kwargs['target'] is not None for c in prod.call_args_list))
 
 
+class LimitRetryTests(TestCase):
+    """구독 사용 한도에 걸리면 남은 회차를 헛돌리지 않고 멈추거나(기본), 초기화 뒤 이어 간다(--wait-on-limit)."""
+    LIMIT = "Claude CLI 호출 실패(API 폴백 꺼짐): You've hit your session limit · resets 1am (Asia/Seoul)"
+
+    def test_wait_seconds_until_reset(self):
+        from common.management.commands.auto_write_series import limit_wait_seconds
+        now = timezone.make_aware(datetime(2026, 10, 10, 0, 40))
+        self.assertEqual(limit_wait_seconds(self.LIMIT, now), 20 * 60 + 180)
+        self.assertEqual(limit_wait_seconds('resets 2pm', now), None)               # 한도 문구가 아니면 대기 없음
+        self.assertEqual(limit_wait_seconds("hit your usage limit", now), 1800)    # 시각을 못 읽으면 30분
+
+    def test_remake_stops_on_limit_and_retries_with_flag(self):
+        cat = Category.objects.create(name='프로그래밍')
+        bot = User.objects.create_user(Question.BOT_USERNAME, password='x')
+        s = ColumnSeries.objects.create(slug=C.SERIES['django']['slug'], title='t', category=cat, total_episodes=10)
+        for no in (0, 1):
+            Question.objects.create(author=bot, category=cat, series=s, episode_number=no, subject=f'{no}편',
+                                    content='x', create_date=timezone.now())
+        failed = {'status': 'failed', 'reason': self.LIMIT, 'draft': None}
+        ok = {'status': 'hold', 'score': 70, 'draft': mock.MagicMock(target_question_id=1)}
+        quiet = {'stdout': mock.MagicMock(), 'stderr': mock.MagicMock()}
+        with mock.patch('office.series_pipeline.produce_episode', return_value=failed) as prod, \
+             mock.patch('office.live.finish'), mock.patch('django.core.management.call_command'):
+            call_command('auto_write_series', '--series', 'django', '--remake', 'all', **quiet)
+        self.assertEqual(prod.call_count, 1)                       # 첫 회차에서 멈춤 — 나머지를 헛돌리지 않는다
+        with mock.patch('office.series_pipeline.produce_episode', side_effect=[failed, ok, ok]) as prod, \
+             mock.patch('common.management.commands.auto_write_series.time.sleep') as slept, \
+             mock.patch('office.live.finish'), mock.patch('django.core.management.call_command'):
+            call_command('auto_write_series', '--series', 'django', '--remake', 'all', '--wait-on-limit', **quiet)
+        self.assertEqual((prod.call_count, slept.call_count), (3, 1))   # 0편 재시도 후 1편까지
+
+
 class ScheduleTests(TestCase):
     def test_series_alternate_and_respect_min_gap(self):
         now = timezone.make_aware(datetime(2026, 10, 10, 15))
