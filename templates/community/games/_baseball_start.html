@@ -1,0 +1,31 @@
+<div class="gm">
+<div class="gm-wrap">
+    <a class="gm-back" href="{% url 'community:games_index' %}"><span aria-hidden="true">←</span> 게임 목록</a>
+    <div class="gm-head">
+        <div class="gm-head-text">
+            <span class="gm-eyebrow">Number Baseball</span>
+            <h1 class="gm-title">숫자야구</h1>
+            <p class="gm-sub">숨겨진 서로 다른 숫자 4자리를 스트라이크·볼 힌트로 맞혀 보세요.</p>
+        </div>
+    </div>
+    <div class="gm-options">
+        <a class="gm-option" href="{% url 'community:baseball_create' %}?difficulty=normal">
+            <div class="gm-option-main">
+                <div class="gm-option-name">일반</div>
+                <p class="gm-option-desc">기회 10번 · 시간 제한 없음</p>
+            </div>
+            <span class="gm-option-go" aria-hidden="true">→</span>
+        </a>
+        <a class="gm-option" href="{% url 'community:baseball_create' %}?difficulty=hard">
+            <div class="gm-option-main">
+                <div class="gm-option-name">하드 <span class="gm-pill is-hard">도전</span></div>
+                <p class="gm-option-desc">기회 7번 · 5분 제한 · 30초 동안 입력이 없으면 종료 · 3번 연속 0스트라이크면 기회 1번 차감</p>
+            </div>
+            <span class="gm-option-go" aria-hidden="true">→</span>
+        </a>
+    </div>
+    <div class="gm-actions">
+        <a class="gm-btn" href="{% url 'community:baseball_leaderboard' %}">리더보드</a>
+    </div>
+</div>
+</div>

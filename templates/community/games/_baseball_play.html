@@ -1,0 +1,334 @@
+{# 숫자야구 플레이 화면 본문 (PC·모바일 공용) #}
+<style>
+.bb-input {
+    width: 100%;
+    padding: 14px 12px;
+    border: 2px solid var(--gm-line);
+    border-radius: var(--gm-r-md);
+    background: var(--gm-bg);
+    color: var(--gm-ink);
+    font-size: 2rem;
+    font-weight: 800;
+    letter-spacing: .6em;
+    text-indent: .6em;           /* letter-spacing 이 끝에도 붙어 가운데가 밀리는 것 보정 */
+    text-align: center;
+    font-variant-numeric: tabular-nums;
+}
+.bb-input::placeholder { color: var(--gm-ink-4); }
+.bb-input:focus { outline: none; border-color: var(--gm-accent); }
+.bb-buttons { display: grid; grid-template-columns: 2fr 1fr; gap: 8px; margin-top: 10px; }
+.bb-list { margin: 0; padding: 0; list-style: none; }
+.bb-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 10px 2px;
+    border-top: 1px solid var(--gm-line-soft);
+}
+.bb-item:first-child { border-top: 0; }
+.bb-n { width: 2em; font-size: 0.78rem; color: var(--gm-ink-3); font-variant-numeric: tabular-nums; }
+.bb-guess { flex: 1; font-size: 1.3rem; font-weight: 800; letter-spacing: .35em; font-variant-numeric: tabular-nums; }
+.bb-result { display: flex; gap: 6px; }
+.bb-s, .bb-b { min-width: 2.6em; padding: 3px 8px; border-radius: 999px; font-size: 0.8rem; font-weight: 800; text-align: center; }
+.bb-s { color: var(--gm-accent); background: var(--gm-accent-wash); }
+.bb-b { color: var(--gm-ink-2); background: var(--gm-bg-mute); }
+.bb-s.is-zero, .bb-b.is-zero { color: var(--gm-ink-4); background: var(--gm-bg-soft); }
+.bb-empty { padding: 18px 0 6px; text-align: center; font-size: 0.88rem; color: var(--gm-ink-3); }
+.bb-secret { margin: 14px 0 0; font-size: 2rem; font-weight: 800; letter-spacing: .4em; text-indent: .4em; color: var(--gm-accent); font-variant-numeric: tabular-nums; }
+</style>
+
+<div class="gm">
+<div class="gm-wrap">
+    <a class="gm-back" href="{% url 'community:baseball_start' %}"><span aria-hidden="true">←</span> 난이도 선택</a>
+    <div class="gm-head">
+        <div class="gm-head-text">
+            <h1 class="gm-title">숫자야구</h1>
+            <p class="gm-sub">서로 다른 숫자 4자리를 맞혀 보세요.</p>
+        </div>
+        {% if game.difficulty == 'hard' %}<span class="gm-pill is-hard">하드</span>{% else %}<span class="gm-pill">일반</span>{% endif %}
+    </div>
+
+    <div class="gm-stats">
+        <div class="gm-stat is-accent"><span class="gm-stat-label">남은 기회</span><span class="gm-stat-value"><span id="remaining">{{ remaining_attempts }}</span><small style="font-size:.6em;color:var(--gm-ink-3);"> / {{ game.max_attempts }}</small></span></div>
+        {% if game.time_limit > 0 %}
+        <div class="gm-stat" id="timer-stat"><span class="gm-stat-label">남은 시간</span><span class="gm-stat-value" id="timer">{{ game.time_limit|floatformat:0 }}</span></div>
+        {% endif %}
+        {% if game.inactivity_limit > 0 %}
+        <div class="gm-stat" id="inactivity-stat"><span class="gm-stat-label">입력 대기</span><span class="gm-stat-value" id="inactivity-timer">{{ game.inactivity_limit }}</span></div>
+        {% endif %}
+        {% if game.difficulty == 'hard' %}
+        <div class="gm-stat"><span class="gm-stat-label">연속 0S</span><span class="gm-stat-value" id="consecutive-misses">0</span></div>
+        {% endif %}
+    </div>
+
+    {% if game.difficulty == 'hard' %}
+    <div class="gm-alert">
+        하드 모드 — 3번 연속 0스트라이크면 기회가 1번 줄어듭니다.
+        {% if game.inactivity_limit > 0 %}첫 입력 후 {{ game.inactivity_limit }}초 동안 입력이 없으면 게임이 끝납니다.{% endif %}
+    </div>
+    {% endif %}
+
+    {% if game.status == 'playing' %}
+    <div class="gm-card">
+        <form id="guessForm" onsubmit="makeGuess(event)" autocomplete="off">
+            {% csrf_token %}
+            <label for="guessInput" class="visually-hidden">추측할 숫자 4자리</label>
+            <input type="text" class="bb-input" id="guessInput" maxlength="4" placeholder="0000"
+                   inputmode="numeric" pattern="[0-9]{4}" required autofocus>
+            <div class="bb-buttons">
+                <button type="submit" class="gm-btn is-primary">확인</button>
+                <button type="button" class="gm-btn" onclick="giveUp()">포기</button>
+            </div>
+        </form>
+    </div>
+    {% endif %}
+
+    <div class="gm-card">
+        <h2 class="gm-h2">시도 기록</h2>
+        <ol class="bb-list" id="attemptList">
+            {% for attempt in attempts reversed %}
+            <li class="bb-item">
+                <span class="bb-n">{{ forloop.revcounter }}</span>
+                <span class="bb-guess">{{ attempt.guess_number }}</span>
+                <span class="bb-result">
+                    <span class="bb-s{% if not attempt.strikes %} is-zero{% endif %}">{{ attempt.strikes }}S</span>
+                    <span class="bb-b{% if not attempt.balls %} is-zero{% endif %}">{{ attempt.balls }}B</span>
+                </span>
+            </li>
+            {% empty %}
+            <li class="bb-empty" id="emptyState">아직 기록이 없습니다. 첫 숫자를 넣어 보세요.</li>
+            {% endfor %}
+        </ol>
+    </div>
+
+    <div class="gm-actions">
+        <a class="gm-btn" href="{% url 'community:baseball_leaderboard' %}">리더보드</a>
+        <a class="gm-btn" href="{% url 'community:games_index' %}">게임 목록</a>
+    </div>
+</div>
+</div>
+
+<div class="gm gm-modal" id="gameOverOverlay" role="dialog" aria-modal="true" aria-labelledby="gameOverTitle">
+    <div class="gm-modal-box">
+        <div class="gm-modal-icon" id="gameOverIcon" aria-hidden="true">🎉</div>
+        <h2 class="gm-modal-title" id="gameOverTitle"></h2>
+        <p class="gm-modal-text" id="gameOverText"></p>
+        <p class="bb-secret" id="secretNumber"></p>
+        <div class="gm-actions">
+            <a class="gm-btn is-primary" href="{% url 'community:baseball_start' %}">다시 하기</a>
+            <a class="gm-btn" href="{% url 'community:baseball_leaderboard' %}">리더보드</a>
+        </div>
+    </div>
+</div>
+
+<script>
+const csrfToken = '{{ csrf_token }}';
+const gameId = {{ game.id }};
+const timeLimit = {{ game.time_limit }};
+const difficulty = '{{ game.difficulty }}';
+const inactivityLimit = {{ game.inactivity_limit }};
+const maxAttempts = {{ game.max_attempts }};
+
+let startTime = null;
+let timerInterval = null;
+let inactivityInterval = null;
+let timeElapsed = 0;
+let inactiveSeconds = 0;
+let consecutiveMisses = 0;
+let attemptCount = {{ attempts|length }};
+
+function fmtTime(sec) {
+    return `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')}`;
+}
+if (timeLimit > 0 && document.getElementById('timer')) {
+    document.getElementById('timer').textContent = fmtTime(timeLimit);
+}
+
+function setTone(statId, remaining, danger, warn) {
+    const stat = document.getElementById(statId);
+    if (!stat) return;
+    stat.classList.toggle('is-danger', remaining <= danger);
+    stat.classList.toggle('is-warn', remaining > danger && remaining <= warn);
+}
+
+// 타이머 시작 (첫 시도 시)
+function startTimer() {
+    if (timeLimit > 0 && !startTime) {
+        startTime = Date.now();
+        updateTimer();
+        timerInterval = setInterval(updateTimer, 1000);
+    }
+    if (inactivityLimit > 0 && !inactivityInterval) {
+        inactivityInterval = setInterval(updateInactivityTimer, 1000);
+    }
+}
+
+function updateTimer() {
+    timeElapsed = Math.floor((Date.now() - startTime) / 1000);
+    const remaining = Math.max(0, timeLimit - timeElapsed);
+    document.getElementById('timer').textContent = fmtTime(remaining);
+    setTone('timer-stat', remaining, 60, 120);
+    if (remaining <= 0) {
+        clearInterval(timerInterval);
+        handleTimeout();
+    }
+    if (timeElapsed % 10 === 0) updateTimeOnServer();
+}
+
+function updateInactivityTimer() {
+    inactiveSeconds++;
+    const remaining = Math.max(0, inactivityLimit - inactiveSeconds);
+    const el = document.getElementById('inactivity-timer');
+    if (el) el.textContent = remaining;
+    setTone('inactivity-stat', remaining, 10, 20);
+    if (remaining <= 0) {
+        clearInterval(inactivityInterval);
+        clearInterval(timerInterval);
+        showGameOver(false, `${inactivityLimit}초 동안 입력이 없어 게임이 끝났습니다.`, '????');
+    }
+}
+
+function resetInactivityTimer() {
+    inactiveSeconds = 0;
+    const el = document.getElementById('inactivity-timer');
+    if (el) el.textContent = inactivityLimit;
+    setTone('inactivity-stat', inactivityLimit, 10, 20);
+}
+
+function updateTimeOnServer() {
+    fetch(`/baseball/${gameId}/update-time/`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'X-CSRFToken': csrfToken
+        },
+        body: `time=${timeElapsed}`
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.timeout) {
+            clearInterval(timerInterval);
+            clearInterval(inactivityInterval);
+            showGameOver(false, data.message, data.secret);
+        }
+    });
+}
+
+function handleTimeout() {
+    updateTimeOnServer();
+}
+
+function addAttemptRow(guess, strikes, balls) {
+    const list = document.getElementById('attemptList');
+    const empty = document.getElementById('emptyState');
+    if (empty) empty.remove();
+    attemptCount++;
+    const li = document.createElement('li');
+    li.className = 'bb-item';
+    li.innerHTML = `
+        <span class="bb-n">${attemptCount}</span>
+        <span class="bb-guess"></span>
+        <span class="bb-result">
+            <span class="bb-s${strikes ? '' : ' is-zero'}">${strikes}S</span>
+            <span class="bb-b${balls ? '' : ' is-zero'}">${balls}B</span>
+        </span>`;
+    li.querySelector('.bb-guess').textContent = guess;
+    list.insertBefore(li, list.firstChild);
+}
+
+function makeGuess(event) {
+    event.preventDefault();
+    const input = document.getElementById('guessInput');
+    const guess = input.value.trim();
+
+    if (guess.length !== 4) {
+        alert('숫자 4자리를 입력해 주세요.');
+        return;
+    }
+    if (new Set(guess).size !== 4) {
+        alert('서로 다른 숫자 4개를 입력해 주세요.');
+        return;
+    }
+
+    startTimer();
+    resetInactivityTimer();
+
+    const submitBtn = event.target.querySelector('button[type="submit"]');
+    submitBtn.disabled = true;
+
+    fetch(`/baseball/${gameId}/guess/`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'X-CSRFToken': csrfToken
+        },
+        body: new URLSearchParams({ guess })
+    })
+    .then(r => r.json())
+    .then(data => {
+        submitBtn.disabled = false;
+        if (!data.success) {
+            alert(data.message);
+            return;
+        }
+        addAttemptRow(guess, data.strikes, data.balls);
+        input.value = '';
+        input.focus();
+
+        if (data.game_over) {
+            clearInterval(timerInterval);
+            clearInterval(inactivityInterval);
+            showGameOver(data.won, data.message, data.secret);
+            return;
+        }
+        document.getElementById('remaining').textContent = data.remaining;
+        if (difficulty === 'hard') {
+            consecutiveMisses = data.strikes === 0 ? consecutiveMisses + 1 : 0;
+            document.getElementById('consecutive-misses').textContent = consecutiveMisses;
+        }
+        if (data.penalty_message) alert(data.penalty_message);
+    })
+    .catch(error => {
+        submitBtn.disabled = false;
+        console.error('Error:', error);
+        alert('전송 중 오류가 났습니다. 다시 시도해 주세요.');
+    });
+}
+
+function giveUp() {
+    if (!confirm('정말 포기할까요? 정답이 공개됩니다.')) return;
+    clearInterval(timerInterval);
+    clearInterval(inactivityInterval);
+    fetch(`/baseball/${gameId}/giveup/`, {
+        method: 'POST',
+        headers: { 'X-CSRFToken': csrfToken }
+    })
+    .then(r => r.json())
+    .then(data => showGameOver(false, data.message, data.secret));
+}
+
+function showGameOver(won, message, secret) {
+    clearInterval(timerInterval);
+    clearInterval(inactivityInterval);
+    document.getElementById('gameOverIcon').textContent = won ? '🎉' : '⚾';
+    const title = document.getElementById('gameOverTitle');
+    title.textContent = won ? '정답입니다!' : '게임 종료';
+    title.className = 'gm-modal-title ' + (won ? 'is-won' : 'is-lost');
+    document.getElementById('gameOverText').textContent = message || '';
+    document.getElementById('secretNumber').textContent = secret || '';
+    document.getElementById('gameOverOverlay').classList.add('show');
+}
+
+// 숫자만 입력 — 끝난 게임은 입력창이 없다
+const guessInput = document.getElementById('guessInput');
+if (guessInput) {
+    guessInput.addEventListener('input', function () {
+        this.value = this.value.replace(/[^0-9]/g, '');
+    });
+}
+
+{% if game.status != 'playing' %}
+showGameOver({% if game.status == 'won' %}true, '{{ game.attempts }}번 만에 맞혔습니다!'{% else %}false, '정답은 아래 숫자였습니다.'{% endif %}, '{{ game.secret_number }}');
+{% endif %}
+</script>

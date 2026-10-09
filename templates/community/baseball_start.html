@@ -1,57 +1,12 @@
 {% extends 'base.html' %}
 {% load static %}
 
-{% block title %}숫자야구{% endblock %}
+{% block title %}숫자야구 - 테크창{% endblock %}
+
+{% block extra_css %}
+<link href="{% static 'css/game.css' %}?v={{ STATIC_VERSION }}" rel="stylesheet">
+{% endblock %}
 
 {% block content %}
-<section class="hero-premium" style="min-height: 80vh; display: flex; align-items: center;">
-    <div class="hero-premium-content" style="max-width: 960px; width: 100%;">
-        <h1 class="hero-premium-title" style="font-size: 3rem;">숫자야구</h1>
-        <p class="hero-premium-subtitle">난이도를 선택하세요</p>
-
-        <!-- Difficulty Selection Grid -->
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: var(--space-8); margin-top: var(--space-12);">
-            <!-- Normal Mode -->
-            <a href="{% url 'community:baseball_create' %}?difficulty=normal"
-               class="game-card game-card-baseball"
-               style="text-decoration: none; display: flex; flex-direction: column;">
-                <div class="game-card-icon">일반 모드</div>
-                <h3 class="game-card-title">Normal Mode</h3>
-                <p class="game-card-desc">초보자에게 완벽해요</p>
-
-                <div style="margin-top: auto; padding-top: var(--space-6); border-top: 1px solid var(--border-light);">
-                    <div style="display: flex; flex-direction: column; gap: var(--space-2); font-size: 0.875rem; color: var(--text-secondary);">
-                        <div>• 10번의 기회</div>
-                        <div>• 시간 제한 없음</div>
-                        <div>• 완전한 힌트 (스트라이크/볼)</div>
-                    </div>
-                </div>
-            </a>
-
-            <!-- Hard Mode -->
-            <a href="{% url 'community:baseball_create' %}?difficulty=hard"
-               class="game-card game-card-minesweeper"
-               style="text-decoration: none; display: flex; flex-direction: column;">
-                <div class="game-card-icon">하드 모드</div>
-                <h3 class="game-card-title">Hard Mode</h3>
-                <p class="game-card-desc">도전할 준비가 되셨나요?</p>
-
-                <div style="margin-top: auto; padding-top: var(--space-6); border-top: 1px solid var(--border-light);">
-                    <div style="display: flex; flex-direction: column; gap: var(--space-2); font-size: 0.875rem; color: var(--text-secondary);">
-                        <div>• 7번의 기회</div>
-                        <div>• 5분 시간 제한</div>
-                        <div>• 완전한 힌트 (스트라이크/볼)</div>
-                        <div>• 페널티: 3회 연속 0스트라이크 = 기회 -1</div>
-                    </div>
-                </div>
-            </a>
-        </div>
-
-        <!-- Actions -->
-        <div style="display: flex; gap: var(--space-4); justify-content: center; margin-top: var(--space-12); flex-wrap: wrap;">
-            <a href="{% url 'community:index' %}" class="btn-premium btn-premium-secondary">홈으로</a>
-            <a href="{% url 'community:baseball_leaderboard' %}" class="btn-premium btn-premium-primary">리더보드</a>
-        </div>
-    </div>
-</section>
+{% include 'community/games/_baseball_start.html' %}
 {% endblock %}

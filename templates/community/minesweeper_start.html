@@ -1,55 +1,12 @@
 {% extends 'base.html' %}
 {% load static %}
 
-{% block title %}지뢰찾기 - TechChang Games{% endblock %}
+{% block title %}지뢰찾기 - 테크창{% endblock %}
+
+{% block extra_css %}
+<link href="{% static 'css/game.css' %}?v={{ STATIC_VERSION }}" rel="stylesheet">
+{% endblock %}
 
 {% block content %}
-<section class="hero-premium" style="min-height: 80vh; display: flex; align-items: center;">
-    <div class="hero-premium-content" style="max-width: 960px; width: 100%;">
-        <h1 class="hero-premium-title" style="font-size: 3rem;">지뢰찾기</h1>
-        <p class="hero-premium-subtitle">난이도를 선택하고 지뢰를 피해 모든 칸을 열어보세요</p>
-
-        <!-- Difficulty Selection Grid -->
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: var(--space-6); margin-top: var(--space-12);">
-            <!-- Easy -->
-            <a href="{% url 'community:minesweeper_create' %}?difficulty=easy"
-               class="game-card game-card-baseball"
-               style="text-decoration: none; display: flex; flex-direction: column;">
-                <div class="game-card-icon">쉬움</div>
-                <h3 class="game-card-title">Easy</h3>
-                <p class="game-card-desc" style="margin-bottom: var(--space-4);">
-                    9 × 9 grid<br>10개 지뢰
-                </p>
-            </a>
-
-            <!-- Medium -->
-            <a href="{% url 'community:minesweeper_create' %}?difficulty=medium"
-               class="game-card game-card-2048"
-               style="text-decoration: none; display: flex; flex-direction: column;">
-                <div class="game-card-icon">보통</div>
-                <h3 class="game-card-title">Medium</h3>
-                <p class="game-card-desc" style="margin-bottom: var(--space-4);">
-                    16 × 16 grid<br>40개 지뢰
-                </p>
-            </a>
-
-            <!-- Hard -->
-            <a href="{% url 'community:minesweeper_create' %}?difficulty=hard"
-               class="game-card game-card-minesweeper"
-               style="text-decoration: none; display: flex; flex-direction: column;">
-                <div class="game-card-icon">어려움</div>
-                <h3 class="game-card-title">Hard</h3>
-                <p class="game-card-desc" style="margin-bottom: var(--space-4);">
-                    16 × 30 grid<br>99개 지뢰
-                </p>
-            </a>
-        </div>
-
-        <!-- Actions -->
-        <div style="display: flex; gap: var(--space-4); justify-content: center; margin-top: var(--space-12); flex-wrap: wrap;">
-            <a href="{% url 'community:games_index' %}" class="btn-premium btn-premium-secondary">홈으로</a>
-            <a href="{% url 'community:minesweeper_leaderboard' %}?difficulty=easy" class="btn-premium btn-premium-primary">리더보드</a>
-        </div>
-    </div>
-</section>
+{% include 'community/games/_mine_start.html' %}
 {% endblock %}

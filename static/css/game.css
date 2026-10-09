@@ -1,0 +1,206 @@
+/**
+ * 브라우저 게임(숫자야구·2048·지뢰찾기) 공용 — 시작 화면과 플레이 화면, PC·모바일 공용.
+ * 전역 premium.css 와 충돌하지 않도록 gm- 접두사, 토큰은 .gm 스코프에만 선언.
+ * 원칙(design-guardrails): 뉴트럴 + 단일 인디고 포인트, 라이트 전용, Pretendard 고정.
+ * 게임 고유의 기능색(2048 타일, 지뢰찾기 숫자색)만 예외로 둔다.
+ */
+
+.gm {
+    --gm-bg: #ffffff;
+    --gm-bg-soft: #fafafa;
+    --gm-bg-mute: #f4f4f5;
+    --gm-ink: #18181b;
+    --gm-ink-2: #3f3f46;
+    --gm-ink-3: #71717a;
+    --gm-ink-4: #a1a1aa;
+    --gm-line: #e4e4e7;
+    --gm-line-soft: #f0f0f1;
+    --gm-accent: #4f46e5;
+    --gm-accent-wash: #eef2ff;
+    --gm-accent-line: #e0e7ff;
+    --gm-warn: #b45309;
+    --gm-warn-wash: #fffbeb;
+    --gm-fail: #be123c;
+    --gm-fail-wash: #fff1f2;
+    --gm-r-md: 12px;
+    --gm-r-lg: 16px;
+
+    min-height: calc(100vh - 68px);
+    padding: 32px 16px 56px;
+    background: var(--gm-bg-soft);
+    color: var(--gm-ink);
+}
+.gm *, .gm *::before, .gm *::after { box-sizing: border-box; }
+
+.gm-wrap { max-width: 560px; margin: 0 auto; }
+.gm-wrap.is-wide { max-width: 980px; }
+
+/* 머리말 */
+.gm-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 16px; }
+.gm-head-text { min-width: 0; }
+.gm-eyebrow { display: block; font-size: 0.72rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--gm-accent); }
+.gm-title { margin: 2px 0 0; font-size: 1.6rem; font-weight: 800; line-height: 1.25; letter-spacing: -0.01em; }
+.gm-sub { margin: 4px 0 0; font-size: 0.9rem; color: var(--gm-ink-3); }
+.gm-back { display: inline-flex; align-items: center; gap: 6px; margin-bottom: 14px; font-size: 0.85rem; color: var(--gm-ink-3); text-decoration: none; }
+.gm-back:hover { color: var(--gm-accent); }
+
+.gm-pill {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 999px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    white-space: nowrap;
+    color: var(--gm-ink-2);
+    background: var(--gm-bg-mute);
+}
+.gm-pill.is-hard { color: var(--gm-fail); background: var(--gm-fail-wash); }
+
+/* 상태 수치 */
+.gm-stats { display: flex; gap: 8px; margin-bottom: 12px; }
+.gm-stat {
+    flex: 1 1 0;
+    min-width: 0;
+    padding: 10px 12px;
+    border: 1px solid var(--gm-line);
+    border-radius: var(--gm-r-md);
+    background: var(--gm-bg);
+    text-align: center;
+}
+.gm-stat-label { display: block; font-size: 0.72rem; color: var(--gm-ink-3); }
+.gm-stat-value { display: block; margin-top: 2px; font-size: 1.35rem; font-weight: 800; font-variant-numeric: tabular-nums; line-height: 1.2; }
+.gm-stat.is-warn .gm-stat-value { color: var(--gm-warn); }
+.gm-stat.is-danger .gm-stat-value { color: var(--gm-fail); }
+.gm-stat.is-accent .gm-stat-value { color: var(--gm-accent); }
+
+/* 카드·안내 */
+.gm-card { padding: 20px; border: 1px solid var(--gm-line); border-radius: var(--gm-r-lg); background: var(--gm-bg); }
+.gm-card + .gm-card { margin-top: 12px; }
+.gm-h2 { margin: 0 0 10px; font-size: 0.95rem; font-weight: 700; }
+.gm-note { margin: 12px 0 0; font-size: 0.85rem; line-height: 1.6; color: var(--gm-ink-3); text-align: center; }
+.gm-alert {
+    margin-bottom: 12px;
+    padding: 10px 14px;
+    border-radius: var(--gm-r-md);
+    font-size: 0.85rem;
+    line-height: 1.6;
+    color: var(--gm-warn);
+    background: var(--gm-warn-wash);
+}
+.gm-kbd {
+    display: inline-block;
+    min-width: 1.6em;
+    padding: 1px 6px;
+    border: 1px solid var(--gm-line);
+    border-bottom-width: 2px;
+    border-radius: 6px;
+    font-size: 0.8rem;
+    font-weight: 700;
+    text-align: center;
+    color: var(--gm-ink-2);
+    background: var(--gm-bg);
+}
+
+/* 버튼 */
+.gm-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin-top: 16px; }
+.gm-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    min-height: 44px;
+    padding: 0 18px;
+    border: 1px solid var(--gm-line);
+    border-radius: var(--gm-r-md);
+    background: var(--gm-bg);
+    color: var(--gm-ink);
+    font-size: 0.92rem;
+    font-weight: 700;
+    text-decoration: none;
+    cursor: pointer;
+    transition: background-color .15s ease, border-color .15s ease;
+}
+.gm-btn:hover { border-color: var(--gm-ink-4); color: var(--gm-ink); }
+.gm-btn:focus-visible { outline: 2px solid var(--gm-accent); outline-offset: 2px; }
+.gm-btn:disabled { opacity: .55; cursor: not-allowed; }
+.gm-btn.is-primary { border-color: var(--gm-accent); background: var(--gm-accent); color: #fff; }
+.gm-btn.is-primary:hover { background: #4338ca; border-color: #4338ca; color: #fff; }
+.gm-btn.is-block { width: 100%; }
+
+/* 시작 화면 — 난이도 목록 */
+.gm-options { display: flex; flex-direction: column; gap: 10px; }
+.gm-option {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 16px 18px;
+    border: 1px solid var(--gm-line);
+    border-radius: var(--gm-r-lg);
+    background: var(--gm-bg);
+    color: var(--gm-ink);
+    text-decoration: none;
+    transition: border-color .15s ease, box-shadow .15s ease;
+}
+.gm-option:hover { border-color: var(--gm-accent-line); box-shadow: 0 4px 14px rgba(49, 46, 129, .07); color: var(--gm-ink); }
+.gm-option:focus-visible { outline: 2px solid var(--gm-accent); outline-offset: 2px; }
+.gm-option-main { flex: 1; min-width: 0; }
+.gm-option-name { display: flex; align-items: center; gap: 8px; font-size: 1.02rem; font-weight: 800; }
+.gm-option-desc { margin: 4px 0 0; font-size: 0.85rem; line-height: 1.55; color: var(--gm-ink-3); }
+.gm-option-go { flex: none; color: var(--gm-ink-4); font-size: 1.1rem; }
+.gm-option:hover .gm-option-go { color: var(--gm-accent); }
+
+/* 결과 모달 */
+.gm-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 1050;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+    background: rgba(24, 24, 27, .55);
+}
+.gm-modal.show { display: flex; }
+.gm-modal-box {
+    width: 100%;
+    max-width: 380px;
+    padding: 28px 24px 22px;
+    border-radius: var(--gm-r-lg);
+    background: var(--gm-bg);
+    text-align: center;
+    box-shadow: 0 20px 50px rgba(24, 24, 60, .25);
+}
+.gm-modal-icon { font-size: 2.4rem; line-height: 1; }
+.gm-modal-title { margin: 10px 0 6px; font-size: 1.35rem; font-weight: 800; }
+.gm-modal-title.is-won { color: var(--gm-accent); }
+.gm-modal-title.is-lost { color: var(--gm-ink); }
+.gm-modal-text { margin: 0; font-size: 0.92rem; line-height: 1.6; color: var(--gm-ink-2); }
+.gm-modal .gm-actions { margin-top: 20px; }
+.gm-modal .gm-actions .gm-btn { flex: 1 1 0; }
+
+/* 세그먼트 토글 (지뢰찾기 열기/깃발) */
+.gm-seg { display: inline-flex; padding: 3px; border-radius: 999px; background: var(--gm-bg-mute); }
+.gm-seg button {
+    min-height: 36px;
+    padding: 0 16px;
+    border: 0;
+    border-radius: 999px;
+    background: transparent;
+    color: var(--gm-ink-3);
+    font-size: 0.85rem;
+    font-weight: 700;
+    cursor: pointer;
+}
+.gm-seg button[aria-pressed="true"] { background: var(--gm-bg); color: var(--gm-ink); box-shadow: 0 1px 3px rgba(24, 24, 60, .1); }
+
+@media (max-width: 575.98px) {
+    .gm { padding: 20px 16px 96px; min-height: auto; }
+    .gm-title { font-size: 1.35rem; }
+    .gm-card { padding: 16px; }
+    .gm-stat { padding: 8px 6px; }
+    .gm-stat-value { font-size: 1.15rem; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .gm * { transition: none !important; animation: none !important; }
+}

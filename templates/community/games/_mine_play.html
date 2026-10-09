@@ -1,0 +1,315 @@
+{# 지뢰찾기 플레이 화면 본문 (PC·모바일 공용) #}
+<style>
+/* 칸 크기는 화면 폭과 열 수로 정한다 — 쉬움은 화면에 꽉 차게, 어려움(30열)은 최소 28px 에서
+   멈추고 판만 가로로 밀어서 본다. 판은 카드 가운데. */
+.ms-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.ms-board {
+    --ms-cell: clamp(28px, calc((100vw - 84px) / var(--ms-cols) - 3px), 34px);
+    display: grid;
+    grid-template-columns: repeat(var(--ms-cols), var(--ms-cell));
+    gap: 3px;
+    width: max-content;
+    margin: 0 auto;
+    padding: 8px;
+    border-radius: 10px;
+    background: var(--gm-bg-mute);
+}
+.ms-cell {
+    width: var(--ms-cell);
+    height: var(--ms-cell);
+    padding: 0;
+    border: 0;
+    border-radius: 5px;
+    background: #d4d4d8;
+    box-shadow: inset 0 -2px 0 rgba(0, 0, 0, .08);
+    font-size: calc(var(--ms-cell) * .5);
+    font-weight: 800;
+    line-height: 1;
+    color: var(--gm-ink);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    -webkit-tap-highlight-color: transparent;
+}
+.ms-cell:hover:not(.revealed) { background: #c4c4cc; }
+.ms-cell:focus-visible { outline: 2px solid var(--gm-accent); outline-offset: 1px; }
+.ms-cell.revealed { background: var(--gm-bg); box-shadow: none; cursor: default; }
+.ms-cell.flagged { background: #d4d4d8; }
+.ms-cell.mine { background: var(--gm-fail-wash); color: var(--gm-fail); }
+/* 숫자색 — 지뢰찾기 고유의 기능색 */
+.ms-cell.number-1 { color: #2563eb; }
+.ms-cell.number-2 { color: #15803d; }
+.ms-cell.number-3 { color: #dc2626; }
+.ms-cell.number-4 { color: #6d28d9; }
+.ms-cell.number-5 { color: #b45309; }
+.ms-cell.number-6 { color: #0f766e; }
+.ms-cell.number-7 { color: #27272a; }
+.ms-cell.number-8 { color: #71717a; }
+.ms-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; }
+.ms-hint { font-size: 0.8rem; color: var(--gm-ink-3); }
+@media (hover: none) { .ms-hint { display: none; } }
+</style>
+
+<div class="gm">
+<div class="gm-wrap{% if game.cols > 16 %} is-wide{% endif %}">
+    <a class="gm-back" href="{% url 'community:minesweeper_start' %}"><span aria-hidden="true">←</span> 난이도 선택</a>
+    <div class="gm-head">
+        <div class="gm-head-text">
+            <h1 class="gm-title">지뢰찾기</h1>
+            <p class="gm-sub">{{ game.rows }} × {{ game.cols }} · 지뢰 {{ game.mines_count }}개</p>
+        </div>
+        <span class="gm-pill{% if game.difficulty == 'hard' %} is-hard{% endif %}">{% if game.difficulty == 'easy' %}쉬움{% elif game.difficulty == 'medium' %}보통{% else %}어려움{% endif %}</span>
+    </div>
+
+    <div class="gm-stats">
+        <div class="gm-stat is-accent"><span class="gm-stat-label">시간</span><span class="gm-stat-value" id="timer">0</span></div>
+        <div class="gm-stat"><span class="gm-stat-label">지뢰</span><span class="gm-stat-value">{{ game.mines_count }}</span></div>
+        <div class="gm-stat"><span class="gm-stat-label">깃발</span><span class="gm-stat-value" id="flags-count">0</span></div>
+    </div>
+
+    <div class="gm-card">
+        <div class="ms-toolbar">
+            <div class="gm-seg" role="group" aria-label="누르면 할 동작">
+                <button type="button" id="mode-open" aria-pressed="true">열기</button>
+                <button type="button" id="mode-flag" aria-pressed="false">🚩 깃발</button>
+            </div>
+            <span class="ms-hint">PC는 우클릭으로도 깃발을 꽂습니다</span>
+        </div>
+        <div class="ms-scroll">
+            <div class="ms-board" id="game-board" style="--ms-cols: {{ game.cols }};"></div>
+        </div>
+    </div>
+
+    <div class="gm-actions">
+        <a class="gm-btn is-primary" href="{% url 'community:minesweeper_start' %}">새 게임</a>
+        <a class="gm-btn" href="{% url 'community:minesweeper_leaderboard' %}?difficulty={{ game.difficulty }}">리더보드</a>
+        <a class="gm-btn" href="{% url 'community:games_index' %}">게임 목록</a>
+    </div>
+</div>
+</div>
+
+<div class="gm gm-modal" id="game-over-overlay" role="dialog" aria-modal="true" aria-labelledby="game-over-title">
+    <div class="gm-modal-box">
+        <div class="gm-modal-icon" id="game-over-icon" aria-hidden="true">🎉</div>
+        <h2 class="gm-modal-title" id="game-over-title"></h2>
+        <p class="gm-modal-text" id="game-over-text"></p>
+        <div class="gm-actions">
+            <a class="gm-btn is-primary" href="{% url 'community:minesweeper_start' %}">다시 하기</a>
+            <button type="button" class="gm-btn" onclick="document.getElementById('game-over-overlay').classList.remove('show')">판 보기</button>
+        </div>
+    </div>
+</div>
+
+{{ game.board_state|json_script:"board-state-data" }}
+
+<script>
+const gameId = {{ game.id }};
+const rows = {{ game.rows }};
+const cols = {{ game.cols }};
+const minesCount = {{ game.mines_count }};
+const boardState = JSON.parse(document.getElementById('board-state-data').textContent);
+
+let gameOver = false;
+let startTime = null;
+let timerInterval = null;
+let timeElapsed = 0;
+let flagMode = false;   // 터치 기기용: 누르면 깃발
+
+function setMode(flag) {
+    flagMode = flag;
+    document.getElementById('mode-open').setAttribute('aria-pressed', String(!flag));
+    document.getElementById('mode-flag').setAttribute('aria-pressed', String(flag));
+}
+document.getElementById('mode-open').addEventListener('click', () => setMode(false));
+document.getElementById('mode-flag').addEventListener('click', () => setMode(true));
+
+function arrayEquals(a, b) {
+    return Array.isArray(a) && Array.isArray(b) &&
+           a.length === b.length &&
+           a.every((val, index) => val === b[index]);
+}
+
+function arrayContains(arr, item) {
+    return arr.some(a => arrayEquals(a, item));
+}
+
+// 게임 보드 그리기
+function initBoard() {
+    const board = document.getElementById('game-board');
+    board.innerHTML = '';
+
+    for (let row = 0; row < rows; row++) {
+        for (let col = 0; col < cols; col++) {
+            const cell = document.createElement('button');
+            cell.type = 'button';
+            cell.className = 'ms-cell';
+            cell.dataset.row = row;
+            cell.dataset.col = col;
+            cell.setAttribute('aria-label', `${row + 1}행 ${col + 1}열`);
+
+            cell.addEventListener('click', (e) => {
+                e.preventDefault();
+                if (flagMode) toggleFlag(row, col);
+                else revealCell(row, col);
+            });
+            cell.addEventListener('contextmenu', (e) => {
+                e.preventDefault();
+                toggleFlag(row, col);
+            });
+
+            if (isCellRevealed(row, col)) {
+                revealCellVisual(cell, row, col);
+            }
+            if (isCellFlagged(row, col)) {
+                cell.classList.add('flagged');
+                cell.textContent = '🚩';
+            }
+            board.appendChild(cell);
+        }
+    }
+    updateFlagsCount();
+}
+
+function startTimer() {
+    if (!startTime) {
+        startTime = Date.now();
+        timerInterval = setInterval(() => {
+            timeElapsed = Math.floor((Date.now() - startTime) / 1000);
+            document.getElementById('timer').textContent = timeElapsed;
+            if (timeElapsed % 10 === 0) updateTimeOnServer();
+        }, 1000);
+    }
+}
+
+function updateTimeOnServer() {
+    fetch(`/minesweeper/${gameId}/update-time/`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'X-CSRFToken': '{{ csrf_token }}'
+        },
+        body: `time=${timeElapsed}`
+    });
+}
+
+function isCellRevealed(row, col) { return arrayContains(boardState.revealed, [row, col]); }
+function isCellFlagged(row, col) { return arrayContains(boardState.flagged, [row, col]); }
+function isCellMine(row, col) { return arrayContains(boardState.mines, [row, col]); }
+
+function countAdjacentMines(row, col) {
+    let count = 0;
+    for (let dr = -1; dr <= 1; dr++) {
+        for (let dc = -1; dc <= 1; dc++) {
+            if (dr === 0 && dc === 0) continue;
+            const nr = row + dr, nc = col + dc;
+            if (nr >= 0 && nr < rows && nc >= 0 && nc < cols && isCellMine(nr, nc)) count++;
+        }
+    }
+    return count;
+}
+
+function revealCellVisual(cell, row, col) {
+    cell.classList.add('revealed');
+    cell.classList.remove('flagged');
+    if (isCellMine(row, col)) {
+        cell.classList.add('mine');
+        cell.textContent = '✱';
+    } else {
+        const adjacentMines = countAdjacentMines(row, col);
+        if (adjacentMines > 0) {
+            cell.textContent = adjacentMines;
+            cell.classList.add(`number-${adjacentMines}`);
+        }
+    }
+}
+
+function revealCell(row, col) {
+    if (gameOver || isCellRevealed(row, col) || isCellFlagged(row, col)) return;
+    startTimer();
+
+    fetch(`/minesweeper/${gameId}/reveal/`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'X-CSRFToken': '{{ csrf_token }}'
+        },
+        body: `row=${row}&col=${col}`
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            if (data.revealed) {
+                data.revealed.forEach(([r, c]) => {
+                    if (!isCellRevealed(r, c)) boardState.revealed.push([r, c]);
+                });
+            }
+            if (data.game_over) {
+                gameOver = true;
+                clearInterval(timerInterval);
+                updateTimeOnServer();
+                boardState.mines = data.mines;
+                initBoard();
+                showGameOver(!!data.won, data.message);
+            } else {
+                initBoard();
+            }
+        } else {
+            alert(data.message);
+        }
+    })
+    .catch(error => console.error('Error:', error));
+}
+
+function toggleFlag(row, col) {
+    if (gameOver || isCellRevealed(row, col)) return;
+    startTimer();
+
+    fetch(`/minesweeper/${gameId}/flag/`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'X-CSRFToken': '{{ csrf_token }}'
+        },
+        body: `row=${row}&col=${col}`
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (!data.success) return;
+        const cell = document.querySelector(`[data-row="${row}"][data-col="${col}"]`);
+        if (data.flagged) {
+            cell.classList.add('flagged');
+            cell.textContent = '🚩';
+            if (!arrayContains(boardState.flagged, [row, col])) boardState.flagged.push([row, col]);
+        } else {
+            cell.classList.remove('flagged');
+            cell.textContent = '';
+            boardState.flagged = boardState.flagged.filter(([r, c]) => !(r === row && c === col));
+        }
+        updateFlagsCount();
+    })
+    .catch(error => console.error('Error:', error));
+}
+
+function updateFlagsCount() {
+    document.getElementById('flags-count').textContent = boardState.flagged.length;
+}
+
+function showGameOver(won, message) {
+    const icon = document.getElementById('game-over-icon');
+    const title = document.getElementById('game-over-title');
+    icon.textContent = won ? '🎉' : '💥';
+    title.textContent = won ? '모두 찾았습니다!' : '지뢰를 밟았습니다';
+    title.className = 'gm-modal-title ' + (won ? 'is-won' : 'is-lost');
+    document.getElementById('game-over-text').textContent =
+        (message ? message + ' ' : '') + (timeElapsed ? `걸린 시간 ${timeElapsed}초` : '');
+    document.getElementById('game-over-overlay').classList.add('show');
+}
+
+initBoard();
+
+{% if game.status != 'playing' %}
+gameOver = true;
+showGameOver({% if game.status == 'won' %}true, '축하합니다! 모든 지뢰를 찾았습니다.'{% else %}false, ''{% endif %});
+{% endif %}
+</script>

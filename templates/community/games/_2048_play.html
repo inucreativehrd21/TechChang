@@ -1,0 +1,302 @@
+{# 2048 플레이 화면 본문 (PC·모바일 공용) #}
+<style>
+/* 보드: 배경 칸과 타일을 같은 4×4 CSS 그리드에 올린다.
+   예전엔 타일을 px 좌표로 계산했는데, CSS 변수(calc 문자열)를 숫자로 못 읽어 기본값으로
+   떨어지면서 칸과 어긋났다. 그리드 칸에 직접 꽂으면 계산 자체가 없다. */
+.g2-board {
+    position: relative;
+    width: 100%;
+    max-width: 440px;
+    aspect-ratio: 1 / 1;
+    margin: 0 auto;
+    border-radius: 14px;
+    background: #bbada0;
+    container-type: inline-size;
+    touch-action: none;          /* 판 위 스와이프가 페이지 스크롤로 새지 않게 */
+    user-select: none;
+    -webkit-user-select: none;
+}
+.g2-layer {
+    position: absolute;
+    inset: 2.8cqw;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    grid-template-rows: repeat(4, 1fr);
+    gap: 2.8cqw;
+}
+.g2-cell { border-radius: 8px; background: rgba(238, 228, 218, .35); }
+.g2-tile {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    font-weight: 800;
+    font-size: 10cqw;
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+    background: #eee4da;
+    color: #776e65;
+}
+.g2-tile.is-new { animation: g2-appear .15s ease-out; }
+@keyframes g2-appear { from { transform: scale(.6); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+.g2-tile.d3 { font-size: 8cqw; }
+.g2-tile.d4 { font-size: 6.4cqw; }
+.g2-tile.d5 { font-size: 5.2cqw; }
+/* 타일 색 — 2048 고유의 기능색이라 사이트 팔레트 예외 */
+.g2-tile.v4 { background: #ede0c8; }
+.g2-tile.v8 { background: #f2b179; color: #f9f6f2; }
+.g2-tile.v16 { background: #f59563; color: #f9f6f2; }
+.g2-tile.v32 { background: #f67c5f; color: #f9f6f2; }
+.g2-tile.v64 { background: #f65e3b; color: #f9f6f2; }
+.g2-tile.v128 { background: #edcf72; color: #f9f6f2; }
+.g2-tile.v256 { background: #edcc61; color: #f9f6f2; }
+.g2-tile.v512 { background: #edc850; color: #f9f6f2; }
+.g2-tile.v1024 { background: #edc53f; color: #f9f6f2; }
+.g2-tile.v2048 { background: #edc22e; color: #f9f6f2; }
+.g2-tile.vsuper { background: #3c3a32; color: #f9f6f2; }
+</style>
+
+<div class="gm">
+<div class="gm-wrap">
+    <a class="gm-back" href="{% url 'community:game2048_start' %}"><span aria-hidden="true">←</span> 난이도 선택</a>
+    <div class="gm-head">
+        <div class="gm-head-text">
+            <h1 class="gm-title">2048</h1>
+        </div>
+        {% if game.difficulty == 'hard' %}<span class="gm-pill is-hard">하드</span>{% else %}<span class="gm-pill">일반</span>{% endif %}
+    </div>
+
+    <div class="gm-stats">
+        <div class="gm-stat is-accent"><span class="gm-stat-label">점수</span><span class="gm-stat-value" id="currentScore">{{ game.score }}</span></div>
+        <div class="gm-stat"><span class="gm-stat-label">최고</span><span class="gm-stat-value">{{ best_score }}</span></div>
+        {% if game.inactivity_limit > 0 %}
+        <div class="gm-stat" id="inactivity-stat"><span class="gm-stat-label">남은 시간</span><span class="gm-stat-value" id="inactivity-timer">{{ game.inactivity_limit }}</span></div>
+        {% endif %}
+    </div>
+
+    {% if game.inactivity_limit > 0 %}
+    <div class="gm-alert">하드 모드 — {{ game.inactivity_limit }}초 동안 움직이지 않으면 게임이 끝납니다. 첫 이동부터 시간이 흐릅니다.</div>
+    {% endif %}
+
+    <div class="g2-board" id="board" aria-label="2048 게임판">
+        <div class="g2-layer" aria-hidden="true">
+            {% for i in "0123456789abcdef" %}<div class="g2-cell"></div>{% endfor %}
+        </div>
+        <div class="g2-layer" id="tileContainer"></div>
+    </div>
+
+    <p class="gm-note">
+        PC는 <span class="gm-kbd">←</span> <span class="gm-kbd">↑</span> <span class="gm-kbd">↓</span> <span class="gm-kbd">→</span> 방향키,
+        모바일은 판 위에서 밀어서 움직입니다. 같은 숫자끼리 부딪히면 합쳐집니다.
+    </p>
+
+    <div class="gm-actions">
+        <button type="button" class="gm-btn is-primary" onclick="restartGame()">새 게임</button>
+        <a class="gm-btn" href="{% url 'community:game2048_leaderboard' %}">리더보드</a>
+        <a class="gm-btn" href="{% url 'community:games_index' %}">게임 목록</a>
+    </div>
+</div>
+</div>
+
+<div class="gm gm-modal" id="gameMessage" role="dialog" aria-modal="true" aria-labelledby="messageTitle">
+    <div class="gm-modal-box">
+        <div class="gm-modal-icon" id="messageIcon" aria-hidden="true">🎉</div>
+        <h2 class="gm-modal-title" id="messageTitle"></h2>
+        <p class="gm-modal-text" id="messageText"></p>
+        <div class="gm-actions">
+            <button type="button" class="gm-btn is-primary" onclick="restartGame()">다시 하기</button>
+            <a class="gm-btn" href="{% url 'community:game2048_leaderboard' %}">리더보드</a>
+        </div>
+    </div>
+</div>
+
+<script>
+const csrfToken = '{{ csrf_token }}';
+const gameId = {{ game.id }};
+const inactivityLimit = {{ game.inactivity_limit }};
+let board = JSON.parse('{{ game.board_state|escapejs }}');
+let score = {{ game.score }};
+let isAnimating = false;
+let lastMoveAt = 0;
+const MOVE_COOLDOWN_MS = 120; // 클라이언트 단 입력 쿨다운으로 트래픽 완화
+let inactivityInterval = null;
+let inactiveSeconds = 0;
+
+// 보드 렌더링 — 타일을 그리드 칸(grid-area)에 직접 놓는다
+function renderBoard(prev) {
+    const container = document.getElementById('tileContainer');
+    container.innerHTML = '';
+    for (let i = 0; i < 4; i++) {
+        for (let j = 0; j < 4; j++) {
+            const value = board[i][j];
+            if (value === 0) continue;
+            const tile = document.createElement('div');
+            const digits = String(value).length;
+            tile.className = 'g2-tile ' + (value > 2048 ? 'vsuper' : 'v' + value) + (digits >= 3 ? ' d' + digits : '');
+            if (prev && prev[i][j] !== value) tile.classList.add('is-new');
+            tile.style.gridArea = `${i + 1} / ${j + 1}`;
+            tile.textContent = value;
+            container.appendChild(tile);
+        }
+    }
+}
+
+// 비활동 타이머
+function startInactivityTimer() {
+    if (inactivityLimit > 0 && !inactivityInterval) {
+        inactivityInterval = setInterval(updateInactivityTimer, 1000);
+    }
+}
+
+function setTimerTone(remaining) {
+    const stat = document.getElementById('inactivity-stat');
+    if (!stat) return;
+    stat.classList.toggle('is-danger', remaining <= 5);
+    stat.classList.toggle('is-warn', remaining > 5 && remaining <= 10);
+}
+
+function updateInactivityTimer() {
+    inactiveSeconds++;
+    const remaining = Math.max(0, inactivityLimit - inactiveSeconds);
+    const timerEl = document.getElementById('inactivity-timer');
+    if (timerEl) timerEl.textContent = remaining;
+    setTimerTone(remaining);
+    if (remaining <= 0) {
+        clearInterval(inactivityInterval);
+        showGameOver('timeout');
+    }
+}
+
+function resetInactivityTimer() {
+    inactiveSeconds = 0;
+    const timerEl = document.getElementById('inactivity-timer');
+    if (timerEl) timerEl.textContent = inactivityLimit;
+    setTimerTone(inactivityLimit);
+}
+
+// 입력 — 방향키와 스와이프가 같은 경로를 탄다
+function tryMove(direction) {
+    if (isAnimating || document.getElementById('gameMessage').classList.contains('show')) return;
+    const now = Date.now();
+    if (now - lastMoveAt < MOVE_COOLDOWN_MS) return;
+    lastMoveAt = now;
+    move(direction);
+}
+
+const KEY_DIR = { ArrowUp: 'up', ArrowDown: 'down', ArrowLeft: 'left', ArrowRight: 'right' };
+document.addEventListener('keydown', function (e) {
+    const direction = KEY_DIR[e.key];
+    if (!direction) return;
+    e.preventDefault();
+    tryMove(direction);
+});
+
+(function bindSwipe() {
+    const el = document.getElementById('board');
+    let sx = 0, sy = 0, tracking = false;
+    el.addEventListener('touchstart', function (e) {
+        if (e.touches.length !== 1) return;
+        tracking = true;
+        sx = e.touches[0].clientX;
+        sy = e.touches[0].clientY;
+    }, { passive: true });
+    el.addEventListener('touchmove', function (e) {
+        if (tracking) e.preventDefault();   // 판 위에서는 스크롤 대신 이동
+    }, { passive: false });
+    el.addEventListener('touchend', function (e) {
+        if (!tracking) return;
+        tracking = false;
+        const t = e.changedTouches[0];
+        const dx = t.clientX - sx, dy = t.clientY - sy;
+        if (Math.max(Math.abs(dx), Math.abs(dy)) < 24) return;  // 탭은 무시
+        tryMove(Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'right' : 'left') : (dy > 0 ? 'down' : 'up'));
+    });
+})();
+
+// 이동 처리
+function move(direction) {
+    isAnimating = true;
+    startInactivityTimer();
+    resetInactivityTimer();
+
+    fetch(`/2048/${gameId}/move/`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'X-CSRFToken': csrfToken
+        },
+        body: new URLSearchParams({ direction })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            const prev = board;
+            board = data.board;
+            if (data.score_gained > 0) updateScore(data.score);
+            renderBoard(prev);
+            if (data.game_over) {
+                clearInterval(inactivityInterval);
+                setTimeout(() => showGameOver(data.status), 400);
+            }
+        } else if (data.cooldown) {
+            setTimeout(() => { isAnimating = false; }, MOVE_COOLDOWN_MS);
+            return;
+        } else if (data.game_over && data.status === 'timeout') {
+            clearInterval(inactivityInterval);
+            showGameOver('timeout');
+        }
+        setTimeout(() => { isAnimating = false; }, 100);
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        isAnimating = false;
+    });
+}
+
+function updateScore(newScore) {
+    score = newScore;
+    document.getElementById('currentScore').textContent = score;
+}
+
+// 게임 오버 표시
+function showGameOver(status) {
+    clearInterval(inactivityInterval);
+    const message = document.getElementById('gameMessage');
+    const icon = document.getElementById('messageIcon');
+    const title = document.getElementById('messageTitle');
+    const text = document.getElementById('messageText');
+
+    if (status === 'won') {
+        icon.textContent = '🎉';
+        title.textContent = '2048 달성!';
+        title.className = 'gm-modal-title is-won';
+        text.textContent = `최종 점수 ${score}점. 축하합니다!`;
+    } else if (status === 'timeout') {
+        icon.textContent = '⏰';
+        title.textContent = '시간 초과';
+        title.className = 'gm-modal-title is-lost';
+        text.textContent = `최종 점수 ${score}점. ${inactivityLimit}초 동안 움직이지 않아 게임이 끝났습니다.`;
+    } else {
+        icon.textContent = '🧩';
+        title.textContent = '게임 종료';
+        title.className = 'gm-modal-title is-lost';
+        text.textContent = `최종 점수 ${score}점. 더 이상 움직일 수 있는 타일이 없습니다.`;
+    }
+    message.classList.add('show');
+}
+
+// 게임 재시작
+function restartGame() {
+    fetch(`/2048/${gameId}/restart/`, {
+        method: 'POST',
+        headers: { 'X-CSRFToken': csrfToken }
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) location.href = data.redirect_url;
+    });
+}
+
+renderBoard();
+{% if game.status == 'won' %}showGameOver('won');{% elif game.status == 'lost' %}showGameOver('lost');{% elif game.status == 'timeout' %}showGameOver('timeout');{% endif %}
+</script>

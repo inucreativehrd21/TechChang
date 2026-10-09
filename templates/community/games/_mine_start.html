@@ -1,0 +1,38 @@
+<div class="gm">
+<div class="gm-wrap">
+    <a class="gm-back" href="{% url 'community:games_index' %}"><span aria-hidden="true">←</span> 게임 목록</a>
+    <div class="gm-head">
+        <div class="gm-head-text">
+            <span class="gm-eyebrow">Minesweeper</span>
+            <h1 class="gm-title">지뢰찾기</h1>
+            <p class="gm-sub">지뢰를 피해 모든 칸을 여세요. 숫자는 주변 8칸에 있는 지뢰 수입니다.</p>
+        </div>
+    </div>
+    <div class="gm-options">
+        <a class="gm-option" href="{% url 'community:minesweeper_create' %}?difficulty=easy">
+            <div class="gm-option-main">
+                <div class="gm-option-name">쉬움</div>
+                <p class="gm-option-desc">9 × 9 · 지뢰 10개</p>
+            </div>
+            <span class="gm-option-go" aria-hidden="true">→</span>
+        </a>
+        <a class="gm-option" href="{% url 'community:minesweeper_create' %}?difficulty=medium">
+            <div class="gm-option-main">
+                <div class="gm-option-name">보통</div>
+                <p class="gm-option-desc">16 × 16 · 지뢰 40개</p>
+            </div>
+            <span class="gm-option-go" aria-hidden="true">→</span>
+        </a>
+        <a class="gm-option" href="{% url 'community:minesweeper_create' %}?difficulty=hard">
+            <div class="gm-option-main">
+                <div class="gm-option-name">어려움 <span class="gm-pill is-hard">도전</span></div>
+                <p class="gm-option-desc">16 × 30 · 지뢰 99개 · 모바일에서는 판을 옆으로 밀어서 봅니다</p>
+            </div>
+            <span class="gm-option-go" aria-hidden="true">→</span>
+        </a>
+    </div>
+    <div class="gm-actions">
+        <a class="gm-btn" href="{% url 'community:minesweeper_leaderboard' %}?difficulty=easy">리더보드</a>
+    </div>
+</div>
+</div>
