@@ -154,3 +154,23 @@ class MobileFirstIndexingTests(TestCase):
         self.assertIn(f'https://techchang.com/{self.column.id}/', columns)
         posts = self.client.get('/sitemap-posts.xml').content.decode()
         self.assertNotIn(f'/{self.thin.id}/', posts)
+
+
+class RssFeedTests(TestCase):
+    def test_feed_lists_columns_only_with_summary_and_absolute_links(self):
+        bot = User.objects.create_user(Question.BOT_USERNAME, password='x')
+        member = User.objects.create_user('member', password='x')
+        cat = Category.objects.create(name='HRD', description='HRD')
+        col = Question.objects.create(subject='칼럼 제목', category=cat, author=bot, create_date=timezone.now(),
+                                      content='요약이 될 첫 문단입니다.' + chr(10) * 2 + '본문 둘째 문단은 피드에 없다.')
+        Question.objects.create(subject='회원 글', category=cat, author=member, create_date=timezone.now(),
+                                content='회원 본문 ' * 60)
+        res = self.client.get('/rss.xml')
+        self.assertEqual(res.status_code, 200)
+        self.assertIn('application/rss+xml', res['Content-Type'])
+        xml = res.content.decode()
+        self.assertIn('<title>칼럼 제목</title>', xml)
+        self.assertIn(f'<link>https://techchang.com/{col.id}/</link>', xml)
+        self.assertIn('요약이 될 첫 문단입니다.', xml)
+        self.assertNotIn('회원 글', xml)
+        self.assertIn('/rss.xml', self.client.get('/').content.decode())   # 페이지 머리말에서 피드 자동 발견
