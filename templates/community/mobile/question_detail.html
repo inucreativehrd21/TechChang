@@ -4,6 +4,10 @@
 
 {% block title %}{{ question.subject }}{% endblock %}
 
+{% block extra_css %}
+{% if making %}<link href="{% static 'css/making.css' %}?v={{ STATIC_VERSION }}" rel="stylesheet">{% endif %}
+{% endblock %}
+
 {% block content %}
 <!-- 질문 헤더 -->
 <div class="tc-m-detail-head">
@@ -78,6 +82,7 @@
         {% endif %}
     </nav>
     {% endif %}
+    {% if making %}{% include 'office/_making_card.html' %}{% endif %}
 </div>
 
 <!-- 액션 버튼 -->

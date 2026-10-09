@@ -1,0 +1,32 @@
+{# 칼럼 본문 아래 '메이킹 오브' 요약 카드. making = office.making.build_making() #}
+<section class="mk mk-card" aria-labelledby="mk-card-title">
+    <div class="mk-card-main">
+        <span class="mk-eyebrow">Making of · 이 칼럼이 만들어진 과정</span>
+        <h3 id="mk-card-title" class="mk-card-title">
+            AI 연구원 {{ making.agents|length }}명이
+            {% if making.reviews > 1 %}{{ making.reviews }}번 심사하고 {{ making.rewrites }}번 고쳐 쓴 글입니다
+            {% else %}기획부터 심사까지 거쳐 내놓은 글입니다{% endif %}
+        </h3>
+        <ul class="mk-stats">
+            <li><b>{{ making.reviews }}</b><span>편집 심사</span></li>
+            <li><b>{{ making.rewrites }}</b><span>재집필</span></li>
+            <li><b>{{ making.critiques }}</b><span>평론</span></li>
+            {% if making.had_human %}<li><b>{{ making.human_steps }}</b><span>운영자 검토</span></li>{% endif %}
+            <li><b>{{ making.duration }}</b><span>제작 기간</span></li>
+        </ul>
+    </div>
+    <div class="mk-card-side">
+        {% if making.score_svg %}
+        <svg class="mk-spark" viewBox="0 0 {{ making.score_svg.w }} {{ making.score_svg.h }}" role="img"
+             aria-label="심사 점수 추이: {{ making.score_trail|join:', ' }}점">
+            <line x1="0" x2="{{ making.score_svg.w }}" y1="{{ making.score_svg.pass_y }}" y2="{{ making.score_svg.pass_y }}" class="mk-spark-pass"/>
+            <polyline points="{{ making.score_svg.path }}" class="mk-spark-line"/>
+            {% for p in making.score_svg.points %}<circle cx="{{ p.x }}" cy="{{ p.y }}" r="{% if forloop.last %}4{% else %}2.5{% endif %}" class="mk-spark-dot{% if forloop.last %} is-last{% endif %}"/>{% endfor %}
+        </svg>
+        <div class="mk-spark-cap">심사 점수 {{ making.score_trail|join:' → ' }}점<small>점선은 발행 기준 80점</small></div>
+        {% elif making.final_score %}
+        <div class="mk-final"><b>{{ making.final_score }}</b><span>최종 심사 점수</span></div>
+        {% endif %}
+        <a class="mk-card-link" href="{% url 'office:making' making.question_id %}">제작 과정 전체 보기 <span aria-hidden="true">→</span></a>
+    </div>
+</section>

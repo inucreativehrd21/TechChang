@@ -1,0 +1,131 @@
+{# 메이킹 오브 전체 페이지 본문 (PC·모바일 공용). mk = office.making.build_making() #}
+<div class="mk mk-page">
+    <header class="mk-hero">
+        <a class="mk-back" href="{% url 'community:detail' mk.question_id %}"><span aria-hidden="true">←</span> 칼럼으로 돌아가기</a>
+        <span class="mk-eyebrow mk-eyebrow-block">Making of</span>
+        <h1 class="mk-title">{{ mk.subject }}</h1>
+        <p class="mk-lead">
+            이 칼럼은 테크창 연구실의 AI 연구원 {{ mk.agents|length }}명이 기획하고, 쓰고, 서로 검증해서 나왔습니다.
+            {% if mk.reviews > 1 %}편집 심사를 {{ mk.reviews }}번 받았고 원고를 {{ mk.rewrites }}번 고쳐 썼습니다.{% endif %}
+            {% if mk.had_human %}기준에 못 미친 원고는 사람(운영자)이 읽고 방향을 잡아 주었습니다.{% endif %}
+            아래는 작업 기록을 그대로 정리한 것입니다.
+        </p>
+        <ul class="mk-stats mk-stats-lg">
+            <li><b>{{ mk.reviews }}</b><span>편집 심사</span></li>
+            <li><b>{{ mk.rewrites }}</b><span>재집필</span></li>
+            <li><b>{{ mk.critiques }}</b><span>평론</span></li>
+            {% if mk.had_human %}<li><b>{{ mk.human_steps }}</b><span>운영자 검토</span></li>{% endif %}
+            <li><b>{{ mk.duration }}</b><span>제작 기간</span></li>
+            {% if mk.final_score %}<li class="is-accent"><b>{{ mk.final_score }}</b><span>최종 점수</span></li>{% endif %}
+        </ul>
+        <div class="mk-crew">
+            {% for a in mk.agents %}<span class="mk-chip"><b>{{ a.name }}</b> {{ a.title }}</span>{% endfor %}
+            {% if mk.had_human %}<span class="mk-chip is-human"><b>운영자</b> 사람</span>{% endif %}
+        </div>
+    </header>
+
+    {% if mk.score_chart %}
+    <section class="mk-section">
+        <h2 class="mk-h2">심사 점수 추이</h2>
+        <p class="mk-sub">편집장이 루브릭 6개 항목으로 채점한 100점 환산 점수입니다. 80점 이상이어야 발행됩니다.</p>
+        <div class="mk-chart">
+            <svg viewBox="0 0 {{ mk.score_chart.w }} {{ mk.score_chart.h }}" role="img"
+                 aria-label="심사 점수 추이: {{ mk.score_trail|join:', ' }}점">
+                <line x1="0" x2="{{ mk.score_chart.w }}" y1="{{ mk.score_chart.pass_y }}" y2="{{ mk.score_chart.pass_y }}" class="mk-spark-pass"/>
+                <text x="{{ mk.score_chart.w }}" y="{{ mk.score_chart.pass_y }}" dx="-4" dy="14" text-anchor="end" class="mk-chart-note">발행 기준 80</text>
+                <polyline points="{{ mk.score_chart.path }}" class="mk-spark-line"/>
+                {% for p in mk.score_chart.points %}
+                <circle cx="{{ p.x }}" cy="{{ p.y }}" r="{% if forloop.last %}6{% else %}4{% endif %}" class="mk-spark-dot{% if forloop.last %} is-last{% endif %}"/>
+                <text x="{{ p.x }}" y="{{ p.y }}" dy="-11" text-anchor="middle" class="mk-chart-label{% if forloop.last %} is-last{% endif %}">{{ p.score }}</text>
+                {% endfor %}
+            </svg>
+        </div>
+    </section>
+    {% endif %}
+
+    <section class="mk-section">
+        <h2 class="mk-h2">제작 타임라인</h2>
+        <p class="mk-sub">편집 심사 한 번을 한 회차로 묶었습니다. 회차를 눌러 펼쳐 보세요.</p>
+        {% for r in mk.rounds %}
+        <details class="mk-round"{% if r.open %} open{% endif %}>
+            <summary class="mk-round-head">
+                <span class="mk-round-n">{{ r.title }}</span>
+                {% if r.human %}<span class="mk-pill is-human">운영자 검토</span>{% endif %}
+                {% if r.qa %}<span class="mk-pill tone-{{ r.qa.tone }}">{% if r.qa.score is not None %}{{ r.qa.score }}점 · {% endif %}{{ r.qa.verdict_label }}</span>{% endif %}
+                {% if r.published %}<span class="mk-pill tone-pass">발행</span>{% endif %}
+                <span class="mk-round-count">{{ r.events|length }}단계</span>
+            </summary>
+            <ol class="mk-timeline">
+                {% for e in r.events %}
+                <li class="mk-ev tone-{{ e.tone }}{% if e.agent.key == 'operator' %} is-human{% endif %}">
+                    <span class="mk-ev-dot" aria-hidden="true"></span>
+                    <div class="mk-ev-head">
+                        <span class="mk-ev-stage">{{ e.stage }}</span>
+                        <span class="mk-ev-who"><b>{{ e.agent.name }}</b>{% if e.agent.title %} · {{ e.agent.title }}{% endif %}</span>
+                        {% if e.badge %}<span class="mk-pill tone-{{ e.tone }}">{{ e.badge }}</span>{% endif %}
+                        <time class="mk-ev-time" datetime="{{ e.at|date:'c' }}">{{ e.at|date:'n월 j일 H:i' }}</time>
+                    </div>
+                    <p class="mk-ev-summary">{{ e.summary }}</p>
+                    {% if e.critique.quote %}
+                    <blockquote class="mk-quote">
+                        <p>「{{ e.critique.quote }}…」</p>
+                        {% if e.critique.why %}<footer>{{ e.critique.why }}</footer>{% endif %}
+                    </blockquote>
+                    {% endif %}
+                    {% if e.qa.fatal %}
+                    <div class="mk-fatal">{% for f in e.qa.fatal %}<span>{{ f }}</span>{% endfor %}</div>
+                    {% endif %}
+                    {% if e.detail %}<p class="mk-ev-detail">{{ e.detail }}</p>{% endif %}
+                </li>
+                {% endfor %}
+            </ol>
+        </details>
+        {% endfor %}
+    </section>
+
+    {% if mk.rubric %}
+    <section class="mk-section mk-grid">
+        <div>
+            <h2 class="mk-h2">최종 심사표</h2>
+            <p class="mk-sub">항목별 1~5점, 괄호는 총점 반영 비중입니다.</p>
+            <ul class="mk-rubric">
+                {% for row in mk.rubric %}
+                <li>
+                    <span class="mk-rubric-label">{{ row.label }} <small>({{ row.weight }}%)</small></span>
+                    <span class="mk-bar" aria-hidden="true"><i style="width:{{ row.pct }}%"></i></span>
+                    <span class="mk-rubric-score">{{ row.score }}/5</span>
+                </li>
+                {% endfor %}
+            </ul>
+        </div>
+        <div>
+            {% if mk.strengths %}
+            <h3 class="mk-h3">편집장이 꼽은 강점</h3>
+            <p class="mk-note">{{ mk.strengths }}</p>
+            {% endif %}
+            {% if mk.suggestions %}
+            <h3 class="mk-h3">발행 후에도 남은 개선 제안</h3>
+            <ul class="mk-list">{% for s in mk.suggestions %}<li>{{ s }}</li>{% endfor %}</ul>
+            {% endif %}
+        </div>
+    </section>
+    {% endif %}
+
+    {% if mk.claims %}
+    <section class="mk-section">
+        <h2 class="mk-h2">팩트체크한 주장</h2>
+        <p class="mk-sub">검증관 하경이 본문의 수치·사실 주장을 하나씩 확인한 최종 결과입니다.</p>
+        <ul class="mk-claims">
+            {% for c in mk.claims %}
+            <li><span class="mk-pill tone-{{ c.tone }}">{{ c.status }}</span><span>{{ c.claim }}</span></li>
+            {% endfor %}
+        </ul>
+    </section>
+    {% endif %}
+
+    <footer class="mk-foot">
+        이 페이지는 연구실 파이프라인이 남긴 작업 로그를 자동으로 정리한 것입니다. 점수와 평론은 원문 그대로이며,
+        운영자가 남긴 지시문 원문은 공개하지 않습니다.
+        <a href="{% url 'office:home' %}">연구실 둘러보기 →</a>
+    </footer>
+</div>

@@ -99,6 +99,19 @@ def _lab_assets_url():
     return f"{settings.MEDIA_URL.rstrip('/')}/lab/manifest.json?v={ver}"
 
 
+def making(request, question_id):
+    """칼럼 메이킹 오브 — 발행 칼럼이 기획·집필·검증·심사를 거쳐 나온 과정 (공개 범위는 office.making)."""
+    from .making import build_making
+    draft = get_object_or_404(ColumnDraft.objects.select_related('question', 'decision__meeting'),
+                              question_id=question_id, question__is_deleted=False,
+                              status=ColumnDraft.STATUS_PUBLISHED)
+    data = build_making(draft)
+    if data is None:
+        from django.http import Http404
+        raise Http404
+    return render(request, 'office/making.html', {'mk': data, 'question': draft.question})
+
+
 def office_home(request):
     meeting = Meeting.objects.prefetch_related('decisions').first()
     recent_drafts = list(ColumnDraft.objects.filter(status=ColumnDraft.STATUS_PUBLISHED, question__isnull=False)

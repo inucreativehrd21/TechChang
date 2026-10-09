@@ -1,0 +1,12 @@
+{% extends 'base_mobile.html' %}
+{% load static %}
+
+{% block title %}제작 과정 · {{ mk.subject }}{% endblock %}
+
+{% block extra_css %}
+<link href="{% static 'css/making.css' %}?v={{ STATIC_VERSION }}" rel="stylesheet">
+{% endblock %}
+
+{% block content %}
+{% include 'office/_making_body.html' %}
+{% endblock %}
