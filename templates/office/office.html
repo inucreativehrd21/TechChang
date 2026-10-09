@@ -67,17 +67,20 @@
     <div class="tc-section-head">
       <h2 class="tc-section-title">칼럼이 만들어지는 과정</h2>
     </div>
-    <ol class="tc-lb-flow">
-      <li><span>편집회의</span></li>
-      <li><span>운영자 결정</span></li>
-      <li><span>기획</span></li>
-      <li><span>집필</span></li>
-      <li><span>검증</span></li>
-      <li><span>평론</span></li>
-      <li><span>시각화</span></li>
-      <li><span>편집 심사</span></li>
-      <li><span>발행</span></li>
+    <ol class="tc-lb-flow" id="lab-flow" data-live-url="{% url 'office:live' %}">
+      <li data-step="meeting"><span>편집회의</span></li>
+      <li data-step="decision"><span>운영자 결정</span></li>
+      <li data-step="brief"><span>기획</span></li>
+      <li data-step="draft"><span>집필</span></li>
+      <li data-step="check"><span>검증</span></li>
+      <li data-step="critique"><span>평론</span></li>
+      <li data-step="chart"><span>시각화</span></li>
+      <li data-step="review"><span>편집 심사</span></li>
+      <li data-step="publish"><span>발행</span></li>
     </ol>
+    <p class="tc-lb-live" id="lab-flow-status" role="status" aria-live="polite">
+      <span class="tc-lb-live-dot" aria-hidden="true"></span><span class="tc-lb-live-text">연구실 상태를 불러오는 중…</span>
+    </p>
   </section>
 
   <!-- ===== 회의 · 칼럼 · 활동 ===== -->
@@ -147,4 +150,60 @@
 
 {% block script %}
 <script src="{% static 'js/office.js' %}?v={{ STATIC_VERSION }}" nonce="{{ csp_nonce }}"></script>
+<script nonce="{{ csp_nonce }}">
+// '칼럼이 만들어지는 과정' 라이브 표시 — 지금 단계에 불을 켠다 (office/live.py)
+(function () {
+  const flow = document.getElementById('lab-flow');
+  const status = document.getElementById('lab-flow-status');
+  if (!flow || !status) return;
+  const steps = [...flow.querySelectorAll('li[data-step]')];
+  const order = steps.map(li => li.dataset.step);
+  const text = status.querySelector('.tc-lb-live-text');
+  let timer = null;
+
+  function minutesSince(iso) {
+    if (!iso) return null;
+    const m = Math.floor((Date.now() - new Date(iso).getTime()) / 60000);
+    return m >= 0 ? m : null;
+  }
+
+  function render(d) {
+    const idx = d.step ? order.indexOf(d.step) : -1;
+    steps.forEach((li, i) => {
+      li.classList.toggle('is-done', idx >= 0 && (i < idx || (d.state === 'done' && i === idx)));
+      li.classList.toggle('is-active', i === idx && d.state !== 'done');
+      li.classList.toggle('is-waiting', i === idx && d.state === 'waiting');
+      if (i === idx) li.setAttribute('aria-current', 'step'); else li.removeAttribute('aria-current');
+    });
+    // 모바일은 표시줄이 가로 스크롤이라, 켜진 칸이 화면 밖이면 그쪽으로 민다
+    const lit = idx >= 0 ? steps[idx] : null;
+    if (lit && flow.scrollWidth > flow.clientWidth) {
+      flow.scrollTo({ left: lit.offsetLeft - (flow.clientWidth - lit.offsetWidth) / 2, behavior: 'smooth' });
+    }
+    status.dataset.state = d.state || 'idle';
+    let msg = d.message || '';
+    const mins = d.state === 'running' ? minutesSince(d.since) : null;
+    if (mins !== null && mins >= 1) msg += ` (${mins}분째)`;
+    if (d.state === 'idle' && d.next) msg += ` 다음 일정: ${d.next.label} ${d.next.what}.`;
+    text.textContent = msg;
+    delay = d.state === 'running' ? 10000 : 60000;
+  }
+
+  async function load() {
+    try {
+      const res = await fetch(flow.dataset.liveUrl, { headers: { Accept: 'application/json' }, cache: 'no-store' });
+      if (res.ok) render(await res.json());
+    } catch (e) { /* 네트워크 오류는 다음 주기에 다시 */ }
+  }
+
+  // 화면을 보고 있을 때만 확인한다 — 작업 중이면 10초, 쉬거나 기다릴 때는 60초
+  // (요청 한도: common/middleware.py 의 완화 경로에 /lab/live.json 포함)
+  let delay = 10000;
+  function schedule() { timer = setTimeout(async () => { await load(); if (timer) schedule(); }, delay); }
+  function start() { if (!timer) { timer = true; load().then(schedule); } }
+  function stop() { clearTimeout(timer); timer = null; }
+  document.addEventListener('visibilitychange', () => (document.hidden ? stop() : start()));
+  start();
+})();
+</script>
 {% endblock %}

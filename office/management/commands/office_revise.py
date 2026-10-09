@@ -16,6 +16,7 @@ from django.core.management.base import BaseCommand, CommandError
 from django.utils import timezone
 
 from common.management.commands.auto_write_columns import COLUMN_STRUCTURE, TOPICS
+from office import live
 from office import pipeline as P
 from office.agents import AGENTS, TOPIC_AGENT
 from office.models import ColumnDraft
@@ -32,6 +33,13 @@ class Command(BaseCommand):
         parser.add_argument('--no-publish', action='store_true', help='Accept 여도 자동 발행하지 않음')
 
     def handle(self, *args, **opts):
+        # 어떻게 끝나든(발행·보류·실패) 연구실 라이브 표시를 정리한다
+        try:
+            return self._run(*args, **opts)
+        finally:
+            live.finish()
+
+    def _run(self, *args, **opts):
         draft = ColumnDraft.objects.filter(pk=opts['draft']).first()
         if draft is None:
             raise CommandError(f"ColumnDraft {opts['draft']} 를 찾을 수 없습니다.")
@@ -63,6 +71,7 @@ class Command(BaseCommand):
             prev_check = draft.check_report or {}
 
             # 1) 운영자 지시 반영 재작성
+            live.mark('revise', writer, topic_key)
             raw = ask_agent(writer, P.ADMIN_REVISE_PROMPT.format(
                 admin_note=admin_note,
                 qa_issues='\n'.join(f'- {i}' for i in prev_qa.get('issues', [])) or '(없음)',

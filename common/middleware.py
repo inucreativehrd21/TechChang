@@ -32,12 +32,13 @@ class SecurityMiddleware:
         self.PROTECTED_PATH_ATTEMPTS_LIMIT = getattr(settings, 'PROTECTED_PATH_ATTEMPTS_LIMIT', 20)
         self.TRUSTED_PATHS = getattr(settings, 'TRUSTED_HEALTHCHECK_PATHS', ['/health', '/status'])
 
-        # 게임 경로 (relaxed rate limit - 2048는 키보드 입력마다 요청)
+        # 완화 한도 경로 — 2048 은 키 입력마다, 연구실 화면은 주기적으로 요청한다.
+        # 앱이 루트로 옮겨진 뒤에도 '/pybo/...' 만 남아 있어 게임에 완화가 전혀 걸리지 않았고,
+        # 관리자 화면 폴링(activity.json)이 시간당 300회에 걸려 운영자 IP가 반복 차단됐다(2026-10-02, 49회).
         self.GAME_EXEMPT_PATHS = [
-            '/pybo/baseball/',
-            '/pybo/2048/',
-            '/pybo/minesweeper/',
-            '/pybo/wordchain/',
+            '/baseball/', '/2048/', '/minesweeper/',
+            '/pybo/baseball/', '/pybo/2048/', '/pybo/minesweeper/', '/pybo/wordchain/',
+            '/lab/live.json', '/lab/state.json', '/lab/admin/activity.json',
         ]
         # 게임용 relaxed rate limits (일반보다 2배 관대)
         self.GAME_DDOS_THRESHOLD = 200  # 1분에 200회까지 허용 (일반 120회의 1.67배)

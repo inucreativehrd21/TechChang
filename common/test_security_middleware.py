@@ -69,3 +69,19 @@ class IsSuspiciousRequestTests(TestCase):
         request = self._request('/lab/admin/')
         response = HttpResponse(status=200)
         self.assertFalse(self.middleware.is_suspicious_request(request, response, 0.5))
+
+class RelaxedPathTests(TestCase):
+    """게임·연구실 폴링 경로는 완화 한도를 받는다 — 예전엔 '/pybo/...' 만 있어 아무 데도 안 걸렸다."""
+
+    def setUp(self):
+        from common.middleware import SecurityMiddleware
+        self.mw = SecurityMiddleware(lambda r: HttpResponse('ok'))
+
+    def test_live_game_and_polling_paths_are_relaxed(self):
+        for path in ('/2048/12/move/', '/baseball/3/guess/', '/minesweeper/7/reveal/',
+                     '/lab/live.json', '/lab/state.json', '/lab/admin/activity.json'):
+            self.assertTrue(self.mw.is_game_path(path), path)
+
+    def test_ordinary_pages_keep_normal_limit(self):
+        for path in ('/', '/lab/', '/lab/admin/', '/109/', '/common/login/'):
+            self.assertFalse(self.mw.is_game_path(path), path)

@@ -21,6 +21,7 @@ from django.utils import timezone
 
 from common.management.commands.auto_write_columns import COLUMN_STRUCTURE
 from community.models import Question
+from office import live
 from office import pipeline as P
 from office import quality
 from office.recorder import StageRecorder
@@ -52,6 +53,13 @@ class Command(BaseCommand):
         parser.add_argument('--no-chart', action='store_true')
 
     def handle(self, *args, **opts):
+        # 어떻게 끝나든(발행·보류·실패) 연구실 라이브 표시를 정리한다
+        try:
+            return self._run(*args, **opts)
+        finally:
+            live.finish()
+
+    def _run(self, *args, **opts):
         out = self.stdout.write
         q = Question.objects.filter(pk=opts['question'], is_deleted=False).first()
         if q is None:
@@ -79,6 +87,7 @@ class Command(BaseCommand):
             log(agent, action, text)
 
         # 1) 재집필
+        live.mark('revise', writer, topic_key)
         raw = ask_agent(writer, REMAKE_PROMPT.format(
             flaws='\n'.join(f'- {f}' for f in flaws), subject=q.subject, content=q.content,
             structure=COLUMN_STRUCTURE, standard=standard), max_tokens=P.COLUMN_MAX_TOKENS)

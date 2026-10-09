@@ -41,3 +41,6 @@ htmlcov/
 
 # collectstatic 산출물 (서버에서 재생성)
 staticfiles/
+
+# 연구실 라이브 표시 상태 파일 (office/live.py)
+logs/office_live.*

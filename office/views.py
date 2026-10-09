@@ -142,6 +142,14 @@ def office_home(request):
     })
 
 
+def office_live(request):
+    """'칼럼이 만들어지는 과정' 라이브 표시용 — 파일 하나와 회의 한 건만 읽는 가벼운 응답 (office.live)."""
+    from . import live
+    res = JsonResponse(live.snapshot())
+    res['Cache-Control'] = 'no-store'
+    return res
+
+
 def office_state(request):
     meeting = Meeting.objects.prefetch_related('decisions').first()
     return JsonResponse({

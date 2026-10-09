@@ -22,6 +22,7 @@ from django.utils import timezone
 from django.utils.html import escape
 
 from common.services.claude import call_tags, track_calls
+from office import live
 from office.agents import AGENTS, MEETING_ORDER
 from office.models import Decision, Meeting
 from office.services import ask_agent, ask_agent_json, collect_site_snapshot, log, snapshot_as_text, week_monday
@@ -88,6 +89,8 @@ class Command(BaseCommand):
                 if opts['email'] and not opts['dry_run']:
                     self._send_failure_mail(opts['email'], traceback.format_exc())
                 raise
+            finally:
+                live.finish()
         if meeting and opts['email']:
             self._send_mail(opts['email'], meeting)
 
@@ -118,6 +121,7 @@ class Command(BaseCommand):
             return None
 
         self.week = week
+        live.mark('meeting', 'lead')
         self.stdout.write(f'[{timezone.localtime():%H:%M:%S}] {week} 주차 편집회의 소집 — 지표 수집 중...')
         snap = self._step('지표 수집', collect_site_snapshot)
         brief = snapshot_as_text(snap)

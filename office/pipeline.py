@@ -18,6 +18,7 @@ office_publish(신규 제작)와 office_revise(관리자 코멘트 반영 재작
 """
 from __future__ import annotations
 
+import functools
 import json
 import re
 from datetime import datetime
@@ -25,6 +26,7 @@ from datetime import datetime
 from django.utils import timezone
 
 from common.management.commands.auto_write_columns import COLUMN_STRUCTURE, TOPICS
+from . import live
 from .agents import TOPIC_AGENT as TOPIC_AGENT_OF
 from .models import ColumnDraft
 from .services import (ask_agent, ask_agent_json, audit_chart, audit_style, chart_markdown,
@@ -53,6 +55,21 @@ PLAIN_STYLE_LIMIT = 0.15   # 평서체 문장이 이 비율을 넘으면 문체 
 # 여기에 제목·마크다운까지 더해지면 12,000 으로는 끝에서 잘린다. 실제로 맺음말·참고 자료가
 # 통째로 사라진 원고가 일곱 번 재작성을 돌았다. 넉넉히 두고, 잘림은 looks_truncated 가 잡는다.
 COLUMN_MAX_TOKENS = 24000
+
+
+# ───────────────────────────── 라이브 표시
+def live_step(stage: str, agent: str = ''):
+    """단계 시작을 연구실 라이브 표시에 알린다(office.live). agent 가 없으면 분야 칼럼니스트."""
+    def wrap(fn):
+        @functools.wraps(fn)
+        def inner(*args, **kwargs):
+            topic = kwargs.get('topic_key') or (args[0] if args and isinstance(args[0], str) and args[0] in TOPIC_AGENT_OF else '')
+            if fn.__name__ == 'publish_draft' and args:
+                topic = getattr(args[0], 'topic', '')
+            live.mark(stage, agent or TOPIC_AGENT_OF.get(topic, ''), topic)
+            return fn(*args, **kwargs)
+        return inner
+    return wrap
 
 
 # ───────────────────────────── 프롬프트
@@ -424,6 +441,7 @@ def recent_titles(topic_key: str, limit: int = 20) -> list:
 
 
 # ───────────────────────────── 단계
+@live_step('brief', 'lead')
 def step_brief(topic_key: str, brief_decision, recent: list, *, rec=None) -> dict:
     """1) 기획서 — 팀장이 집필 지시를 만들고, 데이터 담당이 필요한 지표를 얹는다.
 
@@ -453,6 +471,7 @@ def step_brief(topic_key: str, brief_decision, recent: list, *, rec=None) -> dic
     return brief
 
 
+@live_step('critique', 'critic')
 def step_critique(subject: str, content: str) -> dict:
     """3.5) 평론 — 독자가 읽을 이유가 있는 글인지 본다.
 
@@ -513,6 +532,7 @@ def critique_text(cr: dict) -> str:
     return '\n'.join(lines)
 
 
+@live_step('draft')
 def step_draft(topic_key: str, brief_decision, brief: dict, recent: list) -> tuple:
     """2) 집필."""
     topic = TOPICS[topic_key]
@@ -547,6 +567,7 @@ FIX_PROMPT = (
 )
 
 
+@live_step('fix')
 def step_fix_draft(topic_key: str, subject: str, content: str, issues: list) -> tuple:
     """초안 자동 점검 지적을 반영해 다시 쓴다. 반환 (subject, content, 남은 지적)."""
     raw = ask_agent(TOPIC_AGENT_OF[topic_key], FIX_PROMPT.format(
@@ -616,6 +637,7 @@ def writing_standard() -> str:
 BAD_CLAIMS = ('unverifiable', 'wrong', 'outdated')
 
 
+@live_step('check', 'checker')
 def step_check(subject: str, content: str, recent: list) -> dict:
     """3) 팩트체크."""
     return ask_agent_json('checker', CHECK_PROMPT.format(
@@ -623,6 +645,7 @@ def step_check(subject: str, content: str, recent: list) -> dict:
         recency=recency_rule()), max_tokens=4000)
 
 
+@live_step('revise')
 def step_author_revise(topic_key: str, subject: str, content: str, check: dict) -> tuple:
     """4) 팩트체크 지적 반영. 반환: (subject, content, ok, reason)"""
     bad = [c for c in check.get('claims', []) if c.get('status') in BAD_CLAIMS]
@@ -632,6 +655,7 @@ def step_author_revise(topic_key: str, subject: str, content: str, check: dict) 
     return safe_rewrite(raw, subject, content)
 
 
+@live_step('chart', 'charter')
 def step_visual(content: str, topic_key: str, *, rec, dry: bool = False) -> tuple:
     """5) 데이터 시각화. 반환: (content, chart_rel, note, visual_report)
 
@@ -690,6 +714,7 @@ def length_rule(length: int) -> str:
     return f'권장 분량({MIN_CHARS:,}~{TARGET_MAX:,}자) 안입니다.'
 
 
+@live_step('review', 'editor')
 def step_review(subject: str, content: str, check: dict, chart_rel: str,
                 visual_report: str = '', critique: dict | None = None) -> dict:
     """6) 편집 심사 — 편집장(승현)이 항목 점수를 매기고, 총점·판정은 시스템이 계산.
@@ -749,6 +774,7 @@ def step_review(subject: str, content: str, check: dict, chart_rel: str,
     return qa
 
 
+@live_step('publish', 'lead')
 def publish_draft(draft: ColumnDraft, *, by=None):
     """ColumnDraft → Question 발행 + 회의 안건 소비 처리."""
     from common.management.commands.auto_write_columns import _get_or_create_bot_user

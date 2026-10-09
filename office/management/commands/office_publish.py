@@ -28,6 +28,7 @@ from django.utils import timezone
 
 from common.management.commands.auto_write_columns import COLUMN_STRUCTURE, TOPICS
 from common.services.claude import call_tags
+from office import live
 from office import pipeline as P
 from office import quality
 from office.agents import AGENTS, TOPIC_AGENT
@@ -47,6 +48,13 @@ class Command(BaseCommand):
                             help='심사를 통과해도 발행하지 않고 보류로 저장 (로컬 검증용)')
 
     def handle(self, *args, **opts):
+        # 어떻게 끝나든(발행·보류·실패) 연구실 라이브 표시를 정리한다
+        try:
+            return self._run(*args, **opts)
+        finally:
+            live.finish()
+
+    def _run(self, *args, **opts):
         topic_key = opts['topic']
         dry = opts['dry_run']
         writer = TOPIC_AGENT[topic_key]
@@ -148,6 +156,7 @@ class Command(BaseCommand):
                 if qa['verdict'] not in ('minor', 'major'):
                     break
                 prev_content = content
+                live.mark('editor_revise', writer, topic_key)
                 raw = timed('editor_revise', writer, lambda: ask_agent(writer, P.EDITOR_REVISE_PROMPT.format(
                     issues='\n'.join(f'- {i}' for i in qa.get('issues', [])), notes=qa.get('notes', ''),
                     check=P.check_text(check), critique=P.critique_text(critique),
