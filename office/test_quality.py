@@ -65,3 +65,14 @@ class QualityDetectorTests(SimpleTestCase):
         changed = '전체의 35%가 이탈했습니다. 맥락이 중요합니다.'
         self.assertEqual(P.new_numeric_sentences(old, same), [])
         self.assertEqual(P.new_numeric_sentences(old, changed), ['전체의 35%가 이탈했습니다.'])
+
+
+class DurationIsNotAFigureTests(SimpleTestCase):
+    def test_months_are_not_counted_as_repeated_figures(self):
+        from office.quality import figure_repetition
+        text = '복귀 6개월 점검, 3~6개월 점검, 6개월 뒤, 6개월 안에, 6개월 동안 묻습니다. 지표는 6개입니다.'
+        self.assertEqual(figure_repetition(text), [])
+
+    def test_real_repetition_still_caught(self):
+        from office.quality import figure_repetition
+        self.assertTrue(figure_repetition('62% 62% 62% 62%'))

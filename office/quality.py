@@ -13,7 +13,8 @@ from __future__ import annotations
 import re
 
 UNITS = r'(?:%p|%|명|건|배|억|만|점|위|달러|원|시간|개국|개|곳|회|퍼센트|포인트)'
-_NUM = re.compile(r'(?<![\d.])(\d[\d,]*(?:\.\d+)?)\s*(' + UNITS + r')')
+# 단위 뒤에 '월·년'이 붙으면 기간 표현(6개월·3개년)이지 수치가 아니다 — '6개월' 점검표를 '6개' 12회 반복으로 오탐했다
+_NUM = re.compile(r'(?<![\d.])(\d[\d,]*(?:\.\d+)?)\s*(' + UNITS + r')(?![월년])')
 _REF_SPLIT = re.compile(r'\n##\s*참고\s*자료')
 _TABLE_ROW = re.compile(r'^\|.*\|\s*$', re.M)
 _IMAGE = re.compile(r'!\[[^\]]*\]\([^)]*\)')
