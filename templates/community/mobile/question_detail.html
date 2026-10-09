@@ -94,7 +94,7 @@
             <i class="fas fa-thumbs-up"></i> 추천 {{ question.voter.count }}
         </button>
     </form>
-    {% if user == question.author %}
+    {% if question|can_edit:user %}
     <a href="{% url 'community:question_modify' question.id %}" class="tc-m-vote-btn" style="flex:0 0 80px;">수정</a>
     {% endif %}
     {% else %}

@@ -104,82 +104,65 @@
         <div class="modal-content" style="border: none; border-radius: var(--radius-2xl); overflow: hidden;">
             <div class="modal-header" style="background: var(--bg-secondary); border-bottom: 1px solid var(--border-light);">
                 <h5 class="modal-title" id="aboutModalLabel" style="font-size: 1.5rem; font-weight: 700; color: var(--text-primary);">
-                    <i class="fas fa-info-circle" style="margin-right: var(--space-2); color: #0891b2;"></i>테크창 소개
+                    <i class="fas fa-info-circle" style="margin-right: var(--space-2); color: #4f46e5;"></i>테크창 소개
                 </h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <div class="modal-body" style="padding: var(--space-8); background: var(--bg-primary);">
-                <!-- 단체사진 -->
-                <div style="text-align: center; margin-bottom: var(--space-12);">
-                    <img src="{% static 'images/group.jpg' %}" alt="테크창 단체사진"
-                         style="max-height: 320px; border-radius: var(--radius-2xl); box-shadow: var(--shadow-xl); object-fit: cover; margin-bottom: var(--space-8);">
-                </div>
+            <div class="modal-body tc-about">
+                <p class="tc-about-lead">HRD와 테크놀로지를 잇는 지식 플랫폼</p>
 
-                <div style="text-align: center; margin-bottom: var(--space-16);">
-                    <h2 style="font-size: clamp(2rem, 5vw, 3rem); font-weight: 800; margin-bottom: var(--space-4); color: var(--text-primary);">
-                        테크창
-                    </h2>
-                    <p style="font-size: 1.5rem; color: var(--text-secondary); line-height: 1.8; max-width: 800px; margin: 0 auto; font-weight: 600;">
-                        HRD와 테크놀로지 지식을 공유하는 플랫폼
-                    </p>
-                </div>
+                <section class="tc-about-sec">
+                    <h3 class="tc-about-h">시작</h3>
+                    <p>테크창은 인천대학교 창의인재개발학과 학생들이 함께하던 전공심화연구모임 <b>‘테크창’</b>에서 시작했습니다.
+                       HRD를 공부하며 기술을 함께 다루던 그 모임의 질문 — <b>사람의 성장을 기술로 어떻게 도울 것인가</b> — 가
+                       이 사이트의 뿌리입니다.</p>
+                    <figure class="tc-about-photo">
+                        <img src="{% static 'images/group.jpg' %}" alt="테크창 활동 당시 단체사진" loading="lazy">
+                        <figcaption>테크창 활동 당시</figcaption>
+                    </figure>
+                    <p>모임 활동에서 출발한 그 질문을 이어받아, 지금의 테크창은 누구나 찾아와 읽고 묻고 나눌 수 있는
+                       독립된 지식 플랫폼으로 운영되고 있습니다.</p>
+                </section>
 
-                <!-- 소속 정보 -->
-                <div style="text-align: center; padding: var(--space-8); background: white; border-radius: var(--radius-2xl); box-shadow: var(--shadow-lg); margin-bottom: var(--space-12);">
-                    <h3 style="font-size: 1.75rem; font-weight: 700; margin-bottom: var(--space-3); color: #0891b2;">
-                        <i class="fas fa-graduation-cap" style="margin-right: var(--space-2);"></i>인천대학교 창의인재개발학과
-                    </h3>
-                    <h5 style="font-size: 1.25rem; font-weight: 600; margin-bottom: var(--space-4); color: var(--text-secondary);">전공심화연구모임</h5>
-                    <p style="font-size: 1.125rem; color: var(--text-secondary); line-height: 1.6; max-width: 700px; margin: 0 auto;">
-                        HRD(인적자원개발)와 첨단 기술이 만나는 혁신적인 학습 소모임
-                    </p>
-                </div>
+                <section class="tc-about-sec">
+                    <h3 class="tc-about-h">지금의 테크창</h3>
+                    <ul class="tc-about-cards">
+                        <li><i class="fas fa-feather-pointed" aria-hidden="true"></i><b>검증된 칼럼</b>
+                            <span>AI 연구실이 기획하고 팩트체크와 편집 심사를 거친 HRD·데이터분석·프로그래밍 칼럼을 누구나 무료로 읽을 수 있습니다.</span></li>
+                        <li><i class="fas fa-flask" aria-hidden="true"></i><b>공개된 제작 과정</b>
+                            <span>칼럼마다 기획부터 발행까지의 심사·평론·수정 기록을 '메이킹 오브'로 공개합니다.</span></li>
+                        <li><i class="fas fa-comments" aria-hidden="true"></i><b>커뮤니티</b>
+                            <span>궁금한 점을 묻고 답하며, 게임과 시리즈 연재로 가볍게 함께 배웁니다.</span></li>
+                    </ul>
+                </section>
 
-                <!-- 우리의 미션 -->
-                <div style="text-align: center; margin-bottom: var(--space-8);">
-                    <h4 style="font-size: 1.5rem; font-weight: 700; margin-bottom: var(--space-8); color: var(--text-primary);">
-                        <i class="fas fa-lightbulb" style="margin-right: var(--space-2); color: #f59e0b;"></i>테크창은 이런걸 합니다.
-                    </h4>
-                </div>
-
-                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: var(--space-6);">
-                    <!-- Mission 1 -->
-                    <div style="background: white; padding: var(--space-6); border-radius: var(--radius-xl); box-shadow: var(--shadow-lg); text-align: center;">
-                        <div style="width: 60px; height: 60px; margin: 0 auto var(--space-4); background: rgba(8, 145, 178, 0.1); border-radius: var(--radius-lg); display: flex; align-items: center; justify-content: center;">
-                            <i class="fas fa-users" style="font-size: 1.5rem; color: #0891b2;"></i>
-                        </div>
-                        <h3 style="font-size: 1.125rem; font-weight: 700; margin-bottom: var(--space-2); color: var(--text-primary);">인재개발 연구</h3>
-                        <p style="color: var(--text-secondary); line-height: 1.6; font-size: 0.875rem;">
-                            HRD 관련 스터디 및 교내활동 참여
-                        </p>
-                    </div>
-
-                    <!-- Mission 2 -->
-                    <div style="background: white; padding: var(--space-6); border-radius: var(--radius-xl); box-shadow: var(--shadow-lg); text-align: center;">
-                        <div style="width: 60px; height: 60px; margin: 0 auto var(--space-4); background: rgba(16, 185, 129, 0.1); border-radius: var(--radius-lg); display: flex; align-items: center; justify-content: center;">
-                            <i class="fas fa-laptop-code" style="font-size: 1.5rem; color: #10b981;"></i>
-                        </div>
-                        <h3 style="font-size: 1.125rem; font-weight: 700; margin-bottom: var(--space-2); color: var(--text-primary);">기술 융합</h3>
-                        <p style="color: var(--text-secondary); line-height: 1.6; font-size: 0.875rem;">
-                            데이터분석, AI, 프로그래밍 등 첨단기술과 HRD를 접목
-                        </p>
-                    </div>
-
-                    <!-- Mission 3 -->
-                    <div style="background: white; padding: var(--space-6); border-radius: var(--radius-xl); box-shadow: var(--shadow-lg); text-align: center;">
-                        <div style="width: 60px; height: 60px; margin: 0 auto var(--space-4); background: rgba(6, 182, 212, 0.1); border-radius: var(--radius-lg); display: flex; align-items: center; justify-content: center;">
-                            <i class="fas fa-share-alt" style="font-size: 1.5rem; color: #06b6d4;"></i>
-                        </div>
-                        <h3 style="font-size: 1.125rem; font-weight: 700; margin-bottom: var(--space-2); color: var(--text-primary);">지식 공유</h3>
-                        <p style="color: var(--text-secondary); line-height: 1.6; font-size: 0.875rem;">
-                            전공 지식과 실무 경험의 활발한 교류와 협력
-                        </p>
-                    </div>
-                </div>
+                <section class="tc-about-sec tc-about-owner">
+                    <h3 class="tc-about-h">운영</h3>
+                    <p><b>문승현</b> · 인천대학교 창의인재개발학과 / 컴퓨터공학부</p>
+                    <p><a href="mailto:seunghyunmoon55@gmail.com">seunghyunmoon55@gmail.com</a></p>
+                </section>
             </div>
         </div>
     </div>
 </div>
+
+<style nonce="{{ csp_nonce }}">
+/* 소개 모달 — 인디고 단일 액센트, 뿌리 → 지금 → 운영 순 */
+.tc-about { padding: 28px 32px 32px; background: #fff; color: #18181b; line-height: 1.75; word-break: keep-all; }
+.tc-about-lead { margin: 0 0 22px; font-size: 1.125rem; font-weight: 700; color: #4f46e5; }
+.tc-about-sec + .tc-about-sec { margin-top: 26px; padding-top: 22px; border-top: 1px solid #f0f0f1; }
+.tc-about-h { margin: 0 0 10px; font-size: 0.8125rem; font-weight: 800; letter-spacing: 0.06em; color: #71717a; }
+.tc-about-sec p { margin: 0 0 10px; font-size: 0.95rem; color: #3f3f46; }
+.tc-about-photo { margin: 14px 0; }
+.tc-about-photo img { width: 100%; max-height: 280px; object-fit: cover; border-radius: 14px; }
+.tc-about-photo figcaption { margin-top: 6px; font-size: 0.75rem; color: #a1a1aa; text-align: right; }
+.tc-about-cards { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin: 0; padding: 0; list-style: none; }
+.tc-about-cards li { padding: 14px; border: 1px solid #e4e4e7; border-radius: 12px; font-size: 0.85rem; color: #3f3f46; line-height: 1.6; }
+.tc-about-cards i { display: block; margin-bottom: 8px; color: #4f46e5; }
+.tc-about-cards b { display: block; margin-bottom: 4px; font-size: 0.95rem; color: #18181b; }
+.tc-about-owner a { color: #4f46e5; font-weight: 600; text-decoration: none; }
+@media (max-width: 640px) { .tc-about { padding: 22px 18px; } .tc-about-cards { grid-template-columns: 1fr; } }
+</style>
 
 <style nonce="{{ csp_nonce }}">
 body { padding-top: 68px; }

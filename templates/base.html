@@ -24,7 +24,7 @@
     <meta property="og:image" content="{% block og_image %}https://techchang.com{% static 'images/og-image.jpg' %}{% endblock %}">
     <meta property="og:image:width" content="{% block og_image_width %}1200{% endblock %}">
     <meta property="og:image:height" content="{% block og_image_height %}630{% endblock %}">
-    <meta property="og:image:alt" content="{% block og_image_alt %}테크창 - 인천대학교 창의인재개발학과 전공심화연구모임 단체사진{% endblock %}">
+    <meta property="og:image:alt" content="{% block og_image_alt %}테크창 - HRD와 테크놀로지를 잇는 지식 플랫폼{% endblock %}">
 
     <!-- Twitter Card -->
     <meta name="twitter:card" content="summary_large_image">
@@ -94,6 +94,8 @@
         {% block content %}
         {% endblock %}
     </div>
+
+    {% include 'footer.html' %}
 
     <!-- Bootstrap JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>

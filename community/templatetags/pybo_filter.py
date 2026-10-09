@@ -59,6 +59,15 @@ def as_json(value):
 
 
 @register.filter
+def can_edit(question, user):
+    """{% if question|can_edit:user %} — 작성자 또는 관리자(연구팀 칼럼)"""
+    try:
+        return question.can_edit(user)
+    except Exception:
+        return False
+
+
+@register.filter
 def get_item(dictionary, key):
     """딕셔너리에서 키로 값 조회 (없으면 0 반환)"""
     try:

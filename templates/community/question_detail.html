@@ -703,15 +703,17 @@
                     </div>
                 </div>
 
-                {% if user.is_authenticated and request.user == question.author %}
+                {% if question|can_edit:request.user %}
                 <div class="action-buttons">
                     <a href="{% url 'community:question_modify' question.id %}" class="btn-premium btn-premium-secondary">
                         <i class="fas fa-edit"></i> 수정
                     </a>
+                    {% if request.user == question.author %}
                     <a href="{% url 'community:question_delete' question.id %}" class="btn-premium btn-premium-secondary"
                        onclick="return confirm('정말 삭제하시겠습니까?');">
                         <i class="fas fa-trash"></i> 삭제
                     </a>
+                    {% endif %}
                 </div>
                 {% endif %}
             </div>

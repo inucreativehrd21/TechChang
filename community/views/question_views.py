@@ -80,7 +80,8 @@ def question_create(request):
 @login_required(login_url='common:login')
 def question_modify(request, question_id):
     question = get_object_or_404(Question, pk=question_id)
-    if request.user != question.author:
+    # 작성자 본인 + 관리자는 연구팀 칼럼도 고칠 수 있다(작성자는 연구팀 그대로 유지)
+    if not question.can_edit(request.user):
         messages.error(request, '수정권한이 없습니다')
         return redirect('community:detail', question_id=question.id)
     if request.method == "POST":

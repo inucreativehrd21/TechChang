@@ -1,0 +1,33 @@
+{# 사이트 하단 — 운영자·연락처 (PC base.html / 모바일 base_mobile.html 공용) #}
+<footer class="tc-footer" aria-label="사이트 정보">
+    <div class="tc-footer-inner">
+        <div class="tc-footer-brand">
+            <b>테크창</b>
+            <span>HRD와 테크놀로지를 잇는 지식 플랫폼</span>
+        </div>
+        <dl class="tc-footer-contact">
+            <div><dt>운영</dt><dd>문승현 <small>(인천대학교 창의인재개발학과 / 컴퓨터공학부)</small></dd></div>
+            <div><dt>이메일</dt><dd><a href="mailto:seunghyunmoon55@gmail.com">seunghyunmoon55@gmail.com</a></dd></div>
+            <div><dt>전화</dt><dd><a href="tel:+821030605948">010-3060-5948</a></dd></div>
+        </dl>
+        <p class="tc-footer-copy">© {% now "Y" %} 테크창 · techchang.com</p>
+    </div>
+</footer>
+<style nonce="{{ csp_nonce }}">
+.tc-footer { margin-top: 64px; padding: 32px 16px 40px; background: #fafafa; border-top: 1px solid #e4e4e7; color: #71717a; font-size: 0.8125rem; line-height: 1.7; }
+.tc-footer-inner { max-width: 1120px; margin: 0 auto; display: grid; grid-template-columns: 1fr auto; gap: 8px 32px; align-items: start; }
+.tc-footer-brand b { display: block; font-size: 1rem; color: #18181b; }
+.tc-footer-contact { display: grid; gap: 2px; margin: 0; }
+.tc-footer-contact div { display: flex; gap: 10px; }
+.tc-footer-contact dt { min-width: 3.2em; font-weight: 600; color: #a1a1aa; }
+.tc-footer-contact dd { margin: 0; color: #3f3f46; }
+.tc-footer-contact small { color: #71717a; }
+.tc-footer-contact a { color: #3f3f46; text-decoration: none; }
+.tc-footer-contact a:hover { color: #4f46e5; text-decoration: underline; }
+.tc-footer-copy { grid-column: 1 / -1; margin: 16px 0 0; font-size: 0.75rem; color: #a1a1aa; }
+@media (max-width: 767.98px) {
+    .tc-footer { margin-top: 40px; padding: 24px 16px 32px; }   /* 하단 탭바 여백은 base_mobile 본문 패딩이 이미 확보 */
+    .tc-footer-inner { grid-template-columns: 1fr; }
+    .tc-footer-contact small { display: block; }
+}
+</style>

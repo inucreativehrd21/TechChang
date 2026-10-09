@@ -80,4 +80,4 @@ sudo systemctl status mysite nginx
 - **정적파일**: `python manage.py collectstatic --clear`
 - **DB 백업**: `python manage.py backup_db` → `backups/db_<ts>.sql.gz` (cron 매일 03:00)
 - **cron**: ubuntu 계정 `crontab -l` (backup_db, send_log_report, send_visitor_report, hold_meeting 일 20:00, office_publish 화/목/토, auto_write_series)
-- **에이전트 모델**: office 앱은 `ClaudeModel.SONNET_5`(claude-sonnet-5) 고정. `common/services/claude.ask` 는 text 블록만 합침(thinking 블록 대응)
+- **AI 모델**: 사이트 전체 `ClaudeModel.SONNET_5_5`(claude-sonnet-5-5)로 통일(2026-10-09, 4.x 사용 중단). `common/services/claude.ask` 는 text 블록만 합치고, 빈 응답이면 출력 예산을 늘려 1회 재시도(adaptive thinking 대응). `CLAUDE_BACKEND=cli` 면 구독 CLI 우선

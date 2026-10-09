@@ -97,6 +97,18 @@ class Question(models.Model):
             return os.path.basename(self.file.name)
         return None
 
+    # 연구팀(AI 연구실) 계정 — 관리자가 대신 본문을 고칠 수 있는 글
+    BOT_USERNAME = 'techchang연구팀'
+
+    def can_edit(self, user) -> bool:
+        """작성자 본인, 또는 관리자(스태프)가 연구팀 칼럼을 고칠 때."""
+        if not getattr(user, 'is_authenticated', False):
+            return False
+        if user == self.author:
+            return True
+        return bool((user.is_staff or user.is_superuser)
+                    and getattr(self.author, 'username', '') == self.BOT_USERNAME)
+
     @property
     def seo_description(self):
         """검색결과·SNS 미리보기용 요약 (본문 마크다운을 걷어낸 첫 문단, 155자).
