@@ -438,7 +438,7 @@ a.tc-m-card:active { transform: scale(0.99); box-shadow: var(--shadow-md); borde
    상세 페이지 (질문 상세)
    ============================================ */
 .tc-m-detail-head {
-    padding: 14px 16px;
+    padding: 16px 18px;
     background: var(--bg-primary);
     border-bottom: 1px solid var(--border-light);
 }
@@ -453,7 +453,7 @@ a.tc-m-card:active { transform: scale(0.99); box-shadow: var(--shadow-md); borde
 }
 .tc-m-back:active { color: var(--text-primary); }
 .tc-m-detail-title {
-    font-size: 1.125rem;
+    font-size: 1.3125rem;
     font-weight: 700;
     letter-spacing: -0.02em;
     color: var(--text-primary);
@@ -471,9 +471,11 @@ a.tc-m-card:active { transform: scale(0.99); box-shadow: var(--shadow-md); borde
 .tc-m-detail-meta span { display: inline-flex; align-items: center; gap: 4px; }
 
 .tc-m-detail-body {
-    padding: 16px;
-    font-size: 0.9375rem;
-    line-height: 1.75;
+    /* 본문 읽기 크기 — 15px 은 글이 빽빽하고 좁게 느껴졌다(2026-10-09). 16px·행간 1.8·문단 간격을 넓혀 숨 쉴 틈을 준다 */
+    padding: 20px 18px;
+    font-size: 1rem;
+    line-height: 1.8;
+    letter-spacing: -0.003em;
     color: var(--text-primary);
     background: var(--bg-primary);
     border-bottom: 8px solid var(--bg-secondary);
@@ -484,17 +486,17 @@ a.tc-m-card:active { transform: scale(0.99); box-shadow: var(--shadow-md); borde
 .tc-m-md { overflow-wrap: anywhere; word-break: keep-all; }
 .tc-m-md > :first-child { margin-top: 0; }
 .tc-m-md > :last-child { margin-bottom: 0; }
-.tc-m-md p { margin: 0 0 0.875rem; }
+.tc-m-md p { margin: 0 0 1.1em; }
 .tc-m-md h1,
 .tc-m-md h2 {
-    margin: 1.75rem 0 0.625rem;
+    margin: 2rem 0 0.75rem;
     padding-bottom: 0.375rem;
-    font-size: 1.1875rem;
+    font-size: 1.25rem;
     font-weight: 700;
     line-height: 1.4;
     border-bottom: 1px solid var(--border-color);
 }
-.tc-m-md h3 { margin: 1.375rem 0 0.5rem; font-size: 1.0625rem; font-weight: 700; line-height: 1.45; }
+.tc-m-md h3 { margin: 1.5rem 0 0.5rem; font-size: 1.125rem; font-weight: 700; line-height: 1.45; }
 .tc-m-md h4,
 .tc-m-md h5,
 .tc-m-md h6 { margin: 1.125rem 0 0.375rem; font-size: 0.9375rem; font-weight: 700; }
@@ -506,8 +508,8 @@ a.tc-m-card:active { transform: scale(0.99); box-shadow: var(--shadow-md); borde
 .tc-m-md li > ul,
 .tc-m-md li > ol { margin: 0.25rem 0 0; }
 .tc-m-md blockquote {
-    margin: 1rem 0;
-    padding: 0.75rem 0.875rem;
+    margin: 1.25rem 0;
+    padding: 0.875rem 1rem;
     color: var(--text-secondary);
     background: var(--accent-wash);
     border-left: 3px solid var(--accent-primary);

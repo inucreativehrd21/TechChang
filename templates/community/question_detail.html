@@ -566,6 +566,21 @@
         gap: var(--space-4);
     }
 }
+
+/* 휴대폰 폭에서 PC 버전으로 볼 때 — 바깥 여백(16px)+카드 안 여백(24px)이 겹쳐 본문이 310px(한 줄 약 18자)까지
+   좁아졌다. 카드를 화면 끝까지 펼치고 안 여백만 남겨 본문 폭을 확보한다. */
+@media (max-width: 576px) {
+    .detail-container { padding: var(--space-4) 0; }
+    .question-card { border-radius: 0; box-shadow: none; border-top: 1px solid var(--border-light); border-bottom: 1px solid var(--border-light); }
+    .question-header, .question-body { padding: 20px 18px; }
+    .question-title { font-size: 1.375rem; }
+    .question-content { font-size: 1rem; line-height: 1.8; letter-spacing: -0.003em; word-break: keep-all; overflow-wrap: anywhere; }
+    .question-content p { margin-bottom: 1.1em; }
+    .question-content h2 { font-size: 1.1875rem; margin-top: 1.75rem; }
+    .question-content blockquote { padding: 0.875rem 1rem; margin: 1.25rem 0; }
+    .question-content blockquote p:last-child { margin-bottom: 0; }
+    .question-content ul, .question-content ol { margin-left: 1.25rem; }
+}
 </style>
 {% endblock %}
 
