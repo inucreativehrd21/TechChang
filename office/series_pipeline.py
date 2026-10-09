@@ -118,8 +118,10 @@ def _median_scores(panel: list) -> dict:
 
 # ───────────────────────────── 도우미
 def episode_label(key: str, no: int) -> str:
-    total = len(OUTLINES[key]) - 1
-    return '0편 · 오리엔테이션' if no == 0 else f'{no}편 (총 {total}편 중)'
+    """서명에 들어가는 회차 표기. '총 9편 중'(0편 제외 계산)은 목차(0~9편, 10회)와 어긋나 검증관이
+    매번 치명 결함으로 잡았다(2026-10-10 Django 1·2편 보류) — 범위와 회수를 함께 적는다."""
+    last, count = OUTLINES[key][-1]['no'], len(OUTLINES[key])
+    return '0편 · 오리엔테이션' if no == 0 else f'{no}편 (0~{last}편, 총 {count}회)'
 
 
 def structure(key: str, no: int) -> str:
