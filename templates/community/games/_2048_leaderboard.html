@@ -1,0 +1,48 @@
+<div class="gm">
+<div class="gm-wrap">
+    <a class="gm-back" href="{% url 'community:games_index' %}"><span aria-hidden="true">←</span> 게임 목록</a>
+    <div class="gm-head">
+        <div class="gm-head-text">
+            <span class="gm-eyebrow">Leaderboard</span>
+            <h1 class="gm-title">2048 순위</h1>
+            <p class="gm-sub">한 판 최고 점수 순입니다.</p>
+        </div>
+    </div>
+
+    <nav class="gm-tabs" aria-label="난이도">
+        <a href="{% url 'community:game2048_leaderboard' %}?difficulty=normal"{% if difficulty == 'normal' %} aria-current="page"{% endif %}>일반</a>
+        <a href="{% url 'community:game2048_leaderboard' %}?difficulty=hard"{% if difficulty == 'hard' %} aria-current="page"{% endif %}>하드</a>
+    </nav>
+
+    <div class="gm-stats">
+        <div class="gm-stat"><span class="gm-stat-label">순위 등록</span><span class="gm-stat-value">{{ total_players }}</span></div>
+        <div class="gm-stat"><span class="gm-stat-label">전체 판</span><span class="gm-stat-value">{{ debug_info.total_games }}</span></div>
+        <div class="gm-stat is-accent"><span class="gm-stat-label">2048 달성</span><span class="gm-stat-value">{{ debug_info.won_games }}</span></div>
+    </div>
+
+    <div class="gm-card">
+        {% if leaderboard %}
+        <ol class="gm-rank">
+            {% for entry in leaderboard %}
+            <li class="gm-rank-row{% if entry.rank <= 3 %} is-top{% endif %}{% if entry.user == request.user %} is-me{% endif %}">
+                <span class="gm-rank-no">{{ entry.rank }}</span>
+                {% if entry.profile_image %}<img class="gm-avatar" src="{{ entry.profile_image }}" alt="" loading="lazy">{% else %}<span class="gm-avatar" aria-hidden="true">{{ entry.display_name|slice:":2" }}</span>{% endif %}
+                <span class="gm-rank-main">
+                    <a class="gm-rank-name" href="{% url 'community:profile' entry.user.id %}">{{ entry.display_name }}</a>
+                    <span class="gm-rank-meta">{{ entry.total_games }}판 · 누적 {{ entry.cumulative_score|default:"0" }}점{% if entry.wins %} · 2048 달성 {{ entry.wins }}번{% endif %}</span>
+                </span>
+                <span class="gm-rank-score"><b>{{ entry.best_score|default:"0" }}</b><small>최고 점수</small></span>
+            </li>
+            {% endfor %}
+        </ol>
+        {% else %}
+        <p class="gm-empty">아직 이 난이도의 기록이 없습니다. 첫 기록을 남겨 보세요.</p>
+        {% endif %}
+    </div>
+
+    <div class="gm-actions">
+        <a class="gm-btn is-primary" href="{% url 'community:game2048_start' %}">게임 시작</a>
+        <a class="gm-btn" href="{% url 'community:games_index' %}">게임 목록</a>
+    </div>
+</div>
+</div>

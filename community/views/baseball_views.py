@@ -407,9 +407,10 @@ def baseball_leaderboard(request):
             continue
 
         stats = stats_dict.get(user_id, {})
-        total_games = stats.get('total_games', 0)
+        # 개인 판 수 — 위의 total_games(난이도 전체 판 수)를 덮어쓰지 않도록 이름을 나눈다
+        player_games = stats.get('total_games', 0)
         wins = stats.get('wins', 0)
-        win_rate = (wins / total_games * 100) if total_games > 0 else 0
+        win_rate = (wins / player_games * 100) if player_games > 0 else 0
 
         try:
             display_name = user.profile.display_name
@@ -425,7 +426,7 @@ def baseball_leaderboard(request):
             'user': user,
             'display_name': display_name,
             'profile_image': profile_image,
-            'total_games': total_games,
+            'total_games': player_games,
             'wins': wins,
             'win_rate': round(win_rate, 1),
             'avg_attempts': round(stats.get('avg_attempts', 0) or 0, 1),

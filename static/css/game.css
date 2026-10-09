@@ -193,6 +193,70 @@
 }
 .gm-seg button[aria-pressed="true"] { background: var(--gm-bg); color: var(--gm-ink); box-shadow: 0 1px 3px rgba(24, 24, 60, .1); }
 
+
+/* 탭(난이도 전환 링크) */
+.gm-tabs { display: inline-flex; padding: 3px; margin-bottom: 12px; border-radius: 999px; background: var(--gm-bg-mute); }
+.gm-tabs a {
+    min-height: 34px;
+    display: inline-flex;
+    align-items: center;
+    padding: 0 16px;
+    border-radius: 999px;
+    color: var(--gm-ink-3);
+    font-size: 0.85rem;
+    font-weight: 700;
+    text-decoration: none;
+}
+.gm-tabs a:hover { color: var(--gm-ink); }
+.gm-tabs a[aria-current="page"] { background: var(--gm-bg); color: var(--gm-ink); box-shadow: 0 1px 3px rgba(24, 24, 60, .1); }
+
+/* 순위 목록 (리더보드) */
+.gm-rank { margin: 0; padding: 0; list-style: none; }
+.gm-rank-row { display: flex; align-items: center; gap: 12px; padding: 12px 0; border-top: 1px solid var(--gm-line-soft); }
+.gm-rank-row:first-child { border-top: 0; padding-top: 2px; }
+.gm-rank-no { flex: none; width: 1.8em; font-size: 0.95rem; font-weight: 800; color: var(--gm-ink-3); text-align: center; font-variant-numeric: tabular-nums; }
+.gm-rank-row.is-top .gm-rank-no { color: var(--gm-accent); }
+.gm-avatar {
+    flex: none;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    object-fit: cover;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--gm-bg-mute);
+    color: var(--gm-ink-2);
+    font-size: 0.78rem;
+    font-weight: 800;
+}
+.gm-rank-row.is-me { margin: 0 -10px; padding-left: 10px; padding-right: 10px; border-radius: var(--gm-r-md); background: var(--gm-accent-wash); }
+.gm-rank-main { flex: 1; min-width: 0; }
+.gm-rank-name { display: block; font-size: 0.95rem; font-weight: 700; color: var(--gm-ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-decoration: none; }
+a.gm-rank-name:hover { color: var(--gm-accent); }
+.gm-rank-meta { display: block; margin-top: 1px; font-size: 0.78rem; color: var(--gm-ink-3); }
+.gm-rank-score { flex: none; text-align: right; }
+.gm-rank-score b { display: block; font-size: 1.1rem; font-weight: 800; font-variant-numeric: tabular-nums; }
+.gm-rank-score small { display: block; font-size: 0.7rem; color: var(--gm-ink-3); }
+.gm-empty { padding: 28px 0 18px; text-align: center; font-size: 0.9rem; color: var(--gm-ink-3); }
+
+/* 게임 목록 아이콘 */
+.gm-game-icon {
+    flex: none;
+    width: 52px;
+    height: 52px;
+    border-radius: var(--gm-r-md);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.6rem;
+    background: var(--gm-bg-mute);
+}
+.gm-option-meta { display: block; margin-top: 6px; font-size: 0.75rem; color: var(--gm-ink-4); }
+.gm-note a { color: var(--gm-accent); font-weight: 700; text-decoration: none; }
+.gm-links { display: flex; flex-wrap: wrap; gap: 8px; }
+.gm-links .gm-btn { flex: 1 1 0; min-width: 0; }
+
 @media (max-width: 575.98px) {
     .gm { padding: 20px 16px 96px; min-height: auto; }
     .gm-title { font-size: 1.35rem; }

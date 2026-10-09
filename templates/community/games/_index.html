@@ -1,0 +1,47 @@
+{# 게임 목록 (PC·모바일 공용). games_info = base_views.games_index #}
+<div class="gm">
+<div class="gm-wrap">
+    <div class="gm-head">
+        <div class="gm-head-text">
+            <span class="gm-eyebrow">Game Center</span>
+            <h1 class="gm-title">게임</h1>
+            <p class="gm-sub">잠깐 머리 식히기 좋은 퍼즐 게임 {{ games_info|length }}종 · 지금까지 {{ recent_stats.total_games_played }}판이 플레이됐습니다.</p>
+        </div>
+    </div>
+
+    <div class="gm-options">
+        {% for game in games_info %}
+        <a class="gm-option" href="{% url game.url %}">
+            <span class="gm-game-icon" aria-hidden="true">{{ game.icon }}</span>
+            <div class="gm-option-main">
+                <div class="gm-option-name">{{ game.name }}</div>
+                <p class="gm-option-desc">{{ game.description }}</p>
+                <span class="gm-option-meta">누적 {{ game.total_games }}판{% if game.active_games %} · 진행 중 {{ game.active_games }}판{% endif %}</span>
+            </div>
+            <span class="gm-option-go" aria-hidden="true">→</span>
+        </a>
+        {% endfor %}
+    </div>
+
+    <div class="gm-card" style="margin-top:16px;">
+        <h2 class="gm-h2">순위 보기</h2>
+        <div class="gm-links">
+            <a class="gm-btn" href="{% url 'community:baseball_leaderboard' %}">숫자야구</a>
+            <a class="gm-btn" href="{% url 'community:game2048_leaderboard' %}">2048</a>
+            <a class="gm-btn" href="{% url 'community:minesweeper_leaderboard' %}">지뢰찾기</a>
+        </div>
+        <p class="gm-note" style="text-align:left;">게임과 활동으로 쌓은 포인트 순위는 <a href="{% url 'common:point_ranking' %}">포인트 랭킹</a>에서 볼 수 있습니다.</p>
+    </div>
+
+    {% if not user.is_authenticated %}
+    <div class="gm-card" style="text-align:center;">
+        <h2 class="gm-h2">로그인하면 기록이 남습니다</h2>
+        <p class="gm-note" style="margin-top:0;">게임을 하려면 로그인이 필요합니다.</p>
+        <div class="gm-actions">
+            <a class="gm-btn is-primary" href="{% url 'common:login' %}?next={{ request.get_full_path|urlencode }}">로그인</a>
+            <a class="gm-btn" href="{% url 'common:signup' %}">회원가입</a>
+        </div>
+    </div>
+    {% endif %}
+</div>
+</div>

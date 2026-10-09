@@ -1,50 +1,13 @@
 {% extends 'base_mobile.html' %}
 {% load static %}
 
-{% block title %}게임 센터{% endblock %}
+{% block title %}게임 - 테크창{% endblock %}
 {% block tab_games %}active{% endblock %}
 
+{% block extra_css %}
+<link href="{% static 'css/game.css' %}?v={{ STATIC_VERSION }}" rel="stylesheet">
+{% endblock %}
+
 {% block content %}
-<!-- 미니 히어로 -->
-<div class="tc-m-hero">
-    <span class="tc-m-eyebrow"><span class="tc-m-dot"></span> 게임 센터</span>
-    <h1 class="tc-m-hero-title">두뇌를 자극하는 퍼즐</h1>
-    <p class="tc-m-hero-sub">지식을 게임으로 즐기고 랭킹에 도전하세요.</p>
-</div>
-
-<!-- 게임 그리드 -->
-<div class="tc-m-page">
-    <div class="tc-m-game-grid">
-        <a href="{% url 'community:baseball_start' %}" class="tc-m-game-card tc-m-game-baseball">
-            <div class="tc-m-game-icon">⚾</div>
-            <div class="tc-m-game-name">숫자야구</div>
-            <div class="tc-m-game-desc">숫자를 맞혀보세요</div>
-        </a>
-        <a href="{% url 'community:game2048_start' %}" class="tc-m-game-card tc-m-game-2048">
-            <div class="tc-m-game-icon">🔢</div>
-            <div class="tc-m-game-name">2048</div>
-            <div class="tc-m-game-desc">타일을 합쳐보세요</div>
-        </a>
-        <a href="{% url 'community:minesweeper_start' %}" class="tc-m-game-card tc-m-game-minesweeper">
-            <div class="tc-m-game-icon">💣</div>
-            <div class="tc-m-game-name">지뢰찾기</div>
-            <div class="tc-m-game-desc">지뢰를 피하세요</div>
-        </a>
-        <a href="{% url 'common:point_ranking' %}" class="tc-m-game-card tc-m-game-ranking">
-            <div class="tc-m-game-icon">🏆</div>
-            <div class="tc-m-game-name">포인트 랭킹</div>
-            <div class="tc-m-game-desc">상위 유저를 확인</div>
-        </a>
-    </div>
-</div>
-
-<!-- 리더보드 바로가기 -->
-<div class="tc-m-page" style="padding-top:0;">
-    <div class="tc-m-section-title">리더보드</div>
-    <div class="tc-m-quicklinks">
-        <a href="{% url 'community:baseball_leaderboard' %}" class="tc-m-quicklink">⚾ 야구</a>
-        <a href="{% url 'community:game2048_leaderboard' %}" class="tc-m-quicklink">🔢 2048</a>
-        <a href="{% url 'community:minesweeper_leaderboard' %}" class="tc-m-quicklink">💣 지뢰</a>
-    </div>
-</div>
+{% include 'community/games/_index.html' %}
 {% endblock %}
