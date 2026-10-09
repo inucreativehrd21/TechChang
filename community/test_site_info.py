@@ -62,3 +62,17 @@ class SiteInfoTests(TestCase):
         self.assertNotIn('tc-eyebrow">인천대학교 창의인재개발학과 전공심화연구모임', pc)
         self.assertIn('에서 시작했습니다', pc)                    # 소개 모달: 뿌리는 테크창 활동
         self.assertNotIn('혁신적인 학습 소모임', pc)               # 현재형 소모임 소개는 없앰
+
+
+class DetailContentVisibleTests(TestCase):
+    """PC 상세가 본문 카드를 JS 로 숨겼다가 IntersectionObserver(threshold 0.1)로 드러내던 코드 회귀 방지.
+    본문이 화면 높이의 10배를 넘는 긴 칼럼은(모바일에서 PC 버전으로 볼 때) 영영 opacity 0 이었다(2026-10-09)."""
+
+    def test_pc_detail_does_not_hide_the_article_with_js(self):
+        bot = user(Question.BOT_USERNAME)
+        q = Question.objects.create(author=bot, category=Category.objects.create(name='HRD'), subject='긴 칼럼',
+                                    content='문단입니다. ' * 3000, create_date=timezone.now())
+        self.client.cookies['force_version'] = 'desktop'
+        html = self.client.get(f'/{q.id}/', HTTP_USER_AGENT=MOBILE).content.decode()
+        self.assertIn('class="question-card"', html)          # PC 템플릿이 나왔는지
+        self.assertNotIn("card.style.opacity = '0'", html)

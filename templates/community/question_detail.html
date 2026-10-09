@@ -871,29 +871,9 @@
 {% block script %}
 <script nonce="{{ csp_nonce }}">
 document.addEventListener('DOMContentLoaded', function() {
-    // Smooth scroll animations
-    const cards = document.querySelectorAll('.question-card, .comments-section, .answers-section, .answer-form-section');
-
-    const observer = new IntersectionObserver((entries) => {
-        entries.forEach((entry, index) => {
-            if (entry.isIntersecting) {
-                setTimeout(() => {
-                    entry.target.style.opacity = '1';
-                    entry.target.style.transform = 'translateY(0)';
-                }, index * 100);
-                observer.unobserve(entry.target);
-            }
-        });
-    }, {
-        threshold: 0.1
-    });
-
-    cards.forEach(card => {
-        card.style.opacity = '0';
-        card.style.transform = 'translateY(30px)';
-        card.style.transition = 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)';
-        observer.observe(card);
-    });
+    // (등장 애니메이션은 CSS fadeInUp 이 맡는다. 예전에는 JS 가 카드를 opacity 0 으로 숨기고
+    //  IntersectionObserver(threshold 0.1)로 드러냈는데, 본문 카드가 화면 높이의 10배를 넘는
+    //  긴 칼럼(좁은 화면에서 PC 버전으로 볼 때 등)은 10% 가 한 화면에 들어오지 않아 영영 안 보였다.)
 
     // Auto-resize textarea
     const textarea = document.querySelector('.form-control-detail');
