@@ -104,6 +104,26 @@ class SeriesPipelineTests(TestCase):
                          ('2편 — URL 한 줄의 정체', 52, 1))                        # 같은 글·조회수 유지
         self.assertEqual(old.office_draft.target_question_id, old.id)
 
+    def test_rewrite_without_column_sections_is_accepted_and_rescored(self):
+        """연재에는 칼럼의 '참고 자료' 섹션이 없다 — 재작성본을 잘림으로 버리면 보완 기회가 사라진다(10/10 0편)."""
+        scores = iter([3, 5])
+
+        def ask_json(key, prompt, **kw):
+            if key == 'checker':
+                return fake_json()(key, prompt)
+            score = next(scores)                       # 첫 심사 3점(60) → 보완 → 재심 5점(100)
+            return {'scores': {k: score for k in S.SERIES_RUBRIC}, 'fatal': [], 'issues': ['코드 설명 보강'],
+                    'notes': ''}
+
+        rewrite = episode(title='URL 한 줄의 정체 — 고친 판', body=BODY + '보강한 설명입니다. ' * 30)
+        with mock.patch('office.series_pipeline.ask_agent', side_effect=[episode(), rewrite]), \
+             mock.patch('office.series_pipeline.ask_agent_json', side_effect=ask_json):
+            res = S.produce_episode('django', 2, out=lambda *_: None)
+        self.assertEqual(res['status'], 'published')
+        self.assertIn('고친 판', res['question'].subject)
+        self.assertEqual(S.looks_truncated('django', episode()), '')
+        self.assertIn('서명', S.looks_truncated('django', episode().rsplit('---', 1)[0]))
+
     def test_precheck_catches_structure_and_length(self):
         issues = S.precheck('django', '짧은 글입니다.')
         self.assertTrue(any('하한' in i for i in issues))

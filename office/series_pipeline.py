@@ -178,11 +178,43 @@ def precheck(key: str, content: str) -> list:
     return issues
 
 
+def looks_truncated(key: str, content: str) -> str:
+    """연재 회차가 끝까지 쓰였는지 — 마지막 소제목(다음 편 예고)과 끝 서명이 있어야 한다. 잘렸으면 사유.
+
+    칼럼용 P.looks_truncated 는 '## 참고 자료' 섹션으로 판단하는데 연재 골격에는 그 섹션이 없어,
+    재작성본이 매번 '잘림'으로 버려졌다(2026-10-10 에이전트 0편: 보완 기회 2번이 모두 무효).
+    """
+    text = (content or '').rstrip()
+    if not text:
+        return '응답이 비어 있습니다'
+    last = (REQUIRED_HEADINGS.get(key) or [''])[-1]
+    if last and last not in text:
+        return f'마지막 소제목({last})이 없습니다 — 생성이 중간에 끊긴 것으로 보입니다'
+    if '테크창 연구팀' not in text[-400:]:
+        return '끝 서명이 없습니다 — 생성이 중간에 끊긴 것으로 보입니다'
+    return ''
+
+
+def safe_rewrite(key: str, raw: str, prev_subject: str, prev_content: str) -> tuple:
+    """재작성 결과 검증 — 비었거나, 직전 원고의 60% 미만이거나, 잘렸으면 이전 원고를 유지한다.
+    반환: (subject, content, ok, reason)"""
+    subject, content = P.parse_output(raw)
+    prev_len, new_len = P.body_length(prev_content), P.body_length(content)
+    if not content.strip():
+        return prev_subject, prev_content, False, '재작성 응답이 비어 이전 원고 유지'
+    if prev_len and new_len < prev_len * 0.6:
+        return prev_subject, prev_content, False, f'재작성본이 너무 짧아({new_len}자 < {prev_len}자의 60%) 이전 원고 유지'
+    cut = looks_truncated(key, content)
+    if cut:
+        return prev_subject, prev_content, False, f'재작성본이 잘려 이전 원고 유지 — {cut}'
+    return subject, content, True, ''
+
+
 def _fix(writer, key, no, subject, content, who, issues) -> tuple:
     raw = ask_agent(writer, FIX_PROMPT.format(who=who, issues='\n'.join(f'- {i}' for i in issues),
                                               subject=subject, content=content, structure=structure(key, no)),
                     max_tokens=MAX_TOKENS, tools=tuple(SERIES[key].get('tools', ())))
-    return P.safe_rewrite(raw, subject, content)
+    return safe_rewrite(key, raw, subject, content)
 
 
 def check_episode(key: str, no: int, subject: str, content: str) -> dict:
