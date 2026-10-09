@@ -273,6 +273,9 @@ GSC_OAUTH_TOKEN = os.environ.get('GSC_OAUTH_TOKEN', '')
 GSC_CREDENTIALS_JSON = os.environ.get('GSC_CREDENTIALS_JSON', '')
 GSC_SITE_URL = os.environ.get('GSC_SITE_URL', 'sc-domain:techchang.com')
 
+# IndexNow(Bing·네이버 등에 새 글 즉시 알림) — 32자 16진수. 비우면 꺼진다. common/services/indexnow.py
+INDEXNOW_KEY = os.environ.get('INDEXNOW_KEY', '').strip()
+
 # 끝말잇기 게임 설정
 WORDCHAIN_TIMEOUT = int(os.environ.get('WORDCHAIN_TIMEOUT', 30))  # 기본 30초
 WORDCHAIN_USE_DICTIONARY_API = os.environ.get('WORDCHAIN_USE_DICTIONARY_API', 'True').lower() == 'true'

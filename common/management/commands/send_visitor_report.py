@@ -53,8 +53,10 @@ class Command(BaseCommand):
         data = self._collect(period)
         gsc = self._collect_gsc(data['range_start'], data['range_end'])
 
-        text = self._render_text(period, data, gsc)
-        html = self._render_html(period, data, gsc)
+        seo = self._collect_seo() if period == 'weekly' and gsc.get('available') else {}
+
+        text = self._render_text(period, data, gsc) + self._seo_text(seo)
+        html = self._render_html(period, data, gsc).replace('<!--SEO-->', self._seo_html(seo))
 
         if dry_run:
             # Windows 콘솔(cp949)에서도 깨지지 않도록 인코딩-안전하게 출력.
@@ -204,6 +206,51 @@ class Command(BaseCommand):
                 return None, f'서비스계정 키 오류: {ex}'
 
         return None, '미설정'
+
+    def _collect_seo(self):
+        """칼럼 색인 현황 + 제목 다시 쓰기 후보 (office.seo_audit). 실패해도 리포트는 나간다."""
+        out = {}
+        try:
+            from office.seo_audit import index_coverage, retitle_candidates
+            out['coverage'] = index_coverage()
+            out['retitle'] = retitle_candidates()
+        except Exception as ex:  # noqa: BLE001
+            self.stderr.write(self.style.WARNING(f'SEO 점검 건너뜀: {ex}'))
+        return out
+
+    @staticmethod
+    def _seo_text(seo):
+        cov = (seo or {}).get('coverage') or {}
+        if not cov.get('available'):
+            return ''
+        L = ['', '[검색 색인 — 연구팀 칼럼]',
+             f"  색인됨 {cov['indexed']} / {cov['total']}편"]
+        for m in cov['not_indexed'][:10]:
+            L.append(f"  - #{m['id']} {m['subject'][:30]} — {m['state']}")
+        if seo.get('retitle'):
+            L += ['', '[제목 다시 쓰기 후보 — 노출 대비 클릭 약함, `manage.py seo_retitle` 로 제안 확인]']
+            for c in seo['retitle'][:5]:
+                L.append(f"  - #{c['id']} {c['subject'][:30]} — 노출 {c['impr']} · CTR {c['ctr']}% · {c['position']}위")
+        return '\n'.join(L) + '\n'
+
+    @staticmethod
+    def _seo_html(seo):
+        from django.utils.html import escape
+        cov = (seo or {}).get('coverage') or {}
+        if not cov.get('available'):
+            return ''
+        pct = round(cov['indexed'] / cov['total'] * 100) if cov['total'] else 0
+        h = (f'<div class="card"><h2>🔎 검색 색인 — 연구팀 칼럼</h2>'
+             f'<div class="row"><span>색인됨</span><span><b>{cov["indexed"]}</b> / {cov["total"]}편 ({pct}%)</span></div>')
+        for m in cov['not_indexed'][:10]:
+            h += (f'<div class="row"><span><a href="https://techchang.com/{m["id"]}/">#{m["id"]}</a> '
+                  f'{escape(m["subject"][:28])}</span><span class="muted">{escape(m["state"])}</span></div>')
+        if seo.get('retitle'):
+            h += '<h2 style="margin-top:16px;">제목 다시 쓰기 후보 <span class="muted">(seo_retitle)</span></h2>'
+            for c in seo['retitle'][:5]:
+                h += (f'<div class="row"><span>#{c["id"]} {escape(c["subject"][:28])}</span>'
+                      f'<span class="muted">노출 {c["impr"]} · CTR {c["ctr"]}% · {c["position"]}위</span></div>')
+        return h + '</div>'
 
     def _collect_gsc(self, start, end):
         site_url = getattr(settings, 'GSC_SITE_URL', '')
@@ -452,6 +499,7 @@ class Command(BaseCommand):
 <div class="card"><h2>주차별 추이 (최근 8주 총합)</h2>{weeks}</div>
 <div class="card"><h2>요일별 평균 (최근 28일)</h2>{dow}</div>
 {gsc_card}
+<!--SEO-->
 <div style="text-align:center;font-size:.75rem;color:#a1a1aa;margin-top:6px;padding-bottom:8px;">
   자동 발송 · 방문자 리포트 | <a href="https://techchang.com">사이트 바로가기</a>
 </div>

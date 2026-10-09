@@ -640,6 +640,23 @@ def critique_text(cr: dict) -> str:
     return '\n'.join(lines)
 
 
+def headline_keywords(chosen: dict) -> list:
+    """제목 실험실에 줄 검색어 — 검색 기회 검색어가 있으면 맨 앞에."""
+    chosen = chosen or {}
+    words = [chosen.get('gsc_target', '')] + list(chosen.get('keywords') or [])
+    return [w for w in dict.fromkeys(words) if isinstance(w, str) and w.strip()]
+
+
+def search_target_rule(chosen: dict) -> str:
+    """회의가 GSC [검색 기회] 검색어를 겨냥해 고른 주제면, 그 검색어로 찾아온 독자를 맞이하는 글이 되게 한다."""
+    q = (chosen or {}).get('gsc_target', '')
+    if not q:
+        return ''
+    return (f'**[검색 목표]** 구글에서 「{q}」를 검색한 독자가 이 글에 오도록 기획된 주제입니다. '
+            f'첫 문단에서 그 검색 의도에 바로 답하고, 소제목 하나와 본문에 이 표현을 자연스럽게 넣으세요'
+            f'(억지 반복 금지 — 한두 번이면 충분합니다).\n\n')
+
+
 @live_step('draft')
 def step_draft(topic_key: str, brief_decision, brief: dict, recent: list) -> tuple:
     """2) 집필."""
@@ -648,6 +665,7 @@ def step_draft(topic_key: str, brief_decision, brief: dict, recent: list) -> tup
     if chosen:
         subject_block = ('이번 칼럼 주제는 편집회의에서 결정되었습니다. 이 주제로 작성하세요.\n'
                          f"- 주제: {chosen.get('title', '')}\n- 관점·근거: {chosen.get('detail', '')}\n\n")
+        subject_block += search_target_rule(chosen)
     else:
         subject_block = '위 분야에서 현재 가장 주목받고 있는 트렌드나 이슈 하나를 선정하여 작성하세요.\n\n'
     avoid_titles = ''

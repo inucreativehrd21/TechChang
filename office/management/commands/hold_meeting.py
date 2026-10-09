@@ -37,12 +37,17 @@ ROUND2 = (
     '[사이트 지표·현황]\n{brief}\n\n[발언 기록]\n{transcript}'
 )
 
+# 검색 노출을 늘리는 것이 이번 분기 목표다(2026-10-09). 지표의 [검색 기회]를 주제 선정의 1순위 근거로 쓰게 한다.
+COLUMN_TASK = ('당신 분야에서 다음 주 칼럼으로 다룰 만한 주제 2개를 각각 한 줄 근거와 함께 제안하세요. 최근 발행 칼럼과 겹치지 않게. '
+               '지표의 [검색 기회]에 당신 분야 검색어가 있으면 2개 중 1개는 반드시 그 검색어를 정면으로 겨냥하고, '
+               '어떤 검색어인지 밝히세요(이미 그 검색어로 걸리는 우리 칼럼이 있으면 새 글이 그 칼럼과 어떻게 다른지도).')
+
 TASKS = {
     'lead': ('회의를 열며 지표를 해석해 주세요: 무엇이 늘고 줄었는지, 어떤 분야·형식의 글이 반응이 좋았는지, '
              '이번 주 팀이 집중해야 할 한두 가지. 마지막에 각 칼럼니스트에게 주제 제안을 요청하세요.'),
-    'hrd': '당신 분야에서 다음 주 칼럼으로 다룰 만한 주제 2개를 각각 한 줄 근거와 함께 제안하세요. 최근 발행 칼럼과 겹치지 않게.',
-    'data': '당신 분야에서 다음 주 칼럼으로 다룰 만한 주제 2개를 각각 한 줄 근거와 함께 제안하세요. 최근 발행 칼럼과 겹치지 않게.',
-    'coding': '당신 분야에서 다음 주 칼럼으로 다룰 만한 주제 2개를 각각 한 줄 근거와 함께 제안하세요. 최근 발행 칼럼과 겹치지 않게.',
+    'hrd': COLUMN_TASK,
+    'data': COLUMN_TASK,
+    'coding': COLUMN_TASK,
     'checker': ('지금까지 나온 주제 제안 각각에 대해 (1) 기존 발행 칼럼과 핵심 소재가 겹치는지, (2) 실제 근거·출처로 검증 가능한 주제인지 '
                 '짧게 판정하세요. 문제 있는 제안은 이름을 지목해 이유를 말하세요.'),
     'charter': ('나온 주제 제안 중 실제 수치·통계로 표나 차트를 만들 수 있는 것과 그렇지 않은 것을 구분해 말하고, '
@@ -66,8 +71,31 @@ SYNTHESIS = (
     '  ]\n'
     '}}\n'
     '규칙: 검증관이 중복·검증 불가로 지목한 주제는 options 에 넣지 않는다. 각 option.key 는 a,b,c. '
+    '[검색 기회]에 그 분야 검색어가 있으면 그 칼럼 안건의 options 중 최소 1개는 그 검색어를 keywords 에 글자 그대로 넣은 주제로 한다. '
     'dev/ops 는 지표·지적사항에 근거한 구체적 작업으로. 발언에 근거 없는 항목을 만들지 않는다.'
 )
+
+
+def _norm(text: str) -> str:
+    return ''.join(str(text).lower().split())
+
+
+def mark_gsc_targets(decisions, gaps) -> list:
+    """선택지의 keywords·제목에 [검색 기회] 검색어가 (공백 무시) 들어 있으면 option['gsc_target'] 을 단다."""
+    queries = [g['query'] for g in gaps if g.get('query')]
+    hit = []
+    for d in decisions:
+        for o in d.get('options') or []:
+            if not isinstance(o, dict):
+                continue
+            hay = [_norm(k) for k in (o.get('keywords') or []) if isinstance(k, str)] + [_norm(o.get('title', ''))]
+            for q in queries:
+                nq = _norm(q)
+                if nq and any(nq in h for h in hay):
+                    o['gsc_target'] = q
+                    hit.append(q)
+                    break
+    return list(dict.fromkeys(hit))
 
 
 class Command(BaseCommand):
@@ -149,6 +177,7 @@ class Command(BaseCommand):
                             lambda: ask_agent_json('lead', SYNTHESIS.format(brief=brief, transcript=tx()), max_tokens=8000))
         decisions = [d for d in result.get('decisions', []) if isinstance(d, dict) and d.get('options')]
         self._step('검색 수요 비교', lambda: self._attach_demand(decisions))
+        self._step('검색 기회 반영 점검', lambda: self._attach_gsc_targets(decisions, snap.get('gsc_gaps') or []))
         summary = str(result.get('summary', '')).strip()
         self.stdout.write(f'  결론: {summary[:80]}... / 안건 {len(decisions)}건')
 
@@ -172,6 +201,14 @@ class Command(BaseCommand):
                 if note:
                     o['demand_note'] = note
 
+    def _attach_gsc_targets(self, decisions, gaps):
+        """선택지 keywords 가 [검색 기회] 검색어와 맞으면 표시한다. 한 건도 없으면 단계 메모에 남긴다(메일 실행 결과)."""
+        targets = mark_gsc_targets(decisions, gaps)
+        if gaps and not targets:
+            self.steps[-1]['note'] = f'검색 기회 {len(gaps)}개 중 안건에 반영된 검색어 없음'
+        elif targets:
+            self.steps[-1]['note'] = '반영: ' + ', '.join(targets)[:200]
+
     def _save(self, week, brief, transcript, snap, summary, decisions):
         meeting = Meeting.objects.create(week_start=week, briefing=brief, transcript=transcript,
                                          snapshot=snap, summary=summary)
@@ -183,7 +220,8 @@ class Command(BaseCommand):
                 opts_clean.append({'key': o.get('key') or 'abc'[i], 'title': str(o['title'])[:200],
                                    'detail': str(o.get('detail', ''))[:600], 'proposed_by': str(o.get('proposed_by', ''))[:20],
                                    'keywords': [str(k)[:30] for k in (o.get('keywords') or [])][:3],
-                                   'demand_note': str(o.get('demand_note', ''))[:160]})
+                                   'demand_note': str(o.get('demand_note', ''))[:160],
+                                   'gsc_target': str(o.get('gsc_target', ''))[:60]})
             if not opts_clean:
                 continue
             Decision.objects.create(
@@ -296,11 +334,15 @@ class Command(BaseCommand):
                     txt.append(f"      {o['detail']}")
                 if o.get('demand_note'):
                     txt.append(f"      ▸ {o['demand_note']}")
+                if o.get('gsc_target'):
+                    txt.append(f"      🔎 검색 기회 겨냥: {o['gsc_target']}")
                 html.append(f'<li style="margin-bottom:6px"><b>({escape(o["key"])}) {escape(o["title"])}</b>'
                             f'<span style="color:#6b7280">{escape(by)}</span>'
                             + (f'<br><span style="color:#374151">{escape(o["detail"])}</span>' if o.get('detail') else '')
                             + (f'<br><span style="color:#4f46e5;font-size:12px">▸ {escape(o["demand_note"])}</span>'
                                if o.get('demand_note') else '')
+                            + (f'<br><span style="color:#047857;font-size:12px">🔎 검색 기회 겨냥: {escape(o["gsc_target"])}</span>'
+                               if o.get('gsc_target') else '')
                             + '</li>')
             txt.append('')
             html.append('</ul>')

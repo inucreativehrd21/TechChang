@@ -1,0 +1,26 @@
+{# 본문 아래 '함께 읽으면 좋은 칼럼' (PC·모바일 공용). related = office.related.related_columns() #}
+<nav class="tc-rel" aria-labelledby="tc-rel-title">
+    <h2 id="tc-rel-title" class="tc-rel-title">함께 읽으면 좋은 칼럼</h2>
+    <ol class="tc-rel-list">
+        {% for r in related %}
+        <li>
+            <a href="{% url 'community:detail' r.id %}" class="tc-rel-item">
+                {% if r.category %}<span class="tc-rel-cat">{{ r.category }}</span>{% endif %}
+                <span class="tc-rel-subject">{{ r.subject }}</span>
+            </a>
+        </li>
+        {% endfor %}
+    </ol>
+</nav>
+<style nonce="{{ csp_nonce }}">
+.tc-rel { margin: 32px 0 8px; }
+.tc-rel-title { font-size: 0.95rem; font-weight: 700; color: #18181b; margin: 0 0 12px; }
+.tc-rel-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.tc-rel-item { display: flex; align-items: baseline; gap: 10px; padding: 12px 14px; border: 1px solid #e4e4e7;
+               border-radius: 10px; color: #18181b; text-decoration: none; background: #fff;
+               transition: border-color .15s, background .15s; }
+.tc-rel-item:hover { border-color: #4f46e5; background: #fafaff; color: #18181b; }
+.tc-rel-cat { flex: 0 0 auto; font-size: 0.72rem; font-weight: 700; color: #4f46e5; background: #eef2ff;
+              padding: 2px 8px; border-radius: 999px; }
+.tc-rel-subject { font-weight: 600; font-size: 0.92rem; line-height: 1.45; }
+</style>

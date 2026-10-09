@@ -42,6 +42,13 @@ def robots_txt(request):
     return HttpResponse(body, content_type='text/plain; charset=utf-8')
 
 
+def indexnow_key(request, key):
+    """IndexNow 소유 확인 파일 — /<INDEXNOW_KEY>.txt 가 키를 그대로 돌려준다."""
+    if not settings.INDEXNOW_KEY or key != settings.INDEXNOW_KEY:
+        raise Http404
+    return HttpResponse(key, content_type='text/plain; charset=utf-8')
+
+
 def sitemap_page(request):
     """사람이 보는 사이트맵 — sitemap.xml 과 같은 범위를 카테고리별로 묶어 보여준다.
 
@@ -390,12 +397,17 @@ def detail(request, question_id):
     except Exception:  # noqa: BLE001 — 부가 카드 하나 때문에 본문 페이지가 500 이 나면 안 된다
         logging.getLogger(__name__).exception('메이킹 카드 생성 실패: question=%s', question.id)
 
+    # 본문 아래 '함께 읽으면 좋은 칼럼' — 내부 링크(검색엔진 주제 묶음·크롤링 동선)
+    from office.related import related_columns
+    related = related_columns(question) if question.is_indexable else []
+
     context = {
         'question': question,
         'answer_list': answer_list,  # 템플릿에서 for answer in answer_list
         'sort': sort,
         'series_nav': series_nav,
         'making': making,
+        'related': related,
     }
     template = 'community/mobile/question_detail.html' if getattr(request, 'is_mobile', False) else 'community/question_detail.html'
     return render(request, template, context)

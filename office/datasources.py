@@ -232,8 +232,14 @@ def demand_note(d: dict) -> str:
 
 
 # ───────────────────────────── GSC 기회 검색어
-def gsc_opportunities(days: int = 28, limit: int = 8) -> list:
-    """노출은 많은데 클릭이 적은 검색어 [{query, impr, clicks, ctr, position}]."""
+def gsc_opportunities(days: int = 28, limit: int = 12) -> list:
+    """검색 기회 [{query, impr, clicks, ctr, position, page}] — 노출 많은 순.
+
+    두 종류를 함께 잡는다(2026-10-09, 사이트 규모가 작아 '노출 20회+·CTR 2% 미만'만으로는 1건뿐이었다):
+    - 문턱 검색어: 평균 순위 4~60위에 노출이 2회 이상 — 맞는 글을 쓰거나 보강하면 1페이지로 올라올 후보
+    - 저CTR 검색어: 노출 20회 이상인데 CTR 2% 미만 — 제목·설명이 약하다는 신호
+    page = 그 검색어로 지금 가장 많이 노출되는 우리 페이지 경로(없으면 '').
+    """
     from django.conf import settings
     site_url = getattr(settings, 'GSC_SITE_URL', '')
     if not site_url:
@@ -248,13 +254,38 @@ def gsc_opportunities(days: int = 28, limit: int = 8) -> list:
         start = end - timedelta(days=days)
         svc = build('searchconsole', 'v1', credentials=creds, cache_discovery=False)
         rows = svc.searchanalytics().query(siteUrl=site_url, body={
-            'startDate': start.isoformat(), 'endDate': end.isoformat(), 'dimensions': ['query'],
-            'rowLimit': 250}).execute().get('rows', [])
+            'startDate': start.isoformat(), 'endDate': end.isoformat(), 'dimensions': ['query', 'page'],
+            'rowLimit': 1000}).execute().get('rows', [])
     except Exception:  # noqa: BLE001
         logger.warning('GSC 기회 검색어 수집 실패', exc_info=True)
         return []
-    gaps = [{'query': r['keys'][0], 'impr': int(r.get('impressions', 0)), 'clicks': int(r.get('clicks', 0)),
-             'ctr': round(r.get('ctr', 0) * 100, 1), 'position': round(r.get('position', 0), 1)}
-            for r in rows if r.get('impressions', 0) >= 20 and r.get('ctr', 0) < 0.02]
-    gaps.sort(key=lambda g: g['impr'], reverse=True)
+    return gsc_gaps_from_rows(rows, limit)
+
+
+def gsc_gaps_from_rows(rows: list, limit: int = 12) -> list:
+    """(query, page) 행 → 검색어별 합계 + 대표 페이지. 순수 함수(테스트용으로 분리)."""
+    by_query: dict = {}
+    for r in rows:
+        query, page = r['keys'][0], r['keys'][1] if len(r['keys']) > 1 else ''
+        impr = r.get('impressions', 0)
+        g = by_query.setdefault(query, {'query': query, 'impr': 0, 'clicks': 0, '_pos': 0.0, 'page': '', '_best': -1})
+        g['impr'] += impr
+        g['clicks'] += r.get('clicks', 0)
+        g['_pos'] += r.get('position', 0) * impr
+        if impr > g['_best']:
+            # www·쿼리스트링 변형을 대표 경로로 묶어 보여준다
+            path = urllib.parse.urlsplit(page).path if page else ''
+            g['page'], g['_best'] = path, impr
+    gaps = []
+    for g in by_query.values():
+        if not g['impr']:
+            continue
+        pos = g['_pos'] / g['impr']
+        ctr = g['clicks'] / g['impr']
+        near_miss = 4 <= pos <= 60 and g['impr'] >= 2
+        weak_ctr = g['impr'] >= 20 and ctr < 0.02
+        if near_miss or weak_ctr:
+            gaps.append({'query': g['query'], 'impr': int(g['impr']), 'clicks': int(g['clicks']),
+                         'ctr': round(ctr * 100, 1), 'position': round(pos, 1), 'page': g['page']})
+    gaps.sort(key=lambda g: (g['impr'], -g['position']), reverse=True)
     return gaps[:limit]

@@ -137,7 +137,7 @@ class Command(BaseCommand):
             draft.revisions += 1
 
             if qa['verdict'] == 'accept' and not opts['no_publish']:
-                keywords = list(((draft.decision.chosen or {}) if draft.decision else {}).get('keywords') or [])
+                keywords = P.headline_keywords((draft.decision.chosen or {}) if draft.decision else {})
                 new_title, why = P.step_headline(subject, content, keywords=keywords, recent=recent)
                 if new_title != subject:
                     rec('editor', 'headline', f'제목 다듬기: 「{subject}」 → 「{new_title}」 — {why}'[:300])

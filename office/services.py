@@ -312,9 +312,11 @@ def snapshot_as_text(snap: dict) -> str:
     gaps = snap.get('gsc_gaps') or []
     if gaps:
         # 노출은 되는데 클릭이 적은 검색어 — 맞는 글이 없거나 제목·설명이 약하다는 신호
-        lines.append('기회 검색어(노출 많고 클릭 적음 — 새 글·보강 후보, 노출 / 클릭 / 평균순위):')
-        for q in gaps[:8]:
-            lines.append(f"  - {q['query']}: {q['impr']} / {q['clicks']} / {q['position']}위")
+        lines.append('[검색 기회] 구글에서 4~60위에 걸려 있거나 노출 대비 클릭이 적은 검색어 — 정면으로 다루는 새 칼럼·'
+                     '기존 칼럼 보강의 1순위 후보 (노출 / 클릭 / 평균순위 / 지금 걸리는 우리 페이지):')
+        for q in gaps[:12]:
+            lines.append(f"  - {q['query']}: {q['impr']} / {q['clicks']} / {q['position']}위"
+                         f" / {q.get('page') or '-'}")
     cols = snap['recent_columns']
     if cols:
         views = sum(c['views'] for c in cols)
