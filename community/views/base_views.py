@@ -526,7 +526,7 @@ def _series_toc(series):
 
 
 def series_index(request):
-    """연재 시리즈 목록 — 가장 최근에 시작한 연재를 크게, 나머지는 아래 목록으로."""
+    """연재 시리즈 목록 — 연재마다 카드 한 장, 화살표로 넘기는 캐러셀(가장 최근에 시작한 연재가 첫 장)."""
     from ..models import ColumnSeries
 
     cards = [{'series': s, **_series_toc(s)}
@@ -534,8 +534,7 @@ def series_index(request):
     # 회차가 하나도 없는 시리즈는 목록에 내놓지 않는다(빈 표지). 가장 최근에 시작한(0편이 새로운) 연재가 맨 위
     cards = sorted([c for c in cards if c['count']], key=lambda c: c['first'].create_date, reverse=True)
     context = {
-        'featured': cards[0] if cards else None,
-        'others': cards[1:],
+        'cards': cards,
         'stats': {'series': len(cards), 'episodes': sum(c['count'] for c in cards),
                   'views': sum(c['views'] for c in cards)},
     }

@@ -2,7 +2,7 @@
 {% load static %}
 
 {% block title %}연재 시리즈 - 테크창{% endblock %}
-{% block meta_description %}한 주제를 여러 편에 걸쳐 처음부터 끝까지 따라가는 테크창 연재. {% if featured %}지금 연재 중: {{ featured.series.title }}.{% endif %} 격주 월요일 오전 10시 새 회차 공개.{% endblock %}
+{% block meta_description %}한 주제를 여러 편에 걸쳐 처음부터 끝까지 따라가는 테크창 연재. {% if cards %}지금 연재 중: {% for c in cards %}{{ c.series.title }}{% if not forloop.last %}, {% endif %}{% endfor %}.{% endif %} 월요일 오전 10시 새 회차 공개.{% endblock %}
 {% block og_title %}연재 시리즈 - 테크창{% endblock %}
 
 {% block extra_css %}
@@ -25,75 +25,132 @@
         </dl>
     </header>
 
-    {% if featured %}
-    {% with s=featured.series %}
-    <article class="sr-feature" aria-labelledby="sr-feature-title">
-        <div class="sr-cover">
-            <div class="sr-feature-top">
-                <span class="sr-chip {% if s.is_complete %}is-done{% else %}is-live{% endif %}">
-                    {% if s.is_complete %}완결{% elif featured.count == 1 %}새 연재{% else %}연재 중{% endif %} · {{ s.category.name }}
-                </span>
-                <span class="sr-cover-count">{{ featured.count }}<small>/ {{ featured.total }}편</small></span>
-            </div>
-            <h2 id="sr-feature-title">{{ s.title }}</h2>
-            {% if s.subtitle %}<p class="sr-feature-sub">{{ s.subtitle }}</p>{% endif %}
-            {% if s.audience %}<p class="sr-feature-for"><b>이런 분께</b> · {{ s.audience }}</p>{% endif %}
-            <div class="sr-feature-progress">
-                <div class="sr-bar" role="progressbar" aria-valuemin="0" aria-valuemax="{{ featured.total }}" aria-valuenow="{{ featured.count }}" aria-label="발행 진행률">
-                    <span style="width: {% widthratio featured.count featured.total 100 %}%;"></span>
-                </div>
-                <div class="sr-feature-meta">
-                    <span>{{ featured.count }}편 발행</span>
-                    {% if featured.next_at %}<span>다음 회차 {{ featured.next_label }}</span>{% endif %}
-                </div>
-            </div>
-            <div class="sr-feature-actions">
-                {% if featured.first %}<a class="sr-btn sr-btn-primary" href="{% url 'community:detail' featured.first.id %}">처음부터 읽기</a>{% endif %}
-                <a class="sr-btn sr-btn-ghost" href="{% url 'community:series_detail' s.slug %}">전체 목차</a>
-            </div>
-        </div>
-        <div class="sr-feature-toc">
-            <h3>목차</h3>
-            <ol class="sr-toc">
-                {% for row in featured.rows|slice:":5" %}{% include 'community/_series_row.html' %}{% endfor %}
-            </ol>
-            {% if featured.rows|length > 5 %}
-            <a class="sr-more" href="{% url 'community:series_detail' s.slug %}">나머지 {{ featured.rows|length|add:"-5" }}편 목차 보기 →</a>
-            {% endif %}
-        </div>
-    </article>
-    {% endwith %}
-    {% endif %}
+    {% if cards %}
+    <section class="sr-carousel" data-sr-carousel aria-roledescription="carousel" aria-label="연재 시리즈">
+        {% if cards|length > 1 %}
+        <button type="button" class="sr-arrow sr-arrow-prev" aria-label="이전 연재">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>
+        </button>
+        {% endif %}
 
-    {% if others %}
-    <section aria-labelledby="sr-others">
-        <h2 class="sr-section-title" id="sr-others">다른 연재</h2>
-        <div class="sr-list">
-            {% for c in others %}
-            <a class="sr-card" href="{% url 'community:series_detail' c.series.slug %}">
-                <div class="sr-cover">
-                    <span class="sr-cover-count">{{ c.count }}<small>/ {{ c.total }}</small></span>
-                    <span class="sr-cover-label">{% if c.series.is_complete %}완결{% else %}연재 중{% endif %}</span>
-                </div>
-                <div class="sr-card-body">
-                    <span><span class="sr-chip is-ghost">{{ c.series.category.name }}</span></span>
-                    <h3>{{ c.series.title }}</h3>
-                    {% if c.series.subtitle %}<p>{{ c.series.subtitle }}</p>{% endif %}
-                    <div class="sr-bar"><span style="width: {% widthratio c.count c.total 100 %}%;"></span></div>
-                    <div class="sr-card-foot">
-                        {% if c.latest %}<span>최신 <b>{{ c.latest.subject|truncatechars:34 }}</b></span>{% endif %}
-                        {% if c.next_at %}<span>다음 회차 {{ c.next_label }}</span>{% endif %}
+        <div class="sr-viewport" tabindex="0">
+            {% for c in cards %}{% with s=c.series %}
+            <article class="sr-slide{% if forloop.first %} is-active{% endif %}" data-slug="{{ s.slug }}" aria-roledescription="slide"
+                     aria-label="{{ forloop.counter }} / {{ cards|length }} — {{ s.title }}">
+                <div class="sr-card">
+                    <div class="sr-card-info">
+                        <div class="sr-card-top">
+                            <span class="sr-chip {% if s.is_complete %}is-done{% else %}is-live{% endif %}">
+                                {% if s.is_complete %}완결{% elif c.count == 1 %}새 연재{% else %}연재 중{% endif %} · {{ s.category.name }}
+                            </span>
+                            {% if cards|length > 1 %}<span class="sr-card-index"><b>{{ forloop.counter|stringformat:"02d" }}</b> / {{ cards|length|stringformat:"02d" }}</span>{% endif %}
+                        </div>
+                        <h2>{{ s.title }}</h2>
+                        {% if s.subtitle %}<p class="sr-card-sub">{{ s.subtitle }}</p>{% endif %}
+                        {% if s.audience %}<p class="sr-card-for"><b>이런 분께</b>{{ s.audience }}</p>{% endif %}
+
+                        <div class="sr-progress">
+                            <div class="sr-steps" role="img" aria-label="전체 {{ c.total }}회 중 {{ c.count }}회 발행">
+                                {% for row in c.rows %}
+                                {% if row.state == 'published' %}<a class="sr-step is-published" style="--i: {{ forloop.counter0 }}" href="{% url 'community:detail' row.id %}" title="{{ row.no }}편 · {{ row.title }}" aria-label="{{ row.no }}편 읽기"></a>
+                                {% else %}<span class="sr-step is-{{ row.state }}" title="{{ row.no }}편 · {{ row.title }}{% if row.date_label %} — {{ row.date_label }} 공개{% else %} — 공개 예정{% endif %}"></span>{% endif %}
+                                {% endfor %}
+                            </div>
+                            <div class="sr-progress-meta">
+                                <span><b>{{ c.count }}</b> / {{ c.total }}회 발행</span>
+                                {% if c.next_label %}<span>다음 회차 <b>{{ c.next_label }}</b></span>{% elif s.is_complete %}<span>완결</span>{% endif %}
+                            </div>
+                        </div>
+
+                        <div class="sr-card-actions">
+                            {% if c.first %}<a class="sr-btn sr-btn-primary" href="{% url 'community:detail' c.first.id %}">처음부터 읽기</a>{% endif %}
+                            {% if c.latest and c.latest.id != c.first.id %}<a class="sr-btn sr-btn-ghost" href="{% url 'community:detail' c.latest.id %}">최신 {{ c.latest.episode_number }}편</a>{% endif %}
+                            <a class="sr-link" href="{% url 'community:series_detail' s.slug %}">전체 목차 →</a>
+                        </div>
+                    </div>
+
+                    <div class="sr-card-toc">
+                        <h3>목차</h3>
+                        <ol class="sr-toc">
+                            {% for row in c.rows|slice:":5" %}{% include 'community/_series_row.html' %}{% endfor %}
+                        </ol>
+                        {% if c.rows|length > 5 %}
+                        <a class="sr-link" href="{% url 'community:series_detail' s.slug %}">나머지 {{ c.rows|length|add:"-5" }}편 보기 →</a>
+                        {% endif %}
                     </div>
                 </div>
-            </a>
-            {% endfor %}
+            </article>
+            {% endwith %}{% endfor %}
         </div>
-    </section>
-    {% endif %}
 
-    {% if not featured %}
+        {% if cards|length > 1 %}
+        <button type="button" class="sr-arrow sr-arrow-next" aria-label="다음 연재">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18l6-6-6-6"/></svg>
+        </button>
+        <div class="sr-dots" aria-label="연재 선택">
+            {% for c in cards %}<button type="button" class="sr-dot" aria-label="{{ c.series.title }}" aria-current="{% if forloop.first %}true{% else %}false{% endif %}"></button>{% endfor %}
+        </div>
+        {% endif %}
+    </section>
+    {% else %}
     <div class="sr-empty">아직 발행된 연재가 없습니다.</div>
     {% endif %}
 </div>
 </div>
+{% endblock %}
+
+{% block script %}
+<script nonce="{{ csp_nonce }}">
+// 연재 캐러셀 — 화살표·점·키보드(←/→)·스와이프(스냅 스크롤). 마지막에서 다음은 처음으로, 주소 #slug 로 바로 열기
+// 해시는 data-slug 와 맞춘다 — 같은 id 를 가진 요소가 없어야 브라우저가 앵커로 스크롤하지 않는다
+(function () {
+    var root = document.querySelector('[data-sr-carousel]');
+    if (!root) return;
+    var vp = root.querySelector('.sr-viewport');
+    var slides = Array.prototype.slice.call(root.querySelectorAll('.sr-slide'));
+    var dots = Array.prototype.slice.call(root.querySelectorAll('.sr-dot'));
+    var n = slides.length, cur = 0, timer = null;
+    var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    function activate(i, updateHash) {
+        cur = i;
+        slides.forEach(function (s, k) {
+            var on = k === i;
+            s.classList.toggle('is-active', on);
+            if (n > 1) { if (on) s.removeAttribute('inert'); else s.setAttribute('inert', ''); }
+        });
+        dots.forEach(function (d, k) { d.setAttribute('aria-current', k === i ? 'true' : 'false'); });
+        if (updateHash && n > 1) { try { history.replaceState(null, '', '#' + slides[i].dataset.slug); } catch (e) {} }
+    }
+    function go(i, smooth) {
+        i = (i + n) % n;
+        vp.scrollTo({ left: slides[i].offsetLeft, behavior: smooth && !reduce ? 'smooth' : 'auto' });
+        activate(i, true);
+    }
+
+    if (n > 1) {
+        root.querySelector('.sr-arrow-prev').addEventListener('click', function () { go(cur - 1, true); });
+        root.querySelector('.sr-arrow-next').addEventListener('click', function () { go(cur + 1, true); });
+        dots.forEach(function (d, k) { d.addEventListener('click', function () { go(k, true); }); });
+        vp.addEventListener('keydown', function (e) {
+            if (e.key === 'ArrowLeft') { e.preventDefault(); go(cur - 1, true); }
+            if (e.key === 'ArrowRight') { e.preventDefault(); go(cur + 1, true); }
+        });
+        // 손가락으로 넘긴 경우 — 스크롤이 멈춘 자리의 카드를 현재 카드로
+        vp.addEventListener('scroll', function () {
+            clearTimeout(timer);
+            timer = setTimeout(function () {
+                var i = Math.round(vp.scrollLeft / vp.clientWidth);
+                if (i !== cur && i >= 0 && i < n) activate(i, true);
+            }, 90);
+        }, { passive: true });
+    }
+    var start = 0;
+    slides.forEach(function (s, k) { if ('#' + s.dataset.slug === location.hash) start = k; });
+    // 첫 진입엔 주소를 바꾸지 않는다. (슬라이드 id 를 해시로 쓰면 로드가 끝날 때 브라우저가 그 앵커로 페이지를 내려 버렸다)
+    vp.scrollTo({ left: slides[start].offsetLeft, behavior: 'auto' });
+    activate(start, false);
+    root.classList.add('is-ready');
+})();
+</script>
 {% endblock %}
