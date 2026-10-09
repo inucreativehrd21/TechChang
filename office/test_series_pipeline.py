@@ -244,13 +244,13 @@ class SeriesPagesTests(TestCase):
     def test_carousel_arrows_appear_only_with_two_or_more_series(self):
         index = self.client.get('/series/').content.decode()
         self.assertIn('data-sr-carousel', index)
-        self.assertNotIn('sr-arrow-prev', index)                            # 연재가 하나면 넘길 것이 없다
+        self.assertNotIn('class="sr-arrow sr-arrow-prev"', index)          # 연재가 하나면 넘길 것이 없다
         cfg = C.SERIES['django']
         s2 = ColumnSeries.objects.create(slug=cfg['slug'], title=cfg['title'], category=self.s.category, total_episodes=10)
         Question.objects.create(author=self.ep.author, category=self.s.category, series=s2, episode_number=0,
                                 subject='django 0편', content='본문', create_date=timezone.now() - timedelta(days=90))
         index = self.client.get('/series/').content.decode()
-        self.assertIn('sr-arrow-prev', index)
+        self.assertIn('class="sr-arrow sr-arrow-prev"', index)
         self.assertEqual(index.count('class="sr-dot"'), 2)
         self.assertLess(index.index(f'data-slug="{self.s.slug}"'), index.index(f'data-slug="{s2.slug}"'))  # 최근 시작한 연재가 첫 장
         self.assertNotIn(f'id="{self.s.slug}"', index)                      # 해시와 같은 id 가 있으면 브라우저가 스크롤한다
