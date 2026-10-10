@@ -31,6 +31,9 @@ from common.services.claude import call_tags
 from office import live
 from office import pipeline as P
 from office import quality
+from office import blueprint as B
+from office import review_protocol as R
+from office.patching import patch_revise
 from office.agents import AGENTS, TOPIC_AGENT
 from office.models import ColumnDraft
 from office.recorder import StageRecorder
@@ -97,8 +100,14 @@ class Command(BaseCommand):
             #    분량·문체·섹션·수치처럼 기계로 판별되는 결함을 여기서 잡는다. 팩트체크·평론·
             #    심사는 전부 모델 호출이라, 거기까지 끌고 가면 호출 세 번을 더 태운 뒤에야
             #    재작성에 들어간다.
+            # 1.5) 설계도 → 검증관 사전 검증 — 본문 쓰기 전에 주장·근거·핵심 표를 확정한다(office.blueprint)
+            bp, ver = timed('blueprint', writer, lambda: P.step_blueprint(topic_key, brief_decision, brief, recent),
+                            kind='report', sender='checker', recipient=writer)
+            if bp:
+                rec(writer, 'blueprint', B.summary(bp, ver))
             subject, content = timed('draft', writer,
-                                     lambda: P.step_draft(topic_key, brief_decision, brief, recent))
+                                     lambda: P.step_draft(topic_key, brief_decision, brief, recent,
+                                                          blueprint=B.block(bp, ver)))
             self._update_last(stages, {'subject': subject, 'content': content}, text=content)
             rec(writer, 'draft', f'초안 완성: {subject} ({P.body_length(content)}자)')
             flaws = P.precheck_draft(content)
@@ -158,16 +167,25 @@ class Command(BaseCommand):
             for attempt in range(1, P.MAX_AUTO_REVISIONS + 1):
                 if qa['verdict'] not in ('minor', 'major'):
                     break
-                prev_content = content
+                prev_content, prev_qa = content, qa
                 live.mark('editor_revise', writer, topic_key)
-                raw = timed('editor_revise', writer, lambda: ask_agent(writer, P.EDITOR_REVISE_PROMPT.format(
-                    issues='\n'.join(f'- {i}' for i in qa.get('issues', [])), notes=qa.get('notes', ''),
-                    check=P.check_text(check), critique=P.critique_text(critique),
-                    subject=subject, content=content, structure=COLUMN_STRUCTURE,
-                    standard=P.writing_standard(topic_key)),
-                    max_tokens=P.COLUMN_MAX_TOKENS), attempt=attempt, kind='memo', sender='editor', recipient=writer)
-                # 잘리거나 짧아진 재작성본은 버리고 이전 원고를 지킨다 (팩트체크 재작성과 같은 안전장치)
-                subject, content, ok, why = P.safe_rewrite(raw, subject, content)
+                # 재작성은 '필수 수정'만 처리한다 — 제안까지 넘기면 고칠 범위가 넓어져 다른 곳이 무너졌다.
+                # 먼저 고칠 곳만 바꾸는 패치를 시도하고(검증된 문장·수치를 지킨다), 원고와 맞지 않으면 전체 재작성.
+                notes = R.revision_notes(qa)
+                p_subject, p_content, ok, why = timed('editor_patch', writer, lambda: patch_revise(
+                    writer, subject, P.strip_visual_block(content), notes, who='편집 심사에서',
+                    guide=f'[팩트체크 보고]\n{P.check_text(check)}'), attempt=attempt)
+                if ok and not P.looks_truncated(p_content):
+                    subject, content = p_subject, p_content
+                else:
+                    raw = timed('editor_revise', writer, lambda: ask_agent(writer, P.EDITOR_REVISE_PROMPT.format(
+                        issues='\n'.join(f'- {i}' for i in notes), notes=qa.get('notes', ''),
+                        check=P.check_text(check), critique=P.critique_text(critique),
+                        subject=subject, content=content, structure=COLUMN_STRUCTURE,
+                        standard=P.writing_standard(topic_key)),
+                        max_tokens=P.COLUMN_MAX_TOKENS), attempt=attempt, kind='memo', sender='editor', recipient=writer)
+                    # 잘리거나 짧아진 재작성본은 버리고 이전 원고를 지킨다 (팩트체크 재작성과 같은 안전장치)
+                    subject, content, ok, why = P.safe_rewrite(raw, subject, content)
                 self._update_last(stages, {'subject': subject, 'content': content, 'ok': ok, 'why': why},
                                   text=content, status='ok' if ok else 'failed')
                 if not ok:
@@ -190,14 +208,15 @@ class Command(BaseCommand):
                 if not opts['no_chart']:
                     content = P.strip_visual_block(content)
                     content, chart_rel, chart_note, visual_report = timed(
-                        'chart', 'charter', lambda: P.step_visual(content, topic_key, rec=rec, dry=dry),
+                        'chart', 'charter', lambda: P.step_visual(content, topic_key, rec=rec, dry=dry,
+                                                                  feedback=P.visual_feedback(qa)),
                         attempt=attempt + 1)
                 critique = timed('critique', 'critic', lambda: P.step_critique(subject, content),
                                  attempt=attempt + 1)
                 rec('critic', 'critique', '재검토 ' + self._critique_line(critique))
                 qa = timed('review', 'editor',
                            lambda: P.step_review(subject, content, check, chart_rel, visual_report, critique,
-                                             verified=facts),
+                                             verified=facts, previous=prev_qa),
                            attempt=attempt + 1)
                 # 마지막 재심에서는 '수정 요청'을 통과로 본다 (학술지의 minor revision 수리와 같은 처리).
                 # 치명 결함이 남아 있으면 verdict 가 major 라 그대로 보류된다.

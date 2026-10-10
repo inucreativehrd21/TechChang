@@ -20,6 +20,7 @@ from office.agents import AGENTS
 STAGES = {
     'meeting':    ('편집회의', 'meeting'),
     'brief':      ('기획', 'brief'),
+    'blueprint':  ('설계도', 'brief'),
     'draft':      ('집필', 'draft'),
     'precheck':   ('자동 점검', 'precheck'),
     'check':      ('팩트체크', 'check'),
@@ -155,6 +156,10 @@ def _event(log) -> dict | None:
         else:
             ev['summary'] = '집필 의뢰서를 썼습니다.'
             ev['detail'] = text.split(':', 1)[1].strip() if ':' in text else text
+    elif action == 'blueprint':
+        # '설계도: 주장 12개 중 10개 원문 확인' — 본문 쓰기 전에 검증관이 근거부터 확인했다는 기록
+        ev['summary'] = '본문을 쓰기 전에 설계도를 내고, 검증관이 주장의 근거를 먼저 확인했습니다.'
+        ev['detail'] = text.split(':', 1)[1].strip() if ':' in text else text
     elif action == 'draft':
         title = text.split(':', 1)[1] if ':' in text else ''
         title = _CHARS.sub('', title).strip()

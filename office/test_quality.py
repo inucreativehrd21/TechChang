@@ -76,3 +76,31 @@ class DurationIsNotAFigureTests(SimpleTestCase):
     def test_real_repetition_still_caught(self):
         from office.quality import figure_repetition
         self.assertTrue(figure_repetition('62% 62% 62% 62%'))
+
+
+class MetaNotesTests(SimpleTestCase):
+    """작성 과정 메모 — #36 끝에 '[운영자 확인 요청 — 발행 전 삭제]' 블록이 남아 매번 보류됐다."""
+
+    def test_operator_notes_and_process_remarks_are_caught(self):
+        for text in ('[운영자 확인 요청 — 발행 전 삭제]', '이 판을 정리한 환경에서는 jj를 실행하지 못해 싣지 못했습니다.',
+                     '<!-- 편집 메모: 교체 -->', '완성 예제 저장소(링크는 게시 시 삽입)', 'TODO: 캡처'):
+            self.assertTrue(Q.meta_notes(text), text)
+
+    def test_honest_reader_facing_sentences_are_not_flagged(self):
+        for text in ('국내 도입 사례는 공개 자료로 확인되지 않아, 문서에서 확인되는 흐름만 짚습니다.',
+                     '```bash\n# TODO 는 코드 주석이라 괜찮습니다\n```'):
+            self.assertEqual(Q.meta_notes(text), [], text)
+
+    def test_numbered_reference_needs_that_numbered_title(self):
+        self.assertEqual(Q.orphan_refs('| 기준 | 점수 |\n|---|---|\n| A | 1 |\n\n표 1과 대조하세요.'), ['표 1'])
+        self.assertEqual(Q.orphan_refs('### 표 1. 점수\n\n| a | b |\n|---|---|\n| 1 | 2 |\n\n표 1과 대조하세요.'), [])
+
+
+class StyleAuditIgnoresCodeTests(SimpleTestCase):
+    def test_code_lines_are_not_counted_as_plain_style(self):
+        from office.services import audit_style
+        body = ('진단 스크립트를 돌려 보세요. 결과를 표와 대조하면 됩니다.\n\n'
+                '```bash\necho "[ok] .gitattributes 없음"\necho "[!] 훅 있음"\n# 줄 수를 기록함\n```\n\n'
+                '두 결과가 같으면 훅이 실행되지 않은 것입니다.\n')
+        offenders, st = audit_style(body)
+        self.assertEqual((st['plain'], offenders), (0, []))

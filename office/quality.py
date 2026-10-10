@@ -59,6 +59,14 @@ def orphan_refs(content: str) -> list[str]:
     out = []
     if not _HAS_TABLE.search(body):
         out += [m.group(0) for m in _TABLE_REF.finditer(body)]
+    # 번호로 가리키면 그 번호의 표·그림 제목이 있어야 한다. 표가 하나라도 있으면 통과시키던 탓에
+    # 기준표만 있고 '표 1'(점수표)은 없는 원고가 자동 점검을 지나 심사에서 네 번 보류됐다(#36).
+    for kind_, label in (('표', r'표'), ('그림', r'(?:그림|도표)')):
+        titled = {int(n) for n in re.findall(rf'^(?:#+\s*|\*\*|!\[){label}\s*(\d+)', body, re.M)}
+        for m in re.finditer(rf'{label}\s*(\d+)', body):
+            n = int(m.group(1))
+            if n not in titled and m.group(0) not in out:
+                out.append(m.group(0))
     if not _IMAGE.search(body):
         out += [m.group(0) for m in _FIG_REF.finditer(body)]
     return list(dict.fromkeys(out))
@@ -170,5 +178,23 @@ def precheck_issues(content: str) -> list[str]:
     orphans = orphan_refs(content)
     if orphans:
         issues.append(f'원고에 없는 표·그림을 가리킵니다: {", ".join(orphans[:3])}. '
-                      '도판은 차트 담당이 따로 넣으니, 본문은 표·그림 없이도 읽히게 쓰세요.')
+                      '번호로 가리킨 표는 "### 표 N. 제목" 아래에 실제로 싣고, 넣지 않을 거라면 그 언급을 지우세요.')
+    memo = meta_notes(content)
+    if memo:
+        issues.append(f'게재 전 메모·작성 과정 문장이 본문에 남아 있습니다: 「{memo[0][:50]}」. '
+                      '운영자에게 하는 말·확인하지 못한 사정·자리표시는 모두 지우고, 확인 못 한 내용은 본문에서 빼세요.')
     return issues + recency_issues(content)
+
+
+# 작성 과정 메모 — 독자가 아니라 운영자·편집자에게 하는 말. #36 끝에 '[운영자 확인 요청 — 발행 전 삭제]'
+# 블록이 통째로 남아 심사에서 매번 지적됐다. 정상 문장('공개 자료로 확인되지 않아')은 걸지 않게 좁게 잡는다.
+_META = re.compile(
+    r'<!--.*?-->|운영자\s*(?:확인|께서|에게)|발행\s*전\s*(?:삭제|확인)|확인\s*요청|편집\s*메모|작성\s*메모|'
+    r'TODO|TBD|게시\s*시\s*삽입|이\s*(?:환경|판)에서는|(?:정리한|작성한|이)\s*(?:환경|판)에서|'
+    r'실행하지\s*못해|\((?:확인|추후)\s*필요\)', re.S)
+
+
+def meta_notes(content: str) -> list[str]:
+    """본문(코드 블록 제외)에 남은 작성 과정 메모."""
+    body = re.sub(r'```.*?```', '', content or '', flags=re.S)
+    return [m.group(0) for m in _META.finditer(body)]

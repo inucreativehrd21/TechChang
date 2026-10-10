@@ -18,6 +18,7 @@ from django.utils import timezone
 from common.management.commands.auto_write_columns import COLUMN_STRUCTURE, TOPICS
 from office import live
 from office import pipeline as P
+from office import review_protocol as R
 from office.agents import AGENTS, TOPIC_AGENT
 from office.models import ColumnDraft
 from office.services import ask_agent, log
@@ -97,7 +98,7 @@ class Command(BaseCommand):
                 raw = ask_agent(writer, P.ADMIN_REVISE_PROMPT.format(
                     admin_note=admin_note + (f'\n\n[운영자가 원문을 확인한 사실 — 이것만 새로 쓸 수 있습니다]\n{facts}'
                                              if facts else ''),
-                    qa_issues='\n'.join(f'- {i}' for i in prev_qa.get('issues', [])) or '(없음)',
+                    qa_issues='\n'.join(f'- {i}' for i in R.revision_notes(prev_qa)) or '(없음)',
                     check_notes=prev_check.get('notes', '') or '(없음)',
                     subject=draft.subject, content=draft.content, structure=COLUMN_STRUCTURE,
                     standard=P.writing_standard(topic_key)),
@@ -117,18 +118,24 @@ class Command(BaseCommand):
 
             # 3) 시각화 — 본문이 다시 쓰였으므로 이전 차트·표를 걷어내고 현재 수치로 새로 만든다.
             #    사람이 교열하며 기존 그림을 남겼으면 손대지 않는다(교열본을 그대로 심사받는 게 목적).
-            if review_only and '![' in content and draft.chart_path:
-                chart_rel, chart_note = draft.chart_path, draft.chart_note
-                visual_report = f'운영자 교열본 — 기존 도판 유지: {chart_note}'
+            #    교열본에 그림이 없어도 표가 있으면 그대로 심사받는다 — 예전엔 사람이 일부러 뺀 그림 자리에
+            #    차트 담당이 옛 그림을 다시 넣어, 교열 의도와 다른 원고가 심사됐다(#36).
+            if review_only and P.has_visual(content):
+                keep_img = '![' in content and draft.chart_path
+                chart_rel = draft.chart_path if keep_img else ''
+                chart_note = draft.chart_note if keep_img else '운영자 교열본의 표를 핵심 도판으로 사용'
+                visual_report = f'운영자 교열본 — 도판 그대로 심사: {chart_note}'
             else:
                 content = P.strip_visual_block(content)
-                content, chart_rel, chart_note, visual_report = P.step_visual(content, topic_key, rec=rec)
+                content, chart_rel, chart_note, visual_report = P.step_visual(
+                    content, topic_key, rec=rec, feedback=P.visual_feedback(draft.qa_report))
 
             # 4) 재심
             critique = P.step_critique(subject, content)
             rec('critic', 'critique', f"평론 {critique['verdict']} · 지적 {len(critique.get('issues') or [])}건: "
                                       f"{critique.get('reason', '')[:100]}")
-            qa = P.step_review(subject, content, check, chart_rel, visual_report, critique, verified=facts)
+            qa = P.step_review(subject, content, check, chart_rel, visual_report, critique, verified=facts,
+                               previous=draft.qa_report or None)
             verdict_ko = {'accept': '발행', 'minor': '수정 요청', 'major': '보류'}.get(qa['verdict'], qa['verdict'])
             rec('editor', 'qa', f"재심 {qa['score']}/100 ({qa['length']}자) → {verdict_ko}: {qa.get('notes', '')}")
 

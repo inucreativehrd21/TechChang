@@ -160,7 +160,7 @@ class Question(models.Model):
         for line in text.splitlines():
             line = line.strip()
             # 머리말·표·구분선·인용부호는 요약에 넣지 않는다
-            if not line or line.startswith(('#', '|', '>')) or re.fullmatch(r'[-=*_\s]{3,}', line):
+            if not line or line.startswith(('#', '|', '>', '[//]:')) or re.fullmatch(r'[-=*_\s]{3,}', line):
                 continue
             line = re.sub(r'^\s*(?:[-*+]|\d+\.)\s+', '', line)       # 목록 기호
             parts.append(line)

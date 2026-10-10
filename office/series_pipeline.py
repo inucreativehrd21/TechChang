@@ -28,6 +28,7 @@ from . import live
 from . import pipeline as P
 from .agents import AGENTS, TOPIC_AGENT
 from .models import ColumnDraft
+from . import review_protocol as R
 from .recorder import StageRecorder
 from .services import WEB_TOOLS, ask_agent, ask_agent_json, audit_style, log
 
@@ -175,8 +176,8 @@ def previous_summaries(series_obj, before_no: int, limit: int = 4) -> str:
             + '\n'.join(parts) + '\n')
 
 
-# 게재 전 메모·자리표시 — HTML 주석, 편집 메모, TODO, '(링크는 게시 시 삽입)', '(확인 필요)' 등
-_MEMO = re.compile(r'<!--.*?-->|편집\s*메모|작성\s*메모|TODO|TBD|게시\s*시\s*삽입|\((?:확인|추후)\s*필요\)|\[링크[^\]]*\]\(\s*\)', re.S)
+# 연재에서 추가로 보는 자리표시 — 주소가 빈 링크([링크]()). 나머지 작성 메모는 quality.meta_notes(칼럼과 공용)
+_EMPTY_LINK = re.compile(r'\[[^\]]*\]\(\s*\)')
 
 
 def precheck(key: str, content: str) -> list:
@@ -195,9 +196,13 @@ def precheck(key: str, content: str) -> list:
     offenders, st = audit_style(content)
     if st['total'] >= 5 and st['plain_ratio'] > P.PLAIN_STYLE_LIMIT:
         issues.append(f"평서체 {st['plain']}문장 — 존댓말로 통일. 예: {offenders[0][:50] if offenders else ''}")
-    memo = _MEMO.search(content)
-    if memo:     # 게재 전 메모가 남으면 편집장이 매번 치명 결함으로 잡았다(Django 0편 두 번)
-        issues.append(f'게재 전 메모가 본문에 남아 있음: 「{memo.group(0)[:40]}」 — 메모·주석·자리표시를 모두 지우고 완성된 문장으로')
+    from .quality import meta_notes, orphan_refs
+    memo = meta_notes(content) + [m.group(0) for m in _EMPTY_LINK.finditer(content)]
+    if memo:     # 게재 전 메모가 남으면 편집장이 매번 치명 결함으로 잡았다(Django 0편 두 번, 칼럼 #36)
+        issues.append(f'게재 전 메모가 본문에 남아 있음: 「{memo[0][:40]}」 — 메모·주석·자리표시를 모두 지우고 완성된 문장으로')
+    orphans = orphan_refs(content)
+    if orphans:
+        issues.append(f'원고에 없는 표·그림을 가리킴: {", ".join(orphans[:3])} — 실제로 싣거나 언급을 지울 것')
     if '테크창 연구팀' not in content[-400:]:
         issues.append('마지막 서명(시리즈·회차·테크창 연구팀) 누락')
     return issues
@@ -236,6 +241,13 @@ def safe_rewrite(key: str, raw: str, prev_subject: str, prev_content: str) -> tu
 
 
 def _fix(writer, key, no, subject, content, who, issues) -> tuple:
+    """지적 반영. 먼저 고칠 곳만 바꾸는 패치(office.patching)를 시도하고, 원고와 맞지 않으면 전체 재작성."""
+    from .patching import patch_revise
+    p_subject, p_content, ok, why = patch_revise(
+        writer, subject, content, issues, who=who, tools=tuple(SERIES[key].get('tools', ())),
+        guide=f'[회차 골격 — 지켜야 할 구조]\n{structure(key, no)}', ask_json=ask_agent_json)
+    if ok and not looks_truncated(key, p_content):
+        return p_subject, p_content, True, why
     raw = ask_agent(writer, FIX_PROMPT.format(who=who, issues='\n'.join(f'- {i}' for i in issues),
                                               subject=subject, content=content, structure=structure(key, no)),
                     max_tokens=MAX_TOKENS, tools=tuple(SERIES[key].get('tools', ())))
@@ -254,7 +266,8 @@ def check_episode(key: str, no: int, subject: str, content: str) -> dict:
     return {'verdict': verdict, 'claims': claims, 'bad': bad, 'critical': critical}
 
 
-def review_episode(key: str, no: int, subject: str, content: str, check: dict, critique: dict) -> dict:
+def review_episode(key: str, no: int, subject: str, content: str, check: dict, critique: dict,
+                   previous: dict | None = None) -> dict:
     cfg, outline = SERIES[key], outline_of(key, no) or {'no': no, 'title': subject}
     length = P.body_length(content)
     offenders, st = audit_style(content)
@@ -265,6 +278,7 @@ def review_episode(key: str, no: int, subject: str, content: str, check: dict, c
         check=json.dumps({k: check.get(k) for k in ('verdict', 'bad', 'critical')}, ensure_ascii=False)[:2500],
         critique=P.critique_text(critique), length=length, target=TARGET[key], style=style,
         rubric=series_rubric_text(), subject=subject, content=content)
+    prompt += R.RULE + R.previous_block(previous)   # 필수 수정/제안 분리, 재심은 직전 필수 수정부터
     qa = ask_agent_json('editor', prompt, max_tokens=3000)
     first = compute_series_score(qa.get('scores') if isinstance(qa.get('scores'), dict) else {})
     if abs(first - P.ACCEPT_SCORE) <= P.REVIEW_PANEL_BAND:      # 경계 점수면 세 번 심사해 항목별 중앙값
@@ -272,7 +286,9 @@ def review_episode(key: str, no: int, subject: str, content: str, check: dict, c
         qa = dict(qa, scores=_median_scores(panel))
     scores = qa.get('scores') if isinstance(qa.get('scores'), dict) else {}
     fatal = [f for f in (qa.get('fatal') or []) if isinstance(f, str)]
-    issues = [i for i in (qa.get('issues') or []) if isinstance(i, str)]
+    qa = R.normalize(qa)
+    model_issues = list(qa['issues'])
+    issues = list(model_issues)
     # 시스템이 직접 확인하는 결함 — 모델이 놓쳐도 강제
     if length < MIN_CHARS[key] and 'too_short' not in fatal:
         fatal.append('too_short')
@@ -288,6 +304,9 @@ def review_episode(key: str, no: int, subject: str, content: str, check: dict, c
         issues.append('팩트체크 치명 지적 미해결: ' + '; '.join(check['critical'])[:200])
     if critique and critique.get('verdict') == 'reject' and 'unreadable' not in fatal:
         fatal.append('unreadable')
+    added = [i for i in issues if i not in model_issues]       # 코드가 강제한 결함도 필수 수정 — 맨 앞에
+    qa['must_fix'] = [{'where': '자동 점검', 'problem': a, 'fix': '', 'done_when': ''} for a in added] + qa['must_fix']
+    issues = added + model_issues
     score = compute_series_score(scores)
     return {**qa, 'scores': scores, 'fatal': fatal, 'issues': issues, 'score': score, 'length': length,
             'verdict': P.verdict_of(score, fatal), 'rubric': 'series'}
@@ -366,6 +385,16 @@ def produce_episode(key: str, no: int, *, target=None, dry: bool = False, out=pr
                   f'{toc_text(key, no)}{source_block(key, no)}{previous_summaries(series_obj, no)}')
         if target is not None:
             prompt += REMAKE_RULE.format(target=TARGET[key], subject=target.subject, content=target.content)
+        # 설계도 → 검증관 사전 검증: 코드·명령·API 주장을 본문 쓰기 전에 확인한다(office.blueprint).
+        # 연재 첫 심사의 치명 결함 1위가 '따라 하면 안 되는 코드'(code_wrong)였다.
+        from . import blueprint as B
+        tools = tuple(cfg.get('tools', ())) or WEB_TOOLS
+        bp = B.make_blueprint(writer, prompt + f'\n[회차 골격]\n{structure(key, no)}', ask_json=ask_agent_json, tools=tools)
+        ver = B.verify_blueprint(bp, ask_json=ask_agent_json, tools=WEB_TOOLS,
+                                 extra=f"{cfg.get('context', '')}{source_block(key, no)}\n")
+        if bp:
+            rec(writer, 'blueprint', B.summary(bp, ver))
+        prompt += B.block(bp, ver)
         prompt += f'\n위 내용으로 아래 형식에 맞춰 회차를 작성하세요.\n{structure(key, no)}'
         subject, content = P.parse_output(ask_agent(writer, prompt, max_tokens=MAX_TOKENS,
                                                     tools=tuple(cfg.get('tools', ()))))
@@ -395,7 +424,7 @@ def drop_length_notes(notes: list) -> list:
 def feedback_notes(draft: ColumnDraft) -> list:
     """보류 원고가 받은 지적 — 편집장 지적·총평, 검증관의 치명·확인 필요 항목. 분량 지적은 뺀다."""
     qa, check = draft.qa_report or {}, draft.check_report or {}
-    notes = [i for i in (qa.get('issues') or []) if isinstance(i, str)]
+    notes = R.revision_notes(qa)                 # 필수 수정만 — 제안은 넘기지 않는다
     if qa.get('notes'):
         notes.append(f"편집장 총평: {qa['notes']}")
     notes += [f'검증관 치명 지적: {c}' for c in (check.get('critical') or [])]
@@ -487,7 +516,8 @@ def gate(draft, key: str, no: int, subject: str, content: str, *, target=None, b
     rec('editor', 'qa', qa_line(qa))
     reviews = 1
     if qa['verdict'] != 'accept':
-        notes = drop_length_notes(qa['issues']) + [f"평론: 「{i.get('quote', '')[:40]}」 — {i.get('fix', '')}"
+        prev_qa = qa
+        notes = drop_length_notes(R.revision_notes(qa)) + [f"평론: 「{i.get('quote', '')[:40]}」 — {i.get('fix', '')}"
                                 for i in (critique.get('issues') or [])[:3] if isinstance(i, dict)]
         before_code = code_blocks(content)
         subject, content, ok, why = _fix(writer, key, no, subject, content, '편집 심사에서', notes)
@@ -499,7 +529,7 @@ def gate(draft, key: str, no: int, subject: str, content: str, *, target=None, b
                 check = check_episode(key, no, subject, content)
                 rec('checker', 'check', f"재검증 {check['verdict']}")
             live.mark('review', 'editor', TOPIC_KEY)
-            qa = review_episode(key, no, subject, content, check, critique)
+            qa = review_episode(key, no, subject, content, check, critique, previous=prev_qa)
             stages.record('review', 'editor', qa, attempt=2)
             rec('editor', 'qa', '재심 ' + qa_line(qa))
             reviews += 1

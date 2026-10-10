@@ -119,14 +119,17 @@ WRITING_STANDARD = (
     '2. 처음부터 끝까지 존댓말. 평서체(~다/~이다/~한다)가 한 문장이라도 섞이면 반려.\n'
     '   인용문(> )과 참고 자료 목록만 예외입니다\n'
     '3. 필수 섹션: 왜 지금인가 / 숫자로 보는 현황 / 현장의 변화 / 시사점 / 맺음말 / 참고 자료\n'
-    '4. "숫자로 보는 현황"에 **서로 비교 가능한 수치 3개 이상**, 각각 기관·보고서명과 함께\n'
-    '5. 의뢰서의 "넣어야 할 데이터" 항목을 실제로 본문에 반영할 것\n\n'
+    '4. "숫자로 보는 현황"에 근거: 공표 통계 수치 3개 이상(기관·보고서명과 함께) **또는** 통계가 없는 기술 주제라면\n'
+    '   공식 문서·스펙을 옮긴 비교표(3행 이상, 출처 명시). 필자가 정한 묶음·점수를 공식 분류처럼 쓰지 마세요\n'
+    '5. 본문에서 "표 N"·"그림 N"으로 가리킨 것은 그 번호의 제목과 함께 실제로 실을 것\n'
+    '6. 운영자에게 하는 말·확인 못 한 사정·작성 메모·자리표시를 본문에 남기지 말 것(확인 못 한 내용은 빼세요)\n'
+    '7. 의뢰서의 "넣어야 할 데이터" 항목을 실제로 본문에 반영할 것\n\n'
     '{recency}\n\n'
     '[편집장이 채점하는 항목]\n{rubric}\n\n'
     '[치명 결함 — 하나라도 있으면 발행되지 않습니다]\n'
     '- 확인 불가능한 수치나 출처를 쓴 경우. 모르면 쓰지 말고, 추정이면 추정이라고 밝히세요\n'
     '- 이미 발행한 칼럼과 소재가 겹치는 경우\n'
-    '- 비교 가능한 수치가 사실상 없는 경우\n'
+    '- 근거(공표 통계 또는 공식 문서·스펙 비교표)가 사실상 없는 경우\n'
     '- 근거 없이 단정하는 경우\n\n'
     '[출고 전 자기 점검]\n'
     '초안을 다 쓴 뒤 **직접 다시 읽으며** 위 1~5를 하나씩 확인하세요. '
@@ -196,7 +199,11 @@ CHART_PROMPT = (
     '설명은 caption 에 쓰고 labels 에 넣지 마세요. '
     '예: "Copilot 보안취약점 포함률 40%" (X) → "Copilot 취약점 포함" (O)\n'
     '- 항목이 5개를 넘거나 이름이 길면 type 은 "hbar"(가로 막대)로 하세요.\n'
-    '- 계열이 하나면 name 은 측정값 이름(예: "비율")으로 짧게 씁니다.'
+    '- 계열이 하나면 name 은 측정값 이름(예: "비율")으로 짧게 씁니다.\n'
+    '- **그림은 이 글의 핵심 주장을 보여 줘야 합니다.** 본문에 숫자가 있다는 이유만으로 아무 비교나 그리지 마세요. '
+    '본문에 작가가 실은 핵심 표(표 N)가 이미 그 역할을 하고 있고 그릴 만한 다른 비교가 없다면, 같은 숫자를 '
+    '또 그리지 말고 has_data=false 로 답하세요(reason 에 "본문 표가 핵심 도판").'
+    '{feedback}'
 )
 
 METRICS_PROMPT = (
@@ -246,7 +253,7 @@ QA_PROMPT = (
     '{rubric}\n\n'
     '치명 결함(fatal)은 다음 중 해당하는 것만 배열로 적습니다: '
     '"unverified_data"(확인 불가 수치가 본문에 남아 있음), "duplicate"(기존 칼럼과 소재 중복), '
-    '"too_short"(목표 분량에 크게 못 미침), "no_evidence"(비교 가능한 수치가 사실상 없음), '
+    '"too_short"(목표 분량에 크게 못 미침), "no_evidence"(공표 통계도, 공식 문서·스펙 비교표도 사실상 없음 — 통계가 없는 기술 주제에 비교표로 근거를 댔다면 해당하지 않음), '
     '"structure_broken"(필수 섹션 누락), "overclaim"(근거 없는 단정), '
     '"visual_broken"(차트가 본문 수치와 어긋나거나, 비교가 성립하지 않아 아무것도 말해 주지 못함), '
     '"style_broken"(하우스 스타일인 존댓말을 벗어나 평서체가 섞이거나 전체가 평서체), '
@@ -275,32 +282,38 @@ def body_length(content: str) -> int:
     return len(re.sub(r'\s+', ' ', body).strip())
 
 
+_VISUAL_WORDS = re.compile(r'그림|차트|도판|시각|그래프|도표')
+
+
+def visual_feedback(qa: dict | None) -> str:
+    """편집 심사 지적 중 그림·차트에 관한 것만 — 차트 담당에게 넘긴다."""
+    items = [str(i) for i in ((qa or {}).get('issues') or []) if _VISUAL_WORDS.search(str(i))]
+    return '\n'.join(f'- {i}' for i in items[:4])
+
+
 def strip_visual_block(content: str) -> str:
-    """앞서 삽입한 도판(그림·캡션·출처·표)을 걷어낸다.
+    """앞서 차트 담당이 삽입한 도판(그림·머리·캡션·단위·출처·도판 표)을 걷어낸다.
 
-    본문이 다시 쓰였을 때 옛 수치의 그림이 남지 않도록 지우고 새로 만든다. 예전에는 하나의
-    정규식으로 '이미지 → 제목 → 표 → 출처' 순서를 통째로 잡았는데, 도판 형식을 학술지식
-    (그림 N. 제목 → 캡션 → 단위·출처 → 표)으로 바꾸면서 순서가 달라져 매칭이 실패했다.
-    그 결과 옛 블록이 남은 채 새 블록이 또 들어가 **그림이 두 번** 실렸다.
+    본문이 다시 쓰였을 때 옛 수치의 그림이 남지 않도록 지우고 새로 만든다.
 
-    그래서 순서에 기대지 않고 빈 줄로 나눈 덩어리를 하나씩 보고 도판 조각이면 버린다.
-    캡션 문장은 바로 앞이 '그림/표 N.' 머리일 때만 도판으로 본다 — 그래야 본문을 안 먹는다.
+    **도판은 chart_markdown 이 맨 앞에 붙이는 표식(FIGURE_MARK)이나 이미지로 시작하는 덩어리만**
+    지운다. 칼럼니스트가 직접 쓴 표는 열 제목이 무엇이든 건드리지 않는다.
+    예전엔 '첫 칸이 항목인 표'를 도판으로 봤는데, 흔한 열 제목이라 작가가 쓴 표 1(점검표)이 재심 때마다
+    지워졌고 편집장은 "표 1이 없다"며 계속 보류했다(원고 #8 세 번, #36 네 번).
     """
-    # 단, 칼럼니스트가 직접 쓴 표는 지우지 않는다. 예전엔 '표 줄만 있는 덩어리'를 모두 도판으로
-    # 봐서 본문의 점검표·비교표까지 재작성 직후 사라졌고, 편집장은 "약속한 표가 없다"며 계속
-    # 반려했다(원고 #8, 세 번 연속). 그래서 이미지나 chart_markdown 표(첫 칸 '항목')가 들어 있는
-    # 연속 덩어리만 도판 블록으로 보고 지운다.
+    from .services import FIGURE_MARK
     IMG = re.compile(r'^!\[[^\]]*\]\([^)]*\)\s*$')
-    HEAD = re.compile(r'^\*\*(?:그림|표)\s*\d+\.?[^\n]*\*\*\s*$')     # 새 형식 도판 머리
-    OLD_HEAD = re.compile(r'^\*\*[^\n]{2,80}\*\*\s*(?:\(단위:[^\n]*\))?\s*$')  # 옛 표 제목
+    HEAD = re.compile(r'^\*\*(?:그림|표)\s*\d+\.?[^\n]*\*\*\s*$')     # 도판 머리(**그림 N. 제목**)
+    OLD_HEAD = re.compile(r'^\*\*[^\n]{2,80}\*\*\s*(?:\(단위:[^\n]*\))?\s*$')  # 옛 도판 제목 — 블록 안에서만 인정
     NOTE = re.compile(r'^\*[^\n]*(?:출처|단위)[^\n]*\*\s*$')
     TABLE = re.compile(r'^\|.*\|\s*$')
-    CHART_TABLE_HEAD = re.compile(r'^\|\s*항목\s*\|')                  # chart_markdown 이 만드는 표
 
     chunks = [c.strip() for c in re.split(r'\n\s*\n', content) if c.strip()]
 
     def kind(chunk: str) -> str:
         lines = chunk.splitlines()
+        if len(lines) == 1 and lines[0].strip() == FIGURE_MARK:
+            return 'mark'
         if len(lines) == 1 and IMG.match(lines[0]):
             return 'img'
         if len(lines) == 1 and (HEAD.match(lines[0]) or OLD_HEAD.match(lines[0])):
@@ -308,34 +321,32 @@ def strip_visual_block(content: str) -> str:
         if len(lines) == 1 and NOTE.match(lines[0]):
             return 'note'
         if all(TABLE.match(ln) for ln in lines):
-            return 'chart' if CHART_TABLE_HEAD.match(lines[0]) else 'table'
+            return 'table'
         return 'text'
 
     out, i = [], 0
     while i < len(chunks):
-        # i 에서 시작하는 '도판 후보' 덩어리를 최대한 길게 잡는다: 이미지·머리·캡션(머리 바로 뒤 한 문단)·주석·도판 표
-        j, after_head, caption_used, is_figure = i, False, False, False
+        if kind(chunks[i]) not in ('mark', 'img'):       # 도판은 표식이나 이미지로만 시작한다
+            out.append(chunks[i])
+            i += 1
+            continue
+        # 도판 블록: 표식/이미지 → 머리 → 캡션(머리 바로 뒤 한 문단) → 단위·출처 → 도판 표
+        j, after_head, caption_used, table_used = i + 1, False, False, False
         while j < len(chunks):
             k = kind(chunks[j])
-            if k in ('img', 'chart'):
-                is_figure, after_head = True, False
+            if k == 'table' and table_used:    # 도판 표는 하나 — 바로 뒤에 붙은 작가 표까지 먹지 않는다
+                break
+            if k in ('img', 'note', 'table'):
+                table_used = table_used or k == 'table'
+                after_head = False
             elif k == 'head':
                 after_head = True
-            elif k == 'note':
-                after_head = False
             elif k == 'text' and after_head and not caption_used:
                 caption_used, after_head = True, False
             else:
                 break
             j += 1
-        if j == i:                       # 도판 조각이 아닌 문단·칼럼니스트 표
-            out.append(chunks[i])
-            i += 1
-        elif is_figure:                  # 차트 담당이 넣은 도판 블록 → 버린다
-            i = j
-        else:                            # 굵은 문장·작성자 표 제목 등 — 도판이 아니면 그대로 둔다
-            out.extend(chunks[i:j])
-            i = j
+        i = j
     return '\n\n'.join(out).strip() + '\n'
 
 
@@ -657,9 +668,29 @@ def search_target_rule(chosen: dict) -> str:
             f'(억지 반복 금지 — 한두 번이면 충분합니다).\n\n')
 
 
+@live_step('brief')
+def step_blueprint(topic_key: str, brief_decision, brief: dict, recent: list) -> tuple:
+    """1.5) 집필 설계도 + 검증관 사전 검증(office.blueprint). 반환 (설계도, 검증 결과) — 실패하면 ({}, {})."""
+    from . import blueprint as B
+    chosen = (brief_decision.chosen or {}) if brief_decision else {}
+
+    def lst(key):
+        v = brief.get(key) or []
+        return '; '.join(str(x) for x in v) if isinstance(v, list) else str(v)
+
+    context = (f"[분야] {TOPICS[topic_key]['topic_hint']}\n[독자] {TOPICS[topic_key]['audience']}\n"
+               f"[주제] {chosen.get('title', '') or '(칼럼니스트가 선정)'}\n[관점·근거] {chosen.get('detail', '')}\n"
+               f"[기획 각도] {brief.get('angle', '')}\n[답할 질문] {lst('questions')}\n"
+               f"[넣어야 할 데이터] {lst('data_needed')}\n[사례] {lst('cases')}\n[반론] {brief.get('counterpoint', '')}\n"
+               f"[이미 쓴 제목 — 겹치지 않게]\n" + '\n'.join(f'- {t}' for t in recent[:20]) + '\n' + recency_rule())
+    bp = B.make_blueprint(TOPIC_AGENT_OF[topic_key], context, ask_json=ask_agent_json, tools=WEB_TOOLS)
+    ver = B.verify_blueprint(bp, ask_json=ask_agent_json, tools=WEB_TOOLS)
+    return bp, ver
+
+
 @live_step('draft')
-def step_draft(topic_key: str, brief_decision, brief: dict, recent: list) -> tuple:
-    """2) 집필."""
+def step_draft(topic_key: str, brief_decision, brief: dict, recent: list, blueprint: str = '') -> tuple:
+    """2) 집필. blueprint: 검증관이 먼저 확인한 설계도(office.blueprint.block) — 있으면 그대로 쓰게 한다."""
     topic = TOPICS[topic_key]
     chosen = (brief_decision.chosen or {}) if brief_decision else {}
     if chosen:
@@ -681,7 +712,7 @@ def step_draft(topic_key: str, brief_decision, brief: dict, recent: list) -> tup
         subject_block=subject_block, angle=brief.get('angle', ''), questions=lst('questions'),
         data_needed=lst('data_needed'), cases=lst('cases'), counterpoint=brief.get('counterpoint', ''),
         avoid=lst('avoid'), avoid_titles=avoid_titles, structure=COLUMN_STRUCTURE,
-        standard=writing_standard(topic_key))
+        standard=writing_standard(topic_key)) + blueprint
     return parse_output(ask_agent(TOPIC_AGENT_OF[topic_key], prompt, max_tokens=COLUMN_MAX_TOKENS))
 
 
@@ -737,9 +768,16 @@ def precheck_draft(content: str) -> list:
     sec = re.split(r'\n##\s', content)
     data_sec = next((s for s in sec if s.startswith('숫자로 보는 현황')), '')
     numbers = re.findall(r'\d[\d,]*\.?\d*\s*(?:%|명|건|배|억|만|점|위|달러|원)', data_sec)
-    if len(numbers) < 3:
-        issues.append(f'"숫자로 보는 현황"에 단위가 붙은 수치가 {len(numbers)}개뿐입니다. '
-                      '비교 가능한 수치를 3개 이상, 기관·보고서명과 함께 넣으세요.')
+    # 근거는 두 방식 중 하나면 된다: 공표 통계 3개 이상, 또는 공식 문서·스펙을 옮긴 비교표(3행 이상 + 출처).
+    # 통계가 없는 기술 주제(#36 Jujutsu)에 수치 3개를 강요하자, 작가가 '공식 문서가 분류한 제약 11개'라는
+    # 수치를 만들어 냈고 첫 심사에서 근거 없는 수치·과장으로 치명 판정을 받았다.
+    table_rows = [ln for ln in data_sec.splitlines() if re.match(r'^\|(?!\s*:?-{2,})', ln)]
+    spec_table = len(table_rows) >= 4 and re.search(r'출처|공식 문서|https?://', data_sec)
+    if len(numbers) < 3 and not spec_table:
+        issues.append(f'"숫자로 보는 현황"에 근거가 부족합니다(단위가 붙은 수치 {len(numbers)}개). '
+                      '공표 통계가 있는 주제라면 비교 가능한 수치 3개 이상을 기관·보고서명과 함께 넣고, '
+                      '통계가 없는 기술 주제라면 공식 문서·스펙을 옮긴 비교표(3행 이상, 출처 명시)로 근거를 대세요. '
+                      '어느 쪽이든 수치를 만들어 내거나 필자가 정한 묶음을 공식 분류처럼 쓰면 반려됩니다.')
 
     # 지어낸 수치는 차트도 못 만들고 심사에서 no_evidence 로 반려된다. 실제로 "가상의 400명
     # 조직 예시" 같은 문장으로 근거 섹션을 채운 초안이 나왔다.
@@ -895,13 +933,17 @@ def step_author_revise(topic_key: str, subject: str, content: str, check: dict) 
 
 
 @live_step('chart', 'charter')
-def step_visual(content: str, topic_key: str, *, rec, dry: bool = False) -> tuple:
+def step_visual(content: str, topic_key: str, *, rec, dry: bool = False, feedback: str = '') -> tuple:
     """5) 데이터 시각화. 반환: (content, chart_rel, note, visual_report)
 
     visual_report 는 검수 단계로 넘길 차트 설명 + 자동 점검 결과다. 모델에게 '차트 있음'
     만 알려 주면 그림이 무엇을 말하는지 판단할 수 없어 부실한 차트가 그대로 통과한다.
     """
-    res = ask_agent_json('charter', CHART_PROMPT.format(content=content), max_tokens=3000)
+    # 편집장이 그림을 지적했으면 그 지적을 받아 다시 그린다 — 예전엔 차트 담당이 지적을 못 받아
+    # 재심마다 같은 '지원 상태별 개수' 그림을 그렸고 같은 이유로 네 번 보류됐다(#36)
+    fb = (f'\n\n[편집장의 시각자료 지적 — 반드시 반영]\n{feedback}\n이 지적과 같은 그림을 다시 그리면 또 보류됩니다.'
+          if feedback else '')
+    res = ask_agent_json('charter', CHART_PROMPT.format(content=content, feedback=fb), max_tokens=3000)
     spec = res.get('spec') if isinstance(res.get('spec'), dict) else None
     if not res.get('has_data') or not spec:
         note = f"수치 부족으로 생략: {res.get('reason', '')}"[:200]
@@ -956,7 +998,8 @@ def length_rule(length: int) -> str:
 
 @live_step('review', 'editor')
 def step_review(subject: str, content: str, check: dict, chart_rel: str,
-                visual_report: str = '', critique: dict | None = None, verified: str = '') -> dict:
+                visual_report: str = '', critique: dict | None = None, verified: str = '',
+                previous: dict | None = None) -> dict:
     """6) 편집 심사 — 편집장(승현)이 항목 점수를 매기고, 총점·판정은 시스템이 계산.
 
     기획을 고른 팀장이 아니라 편집장이 본다. 같은 사람이 고르고 심사하면 기획 단계의
@@ -977,7 +1020,9 @@ def step_review(subject: str, content: str, check: dict, chart_rel: str,
         style=style_note, visual=visual, subject=subject, content=content,
         rubric=rubric_text()) + verified_block(verified, 'editor')
     from .arsenal import exemplar_block
+    from . import review_protocol as R
     prompt += exemplar_block(for_editor=True)      # 채점 기준점 — 발행된 모범 칼럼과 비교해 매긴다
+    prompt += R.RULE + R.previous_block(previous)  # 필수 수정/제안 분리, 재심은 직전 필수 수정부터
     qa = ask_agent_json('editor', prompt, max_tokens=3000)
     # 기준선 근처면 두 번 더 심사해 항목별 중앙값으로 정한다. 같은 원고가 회차마다 ±5점씩 흔들려
     # (원고 #8: 78→75) 80점 근처에서는 통과 여부가 사실상 운이었다.
@@ -986,6 +1031,8 @@ def step_review(subject: str, content: str, check: dict, chart_rel: str,
         panel = [qa] + [ask_agent_json('editor', prompt, max_tokens=3000) for _ in range(2)]
         qa = merge_reviews(panel)
 
+    qa = R.normalize(qa)                     # must_fix·suggestions 정리, issues 순서 맞춤
+    model_issues = list(qa['issues'])
     scores = qa.get('scores') if isinstance(qa.get('scores'), dict) else {}
     fatal = [f for f in (qa.get('fatal') or []) if isinstance(f, str)]
     # 시스템이 직접 확인하는 결함 (모델이 놓쳐도 강제)
@@ -1017,6 +1064,10 @@ def step_review(subject: str, content: str, check: dict, chart_rel: str,
         detail = visual_report.split('자동 점검 — 치명:', 1)[1].splitlines()[0].strip()
         qa.setdefault('issues', []).append(f'차트 결함(자동 점검): {detail}')
 
+    # 코드가 강제한 결함도 필수 수정 — 맨 앞에 둔다
+    added = [i for i in qa.get('issues', []) if i not in model_issues]
+    qa['must_fix'] = [{'where': '자동 점검', 'problem': a, 'fix': '', 'done_when': ''} for a in added] + qa['must_fix']
+    qa['issues'] = added + model_issues
     score = compute_score(scores)
     qa.update({'scores': scores, 'fatal': fatal, 'score': score, 'length': length,
                'verdict': verdict_of(score, fatal), 'rubric_version': 1})

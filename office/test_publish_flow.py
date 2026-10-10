@@ -41,12 +41,16 @@ class PublishFlowTests(TestCase):
 
         patches = [
             mock.patch.object(P, 'step_brief', return_value={'angle': '각도'}),
+            mock.patch.object(P, 'step_blueprint', return_value=({}, {})),
             mock.patch.object(P, 'step_draft', return_value=('제목', column(30))),
             mock.patch.object(P, 'precheck_draft', return_value=[]),
             mock.patch.object(P, 'step_check', side_effect=fake_check),
             mock.patch.object(P, 'step_critique', return_value={'verdict': 'recommend', 'issues': [], 'reason': ''}),
             mock.patch.object(P, 'step_review', side_effect=list(reviews)),
             mock.patch('office.management.commands.office_publish.ask_agent', return_value=editor_raw),
+            # 패치 수정은 '원고와 불일치'로 실패시켜 전체 재작성 경로를 검증한다
+            mock.patch('office.management.commands.office_publish.patch_revise',
+                       side_effect=lambda w, sub, c, *a, **k: (sub, c, False, '불일치')),
             mock.patch('office.management.commands.office_publish.call_command'),
         ]
         for p in patches:

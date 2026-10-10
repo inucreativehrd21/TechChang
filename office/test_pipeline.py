@@ -173,6 +173,20 @@ class StripVisualBlockTests(TestCase):
         self.assertIn('장애물이 바뀌었나요?', out)
         self.assertNotIn('회의시간 증가', out)
 
+    def test_author_table_with_item_header_is_kept_and_marked_figure_removed(self):
+        """첫 칸이 '항목'인 작가 표도 지우지 않는다 — #36 표 1이 재심 때마다 사라졌다."""
+        from office.services import FIGURE_MARK, chart_markdown
+        author = ('### 표 1. 점검 대상 11개의 영향도 점수\n\n'
+                  '| 항목 | 문서 상태 | 등급 |\n|---|---|---|\n| 훅 | 미지원 | 상 |')
+        fig = chart_markdown('', {'title': '지원 상태별 개수', 'labels': ['지원', '미지원'],
+                                  'series': [{'name': '개수', 'values': [9, 7]}], 'unit': '개'}, caption='설명 문장.')
+        self.assertTrue(fig.startswith(FIGURE_MARK))
+        out = P.strip_visual_block('앞 문단입니다.\n\n' + author + '\n\n' + fig + '\n\n뒷 문단입니다.\n')
+        self.assertIn('| 훅 | 미지원 | 상 |', out)
+        self.assertNotIn('지원 상태별 개수', out)
+        self.assertNotIn(FIGURE_MARK, out)
+        self.assertIn('뒷 문단입니다.', out)
+
     def test_bold_emphasis_in_prose_is_kept(self):
         """본문 속 **강조**를 도판 제목으로 오인해 문단을 날리면 안 된다."""
         body = '이것은 **핵심 개념**이라고 부르는 것이며 문장이 이어집니다. 두 번째 문장입니다.\n'

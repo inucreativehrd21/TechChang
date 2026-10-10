@@ -487,9 +487,16 @@ def audit_style(content: str) -> tuple:
     import re
 
     skip_section = False
+    in_code = False
     sentences = []
     for raw in content.splitlines():
         line = raw.strip()
+        # 코드 블록은 문장이 아니다 — echo "[ok] 없음" 같은 줄이 평서체로 잡혀 style_broken 치명 판정이 났다(#36)
+        if line.startswith('```'):
+            in_code = not in_code
+            continue
+        if in_code:
+            continue
         if line.startswith('## '):
             skip_section = line.startswith('## 참고 자료')
             continue
@@ -700,4 +707,10 @@ def chart_markdown(rel_path: str, spec: dict, caption: str = '', figure_no: int 
 
     if not rel_path:                      # 그림이 없을 때만 표로 싣는다
         parts += ['', head, sep, *rows]
-    return '\n'.join(parts)
+    # 맨 앞의 표식으로 '차트 담당이 넣은 도판'임을 남긴다 — strip_visual_block 은 이 표식(또는 이미지)으로
+    # 시작하는 덩어리만 지운다. 예전엔 첫 칸이 '항목'인 표를 도판으로 봐서 작가가 쓴 표 1까지 지웠다(#36).
+    return FIGURE_MARK + '\n\n' + '\n'.join(parts)
+
+
+# 마크다운 참조 정의 문법이라 화면에는 아무것도 그려지지 않는다
+FIGURE_MARK = '[//]: # (tc-figure)'

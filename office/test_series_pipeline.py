@@ -109,6 +109,8 @@ class SeriesPipelineTests(TestCase):
         scores = iter([3, 5])
 
         def ask_json(key, prompt, **kw):
+            if key == 'coding':                       # 패치 수정 시도 — 편집 목록 없음 → 전체 재작성
+                return {}
             if key == 'checker':
                 return fake_json()(key, prompt)
             score = next(scores)                       # 첫 심사 3점(60) → 보완 → 재심 5점(100)
@@ -130,6 +132,8 @@ class SeriesPipelineTests(TestCase):
 
         def ask_json(key, prompt, **kw):
             calls.append(key)
+            if key == 'coding':                       # 패치 수정 시도 — 편집 목록 없음 → 전체 재작성
+                return {}
             if key == 'checker':
                 return fake_json()(key, prompt)
             score = next(scores)
@@ -149,6 +153,8 @@ class SeriesPipelineTests(TestCase):
             return episode()
 
         def ask_json(key, prompt, **kw):
+            if key == 'coding':
+                return {}
             prompts.setdefault(key, prompt)
             return fake_json()(key, prompt)
 
