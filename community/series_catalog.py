@@ -319,17 +319,17 @@ TITLE: [회차 제목 - 아래 지정 제목을 그대로 쓰거나 자연스럽
 
 STRUCTURES = {'django': DJANGO_STRUCTURE, 'agent': AGENT_STRUCTURE}
 
-# 회차별 '테크창 실제 코드 발췌' — (파일, 시작 줄을 찾는 정규식, 줄 수). 집필자는 이 코드를 바탕으로 설명하고,
+# 회차별 '테크창 실제 코드 발췌' — (파일, 시작 줄을 찾는 정규식, 줄 수 — None 이면 그 함수·클래스 끝까지). 집필자는 이 코드를 바탕으로 설명하고,
 # 검증관은 같은 발췌와 대조한다. 지어낸 예제 대신 실제로 돌아가는 코드를 보여 주기 위해서다(2026-10-10 리메이크).
 SOURCES = {
     'django': {
         1: [('config/settings/base.py', r'^INSTALLED_APPS', 24)],
         2: [('config/urls.py', r'^urlpatterns', 14), ('community/urls.py', r'^urlpatterns', 16)],
-        3: [('community/views/base_views.py', r'^def detail\(', 30)],
+        3: [('community/views/base_views.py', r'^def detail\(', None)],
         4: [('templates/community/question_list.html', r'{% for question in popular_posts %}', 18)],
         5: [('community/models.py', r'^class Question\(models\.Model\)', 22)],
         6: [('community/migrations/0040_question_episode_number_columnseries_question_series.py', r'operations', 30)],
-        7: [('community/forms.py', r'^class QuestionForm', 16), ('community/views/question_views.py', r'^@login_required', 30)],
+        7: [('community/forms.py', r'^class QuestionForm', 16), ('community/views/question_views.py', r'^@login_required', None)],
         8: [('community/views/question_views.py', r'^@login_required', 14)],
     },
     'agent': {
@@ -361,7 +361,11 @@ def source_block(key: str, no: int) -> str:
         if start is None:
             continue
         lang = {'.py': 'python', '.html': 'html'}.get(path.suffix, '')
-        parts.append(f'# {rel}\n```{lang}\n' + '\n'.join(lines[start:start + n]) + '\n```')
+        if n is None:     # 그 함수·클래스 끝까지 — 3편 발췌가 30줄에서 잘려 마지막 return 을 집필자가 지어냈다
+            end = next((i for i in range(start + 1, len(lines))
+                        if re.match(r'(def |class |@)', lines[i]) and not lines[i - 1].startswith('@')), len(lines))
+            n = end - start
+        parts.append(f'# {rel}\n```{lang}\n' + '\n'.join(lines[start:start + n]).rstrip() + '\n```')
     if not parts:
         return ''
     return ('\n[테크창 실제 코드 발췌 — 예제는 이 코드를 바탕으로 쓰고, 파일 경로를 밝혀 주세요]\n'

@@ -207,6 +207,12 @@ class SeriesPipelineTests(TestCase):
         draft.refresh_from_db()
         self.assertEqual((res['status'], res.get('keep'), draft.status), ('failed', True, 'hold'))
 
+    def test_precheck_catches_leftover_memos_and_full_function_excerpt(self):
+        for memo in ('<!-- 편집 메모: 교체 -->', '완성 예제 저장소(링크는 게시 시 삽입)', 'TODO: 화면 캡처'):
+            self.assertTrue(any('게재 전 메모' in i for i in S.precheck('django', episode() + memo)), memo)
+        self.assertFalse(any('게재 전 메모' in i for i in S.precheck('django', episode())))
+        self.assertIn('return render(request, template, context)', C.source_block('django', 3))   # 함수 끝까지
+
     def test_precheck_catches_structure_and_length(self):
         issues = S.precheck('django', '짧은 글입니다.')
         self.assertTrue(any('하한' in i for i in issues))

@@ -175,6 +175,10 @@ def previous_summaries(series_obj, before_no: int, limit: int = 4) -> str:
             + '\n'.join(parts) + '\n')
 
 
+# 게재 전 메모·자리표시 — HTML 주석, 편집 메모, TODO, '(링크는 게시 시 삽입)', '(확인 필요)' 등
+_MEMO = re.compile(r'<!--.*?-->|편집\s*메모|작성\s*메모|TODO|TBD|게시\s*시\s*삽입|\((?:확인|추후)\s*필요\)|\[링크[^\]]*\]\(\s*\)', re.S)
+
+
 def precheck(key: str, content: str) -> list:
     """기계로 판별되는 결함 — 분량·필수 소제목·H1·코드 블록·문체·서명."""
     issues = []
@@ -191,6 +195,9 @@ def precheck(key: str, content: str) -> list:
     offenders, st = audit_style(content)
     if st['total'] >= 5 and st['plain_ratio'] > P.PLAIN_STYLE_LIMIT:
         issues.append(f"평서체 {st['plain']}문장 — 존댓말로 통일. 예: {offenders[0][:50] if offenders else ''}")
+    memo = _MEMO.search(content)
+    if memo:     # 게재 전 메모가 남으면 편집장이 매번 치명 결함으로 잡았다(Django 0편 두 번)
+        issues.append(f'게재 전 메모가 본문에 남아 있음: 「{memo.group(0)[:40]}」 — 메모·주석·자리표시를 모두 지우고 완성된 문장으로')
     if '테크창 연구팀' not in content[-400:]:
         issues.append('마지막 서명(시리즈·회차·테크창 연구팀) 누락')
     return issues
