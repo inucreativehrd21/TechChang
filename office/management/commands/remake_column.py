@@ -56,6 +56,11 @@ class Command(BaseCommand):
         parser.add_argument('--question', type=int, required=True)
         parser.add_argument('--dry-run', action='store_true', help='저장하지 않고 결과만 출력')
         parser.add_argument('--no-chart', action='store_true')
+        # 사람 교열본 심사(#89·#100): 자동 보완이 확인 못 한 수치에서 막힐 때, 사람이 원문을 대조해
+        # 고친 원고를 재집필·자동 보완 없이 그대로 검증·심사만 받는다(office_revise --review-only 의 발행 글판)
+        parser.add_argument('--content-file', default='', help='심사만 받을 교열본 마크다운 파일')
+        parser.add_argument('--subject', default='', help='--content-file 때 바꿀 제목')
+        parser.add_argument('--facts', default='', help='운영자가 원문을 확인한 사실 — 검증관·편집장에게 전달')
 
     def handle(self, *args, **opts):
         # 어떻게 끝나든(발행·보류·실패) 연구실 라이브 표시를 정리한다
@@ -78,7 +83,9 @@ class Command(BaseCommand):
         out(f'  현재 {P.body_length(q.content):,}자 · 조회 {q.view_count} · 지적 {len(flaws)}건')
         for f in flaws:
             out(f'    · {f[:120]}')
-        if not flaws:
+        hand_file = opts.get('content_file') or ''
+        facts = (opts.get('facts') or '').strip()
+        if not flaws and not hand_file:
             out(self.style.SUCCESS('  이미 현재 기준을 통과합니다 — 손대지 않습니다.'))
             return
 
@@ -95,6 +102,20 @@ class Command(BaseCommand):
         #    설계도 없이 "통계 3~5개를 넣으라"고만 하면 첫 원고부터 확인 안 된 수치가 들어가
         #    레거시 3편이 모두 unverified_data 로 보류됐다(2026-10-11, 48·61·51점).
         from office import blueprint as B
+        if hand_file:
+            with open(hand_file, encoding='utf-8') as fh:
+                content = fh.read().strip()
+            subject = (opts.get('subject') or '').strip() or q.subject
+            stages.record('draft', 'editor', {'subject': subject, 'content': content, 'ok': True,
+                                              'why': '운영자 교열본'}, text=content)
+            rec('editor', 'revise', f'운영자 교열본 심사: {subject} ({P.body_length(content)}자)')
+            left = P.precheck_draft(content)
+            stages.record('precheck', 'editor', {'issues': left, 'quality': quality.report(subject, content)})
+            for i in left:     # 교열본은 고치지 않고 보여 주기만 한다 — 심사에서 그대로 다뤄진다
+                out(self.style.WARNING(f'    자동 점검: {str(i)[:140]}'))
+            return self._judge(q, opts, stages, rec, out, writer, topic_key, standard,
+                               subject, content, facts, hand=True)
+
         live.mark('brief', writer, topic_key)
         bp_context = (f"[리메이크 대상 — 주제와 논지는 유지]\nTITLE: {q.subject}\n---\n{q.content}\n\n"
                       f"[지금 기준에 어긋나는 점]\n" + '\n'.join(f'- {f}' for f in flaws) + '\n' + P.recency_rule())
@@ -124,16 +145,26 @@ class Command(BaseCommand):
             stages.record('fix', writer, {'subject': subject, 'content': content, 'remaining': left},
                           text=content)
             rec(writer, 'revise', f'자동 점검 보완 — 남은 지적 {len(left)}건')
+        return self._judge(q, opts, stages, rec, out, writer, topic_key, standard, subject, content, facts)
 
-        # 2) 팩트체크 → 3) 도판 → 4) 평론 → 5) 편집 심사
+    def _judge(self, q, opts, stages, rec, out, writer, topic_key, standard, subject, content, facts,
+               hand=False):
+        """2) 팩트체크 → 3) 도판 → 4) 평론 → 5) 편집 심사 → 미달이면 보완 → 통과면 제자리 갱신.
+
+        hand=True(운영자 교열본)면 보완 재작성 없이 심사만 한다 — 사람이 원문을 대조해 고친 문장을
+        칼럼니스트가 다시 쓰면 확인 안 된 수치가 되살아난다.
+        """
         recent = list(Question.objects.filter(is_deleted=False).exclude(pk=q.pk)
                       .order_by('-create_date').values_list('subject', flat=True)[:20])
-        check = P.step_check(subject, content, recent)
+        check = P.step_check(subject, content, recent, verified=facts)
         stages.record('check', 'checker', check, kind='report', sender='checker', recipient='editor')
         rec('checker', 'check', f"팩트체크 {check.get('verdict')}")
 
         chart_rel, visual_report = '', ''
-        if not opts['no_chart']:
+        if hand and P.has_visual(content):
+            # 교열본의 표를 그대로 심사받는다 — 차트 담당이 옛 그림을 다시 넣지 않게(#36)
+            visual_report = '운영자 교열본 — 도판 그대로 심사: 본문 표를 핵심 도판으로 사용'
+        elif not opts['no_chart']:
             content = P.strip_visual_block(content)
             content, chart_rel, _note, visual_report = P.step_visual(content, topic_key, rec=rec)
             stages.record('chart', 'charter', {'chart': chart_rel, 'note': _note, 'report': visual_report})
@@ -142,7 +173,7 @@ class Command(BaseCommand):
         stages.record('critique', 'critic', critique, kind='report', sender='critic', recipient='editor')
         rec('critic', 'critique', f"평론 {critique['verdict']} · 지적 {len(critique.get('issues') or [])}건")
 
-        qa = P.step_review(subject, content, check, chart_rel, visual_report, critique)
+        qa = P.step_review(subject, content, check, chart_rel, visual_report, critique, verified=facts)
         stages.record('review', 'editor', qa)
         stages.record('final', 'editor', {'verdict': qa['verdict'], 'score': qa.get('score'),
                                           'quality': quality.report(subject, content)}, text=content)
@@ -151,7 +182,7 @@ class Command(BaseCommand):
 
         # 미달이면 최대 2번 고친다 — 필수 수정만, 고칠 곳만 바꾸는 패치로(검증된 부분을 지킨다).
         # 재심은 직전 필수 수정의 해결 여부부터 본다(office.review_protocol). 그래도 미달이면 원문 유지.
-        for _round in range(MAX_REMAKE_REVISIONS):      # 미달이면 최대 2번까지 고친다
+        for _round in range(0 if hand else MAX_REMAKE_REVISIONS):      # 미달이면 최대 2번까지 고친다
             if qa['verdict'] == 'accept':
                 break
             from office import review_protocol as R
@@ -171,14 +202,17 @@ class Command(BaseCommand):
                 subject, content = p_subject, p_content
                 rec(writer, 'revise', f'편집 심사 필수 수정 {len(notes)}건 반영해 재작성 ({P.body_length(content)}자)')
                 if P.new_numeric_sentences(prev_content, content):
-                    check = P.step_check(subject, content, recent)
+                    check = P.step_check(subject, content, recent, verified=facts)
                     rec('checker', 'check', f"재작성 수치 재검증 {check.get('verdict')}")
                 if not opts['no_chart']:
                     content = P.strip_visual_block(content)
                     content, chart_rel, _note, visual_report = P.step_visual(
                         content, topic_key, rec=rec, feedback=P.visual_feedback(prev_qa))
                 critique = P.step_critique(subject, content)
-                qa = P.step_review(subject, content, check, chart_rel, visual_report, critique, previous=prev_qa)
+                qa = P.step_review(subject, content, check, chart_rel, visual_report, critique,
+                                   previous=prev_qa, verified=facts)
+                stages.record('revise', writer, {'subject': subject, 'content': content},
+                              attempt=_round + 2, text=content)
                 stages.record('review', 'editor', qa, attempt=_round + 2)
                 rec('editor', 'qa', f"재심{_round + 1} {qa['score']}/100 ({qa['length']}자) → {qa['verdict']}"
                                     + (f" · 치명 {','.join(qa['fatal'])}" if qa.get('fatal') else ''))
