@@ -5,8 +5,6 @@
   관리자: /lab/admin/      회의 안건 선택 · 보류 칼럼 검수 · 작업 로그 · 수동 소집
 """
 import os
-import subprocess
-import sys
 from datetime import timedelta
 
 from django.conf import settings
@@ -276,15 +274,9 @@ def draft_reject(request, draft_id):
 
 
 def _spawn(request, args: list):
-    """manage.py <args> 를 백그라운드로 실행하고 출력을 logs/office_jobs.log 에 이어 쓴다."""
-    manage = os.path.join(settings.BASE_DIR, 'manage.py')
-    os.makedirs(os.path.join(settings.BASE_DIR, 'logs'), exist_ok=True)
-    logf = open(os.path.join(settings.BASE_DIR, 'logs', 'office_jobs.log'), 'a', encoding='utf-8')
-    logf.write(f"\n=== {timezone.localtime():%Y-%m-%d %H:%M:%S} {' '.join(args)} (by {request.user.username})\n")
-    logf.flush()
-    env = {**os.environ, 'DJANGO_SETTINGS_MODULE': os.environ.get('DJANGO_SETTINGS_MODULE', 'config.settings')}
-    subprocess.Popen([sys.executable, manage, *args], cwd=settings.BASE_DIR,
-                     stdout=logf, stderr=subprocess.STDOUT, env=env, start_new_session=True)
+    """manage.py <args> 를 백그라운드로 실행하고 출력을 logs/office_jobs.log 에 이어 쓴다(office.jobs)."""
+    from .jobs import spawn
+    spawn(args, by=request.user.username)
 
 
 def _job_log_tail(lines: int = 60) -> str:
@@ -441,6 +433,11 @@ def run_job(request):
             cmd += ['--email', admin_email]
     elif job == 'publish' and request.POST.get('topic') in TOPIC_LABEL:
         cmd = ['office_publish', '--topic', request.POST['topic']]
+    elif job == 'column_map':
+        from .jobs import spawn
+        spawn(['update_column_map'], by=request.user.username, env={'CLAUDE_CLI_FALLBACK': 'false'})
+        messages.success(request, '칼럼 지도 갱신을 시작했습니다. 요약이 없거나 바뀐 칼럼만 다시 만들고, 몇 분 뒤 새로고침하면 반영됩니다.')
+        return redirect('office:column_map')
     else:
         messages.error(request, '알 수 없는 작업입니다.')
         return redirect('office:admin')
@@ -448,3 +445,53 @@ def run_job(request):
     _spawn(request, cmd)
     messages.success(request, '작업을 시작했습니다. 작업 로그 탭에서 진행 상황이 실시간으로 갱신됩니다.')
     return redirect('office:admin')
+
+
+# ───────────────────────────── 칼럼 지도
+COLUMN_MAP_CATS = [
+    ('hrd', 'HRD', '교육·인재개발 담당자를 위한 학습 설계, 리더십, 인재관리'),
+    ('data', '데이터분석', 'HR·조직 데이터를 다루는 방법론, 인프라, AI'),
+    ('coding', '프로그래밍', '개발 도구, 언어, 인프라, AI 코딩의 현재'),
+    ('series', '연재', '회차를 이어 가며 직접 만들어 보는 시리즈'),
+]
+PENDING_LABEL = '요약 준비 중'
+
+
+@admin_required
+def column_map(request):
+    """칼럼 지도 — 연구팀 칼럼을 카테고리 → 소주제로 나누고 키워드·요약을 붙인 관리자 페이지(office.digest).
+    칼럼이 저장되면 office.signals 가 요약을 다시 만든다. 인쇄 화면이 PDF 저장용이다."""
+    from collections import OrderedDict
+    from . import digest as D
+    from .models import ColumnDigest
+
+    digests = {d.question_id: d for d in ColumnDigest.objects.all()}
+    cats = OrderedDict((k, {'key': k, 'label': label, 'desc': desc, 'subs': OrderedDict(), 'count': 0})
+                       for k, label, desc in COLUMN_MAP_CATS)
+    stale = 0
+    for q in D.columns().order_by('-create_date'):
+        cat = cats.get(D.category_key(q))
+        if cat is None:
+            continue
+        dg = digests.get(q.pk)
+        is_stale = dg is None or dg.content_hash != D.content_hash(q)
+        stale += is_stale
+        sub = dg.subtopic if dg else (q.series.title if q.series_id else PENDING_LABEL)
+        cat['subs'].setdefault(sub, []).append({'q': q, 'digest': dg, 'stale': is_stale})
+        cat['count'] += 1
+    groups = []
+    for cat in cats.values():
+        subs = []
+        for name, items in cat['subs'].items():
+            if cat['key'] == 'series':
+                items.sort(key=lambda it: it['q'].episode_number or 0)
+            subs.append({'name': name, 'items': items})
+        if cat['key'] != 'series':
+            subs.sort(key=lambda s: (s['name'] == PENDING_LABEL, -len(s['items']), s['name']))
+        for i, sub in enumerate(subs):
+            sub['anchor'] = f"{cat['key']}-{i}"
+        groups.append({**cat, 'subs': subs})
+    total = sum(g['count'] for g in groups)
+    return render(request, 'office/column_map.html', {
+        'groups': groups, 'total': total, 'stale': stale, 'today': timezone.localdate(),
+    })

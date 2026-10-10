@@ -1,0 +1,231 @@
+{% extends 'base.html' %}
+
+{% block title %}칼럼 지도 - 테크창{% endblock %}
+{% block meta_robots %}noindex, nofollow{% endblock %}
+
+{% block extra_css %}
+<style>
+  /* 칼럼 지도 — 왼쪽 분류 목차(넓은 화면 고정), 오른쪽 카테고리 → 소주제 → 칼럼. 인쇄 화면은 PDF 저장용 */
+  .cm { max-width: 1160px; margin: 0 auto; padding: var(--space-6) var(--space-4) var(--space-12); }
+  .cm-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-end; gap: 12px 24px; }
+  .cm-head h1 { font-size: 1.6rem; font-weight: 800; margin: 0 0 4px; }
+  .cm-head p { margin: 0; color: var(--text-secondary); max-width: 64ch; }
+  .cm-stats { display: flex; flex-wrap: wrap; gap: 6px 18px; margin: 12px 0 0; padding: 0; list-style: none;
+    font-size: .88rem; color: var(--text-secondary); font-variant-numeric: tabular-nums; }
+  .cm-stats b { color: var(--text-primary); }
+  .cm-stats .warn { color: #b45309; }
+  .cm-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+  .cm-actions form { margin: 0; }
+  .cm-btn { display: inline-flex; align-items: center; gap: 6px; border: 0; border-radius: 8px; padding: 8px 14px;
+    font-weight: 600; font-size: .88rem; cursor: pointer; text-decoration: none; }
+  .cm-btn.primary { background: var(--accent-primary, #4f46e5); color: #fff; }
+  .cm-btn.ghost { background: var(--bg-primary, #fff); color: var(--text-primary); border: 1px solid var(--border-color, #e5e7eb); }
+  .cm-btn:hover { filter: brightness(.95); }
+  .cm-bar { position: sticky; top: 0; z-index: 5; background: var(--bg-secondary, #f8fafc); display: flex; flex-wrap: wrap;
+    gap: 10px; align-items: center; padding: 12px 0; margin-top: var(--space-5); border-bottom: 1px solid var(--border-color, #e5e7eb); }
+  .cm-bar input { flex: 1 1 260px; min-width: 0; padding: 8px 12px; border-radius: 8px; border: 1px solid var(--border-color, #e5e7eb);
+    background: var(--bg-primary, #fff); font-size: .95rem; }
+  .cm-bar input:focus { outline: 2px solid var(--accent-primary, #4f46e5); outline-offset: 1px; }
+  .cm-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .cm-chip { border: 1px solid var(--border-color, #e5e7eb); background: var(--bg-primary, #fff); border-radius: 999px;
+    padding: 5px 12px; font-size: .85rem; cursor: pointer; color: var(--text-primary); }
+  .cm-chip[aria-pressed="true"] { background: var(--accent-primary, #4f46e5); border-color: var(--accent-primary, #4f46e5); color: #fff; }
+  .cm-n { font-size: .8em; color: var(--text-secondary); font-variant-numeric: tabular-nums; }
+  .cm-chip[aria-pressed="true"] .cm-n { color: rgba(255,255,255,.8); }
+  .cm-count { font-size: .85rem; color: var(--text-secondary); }
+  .cm-layout { display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 36px; margin-top: var(--space-5); }
+  .cm-toc { position: sticky; top: 72px; align-self: start; max-height: calc(100vh - 90px); overflow-y: auto; font-size: .87rem; }
+  .cm-toc-cat { margin-bottom: 16px; }
+  .cm-toc-h { display: flex; justify-content: space-between; font-weight: 700; text-decoration: none; color: var(--text-primary);
+    border-bottom: 1px solid var(--border-color, #e5e7eb); padding-bottom: 4px; margin-bottom: 6px; }
+  .cm-toc ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 3px; }
+  .cm-toc li { display: flex; justify-content: space-between; gap: 8px; }
+  .cm-toc li a { color: var(--text-secondary); text-decoration: none; }
+  .cm-toc li a:hover { color: var(--accent-primary, #4f46e5); }
+  .cm-cat { margin-bottom: 44px; }
+  .cm-cat-head { border-bottom: 2px solid var(--text-primary); padding-bottom: 6px; }
+  .cm-cat-head h2 { font-size: 1.35rem; font-weight: 800; margin: 0; }
+  .cm-cat-head p { margin: 2px 0 0; font-size: .88rem; color: var(--text-secondary); }
+  .cm-sub { scroll-margin-top: 80px; }
+  .cm-sub h3 { font-size: 1rem; font-weight: 700; margin: 22px 0 2px; color: var(--accent-primary, #4f46e5); }
+  .cm-list { list-style: none; margin: 0; padding: 0; }
+  .cm-item { padding: 13px 0; border-bottom: 1px solid var(--border-color, #e5e7eb); }
+  .cm-item-head { display: flex; flex-wrap: wrap; gap: 6px 8px; align-items: baseline; }
+  .cm-title { font-weight: 700; color: var(--text-primary); text-decoration: none; }
+  .cm-title:hover { color: var(--accent-primary, #4f46e5); text-decoration: underline; }
+  .cm-flag { font-size: .72rem; font-weight: 700; color: #b45309; background: rgba(245,158,11,.12); border-radius: 4px; padding: 1px 7px; }
+  .cm-sum { margin: 4px 0 8px; max-width: 74ch; line-height: 1.7; }
+  .cm-sum.empty { color: var(--text-secondary); }
+  .cm-foot { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 6px 16px; align-items: center; }
+  .cm-kws { display: flex; flex-wrap: wrap; gap: 5px; min-width: 0; }
+  .cm-kw { border: 1px solid transparent; background: rgba(79,70,229,.07); color: var(--text-primary); border-radius: 5px;
+    padding: 2px 9px; font-size: .8rem; cursor: pointer; }
+  .cm-kw:hover { border-color: var(--accent-primary, #4f46e5); }
+  .cm-meta { font-size: .78rem; color: var(--text-secondary); white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .cm-empty { padding: 40px 0; color: var(--text-secondary); }
+  .cm-print-head { display: none; }
+  @media (max-width: 860px) {
+    .cm-layout { grid-template-columns: minmax(0, 1fr); gap: 0; }
+    .cm-toc { display: none; }
+  }
+
+  /* PDF 저장(인쇄) — 사이트 머리·꼬리·조작부를 빼고 A4 에 맞춘다. 검색·카테고리로 거른 상태 그대로 인쇄된다 */
+  @media print {
+    @page { size: A4; margin: 14mm 13mm; }
+    .premium-nav, .tc-footer, #mobile-version-fab, .alert, .cm-bar, .cm-toc, .cm-actions, .cm-head { display: none !important; }
+    body { background: #fff !important; color: #111 !important; font-size: 10.5pt; }
+    .cm { max-width: none; padding: 0; }
+    .cm-layout { display: block; margin: 0; }
+    .cm-print-head { display: block; border-bottom: 2px solid #111; padding-bottom: 6px; margin-bottom: 10px; }
+    .cm-print-head h1 { font-size: 17pt; font-weight: 800; margin: 0; }
+    .cm-print-head p { margin: 2px 0 0; font-size: 9pt; color: #444; }
+    .cm-cat { margin-bottom: 0; break-before: page; }
+    .cm-cat:first-of-type { break-before: auto; }
+    .cm-cat-head { break-after: avoid; }
+    .cm-sub h3 { break-after: avoid; color: #312e81; }
+    .cm-item { break-inside: avoid; padding: 7px 0; }
+    .cm-title { color: #111; text-decoration: none; }
+    .cm-title::after { content: "  techchang.com" attr(data-path); font-size: 8pt; font-weight: 400; color: #666; }
+    .cm-kw { border: 1px solid #ccc; background: none; padding: 0 6px; font-size: 8pt; }
+    .cm-sum { max-width: none; margin: 2px 0 4px; }
+    [hidden] { display: none !important; }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="cm">
+  <header class="cm-head">
+    <div>
+      <h1>칼럼 지도</h1>
+      <p>연구팀이 발행한 칼럼과 연재 회차를 카테고리와 소주제로 나누고, 칼럼마다 핵심 키워드와 내용 요약을 붙였습니다. 칼럼이 새로 발행되거나 고쳐지면 몇 분 안에 자동으로 다시 정리됩니다.</p>
+      <ul class="cm-stats">
+        <li><b>{{ total }}</b>편</li>
+        {% for g in groups %}<li>{{ g.label }} <b>{{ g.count }}</b></li>{% endfor %}
+        {% if stale %}<li class="warn">요약 갱신 대기 {{ stale }}편</li>{% endif %}
+      </ul>
+    </div>
+    <div class="cm-actions">
+      <button type="button" class="cm-btn primary" id="cm-pdf" title="인쇄 창에서 대상을 'PDF로 저장'으로 고르세요">
+        <i class="fas fa-file-pdf"></i> PDF로 저장
+      </button>
+      <form method="post" action="{% url 'office:run_job' %}">
+        {% csrf_token %}
+        <input type="hidden" name="job" value="column_map">
+        <button type="submit" class="cm-btn ghost"><i class="fas fa-rotate"></i> 요약 갱신</button>
+      </form>
+      <a class="cm-btn ghost" href="{% url 'office:admin' %}"><i class="fas fa-people-group"></i> 연구실 관리</a>
+    </div>
+  </header>
+
+  <div class="cm-bar" role="search">
+    <input id="cm-q" type="search" placeholder="제목·키워드·요약에서 찾기 (예: 메타분석, Rust, 이직)" aria-label="칼럼 검색">
+    <div class="cm-chips">
+      {% for g in groups %}
+      <button type="button" class="cm-chip" data-cat="{{ g.key }}" aria-pressed="false">{{ g.label }} <span class="cm-n">{{ g.count }}</span></button>
+      {% endfor %}
+    </div>
+    <span class="cm-count" id="cm-count" aria-live="polite">{{ total }}편 표시</span>
+  </div>
+
+  <div class="cm-layout">
+    <nav class="cm-toc" aria-label="분류 목차">
+      {% for g in groups %}
+      <div class="cm-toc-cat" data-cat="{{ g.key }}">
+        <a class="cm-toc-h" href="#cm-{{ g.key }}">{{ g.label }}<span class="cm-n">{{ g.count }}</span></a>
+        <ul>
+          {% for s in g.subs %}<li><a href="#{{ s.anchor }}">{{ s.name }}</a><span class="cm-n">{{ s.items|length }}</span></li>{% endfor %}
+        </ul>
+      </div>
+      {% endfor %}
+    </nav>
+
+    <main>
+      <div class="cm-print-head">
+        <h1>테크창 칼럼 지도</h1>
+        <p>{{ today|date:"Y-m-d" }} 기준 · <span id="cm-print-count">{{ total }}</span>편 · techchang.com 연구팀</p>
+      </div>
+
+      {% for g in groups %}
+      <section class="cm-cat" id="cm-{{ g.key }}" data-cat="{{ g.key }}">
+        <header class="cm-cat-head">
+          <h2>{{ g.label }}</h2>
+          <p>{{ g.desc }} · {{ g.count }}편</p>
+        </header>
+        {% for s in g.subs %}
+        <section class="cm-sub" id="{{ s.anchor }}">
+          <h3>{{ s.name }} <span class="cm-n">{{ s.items|length }}편</span></h3>
+          <ol class="cm-list">
+            {% for it in s.items %}
+            {% with q=it.q d=it.digest %}
+            <li class="cm-item" data-hay="{{ q.subject|lower }} {% if d %}{{ d.summary|lower }} {{ d.keywords|join:' '|lower }} {{ d.subtopic|lower }}{% endif %}">
+              <div class="cm-item-head">
+                <a class="cm-title" href="{% url 'community:detail' question_id=q.id %}" data-path="{% url 'community:detail' question_id=q.id %}">{{ q.subject }}</a>
+                {% if it.stale and d %}<span class="cm-flag" title="본문이 바뀌어 요약을 다시 만드는 중입니다">갱신 대기</span>{% endif %}
+              </div>
+              {% if d %}
+              <p class="cm-sum">{{ d.summary }}</p>
+              {% else %}
+              <p class="cm-sum empty">요약을 만드는 중입니다. 몇 분 뒤 새로고침하세요.</p>
+              {% endif %}
+              <div class="cm-foot">
+                <div class="cm-kws">
+                  {% if d %}{% for k in d.keywords %}<button type="button" class="cm-kw" data-kw="{{ k }}">{{ k }}</button>{% endfor %}{% endif %}
+                </div>
+                <span class="cm-meta">{{ q.create_date|date:"Y-m-d" }} · 조회 {{ q.view_count }}</span>
+              </div>
+            </li>
+            {% endwith %}
+            {% endfor %}
+          </ol>
+        </section>
+        {% endfor %}
+      </section>
+      {% endfor %}
+      <p class="cm-empty" id="cm-empty" hidden>찾는 칼럼이 없습니다. 다른 낱말로 찾거나 카테고리 선택을 풀어 보세요.</p>
+    </main>
+  </div>
+</div>
+{% endblock %}
+
+{% block script %}
+<script nonce="{{ csp_nonce }}">
+(function () {
+  var q = document.getElementById('cm-q'), count = document.getElementById('cm-count');
+  var empty = document.getElementById('cm-empty'), printCount = document.getElementById('cm-print-count');
+  var chips = Array.prototype.slice.call(document.querySelectorAll('.cm-chip'));
+  var active = '';
+  function apply() {
+    var term = q.value.trim().toLowerCase(), shown = 0;
+    document.querySelectorAll('.cm-cat').forEach(function (cat) {
+      var on = !active || cat.dataset.cat === active, catShown = 0;
+      cat.querySelectorAll('.cm-sub').forEach(function (sub) {
+        var n = 0;
+        sub.querySelectorAll('.cm-item').forEach(function (it) {
+          var ok = on && (!term || it.dataset.hay.indexOf(term) !== -1);
+          it.hidden = !ok; if (ok) n++;
+        });
+        sub.hidden = n === 0; catShown += n;
+      });
+      cat.hidden = catShown === 0; shown += catShown;
+    });
+    document.querySelectorAll('.cm-toc-cat').forEach(function (t) { t.hidden = !!active && t.dataset.cat !== active; });
+    count.textContent = shown + '편 표시';
+    printCount.textContent = shown;
+    empty.hidden = shown !== 0;
+  }
+  q.addEventListener('input', apply);
+  chips.forEach(function (c) {
+    c.addEventListener('click', function () {
+      active = active === c.dataset.cat ? '' : c.dataset.cat;
+      chips.forEach(function (x) { x.setAttribute('aria-pressed', String(x.dataset.cat === active)); });
+      apply();
+    });
+  });
+  document.querySelectorAll('.cm-kw').forEach(function (k) {
+    k.addEventListener('click', function () { q.value = k.dataset.kw; apply(); q.focus(); });
+  });
+  document.getElementById('cm-pdf').addEventListener('click', function () { window.print(); });
+})();
+</script>
+{% endblock %}

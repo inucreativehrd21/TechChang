@@ -300,3 +300,25 @@ class VerifiedFact(models.Model):
 
     def __str__(self):
         return f'[{self.status}] {self.claim[:60]}'
+
+
+class ColumnDigest(models.Model):
+    """칼럼 지도의 한 칸 — 칼럼별 소주제·키워드·요약(office.digest).
+
+    칼럼이 발행·수정되면 저장 신호(office.signals)가 본문 해시를 비교해, 바뀌었으면 백그라운드로
+    update_column_map 을 띄워 다시 만든다. 관리자 '칼럼 지도' 페이지(office:column_map)가 이 표를 읽는다.
+    """
+    question = models.OneToOneField('community.Question', on_delete=models.CASCADE, related_name='digest')
+    subtopic = models.CharField(max_length=60, verbose_name='소주제')
+    keywords = models.JSONField(default=list, verbose_name='키워드')
+    summary = models.TextField(verbose_name='요약')
+    content_hash = models.CharField(max_length=40, verbose_name='요약한 본문의 해시')
+    source = models.CharField(max_length=20, default='lab', verbose_name='작성 경로')   # lab|import
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = '칼럼 지도 항목'
+        verbose_name_plural = '칼럼 지도 항목'
+
+    def __str__(self):
+        return f'[{self.subtopic}] {self.question_id}'

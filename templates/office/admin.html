@@ -129,7 +129,7 @@
   <div class="oa-head">
     <div>
       <h1>연구팀 연구실 관리</h1>
-      <small style="color:var(--text-secondary)">회의 안건 결정 · 보류 칼럼 검수 · 수동 실행. 공개 페이지: <a href="{% url 'office:home' %}">/lab/</a></small>
+      <small style="color:var(--text-secondary)">회의 안건 결정 · 보류 칼럼 검수 · 수동 실행. 공개 페이지: <a href="{% url 'office:home' %}">/lab/</a> · <a href="{% url 'office:column_map' %}"><i class="fas fa-map"></i> 칼럼 지도</a></small>
     </div>
     <div class="oa-actions">
       <form method="post" action="{% url 'office:run_job' %}">{% csrf_token %}<input type="hidden" name="job" value="meeting">

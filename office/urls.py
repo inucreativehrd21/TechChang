@@ -18,4 +18,5 @@ urlpatterns = [
     path('admin/task/new/', views.task_create, name='task_create'),
     path('admin/task/<int:task_id>/', views.task_action, name='task_action'),
     path('admin/run/', views.run_job, name='run_job'),
+    path('admin/column-map/', views.column_map, name='column_map'),
 ]
