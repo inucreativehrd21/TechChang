@@ -12,6 +12,7 @@ r"""
   python manage.py auto_write_series --series django --remake all
   python manage.py auto_write_series --series agent --dry-run    # 저장 없이 결과만
   python manage.py auto_write_series --revise-draft 42 --note "…"   # 보류 원고에 운영자 지시 반영(관리 화면이 호출)
+  python manage.py auto_write_series --revise-held --wait-on-limit  # 보류 원고 전부를 받은 지적으로 고쳐 재검증
 
 기획서(시리즈 정의·목차·회차 골격·발행 일정·코드 발췌)는 community/series_catalog.py — 연재 화면과 공유한다.
 
@@ -61,6 +62,8 @@ class Command(BaseCommand):
         parser.add_argument('--remake', default=None,
                             help='발행된 회차 번호(또는 all)를 다시 만들어 제자리 갱신')
         parser.add_argument('--revise-draft', type=int, default=None, help='보류된 연재 원고 id')
+        parser.add_argument('--revise-held', dest='revise_draft', action='store_const', const=-1,
+                            help='보류된 연재 원고 전부를 각자 받은 편집장·검증관 지적으로 고쳐 다시 검증')
         parser.add_argument('--note', default='', help='--revise-draft 와 함께: 운영자 수정 지시')
         parser.add_argument('--by', default='', help='--revise-draft 와 함께: 지시한 운영자 아이디')
         parser.add_argument('--dry-run', action='store_true', help='저장하지 않고 결과만 출력')
@@ -141,8 +144,8 @@ class Command(BaseCommand):
             wait = limit_wait_seconds(res.get('reason', '')) if res.get('status') == 'failed' else None
             if wait is None:
                 return res
-            if res.get('draft') is not None and res['draft'].pk:
-                res['draft'].delete()          # 한도로 끊긴 원고는 일시적 실패 — 연구실 기록에 남기지 않는다
+            if res.get('draft') is not None and res['draft'].pk and not res.get('keep'):
+                res['draft'].delete()          # 한도로 끊긴 새 원고는 일시적 실패 — 연구실 기록에 남기지 않는다
             if not opts.get('wait_on_limit'):
                 return {**res, 'limit': True}
             self.stdout.write(f'[{datetime.now():%H:%M:%S}] 구독 사용 한도 — {wait // 60}분 뒤 같은 회차를 다시 합니다.')
@@ -155,12 +158,23 @@ class Command(BaseCommand):
         from office.models import ColumnDraft
         from office.series_pipeline import revise_draft
 
-        draft = ColumnDraft.objects.filter(pk=opts['revise_draft']).exclude(series_key='').first()
-        if draft is None:
-            raise CommandError('연재 원고가 아닙니다.')
         by = User.objects.filter(username=opts['by']).first() if opts['by'] else None
-        self._report(revise_draft(draft, opts['note'], by=by, out=self.stdout.write),
-                     draft.series_key, draft.episode_number)
+        if opts['revise_draft'] == -1:          # --revise-held: 보류된 연재 원고 전부, 각자 받은 지적으로
+            drafts = list(ColumnDraft.objects.filter(status=ColumnDraft.STATUS_HOLD).exclude(series_key='')
+                          .order_by('series_key', 'episode_number', 'id'))
+            self.stdout.write(f'보류된 연재 원고 {len(drafts)}건을 지적 반영해 다시 검증합니다.')
+        else:
+            drafts = list(ColumnDraft.objects.filter(pk=opts['revise_draft']).exclude(series_key=''))
+            if not drafts:
+                raise CommandError('연재 원고가 아닙니다.')
+        for draft in drafts:
+            self.stdout.write(f'[{datetime.now():%H:%M:%S}] 원고 #{draft.id} {draft.series_key} '
+                              f'{draft.episode_number}편 ({draft.qa_score}점) 재작성')
+            res = self._produce(opts, lambda d=draft: revise_draft(d, opts['note'], by=by, out=self.stdout.write))
+            self._report(res, draft.series_key, draft.episode_number)
+            if res.get('limit'):
+                self.stderr.write(self.style.ERROR('구독 사용 한도 — 남은 원고는 건너뜁니다(보류 상태 유지).'))
+                return
 
     def _report(self, res, key, no):
         status = res.get('status')

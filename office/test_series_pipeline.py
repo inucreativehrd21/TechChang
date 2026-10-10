@@ -165,6 +165,48 @@ class SeriesPipelineTests(TestCase):
         self.assertFalse(any('H1' in i for i in S.precheck('django', text)))
         self.assertTrue(any('H1' in i for i in S.precheck('django', '# 제목\n' + text)))
 
+    def test_length_is_never_a_deduction(self):
+        notes = S.drop_length_notes([
+            'MIDDLEWARE 설명의 클래스명을 고치세요. 분량(6,058자)을 줄이세요.',
+            '분량 초과 — 곁가지를 덜어 내세요.',
+            '보너스 절의 서술은 근거가 없습니다.'])
+        self.assertEqual(notes, ['MIDDLEWARE 설명의 클래스명을 고치세요.', '보너스 절의 서술은 근거가 없습니다.'])
+        prompts = []
+        with mock.patch('office.series_pipeline.ask_agent_json',
+                        side_effect=lambda k, p, **kw: prompts.append(p) or fake_json()(k, p)):
+            S.review_episode('django', 2, '제목', episode(), {'verdict': 'pass', 'bad': [], 'critical': []}, CRITIQUE)
+        self.assertIn('분량이 길다는 이유로 감점하거나', prompts[0])
+
+    def test_held_draft_is_revised_with_its_own_feedback_and_published_in_place(self):
+        old = Question.objects.create(author=self.bot, category=self.cat, series=self.series, episode_number=2,
+                                      subject='2편 — 옛 제목', content='옛 본문', create_date=timezone.now())
+        draft = ColumnDraft.objects.create(
+            topic='coding', status=ColumnDraft.STATUS_HOLD, series_key='django', episode_number=2, target_question=old,
+            subject='2편 — 보류본', content=episode(), qa_report={'issues': ['import 줄이 빠졌습니다.', '분량을 줄이세요.'],
+                                                                   'notes': '고치면 발행 가능', 'score': 73})
+        seen = {}
+
+        def ask(key, prompt, **kw):
+            seen['fix'] = prompt
+            return episode(title='URL 한 줄의 정체 — 고친 판')
+
+        with mock.patch('office.series_pipeline.ask_agent', side_effect=ask), \
+             mock.patch('office.series_pipeline.ask_agent_json', side_effect=fake_json(5)):
+            res = S.revise_draft(draft, out=lambda *_: None)
+        self.assertEqual(res['status'], 'updated')
+        self.assertIn('import 줄이 빠졌습니다', seen['fix'])
+        self.assertNotIn('분량을 줄이세요', seen['fix'])
+        old.refresh_from_db()
+        self.assertIn('고친 판', old.subject)
+
+    def test_failed_revision_keeps_the_held_draft(self):
+        draft = ColumnDraft.objects.create(topic='coding', status=ColumnDraft.STATUS_HOLD, series_key='django',
+                                           episode_number=2, subject='보류본', content=episode())
+        with mock.patch('office.series_pipeline.ask_agent', side_effect=RuntimeError("You've hit your session limit")):
+            res = S.revise_draft(draft, out=lambda *_: None)
+        draft.refresh_from_db()
+        self.assertEqual((res['status'], res.get('keep'), draft.status), ('failed', True, 'hold'))
+
     def test_precheck_catches_structure_and_length(self):
         issues = S.precheck('django', '짧은 글입니다.')
         self.assertTrue(any('하한' in i for i in issues))

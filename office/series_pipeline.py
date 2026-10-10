@@ -36,13 +36,14 @@ logger = logging.getLogger(__name__)
 TOPIC_KEY = 'coding'          # 두 연재 모두 프로그래밍 — 집필은 프로그래밍 칼럼니스트(윤성)
 SERIES_RUBRIC = {
     'accuracy':     (0.30, '정확성 — 코드·명령·API가 실제 현재 버전과 맞고 그대로 따라 하면 동작하는지, 사실 주장의 근거'),
-    'concreteness': (0.25, '구체성 — 실제 코드·실행 결과·에러 메시지·예시로 보여 주는지, 추상 설명으로 분량만 채우지 않았는지'),
+    'concreteness': (0.25, '구체성 — 실제 코드·실행 결과·에러 메시지·예시로 보여 주는지, 같은 말을 되풀이하지 않았는지(길이 자체는 평가하지 않음)'),
     'clarity':      (0.20, '이해 쉬움 — 입문자 눈높이, 용어를 비유와 정의로 풀었는지, 단계 사이에 비약이 없는지'),
     'practice':     (0.15, '실습 가능성 — 직접 해보기·미션을 독자가 실제로 따라 할 수 있는 크기와 안내로 줬는지'),
     'continuity':   (0.10, '연속성 — 지난 회차를 잇고 다음 회차로 넘기는지, 이미 설명한 것을 되풀이하지 않는지'),
 }
 MIN_CHARS = {'django': 2200, 'agent': 1600}
-TARGET = {'django': '2,600~3,600자', 'agent': '1,800~2,600자'}
+# 권장 분량은 '이 정도는 써야 한다'는 하한 안내일 뿐 — 길다고 감점하지 않는다(2026-10-11 운영자 지시)
+TARGET = {'django': '2,600자 이상', 'agent': '1,800자 이상'}
 MAX_TOKENS = 16000
 
 CHECK_PROMPT = (
@@ -71,7 +72,9 @@ QA_PROMPT = (
     '총점과 발행 여부는 시스템이 계산합니다.\n\n'
     '[시리즈] {series} — 독자: {audience}\n[이 회차의 목표]\n{plan}\n\n'
     '[팩트체크 보고]\n{check}\n\n[평론가 의견]\n{critique}\n\n'
-    '[분량] {length}자 (권장 {target}) · [문체] {style}\n\n[기준표]\n{rubric}\n\n'
+    '[분량] {length}자 (권장 {target}) · [문체] {style}\n'
+    '**분량이 길다는 이유로 감점하거나 "분량을 줄이라"고 지적하지 마세요.** 길이는 결함이 아닙니다. '
+    '같은 내용이 되풀이될 때만 "어디가 무엇과 반복되는지"를 짚으세요.\n\n[기준표]\n{rubric}\n\n'
     '[원고]\nTITLE: {subject}\n{content}\n\n'
     '치명 결함 코드(해당할 때만): code_wrong(따라 하면 동작하지 않는 코드), fabricated(지어낸 API·사실), '
     'off_plan(이 회차의 목표와 다른 내용).\n'
@@ -86,7 +89,7 @@ REMAKE_RULE = (
     '- 기존 회차의 연재 지도·회차 번호·예고가 위 전체 목차와 다르면 **목차를 따르세요**(기존 글보다 목차가 우선).\n'
     '- 테크창 실제 코드 발췌가 있으면 예제를 그 코드로 바꾸고 파일 경로를 밝히세요.\n'
     '- 각 단계에서 "왜 이렇게 되는지"를 한 번 더 파고들고, 직접 해보기를 단계별 체크리스트로 만드세요.\n'
-    '- 분량은 {target}. 같은 말을 늘려 분량을 채우지 마세요.\n\n'
+    '- 분량은 {target}(상한 없음). 같은 말을 되풀이해 늘리지만 마세요.\n\n'
     '[기존 회차]\nTITLE: {subject}\n---\n{content}\n'
 )
 
@@ -368,25 +371,59 @@ def produce_episode(key: str, no: int, *, target=None, dry: bool = False, out=pr
         return _failed(draft, key, no, exc)
 
 
-def revise_draft(draft: ColumnDraft, note: str, *, by=None, out=print) -> dict:
-    """보류된 연재 원고를 운영자 지시대로 고쳐 다시 검증한다(관리 화면 '수정 지시')."""
+_LENGTH_CUT = re.compile(r'분량.{0,30}(줄이|줄여|줄일|초과|과다|넘|길어|덜어)|(줄이|줄여)[^.]{0,20}분량')
+
+
+def drop_length_notes(notes: list) -> list:
+    """지적에서 '분량을 줄이라'는 문장만 걷어낸다 — 연재는 길이로 감점하지 않는다(2026-10-11 운영자 지시).
+    지적 하나에 다른 내용이 섞여 있으면 그 문장만 빼고 나머지는 살린다."""
+    out = []
+    for n in notes:
+        kept = [s for s in re.split(r'(?<=[.!?다요])\s+', str(n)) if s and not _LENGTH_CUT.search(s)]
+        if kept:
+            out.append(' '.join(kept))
+    return out
+
+
+def feedback_notes(draft: ColumnDraft) -> list:
+    """보류 원고가 받은 지적 — 편집장 지적·총평, 검증관의 치명·확인 필요 항목. 분량 지적은 뺀다."""
+    qa, check = draft.qa_report or {}, draft.check_report or {}
+    notes = [i for i in (qa.get('issues') or []) if isinstance(i, str)]
+    if qa.get('notes'):
+        notes.append(f"편집장 총평: {qa['notes']}")
+    notes += [f'검증관 치명 지적: {c}' for c in (check.get('critical') or [])]
+    notes += [f"검증관: {c.get('claim', '')} — {c.get('note', '')}" for c in (check.get('bad') or []) if isinstance(c, dict)]
+    return drop_length_notes(notes)
+
+
+def revise_draft(draft: ColumnDraft, note: str = '', *, by=None, out=print) -> dict:
+    """보류된 연재 원고를 고쳐 다시 검증한다. note 가 있으면 운영자 지시(관리 화면 '수정 지시'),
+    없으면 그 원고가 받은 편집장·검증관 지적(feedback_notes)으로 고친다."""
     key, no = draft.series_key, draft.episode_number
     writer = TOPIC_AGENT[TOPIC_KEY]
     rec = _recorder(draft, False, out)
     try:
-        log('lead', 'admin_note', f'운영자 지시: {note}'[:300], draft=draft)
+        if note:
+            log('lead', 'admin_note', f'운영자 지시: {note}'[:300], draft=draft)
+            notes, who, label = [note], '운영자 검토에서', '운영자 지시'
+        else:
+            notes, who, label = feedback_notes(draft), '편집 심사·팩트체크에서', '심사 지적'
         live.mark('revise', writer, TOPIC_KEY)
-        subject, content, ok, why = _fix(writer, key, no, draft.subject, draft.content, '운영자 검토에서', [note])
+        subject, content, ok, why = _fix(writer, key, no, draft.subject, draft.content, who, notes)
         if not ok:
-            rec(writer, 'revise', f'운영자 지시 재작성 실패 — {why}')
+            rec(writer, 'revise', f'{label} 재작성 실패 — {why}')
             draft.status = ColumnDraft.STATUS_HOLD
             draft.save(update_fields=['status'])
             return {'status': 'hold', 'draft': draft}
         subject = normalize_title(no, subject)
-        rec(writer, 'revise', f'운영자 지시 반영해 재작성: {subject} ({P.body_length(content)}자)')
+        rec(writer, 'revise', f'{label} 반영해 재작성: {subject} ({P.body_length(content)}자)')
         return gate(draft, key, no, subject, content, target=draft.target_question, by=by, out=out)
     except Exception as exc:
-        return _failed(draft, key, no, exc)
+        # 보류 원고는 잃지 않는다 — 호출 실패(구독 한도 등)면 보류 상태로 되돌려 다시 시도할 수 있게
+        logger.exception('연재 원고 재작성 실패: %s %s편 (draft=%s)', key, no, draft.pk)
+        draft.status = ColumnDraft.STATUS_HOLD
+        draft.save(update_fields=['status'])
+        return {'status': 'failed', 'reason': str(exc)[:200], 'draft': draft, 'keep': True}
 
 
 def _failed(draft, key, no, exc) -> dict:
@@ -443,7 +480,7 @@ def gate(draft, key: str, no: int, subject: str, content: str, *, target=None, b
     rec('editor', 'qa', qa_line(qa))
     reviews = 1
     if qa['verdict'] != 'accept':
-        notes = qa['issues'] + [f"평론: 「{i.get('quote', '')[:40]}」 — {i.get('fix', '')}"
+        notes = drop_length_notes(qa['issues']) + [f"평론: 「{i.get('quote', '')[:40]}」 — {i.get('fix', '')}"
                                 for i in (critique.get('issues') or [])[:3] if isinstance(i, dict)]
         before_code = code_blocks(content)
         subject, content, ok, why = _fix(writer, key, no, subject, content, '편집 심사에서', notes)
