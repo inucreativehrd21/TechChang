@@ -60,6 +60,9 @@ _REFS = re.compile(r'\n##\s*참고 자료.*', re.S)
 # 필자가 정한 기준·예시·계산값은 근거 묶음 대상이 아니다
 _EXEMPT = re.compile(r'예:|예를 들어|예시|필자|가정|제안|계산|차이')
 SMALL = 12           # 이 이하의 정수(%가 아닌)는 개수·기간·척도라 대조하지 않는다
+# 통계 단위 — stats_only 면 이 단위가 붙은 수치만 대조한다. 연재(코드 중심)는 본문에 버전(Django 5.2)·포트(8000)·
+# 상태 코드(404)가 많아, 모든 수치를 묶으면 회차가 비어 버린다. 연재의 수치 위험은 통계 쪽이고 코드는 검증관이 따로 본다.
+_STAT_UNIT = re.compile(r'\s*(?:%|명|건|억|만|천|달러|원|개국|개사|곳)')
 
 
 def key(num: str) -> str:
@@ -95,12 +98,15 @@ def _sentences(content: str):
                 yield i, sent.strip()
 
 
-def significant(sentence: str) -> list[str]:
-    """대조할 수치(원래 표기). 연도·날짜·표 번호·작은 정수·%p·배는 뺀다."""
+def significant(sentence: str, stats_only: bool = False) -> list[str]:
+    """대조할 수치(원래 표기). 연도·날짜·표 번호·작은 정수·%p·배는 뺀다. stats_only 면 통계 단위가 붙은 것만."""
     if _EXEMPT.search(sentence):
         return []
     out = []
-    for m in _NUM.finditer(_clean(sentence)):
+    text = _clean(sentence)
+    for m in _NUM.finditer(text):
+        if stats_only and not (m.group(1) == '%' or _STAT_UNIT.match(text, m.end())):
+            continue
         raw, unit = m.group(0), m.group(1)
         if unit in ('%p', '배'):
             continue                       # 두 값에서 계산한 차이·배수 — 하우스 스타일상 본문에서 계산 근거를 밝힌다
@@ -112,20 +118,20 @@ def significant(sentence: str) -> list[str]:
     return out
 
 
-def unmatched(content: str, pack: str) -> list[tuple[str, str]]:
+def unmatched(content: str, pack: str, *, stats_only: bool = False) -> list[tuple[str, str]]:
     """근거 묶음에 없는 본문 수치 [(수치, 문장)]. 묶음이 비면 대조하지 않는다(예전 동작)."""
     have = keys_in(pack)
     if not have:
         return []
     out = []
     for _i, sent in _sentences(content):
-        for num in significant(sent):
+        for num in significant(sent, stats_only):
             if key(num) not in have:
                 out.append((num, sent))
     return out
 
 
-def drop_sentences(content: str, nums: list[str]) -> tuple[str, list[str]]:
+def drop_sentences(content: str, nums: list[str], *, stats_only: bool = False) -> tuple[str, list[str]]:
     """그 수치가 든 산문 문장을 지운다(표 행·코드는 건드리지 않는다). 반환 (새 본문, 지운 문장[])."""
     targets = {key(n) for n in nums}
     removed, lines = [], (content or '').splitlines()
@@ -144,7 +150,7 @@ def drop_sentences(content: str, nums: list[str]) -> tuple[str, list[str]]:
         body = s[len(quote):]
         kept = []
         for sent in re.split(r'(?<=[.?!])\s+', body):
-            if {key(n) for n in significant(sent)} & targets:
+            if {key(n) for n in significant(sent, stats_only)} & targets:
                 removed.append(sent)
             else:
                 kept.append(sent)

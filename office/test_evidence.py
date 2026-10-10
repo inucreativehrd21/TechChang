@@ -115,3 +115,12 @@ class LockAndReviewTests(SimpleTestCase):
             {'where': "'표를 위에서 아래로 읽으면 간극이 보입니다'", 'problem': 'p', 'fix': 'f'}]})
         prev = '표를 위에서 아래로 읽으면 간극이 보입니다.'
         self.assertEqual(R.demote_stale(qa, {'must_fix': []}, prev, prev), [])
+
+
+class SeriesStatsOnlyTests(SimpleTestCase):
+    def test_series_lock_ignores_versions_ports_and_status_codes(self):
+        body = ('Django 5.2 와 Python 3.12 로 8000번 포트에서 띄우면 404 가 납니다. '
+                '설문에서 개발자 84%가 AI 를 씁니다. 응답자는 49,009명이었습니다.\n')
+        loose = [n for n, _ in E.unmatched(body, PACK, stats_only=True)]
+        self.assertEqual(loose, ['84', '49,009'])                   # 통계 단위가 붙은 수치만
+        self.assertIn('5.2', [n for n, _ in E.unmatched(body, PACK)])  # 칼럼 모드라면 버전도 걸린다

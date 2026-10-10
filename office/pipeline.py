@@ -750,20 +750,21 @@ def pack_block(pack: str) -> str:
             '여기 없는 숫자는 지우세요]\n' + pack.strip() + '\n')
 
 
-def lock_numbers(content: str, pack: str, *, baseline: str | None = None) -> tuple[str, list]:
+def lock_numbers(content: str, pack: str, *, baseline: str | None = None,
+                 stats_only: bool = False) -> tuple[str, list]:
     """근거 묶음에 없는 수치가 든 문장을 지운다(office.evidence). 반환 (본문, 지운 문장[]).
 
     baseline 을 주면 거기에 이미 있던 수치는 두고, 이번에 새로 들어온 수치만 지운다(재작성이 기억으로
     숫자를 되살리는 것만 막는다). 묶음이 비면 아무것도 하지 않는다.
     """
     from . import evidence as E
-    bad = E.unmatched(content, pack)
+    bad = E.unmatched(content, pack, stats_only=stats_only)
     if baseline is not None:
         old = E.keys_in(baseline)
         bad = [(n, sent) for n, sent in bad if E.key(n) not in old]
     if not bad:
         return content, []
-    new, removed = E.drop_sentences(content, [n for n, _ in bad])
+    new, removed = E.drop_sentences(content, [n for n, _ in bad], stats_only=stats_only)
     if len(removed) > LOCK_MAX_DROP:
         # 이만큼 걸리면 작가가 지어낸 게 아니라 근거 모으기가 실패한 쪽이다 — 글을 비우지 말고 심사에 맡긴다
         logger.warning('수치 잠금 생략: 근거 없는 수치 문장 %d개(상한 %d)', len(removed), LOCK_MAX_DROP)

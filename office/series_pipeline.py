@@ -188,9 +188,13 @@ def previous_summaries(series_obj, before_no: int, limit: int = 4) -> str:
 _EMPTY_LINK = re.compile(r'\[[^\]]*\]\(\s*\)')
 
 
-def precheck(key: str, content: str) -> list:
-    """기계로 판별되는 결함 — 분량·필수 소제목·H1·코드 블록·문체·서명."""
+def precheck(key: str, content: str, pack: str = '') -> list:
+    """기계로 판별되는 결함 — 분량·필수 소제목·H1·코드 블록·문체·서명·근거 없는 통계 수치."""
+    from . import evidence as E
     issues = []
+    loose = E.unmatched(content, pack, stats_only=True)
+    if loose:
+        issues.append(E.note_line(loose))
     length = P.body_length(content)
     if length < MIN_CHARS[key]:
         issues.append(f'분량 {length}자 — 하한 {MIN_CHARS[key]:,}자 미달(권장 {TARGET[key]})')
@@ -248,24 +252,25 @@ def safe_rewrite(key: str, raw: str, prev_subject: str, prev_content: str) -> tu
     return subject, content, True, ''
 
 
-def _fix(writer, key, no, subject, content, who, issues) -> tuple:
-    """지적 반영. 먼저 고칠 곳만 바꾸는 패치(office.patching)를 시도하고, 원고와 맞지 않으면 전체 재작성."""
+def _fix(writer, key, no, subject, content, who, issues, pack: str = '') -> tuple:
+    """지적 반영. 먼저 고칠 곳만 바꾸는 패치(office.patching)를 시도하고, 원고와 맞지 않으면 전체 재작성.
+    pack: 근거 묶음 — 고칠 때 쓸 수 있는 확인된 수치."""
     from .patching import patch_revise
     p_subject, p_content, ok, why = patch_revise(
         writer, subject, content, issues, who=who, tools=tuple(SERIES[key].get('tools', ())),
-        guide=f'[회차 골격 — 지켜야 할 구조]\n{structure(key, no)}', ask_json=ask_agent_json)
+        guide=f'[회차 골격 — 지켜야 할 구조]\n{structure(key, no)}' + P.pack_block(pack), ask_json=ask_agent_json)
     if ok and not looks_truncated(key, p_content):
         return p_subject, p_content, True, why
     raw = ask_agent(writer, FIX_PROMPT.format(who=who, issues='\n'.join(f'- {i}' for i in issues),
-                                              subject=subject, content=content, structure=structure(key, no)),
-                    max_tokens=MAX_TOKENS, tools=tuple(SERIES[key].get('tools', ())))
+                                              subject=subject, content=content, structure=structure(key, no))
+                    + P.pack_block(pack), max_tokens=MAX_TOKENS, tools=tuple(SERIES[key].get('tools', ())))
     return safe_rewrite(key, raw, subject, content)
 
 
-def check_episode(key: str, no: int, subject: str, content: str) -> dict:
+def check_episode(key: str, no: int, subject: str, content: str, pack: str = '') -> dict:
     res = ask_agent_json('checker', CHECK_PROMPT.format(
         toc=toc_text(key, no), context=SERIES[key].get('context', ''), sources=source_block(key, no),
-        subject=subject, content=content),
+        subject=subject, content=content) + P.verified_block(pack, 'checker'),
         max_tokens=6000, tools=WEB_TOOLS)
     claims = [c for c in (res.get('claims') or []) if isinstance(c, dict) and c.get('claim')]
     bad = [c for c in claims if c.get('status') in P.BAD_CLAIMS]
@@ -275,7 +280,7 @@ def check_episode(key: str, no: int, subject: str, content: str) -> dict:
 
 
 def review_episode(key: str, no: int, subject: str, content: str, check: dict, critique: dict,
-                   previous: dict | None = None) -> dict:
+                   previous: dict | None = None, pack: str = '', previous_content: str = '') -> dict:
     cfg, outline = SERIES[key], outline_of(key, no) or {'no': no, 'title': subject}
     length = P.body_length(content)
     offenders, st = audit_style(content)
@@ -285,7 +290,7 @@ def review_episode(key: str, no: int, subject: str, content: str, check: dict, c
         series=cfg['title'], audience=cfg['audience'], plan=plan_text(key, outline) + toc_text(key, no),
         check=json.dumps({k: check.get(k) for k in ('verdict', 'bad', 'critical')}, ensure_ascii=False)[:2500],
         critique=P.critique_text(critique), length=length, target=TARGET[key], style=style,
-        rubric=series_rubric_text(), subject=subject, content=content)
+        rubric=series_rubric_text(), subject=subject, content=content) + P.verified_block(pack, 'editor')
     prompt += R.RULE + R.previous_block(previous)   # 필수 수정/제안 분리, 재심은 직전 필수 수정부터
     qa = ask_agent_json('editor', prompt, max_tokens=3000)
     first = compute_series_score(qa.get('scores') if isinstance(qa.get('scores'), dict) else {})
@@ -295,6 +300,8 @@ def review_episode(key: str, no: int, subject: str, content: str, check: dict, c
     scores = qa.get('scores') if isinstance(qa.get('scores'), dict) else {}
     fatal = [f for f in (qa.get('fatal') or []) if isinstance(f, str)]
     qa = R.normalize(qa)
+    qa['demoted'] = R.demote_stale(qa, previous, previous_content, content)   # 바뀌지 않은 곳의 새 지적은 제안으로
+    R.flag_numbers(qa, pack)                                                 # 수정 지시의 근거 없는 수치에 경고
     model_issues = list(qa['issues'])
     issues = list(model_issues)
     # 시스템이 직접 확인하는 결함 — 모델이 놓쳐도 강제
@@ -318,6 +325,15 @@ def review_episode(key: str, no: int, subject: str, content: str, check: dict, c
     score = compute_series_score(scores)
     return {**qa, 'scores': scores, 'fatal': fatal, 'issues': issues, 'score': score, 'length': length,
             'verdict': P.verdict_of(score, fatal), 'rubric': 'series'}
+
+
+def _repruned(check: dict, content: str) -> dict:
+    """지운 수치에 대한 확인 불가 판정을 정리하고 bad·verdict 를 다시 계산한다(office.evidence.prune_check)."""
+    from . import evidence as E
+    check = E.prune_check(check, content)
+    check['bad'] = [c for c in check.get('claims') or [] if isinstance(c, dict) and c.get('status') in P.BAD_CLAIMS]
+    check['verdict'] = 'revise' if (check['bad'] or check.get('critical')) else 'pass'
+    return check
 
 
 def qa_line(qa: dict) -> str:
@@ -410,7 +426,7 @@ def produce_episode(key: str, no: int, *, target=None, dry: bool = False, out=pr
             raise RuntimeError('집필 응답이 비었습니다')
         subject = normalize_title(no, subject, key)
         rec(writer, 'draft', f'초안 완성: {subject} ({P.body_length(content)}자)')
-        return gate(draft, key, no, subject, content, target=target, dry=dry, out=out)
+        return gate(draft, key, no, subject, content, target=target, dry=dry, out=out, pack=ver.get('pack', ''))
     except Exception as exc:
         return _failed(draft, key, no, exc)
 
@@ -453,7 +469,9 @@ def revise_draft(draft: ColumnDraft, note: str = '', *, by=None, out=print) -> d
         else:
             notes, who, label = feedback_notes(draft), '편집 심사·팩트체크에서', '심사 지적'
         live.mark('revise', writer, TOPIC_KEY)
-        subject, content, ok, why = _fix(writer, key, no, draft.subject, draft.content, who, notes)
+        from . import evidence as E
+        pack = E.from_check(draft.check_report or {})
+        subject, content, ok, why = _fix(writer, key, no, draft.subject, draft.content, who, notes, pack)
         if not ok:
             rec(writer, 'revise', f'{label} 재작성 실패 — {why}')
             draft.status = ColumnDraft.STATUS_HOLD
@@ -461,7 +479,7 @@ def revise_draft(draft: ColumnDraft, note: str = '', *, by=None, out=print) -> d
             return {'status': 'hold', 'draft': draft}
         subject = normalize_title(no, subject, key)
         rec(writer, 'revise', f'{label} 반영해 재작성: {subject} ({P.body_length(content)}자)')
-        return gate(draft, key, no, subject, content, target=draft.target_question, by=by, out=out)
+        return gate(draft, key, no, subject, content, target=draft.target_question, by=by, out=out, pack=pack)
     except Exception as exc:
         # 보류 원고는 잃지 않는다 — 호출 실패(구독 한도 등)면 보류 상태로 되돌려 다시 시도할 수 있게
         logger.exception('연재 원고 재작성 실패: %s %s편 (draft=%s)', key, no, draft.pk)
@@ -479,18 +497,23 @@ def _failed(draft, key, no, exc) -> dict:
 
 
 def gate(draft, key: str, no: int, subject: str, content: str, *, target=None, by=None, dry: bool = False,
-         out=print) -> dict:
-    """연구실 검증과 판정 — 자동 점검 → 팩트체크 → 평론 → 편집 심사(→ 1회 보완·재심) → 발행·갱신·보류."""
+         out=print, pack: str = '') -> dict:
+    """연구실 검증과 판정 — 자동 점검 → 팩트체크 → 수치 잠금 → 평론 → 편집 심사(→ 1회 보완·재심) → 발행·갱신·보류.
+
+    pack: 근거 묶음(office.evidence). 연재는 통계 단위가 붙은 수치만 잠근다(stats_only) — 본문에 버전·포트·
+    상태 코드가 많고, 코드의 정확성은 검증관이 코드가 바뀔 때마다 다시 본다.
+    """
+    from . import evidence as E
     writer = TOPIC_AGENT[TOPIC_KEY]
     rec = _recorder(draft, dry, out)
     stages = StageRecorder(draft=draft, dry=dry)
 
     # 1) 자동 점검(코드)
-    flaws = precheck(key, content)
+    flaws = precheck(key, content, pack)
     stages.record('precheck', 'editor', {'issues': flaws}, text=content)
     if flaws:
         rec('editor', 'precheck', f'초안 자동 점검 {len(flaws)}건: {flaws[0][:90]}')
-        subject, content, ok, why = _fix(writer, key, no, subject, content, '자동 점검에서', flaws)
+        subject, content, ok, why = _fix(writer, key, no, subject, content, '자동 점검에서', flaws, pack)
         rec(writer, 'revise', f'자동 점검 지적 반영해 재작성 ({P.body_length(content)}자)' if ok
             else f'재작성 실패 — {why}')
     else:
@@ -498,28 +521,36 @@ def gate(draft, key: str, no: int, subject: str, content: str, *, target=None, b
 
     # 2) 팩트체크 → 지적 반영 → 재검증
     live.mark('check', 'checker', TOPIC_KEY)
-    check = check_episode(key, no, subject, content)
+    check = check_episode(key, no, subject, content, pack)
     stages.record('check', 'checker', check, kind='report', sender='checker', recipient='editor')
     rec('checker', 'check', f"팩트체크 {check['verdict']}: 확인 필요 {len(check['bad'])}건"
         + (f", 치명 {len(check['critical'])}건" if check['critical'] else ''))
     if check['verdict'] == 'revise':
         notes = [f"{c.get('claim', '')}: {c.get('note', '')}" for c in check['bad']] + check['critical']
-        subject, content, ok, why = _fix(writer, key, no, subject, content, '팩트체크(검증관)에서', notes)
+        subject, content, ok, why = _fix(writer, key, no, subject, content, '팩트체크(검증관)에서', notes, pack)
         if ok:
             rec(writer, 'revise', f"팩트체크 {len(notes)}건 반영해 재작성 ({P.body_length(content)}자)")
             live.mark('check', 'checker', TOPIC_KEY)
-            again = check_episode(key, no, subject, content)
+            again = check_episode(key, no, subject, content, pack)
             check = {**again, 'first': {k: check[k] for k in ('verdict', 'bad', 'critical')}}
             rec('checker', 'check', f"재검증 {again['verdict']}"
                 + (f": 치명 {len(again['critical'])}건" if again['critical'] else ''))
         else:
             rec(writer, 'revise', f'재작성 실패 — {why}')
 
+    # 2.5) 수치 잠금 — 검증관이 확인한 근거를 묶음에 더하고, 그래도 근거 없는 통계 수치의 문장은 지운다
+    pack = E.merge(pack, E.from_check(check))
+    content, dropped = P.lock_numbers(content, pack, stats_only=True)
+    if dropped:
+        check = _repruned(check, content)
+        stages.record('lock', 'checker', {'removed': dropped}, text=content)
+        rec('checker', 'check', f'근거 없는 수치 문장 {len(dropped)}개 삭제: {dropped[0][:60]}')
+
     # 3) 평론 → 4) 편집 심사 → 미달이면 1회 보완·재심
     critique = P.step_critique(subject, content)
     rec('critic', 'critique', critique_line(critique))
     live.mark('review', 'editor', TOPIC_KEY)
-    qa = review_episode(key, no, subject, content, check, critique)
+    qa = review_episode(key, no, subject, content, check, critique, pack=pack)
     stages.record('review', 'editor', qa)
     rec('editor', 'qa', qa_line(qa))
     reviews = 1
@@ -527,17 +558,24 @@ def gate(draft, key: str, no: int, subject: str, content: str, *, target=None, b
         prev_qa = qa
         notes = drop_length_notes(R.revision_notes(qa)) + [f"평론: 「{i.get('quote', '')[:40]}」 — {i.get('fix', '')}"
                                 for i in (critique.get('issues') or [])[:3] if isinstance(i, dict)]
-        before_code = code_blocks(content)
-        subject, content, ok, why = _fix(writer, key, no, subject, content, '편집 심사에서', notes)
+        before_code, prev_content = code_blocks(content), content
+        subject, content, ok, why = _fix(writer, key, no, subject, content, '편집 심사에서', notes, pack)
         if ok:
             rec(writer, 'revise', f'편집 심사 지적 반영해 재작성 ({P.body_length(content)}자)')
             # 코드가 바뀌었으면 검증관이 다시 본다 — 검증받지 않은 코드가 그대로 나가지 않게
             if check.get('critical') or code_blocks(content) != before_code:
                 live.mark('check', 'checker', TOPIC_KEY)
-                check = check_episode(key, no, subject, content)
+                check = check_episode(key, no, subject, content, pack)
                 rec('checker', 'check', f"재검증 {check['verdict']}")
+                pack = E.merge(pack, E.from_check(check))
+            # 보완이 기억으로 들여온 새 통계 수치는 지운다(이전 판에 있던 수치는 그대로)
+            content, dropped = P.lock_numbers(content, pack, baseline=prev_content, stats_only=True)
+            if dropped:
+                check = _repruned(check, content)
+                rec('checker', 'check', f'보완이 들여온 근거 없는 수치 문장 {len(dropped)}개 삭제')
             live.mark('review', 'editor', TOPIC_KEY)
-            qa = review_episode(key, no, subject, content, check, critique, previous=prev_qa)
+            qa = review_episode(key, no, subject, content, check, critique, previous=prev_qa,
+                                pack=pack, previous_content=prev_content)
             stages.record('review', 'editor', qa, attempt=2)
             rec('editor', 'qa', '재심 ' + qa_line(qa))
             reviews += 1
