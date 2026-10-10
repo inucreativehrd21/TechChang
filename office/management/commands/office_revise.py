@@ -17,6 +17,7 @@ from django.utils import timezone
 
 from common.management.commands.auto_write_columns import COLUMN_STRUCTURE, TOPICS
 from office import live
+from office import evidence as E
 from office import pipeline as P
 from office import review_protocol as R
 from office.agents import AGENTS, TOPIC_AGENT
@@ -85,6 +86,8 @@ class Command(BaseCommand):
             recent = P.recent_titles(topic_key)
             prev_qa = draft.qa_report or {}
             prev_check = draft.check_report or {}
+            # 근거 묶음 — 운영자 확인 사실 + 지난 팩트체크가 URL 과 함께 확인한 사실(office.evidence)
+            pack = E.merge(facts, E.from_check(prev_check))
 
             if review_only:
                 # 1') 사람이 직접 교열한 원고 — 재작성 없이 그대로 심사만 받는다.
@@ -101,7 +104,7 @@ class Command(BaseCommand):
                     qa_issues='\n'.join(f'- {i}' for i in R.revision_notes(prev_qa)) or '(없음)',
                     check_notes=prev_check.get('notes', '') or '(없음)',
                     subject=draft.subject, content=draft.content, structure=COLUMN_STRUCTURE,
-                    standard=P.writing_standard(topic_key)),
+                    standard=P.writing_standard(topic_key)) + P.pack_block(pack),
                     max_tokens=P.COLUMN_MAX_TOKENS)
                 subject, content, ok, why = P.safe_rewrite(raw, draft.subject, draft.content)
                 if not ok:
@@ -112,9 +115,16 @@ class Command(BaseCommand):
                 rec(writer, 'revise', f'운영자 지시 반영해 재작성: {subject} ({P.body_length(content)}자)')
 
             # 2) 팩트체크
-            check = P.step_check(subject, content, recent, verified=facts)
+            check = P.step_check(subject, content, recent, verified=pack)
             bad = [c for c in check.get('claims', []) if c.get('status') in P.BAD_CLAIMS]
             rec('checker', 'check', f"팩트체크 {check.get('verdict')}: 확인 필요 {len(bad)}건")
+            pack = E.merge(pack, E.from_check(check))
+            if not review_only:
+                # 재작성이 기억으로 들여온 새 수치는 지운다(이전 원고에 있던 수치는 그대로)
+                content, dropped = P.lock_numbers(content, pack, baseline=draft.content)
+                if dropped:
+                    check = E.prune_check(check, content)
+                    rec('checker', 'check', f'재작성이 들여온 근거 없는 수치 문장 {len(dropped)}개 삭제')
 
             # 3) 시각화 — 본문이 다시 쓰였으므로 이전 차트·표를 걷어내고 현재 수치로 새로 만든다.
             #    사람이 교열하며 기존 그림을 남겼으면 손대지 않는다(교열본을 그대로 심사받는 게 목적).
@@ -134,8 +144,8 @@ class Command(BaseCommand):
             critique = P.step_critique(subject, content)
             rec('critic', 'critique', f"평론 {critique['verdict']} · 지적 {len(critique.get('issues') or [])}건: "
                                       f"{critique.get('reason', '')[:100]}")
-            qa = P.step_review(subject, content, check, chart_rel, visual_report, critique, verified=facts,
-                               previous=draft.qa_report or None)
+            qa = P.step_review(subject, content, check, chart_rel, visual_report, critique, verified=pack,
+                               previous=draft.qa_report or None, previous_content=draft.content)
             verdict_ko = {'accept': '발행', 'minor': '수정 요청', 'major': '보류'}.get(qa['verdict'], qa['verdict'])
             rec('editor', 'qa', f"재심 {qa['score']}/100 ({qa['length']}자) → {verdict_ko}: {qa.get('notes', '')}")
 

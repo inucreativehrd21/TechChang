@@ -33,6 +33,7 @@ from office import pipeline as P
 from office import quality
 from office import blueprint as B
 from office import review_protocol as R
+from office import evidence as E
 from office.patching import patch_revise
 from office.agents import AGENTS, TOPIC_AGENT
 from office.models import ColumnDraft
@@ -105,17 +106,19 @@ class Command(BaseCommand):
                             kind='report', sender='checker', recipient=writer)
             if bp:
                 rec(writer, 'blueprint', B.summary(bp, ver))
+            # 근거 묶음 — 원문 문장으로 확인된 사실. 본문 수치는 여기에 묶인다(office.evidence)
+            pack = E.merge(facts, ver.get('pack', ''))
             subject, content = timed('draft', writer,
                                      lambda: P.step_draft(topic_key, brief_decision, brief, recent,
                                                           blueprint=B.block(bp, ver)))
             self._update_last(stages, {'subject': subject, 'content': content}, text=content)
             rec(writer, 'draft', f'초안 완성: {subject} ({P.body_length(content)}자)')
-            flaws = P.precheck_draft(content)
+            flaws = P.precheck_draft(content, pack)
             stages.record('precheck', 'editor', {'issues': flaws, 'quality': quality.report(subject, content)})
             if flaws:
                 rec('editor', 'precheck', f'초안 자동 점검 {len(flaws)}건: {flaws[0][:90]}')
                 subject, content, flaws = timed('fix', writer,
-                                                lambda: P.step_fix_draft(topic_key, subject, content, flaws))
+                                                lambda: P.step_fix_draft(topic_key, subject, content, flaws, pack))
                 self._update_last(stages, {'subject': subject, 'content': content, 'remaining': flaws},
                                   text=content)
                 rec(writer, 'revise', f'자동 점검 지적 반영 ({P.body_length(content)}자)'
@@ -124,7 +127,7 @@ class Command(BaseCommand):
                 rec('editor', 'precheck', '초안 자동 점검 통과')
 
             # 3) 팩트체크 → 4) 수정
-            check = timed('check', 'checker', lambda: P.step_check(subject, content, recent, verified=facts),
+            check = timed('check', 'checker', lambda: P.step_check(subject, content, recent, verified=pack),
                           kind='report', sender='checker', recipient='editor')
             bad = [c for c in check.get('claims', []) if c.get('status') in P.BAD_CLAIMS]
             rec('checker', 'check', f"팩트체크 {check.get('verdict')}: 확인 필요 {len(bad)}건"
@@ -138,11 +141,20 @@ class Command(BaseCommand):
                 if ok:
                     revisions = 1
                     rec(writer, 'revise', f'팩트체크 {len(bad)}건 반영해 재작성 ({P.body_length(content)}자)')
-                    check2 = timed('recheck', 'checker', lambda: P.step_check(subject, content, recent, verified=facts))
+                    check2 = timed('recheck', 'checker', lambda: P.step_check(subject, content, recent, verified=pack))
                     check = {'first': check, **check2}
                     rec('checker', 'check', f"재검증 {check2.get('verdict')}")
                 else:
                     rec(writer, 'revise', f'재작성 실패 — {why}')
+
+            # 4.5) 수치 잠금 — 팩트체크가 새로 확인한 근거까지 묶음에 더하고, 그래도 묶음에 없는 수치의 문장은 지운다.
+            #      기억으로 쓴 숫자 하나가 심사에서 치명 결함(확인 불가)이 되는 것을 여기서 끊는다(#89·#100).
+            pack = E.merge(pack, E.from_check(check))
+            content, dropped = P.lock_numbers(content, pack)
+            if dropped:
+                check = E.prune_check(check, content)
+                stages.record('lock', 'checker', {'removed': dropped}, text=content)
+                rec('checker', 'check', f'근거 없는 수치 문장 {len(dropped)}개 삭제: {dropped[0][:60]}')
 
             # 5) 평론 — 읽을 이유가 있는 글인지
             critique = timed('critique', 'critic', lambda: P.step_critique(subject, content),
@@ -159,7 +171,7 @@ class Command(BaseCommand):
             # 7) 편집 심사 → 8) 판정
             qa = timed('review', 'editor',
                        lambda: P.step_review(subject, content, check, chart_rel, visual_report, critique,
-                                             verified=facts))
+                                             verified=pack))
             rec('editor', 'qa', self._qa_line(qa))
 
             # 기준 미달이면 — 보류든 수정 요청이든 — 자동으로 MAX_AUTO_REVISIONS 번까지 다시 쓴다.
@@ -174,7 +186,7 @@ class Command(BaseCommand):
                 notes = R.revision_notes(qa)
                 p_subject, p_content, ok, why = timed('editor_patch', writer, lambda: patch_revise(
                     writer, subject, P.strip_visual_block(content), notes, who='편집 심사에서',
-                    guide=f'[팩트체크 보고]\n{P.check_text(check)}'), attempt=attempt)
+                    guide=f'[팩트체크 보고]\n{P.check_text(check)}' + P.pack_block(pack)), attempt=attempt)
                 if ok and not P.looks_truncated(p_content):
                     subject, content = p_subject, p_content
                 else:
@@ -182,7 +194,7 @@ class Command(BaseCommand):
                         issues='\n'.join(f'- {i}' for i in notes), notes=qa.get('notes', ''),
                         check=P.check_text(check), critique=P.critique_text(critique),
                         subject=subject, content=content, structure=COLUMN_STRUCTURE,
-                        standard=P.writing_standard(topic_key)),
+                        standard=P.writing_standard(topic_key)) + P.pack_block(pack),
                         max_tokens=P.COLUMN_MAX_TOKENS), attempt=attempt, kind='memo', sender='editor', recipient=writer)
                     # 잘리거나 짧아진 재작성본은 버리고 이전 원고를 지킨다 (팩트체크 재작성과 같은 안전장치)
                     subject, content, ok, why = P.safe_rewrite(raw, subject, content)
@@ -198,10 +210,16 @@ class Command(BaseCommand):
                 # 새로 들어온 숫자가 검증 없이 발행될 수 있었다.
                 changed = P.new_numeric_sentences(prev_content, content)
                 if changed:
-                    check2 = timed('reverify', 'checker', lambda: P.step_check(subject, content, recent, verified=facts),
+                    check2 = timed('reverify', 'checker', lambda: P.step_check(subject, content, recent, verified=pack),
                                    attempt=attempt)
                     check = {'first': check.get('first', check), **check2}
                     rec('checker', 'check', f"재작성 수치 {len(changed)}문장 재검증 {check2.get('verdict')}")
+                    pack = E.merge(pack, E.from_check(check2))
+                # 재작성이 기억으로 들여온 새 수치는 지운다(이전 판에 있던 수치는 그대로)
+                content, dropped = P.lock_numbers(content, pack, baseline=prev_content)
+                if dropped:
+                    check = E.prune_check(check, content)
+                    rec('checker', 'check', f'재작성이 들여온 근거 없는 수치 문장 {len(dropped)}개 삭제')
 
                 # 본문이 통째로 다시 쓰였으므로 도판도 다시 만든다. 옛 블록을 남겨 두면
                 # 표의 숫자만 고쳐지고 그림은 예전 수치 그대로 남는다.
@@ -216,7 +234,7 @@ class Command(BaseCommand):
                 rec('critic', 'critique', '재검토 ' + self._critique_line(critique))
                 qa = timed('review', 'editor',
                            lambda: P.step_review(subject, content, check, chart_rel, visual_report, critique,
-                                             verified=facts, previous=prev_qa),
+                                             verified=pack, previous=prev_qa, previous_content=prev_content),
                            attempt=attempt + 1)
                 # 마지막 재심에서는 '수정 요청'을 통과로 본다 (학술지의 minor revision 수리와 같은 처리).
                 # 치명 결함이 남아 있으면 verdict 가 major 라 그대로 보류된다.

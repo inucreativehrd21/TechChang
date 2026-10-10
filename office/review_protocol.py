@@ -9,17 +9,30 @@
 - suggestions: 더 좋아질 제안. 발행을 막지 않고, 재작성 지시로 넘기지 않는다.
 - 재심: 직전 must_fix 를 하나씩 해결/미해결로 판정한다. 새 must_fix 는 이번 판에서 새로 생긴 문제나
   치명 결함일 때만 — 직전에 문제 삼지 않았던 곳을 새로 문제 삼는 것은 suggestions 로만.
+
+2026-10-10 보강(레거시 #89·#100): 프롬프트로만 "새 지적 금지"를 걸었더니 재심마다 필수 수정이 5 → 5 → 4건으로
+대부분 새로 나왔다. 그리고 수정 지시가 기억으로 새 수치를 들여왔다("10,035건으로 바꾸라" → 다음 재심에서 확인 불가).
+- 첫 심사에서 발행을 막는 문제를 한 번에 다 내도록 상한을 8로 올린다.
+- demote_stale(): 재심에서 새로 나온 필수 수정이 직전 판과 똑같은 문장을 가리키면(바뀌지 않은 곳) 제안으로 내린다.
+- flag_numbers(): 수정 지시에 근거 묶음에 없는 수치가 있으면 '쓰지 말고 지우라'는 경고를 붙인다.
 """
 from __future__ import annotations
 
-MAX_MUST_FIX = 5
+import difflib
+import re
+
+MAX_MUST_FIX = 8
 
 RULE = (
     '\n\n[지적 쓰는 법 — 반드시 지키세요]\n'
-    '- "must_fix": 고치지 않으면 발행할 수 없는 것만, 최대 5개. 각 항목은 '
+    '- "must_fix": 고치지 않으면 발행할 수 없는 것만, 최대 8개. **발행을 막는 문제는 이번 심사에서 한 번에 모두** '
+    '적으세요 — 재심에서는 바뀌지 않은 문장을 새로 문제 삼을 수 없습니다. 각 항목은 '
     '{"where": "섹션 이름이나 문장 일부", "problem": "무엇이 문제인지", "fix": "어떻게 고치는지", '
     '"done_when": "해결됐다고 볼 기준"} 형태로 씁니다. 치명 결함(fatal)이 있으면 그 원인은 반드시 여기에 들어갑니다.\n'
     '- "suggestions": 발행을 막지 않는 개선 제안(문장 한 줄씩). 분량을 줄이라는 제안은 하지 마세요.\n'
+    '- 고칠 방법(fix)에 **새 수치를 제시하지 마세요.** 확인되지 않은 수치는 "그 문장을 지우라"고 지시합니다. '
+    '바꿀 값을 알려 주려면 [운영자 확인 사항]에 있는 값만 쓰세요 — 기억으로 준 값은 다음 심사에서 다시 '
+    '확인 불가가 됩니다.\n'
     '- 출력 JSON 에 "must_fix" 와 "suggestions" 를 추가하세요. "issues" 에는 must_fix 를 먼저, 제안을 뒤에 적습니다.\n'
 )
 
@@ -80,3 +93,58 @@ def revision_notes(qa: dict | None) -> list[str]:
     if items:
         return [as_line(m) for m in items]
     return [str(i) for i in ((qa or {}).get('issues') or []) if not str(i).startswith('(제안)')]
+
+
+# 지적의 '어디'에서 원고 문장을 인용한 부분 — 「…」 '…' "…" ‘…’ “…”
+_QUOTED = re.compile(r"[「'\"‘“]([^」'\"’”]{8,}?)[」'\"’”]")
+
+
+def _snippets(where: str) -> list[str]:
+    return [m.group(1).rstrip('…. ').strip() for m in _QUOTED.finditer(where or '')]
+
+
+def _seen_before(item: dict, previous: list[dict]) -> bool:
+    text = f"{item.get('where', '')} {item.get('problem', '')}"
+    return any(difflib.SequenceMatcher(None, text, f"{p.get('where', '')} {p.get('problem', '')}").ratio() >= 0.5
+               for p in previous)
+
+
+def demote_stale(qa: dict, previous: dict | None, prev_content: str, content: str) -> list[str]:
+    """재심의 새 필수 수정 중 '바뀌지 않은 문장'을 가리키는 것을 제안으로 내린다. 반환: 내린 항목 줄.
+
+    치명 결함이 있으면 손대지 않는다 — 치명 결함의 원인은 필수 수정으로 남아야 한다.
+    직전 필수 수정과 비슷한 항목(미해결 재지적)도 그대로 둔다.
+    """
+    if not previous or not prev_content or (qa.get('fatal') or []):
+        return []
+    before = must_fix_items(previous)
+    keep, demoted = [], []
+    for m in qa.get('must_fix') or []:
+        snips = [sn for sn in _snippets(str(m.get('where', ''))) if len(sn) >= 8]
+        stale = (bool(snips) and all(sn in prev_content and sn in content for sn in snips)
+                 and not _seen_before(m, before))
+        (demoted if stale else keep).append(m)
+    if demoted:
+        qa['must_fix'] = keep
+        qa['suggestions'] = list(qa.get('suggestions') or []) + [f'(재심 신규 — 바뀌지 않은 곳) {as_line(m)}'
+                                                                  for m in demoted]
+        qa['issues'] = [as_line(m) for m in keep] + [f'(제안) {x}' for x in qa['suggestions']]
+    return [as_line(m) for m in demoted]
+
+
+def flag_numbers(qa: dict, pack: str) -> int:
+    """수정 지시(fix)에 근거 묶음에 없는 수치가 있으면 경고를 붙인다. 반환: 경고 붙인 항목 수."""
+    from . import evidence as E
+    have = E.keys_in(pack)
+    if not have:
+        return 0
+    flagged = 0
+    for m in qa.get('must_fix') or []:
+        bad = [n for n in E.significant(str(m.get('fix', ''))) if E.key(n) not in have]
+        if bad:
+            m['fix'] = (f"{m.get('fix', '')} [시스템: {', '.join(bad)}은(는) 원문 확인된 근거에 없습니다 — 이 값을 "
+                        '쓰지 말고 해당 문장을 지우거나 근거의 값만 쓰세요]')
+            flagged += 1
+    if flagged:
+        qa['issues'] = [as_line(m) for m in qa['must_fix']] + [f'(제안) {x}' for x in (qa.get('suggestions') or [])]
+    return flagged

@@ -53,6 +53,7 @@ MIN_CHARS = 2200           # 본문 하한 — 미달은 치명(too_short)
 TARGET_MAX = 3500          # 권장 상한. **넘겨도 감점하지 않는다** — 밀도가 유지되면 괜찮다
 MAX_CHARS = 7000           # 이 위로는 편집이 필요하다고 본다(산만·중복 의심)
 MAX_AUTO_REVISIONS = 1     # Minor revision 자동 재작성 횟수
+LOCK_MAX_DROP = 8          # 수치 잠금이 한 번에 지울 수 있는 문장 상한 — 넘으면 근거 모으기 실패로 보고 지우지 않는다
 PLAIN_STYLE_LIMIT = 0.15   # 평서체 문장이 이 비율을 넘으면 문체 미통일로 본다
 # 칼럼 생성·재작성 출력 한도. 한글은 글자당 토큰이 커서 5,800자 본문이면 1만 토큰을 넘고,
 # 여기에 제목·마크다운까지 더해지면 12,000 으로는 끝에서 잘린다. 실제로 맺음말·참고 자료가
@@ -725,22 +726,52 @@ FIX_PROMPT = (
 
 
 @live_step('fix')
-def step_fix_draft(topic_key: str, subject: str, content: str, issues: list) -> tuple:
-    """초안 자동 점검 지적을 반영해 다시 쓴다. 반환 (subject, content, 남은 지적)."""
+def step_fix_draft(topic_key: str, subject: str, content: str, issues: list, pack: str = '') -> tuple:
+    """초안 자동 점검 지적을 반영해 다시 쓴다. 반환 (subject, content, 남은 지적).
+    pack: 근거 묶음(office.evidence) — 있으면 그 사실을 함께 물려 주고, 다시 점검할 때도 대조한다."""
     raw = ask_agent(TOPIC_AGENT_OF[topic_key], FIX_PROMPT.format(
         issues='\n'.join(f'- {i}' for i in issues), subject=subject, content=content,
-        structure=COLUMN_STRUCTURE), max_tokens=COLUMN_MAX_TOKENS)
+        structure=COLUMN_STRUCTURE) + pack_block(pack), max_tokens=COLUMN_MAX_TOKENS)
     new_subject, new_content = parse_output(raw)
     # 고치려다 더 나빠지면 원고를 버리지 않는다 (safe_rewrite 와 같은 이유)
     if body_length(new_content) < body_length(content) * 0.6:
         return subject, content, issues
-    return new_subject, new_content, precheck_draft(new_content)
+    return new_subject, new_content, precheck_draft(new_content, pack)
 
 
 REQUIRED_SECTIONS = ['왜 지금인가', '숫자로 보는 현황', '현장의 변화', '시사점', '맺음말', '참고 자료']
 
 
-def precheck_draft(content: str) -> list:
+def pack_block(pack: str) -> str:
+    """작가에게 물려 주는 근거 묶음 — 본문 수치는 여기 있는 값만."""
+    if not (pack or '').strip():
+        return ''
+    return ('\n\n[근거 묶음 — 원문 문장으로 확인된 사실입니다. 본문의 수치는 여기 있는 값만 쓰고, '
+            '여기 없는 숫자는 지우세요]\n' + pack.strip() + '\n')
+
+
+def lock_numbers(content: str, pack: str, *, baseline: str | None = None) -> tuple[str, list]:
+    """근거 묶음에 없는 수치가 든 문장을 지운다(office.evidence). 반환 (본문, 지운 문장[]).
+
+    baseline 을 주면 거기에 이미 있던 수치는 두고, 이번에 새로 들어온 수치만 지운다(재작성이 기억으로
+    숫자를 되살리는 것만 막는다). 묶음이 비면 아무것도 하지 않는다.
+    """
+    from . import evidence as E
+    bad = E.unmatched(content, pack)
+    if baseline is not None:
+        old = E.keys_in(baseline)
+        bad = [(n, sent) for n, sent in bad if E.key(n) not in old]
+    if not bad:
+        return content, []
+    new, removed = E.drop_sentences(content, [n for n, _ in bad])
+    if len(removed) > LOCK_MAX_DROP:
+        # 이만큼 걸리면 작가가 지어낸 게 아니라 근거 모으기가 실패한 쪽이다 — 글을 비우지 말고 심사에 맡긴다
+        logger.warning('수치 잠금 생략: 근거 없는 수치 문장 %d개(상한 %d)', len(removed), LOCK_MAX_DROP)
+        return content, []
+    return new, removed
+
+
+def precheck_draft(content: str, pack: str = '') -> list:
     """초안이 기본 요건을 갖췄는지 코드로 확인. 반환: 지적 목록(비면 통과).
 
     팩트체크·평론·심사는 모두 모델 호출이라, 뻔한 결함을 거기서 걸러내면 호출을 세 번 더
@@ -791,6 +822,12 @@ def precheck_draft(content: str) -> list:
     # 운영 심사에서 반복된 지적(같은 수치 3회 반복·없는 표 언급)도 여기서 잡는다
     from .quality import precheck_issues
     issues += precheck_issues(content)
+
+    # 근거 묶음에 없는 수치 — 기억으로 쓴 숫자는 심사에서 '확인 불가'(치명)로 반려된다(#89·#100)
+    from . import evidence as E
+    loose = E.unmatched(content, pack)
+    if loose:
+        issues.append(E.note_line(loose))
     return issues
 
 
@@ -999,7 +1036,7 @@ def length_rule(length: int) -> str:
 @live_step('review', 'editor')
 def step_review(subject: str, content: str, check: dict, chart_rel: str,
                 visual_report: str = '', critique: dict | None = None, verified: str = '',
-                previous: dict | None = None) -> dict:
+                previous: dict | None = None, previous_content: str = '') -> dict:
     """6) 편집 심사 — 편집장(승현)이 항목 점수를 매기고, 총점·판정은 시스템이 계산.
 
     기획을 고른 팀장이 아니라 편집장이 본다. 같은 사람이 고르고 심사하면 기획 단계의
@@ -1032,6 +1069,10 @@ def step_review(subject: str, content: str, check: dict, chart_rel: str,
         qa = merge_reviews(panel)
 
     qa = R.normalize(qa)                     # must_fix·suggestions 정리, issues 순서 맞춤
+    # 재심의 새 필수 수정이 바뀌지 않은 문장을 가리키면 제안으로 — 과녁이 매번 움직이지 않게
+    qa['demoted'] = R.demote_stale(qa, previous, previous_content, content)
+    # 수정 지시가 기억으로 새 수치를 들이지 않게 — 근거(운영자 확인·근거 묶음)에 없는 값엔 경고
+    R.flag_numbers(qa, verified)
     model_issues = list(qa['issues'])
     scores = qa.get('scores') if isinstance(qa.get('scores'), dict) else {}
     fatal = [f for f in (qa.get('fatal') or []) if isinstance(f, str)]

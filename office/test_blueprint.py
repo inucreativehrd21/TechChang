@@ -48,8 +48,10 @@ class SeriesBlueprintFlowTests(TestCase):
         def ask_json(key, prompt, **kw):
             if key == 'coding' and '설계도를 먼저' in prompt:
                 return BP
-            if key == 'checker' and '사전 검증' in prompt:
-                return VER
+            if key == 'checker' and '근거 확인' in prompt:     # 주장은 묶음별로 나눠 확인한다(office.evidence)
+                seen.setdefault('batches', []).append(prompt)
+                return {'claims': [{'claim': '기능 표는 20개 행이다', 'status': 'verified', 'value': '기능 표 20개 행',
+                                    'quote': 'The table lists 20 rows', 'url': 'https://docs.jj-vcs.dev'}]}
             return {}
 
         def ask(key, prompt, **kw):
@@ -63,3 +65,5 @@ class SeriesBlueprintFlowTests(TestCase):
             S.produce_episode('agent', 1, out=lambda *_: None)
         self.assertIn('확인된 설계도', seen['draft'])
         self.assertIn('쓰면 안 되는 주장', seen['draft'])
+        self.assertIn('The table lists 20 rows', seen['draft'])     # 작가는 원문 문장과 함께 받는다
+        self.assertTrue(seen['batches'])

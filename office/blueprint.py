@@ -35,17 +35,6 @@ BLUEPRINT_PROMPT = (
     '- 코드·명령은 실제로 존재하는 현재 버전의 것만. 확신이 없으면 웹 검색으로 공식 문서를 확인하세요.'
 )
 
-VERIFY_PROMPT = (
-    '사전 검증입니다. 작가가 본문을 쓰기 전에 낸 설계도의 주장을 확인하세요. 문장력은 보지 않습니다.\n'
-    '각 주장을 웹 검색으로 원문(공식 문서·보고서·원 기사)에서 확인하고 판정하세요.\n\n'
-    '[설계도]\n{blueprint}\n\n{extra}'
-    '출력 JSON: {{"claims": [{{"claim": "주장 그대로", "status": "verified|unverifiable|wrong|outdated", '
-    '"note": "근거 URL 또는 정확한 값·표현으로 고친 문장"}}], '
-    '"thesis_ok": true/false, "thesis_note": "답(thesis)이 확인된 근거 범위를 넘어 과장됐다면 어떻게 좁힐지", '
-    '"missing": ["답을 받치려면 꼭 필요한데 설계도에 없는 근거(있을 때만)"]}}'
-)
-
-
 def make_blueprint(agent: str, context: str, *, ask_json, tools: tuple = ()) -> dict:
     """작가의 설계도. 실패하면 {} — 호출부는 설계도 없이 예전처럼 집필한다."""
     try:
@@ -57,16 +46,25 @@ def make_blueprint(agent: str, context: str, *, ask_json, tools: tuple = ()) -> 
 
 
 def verify_blueprint(bp: dict, *, ask_json, tools: tuple = (), extra: str = '') -> dict:
-    """검증관의 사전 검증. 실패하면 {}."""
+    """검증관의 사전 검증. 실패하면 {}.
+
+    주장을 한 호출에 몰아 주면 앞의 몇 개만 열고 나머지를 '확인 불가'로 남겼다(#89·#100). 그래서 주장을
+    몇 개씩 나눠 동시에 확인하고(office.evidence.gather), 원문 문장에 값이 없으면 verified 를 내린다.
+    답(thesis)의 범위 판정은 확인 결과를 보고 따로 한 번 한다.
+    """
+    from . import evidence as E
     if not bp:
         return {}
+    claims = [c for c in (bp.get('claims') or []) if isinstance(c, dict) and str(c.get('claim', '')).strip()]
     try:
-        res = ask_json('checker', VERIFY_PROMPT.format(
-            blueprint=json.dumps(bp, ensure_ascii=False, indent=1), extra=extra), max_tokens=6000, tools=tools)
+        results = E.gather(claims, ask_json=ask_json, tools=tools, extra=extra)
     except Exception as exc:  # noqa: BLE001
         logger.warning('사전 검증 실패: %s', exc)
         return {}
-    return res if isinstance(res, dict) else {}
+    ver = {'claims': results, 'pack': E.pack_text(results)}
+    ver.update({k: v for k, v in E.assess_thesis(bp, results, ask_json=ask_json).items()
+                if k in ('thesis_ok', 'thesis_note', 'missing')})
+    return ver
 
 
 def summary(bp: dict, ver: dict) -> str:
@@ -90,9 +88,11 @@ def block(bp: dict, ver: dict) -> str:
         v = by_claim.get(text, {})
         status = v.get('status', 'unverified' if ver else 'verified')
         if status == 'verified':
-            usable.append(f"- {text} (근거: {v.get('note') or c.get('source', '')})")
-        elif status in ('wrong', 'outdated') and v.get('note'):
-            usable.append(f"- {v['note']} (검증관이 바로잡은 표현 — 원래 주장 '{text[:40]}'은 쓰지 마세요)")
+            fact = v.get('value') or text
+            usable.append(f"- {fact} (원문: \"{str(v.get('quote', ''))[:160]}\" {v.get('url') or c.get('source', '')})")
+        elif status in ('wrong', 'outdated') and v.get('value'):
+            usable.append(f"- {v['value']} (검증관이 원문으로 바로잡은 값 — 원래 주장 '{text[:40]}'은 쓰지 마세요; "
+                          f"원문: \"{str(v.get('quote', ''))[:160]}\" {v.get('url', '')})")
         else:
             dropped.append(f'- {text}')
     thesis = bp.get('thesis', '')
@@ -104,7 +104,8 @@ def block(bp: dict, ver: dict) -> str:
         lines.append('- 절 구성: ' + ' / '.join(f"{s.get('heading', '')}({s.get('point', '')})"
                                               for s in bp['sections'] if isinstance(s, dict)))
     if usable:
-        lines += ['- 사실로 써도 되는 주장(원문 확인됨):'] + [f'  {u}' for u in usable]
+        lines += ['- 사실로 써도 되는 주장(원문 확인됨) — **본문의 수치는 이 목록에 있는 값만 씁니다**. '
+                  '여기 없는 숫자는 자동 점검에서 걸리고, 그래도 남으면 그 문장이 지워집니다:'] + [f'  {u}' for u in usable]
     if dropped:
         lines += ['- **쓰면 안 되는 주장**(확인되지 않음 — 본문에서 사실로 말하지 마세요):'] + [f'  {d}' for d in dropped]
     kt = bp.get('key_table')

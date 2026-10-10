@@ -22,6 +22,7 @@ from django.utils import timezone
 from common.management.commands.auto_write_columns import COLUMN_STRUCTURE
 from community.models import Question
 from office import live
+from office import evidence as E
 from office import pipeline as P
 from office import quality
 from office.recorder import StageRecorder
@@ -109,7 +110,7 @@ class Command(BaseCommand):
             stages.record('draft', 'editor', {'subject': subject, 'content': content, 'ok': True,
                                               'why': '운영자 교열본'}, text=content)
             rec('editor', 'revise', f'운영자 교열본 심사: {subject} ({P.body_length(content)}자)')
-            left = P.precheck_draft(content)
+            left = P.precheck_draft(content, facts)
             stages.record('precheck', 'editor', {'issues': left, 'quality': quality.report(subject, content)})
             for i in left:     # 교열본은 고치지 않고 보여 주기만 한다 — 심사에서 그대로 다뤄진다
                 out(self.style.WARNING(f'    자동 점검: {str(i)[:140]}'))
@@ -125,6 +126,8 @@ class Command(BaseCommand):
             rec(writer, 'blueprint', B.summary(bp, ver))
             stages.record('blueprint', writer, {'blueprint': bp, 'verify': ver})
 
+        pack = E.merge(facts, ver.get('pack', ''))     # 근거 묶음 — 본문 수치는 여기에 묶인다
+
         # 1) 재집필
         live.mark('revise', writer, topic_key)
         raw = ask_agent(writer, REMAKE_PROMPT.format(
@@ -138,27 +141,36 @@ class Command(BaseCommand):
             return
         rec(writer, 'revise', f'리메이크 재집필: {subject} ({P.body_length(content)}자)')
 
-        left = P.precheck_draft(content)
+        left = P.precheck_draft(content, pack)
         stages.record('precheck', 'editor', {'issues': left, 'quality': quality.report(subject, content)})
         if left:
-            subject, content, left = P.step_fix_draft(topic_key, subject, content, left)
+            subject, content, left = P.step_fix_draft(topic_key, subject, content, left, pack)
             stages.record('fix', writer, {'subject': subject, 'content': content, 'remaining': left},
                           text=content)
             rec(writer, 'revise', f'자동 점검 보완 — 남은 지적 {len(left)}건')
-        return self._judge(q, opts, stages, rec, out, writer, topic_key, standard, subject, content, facts)
+        return self._judge(q, opts, stages, rec, out, writer, topic_key, standard, subject, content, pack)
 
-    def _judge(self, q, opts, stages, rec, out, writer, topic_key, standard, subject, content, facts,
+    def _judge(self, q, opts, stages, rec, out, writer, topic_key, standard, subject, content, pack,
                hand=False):
-        """2) 팩트체크 → 3) 도판 → 4) 평론 → 5) 편집 심사 → 미달이면 보완 → 통과면 제자리 갱신.
+        """2) 팩트체크 → 수치 잠금 → 3) 도판 → 4) 평론 → 5) 편집 심사 → 미달이면 보완 → 통과면 제자리 갱신.
 
-        hand=True(운영자 교열본)면 보완 재작성 없이 심사만 한다 — 사람이 원문을 대조해 고친 문장을
-        칼럼니스트가 다시 쓰면 확인 안 된 수치가 되살아난다.
+        pack: 근거 묶음(office.evidence) — 원문 문장으로 확인된 사실. 검증관·편집장에게 확인 사실로 가고,
+        본문 수치는 여기에 묶인다. 재작성이 기억으로 들여온 숫자는 지워지므로, 교열본(hand)도 보완 라운드를 돈다
+        — 예전엔 칼럼니스트가 다시 쓰면 확인 안 된 수치가 되살아나서 교열본은 심사만 받았다(#89 68점·#100 78점).
+        hand 면 교열본의 표를 그대로 두고 차트를 새로 그리지 않는다.
         """
         recent = list(Question.objects.filter(is_deleted=False).exclude(pk=q.pk)
                       .order_by('-create_date').values_list('subject', flat=True)[:20])
-        check = P.step_check(subject, content, recent, verified=facts)
+        check = P.step_check(subject, content, recent, verified=pack)
         stages.record('check', 'checker', check, kind='report', sender='checker', recipient='editor')
         rec('checker', 'check', f"팩트체크 {check.get('verdict')}")
+        pack = E.merge(pack, E.from_check(check))
+        if not hand:       # 교열본의 수치는 사람이 대조했다 — 처음엔 지우지 않는다
+            content, dropped = P.lock_numbers(content, pack)
+            if dropped:
+                check = E.prune_check(check, content)
+                stages.record('lock', 'checker', {'removed': dropped}, text=content)
+                rec('checker', 'check', f'근거 없는 수치 문장 {len(dropped)}개 삭제: {dropped[0][:60]}')
 
         chart_rel, visual_report = '', ''
         if hand and P.has_visual(content):
@@ -173,7 +185,7 @@ class Command(BaseCommand):
         stages.record('critique', 'critic', critique, kind='report', sender='critic', recipient='editor')
         rec('critic', 'critique', f"평론 {critique['verdict']} · 지적 {len(critique.get('issues') or [])}건")
 
-        qa = P.step_review(subject, content, check, chart_rel, visual_report, critique, verified=facts)
+        qa = P.step_review(subject, content, check, chart_rel, visual_report, critique, verified=pack)
         stages.record('review', 'editor', qa)
         stages.record('final', 'editor', {'verdict': qa['verdict'], 'score': qa.get('score'),
                                           'quality': quality.report(subject, content)}, text=content)
@@ -182,7 +194,7 @@ class Command(BaseCommand):
 
         # 미달이면 최대 2번 고친다 — 필수 수정만, 고칠 곳만 바꾸는 패치로(검증된 부분을 지킨다).
         # 재심은 직전 필수 수정의 해결 여부부터 본다(office.review_protocol). 그래도 미달이면 원문 유지.
-        for _round in range(0 if hand else MAX_REMAKE_REVISIONS):      # 미달이면 최대 2번까지 고친다
+        for _round in range(MAX_REMAKE_REVISIONS):      # 미달이면 최대 2번까지 고친다
             if qa['verdict'] == 'accept':
                 break
             from office import review_protocol as R
@@ -190,27 +202,35 @@ class Command(BaseCommand):
             notes = R.revision_notes(qa)
             body = P.strip_visual_block(content) if chart_rel or visual_report else content
             p_subject, p_content, ok, why = patch_revise(
-                writer, subject, body, notes, who='편집 심사에서', guide=f'[팩트체크 보고]\n{P.check_text(check)}')
+                writer, subject, body, notes, who='편집 심사에서',
+                guide=f'[팩트체크 보고]\n{P.check_text(check)}' + P.pack_block(pack))
             if not ok:
                 raw = ask_agent(writer, P.EDITOR_REVISE_PROMPT.format(
                     issues='\n'.join(f'- {i}' for i in notes), notes=qa.get('notes', ''),
                     check=P.check_text(check), critique=P.critique_text(critique), subject=subject,
-                    content=content, structure=COLUMN_STRUCTURE, standard=standard), max_tokens=P.COLUMN_MAX_TOKENS)
+                    content=content, structure=COLUMN_STRUCTURE, standard=standard) + P.pack_block(pack),
+                    max_tokens=P.COLUMN_MAX_TOKENS)
                 p_subject, p_content, ok, why = P.safe_rewrite(raw, subject, content)
             if ok:
                 prev_qa, prev_content = qa, content
                 subject, content = p_subject, p_content
                 rec(writer, 'revise', f'편집 심사 필수 수정 {len(notes)}건 반영해 재작성 ({P.body_length(content)}자)')
                 if P.new_numeric_sentences(prev_content, content):
-                    check = P.step_check(subject, content, recent, verified=facts)
+                    check = P.step_check(subject, content, recent, verified=pack)
                     rec('checker', 'check', f"재작성 수치 재검증 {check.get('verdict')}")
-                if not opts['no_chart']:
+                    pack = E.merge(pack, E.from_check(check))
+                # 재작성이 기억으로 들여온 새 수치는 지운다(이전 판에 있던 수치는 그대로)
+                content, dropped = P.lock_numbers(content, pack, baseline=prev_content)
+                if dropped:
+                    check = E.prune_check(check, content)
+                    rec('checker', 'check', f'재작성이 들여온 근거 없는 수치 문장 {len(dropped)}개 삭제')
+                if not hand and not opts['no_chart']:
                     content = P.strip_visual_block(content)
                     content, chart_rel, _note, visual_report = P.step_visual(
                         content, topic_key, rec=rec, feedback=P.visual_feedback(prev_qa))
                 critique = P.step_critique(subject, content)
                 qa = P.step_review(subject, content, check, chart_rel, visual_report, critique,
-                                   previous=prev_qa, verified=facts)
+                                   previous=prev_qa, verified=pack, previous_content=prev_content)
                 stages.record('revise', writer, {'subject': subject, 'content': content},
                               attempt=_round + 2, text=content)
                 stages.record('review', 'editor', qa, attempt=_round + 2)
