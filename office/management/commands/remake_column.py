@@ -46,6 +46,9 @@ REMAKE_PROMPT = (
 )
 
 
+MAX_REMAKE_REVISIONS = 2   # 72점(수정 요청)처럼 한 번 더 고치면 넘을 원고를 놓치지 않게(#94)
+
+
 class Command(BaseCommand):
     help = '발행된 칼럼을 현재 기준으로 다시 만들어 제자리에서 갱신합니다.'
 
@@ -88,11 +91,24 @@ class Command(BaseCommand):
             out(f'  [{agent}] {text[:120]}')
             log(agent, action, text)
 
+        # 0) 설계도 → 검증관 사전 검증 — 새 '숫자로 보는 현황'에 넣을 수치를 쓰기 전에 원문으로 확인한다.
+        #    설계도 없이 "통계 3~5개를 넣으라"고만 하면 첫 원고부터 확인 안 된 수치가 들어가
+        #    레거시 3편이 모두 unverified_data 로 보류됐다(2026-10-11, 48·61·51점).
+        from office import blueprint as B
+        live.mark('brief', writer, topic_key)
+        bp_context = (f"[리메이크 대상 — 주제와 논지는 유지]\nTITLE: {q.subject}\n---\n{q.content}\n\n"
+                      f"[지금 기준에 어긋나는 점]\n" + '\n'.join(f'- {f}' for f in flaws) + '\n' + P.recency_rule())
+        bp = B.make_blueprint(writer, bp_context, ask_json=P.ask_agent_json, tools=P.WEB_TOOLS)
+        ver = B.verify_blueprint(bp, ask_json=P.ask_agent_json, tools=P.WEB_TOOLS)
+        if bp:
+            rec(writer, 'blueprint', B.summary(bp, ver))
+            stages.record('blueprint', writer, {'blueprint': bp, 'verify': ver})
+
         # 1) 재집필
         live.mark('revise', writer, topic_key)
         raw = ask_agent(writer, REMAKE_PROMPT.format(
             flaws='\n'.join(f'- {f}' for f in flaws), subject=q.subject, content=q.content,
-            structure=COLUMN_STRUCTURE, standard=standard), max_tokens=P.COLUMN_MAX_TOKENS)
+            structure=COLUMN_STRUCTURE, standard=standard) + B.block(bp, ver), max_tokens=P.COLUMN_MAX_TOKENS)
         subject, content, ok, why = P.safe_rewrite(raw, q.subject, q.content)
         stages.record('draft', writer, {'subject': subject, 'content': content, 'ok': ok, 'why': why},
                       status='ok' if ok else 'failed', text=content)
@@ -133,9 +149,11 @@ class Command(BaseCommand):
         rec('editor', 'qa', f"심사 {qa['score']}/100 ({qa['length']}자) → {qa['verdict']}"
                             + (f" · 치명 {','.join(qa['fatal'])}" if qa.get('fatal') else ''))
 
-        # 미달이면 한 번만 고친다 — 필수 수정만, 고칠 곳만 바꾸는 패치로(검증된 부분을 지킨다).
+        # 미달이면 최대 2번 고친다 — 필수 수정만, 고칠 곳만 바꾸는 패치로(검증된 부분을 지킨다).
         # 재심은 직전 필수 수정의 해결 여부부터 본다(office.review_protocol). 그래도 미달이면 원문 유지.
-        if qa['verdict'] != 'accept':
+        for _round in range(MAX_REMAKE_REVISIONS):      # 미달이면 최대 2번까지 고친다
+            if qa['verdict'] == 'accept':
+                break
             from office import review_protocol as R
             from office.patching import patch_revise
             notes = R.revision_notes(qa)
@@ -161,11 +179,12 @@ class Command(BaseCommand):
                         content, topic_key, rec=rec, feedback=P.visual_feedback(prev_qa))
                 critique = P.step_critique(subject, content)
                 qa = P.step_review(subject, content, check, chart_rel, visual_report, critique, previous=prev_qa)
-                stages.record('review', 'editor', qa, attempt=2)
-                rec('editor', 'qa', f"재심 {qa['score']}/100 ({qa['length']}자) → {qa['verdict']}"
+                stages.record('review', 'editor', qa, attempt=_round + 2)
+                rec('editor', 'qa', f"재심{_round + 1} {qa['score']}/100 ({qa['length']}자) → {qa['verdict']}"
                                     + (f" · 치명 {','.join(qa['fatal'])}" if qa.get('fatal') else ''))
             else:
                 rec(writer, 'revise', f'재작성 실패 — {why}')
+                break
 
         if qa['verdict'] != 'accept':
             out(self.style.WARNING(

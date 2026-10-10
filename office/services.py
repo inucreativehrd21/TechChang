@@ -417,7 +417,12 @@ def audit_chart(spec: dict, content: str, chart_rel: str, caption: str = "") -> 
     errors, warns = [], []
     labels = [str(x) for x in spec.get('labels') or []]
     series = spec.get('series') or []
-    values = [v for s in series for v in (s.get('values') or [])]
+    raw_values = [v for s in series if isinstance(s, dict) for v in (s.get('values') or [])]
+    # 모델이 빈 칸을 null·문자열로 내는 일이 있다 — 숫자만 점검하고, 숫자가 아닌 값은 결함으로 알린다
+    # (#100 리메이크가 None 값 때문에 TypeError 로 중단됐다, 2026-10-11)
+    values = [float(v) for v in raw_values if isinstance(v, (int, float)) and not isinstance(v, bool)]
+    if len(values) != len(raw_values):
+        errors.append(f'차트 값 {len(raw_values) - len(values)}개가 숫자가 아닙니다(빈 값 포함) — 근거 값이 비었습니다')
 
     if not chart_rel:
         warns.append('차트 이미지가 없어 표만 실렸습니다')
