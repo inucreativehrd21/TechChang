@@ -158,9 +158,17 @@ def no_title(outline: dict) -> str:
     return f"{outline['no']}편 「{outline['title']}」"
 
 
-def normalize_title(no: int, title: str) -> str:
-    """'N편 — 제목' 형식으로 맞춘다(목록·검색에서 몇 번째 회차인지 바로 보이게). 0편은 그대로."""
+# 회차 골격의 소제목 표지 — 이게 제목으로 잡히면 TITLE 줄이 없던 것이다(3편이 '😵 이런 적 있죠?'로 발행됨, 2026-10-11)
+_SECTION_MARKS = ('😵', '🎬', '🤖', '🔍', '⚠️', '🎮', '⏭️', '🧩', '🛠️', '🔬', '이런 적 있죠', '지난 이야기', '오늘의 미션')
+
+
+def normalize_title(no: int, title: str, key: str | None = None) -> str:
+    """'N편 — 제목' 형식으로 맞춘다(목록·검색에서 몇 번째 회차인지 바로 보이게). 0편은 그대로.
+    제목이 비었거나 회차 골격의 소제목이 잡혔으면 목차의 회차 제목을 쓴다."""
     title = re.sub(r'^\s*\d+\s*편\s*[—\-:·]?\s*', '', title or '').strip()
+    if key and (not title or any(m in title for m in _SECTION_MARKS)):
+        outline = outline_of(key, no)
+        title = outline['title'] if outline else title
     return title if no == 0 else f'{no}편 — {title}'
 
 
@@ -400,7 +408,7 @@ def produce_episode(key: str, no: int, *, target=None, dry: bool = False, out=pr
                                                     tools=tuple(cfg.get('tools', ()))))
         if not content.strip():
             raise RuntimeError('집필 응답이 비었습니다')
-        subject = normalize_title(no, subject)
+        subject = normalize_title(no, subject, key)
         rec(writer, 'draft', f'초안 완성: {subject} ({P.body_length(content)}자)')
         return gate(draft, key, no, subject, content, target=target, dry=dry, out=out)
     except Exception as exc:
@@ -451,7 +459,7 @@ def revise_draft(draft: ColumnDraft, note: str = '', *, by=None, out=print) -> d
             draft.status = ColumnDraft.STATUS_HOLD
             draft.save(update_fields=['status'])
             return {'status': 'hold', 'draft': draft}
-        subject = normalize_title(no, subject)
+        subject = normalize_title(no, subject, key)
         rec(writer, 'revise', f'{label} 반영해 재작성: {subject} ({P.body_length(content)}자)')
         return gate(draft, key, no, subject, content, target=draft.target_question, by=by, out=out)
     except Exception as exc:
@@ -536,7 +544,7 @@ def gate(draft, key: str, no: int, subject: str, content: str, *, target=None, b
         else:
             rec(writer, 'revise', f'편집 심사 재작성 실패 — {why}')
 
-    subject = normalize_title(no, subject)
+    subject = normalize_title(no, subject, key)
     result = {'score': qa['score'], 'verdict': qa['verdict'], 'subject': subject}
     if dry:
         out(f'\n[dry-run] {qa["score"]}점 · {qa["verdict"]}\nTITLE: {subject}\n{content}')

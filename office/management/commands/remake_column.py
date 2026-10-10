@@ -37,7 +37,9 @@ REMAKE_PROMPT = (
     '이 주제를 뒷받침하는 **실제 공표 통계 3~5개**를 기관·보고서명과 함께 넣으세요. '
     '값이 기억나지 않으면 그 수치는 쓰지 말고 확실히 아는 다른 지표로 바꿉니다. '
     '지어낸 수치나 "가상의 예시"로 이 섹션을 채우면 반려됩니다. '
-    '같은 단위로 나란히 놓을 수 있는 값을 우선하세요 — 이 수치들이 그대로 도표가 됩니다.\n\n'
+    '같은 단위로 나란히 놓을 수 있는 값을 우선하세요 — 이 수치들이 그대로 도표가 됩니다. '
+    '공표 통계가 없는 기술 주제라면 수치를 만들지 말고, 공식 문서·스펙을 옮긴 비교표(3행 이상, 출처 명시)로 근거를 대세요.\n'
+    '운영자에게 하는 말·확인하지 못한 사정·작성 메모는 본문에 남기지 마세요. 확인 못 한 내용은 빼면 됩니다.\n\n'
     '기존 본문에서 살아 있는 서술·사례·문장은 최대한 보존하고, 새 섹션과 어긋나는 부분만 손봅니다. '
     '이미 좋은 글을 헤집어 다시 쓰는 것이 아닙니다.\n\n'
     '[현재 칼럼]\nTITLE: {subject}\n---\n{content}\n\n{structure}\n\n{standard}'
@@ -130,6 +132,40 @@ class Command(BaseCommand):
                                           'quality': quality.report(subject, content)}, text=content)
         rec('editor', 'qa', f"심사 {qa['score']}/100 ({qa['length']}자) → {qa['verdict']}"
                             + (f" · 치명 {','.join(qa['fatal'])}" if qa.get('fatal') else ''))
+
+        # 미달이면 한 번만 고친다 — 필수 수정만, 고칠 곳만 바꾸는 패치로(검증된 부분을 지킨다).
+        # 재심은 직전 필수 수정의 해결 여부부터 본다(office.review_protocol). 그래도 미달이면 원문 유지.
+        if qa['verdict'] != 'accept':
+            from office import review_protocol as R
+            from office.patching import patch_revise
+            notes = R.revision_notes(qa)
+            body = P.strip_visual_block(content) if chart_rel or visual_report else content
+            p_subject, p_content, ok, why = patch_revise(
+                writer, subject, body, notes, who='편집 심사에서', guide=f'[팩트체크 보고]\n{P.check_text(check)}')
+            if not ok:
+                raw = ask_agent(writer, P.EDITOR_REVISE_PROMPT.format(
+                    issues='\n'.join(f'- {i}' for i in notes), notes=qa.get('notes', ''),
+                    check=P.check_text(check), critique=P.critique_text(critique), subject=subject,
+                    content=content, structure=COLUMN_STRUCTURE, standard=standard), max_tokens=P.COLUMN_MAX_TOKENS)
+                p_subject, p_content, ok, why = P.safe_rewrite(raw, subject, content)
+            if ok:
+                prev_qa, prev_content = qa, content
+                subject, content = p_subject, p_content
+                rec(writer, 'revise', f'편집 심사 필수 수정 {len(notes)}건 반영해 재작성 ({P.body_length(content)}자)')
+                if P.new_numeric_sentences(prev_content, content):
+                    check = P.step_check(subject, content, recent)
+                    rec('checker', 'check', f"재작성 수치 재검증 {check.get('verdict')}")
+                if not opts['no_chart']:
+                    content = P.strip_visual_block(content)
+                    content, chart_rel, _note, visual_report = P.step_visual(
+                        content, topic_key, rec=rec, feedback=P.visual_feedback(prev_qa))
+                critique = P.step_critique(subject, content)
+                qa = P.step_review(subject, content, check, chart_rel, visual_report, critique, previous=prev_qa)
+                stages.record('review', 'editor', qa, attempt=2)
+                rec('editor', 'qa', f"재심 {qa['score']}/100 ({qa['length']}자) → {qa['verdict']}"
+                                    + (f" · 치명 {','.join(qa['fatal'])}" if qa.get('fatal') else ''))
+            else:
+                rec(writer, 'revise', f'재작성 실패 — {why}')
 
         if qa['verdict'] != 'accept':
             out(self.style.WARNING(

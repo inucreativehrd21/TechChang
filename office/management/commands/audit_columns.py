@@ -29,7 +29,7 @@ from office.services import audit_style
 
 BOT = 'techchang연구팀'
 OLD_FOOTER = '본 칼럼은 AI 보조로 작성'
-FIG_HEAD = re.compile(r'^\*\*(?:그림|표)\s*\d+\.', re.M)
+FIG_HEAD = re.compile(r'^(?:\*\*|#+\s*)(?:그림|표)\s*\d+\.', re.M)   # **그림 N.** 또는 ### 표 N. 머리
 IMG = re.compile(r'^!\[', re.M)
 TABLE = re.compile(r'^\|', re.M)
 
@@ -84,7 +84,8 @@ class Command(BaseCommand):
 
     def handle(self, *args, **opts):
         out = self.stdout.write
-        qs = (Question.objects.filter(is_deleted=False, author__username=opts['author'])
+        # 연재 회차는 골격이 달라(필수 섹션·근거 섹션 없음) 칼럼 기준으로 재지 않는다 — 연재는 office.series_pipeline 이 심사
+        qs = (Question.objects.filter(is_deleted=False, author__username=opts['author'], series__isnull=True)
               .select_related('category').order_by('id'))
         rows = [audit_one(q) for q in qs]
         if not rows:
