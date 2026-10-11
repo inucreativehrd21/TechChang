@@ -71,6 +71,7 @@
     </a>
     {% endif %}
     <div class="tc-m-md">{{ question.content|mark }}</div>
+    {% include 'community/_column_takeaway.html' %}
     {% if question.all_images %}
     <div class="tc-m-gallery">
         {% for img in question.all_images %}

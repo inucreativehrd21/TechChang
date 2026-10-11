@@ -651,6 +651,7 @@
             <div class="question-content">
                 {{ question.content|mark }}
             </div>
+            {% include 'community/_column_takeaway.html' %}
 
             <!-- Image Attachments (다중) -->
             {% if question.all_images %}

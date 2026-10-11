@@ -1,0 +1,54 @@
+{% comment %}
+칼럼 끝 한 줄 반응 — "오늘 글에서 하나 가져간다면?" (연구실 정비 백로그 #10, 2026-10-11)
+   연구팀 칼럼은 조회는 있는데 추천·댓글이 거의 없었다(24편 모두 추천 0). 다 읽은 자리에서 한 줄 남기기와 추천을
+   한 번에 할 수 있게 둔다. 한 줄은 일반 댓글로 저장돼 기존 검수·삭제 흐름을 그대로 탄다. PC·모바일 상세 공용.
+{% endcomment %}
+{% if question.is_column %}
+<section class="tc-takeaway" aria-labelledby="tc-takeaway-q">
+  <style>
+    .tc-takeaway { margin: 32px 0 8px; padding: 18px 20px; border: 1px solid var(--border-color, #e5e7eb);
+      border-left: 4px solid var(--accent-primary, #4f46e5); border-radius: 12px; background: rgba(79,70,229,.04); }
+    .tc-takeaway h2 { font-size: 1.05rem; font-weight: 800; margin: 0 0 4px; }
+    .tc-takeaway p { margin: 0 0 12px; font-size: .9rem; color: var(--text-secondary, #64748b); }
+    .tc-takeaway form.tc-tk-line { display: flex; gap: 8px; flex-wrap: wrap; margin: 0; }
+    .tc-takeaway input[type=text] { flex: 1 1 240px; min-width: 0; padding: 9px 12px; border-radius: 8px;
+      border: 1px solid var(--border-color, #e5e7eb); background: #fff; font-size: .95rem; }
+    .tc-takeaway input[type=text]:focus { outline: 2px solid var(--accent-primary, #4f46e5); outline-offset: 1px; }
+    .tc-takeaway .tc-tk-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 10px; }
+    .tc-takeaway .tc-tk-btn { border: 0; border-radius: 8px; padding: 9px 16px; font-weight: 700; font-size: .9rem;
+      cursor: pointer; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; }
+    .tc-takeaway .tc-tk-send { background: var(--accent-primary, #4f46e5); color: #fff; }
+    .tc-takeaway .tc-tk-vote { background: #fff; color: var(--text-primary, #0f172a); border: 1px solid var(--border-color, #e5e7eb); }
+    .tc-takeaway .tc-tk-vote.voted { border-color: var(--accent-primary, #4f46e5); color: var(--accent-primary, #4f46e5); }
+    .tc-takeaway form.tc-tk-voteform { margin: 0; }
+    .tc-takeaway .tc-tk-note { font-size: .8rem; color: var(--text-secondary, #64748b); }
+  </style>
+  <h2 id="tc-takeaway-q">오늘 글에서 하나 가져간다면?</h2>
+  <p>다 읽고 남은 한 가지를 한 줄로 적어 주세요. 다른 독자에게도, 다음 글을 쓰는 연구팀에게도 가장 좋은 신호가 됩니다.</p>
+  {% if user.is_authenticated %}
+  <form class="tc-tk-line" method="post" action="{% url 'community:answer_create' question.id %}">
+    {% csrf_token %}
+    <label for="tc-tk-input" class="visually-hidden">오늘 글에서 가져갈 한 가지</label>
+    <input id="tc-tk-input" type="text" name="content" maxlength="120" required
+           placeholder="예: 비교 집단 없이 전후만 재면 효과가 부풀려 보인다">
+    <button type="submit" class="tc-tk-btn tc-tk-send">남기기</button>
+  </form>
+  <div class="tc-tk-row">
+    <form class="tc-tk-voteform" method="post" action="{% url 'community:question_vote' question.id %}">
+      {% csrf_token %}
+      <button type="submit" class="tc-tk-btn tc-tk-vote {% if user in question.voter.all %}voted{% endif %}">
+        <i class="fas fa-thumbs-up"></i> 도움이 됐어요 <span>{{ question.voter.count }}</span>
+      </button>
+    </form>
+    <span class="tc-tk-note">한 줄은 댓글로 남습니다.</span>
+  </div>
+  {% else %}
+  <div class="tc-tk-row">
+    <a rel="nofollow" class="tc-tk-btn tc-tk-send" href="{% url 'common:login' %}?next={{ request.get_full_path|urlencode }}%23tc-takeaway-q">
+      로그인하고 한 줄 남기기
+    </a>
+    <span class="tc-tk-note"><i class="fas fa-thumbs-up"></i> 추천 {{ question.voter.count }}</span>
+  </div>
+  {% endif %}
+</section>
+{% endif %}
