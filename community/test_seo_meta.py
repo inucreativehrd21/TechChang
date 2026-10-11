@@ -174,3 +174,34 @@ class RssFeedTests(TestCase):
         self.assertIn('요약이 될 첫 문단입니다.', xml)
         self.assertNotIn('회원 글', xml)
         self.assertIn('/rss.xml', self.client.get('/').content.decode())   # 페이지 머리말에서 피드 자동 발견
+
+
+class DiscussionForumPostingTests(TestCase):
+    """회원 글 구조화 데이터 — GSC '토론 포럼' 문제(2026-10-11): text 누락(심각), url·author.url 누락."""
+
+    def setUp(self):
+        from community.models import Portfolio
+        self.cat = Category.objects.create(name='HRD', description='HRD')
+        self.member = User.objects.create_user('member', password='x')
+        self.post = Question.objects.create(
+            subject='OKR 도입 질문', category=self.cat, author=self.member, create_date=timezone.now(),
+            content='## 상황\n\n저희 팀은 **분기마다** [OKR](https://example.com)을 세웁니다.\n\n- 목표가 너무 많습니다\n- 측정이 어렵습니다')
+        self.Portfolio = Portfolio
+
+    def forum(self, ua=MOBILE_BOT):
+        html = self.client.get(f'/{self.post.id}/', HTTP_USER_AGENT=ua).content.decode()
+        return next(b for b in jsonld_blocks(html) if b['@type'] == 'DiscussionForumPosting')
+
+    def test_post_carries_full_text_and_its_url(self):
+        for ua in (MOBILE_BOT, 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/130'):
+            data = self.forum(ua)
+            self.assertEqual(data['url'], f'https://techchang.com/{self.post.id}/')
+            self.assertIn('저희 팀은 분기마다 OKR을 세웁니다.', data['text'])     # 마크다운 기호·링크 주소는 걷어 낸다
+            self.assertIn('측정이 어렵습니다', data['text'])
+            self.assertNotIn('**', data['text'])
+            self.assertNotIn('example.com', data['text'])
+
+    def test_author_url_only_when_a_public_page_exists(self):
+        self.assertNotIn('url', self.forum()['author'])          # 프로필은 로그인 필요 — 검색엔진이 못 봄
+        self.Portfolio.objects.create(user=self.member, approval_status='approved', is_public=True)
+        self.assertEqual(self.forum()['author']['url'], f'https://techchang.com/portfolio/{self.member.id}/')

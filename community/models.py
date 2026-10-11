@@ -177,6 +177,40 @@ class Question(models.Model):
         return (cut[:end + 1] if end > 80 else cut.rstrip()) + '…'
 
     @property
+    def plain_text(self):
+        """본문 전체를 평문으로 — 구조화 데이터(DiscussionForumPosting)의 'text'.
+
+        구글은 토론 글에 text·image·video 중 하나를 요구한다. 예전엔 제목·요약만 넣어
+        Search Console 에서 '심각한 문제'로 잡혔다(2026-10-11). 마크다운 기호만 걷어 내고 내용은 남긴다.
+        """
+        import re
+
+        text = self.content or ''
+        text = re.sub(r'```[^\n]*\n?', '', text)                       # 코드 울타리(코드 내용은 남긴다)
+        text = re.sub(r'!\[[^\]]*\]\([^)]*\)', ' ', text)              # 이미지
+        text = re.sub(r'\[([^\]]*)\]\([^)]*\)', r'\1', text)           # 링크 → 글자만
+        text = re.sub(r'^\s*\[//\]:.*$', '', text, flags=re.M)         # 마크다운 주석(도판 표식)
+        text = re.sub(r'^\s{0,3}(?:#{1,6}\s+|>\s?|[-*+]\s+|\d+\.\s+)', '', text, flags=re.M)
+        text = re.sub(r'^\s*\|?[-:| ]{3,}\|?\s*$', '', text, flags=re.M)   # 표 구분선
+        text = re.sub(r'[*_`~]{1,3}', '', text)
+        text = re.sub(r'\n{3,}', '\n\n', text)
+        return text.strip()[:5000]
+
+    @property
+    def author_public_url(self):
+        """작성자를 가리키는 공개 페이지 주소(구조화 데이터 author.url) — 없으면 ''.
+
+        회원 프로필(/profile/)은 로그인이 필요해 검색엔진이 볼 수 없다. 관리자 승인을 거쳐 공개된
+        포트폴리오가 있는 회원만 그 주소를 쓴다.
+        """
+        from django.urls import reverse
+
+        portfolio = Portfolio.objects.filter(user_id=self.author_id).first()
+        if portfolio and portfolio.is_publicly_visible():
+            return 'https://techchang.com' + reverse('community:portfolio_view', args=[self.author_id])
+        return ''
+
+    @property
     def all_images(self):
         """레거시 단일 image + 갤러리 image를 합쳐 반환 (표시용)"""
         images = []

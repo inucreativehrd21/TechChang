@@ -4,7 +4,9 @@
   "@context": "https://schema.org",
   "@type": {% if question.is_column %}"Article"{% else %}"DiscussionForumPosting"{% endif %},
   "headline": {{ question.subject|as_json }},
+  "url": {{ canonical_url|as_json }},
   "description": {{ question.seo_description|as_json }},
+  {% if not question.is_column %}"text": {{ question.plain_text|as_json }},{% endif %}
   "inLanguage": "ko-KR",
   "datePublished": "{{ question.create_date|date:'c' }}",
   "dateModified": "{{ question.modify_date|default:question.create_date|date:'c' }}",
@@ -12,7 +14,7 @@
   {% if question.is_column %}
   "author": {"@type": "Organization", "name": "테크창 연구팀", "url": "https://techchang.com/lab/"},
   {% else %}
-  "author": {"@type": "Person", "name": {{ question.author.username|as_json }}},
+  {% with author_url=question.author_public_url %}"author": {"@type": "Person", "name": {{ question.author.username|as_json }}{% if author_url %}, "url": {{ author_url|as_json }}{% endif %}},{% endwith %}
   {% endif %}
   "publisher": {"@type": "Organization", "name": "테크창", "url": "https://techchang.com",
                 "logo": {"@type": "ImageObject", "url": "https://techchang.com/favicon.ico"}},
