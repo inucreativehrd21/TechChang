@@ -1,0 +1,109 @@
+<div class="cm{% if not user.is_authenticated %} guest{% endif %}">
+  <header class="cm-head">
+    <div>
+      <h1>칼럼 지도</h1>
+      <p>테크창 연구팀 칼럼과 연재를 주제별로 정리했습니다. 칼럼마다 핵심 키워드와 요약을 붙였고, 제목·키워드·요약으로 찾을 수 있습니다. 새 칼럼이 발행되면 자동으로 더해집니다.</p>
+      <ul class="cm-stats">
+        <li><b>{{ total }}</b>편</li>
+        {% for f in facet_cats %}{% if not q %}<li>{{ f.label }} <b>{{ f.count }}</b></li>{% endif %}{% endfor %}
+        {% if is_admin and stale %}<li class="warn">요약 갱신 대기 {{ stale }}편</li>{% endif %}
+      </ul>
+    </div>
+    <div class="cm-actions">
+      {% if user.is_authenticated %}
+      <button type="button" class="cm-btn primary" id="cm-pdf" title="인쇄 창에서 대상을 'PDF로 저장'으로 고르세요">
+        <i class="fas fa-file-pdf"></i> PDF로 저장
+      </button>
+      {% else %}
+      <a class="cm-btn ghost locked" rel="nofollow" href="{% url 'common:login' %}?next={{ request.get_full_path|urlencode }}" title="PDF 저장은 회원 전용입니다">
+        <i class="fas fa-lock"></i> PDF 저장 · 회원 전용
+      </a>
+      {% endif %}
+      {% if is_admin %}
+      <form method="post" action="{% url 'office:run_job' %}">
+        {% csrf_token %}
+        <input type="hidden" name="job" value="column_map">
+        <button type="submit" class="cm-btn ghost"><i class="fas fa-rotate"></i> 요약 갱신</button>
+      </form>
+      <a class="cm-btn ghost" href="{% url 'office:admin' %}"><i class="fas fa-people-group"></i> 연구실 관리</a>
+      {% endif %}
+    </div>
+  </header>
+
+  <form class="cm-search" method="get" action="{% url 'community:column_map' %}" role="search">
+    <label for="cm-q" class="visually-hidden">칼럼 검색</label>
+    <input id="cm-q" type="search" name="q" value="{{ q }}" maxlength="100"
+           placeholder="제목·키워드·요약에서 찾기 (예: 메타분석, Rust, 이직 예측)">
+    {% if cat %}<input type="hidden" name="cat" value="{{ cat }}">{% endif %}
+    <button type="submit" class="cm-btn primary"><i class="fas fa-magnifying-glass"></i> 검색</button>
+  </form>
+
+  <nav class="cm-tabs" aria-label="카테고리">
+    <a class="cm-tab{% if not cat %} on{% endif %}" href="{% querystring cat=None sub=None %}">전체 <span class="cm-n">{{ total_matched|default:"" }}</span></a>
+    {% for f in facet_cats %}
+    <a class="cm-tab{% if cat == f.key %} on{% endif %}" href="{% querystring cat=f.key sub=None %}">{{ f.label }} <span class="cm-n">{{ f.count }}</span></a>
+    {% endfor %}
+  </nav>
+
+  <div class="cm-layout">
+    <aside class="cm-facet" aria-label="소주제">
+      <h2>소주제{% if cat %} · {{ cat_label }}{% endif %}</h2>
+      <ul>
+        {% for name, n in facet_subs %}
+        <li><a class="{% if sub == name %}on{% endif %}" href="{% if sub == name %}{% querystring sub=None %}{% else %}{% querystring sub=name %}{% endif %}">{{ name }}<span class="cm-n">{{ n }}</span></a></li>
+        {% empty %}
+        <li class="cm-n">해당 없음</li>
+        {% endfor %}
+      </ul>
+    </aside>
+
+    <main>
+      <div class="cm-print-head">
+        <h1>테크창 칼럼 지도</h1>
+        <p>{% now "Y-m-d" %} 기준 · {{ shown }}편{% if q %} · 검색어 「{{ q }}」{% endif %}{% if cat %} · {{ cat_label }}{% endif %}{% if sub %} · {{ sub }}{% endif %} · techchang.com</p>
+      </div>
+
+      {% if searching %}
+      <div class="cm-bar">
+        <h2>{% if q %}「{{ q }}」 검색 결과{% else %}{{ sub }}{% endif %} <span class="cm-n">{{ shown }}건</span></h2>
+        <div class="cm-filters">
+          {% if cat %}<a class="cm-filter" href="{% querystring cat=None sub=None %}" title="카테고리 조건 지우기">{{ cat_label }} <i class="fas fa-xmark"></i></a>{% endif %}
+          {% if sub %}<a class="cm-filter" href="{% querystring sub=None %}" title="소주제 조건 지우기">{{ sub }} <i class="fas fa-xmark"></i></a>{% endif %}
+          {% if q %}<a class="cm-filter" href="{% querystring q=None sort=None %}" title="검색어 지우기">「{{ q }}」 <i class="fas fa-xmark"></i></a>{% endif %}
+        </div>
+        <div class="cm-sort">
+          {% for key, label in sorts.items %}{% if key != 'rel' or q %}
+          <a class="{% if sort == key %}on{% endif %}" href="{% querystring sort=key %}">{{ label }}</a>
+          {% endif %}{% endfor %}
+        </div>
+      </div>
+      <ol class="cm-list">
+        {% for e in results %}{% include 'community/_column_map_item.html' %}{% endfor %}
+      </ol>
+      {% if not results %}
+      <p class="cm-empty">찾는 칼럼이 없습니다. 낱말을 줄이거나 다른 표현으로 찾아보세요. 띄어 쓴 낱말은 모두 들어 있는 칼럼만 찾습니다.</p>
+      {% endif %}
+      {% else %}
+      {% for g in groups %}
+      <section class="cm-cat" id="cm-{{ g.key }}">
+        <header class="cm-cat-head">
+          <h2>{{ g.label }}</h2>
+          <p>{{ g.desc }} · {{ g.count }}편</p>
+        </header>
+        {% for s in g.subs %}
+        <section class="cm-sub" id="{{ s.anchor }}">
+          <h3>{{ s.name }} <span class="cm-n">{{ s.items|length }}편</span></h3>
+          <ol class="cm-list">
+            {% for e in s.items %}{% include 'community/_column_map_item.html' %}{% endfor %}
+          </ol>
+        </section>
+        {% endfor %}
+      </section>
+      {% empty %}
+      <p class="cm-empty">아직 지도에 오른 칼럼이 없습니다.</p>
+      {% endfor %}
+      {% endif %}
+    </main>
+  </div>
+  <p class="cm-print-guard">PDF 저장은 회원 전용 기능입니다. 로그인한 뒤 '칼럼 지도'에서 PDF로 저장 버튼을 눌러 주세요.</p>
+</div>

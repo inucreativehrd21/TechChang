@@ -3,6 +3,7 @@ from django.urls import path, re_path
 
 # 실시간 게임 비활성화 (나중을 위해 파일은 유지)
 # from .views import wordchain_views, tictactoe_views
+from .views import map_views
 from .views import base_views, question_views, answer_views, comment_views, profile_views, board_views, baseball_views, guestbook_views, game2048_views, minesweeper_views, portfolio_views
 
 app_name = 'community'
@@ -17,6 +18,7 @@ urlpatterns = [
 
     # 연재 칼럼(시리즈)
     path('series/', base_views.series_index, name='series_index'),
+    path('map/', map_views.column_map, name='column_map'),   # 칼럼 지도(공개)
     re_path(r'^series/(?P<slug>[-\w]+)/$', base_views.series_detail, name='series_detail'),
 
     # question_views.py

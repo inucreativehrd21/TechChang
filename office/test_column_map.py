@@ -107,43 +107,27 @@ class SignalTests(TestCase):
         spawn.assert_not_called()
 
 
-class ColumnMapViewTests(TestCase):
+class ColumnMapAdminTests(TestCase):
+    """지도 자체는 공개(community.test_column_map_public). 연구실 쪽은 옛 주소 이동과 요약 갱신만."""
+
     def setUp(self):
-        bot = User.objects.create_user(Question.BOT_USERNAME, password='x')
-        cat = Category.objects.create(name='HRD')
-        with mock.patch('office.signals.transaction.on_commit'):
-            self.q = Question.objects.create(author=bot, category=cat, subject='코칭 문화', content=BODY,
-                                             create_date=timezone.now())
-            Question.objects.create(author=bot, category=cat, subject='아직 요약 없음', content=BODY + ' 다른 글',
-                                    create_date=timezone.now())
-        D.save(self.q, reply())
-        self.url = reverse('office:column_map')
-
-    def test_admin_sees_grouped_map_with_pdf_button(self):
         User.objects.create_superuser('boss', 'b@x.com', 'x')
+
+    def test_old_admin_address_moves_to_public_map(self):
         self.client.login(username='boss', password='x')
-        r = self.client.get(self.url, HTTP_USER_AGENT='Mozilla/5.0')
-        self.assertEqual(r.status_code, 200)
-        html = r.content.decode()
-        self.assertIn('교육 효과 측정·전이', html)
-        self.assertIn('ICF Global Coaching Study', html)
-        self.assertIn('요약을 만드는 중입니다', html)                    # 요약 없는 글도 지도에 오른다
-        self.assertIn('PDF로 저장', html)
-        self.assertIn('@media print', html)
-        hrd = r.context['groups'][0]
-        self.assertEqual(hrd['count'], 2)
-        self.assertEqual(r.context['stale'], 1)
+        r = self.client.get(reverse('office:column_map'), HTTP_USER_AGENT='Mozilla/5.0')
+        self.assertRedirects(r, reverse('community:column_map'), fetch_redirect_response=False)
 
-    def test_members_cannot_open_the_map(self):
-        User.objects.create_user('member', password='x')
-        self.client.login(username='member', password='x')
-        r = self.client.get(self.url, HTTP_USER_AGENT='Mozilla/5.0')
-        self.assertEqual(r.status_code, 302)
-
-    def test_refresh_button_launches_job(self):
-        User.objects.create_superuser('boss', 'b@x.com', 'x')
+    def test_refresh_button_launches_job_and_returns_to_map(self):
         self.client.login(username='boss', password='x')
         with mock.patch('office.jobs.spawn') as spawn:
             r = self.client.post(reverse('office:run_job'), {'job': 'column_map'}, HTTP_USER_AGENT='Mozilla/5.0')
-        self.assertRedirects(r, self.url, fetch_redirect_response=False)
+        self.assertRedirects(r, reverse('community:column_map'), fetch_redirect_response=False)
         self.assertEqual(spawn.call_args.args[0], ['update_column_map'])
+
+    def test_members_cannot_launch_refresh(self):
+        User.objects.create_user('member', password='x')
+        self.client.login(username='member', password='x')
+        with mock.patch('office.jobs.spawn') as spawn:
+            self.client.post(reverse('office:run_job'), {'job': 'column_map'}, HTTP_USER_AGENT='Mozilla/5.0')
+        spawn.assert_not_called()

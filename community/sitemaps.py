@@ -21,6 +21,7 @@ class StaticViewSitemap(Sitemap):
         ('community:members_list',   0.7, 'weekly'),
         ('common:point_ranking',     0.6, 'weekly'),
         ('community:series_index',   0.8, 'weekly'),  # 연재 시리즈 목록
+        ('community:column_map',     0.8, 'weekly'),  # 칼럼 지도 — 칼럼 전체로 가는 내부링크 허브
         ('office:home',              0.6, 'daily'),   # 연구실 — 칼럼이 만들어지는 곳
         ('sitemap_page',             0.4, 'daily'),   # 사람이 보는 사이트맵 = 내부링크 허브
     ]

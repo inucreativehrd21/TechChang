@@ -1,0 +1,29 @@
+{% extends 'base_mobile.html' %}
+{% comment %}칼럼 지도(공개) — 본문은 _column_map_body.html, PC·모바일 공용. community.views.map_views{% endcomment %}
+
+{% block title %}{% if q %}「{{ q }}」 - {% endif %}칼럼 지도 - 테크창{% endblock %}
+{% block meta_description %}테크창 연구팀 칼럼 {{ total }}편을 HRD·데이터분석·프로그래밍·연재 주제별로 정리하고 키워드와 요약을 붙인 지도입니다. 제목·키워드·요약으로 검색할 수 있습니다.{% endblock %}
+{% block og_title %}칼럼 지도 - 테크창{% endblock %}
+{% block og_description %}테크창 연구팀 칼럼을 주제별로 정리하고 키워드·요약으로 찾는 지도{% endblock %}
+{% block meta_robots %}{% if q or sub %}noindex, follow{% else %}{{ seo_robots }}{% endif %}{% endblock %}
+{% block jsonld %}
+<script type="application/ld+json">
+{"@context": "https://schema.org", "@type": "CollectionPage", "name": "테크창 칼럼 지도",
+ "url": "https://techchang.com{% url 'community:column_map' %}", "inLanguage": "ko-KR",
+ "description": "테크창 연구팀 칼럼을 주제별로 정리하고 키워드와 요약을 붙인 지도",
+ "isPartOf": {"@type": "WebSite", "name": "테크창", "url": "https://techchang.com/"}}
+</script>
+{% endblock %}
+
+{% block extra_css %}{% include 'community/_column_map_style.html' %}{% endblock %}
+
+{% block content %}{% include 'community/_column_map_body.html' %}{% endblock %}
+
+{% block script %}
+<script nonce="{{ csp_nonce }}">
+(function () {
+  var b = document.getElementById('cm-pdf');
+  if (b) b.addEventListener('click', function () { window.print(); });
+})();
+</script>
+{% endblock %}

@@ -1,0 +1,14 @@
+<li class="cm-item">
+  <a class="cm-title" href="{% url 'community:detail' question_id=e.q.id %}" data-path="{% url 'community:detail' question_id=e.q.id %}">{% if e.title_html %}{{ e.title_html }}{% else %}{{ e.q.subject }}{% endif %}</a>{% if is_admin and e.stale %}<span class="cm-flag" title="요약이 없거나 본문이 바뀌어 다시 만드는 중입니다">갱신 대기</span>{% endif %}
+  <div class="cm-path">
+    <a href="{% url 'community:column_map' %}?cat={{ e.cat }}">{{ e.cat_label }}</a> ›
+    <a href="{% url 'community:column_map' %}?cat={{ e.cat }}&amp;sub={{ e.sub|urlencode }}">{{ e.sub }}</a>
+    · {{ e.q.create_date|date:"Y-m-d" }} · 조회 {{ e.q.view_count }}
+  </div>
+  {% if e.summary %}<p class="cm-sum">{% if e.summary_html %}{{ e.summary_html }}{% else %}{{ e.summary }}{% endif %}</p>{% endif %}
+  {% if e.keywords %}
+  <div class="cm-kws">
+    {% for k in e.keywords %}<a class="cm-kw" href="{% url 'community:column_map' %}?q={{ k|urlencode }}">{{ k }}</a>{% endfor %}
+  </div>
+  {% endif %}
+</li>

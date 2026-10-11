@@ -437,7 +437,7 @@ def run_job(request):
         from .jobs import spawn
         spawn(['update_column_map'], by=request.user.username, env={'CLAUDE_CLI_FALLBACK': 'false'})
         messages.success(request, '칼럼 지도 갱신을 시작했습니다. 요약이 없거나 바뀐 칼럼만 다시 만들고, 몇 분 뒤 새로고침하면 반영됩니다.')
-        return redirect('office:column_map')
+        return redirect('community:column_map')
     else:
         messages.error(request, '알 수 없는 작업입니다.')
         return redirect('office:admin')
@@ -448,50 +448,8 @@ def run_job(request):
 
 
 # ───────────────────────────── 칼럼 지도
-COLUMN_MAP_CATS = [
-    ('hrd', 'HRD', '교육·인재개발 담당자를 위한 학습 설계, 리더십, 인재관리'),
-    ('data', '데이터분석', 'HR·조직 데이터를 다루는 방법론, 인프라, AI'),
-    ('coding', '프로그래밍', '개발 도구, 언어, 인프라, AI 코딩의 현재'),
-    ('series', '연재', '회차를 이어 가며 직접 만들어 보는 시리즈'),
-]
-PENDING_LABEL = '요약 준비 중'
-
-
 @admin_required
 def column_map(request):
-    """칼럼 지도 — 연구팀 칼럼을 카테고리 → 소주제로 나누고 키워드·요약을 붙인 관리자 페이지(office.digest).
-    칼럼이 저장되면 office.signals 가 요약을 다시 만든다. 인쇄 화면이 PDF 저장용이다."""
-    from collections import OrderedDict
-    from . import digest as D
-    from .models import ColumnDigest
-
-    digests = {d.question_id: d for d in ColumnDigest.objects.all()}
-    cats = OrderedDict((k, {'key': k, 'label': label, 'desc': desc, 'subs': OrderedDict(), 'count': 0})
-                       for k, label, desc in COLUMN_MAP_CATS)
-    stale = 0
-    for q in D.columns().order_by('-create_date'):
-        cat = cats.get(D.category_key(q))
-        if cat is None:
-            continue
-        dg = digests.get(q.pk)
-        is_stale = dg is None or dg.content_hash != D.content_hash(q)
-        stale += is_stale
-        sub = dg.subtopic if dg else (q.series.title if q.series_id else PENDING_LABEL)
-        cat['subs'].setdefault(sub, []).append({'q': q, 'digest': dg, 'stale': is_stale})
-        cat['count'] += 1
-    groups = []
-    for cat in cats.values():
-        subs = []
-        for name, items in cat['subs'].items():
-            if cat['key'] == 'series':
-                items.sort(key=lambda it: it['q'].episode_number or 0)
-            subs.append({'name': name, 'items': items})
-        if cat['key'] != 'series':
-            subs.sort(key=lambda s: (s['name'] == PENDING_LABEL, -len(s['items']), s['name']))
-        for i, sub in enumerate(subs):
-            sub['anchor'] = f"{cat['key']}-{i}"
-        groups.append({**cat, 'subs': subs})
-    total = sum(g['count'] for g in groups)
-    return render(request, 'office/column_map.html', {
-        'groups': groups, 'total': total, 'stale': stale, 'today': timezone.localdate(),
-    })
+    """예전 관리자 전용 주소 — 칼럼 지도는 공개 페이지(community:column_map)로 옮겼다. 요약 갱신·연구실 관리
+    버튼은 그 페이지에서 관리자에게만 보인다."""
+    return redirect('community:column_map')
