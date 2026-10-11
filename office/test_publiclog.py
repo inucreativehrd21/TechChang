@@ -204,3 +204,33 @@ class PolishTests(TestCase):
             polish(self.ROWS)
         self.assertNotIn('운영자', captured['prompt'])
         self.assertIn('1on1의 역설', captured['prompt'])
+
+
+class RemakeVsPublishTests(TestCase):
+    """리메이크(같은 주소에서 고쳐 씀)는 '발행'으로 보이면 안 된다 — #89 를 새 글로 오해했다(2026-10-11)."""
+
+    def test_remake_reads_as_update_with_its_own_label(self):
+        from office.publiclog import public_label
+        wl = log(agent='editor', text='리메이크 반영(제자리 갱신): 코칭 문화 투자, 시장 성장이 증명하는 것과 아닌 것 (id=89, 81점)')
+        line = public_line(wl)
+        self.assertIn('기존 칼럼을 새 기준으로 다시 다듬었습니다', line)
+        self.assertIn('코칭 문화 투자', line)
+        self.assertNotIn('발행', line)
+        self.assertNotIn('81점', line)
+        self.assertEqual(public_label('publish', wl), '갱신')
+
+    def test_new_publish_still_reads_as_publish(self):
+        wl = log(text='발행: 새 칼럼 (id=120, 84점)')
+        self.assertIn('칼럼을 발행했습니다', public_line(wl))
+
+    def test_lab_feed_links_publish_and_remake_to_the_post(self):
+        from django.contrib.auth.models import User
+        from django.utils import timezone
+        from community.models import Category, Question
+        bot = User.objects.create_user(Question.BOT_USERNAME, password='x')
+        with patch('office.signals.transaction.on_commit'):
+            q = Question.objects.create(author=bot, category=Category.objects.create(name='HRD'), subject='코칭',
+                                        content='본문', create_date=timezone.now())
+        log(agent='editor', text=f'리메이크 반영(제자리 갱신): 코칭 문화 투자 칼럼 (id={q.id}, 81점)')
+        html = self.client.get('/lab/', HTTP_USER_AGENT='Mozilla/5.0 (Windows NT 10.0) Chrome/130').content.decode()
+        self.assertIn(f'<a href="/{q.id}/">기존 칼럼을 새 기준으로 다시 다듬었습니다', html)

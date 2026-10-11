@@ -38,6 +38,11 @@ PUBLIC_ACTIONS = {
     'hold':     ('보완', '기준에 못 미쳐 보완 중입니다{title}.'),
     'publish':  ('발행', '칼럼을 발행했습니다{title}.'),
 }
+# 리메이크(발행된 글을 같은 주소에서 고쳐 씀)는 새 발행이 아니다. 예전엔 둘 다 '발행했습니다'로 나가
+# 독자가 홈에서 새 글을 찾다 못 찾았다(#89, 2026-10-11) — 라벨과 문장을 따로 둔다.
+REMAKE = ('갱신', '기존 칼럼을 새 기준으로 다시 다듬었습니다{title}.')
+_REMAKE_MARK = re.compile(r'리메이크|제자리 갱신')
+_POST_ID = re.compile(r'\bid=(\d+)')
 
 # 심사 결과는 결론만 — 점수와 반려 사유는 내부 정보다
 QA_VERDICT = (
@@ -68,6 +73,21 @@ def _title_of(log) -> str:
     return ''
 
 
+def is_remake(log) -> bool:
+    return log.action == 'publish' and bool(_REMAKE_MARK.search(log.text or ''))
+
+
+def post_id(log):
+    """발행·갱신 기록이 가리키는 글 번호(없으면 None) — 공개 피드에서 그 글로 링크한다."""
+    if log.action != 'publish':
+        return None
+    m = _POST_ID.search(log.text or '')
+    if m:
+        return int(m.group(1))
+    draft = getattr(log, 'draft', None)
+    return getattr(draft, 'question_id', None) if draft is not None else None
+
+
 def public_line(log) -> str:
     """공개용 한 문장. 내보내면 안 되는 로그는 None."""
     if log.action in PRIVATE_ACTIONS or log.action not in PUBLIC_ACTIONS:
@@ -85,10 +105,13 @@ def public_line(log) -> str:
 
     title = _title_of(log)
     label = f' — {title}' if title else ''
-    return PUBLIC_ACTIONS[log.action][1].format(title=label)
+    template = REMAKE[1] if is_remake(log) else PUBLIC_ACTIONS[log.action][1]
+    return template.format(title=label)
 
 
-def public_label(action: str) -> str:
+def public_label(action: str, log=None) -> str:
+    if log is not None and is_remake(log):
+        return REMAKE[0]
     return PUBLIC_ACTIONS.get(action, ('활동', ''))[0]
 
 
@@ -112,7 +135,7 @@ def public_logs(qs, limit: int = 20) -> list:
         if key in seen:
             continue
         seen.add(key)
-        out.append((log, public_label(log.action), line))
+        out.append((log, public_label(log.action, log), line))
         if len(out) >= limit:
             break
     return out

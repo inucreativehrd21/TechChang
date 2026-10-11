@@ -132,7 +132,7 @@
             <li>
               <span class="tc-lb-avatar" style="--who: {{ l.agent_color }};" aria-hidden="true">{{ l.agent_name|first }}</span>
               <div class="tc-lb-feed-text">
-                <b>{{ l.agent_name }}</b><span class="tc-lb-tag">{{ l.label }}</span>{{ l.text }}
+                <b>{{ l.agent_name }}</b><span class="tc-lb-tag">{{ l.label }}</span>{% if l.url %}<a href="{{ l.url }}">{{ l.text }}</a>{% else %}{{ l.text }}{% endif %}
                 <time datetime="{{ l.created_at|date:'c' }}">{{ l.created_at|date:"m.d H:i" }}</time>
               </div>
             </li>

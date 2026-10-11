@@ -11,6 +11,7 @@ from django.conf import settings
 from django.contrib import messages
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 
@@ -18,7 +19,7 @@ from common.views import admin_required
 from . import github
 from .agents import AGENTS, MEETING_ORDER, public_roster, public_roster_groups
 from .models import ColumnDraft, Decision, Meeting, Task, WorkLog
-from .publiclog import public_line, public_logs
+from .publiclog import post_id, public_line, public_logs
 
 TOPIC_LABEL = {'hrd': 'HRD', 'data': '데이터분석', 'coding': '프로그래밍'}
 
@@ -56,8 +57,10 @@ def _public_log_rows(limit: int = 20) -> list:
         a = AGENTS.get(log.agent)
         if not a:
             continue
+        pid = post_id(log)
         rows.append({'agent': log.agent, 'agent_name': a['name'], 'agent_color': a['sprite']['shirt'],
-                     'action': log.action, 'label': label, 'text': line, 'created_at': log.created_at})
+                     'action': log.action, 'label': label, 'text': line, 'created_at': log.created_at,
+                     'url': reverse('community:detail', args=[pid]) if pid else ''})
     return rows
 
 
