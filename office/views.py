@@ -470,26 +470,21 @@ def newsletter_detail(request, slug):
     issue = get_object_or_404(Newsletter, slug=slug, status=Newsletter.STATUS_PUBLISHED)
     newer = Newsletter.objects.filter(status=Newsletter.STATUS_PUBLISHED, issue_no__gt=issue.issue_no).order_by('issue_no').first()
     older = Newsletter.objects.filter(status=Newsletter.STATUS_PUBLISHED, issue_no__lt=issue.issue_no).order_by('-issue_no').first()
-    facts, copy = (issue.data or {}).get('facts', {}), (issue.data or {}).get('copy', {})
-    takes, whys = copy.get('takeaways') or {}, copy.get('whys') or {}
-    making = {s.get('id'): s for s in facts.get('making') or []}
-    published = [{**p, 'takeaway': takes.get(str(p.get('id')), ''), 'why': whys.get(str(p.get('id')), ''),
-                  'origin': (making.get(p.get('id')) or {}).get('origin', {}).get('from', '')}
-                 for p in facts.get('published', [])]
-    hero, h = None, copy.get('hero') or {}
-    hs = making.get(facts.get('hero_id'))
-    if hs and h:
-        hero = {**h, 'title': hs.get('title'), 'working': hs.get('working_title') if hs.get('working_title') != hs.get('title') else '',
-                'scores': hs.get('scores') or [], 'author': AGENTS.get(hs.get('author_key'), {}).get('name', '')}
-    card_alts = ['표지 — 이번 주 연구실 한 줄과 연구원 8명', '이 주제, 왜? — 이번 주 새 글과 주제를 고른 이유',
-                 '제작 일지 — 가장 고생한 글의 심사 점수와 사건들' if hero else '연구실 비하인드 — 연구원의 한마디와 제작 기록',
-                 '숫자로 본 한 주 — 운영·방문·칼럼 수와 최근 7일 방문', '다음 관측 — 다음 주 일정']
+    data = issue.data or {}
+    facts, copy = data.get('facts', {}), data.get('copy', {})
+    cp = copy.get('picks') or {}
+    picks = [{**p, **(cp.get(str(p.get('id'))) or {}), 'author': AGENTS.get(p.get('author_key'), {}).get('name', '')}
+             for p in facts.get('picks') or []]
+    chat = [{'name': AGENTS.get(c.get('agent'), {}).get('name', ''), 'line': c.get('line', '')}
+            for c in copy.get('chat') or [] if isinstance(c, dict) and c.get('agent') in AGENTS]
+    pick_ids = {p.get('id') for p in picks}
+    others = [p for p in facts.get('published', []) if p.get('id') not in pick_ids]
+    alts = data.get('alts') or []
     return render(request, 'newsletter/detail.html', {
-        'issue': issue, 'facts': facts, 'published': published, 'newer': newer, 'older': older,
-        'hero': hero, 'scene': copy.get('scene', ''),
-        'remade': sum(1 for p in published if p.get('remake')),
-        'new_count': sum(1 for p in published if not p.get('remake')),
-        'cards': list(zip(issue.cards, card_alts)),
+        'issue': issue, 'facts': facts, 'newer': newer, 'older': older, 'picks': picks, 'chat': chat,
+        'meeting_date': (facts.get('meeting') or {}).get('date', ''), 'others': others,
+        'remade': sum(1 for p in others if p.get('remake')), 'other_new': sum(1 for p in others if not p.get('remake')),
+        'cards': [(u, alts[i] if i < len(alts) else f'{i + 1}번째 카드') for i, u in enumerate(issue.cards)],
         'og_abs': request.build_absolute_uri(issue.og_image) if issue.og_image else '',
     })
 

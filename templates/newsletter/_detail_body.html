@@ -1,9 +1,8 @@
 <article class="nl">
   <div class="nl-eyebrow">연구실 위클리 · No.{{ issue.issue_no }}</div>
   <h1>{{ issue.title }}</h1>
-  <div class="nl-meta">{{ issue.week_start|date:"Y.m.d" }} – {{ issue.week_end|date:"m.d" }} · 매주 금요일 · AI 연구원 8명의 한 주</div>
+  <div class="nl-meta">{{ issue.week_start|date:"Y.m.d" }} – {{ issue.week_end|date:"m.d" }} · 매주 금요일 · AI 연구원 8명이 고른 이번 주 읽을거리</div>
   {% if issue.intro %}<p class="nl-intro">{{ issue.intro }}</p>{% endif %}
-  {% if scene %}<p class="nl-scene"><b>회의실에서</b>{{ scene }}</p>{% endif %}
 
   <div class="nl-carousel">
     <div class="nl-track" id="nl-track" tabindex="0" aria-label="카드뉴스 {{ cards|length }}장">
@@ -18,50 +17,46 @@
     </div>
   </div>
 
-  <section class="nl-sec" aria-labelledby="nl-pub">
-    <h2 id="nl-pub">이번 주 새 글 {{ new_count }}편</h2>
-    {% if published %}
-    <ul class="nl-pub">
-      {% for p in published %}{% if not p.remake %}
-      <li><span class="nl-chip">{{ p.cat }}</span><a href="{{ p.url }}">{{ p.title }}</a>{% if p.why %}<p><b class="nl-why">왜?</b>{{ p.why }}</p>{% elif p.takeaway %}<p>{{ p.takeaway }}</p>{% endif %}{% if p.origin %}<small class="nl-origin">{{ p.origin }}</small>{% endif %}</li>
-      {% endif %}{% endfor %}
+  {% if chat %}
+  <section class="nl-sec" aria-labelledby="nl-meet">
+    <h2 id="nl-meet">회의실에서{% if meeting_date %} <small>{{ meeting_date }} 편집회의</small>{% endif %}</h2>
+    <ul class="nl-chat">
+      {% for c in chat %}<li><b>{{ c.name }}</b><span>{{ c.line }}</span></li>{% endfor %}
     </ul>
-    {% if remade %}
-    <details class="nl-more">
-      <summary>다시 다듬어 갱신한 글 {{ remade }}편</summary>
-      <ul class="nl-pub">
-        {% for p in published %}{% if p.remake %}
-        <li><span class="nl-chip">{{ p.cat }}</span><a href="{{ p.url }}">{{ p.title }}</a>{% if p.why %}<p><b class="nl-why">왜?</b>{{ p.why }}</p>{% elif p.takeaway %}<p>{{ p.takeaway }}</p>{% endif %}{% if p.origin %}<small class="nl-origin">{{ p.origin }}</small>{% endif %}</li>
-        {% endif %}{% endfor %}
-      </ul>
-    </details>
-    {% endif %}
-    {% else %}<p class="nl-empty">이번 주에는 새로 발행된 글이 없습니다.</p>{% endif %}
-  </section>
-
-  {% if hero %}
-  <section class="nl-sec" aria-labelledby="nl-hero">
-    <h2 id="nl-hero">제작 일지 — {{ hero.headline }}</h2>
-    <div class="nl-hero">
-      {% if hero.working %}<p><span class="nl-tag">가제</span><s>{{ hero.working }}</s></p>{% endif %}
-      <p><span class="nl-tag on">최종</span><b>{{ hero.title }}</b></p>
-      {% if hero.scores|length > 1 %}<p class="nl-scores"><span class="nl-tag">심사</span>{% for v in hero.scores %}<b{% if v >= 80 %} class="ok"{% endif %}>{{ v }}</b>{% if not forloop.last %} → {% endif %}{% endfor %}<small> (통과선 80)</small></p>{% endif %}
-      <ol>{% for e in hero.events %}<li>{{ e }}</li>{% endfor %}</ol>
-      {% if hero.line %}<blockquote>“{{ hero.line }}” <cite>— {{ hero.author }}</cite></blockquote>{% endif %}
-    </div>
   </section>
   {% endif %}
 
-  <section class="nl-sec" aria-labelledby="nl-ledger">
-    <h2 id="nl-ledger">연구실 기록</h2>
-    <dl class="nl-rows">
-      {% for r in facts.ledger %}<div><dt>{{ r.label }}</dt><dd>{{ r.value }} {{ r.unit }}</dd></div>{% endfor %}
-      {% for n in facts.numbers %}<div><dt>{{ n.label }}</dt><dd>{{ n.value }}{{ n.unit }}</dd></div>{% endfor %}
-    </dl>
+  {% if picks %}
+  <section class="nl-sec" aria-labelledby="nl-picks">
+    <h2 id="nl-picks">이번 주 추천</h2>
+    {% for p in picks %}
+    <div class="nl-pick">
+      <span class="nl-chip">{{ p.cat }}</span>
+      {% if p.hook %}<h3>{{ p.hook }}</h3>{% endif %}
+      <a href="{{ p.url }}">「{{ p.title }}」 읽으러 가기 →</a>
+      {% if p.why_now %}<p class="nl-now"><b>지금 읽을 이유</b>{{ p.why_now }}</p>{% endif %}
+      {% if p.points %}<ol>{% for x in p.points %}<li>{{ x }}</li>{% endfor %}</ol>{% endif %}
+      {% if p.for_whom %}<p class="nl-whom"><b>이런 분께</b>{{ p.for_whom }}</p>{% endif %}
+      <small class="nl-origin">{% if p.origin.from %}{{ p.origin.from }} · {% endif %}{{ p.author }} 집필 · {{ p.date }}</small>
+    </div>
+    {% endfor %}
   </section>
+  {% endif %}
+
+  {% if others %}
+  <section class="nl-sec" aria-labelledby="nl-others">
+    <h2 id="nl-others">이번 주에 함께 나온 글</h2>
+    <details class="nl-more">
+      <summary>{% if remade %}다시 다듬어 갱신한 글 {{ remade }}편{% endif %}{% if remade and other_new %} · {% endif %}{% if other_new %}새 글 {{ other_new }}편{% endif %}</summary>
+      <ul class="nl-pub">
+        {% for p in others %}<li><span class="nl-chip">{{ p.cat }}</span><a href="{{ p.url }}">{{ p.title }}</a></li>{% endfor %}
+      </ul>
+    </details>
+  </section>
+  {% endif %}
 
   <section class="nl-sec" aria-labelledby="nl-next-h">
-    <h2 id="nl-next-h">다음 관측</h2>
+    <h2 id="nl-next-h">다음 주 예고</h2>
     <dl class="nl-rows">
       {% for s in facts.next %}<div><dt>{{ s.day }} · {{ s.what }}</dt><dd>{{ s.note }}</dd></div>{% endfor %}
     </dl>
