@@ -22,7 +22,7 @@
     {% if published %}
     <ul class="nl-pub">
       {% for p in published %}{% if not p.remake %}
-      <li><span class="nl-chip">{{ p.cat }}</span><a href="{{ p.url }}">{{ p.title }}</a>{% if p.takeaway %}<p>{{ p.takeaway }}</p>{% endif %}</li>
+      <li><span class="nl-chip">{{ p.cat }}</span><a href="{{ p.url }}">{{ p.title }}</a>{% if p.why %}<p><b class="nl-why">왜?</b>{{ p.why }}</p>{% elif p.takeaway %}<p>{{ p.takeaway }}</p>{% endif %}{% if p.origin %}<small class="nl-origin">{{ p.origin }}</small>{% endif %}</li>
       {% endif %}{% endfor %}
     </ul>
     {% if remade %}
@@ -30,13 +30,26 @@
       <summary>다시 다듬어 갱신한 글 {{ remade }}편</summary>
       <ul class="nl-pub">
         {% for p in published %}{% if p.remake %}
-        <li><span class="nl-chip">{{ p.cat }}</span><a href="{{ p.url }}">{{ p.title }}</a>{% if p.takeaway %}<p>{{ p.takeaway }}</p>{% endif %}</li>
+        <li><span class="nl-chip">{{ p.cat }}</span><a href="{{ p.url }}">{{ p.title }}</a>{% if p.why %}<p><b class="nl-why">왜?</b>{{ p.why }}</p>{% elif p.takeaway %}<p>{{ p.takeaway }}</p>{% endif %}{% if p.origin %}<small class="nl-origin">{{ p.origin }}</small>{% endif %}</li>
         {% endif %}{% endfor %}
       </ul>
     </details>
     {% endif %}
     {% else %}<p class="nl-empty">이번 주에는 새로 발행된 글이 없습니다.</p>{% endif %}
   </section>
+
+  {% if hero %}
+  <section class="nl-sec" aria-labelledby="nl-hero">
+    <h2 id="nl-hero">제작 일지 — {{ hero.headline }}</h2>
+    <div class="nl-hero">
+      {% if hero.working %}<p><span class="nl-tag">가제</span><s>{{ hero.working }}</s></p>{% endif %}
+      <p><span class="nl-tag on">최종</span><b>{{ hero.title }}</b></p>
+      {% if hero.scores|length > 1 %}<p class="nl-scores"><span class="nl-tag">심사</span>{% for v in hero.scores %}<b{% if v >= 80 %} class="ok"{% endif %}>{{ v }}</b>{% if not forloop.last %} → {% endif %}{% endfor %}<small> (통과선 80)</small></p>{% endif %}
+      <ol>{% for e in hero.events %}<li>{{ e }}</li>{% endfor %}</ol>
+      {% if hero.line %}<blockquote>“{{ hero.line }}” <cite>— {{ hero.author }}</cite></blockquote>{% endif %}
+    </div>
+  </section>
+  {% endif %}
 
   <section class="nl-sec" aria-labelledby="nl-ledger">
     <h2 id="nl-ledger">연구실 기록</h2>

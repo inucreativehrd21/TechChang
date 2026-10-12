@@ -68,7 +68,42 @@ office.newsletter 가 내용(nl)을 채우고 Playwright 가 #card-1~5(1080×135
   .item .meta { margin-top: 8px; font-size: 19px; color: var(--ink-3); font-variant-numeric: tabular-nums; }
   .empty-note { margin-top: 40px; font-size: 32px; font-weight: 300; color: var(--ink-2); line-height: 1.6; }
 
-  /* 3 · 연구실 비하인드 */
+  .tally { margin-top: 34px; display: flex; flex-wrap: wrap; gap: 6px 28px; font-size: 34px; font-weight: 700; letter-spacing: -.02em; }
+  .tally b { font-size: 76px; font-weight: 200; color: var(--indigo); letter-spacing: -.04em; margin-right: 6px; font-variant-numeric: tabular-nums; }
+  .item p.why { font-weight: 400; color: var(--ink); max-height: 72px; }
+  .item p.why b { display: inline-block; margin-right: 10px; font-size: 19px; font-weight: 800; color: #fff; background: var(--indigo);
+    padding: 1px 9px; border-radius: 4px; vertical-align: 3px; }
+
+  /* 3 · 제작 일지 */
+  .hero-head { margin-top: 30px; font-size: 66px; line-height: 1.18; font-weight: 800; letter-spacing: -.035em; max-height: 162px; padding-bottom: 4px; text-wrap: balance; }
+  .titles { margin-top: 22px; display: grid; gap: 6px; }
+  .titles div { display: grid; grid-template-columns: 70px 1fr; gap: 14px; align-items: baseline; font-size: 25px; line-height: 1.4; }
+  .titles span { font-size: 17px; font-weight: 700; letter-spacing: .08em; color: var(--ink-3); border: 1.5px solid var(--rule); text-align: center; padding: 1px 0; }
+  .t-old s { color: var(--ink-3); text-decoration-thickness: 2px; text-decoration-color: #E0484E; }
+  .t-new span { color: var(--indigo); border-color: var(--indigo); }
+  .t-new b { font-weight: 700; }
+  .journey { margin-top: 30px; }
+  .j-cap { display: flex; justify-content: space-between; font-size: 20px; color: var(--ink-3); }
+  .j-cap b { color: var(--indigo); font-weight: 700; }
+  .j-plot { position: relative; margin-top: 40px; height: 200px; display: flex; gap: 14px; align-items: flex-end; border-bottom: 2px solid var(--ink); }
+  .j-line { position: absolute; left: 0; right: 0; height: 0; border-top: 2px dashed var(--indigo); z-index: 0; }
+  .j-bar { position: relative; flex: 1; z-index: 1; background: repeating-linear-gradient(0deg, #C9C6D6 0 11px, transparent 11px 13px); }
+  .j-bar.ok { background: repeating-linear-gradient(0deg, var(--indigo) 0 11px, transparent 11px 13px); }
+  .j-bar i { position: absolute; top: -32px; left: 0; right: 0; text-align: center; font-style: normal; font-size: 21px; font-weight: 700;
+    color: var(--ink-2); font-variant-numeric: tabular-nums; }
+  .j-bar.ok i { color: var(--indigo); }
+  .events { list-style: none; margin-top: 30px; border-top: 2px solid var(--ink); }
+  .events li { display: grid; grid-template-columns: 56px 1fr; gap: 12px; align-items: baseline; padding: 14px 0; border-bottom: 1.5px solid var(--rule); }
+  .events span { font-size: 19px; font-weight: 700; color: var(--indigo); letter-spacing: .1em; font-variant-numeric: tabular-nums; }
+  .events p { font-size: 27px; line-height: 1.45; font-weight: 500; max-height: 80px; }
+  .mini { margin-top: 26px; display: grid; grid-template-columns: 96px 1fr; gap: 34px; align-items: end; }
+  .mini img { width: 80px; height: 160px; justify-self: center; }
+  .mini .quote { padding: 22px 28px; box-shadow: 8px 8px 0 var(--indigo); }
+  .mini .quote::before { bottom: 34px; }
+  .mini .quote .who { font-size: 18px; }
+  .mini .quote .line { margin-top: 6px; font-size: 30px; line-height: 1.4; max-height: 84px; }
+
+  /* 3 · 연구실 비하인드(제작 일지가 없을 때) */
   .behind { margin-top: 40px; display: grid; grid-template-columns: 220px 1fr; gap: 44px; align-items: end; }
   .behind img { width: 160px; height: 320px; justify-self: center; }
   .quote { position: relative; background: #fff; border: 2px solid var(--ink); padding: 34px 38px; box-shadow: 10px 10px 0 var(--indigo); }
@@ -140,43 +175,64 @@ office.newsletter 가 내용(nl)을 채우고 Playwright 가 #card-1~5(1080×135
   </div>
 </section>
 
-<!-- 2 · 이번 주 발행 -->
+<!-- 2 · 이 주제, 왜? -->
 <section class="card" id="card-2">
   <div class="frame">
     <div class="top"><b>TECHCHANG LAB WEEKLY</b><span>No.{{ nl.no_pad }} · {{ nl.week_code }} · 02/05</span></div>
-    <div class="kicker">이번 주 발행</div>
-    {% if nl.count_new %}
-    <div class="count-row"><span class="big">{{ nl.count_new }}</span><span class="lbl">편의 새 글이<br>심사를 통과했습니다<small>{% if nl.count_remade %}다시 다듬은 글 {{ nl.count_remade }}편 · {% endif %}편집 심사 80점 기준</small></span></div>
-    {% elif nl.count_remade %}
-    <div class="count-row"><span class="big">{{ nl.count_remade }}</span><span class="lbl">편의 글을<br>다시 다듬었습니다<small>갱신본도 편집 심사 80점 기준</small></span></div>
-    {% else %}
-    <div class="count-row"><span class="big">0</span><span class="lbl">편 — 이번 주는<br>원고를 다듬었습니다<small>다음 관측은 5번째 카드에</small></span></div>
-    {% endif %}
-    {% if nl.published %}
+    <div class="kicker">이 주제, 왜?</div>
+    <div class="tally"><span><b>{{ nl.count_new }}</b>편 새로 썼고</span>{% if nl.count_remade %}<span><b>{{ nl.count_remade }}</b>편 다시 다듬었어요</span>{% endif %}</div>
+    {% if nl.stories %}
     <div class="items">
-      {% for c in nl.published|slice:":3" %}
+      {% for c in nl.stories %}
       <div class="item">
         <img class="pix" src="{{ c.sprite }}" alt="">
         <div>
           <span class="chip">{{ c.cat }}</span>
           <h3 class="fit" data-fit="pub-title-{{ forloop.counter }}">{{ c.title }}</h3>
-          <p class="fit" data-fit="pub-take-{{ forloop.counter }}">{{ c.takeaway }}</p>
-          <div class="meta">{{ c.author }} 집필{% if c.score %} · 심사 {{ c.score }}점{% endif %} · {{ c.date }}</div>
+          <p class="why fit" data-fit="why-{{ forloop.counter }}"><b>왜?</b>{{ c.why }}</p>
+          <div class="meta">{{ c.origin }} · {{ c.author }} 집필{% if c.score %} · {{ c.score }}점 통과{% endif %}</div>
         </div>
       </div>
       {% endfor %}
     </div>
     {% else %}
-    <p class="empty-note">이번 주에는 새로 발행된 글이 없습니다. 대신 연구실이 어떤 원고를 붙잡고 있었는지 다음 장에 적었습니다.</p>
+    <p class="empty-note">이번 주에는 새로 발행된 글이 없어요. 대신 연구실이 어떤 원고를 붙잡고 있었는지 다음 장에 적었어요.</p>
     {% endif %}
     <div class="bottom"><span>techchang.com/map</span><span>{{ nl.week_code }} — 02</span></div>
   </div>
 </section>
 
-<!-- 3 · 연구실 비하인드 -->
+<!-- 3 · 제작 일지 -->
 <section class="card" id="card-3">
   <div class="frame">
     <div class="top"><b>TECHCHANG LAB WEEKLY</b><span>No.{{ nl.no_pad }} · {{ nl.week_code }} · 03/05</span></div>
+    {% if nl.hero %}
+    <div class="kicker">제작 일지</div>
+    <h2 class="hero-head fit" data-fit="hero-head">{{ nl.hero.headline }}</h2>
+    <div class="titles">
+      {% if nl.hero.working %}<div class="t-old"><span>가제</span><s>{{ nl.hero.working }}</s></div>{% endif %}
+      <div class="t-new"><span>최종</span><b>{{ nl.hero.title }}</b></div>
+    </div>
+    {% if nl.hero.bars|length > 1 %}
+    <div class="journey">
+      <div class="j-cap"><span>편집 심사 점수 · {{ nl.hero.rounds }}회</span><b>통과선 80</b></div>
+      <div class="j-plot">
+        <div class="j-line" style="bottom:{{ nl.hero.pass_pct }}%"></div>
+        {% for b in nl.hero.bars %}<div class="j-bar{% if b.pass %} ok{% endif %}" style="height:{{ b.pct }}%"><i>{{ b.v }}</i></div>{% endfor %}
+      </div>
+    </div>
+    {% endif %}
+    <ol class="events">
+      {% for e in nl.hero.events %}<li><span>{{ forloop.counter|stringformat:"02d" }}</span><p class="fit" data-fit="hero-ev-{{ forloop.counter }}">{{ e }}</p></li>{% endfor %}
+    </ol>
+    <div class="mini">
+      <img class="pix" src="{{ nl.hero.sprite }}" alt="">
+      <div class="quote">
+        <div class="who">{{ nl.hero.name }} · {{ nl.hero.role }}</div>
+        <p class="line fit" data-fit="hero-line">{{ nl.hero.line }}</p>
+      </div>
+    </div>
+    {% else %}
     <div class="kicker">연구실 비하인드</div>
     <div class="behind">
       <img class="pix" src="{{ nl.behind.sprite }}" alt="">
@@ -190,6 +246,7 @@ office.newsletter 가 내용(nl)을 채우고 Playwright 가 #card-1~5(1080×135
       <div class="row"><span class="k fit" data-fit="ledger-{{ forloop.counter }}">{{ r.label }}</span><span class="v">{{ r.value }}<small>{{ r.unit }}</small></span></div>
       {% endfor %}
     </div>
+    {% endif %}
     <div class="bottom"><span>techchang.com/lab</span><span>{{ nl.week_code }} — 03</span></div>
   </div>
 </section>

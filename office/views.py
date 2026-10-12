@@ -471,12 +471,22 @@ def newsletter_detail(request, slug):
     newer = Newsletter.objects.filter(status=Newsletter.STATUS_PUBLISHED, issue_no__gt=issue.issue_no).order_by('issue_no').first()
     older = Newsletter.objects.filter(status=Newsletter.STATUS_PUBLISHED, issue_no__lt=issue.issue_no).order_by('-issue_no').first()
     facts, copy = (issue.data or {}).get('facts', {}), (issue.data or {}).get('copy', {})
-    takes = copy.get('takeaways') or {}
-    published = [{**p, 'takeaway': takes.get(str(p.get('id')), '')} for p in facts.get('published', [])]
-    card_alts = ['표지 — 이번 주 연구실 한 줄과 연구원 8명', '이번 주 발행 글', '연구실 비하인드 — 연구원의 한마디와 제작 기록',
+    takes, whys = copy.get('takeaways') or {}, copy.get('whys') or {}
+    making = {s.get('id'): s for s in facts.get('making') or []}
+    published = [{**p, 'takeaway': takes.get(str(p.get('id')), ''), 'why': whys.get(str(p.get('id')), ''),
+                  'origin': (making.get(p.get('id')) or {}).get('origin', {}).get('from', '')}
+                 for p in facts.get('published', [])]
+    hero, h = None, copy.get('hero') or {}
+    hs = making.get(facts.get('hero_id'))
+    if hs and h:
+        hero = {**h, 'title': hs.get('title'), 'working': hs.get('working_title') if hs.get('working_title') != hs.get('title') else '',
+                'scores': hs.get('scores') or [], 'author': AGENTS.get(hs.get('author_key'), {}).get('name', '')}
+    card_alts = ['표지 — 이번 주 연구실 한 줄과 연구원 8명', '이 주제, 왜? — 이번 주 새 글과 주제를 고른 이유',
+                 '제작 일지 — 가장 고생한 글의 심사 점수와 사건들' if hero else '연구실 비하인드 — 연구원의 한마디와 제작 기록',
                  '숫자로 본 한 주 — 운영·방문·칼럼 수와 최근 7일 방문', '다음 관측 — 다음 주 일정']
     return render(request, 'newsletter/detail.html', {
         'issue': issue, 'facts': facts, 'published': published, 'newer': newer, 'older': older,
+        'hero': hero,
         'remade': sum(1 for p in published if p.get('remake')),
         'new_count': sum(1 for p in published if not p.get('remake')),
         'cards': list(zip(issue.cards, card_alts)),
