@@ -1,0 +1,24 @@
+<script nonce="{{ csp_nonce }}">
+(function () {
+  var t = document.getElementById('nl-track');
+  if (!t) return;
+  var items = t.children, n = items.length, c = document.getElementById('nl-count');
+  function cur() {
+    var x = t.scrollLeft, best = 0, d = Infinity;
+    for (var i = 0; i < n; i++) { var e = Math.abs(items[i].offsetLeft - t.offsetLeft - x); if (e < d) { d = e; best = i; } }
+    return best;
+  }
+  function go(i) { i = Math.max(0, Math.min(n - 1, i)); t.scrollTo({ left: items[i].offsetLeft - t.offsetLeft }); }
+  document.getElementById('nl-prev').addEventListener('click', function () { go(cur() - 1); });
+  document.getElementById('nl-next').addEventListener('click', function () { go(cur() + 1); });
+  t.addEventListener('keydown', function (e) {
+    if (e.key === 'ArrowRight') { e.preventDefault(); go(cur() + 1); }
+    if (e.key === 'ArrowLeft') { e.preventDefault(); go(cur() - 1); }
+  });
+  var raf = 0;
+  t.addEventListener('scroll', function () {
+    cancelAnimationFrame(raf);
+    raf = requestAnimationFrame(function () { if (c) c.textContent = (cur() + 1) + ' / ' + n; });
+  }, { passive: true });
+})();
+</script>

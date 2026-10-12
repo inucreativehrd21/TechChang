@@ -1,0 +1,44 @@
+<style>
+  /* 연구실 위클리 페이지 — 카드뉴스 캐러셀 + 글 버전. 사이트 토큰(premium.css 인디고) 위에 nl- 접두어 */
+  .nl { max-width: 1040px; margin: 0 auto; padding: 32px 16px 72px; }
+  .nl-eyebrow { font-size: .8rem; font-weight: 700; letter-spacing: .18em; color: var(--accent-primary, #4f46e5); }
+  .nl h1 { font-size: clamp(1.7rem, 3.4vw, 2.5rem); font-weight: 800; letter-spacing: -.02em; line-height: 1.25; margin: 10px 0 0; }
+  .nl-meta { margin-top: 8px; color: var(--text-secondary); font-size: .92rem; font-variant-numeric: tabular-nums; }
+  .nl-intro { margin: 16px 0 0; max-width: 46em; font-size: 1.05rem; line-height: 1.75; color: var(--text-primary); }
+
+  .nl-carousel { position: relative; margin-top: 28px; }
+  .nl-track { display: flex; gap: 16px; overflow-x: auto; scroll-snap-type: x mandatory; scroll-behavior: smooth;
+    padding-bottom: 12px; scrollbar-width: thin; }
+  .nl-track figure { flex: 0 0 auto; width: clamp(260px, 78vw, 460px); margin: 0; scroll-snap-align: start; }
+  .nl-track img { width: 100%; height: auto; aspect-ratio: 1080 / 1350; display: block; border-radius: 10px;
+    border: 1px solid var(--border-color, #e5e7eb); box-shadow: 0 18px 40px -22px rgba(15, 23, 42, .35); background: #fbfaf7; }
+  .nl-controls { display: flex; align-items: center; gap: 10px; margin-top: 10px; }
+  .nl-btn { border: 1px solid var(--border-color, #e5e7eb); background: var(--bg-primary, #fff); border-radius: 999px; width: 38px; height: 38px;
+    font-size: 1rem; cursor: pointer; color: var(--text-primary); }
+  .nl-btn:hover { border-color: var(--accent-primary, #4f46e5); color: var(--accent-primary, #4f46e5); }
+  .nl-count { font-size: .88rem; color: var(--text-secondary); font-variant-numeric: tabular-nums; }
+
+  .nl-sec { margin-top: 44px; }
+  .nl-sec h2 { font-size: 1.15rem; font-weight: 800; margin: 0 0 4px; padding-bottom: 8px; border-bottom: 2px solid var(--text-primary); }
+  .nl-pub { list-style: none; margin: 0; padding: 0; }
+  .nl-pub li { padding: 14px 0; border-bottom: 1px solid var(--border-color, #e5e7eb); }
+  .nl-chip { font-size: .75rem; font-weight: 700; color: var(--accent-primary, #4f46e5); background: rgba(79, 70, 229, .08); border-radius: 4px; padding: 2px 8px; }
+  .nl-pub a { display: block; margin-top: 6px; font-weight: 700; color: var(--text-primary); text-decoration: none; font-size: 1.05rem; }
+  .nl-pub a:hover { color: var(--accent-primary, #4f46e5); text-decoration: underline; }
+  .nl-pub p { margin: 4px 0 0; color: var(--text-secondary); line-height: 1.65; }
+  .nl-rows { margin: 0; }
+  .nl-rows div { display: flex; justify-content: space-between; gap: 16px; padding: 11px 0; border-bottom: 1px solid var(--border-color, #e5e7eb); }
+  .nl-rows dt { color: var(--text-secondary); font-weight: 400; }
+  .nl-rows dd { margin: 0; font-weight: 700; font-variant-numeric: tabular-nums; text-align: right; }
+  .nl-pager { margin-top: 44px; display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+  .nl-pager a { color: var(--text-primary); text-decoration: none; font-weight: 600; border: 1px solid var(--border-color, #e5e7eb); border-radius: 999px; padding: 8px 16px; }
+  .nl-pager a:hover { border-color: var(--accent-primary, #4f46e5); }
+
+  .nl-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 22px; margin-top: 28px; }
+  .nl-issue { text-decoration: none; color: var(--text-primary); }
+  .nl-issue img { width: 100%; height: auto; aspect-ratio: 1080 / 1350; border-radius: 10px; border: 1px solid var(--border-color, #e5e7eb); display: block; }
+  .nl-issue b { display: block; margin-top: 10px; font-size: 1.02rem; line-height: 1.4; }
+  .nl-issue span { font-size: .85rem; color: var(--text-secondary); font-variant-numeric: tabular-nums; }
+  .nl-empty { margin-top: 40px; color: var(--text-secondary); }
+  @media (max-width: 860px) { .nl-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; } }
+</style>

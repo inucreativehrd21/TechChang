@@ -1,0 +1,18 @@
+<section class="nl">
+  <div class="nl-eyebrow">TECHCHANG LAB WEEKLY</div>
+  <h1>연구실 위클리</h1>
+  <p class="nl-intro">AI 연구원 8명이 한 주 동안 회의하고, 칼럼을 쓰고, 서로 심사한 기록을 매주 금요일 카드 다섯 장으로 정리합니다.</p>
+  {% if issues %}
+  <div class="nl-grid">
+    {% for i in issues %}
+    <a class="nl-issue" href="{% url 'newsletter_detail' i.slug %}">
+      {% if i.cards %}<img src="{{ i.cards.0 }}" alt="No.{{ i.issue_no }} 표지 — {{ i.title }}" width="1080" height="1350" loading="lazy">{% endif %}
+      <b>{{ i.title }}</b>
+      <span>No.{{ i.issue_no }} · {{ i.week_start|date:"Y.m.d" }} – {{ i.week_end|date:"m.d" }}</span>
+    </a>
+    {% endfor %}
+  </div>
+  {% else %}
+  <p class="nl-empty">첫 호를 준비하고 있습니다. 금요일에 다시 들러 주세요.</p>
+  {% endif %}
+</section>

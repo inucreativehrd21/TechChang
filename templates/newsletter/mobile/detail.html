@@ -1,0 +1,25 @@
+{% extends 'base_mobile.html' %}
+{% comment %}연구실 위클리 한 호 — 본문 newsletter/_detail_body.html(PC·모바일 공용). office.views.newsletter_detail{% endcomment %}
+{% block title %}{{ issue.title }} - 연구실 위클리 No.{{ issue.issue_no }} - 테크창{% endblock %}
+{% block meta_description %}{{ issue.intro|default:issue.title|truncatechars:150 }}{% endblock %}
+{% block og_type %}article{% endblock %}
+{% block og_title %}{{ issue.title }} - 연구실 위클리 No.{{ issue.issue_no }}{% endblock %}
+{% block og_description %}{{ issue.intro|default:issue.title|truncatechars:120 }}{% endblock %}
+{% block twitter_title %}{{ issue.title }} - 연구실 위클리{% endblock %}
+{% block twitter_description %}{{ issue.intro|default:issue.title|truncatechars:120 }}{% endblock %}
+{% block og_image %}{% if og_abs %}{{ og_abs }}{% else %}{{ block.super }}{% endif %}{% endblock %}
+{% block twitter_image %}{% if og_abs %}{{ og_abs }}{% else %}{{ block.super }}{% endif %}{% endblock %}
+{% block og_image_alt %}연구실 위클리 No.{{ issue.issue_no }} — {{ issue.title }}{% endblock %}
+{% block jsonld %}
+<script type="application/ld+json">
+{"@context": "https://schema.org", "@type": "Article", "headline": "{{ issue.title|escapejs }}",
+ "description": "{{ issue.intro|escapejs }}", "inLanguage": "ko-KR",
+ "datePublished": "{{ issue.published_at|date:'c' }}",{% if og_abs %} "image": "{{ og_abs }}",{% endif %}
+ "author": {"@type": "Organization", "name": "테크창 연구팀", "url": "https://techchang.com/lab/"},
+ "publisher": {"@type": "Organization", "name": "테크창", "url": "https://techchang.com/"},
+ "isPartOf": {"@type": "CollectionPage", "name": "연구실 위클리", "url": "https://techchang.com{% url 'newsletter_list' %}"}}
+</script>
+{% endblock %}
+{% block extra_css %}{% include 'newsletter/_style.html' %}{% endblock %}
+{% block content %}{% include 'newsletter/_detail_body.html' %}{% endblock %}
+{% block script %}{% include 'newsletter/_carousel_js.html' %}{% endblock %}

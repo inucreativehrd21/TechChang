@@ -14,6 +14,7 @@ Including another URLconf
     1. Import the include() function: from django.urls import re_path, include, path
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
+from office import views as office_views
 from django.contrib import admin
 from django.urls import include, path, re_path
 from django.conf import settings
@@ -24,7 +25,7 @@ from community.views import base_views
 from community.feeds import ColumnFeed
 from common import legal_views
 from community.sitemaps import (StaticViewSitemap, ColumnSitemap, PostSitemap, SeriesSitemap,
-                                MakingSitemap, PortfolioCollectionSitemap)
+                                MakingSitemap, PortfolioCollectionSitemap, NewsletterSitemap)
 
 sitemaps = {
     'static': StaticViewSitemap,
@@ -33,6 +34,7 @@ sitemaps = {
     'posts': PostSitemap,
     'making': MakingSitemap,
     'portfolios': PortfolioCollectionSitemap,
+    'newsletter': NewsletterSitemap,
 }
 
 urlpatterns = [
@@ -50,6 +52,8 @@ urlpatterns = [
     path('', include('community.urls')),  # 커뮤니티 메인 (루트 경로)
     path('common/', include('common.urls')),
     path('lab/', include('office.urls')),  # 연구팀 가상 연구실 (office 앱)
+    path('newsletter/', office_views.newsletter_list, name='newsletter_list'),            # 연구실 위클리
+    path('newsletter/<slug:slug>/', office_views.newsletter_detail, name='newsletter_detail'),
     path('accounts/', include('allauth.urls')),  # django-allauth URLs
     # sitemap.xml = 묶음 색인(index). GSC 에서 칼럼·시리즈·회원 글 등 묶음별 색인 비율을 따로 본다.
     path('sitemap.xml', sitemap_index, {'sitemaps': sitemaps, 'sitemap_url_name': 'sitemap_section'},

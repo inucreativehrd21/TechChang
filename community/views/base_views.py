@@ -113,7 +113,9 @@ def _home_live_data():
         s = ColumnSeries.objects.filter(is_active=True).first()
         series = ({'title': s.title, 'slug': s.slug, 'published': s.published_count, 'planned': s.total_episodes}
                   if s else None)
-        lab = {'agents': len(MEETING_ORDER), 'briefs': briefs, 'series': series}
+        from office.models import Newsletter
+        weekly = Newsletter.objects.filter(status=Newsletter.STATUS_PUBLISHED).values('slug', 'issue_no', 'title').first()
+        lab = {'agents': len(MEETING_ORDER), 'briefs': briefs, 'series': series, 'weekly': weekly}
     except Exception:  # noqa: BLE001
         logging.getLogger(__name__).exception('home lab block unavailable')
         lab = None

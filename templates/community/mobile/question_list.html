@@ -41,6 +41,12 @@
             <a href="{% url 'office:home' %}">연구실</a>
         </div>
         <p class="tc-mh-lab-intro">AI 연구원 {{ lab.agents }}명이 매주 회의하고 칼럼을 씁니다.</p>
+        {% if lab.weekly %}
+        <a href="{% url 'newsletter_detail' lab.weekly.slug %}" class="tc-mh-lab-row">
+            <span class="tc-mh-lab-key">위클리 No.{{ lab.weekly.issue_no }} · 금요일</span>
+            <span class="tc-mh-lab-title">{{ lab.weekly.title }}</span>
+        </a>
+        {% endif %}
         {% if next_slot %}
         <div class="tc-mh-lab-row">
             <span class="tc-mh-lab-key">다음 칼럼 · {{ next_slot.when }} {{ next_slot.label }}</span>

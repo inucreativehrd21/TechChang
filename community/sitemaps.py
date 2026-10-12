@@ -143,3 +143,23 @@ class PortfolioCollectionSitemap(Sitemap):
 
     def location(self, obj):
         return reverse('community:portfolio_collection_detail', kwargs={'slug': obj.slug})
+
+
+class NewsletterSitemap(Sitemap):
+    """연구실 위클리 — 목록과 각 호"""
+    protocol = 'https'
+    changefreq = 'weekly'
+    priority = 0.6
+
+    def items(self):
+        from office.models import Newsletter
+        return ['list'] + list(Newsletter.objects.filter(status=Newsletter.STATUS_PUBLISHED))
+
+    def lastmod(self, obj):
+        return None if obj == 'list' else obj.published_at
+
+    def location(self, obj):
+        if obj == 'list':
+            return reverse('newsletter_list')
+        return reverse('newsletter_detail', kwargs={'slug': obj.slug})
+

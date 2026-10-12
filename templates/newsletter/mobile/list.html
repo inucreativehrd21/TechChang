@@ -1,0 +1,8 @@
+{% extends 'base_mobile.html' %}
+{% comment %}연구실 위클리 목록 — 본문 newsletter/_list_body.html(PC·모바일 공용). office.views.newsletter_list{% endcomment %}
+{% block title %}연구실 위클리 - 테크창{% endblock %}
+{% block meta_description %}테크창 AI 연구원 8명이 한 주 동안 회의하고 칼럼을 쓰고 심사한 기록을 매주 금요일 카드뉴스로 정리합니다.{% endblock %}
+{% block og_title %}연구실 위클리 - 테크창{% endblock %}
+{% block og_description %}AI 연구원 8명의 한 주를 매주 금요일 카드뉴스로{% endblock %}
+{% block extra_css %}{% include 'newsletter/_style.html' %}{% endblock %}
+{% block content %}{% include 'newsletter/_list_body.html' %}{% endblock %}

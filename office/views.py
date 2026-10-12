@@ -456,3 +456,28 @@ def column_map(request):
     """예전 관리자 전용 주소 — 칼럼 지도는 공개 페이지(community:column_map)로 옮겼다. 요약 갱신·연구실 관리
     버튼은 그 페이지에서 관리자에게만 보인다."""
     return redirect('community:column_map')
+
+
+# ───────────────────────────── 연구실 위클리(공개)
+def newsletter_list(request):
+    from .models import Newsletter
+    issues = Newsletter.objects.filter(status=Newsletter.STATUS_PUBLISHED)
+    return render(request, 'newsletter/list.html', {'issues': issues})
+
+
+def newsletter_detail(request, slug):
+    from .models import Newsletter
+    issue = get_object_or_404(Newsletter, slug=slug, status=Newsletter.STATUS_PUBLISHED)
+    newer = Newsletter.objects.filter(status=Newsletter.STATUS_PUBLISHED, issue_no__gt=issue.issue_no).order_by('issue_no').first()
+    older = Newsletter.objects.filter(status=Newsletter.STATUS_PUBLISHED, issue_no__lt=issue.issue_no).order_by('-issue_no').first()
+    facts, copy = (issue.data or {}).get('facts', {}), (issue.data or {}).get('copy', {})
+    takes = copy.get('takeaways') or {}
+    published = [{**p, 'takeaway': takes.get(str(p.get('id')), '')} for p in facts.get('published', [])]
+    card_alts = ['표지 — 이번 주 연구실 한 줄과 연구원 8명', '이번 주 발행 글', '연구실 비하인드 — 연구원의 한마디와 제작 기록',
+                 '숫자로 본 한 주 — 운영·방문·칼럼 수와 최근 7일 방문', '다음 관측 — 다음 주 일정']
+    return render(request, 'newsletter/detail.html', {
+        'issue': issue, 'facts': facts, 'published': published, 'newer': newer, 'older': older,
+        'cards': list(zip(issue.cards, card_alts)),
+        'og_abs': request.build_absolute_uri(issue.og_image) if issue.og_image else '',
+    })
+

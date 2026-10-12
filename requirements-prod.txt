@@ -8,3 +8,8 @@
 #  바이너리 휠이 없는 아키텍처(aarch64 등)에서는 소스 빌드되므로 apt 로
 #  build-essential python3-dev pkg-config default-libmysqlclient-dev 를 먼저 설치한다.
 mysqlclient>=2.2,<3
+
+# 연구실 위클리 카드 렌더(office/newsletter.py). 브라우저는 별도로 한 번:
+#   ~/venvs/mysite/bin/python -m playwright install --with-deps chromium
+#  카드 글꼴: Pretendard OTF → /usr/share/fonts/pretendard, apt fonts-noto-cjk
+playwright>=1.50,<2

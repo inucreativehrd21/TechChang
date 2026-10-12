@@ -322,3 +322,32 @@ class ColumnDigest(models.Model):
 
     def __str__(self):
         return f'[{self.subtopic}] {self.question_id}'
+
+
+class Newsletter(models.Model):
+    """연구실 위클리 — 매주 금요일 한 주(금~목)의 연구실 활동·발행을 카드뉴스와 웹 페이지로 엮는다(office.newsletter).
+
+    data 에 모은 사실(발행 글·연구실 기록·지표)과 큐레이터가 쓴 문구가 함께 담기고, 카드 PNG 는
+    media/newsletter/<slug>/ 에 저장된다. 공개 페이지는 /newsletter/.
+    """
+    STATUS_PUBLISHED, STATUS_HOLD = 'published', 'hold'
+    issue_no = models.PositiveIntegerField(unique=True, verbose_name='호수')
+    slug = models.SlugField(max_length=20, unique=True)          # 2026-w42
+    week_start = models.DateField()
+    week_end = models.DateField()
+    title = models.CharField(max_length=120, verbose_name='이번 호 제목')
+    intro = models.TextField(blank=True)
+    data = models.JSONField(default=dict, verbose_name='사실·문구')
+    cards = models.JSONField(default=list, verbose_name='카드 이미지 URL')
+    og_image = models.CharField(max_length=300, blank=True)
+    status = models.CharField(max_length=10, default=STATUS_PUBLISHED, db_index=True)
+    published_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-issue_no']
+        verbose_name = '연구실 위클리'
+        verbose_name_plural = '연구실 위클리'
+
+    def __str__(self):
+        return f'No.{self.issue_no} {self.title}'

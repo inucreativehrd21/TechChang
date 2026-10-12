@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>연구실 위클리 No.{{ nl.no }} — 렌더용</title>
+{% comment %}
+연구실 위클리 카드뉴스 렌더 템플릿(templates/newsletter/DESIGN.md 「관측 원장」).
+office.newsletter 가 내용(nl)을 채우고 Playwright 가 #card-1~5(1080×1350)·#og(1200×630)를 PNG 로 찍는다.
+글자 칸(.fit)은 높이가 정해져 있다 — 넘치면 렌더러가 재어 연구원에게 줄이게 한다.
+{% endcomment %}
+<style>
+  @font-face { font-family: 'PretendardLocal'; src: local('Pretendard'), local('Pretendard Variable'); }
+  :root {
+    --paper: #FBFAF7; --ink: #17151F; --ink-2: #4A4757; --ink-3: #8A8797; --rule: #DAD8E3;
+    --indigo: #4F46E5; --indigo-2: #6D66EE; --indigo-wash: #EEEDFD; --indigo-deep: #312E81;
+    --sans: 'Pretendard', 'PretendardLocal', 'Noto Sans CJK KR', 'Apple SD Gothic Neo', sans-serif;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { background: #2A2833; }
+  body { font-family: var(--sans); color: var(--ink); -webkit-font-smoothing: antialiased; word-break: keep-all; padding: 40px; display: grid; gap: 40px; justify-content: center; }
+  .pix { image-rendering: pixelated; image-rendering: crisp-edges; display: block; }
+
+  /* ── 장(1080×1350): 모눈 27px, 굵은 선 216px(8칸) ── */
+  .card { position: relative; width: 1080px; height: 1350px; overflow: hidden; background-color: var(--paper);
+    background-image:
+      linear-gradient(rgba(79,70,229,.075) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(79,70,229,.075) 1px, transparent 1px),
+      linear-gradient(rgba(79,70,229,.028) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(79,70,229,.028) 1px, transparent 1px);
+    background-size: 216px 216px, 216px 216px, 27px 27px, 27px 27px;
+    background-position: -1px -1px; }
+  .frame { position: absolute; inset: 81px; display: flex; flex-direction: column; }
+  .top, .bottom { display: flex; justify-content: space-between; align-items: baseline; font-size: 20px; letter-spacing: .18em; color: var(--ink-3); font-weight: 500; }
+  .top b { color: var(--indigo); font-weight: 700; letter-spacing: .2em; }
+  .bottom { margin-top: auto; padding-top: 22px; border-top: 2px solid var(--ink); font-size: 19px; letter-spacing: .08em; }
+  .bottom span:last-child { font-variant-numeric: tabular-nums; }
+  .kicker { margin-top: 64px; font-size: 24px; font-weight: 700; color: var(--indigo); letter-spacing: .04em; display: flex; gap: 16px; align-items: center; }
+  .kicker::before { content: ""; width: 54px; height: 3px; background: var(--indigo); }
+  .fit { overflow: hidden; }
+
+  /* 1 · 표지 */
+  .cover-week { margin-top: 56px; font-size: 26px; color: var(--ink-2); font-weight: 400; letter-spacing: .02em; }
+  .cover-week b { color: var(--ink); font-weight: 700; }
+  .cover-title { margin-top: 26px; font-size: 92px; line-height: 1.16; font-weight: 800; letter-spacing: -.035em; max-height: 330px; padding-bottom: 6px; text-wrap: balance; }
+  .cover-title em { font-style: normal; color: var(--indigo); }
+  .cover-intro { margin-top: 34px; font-size: 31px; line-height: 1.6; font-weight: 300; color: var(--ink-2); max-height: 150px; max-width: 860px; }
+  .specimens { margin-top: auto; margin-bottom: 40px; display: grid; grid-template-columns: repeat(8, 1fr); align-items: end; position: relative; }
+  .specimens::after { content: ""; position: absolute; left: 0; right: 0; bottom: 64px; height: 2px; background: var(--ink); }
+  .specimens::before { content: ""; position: absolute; left: 0; right: 0; bottom: 52px; height: 12px;
+    background: repeating-linear-gradient(90deg, var(--ink) 0 2px, transparent 2px 27px); opacity: .55; }
+  .spec { display: flex; flex-direction: column; align-items: center; }
+  .spec img { width: 112px; height: 224px; margin-bottom: 6px; }
+  .spec .ix { margin-top: 26px; font-size: 16px; color: var(--indigo); font-weight: 700; letter-spacing: .1em; font-variant-numeric: tabular-nums; }
+  .spec .nm { font-size: 20px; font-weight: 600; color: var(--ink); margin-top: 2px; }
+
+  /* 2 · 이번 주 발행 */
+  .count-row { margin-top: 30px; display: flex; align-items: baseline; gap: 22px; }
+  .count-row .big { font-size: 150px; font-weight: 200; line-height: .9; letter-spacing: -.05em; color: var(--indigo); font-variant-numeric: tabular-nums; }
+  .count-row .lbl { font-size: 34px; font-weight: 700; line-height: 1.3; }
+  .count-row .lbl small { display: block; font-size: 22px; font-weight: 400; color: var(--ink-3); }
+  .items { margin-top: 36px; display: grid; gap: 0; }
+  .item { display: grid; grid-template-columns: 72px 1fr; gap: 26px; padding: 24px 0; border-top: 1.5px solid var(--rule); }
+  .item:first-child { border-top: 2px solid var(--ink); }
+  .item img { width: 48px; height: 96px; margin-top: 4px; justify-self: center; }
+  .chip { display: inline-block; font-size: 18px; font-weight: 700; color: var(--indigo); background: var(--indigo-wash); padding: 4px 12px; border-radius: 4px; letter-spacing: .02em; }
+  .item h3 { margin-top: 8px; font-size: 34px; line-height: 1.32; font-weight: 750; letter-spacing: -.02em; max-height: 92px; }
+  .item p { margin-top: 8px; font-size: 23px; line-height: 1.55; font-weight: 300; color: var(--ink-2); max-height: 72px; }
+  .item .meta { margin-top: 8px; font-size: 19px; color: var(--ink-3); font-variant-numeric: tabular-nums; }
+  .empty-note { margin-top: 40px; font-size: 32px; font-weight: 300; color: var(--ink-2); line-height: 1.6; }
+
+  /* 3 · 연구실 비하인드 */
+  .behind { margin-top: 40px; display: grid; grid-template-columns: 220px 1fr; gap: 44px; align-items: end; }
+  .behind img { width: 160px; height: 320px; justify-self: center; }
+  .quote { position: relative; background: #fff; border: 2px solid var(--ink); padding: 34px 38px; box-shadow: 10px 10px 0 var(--indigo); }
+  .quote::before { content: ""; position: absolute; left: -22px; bottom: 60px; width: 22px; height: 22px; background: #fff;
+    border-left: 2px solid var(--ink); border-bottom: 2px solid var(--ink); transform: translateX(11px) rotate(45deg); }
+  .quote .who { font-size: 20px; font-weight: 700; color: var(--indigo); letter-spacing: .04em; }
+  .quote .line { margin-top: 12px; font-size: 40px; line-height: 1.42; font-weight: 700; letter-spacing: -.02em; max-height: 170px; }
+  .ledger { margin-top: 60px; border-top: 2px solid var(--ink); }
+  .ledger .row { display: grid; grid-template-columns: 1fr auto; align-items: baseline; padding: 22px 0; border-bottom: 1.5px solid var(--rule); gap: 30px; }
+  .ledger .k { font-size: 27px; font-weight: 400; color: var(--ink-2); max-height: 44px; }
+  .ledger .v { font-size: 46px; font-weight: 800; color: var(--ink); font-variant-numeric: tabular-nums; letter-spacing: -.02em; }
+  .ledger .v small { font-size: 22px; font-weight: 500; color: var(--ink-3); margin-left: 6px; }
+
+  /* 4 · 숫자로 본 한 주 */
+  .nums { margin-top: 48px; display: grid; grid-template-columns: 1fr 1fr; border-top: 2px solid var(--ink); }
+  .num { padding: 34px 0 34px; border-bottom: 1.5px solid var(--rule); }
+  .num:nth-child(odd) { padding-right: 36px; border-right: 1.5px solid var(--rule); }
+  .num:nth-child(even) { padding-left: 36px; }
+  .num .v { font-size: 104px; font-weight: 200; line-height: 1; letter-spacing: -.045em; color: var(--ink); font-variant-numeric: tabular-nums; }
+  .num .v small { font-size: 32px; font-weight: 600; letter-spacing: 0; margin-left: 6px; color: var(--ink-2); }
+  .num .l { margin-top: 14px; font-size: 24px; font-weight: 700; }
+  .num .n { margin-top: 4px; font-size: 19px; color: var(--ink-3); max-height: 30px; }
+  .bars-wrap { margin-top: 46px; }
+  .bars-cap { display: flex; justify-content: space-between; font-size: 20px; color: var(--ink-3); }
+  .bars-cap b { color: var(--ink); font-weight: 700; }
+  .bars { margin-top: 18px; height: 190px; display: grid; grid-template-columns: repeat(7, 1fr); gap: 18px; align-items: end; border-bottom: 2px solid var(--ink); }
+  .bar { background: repeating-linear-gradient(0deg, var(--indigo) 0 13px, transparent 13px 15px); position: relative; min-height: 15px; }
+  .bar.dim { background: repeating-linear-gradient(0deg, #B9B5F6 0 13px, transparent 13px 15px); }
+  .days { display: grid; grid-template-columns: repeat(7, 1fr); gap: 18px; margin-top: 12px; font-size: 19px; color: var(--ink-3); text-align: center; font-variant-numeric: tabular-nums; }
+
+  /* 5 · 다음 관측 */
+  .sched { margin-top: 48px; border-top: 2px solid var(--ink); }
+  .sched .row { display: grid; grid-template-columns: 120px 1fr auto; gap: 26px; align-items: center; padding: 14px 0; border-bottom: 1.5px solid var(--rule); }
+  .sched .d { font-size: 30px; font-weight: 800; color: var(--indigo); }
+  .sched .w { font-size: 30px; font-weight: 600; max-height: 86px; line-height: 1.35; }
+  .sched .w small { display: block; font-size: 20px; font-weight: 400; color: var(--ink-3); margin-top: 2px; }
+  .sched img { width: 48px; height: 96px; }
+  .cta { margin-top: 52px; display: flex; justify-content: space-between; align-items: center; background: var(--ink); color: var(--paper); padding: 34px 40px; }
+  .cta .t { font-size: 34px; font-weight: 800; letter-spacing: -.02em; }
+  .cta .t small { display: block; font-size: 21px; font-weight: 400; color: #B9B6C6; margin-top: 4px; letter-spacing: 0; }
+  .cta .u { font-size: 26px; font-weight: 700; color: #A9A4FF; letter-spacing: .02em; }
+
+  /* 공유 이미지 1200×630 */
+  .og { width: 1200px; height: 630px; }
+  .og .frame { inset: 60px 72px; }
+  .og .cover-title { font-size: 64px; margin-top: 30px; max-height: 164px; max-width: 760px; }
+  .og .cover-week { margin-top: 26px; font-size: 24px; }
+  .og .troupe { position: absolute; right: 72px; bottom: 112px; display: flex; gap: 10px; align-items: end; }
+  .og .troupe img { width: 48px; height: 96px; }
+  .og .troupe::after { content: ""; position: absolute; left: -10px; right: -10px; bottom: -2px; height: 2px; background: var(--ink); }
+</style>
+</head>
+<body>
+
+<!-- 1 · 표지 -->
+<section class="card" id="card-1">
+  <div class="frame">
+    <div class="top"><b>TECHCHANG LAB WEEKLY</b><span>No.{{ nl.no_pad }} · {{ nl.week_code }} · 01/05</span></div>
+    <div class="kicker">이번 주 연구실</div>
+    <div class="cover-week"><b>{{ nl.range }}</b> · AI 연구원 8명의 한 주 관측 기록</div>
+    <h1 class="cover-title fit" data-fit="theme">{{ nl.theme_html }}</h1>
+    <p class="cover-intro fit" data-fit="intro">{{ nl.intro }}</p>
+    <div class="specimens">
+      {% for a in nl.agents %}
+      <div class="spec"><img class="pix" src="{{ a.sprite }}" alt=""><span class="ix">{{ forloop.counter|stringformat:"02d" }}</span><span class="nm">{{ a.name }}</span></div>
+      {% endfor %}
+    </div>
+    <div class="bottom"><span>techchang.com/lab</span><span>{{ nl.week_code }} — 01</span></div>
+  </div>
+</section>
+
+<!-- 2 · 이번 주 발행 -->
+<section class="card" id="card-2">
+  <div class="frame">
+    <div class="top"><b>TECHCHANG LAB WEEKLY</b><span>No.{{ nl.no_pad }} · {{ nl.week_code }} · 02/05</span></div>
+    <div class="kicker">이번 주 발행</div>
+    <div class="count-row"><span class="big">{{ nl.published|length }}</span><span class="lbl">편의 글이<br>심사를 통과했습니다<small>팩트체크와 편집 심사 80점 기준</small></span></div>
+    {% if nl.published %}
+    <div class="items">
+      {% for c in nl.published|slice:":3" %}
+      <div class="item">
+        <img class="pix" src="{{ c.sprite }}" alt="">
+        <div>
+          <span class="chip">{{ c.cat }}</span>
+          <h3 class="fit" data-fit="pub-title-{{ forloop.counter }}">{{ c.title }}</h3>
+          <p class="fit" data-fit="pub-take-{{ forloop.counter }}">{{ c.takeaway }}</p>
+          <div class="meta">{{ c.author }} 집필{% if c.score %} · 심사 {{ c.score }}점{% endif %} · {{ c.date }}</div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <p class="empty-note">이번 주에는 새로 발행된 글이 없습니다. 대신 연구실이 어떤 원고를 붙잡고 있었는지 다음 장에 적었습니다.</p>
+    {% endif %}
+    <div class="bottom"><span>techchang.com/map</span><span>{{ nl.week_code }} — 02</span></div>
+  </div>
+</section>
+
+<!-- 3 · 연구실 비하인드 -->
+<section class="card" id="card-3">
+  <div class="frame">
+    <div class="top"><b>TECHCHANG LAB WEEKLY</b><span>No.{{ nl.no_pad }} · {{ nl.week_code }} · 03/05</span></div>
+    <div class="kicker">연구실 비하인드</div>
+    <div class="behind">
+      <img class="pix" src="{{ nl.behind.sprite }}" alt="">
+      <div class="quote">
+        <div class="who">{{ nl.behind.name }} · {{ nl.behind.role }}</div>
+        <p class="line fit" data-fit="behind">{{ nl.behind.line }}</p>
+      </div>
+    </div>
+    <div class="ledger">
+      {% for r in nl.ledger %}
+      <div class="row"><span class="k fit" data-fit="ledger-{{ forloop.counter }}">{{ r.label }}</span><span class="v">{{ r.value }}<small>{{ r.unit }}</small></span></div>
+      {% endfor %}
+    </div>
+    <div class="bottom"><span>techchang.com/lab</span><span>{{ nl.week_code }} — 03</span></div>
+  </div>
+</section>
+
+<!-- 4 · 숫자로 본 한 주 -->
+<section class="card" id="card-4">
+  <div class="frame">
+    <div class="top"><b>TECHCHANG LAB WEEKLY</b><span>No.{{ nl.no_pad }} · {{ nl.week_code }} · 04/05</span></div>
+    <div class="kicker">숫자로 본 한 주</div>
+    <div class="nums">
+      {% for n in nl.numbers %}
+      <div class="num"><div class="v">{{ n.value }}<small>{{ n.unit }}</small></div><div class="l">{{ n.label }}</div><div class="n fit" data-fit="num-{{ forloop.counter }}">{{ n.note }}</div></div>
+      {% endfor %}
+    </div>
+    <div class="bars-wrap">
+      <div class="bars-cap"><span>하루 방문자 · 최근 7일</span><b>최고 {{ nl.visits_peak }}명</b></div>
+      <div class="bars">{% for b in nl.visits %}<div class="bar{% if not b.peak %} dim{% endif %}" style="height:{{ b.pct }}%"></div>{% endfor %}</div>
+      <div class="days">{% for b in nl.visits %}<span>{{ b.label }}</span>{% endfor %}</div>
+    </div>
+    <div class="bottom"><span>techchang.com</span><span>{{ nl.week_code }} — 04</span></div>
+  </div>
+</section>
+
+<!-- 5 · 다음 관측 -->
+<section class="card" id="card-5">
+  <div class="frame">
+    <div class="top"><b>TECHCHANG LAB WEEKLY</b><span>No.{{ nl.no_pad }} · {{ nl.week_code }} · 05/05</span></div>
+    <div class="kicker">다음 관측</div>
+    <div class="sched">
+      {% for s in nl.next %}
+      <div class="row"><span class="d">{{ s.day }}</span><span class="w fit" data-fit="next-{{ forloop.counter }}">{{ s.what }}<small>{{ s.note }}</small></span><img class="pix" src="{{ s.sprite }}" alt=""></div>
+      {% endfor %}
+    </div>
+    <div class="cta"><span class="t">모든 칼럼은 칼럼 지도에<small>주제·키워드로 찾고, 매주 금요일 이 원장이 이어집니다</small></span><span class="u">techchang.com/map</span></div>
+    <div class="bottom"><span>techchang.com/newsletter</span><span>{{ nl.week_code }} — 05</span></div>
+  </div>
+</section>
+
+<!-- 공유 이미지 -->
+<section class="card og" id="og">
+  <div class="frame">
+    <div class="top"><b>TECHCHANG LAB WEEKLY</b><span>No.{{ nl.no_pad }} · {{ nl.week_code }}</span></div>
+    <div class="cover-week"><b>{{ nl.range }}</b> · 연구실 위클리</div>
+    <div class="cover-title fit" data-fit="og-theme">{{ nl.theme_html }}</div>
+    <div class="bottom"><span>techchang.com/newsletter</span><span>AI 연구원 8명의 관측 기록</span></div>
+  </div>
+  <div class="troupe">{% for a in nl.agents %}<img class="pix" src="{{ a.sprite }}" alt="">{% endfor %}</div>
+</section>
+
+</body>
+</html>

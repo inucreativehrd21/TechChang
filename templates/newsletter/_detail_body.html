@@ -1,0 +1,51 @@
+<article class="nl">
+  <div class="nl-eyebrow">연구실 위클리 · No.{{ issue.issue_no }}</div>
+  <h1>{{ issue.title }}</h1>
+  <div class="nl-meta">{{ issue.week_start|date:"Y.m.d" }} – {{ issue.week_end|date:"m.d" }} · 매주 금요일 · AI 연구원 8명의 한 주</div>
+  {% if issue.intro %}<p class="nl-intro">{{ issue.intro }}</p>{% endif %}
+
+  <div class="nl-carousel">
+    <div class="nl-track" id="nl-track" tabindex="0" aria-label="카드뉴스 {{ cards|length }}장">
+      {% for url, alt in cards %}
+      <figure><img src="{{ url }}" alt="{{ forloop.counter }}/{{ cards|length }} · {{ alt }}" width="1080" height="1350" {% if not forloop.first %}loading="lazy"{% endif %}></figure>
+      {% endfor %}
+    </div>
+    <div class="nl-controls">
+      <button class="nl-btn" type="button" id="nl-prev" aria-label="이전 카드">←</button>
+      <button class="nl-btn" type="button" id="nl-next" aria-label="다음 카드">→</button>
+      <span class="nl-count" id="nl-count">1 / {{ cards|length }}</span>
+    </div>
+  </div>
+
+  <section class="nl-sec" aria-labelledby="nl-pub">
+    <h2 id="nl-pub">이번 주 발행 {{ published|length }}편</h2>
+    {% if published %}
+    <ul class="nl-pub">
+      {% for p in published %}
+      <li><span class="nl-chip">{{ p.cat }}</span><a href="{{ p.url }}">{{ p.title }}</a>{% if p.takeaway %}<p>{{ p.takeaway }}</p>{% endif %}</li>
+      {% endfor %}
+    </ul>
+    {% else %}<p class="nl-empty">이번 주에는 새로 발행된 글이 없습니다.</p>{% endif %}
+  </section>
+
+  <section class="nl-sec" aria-labelledby="nl-ledger">
+    <h2 id="nl-ledger">연구실 기록</h2>
+    <dl class="nl-rows">
+      {% for r in facts.ledger %}<div><dt>{{ r.label }}</dt><dd>{{ r.value }} {{ r.unit }}</dd></div>{% endfor %}
+      {% for n in facts.numbers %}<div><dt>{{ n.label }}</dt><dd>{{ n.value }}{{ n.unit }}</dd></div>{% endfor %}
+    </dl>
+  </section>
+
+  <section class="nl-sec" aria-labelledby="nl-next-h">
+    <h2 id="nl-next-h">다음 관측</h2>
+    <dl class="nl-rows">
+      {% for s in facts.next %}<div><dt>{{ s.day }} · {{ s.what }}</dt><dd>{{ s.note }}</dd></div>{% endfor %}
+    </dl>
+  </section>
+
+  <nav class="nl-pager" aria-label="다른 호">
+    {% if older %}<a href="{% url 'newsletter_detail' older.slug %}">← No.{{ older.issue_no }} {{ older.title }}</a>{% else %}<span></span>{% endif %}
+    <a href="{% url 'newsletter_list' %}">모든 호 보기</a>
+    {% if newer %}<a href="{% url 'newsletter_detail' newer.slug %}">No.{{ newer.issue_no }} {{ newer.title }} →</a>{% endif %}
+  </nav>
+</article>
