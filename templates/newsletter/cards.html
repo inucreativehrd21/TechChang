@@ -61,12 +61,17 @@ office.newsletter 가 내용(nl)을 채우고 Playwright 가 nl.card_ids(표지�
   .say { display: grid; grid-template-columns: 72px 1fr; gap: 22px; align-items: end; max-width: 860px; }
   .say.r { grid-template-columns: 1fr 72px; justify-self: end; }
   .say.r img { order: 2; }
-  .say img { width: 56px; height: 112px; justify-self: center; }
+  .say img { width: 64px; height: 128px; justify-self: center; }
   .bub { position: relative; background: #fff; border: 2px solid var(--ink); border-radius: 22px 22px 22px 4px; padding: 18px 26px 20px; }
   .say.r .bub { border-radius: 22px 22px 4px 22px; background: var(--indigo-wash); border-color: var(--indigo); }
   .bub .who { font-size: 18px; font-weight: 700; color: var(--indigo); letter-spacing: .03em; }
   .bub .who small { font-weight: 400; color: var(--ink-3); margin-left: 6px; letter-spacing: 0; }
-  .bub p { margin-top: 4px; font-size: 28px; line-height: 1.45; font-weight: 600; letter-spacing: -.015em; max-height: 82px; }
+  .bub p { margin-top: 4px; font-size: 30px; line-height: 1.45; font-weight: 600; letter-spacing: -.015em; max-height: 88px; }
+  .decide { margin-top: auto; margin-bottom: 34px; border-top: 2px solid var(--ink); padding-top: 18px; }
+  .decide .cap { font-size: 20px; font-weight: 800; color: var(--indigo); letter-spacing: .06em; }
+  .decide .row { display: grid; grid-template-columns: auto 1fr auto; gap: 16px; align-items: baseline; padding: 12px 0; border-bottom: 1.5px solid var(--rule); }
+  .decide .row b { font-size: 27px; font-weight: 700; letter-spacing: -.015em; }
+  .decide .row em { font-style: normal; font-size: 19px; color: var(--ink-3); font-variant-numeric: tabular-nums; }
 
   /* 추천 칼럼 */
   .pk-head { margin-top: 30px; display: flex; gap: 12px; align-items: center; }
@@ -147,6 +152,12 @@ office.newsletter 가 내용(nl)을 채우고 Playwright 가 nl.card_ids(표지�
       </div>
       {% endfor %}
     </div>
+    {% if nl.picks %}
+    <div class="decide">
+      <div class="cap">그래서 고른 이번 주 칼럼</div>
+      {% for p in nl.picks %}<div class="row"><span class="chip">{{ p.cat }}</span><b class="fit" data-fit="dec-{{ p.n }}" style="max-height:40px">{{ p.title }}</b><em>{{ p.page|stringformat:"02d" }}장 →</em></div>{% endfor %}
+    </div>
+    {% endif %}
     <div class="bottom"><span>techchang.com/lab</span><span>{{ nl.week_code }} — {{ nl.pages.meeting|stringformat:"02d" }}</span></div>
   </div>
 </section>
