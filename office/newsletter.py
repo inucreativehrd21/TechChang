@@ -105,19 +105,23 @@ def _ledger(lo, hi, published) -> list[dict]:
             verified += c.get('status') == 'verified'
     dropped = sum(len((r.output or {}).get('removed') or [])
                   for r in StageRun.objects.filter(stage='lock', created_at__range=(lo, hi)).only('output'))
-    reviews = StageRun.objects.filter(stage='review', created_at__range=(lo, hi)).count()
     scores = [p['score'] for p in published if p['score']]
     decisions = Decision.objects.filter(meeting__held_at__range=(lo, hi)).count()
-    rows = [
-        {'label': '설계도 단계에서 원문으로 확인한 주장', 'value': f'{verified}', 'unit': f'/ {total}건' if total else '건'},
-        {'label': '근거 없는 수치라 지운 문장', 'value': f'{dropped}', 'unit': '문장'},
-        {'label': '편집 심사를 거친 횟수', 'value': f'{reviews}', 'unit': '회'},
-    ]
+    new = sum(not p['remake'] for p in published)
+    remade = len(published) - new
+    # 0 인 줄은 싣지 않는다 — 카드에 '0건'이 늘어서면 아무 일도 없던 주처럼 보인다
+    rows = [{'label': '새로 발행한 글', 'value': f'{new}', 'unit': '편'}]
+    if remade:
+        rows.append({'label': '다시 다듬어 갱신한 글', 'value': f'{remade}', 'unit': '편'})
+    if total:
+        rows.append({'label': '설계도 단계에서 원문으로 확인한 주장', 'value': f'{verified}', 'unit': f'/ {total}건'})
+    if dropped:
+        rows.append({'label': '근거 없는 수치라 지운 문장', 'value': f'{dropped}', 'unit': '문장'})
     if scores:
-        rows.append({'label': '발행 글 편집 심사 평균', 'value': f'{sum(scores) / len(scores):.1f}', 'unit': '점'})
-    else:
+        rows.append({'label': f'심사 점수 평균 ({len(scores)}편)', 'value': f'{sum(scores) / len(scores):.1f}', 'unit': '점'})
+    if decisions:
         rows.append({'label': '편집회의에서 정한 안건', 'value': f'{decisions}', 'unit': '건'})
-    return rows
+    return rows[:4]
 
 
 def _gsc() -> dict:
@@ -221,14 +225,18 @@ PROMPT = (
     '- takeaways: 발행된 글마다 {takeaway}자 이내. 독자가 가져갈 한 가지. 요약을 그대로 옮기지 말고 핵심만.\n'
     '- behind: agent 는 {agents} 중 이번 주 일과 가장 관련 있는 연구원. line 은 {behind}자 이내, 그 연구원이 이번 주 '
     '한 일을 1인칭 존댓말로 담백하게.\n'
+    '- 갱신(다시 다듬은 글)은 새 발행과 구분해 씁니다. 갱신을 새 글처럼 세지 않습니다.\n'
     '- 숫자는 [이번 주 사실]에 있는 값만 씁니다. 없는 숫자는 쓰지 않습니다.{retry}'
 )
 
 
 def _facts_text(facts: dict) -> str:
     pub = [{'id': p['id'], 'title': p['title'], 'cat': p['cat'], 'score': p['score'], 'summary': p['summary']}
-           for p in facts['published']]
-    return json.dumps({'기간': f"{facts['start']} ~ {facts['end']}", '발행': pub, '연구실 기록': facts['ledger'],
+           for p in facts['published'][:12]]
+    new = sum(not p['remake'] for p in facts['published'])
+    return json.dumps({'기간': f"{facts['start']} ~ {facts['end']}",
+                       '새로 발행한 글 수': new, '다시 다듬어 갱신한 글 수': len(facts['published']) - new,
+                       '발행(앞 12편, 갱신은 cat 이 갱신으로 시작)': pub, '연구실 기록': facts['ledger'],
                        '지표': facts['numbers'], '다음 주': [{'요일': n['day'], '할 일': n['what'], '비고': n['note']}
                                                        for n in facts['next']]},
                       ensure_ascii=False, indent=1)
@@ -322,6 +330,7 @@ def context(facts: dict, copy: dict, issue_no: int, run_date: date) -> dict:
         'intro': copy.get('intro', ''),
         'agents': [{'key': k, 'name': AGENTS[k]['name'], 'sprite': sp[k]} for k in AGENT_ORDER],
         'published': pub,
+        'count_new': sum(not p['remake'] for p in pub), 'count_remade': sum(p['remake'] for p in pub),
         'behind': {'name': AGENTS[bk]['name'], 'role': AGENTS[bk]['title'], 'sprite': sp[bk], 'line': b.get('line', '')},
         'ledger': facts['ledger'], 'numbers': facts['numbers'], 'visits': facts['visits'], 'visits_peak': facts['visits_peak'],
         'next': [{**n, 'sprite': sp.get(n['agent'], '')} for n in facts['next']],

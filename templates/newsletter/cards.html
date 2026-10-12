@@ -145,7 +145,13 @@ office.newsletter 가 내용(nl)을 채우고 Playwright 가 #card-1~5(1080×135
   <div class="frame">
     <div class="top"><b>TECHCHANG LAB WEEKLY</b><span>No.{{ nl.no_pad }} · {{ nl.week_code }} · 02/05</span></div>
     <div class="kicker">이번 주 발행</div>
-    <div class="count-row"><span class="big">{{ nl.published|length }}</span><span class="lbl">편의 글이<br>심사를 통과했습니다<small>팩트체크와 편집 심사 80점 기준</small></span></div>
+    {% if nl.count_new %}
+    <div class="count-row"><span class="big">{{ nl.count_new }}</span><span class="lbl">편의 새 글이<br>심사를 통과했습니다<small>{% if nl.count_remade %}다시 다듬은 글 {{ nl.count_remade }}편 · {% endif %}편집 심사 80점 기준</small></span></div>
+    {% elif nl.count_remade %}
+    <div class="count-row"><span class="big">{{ nl.count_remade }}</span><span class="lbl">편의 글을<br>다시 다듬었습니다<small>갱신본도 편집 심사 80점 기준</small></span></div>
+    {% else %}
+    <div class="count-row"><span class="big">0</span><span class="lbl">편 — 이번 주는<br>원고를 다듬었습니다<small>다음 관측은 5번째 카드에</small></span></div>
+    {% endif %}
     {% if nl.published %}
     <div class="items">
       {% for c in nl.published|slice:":3" %}
