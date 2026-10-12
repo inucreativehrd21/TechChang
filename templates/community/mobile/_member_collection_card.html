@@ -1,0 +1,25 @@
+{% comment %}구성원 목록의 포트폴리오 컬렉션 카드(모바일). is_owner_card 면 사이트 주인 자리 표시.{% endcomment %}
+{% load common_tags %}
+<a href="{% url 'community:portfolio_collection_detail' collection.slug %}" class="m-member-card{% if is_owner_card %} m-member-card--owner{% endif %}">
+    <div class="m-member-avatar">
+        {% if collection.profile_image %}
+        <img src="{{ collection.profile_image.url }}" alt="">
+        {% else %}
+        {{ collection.display_name|slice:":1"|upper }}
+        {% endif %}
+    </div>
+    <div class="m-member-info">
+        <div class="m-member-name">{{ collection.display_name|default:collection.user.username }}{% if is_owner_card %} <span class="m-owner-badge">운영자</span>{% endif %}</div>
+        {% if collection.title %}<div class="m-member-title">{{ collection.title }}</div>{% endif %}
+        {% if collection.bio %}<div class="m-member-bio">{{ collection.bio }}</div>{% endif %}
+        {% if collection.skills %}
+        <div class="m-member-skills">
+            {% for skill in collection.skills|split_skills|slice:":4" %}
+            <span class="m-skill-tag">{{ skill }}</span>
+            {% endfor %}
+        </div>
+        {% endif %}
+        <div style="font-size:0.6875rem;color:var(--text-tertiary,#9ca3af);margin-top:4px;">{{ collection.portfolio_name }}</div>
+    </div>
+    <i class="fas fa-chevron-right m-member-chevron"></i>
+</a>

@@ -81,6 +81,12 @@
 }
 
 /* Member Card */
+/* 첫 자리 — 사이트 주인(운영자) */
+.member-card--owner { border-color: rgba(79, 70, 229, .45) !important; box-shadow: 0 0 0 1px rgba(79, 70, 229, .25), 0 12px 32px -12px rgba(79, 70, 229, .35); }
+.member-owner-badge { display: inline-flex; align-items: center; gap: 6px; margin: 10px 0 2px; padding: 3px 10px; border-radius: 999px;
+    font-size: .75rem; font-weight: 700; color: #4f46e5; background: rgba(79, 70, 229, .08); }
+.member-owner-badge i { font-size: .7rem; }
+
 .member-card {
     background: white;
     border-radius: var(--radius-2xl);
@@ -336,7 +342,7 @@
                     <i class="fas fa-user-friends"></i>
                 </div>
                 <div>
-                    <div class="stat-value">{{ portfolios.count|add:collections.count }}</div>
+                    <div class="stat-value">{{ member_total }}</div>
                     <div class="stat-label">공개 포트폴리오</div>
                 </div>
             </div>
@@ -344,8 +350,9 @@
     </div>
 
     <!-- Members Grid -->
-    {% if portfolios or collections %}
+    {% if portfolios or collections or owner_collection %}
     <div class="members-grid">
+        {% if owner_collection %}{% include 'community/_member_collection_card.html' with collection=owner_collection is_owner_card=True %}{% endif %}
         <!-- Legacy Portfolios -->
         {% for portfolio in portfolios %}
         <a href="{% url 'community:portfolio_view' portfolio.user.id %}" class="member-card">
@@ -412,66 +419,7 @@
 
         <!-- New Portfolio Collections -->
         {% for collection in collections %}
-        <a href="{% url 'community:portfolio_collection_detail' collection.slug %}" class="member-card">
-            <div class="member-avatar-section">
-                {% if collection.profile_image %}
-                <img src="{{ collection.profile_image.url }}" alt="{{ collection.get_display_name }}" class="member-avatar">
-                {% else %}
-                <div class="member-avatar-placeholder">
-                    {{ collection.get_display_name|slice:":1"|upper }}
-                </div>
-                {% endif %}
-
-                <h2 class="member-name">{{ collection.get_display_name }}</h2>
-
-                {% if collection.title %}
-                <div class="member-title">{{ collection.title }}</div>
-                {% endif %}
-
-                {% if collection.location %}
-                <div class="member-location">
-                    <i class="fas fa-map-marker-alt"></i>
-                    <span>{{ collection.location }}</span>
-                </div>
-                {% endif %}
-            </div>
-
-            {% if collection.bio %}
-            <p class="member-bio">{{ collection.bio|linebreaksbr }}</p>
-            {% else %}
-            <p class="member-bio" style="color: var(--text-muted); font-style: italic;">
-                아직 자기소개가 없습니다.
-            </p>
-            {% endif %}
-
-            {% if collection.skills %}
-            <div class="member-skills">
-                {% for skill in collection.skills|slice:":5" %}
-                <span class="skill-tag">{{ skill }}</span>
-                {% endfor %}
-                {% if collection.skills|length > 5 %}
-                <span class="skill-tag">+{{ collection.skills|length|add:"-5" }}</span>
-                {% endif %}
-            </div>
-            {% endif %}
-
-            <div class="member-footer">
-                <div class="member-stats">
-                    <div class="member-stat">
-                        <div class="member-stat-value">{{ collection.projects.count }}</div>
-                        <div class="member-stat-label">프로젝트</div>
-                    </div>
-                    <div class="member-stat">
-                        <div class="member-stat-value">{{ collection.view_count }}</div>
-                        <div class="member-stat-label">조회</div>
-                    </div>
-                </div>
-
-                <button class="view-portfolio-btn">
-                    포트폴리오 보기 <i class="fas fa-arrow-right"></i>
-                </button>
-            </div>
-        </a>
+        {% include 'community/_member_collection_card.html' %}
         {% endfor %}
     </div>
     {% else %}

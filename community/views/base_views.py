@@ -263,12 +263,10 @@ def index(request):
         ('kw', kw), ('category', category_name), ('sort', '' if sort == 'recent' else sort)
     ) if v})
 
-    # 서비스 런칭일 기준 경과 일수 (2025-10-01)
+    # 서비스 런칭일 기준 경과 일수 — 사이트 주인 포트폴리오와 같은 계산(community.site_stats)
     from datetime import date
-    launch_date = date(2025, 10, 1)
-    launch_days = (date.today() - launch_date).days
-    if launch_days < 0:
-        launch_days = 0
+    from community import site_stats
+    launch_days = site_stats.launch_days()
 
     # 총 회원 수
     total_users = User.objects.count()
@@ -296,7 +294,7 @@ def index(request):
         visitors_today = DailyVisitor.objects.get(date=today).visitor_count
     except DailyVisitor.DoesNotExist:
         visitors_today = 0
-    visitors_total = DailyVisitor.objects.aggregate(s=Sum('visitor_count'))['s'] or 0
+    visitors_total = site_stats.visitors_total()
 
     context = {
         'question_list': page_obj,

@@ -481,3 +481,7 @@ ACCOUNT_RATE_LIMITS = {
 }
 
 # (중복 설정 제거됨)
+
+# 사이트 주인 — 구성원 목록 첫 자리를 차지하고, HTML 포트폴리오에 사이트 통계(data-tc-stat)를 받아 쓸 수 있는
+# 유일한 계정(community.site_stats). 운영자 문승현의 포트폴리오 계정.
+SITE_OWNER_USERNAME = os.environ.get('SITE_OWNER_USERNAME', 'sh')

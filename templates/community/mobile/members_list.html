@@ -14,6 +14,11 @@
 }
 .m-members-title { font-size: 1.125rem; font-weight: 800; color: var(--text-primary, #111); }
 .m-members-sub { font-size: 0.8125rem; color: var(--text-tertiary, #9ca3af); margin-top: 2px; }
+/* 첫 자리 — 사이트 주인(운영자) */
+.m-member-card--owner { border-color: rgba(79, 70, 229, .45) !important; background: rgba(79, 70, 229, .03) !important; }
+.m-owner-badge { display: inline-block; margin-left: 4px; padding: 1px 7px; border-radius: 999px; font-size: .6875rem; font-weight: 700;
+    color: #4f46e5; background: rgba(79, 70, 229, .1); vertical-align: middle; }
+
 .m-member-card {
     display: flex;
     align-items: center;
@@ -76,32 +81,15 @@
     <div class="m-members-sub">포트폴리오를 공개한 멤버들</div>
 </div>
 
+{% if owner_collection %}
+<div class="m-section-label">운영자</div>
+{% include 'community/_member_collection_card.html' with collection=owner_collection is_owner_card=True %}
+{% endif %}
+
 {% if collections %}
 <div class="m-section-label">포트폴리오 컬렉션</div>
 {% for col in collections %}
-<a href="{% url 'community:portfolio_collection_detail' col.slug %}" class="m-member-card">
-    <div class="m-member-avatar">
-        {% if col.profile_image %}
-        <img src="{{ col.profile_image.url }}" alt="">
-        {% else %}
-        {{ col.display_name|slice:":1"|upper }}
-        {% endif %}
-    </div>
-    <div class="m-member-info">
-        <div class="m-member-name">{{ col.display_name|default:col.user.username }}</div>
-        {% if col.title %}<div class="m-member-title">{{ col.title }}</div>{% endif %}
-        {% if col.bio %}<div class="m-member-bio">{{ col.bio }}</div>{% endif %}
-        {% if col.skills %}
-        <div class="m-member-skills">
-            {% for skill in col.skills|split_skills|slice:":4" %}
-            <span class="m-skill-tag">{{ skill }}</span>
-            {% endfor %}
-        </div>
-        {% endif %}
-        <div style="font-size:0.6875rem;color:var(--text-tertiary,#9ca3af);margin-top:4px;">{{ col.portfolio_name }}</div>
-    </div>
-    <i class="fas fa-chevron-right m-member-chevron"></i>
-</a>
+{% include 'community/_member_collection_card.html' with collection=col %}
 {% endfor %}
 {% endif %}
 
@@ -133,7 +121,7 @@
 {% endfor %}
 {% endif %}
 
-{% if not portfolios and not collections %}
+{% if not portfolios and not collections and not owner_collection %}
 <div class="m-empty">
     <i class="fas fa-users" style="font-size:2rem;margin-bottom:8px;display:block;"></i>
     아직 포트폴리오를 공개한 멤버가 없습니다.

@@ -108,9 +108,19 @@ def members_list(request):
         is_published=True, approval_status='approved'
     ).select_related('user').order_by('-modify_date')
 
+    # 첫 자리는 사이트 주인(운영자) — 정렬과 무관하게 맨 앞. 대표 포트폴리오가 있으면 그것을 쓴다.
+    from community import site_stats
+    owner_collection = public_collections.filter(user__username=site_stats.owner_username()) \
+        .order_by('-is_main', '-modify_date').first() if site_stats.owner_username() else None
+    if owner_collection:
+        public_collections = public_collections.exclude(pk=owner_collection.pk)
+        public_portfolios = public_portfolios.exclude(user=owner_collection.user)   # 한 사람은 한 번만
+
     context = {
         'portfolios': public_portfolios,
         'collections': public_collections,
+        'owner_collection': owner_collection,
+        'member_total': public_portfolios.count() + public_collections.count() + (1 if owner_collection else 0),
     }
 
     return render(request, 'community/members_list.html', context)
@@ -805,6 +815,12 @@ def portfolio_collection_raw(request, slug):
         url = reverse('community:portfolio_collection_asset', args=[collection.slug, asset.id])
         asset_map[asset.original_name.strip().lower()] = url
     html = _rewrite_asset_refs(html, asset_map)
+
+    # 사이트 주인의 포트폴리오만 data-tc-stat 자리에 최신 사이트 통계를 받는다(community.site_stats).
+    # 다른 회원의 HTML 은 업로드한 그대로 내보낸다.
+    from community import site_stats
+    if site_stats.is_site_owner(collection.user):
+        html = site_stats.fill_stat_tags(html)
 
     response = HttpResponse(html, content_type='text/html; charset=utf-8')
     # django-csp 미들웨어가 덮어쓰지 않도록 헤더를 직접 설정 (no_header 체크에 의해 보존됨)
