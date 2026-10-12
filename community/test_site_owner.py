@@ -18,8 +18,10 @@ STAT_HTML = ('<html><body><p>운영 <span class="n" data-tc-stat="launch_days">3
 
 
 def collection(user, name, **kw):
+    kw.setdefault('is_published', True)
+    kw.setdefault('approval_status', 'approved')
     return PortfolioCollection.objects.create(
-        user=user, portfolio_name=name, slug=f'{user.username}-{name}', is_published=True, approval_status='approved',
+        user=user, portfolio_name=name, slug=f'{user.username}-{name}',
         display_name=kw.pop('display_name', user.username), **kw)
 
 
@@ -85,3 +87,42 @@ class OwnerLiveStatsTests(TestCase):
         self.assertEqual(r.context['launch_days'], site_stats.launch_days())
         self.assertEqual(r.context['visitors_total'], f'{site_stats.visitors_total():,}')
         self.assertEqual(site_stats.launch_days(date(2025, 10, 1)), 0)
+
+
+class AdminSelfApprovalTests(TestCase):
+    """관리자는 자기 포트폴리오를 고쳐도 내려가지 않고, 게시 요청은 바로 공개된다. 일반 회원은 예전대로."""
+
+    def setUp(self):
+        self.admin = User.objects.create_superuser('boss', 'b@x.com', 'x')
+        self.member = User.objects.create_user('member', password='x')
+        self.member.profile.is_email_verified = True
+        self.member.profile.save()
+
+    def publish(self, c):
+        return self.client.post(reverse('community:portfolio_collection_publish', args=[c.slug]), HTTP_USER_AGENT=PC)
+
+    def test_admin_publish_request_goes_live_at_once(self):
+        c = collection(self.admin, 'pf', approval_status='draft', is_published=False)
+        self.client.login(username='boss', password='x')
+        self.publish(c)
+        c.refresh_from_db()
+        self.assertEqual((c.approval_status, c.is_published, c.reviewed_by), ('approved', True, self.admin))
+
+    def test_member_publish_request_still_waits_for_review(self):
+        c = collection(self.member, 'pf', approval_status='draft', is_published=False)
+        self.client.login(username='member', password='x')
+        self.publish(c)
+        c.refresh_from_db()
+        self.assertEqual((c.approval_status, c.is_published), ('pending', False))
+
+    def test_admin_edit_keeps_approval_but_member_edit_resets_it(self):
+        from django.test import RequestFactory
+        from community.views.portfolio_views import _reset_approval_on_change
+        for user, expect in ((self.admin, ('approved', True)), (self.member, ('draft', False))):
+            c = collection(user, 'edit')
+            req = RequestFactory().post('/')
+            req.user = user
+            req._messages = type('M', (), {'add': lambda *a, **k: None})()
+            _reset_approval_on_change(c, req)
+            c.refresh_from_db()
+            self.assertEqual((c.approval_status, c.is_published), expect)

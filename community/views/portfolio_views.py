@@ -273,8 +273,8 @@ def portfolio_edit(request):
         if 'profile_image' in request.FILES:
             portfolio.profile_image = request.FILES['profile_image']
 
-        # 내용이 변경되면 재승인 필요 - 승인 후 장난성 내용으로 바꾸는 우회를 차단
-        if portfolio.approval_status in ('approved', 'pending', 'rejected'):
+        # 내용이 변경되면 재승인 필요 - 승인 후 장난성 내용으로 바꾸는 우회를 차단(관리자 본인 것은 제외)
+        if portfolio.approval_status in ('approved', 'pending', 'rejected') and not _approves_itself(request.user):
             portfolio.approval_status = 'draft'
             portfolio.approval_requested_at = None
             portfolio.rejection_reason = ''
@@ -870,8 +870,17 @@ def collection_asset_delete(request, slug, asset_id):
     return redirect('community:portfolio_collection_edit', slug=slug)
 
 
+def _approves_itself(user) -> bool:
+    """관리자(승인 권한자)는 자기 포트폴리오를 고쳐도 재승인 없이 그대로 두고, 게시 요청은 바로 승인한다.
+    재승인은 '승인 뒤 장난성 내용으로 바꾸는 우회'를 막으려는 것인데, 승인할 사람이 본인이면 대기열만 생긴다
+    (2026-10-12: 운영자가 구성원 카드 소개를 고쳤더니 draft 로 내려가고 승인 목록에도 안 보였다)."""
+    return bool(getattr(user, 'is_authenticated', False) and (user.is_staff or user.is_superuser))
+
+
 def _reset_approval_on_change(collection, request):
-    """승인/게시 이후 내용이 변경되면 비공개(draft)로 되돌려 재승인을 요구."""
+    """승인/게시 이후 내용이 변경되면 비공개(draft)로 되돌려 재승인을 요구(관리자 본인 것은 제외)."""
+    if _approves_itself(request.user):
+        return
     if collection.approval_status in ('approved', 'pending', 'rejected'):
         from django.contrib import messages
         collection.approval_status = 'draft'
@@ -1029,8 +1038,8 @@ def portfolio_collection_edit(request, slug):
         if 'profile_image' in request.FILES:
             collection.profile_image = request.FILES['profile_image']
 
-        # 내용이 변경되면 재승인 필요 - 승인 후 장난성 내용으로 바꾸는 우회를 차단
-        if collection.approval_status in ('approved', 'pending', 'rejected'):
+        # 내용이 변경되면 재승인 필요 - 승인 후 장난성 내용으로 바꾸는 우회를 차단(관리자 본인 것은 제외)
+        if collection.approval_status in ('approved', 'pending', 'rejected') and not _approves_itself(request.user):
             collection.approval_status = 'draft'
             collection.approval_requested_at = None
             collection.rejection_reason = ''
@@ -1078,6 +1087,16 @@ def portfolio_collection_publish(request, slug):
             collection.approval_requested_at = None
             collection.save(update_fields=['approval_status', 'approval_requested_at'])
             messages.info(request, f'"{collection.portfolio_name}"의 게시 요청을 취소했습니다.')
+        elif _approves_itself(request.user):  # 관리자 본인 — 대기열 없이 바로 승인·공개
+            now = timezone.now()
+            collection.approval_status = 'approved'
+            collection.approval_requested_at = now
+            collection.reviewed_at, collection.reviewed_by = now, request.user
+            collection.rejection_reason = ''
+            collection.is_published = True
+            collection.save(update_fields=['approval_status', 'approval_requested_at', 'reviewed_at', 'reviewed_by',
+                                           'rejection_reason', 'is_published'])
+            messages.success(request, f'"{collection.portfolio_name}"을(를) 바로 공개했습니다(관리자).')
         else:  # draft, rejected
             collection.approval_status = 'pending'
             collection.approval_requested_at = timezone.now()
