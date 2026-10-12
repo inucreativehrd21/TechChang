@@ -18,13 +18,23 @@
   </div>
 
   <section class="nl-sec" aria-labelledby="nl-pub">
-    <h2 id="nl-pub">이번 주 발행 {{ published|length }}편</h2>
+    <h2 id="nl-pub">이번 주 새 글 {{ new_count }}편</h2>
     {% if published %}
     <ul class="nl-pub">
-      {% for p in published %}
+      {% for p in published %}{% if not p.remake %}
       <li><span class="nl-chip">{{ p.cat }}</span><a href="{{ p.url }}">{{ p.title }}</a>{% if p.takeaway %}<p>{{ p.takeaway }}</p>{% endif %}</li>
-      {% endfor %}
+      {% endif %}{% endfor %}
     </ul>
+    {% if remade %}
+    <details class="nl-more">
+      <summary>다시 다듬어 갱신한 글 {{ remade }}편</summary>
+      <ul class="nl-pub">
+        {% for p in published %}{% if p.remake %}
+        <li><span class="nl-chip">{{ p.cat }}</span><a href="{{ p.url }}">{{ p.title }}</a>{% if p.takeaway %}<p>{{ p.takeaway }}</p>{% endif %}</li>
+        {% endif %}{% endfor %}
+      </ul>
+    </details>
+    {% endif %}
     {% else %}<p class="nl-empty">이번 주에는 새로 발행된 글이 없습니다.</p>{% endif %}
   </section>
 
