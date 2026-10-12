@@ -486,7 +486,7 @@ def newsletter_detail(request, slug):
                  '숫자로 본 한 주 — 운영·방문·칼럼 수와 최근 7일 방문', '다음 관측 — 다음 주 일정']
     return render(request, 'newsletter/detail.html', {
         'issue': issue, 'facts': facts, 'published': published, 'newer': newer, 'older': older,
-        'hero': hero,
+        'hero': hero, 'scene': copy.get('scene', ''),
         'remade': sum(1 for p in published if p.get('remake')),
         'new_count': sum(1 for p in published if not p.get('remake')),
         'cards': list(zip(issue.cards, card_alts)),

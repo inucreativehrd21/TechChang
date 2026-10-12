@@ -74,6 +74,12 @@ office.newsletter 가 내용(nl)을 채우고 Playwright 가 #card-1~5(1080×135
   .item p.why b { display: inline-block; margin-right: 10px; font-size: 19px; font-weight: 800; color: #fff; background: var(--indigo);
     padding: 1px 9px; border-radius: 4px; vertical-align: 3px; }
 
+  .scene { margin-top: 56px; background: var(--ink); color: var(--paper); padding: 34px 40px 38px; position: relative; }
+  .scene::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 8px; background: var(--indigo); }
+  .s-cap { display: flex; justify-content: space-between; gap: 20px; font-size: 19px; color: #B9B6C6; letter-spacing: .04em; }
+  .s-cap span:first-child { color: #A9A4FF; font-weight: 700; }
+  .scene p { margin-top: 14px; font-size: 32px; line-height: 1.5; font-weight: 600; letter-spacing: -.015em; max-height: 148px; }
+
   /* 3 · 제작 일지 */
   .hero-head { margin-top: 30px; font-size: 66px; line-height: 1.18; font-weight: 800; letter-spacing: -.035em; max-height: 162px; padding-bottom: 4px; text-wrap: balance; }
   .titles { margin-top: 22px; display: grid; gap: 6px; }
@@ -89,8 +95,9 @@ office.newsletter 가 내용(nl)을 채우고 Playwright 가 #card-1~5(1080×135
   .j-line { position: absolute; left: 0; right: 0; height: 0; border-top: 2px dashed var(--indigo); z-index: 0; }
   .j-bar { position: relative; flex: 1; z-index: 1; background: repeating-linear-gradient(0deg, #C9C6D6 0 11px, transparent 11px 13px); }
   .j-bar.ok { background: repeating-linear-gradient(0deg, var(--indigo) 0 11px, transparent 11px 13px); }
-  .j-bar i { position: absolute; top: -32px; left: 0; right: 0; text-align: center; font-style: normal; font-size: 21px; font-weight: 700;
-    color: var(--ink-2); font-variant-numeric: tabular-nums; }
+  .j-bar i { position: absolute; top: -34px; left: 50%; transform: translateX(-50%); padding: 0 8px; background: var(--paper);
+    text-align: center; font-style: normal; font-size: 21px; font-weight: 700; line-height: 28px;
+    color: var(--ink-2); font-variant-numeric: tabular-nums; z-index: 2; }
   .j-bar.ok i { color: var(--indigo); }
   .events { list-style: none; margin-top: 30px; border-top: 2px solid var(--ink); }
   .events li { display: grid; grid-template-columns: 56px 1fr; gap: 12px; align-items: baseline; padding: 14px 0; border-bottom: 1.5px solid var(--rule); }
@@ -195,6 +202,12 @@ office.newsletter 가 내용(nl)을 채우고 Playwright 가 #card-1~5(1080×135
       </div>
       {% endfor %}
     </div>
+    {% if nl.scene and nl.stories|length < 3 %}
+    <div class="scene">
+      <div class="s-cap"><span>회의실에서{% if nl.scene_date %} · {{ nl.scene_date }}{% endif %}</span>{% if nl.week.rejected or nl.week.holds %}<span>이번 주 반려 원고 {{ nl.week.rejected }}편 · 심사 미달 보류 {{ nl.week.holds }}회</span>{% endif %}</div>
+      <p class="fit" data-fit="scene">{{ nl.scene }}</p>
+    </div>
+    {% endif %}
     {% else %}
     <p class="empty-note">이번 주에는 새로 발행된 글이 없어요. 대신 연구실이 어떤 원고를 붙잡고 있었는지 다음 장에 적었어요.</p>
     {% endif %}

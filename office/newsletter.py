@@ -30,7 +30,7 @@ AGENT_ORDER = ['lead', 'editor', 'hrd', 'data', 'coding', 'checker', 'critic', '
 CURATOR = 'lead'
 SPRITE_FRONT = 18           # 16×32 프레임 24개 중 정면을 보는 첫 프레임
 CAT_LABEL = {'hrd': 'HRD', 'data': '데이터분석', 'coding': '프로그래밍'}
-LIMITS = {'theme': 20, 'intro': 90, 'why': 60, 'hero_head': 18, 'event': 40, 'behind': 40}
+LIMITS = {'theme': 20, 'intro': 90, 'why': 60, 'hero_head': 18, 'event': 40, 'behind': 40, 'scene': 64}
 WEEKDAY = '월화수목금토일'
 
 
@@ -334,7 +334,7 @@ PROMPT = (
     '[이번 주 사실]\n{facts}\n\n'
     '출력 JSON: {{"theme": "표지 제목", "intro": "표지 소개", "whys": {{"글 id": "왜 이 주제였나"}}, '
     '"hero": {{"id": 글 id, "headline": "제작 일지 제목", "events": ["사건1", "사건2", "사건3"], "line": "쓴 연구원의 한마디"}}, '
-    '"behind": {{"agent": "연구원 키", "line": "한마디"}}}}\n'
+    '"behind": {{"agent": "연구원 키", "line": "한마디"}}, "scene": "회의실 한 장면"}}\n'
     '규칙:\n'
     '- theme: {theme}자 이내. "○편 발행", "평균 ○점" 같은 보고서 제목 금지. 이번 주 가장 웃기거나 극적인 장면을 한 구절로, '
     '궁금해서 넘겨 보게. 핵심 낱말 하나를 *별표*로 감쌉니다.\n'
@@ -343,6 +343,9 @@ PROMPT = (
     '- hero: hero_id 가 있으면 그 글의 제작 일지. headline {hero_head}자 이내. events 2~3개, 각 {event}자 이내, 일어난 순서대로 '
     '사건 하나씩(가제, 점수가 떨어진 순간, 사고, 통과의 결정적 수정). line 은 그 글을 쓴 연구원의 1인칭 한마디 {behind}자 이내, 웃프게.\n'
     '- hero_id 가 null 이면 hero 는 null 로 두고 behind 를 씁니다: agent 는 {agents} 중 하나, line {behind}자 이내.\n'
+    '- scene: 이번 주 편집회의(meetings)에서 가장 재밌는 장면 하나, {scene}자 이내 — 무엇이 핫했고 무엇이 반응이 없었는지, '
+    '누가 무슨 근거로 무엇을 밀었는지. meetings 가 비어 있으면 빈 문자열.\n'
+    '- 맞춤법을 한 번 더 봅니다.\n'
     '- 횟수·점수는 아라비아 숫자로, [이번 주 사실]에 있는 값만 씁니다.{retry}'
 )
 
@@ -381,7 +384,9 @@ def _problems(copy: dict, facts: dict) -> list[str]:
     for s in (facts.get('making') or [])[:3]:
         if _too_long(whys.get(str(s['id'])) or whys.get(s['id']), LIMITS['why']):
             out.append(f"whys[{s['id']}] 를 {LIMITS['why']}자 이내로")
-    texts = [copy.get('theme', ''), copy.get('intro', '')] + [str(v) for v in whys.values()]
+    if facts.get('meetings') and _too_long(copy.get('scene'), LIMITS['scene']):
+        out.append(f"scene 을 {LIMITS['scene']}자 이내로")
+    texts = [copy.get('theme', ''), copy.get('intro', ''), copy.get('scene') or ''] + [str(v) for v in whys.values()]
     if facts.get('hero_id'):
         h = copy.get('hero') or {}
         ev = h.get('events') or []
@@ -425,7 +430,9 @@ def default_copy(facts: dict) -> dict:
     intro = (f'새 글 {n}편' + (f'과 다시 다듬은 글 {m}편' if m else '') + '을 내놓기까지의 뒷이야기예요. 왜 그 주제였고 어디서 꼬였는지 적었어요.'
              if n or m else '이번 주에는 새 글 없이 원고를 다듬었어요. 무엇을 붙잡고 있었는지 적었어요.')
     whys = {str(s['id']): _fit(s['origin']['from'] + ' — ' + s['origin']['pitch'], LIMITS['why']) for s in making[:3]}
-    copy = {'theme': theme, 'intro': _fit(intro, LIMITS['intro']), 'whys': whys, 'source': 'default'}
+    mt = (facts.get('meetings') or [{}])[0]
+    scene = _fit(mt.get('summary') or mt.get('signals') or '', LIMITS['scene']) if facts.get('meetings') else ''
+    copy = {'theme': theme, 'intro': _fit(intro, LIMITS['intro']), 'whys': whys, 'scene': scene, 'source': 'default'}
     if hero:
         sc = hero['scores']
         ev = []
@@ -505,6 +512,8 @@ def context(facts: dict, copy: dict, issue_no: int, run_date: date) -> dict:
         'intro': copy.get('intro', ''),
         'agents': [{'key': k, 'name': AGENTS[k]['name'], 'sprite': sp[k]} for k in AGENT_ORDER],
         'published': pub, 'stories': stories, 'hero': hero,
+        'scene': copy.get('scene') or '', 'scene_date': ((facts.get('meetings') or [{}])[0]).get('date', ''),
+        'week': facts.get('week') or {},
         'count_new': sum(not p['remake'] for p in pub), 'count_remade': sum(p['remake'] for p in pub),
         'behind': {'name': AGENTS[bk]['name'], 'role': AGENTS[bk]['title'], 'sprite': sp[bk], 'line': b.get('line', '')},
         'ledger': facts['ledger'], 'numbers': facts['numbers'], 'visits': facts['visits'], 'visits_peak': facts['visits_peak'],
@@ -537,7 +546,7 @@ def render(nl: dict, out_dir: str | None) -> list[str]:
     return over
 
 
-CURATED_KEYS = re.compile(r'^(theme|og-theme|intro|behind|why-\d+|hero-head|hero-ev-\d+|hero-line)$')
+CURATED_KEYS = re.compile(r'^(theme|og-theme|intro|behind|scene|why-\d+|hero-head|hero-ev-\d+|hero-line)$')
 
 
 def make(run_date: date | None = None, *, dry: bool = False, ask_json=None, renderer=None, use_model: bool = True,

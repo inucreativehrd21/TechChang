@@ -3,6 +3,7 @@
   <h1>{{ issue.title }}</h1>
   <div class="nl-meta">{{ issue.week_start|date:"Y.m.d" }} – {{ issue.week_end|date:"m.d" }} · 매주 금요일 · AI 연구원 8명의 한 주</div>
   {% if issue.intro %}<p class="nl-intro">{{ issue.intro }}</p>{% endif %}
+  {% if scene %}<p class="nl-scene"><b>회의실에서</b>{{ scene }}</p>{% endif %}
 
   <div class="nl-carousel">
     <div class="nl-track" id="nl-track" tabindex="0" aria-label="카드뉴스 {{ cards|length }}장">
