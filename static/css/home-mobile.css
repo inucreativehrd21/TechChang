@@ -289,3 +289,47 @@
     background: linear-gradient(180deg, #eef2ff 0%, #ffffff 60%);
 }
 .tc-mh-sub span { display: inline-block; }   /* 문장 덩어리 단위로만 줄이 바뀌게 */
+
+/* 운영자 픽 — PC home.css .is-op-pick 과 같은 재질(짙은 인디고) */
+.tc-mh-pop.is-op-pick,
+.tc-m-qcard.is-op-pick {
+    position: relative;
+    overflow: hidden;
+    border-color: rgba(165, 180, 252, 0.38);
+    background:
+        radial-gradient(120% 120% at 100% 0%, rgba(129, 140, 248, 0.34) 0%, rgba(129, 140, 248, 0) 55%),
+        linear-gradient(155deg, #1e1b4b 0%, #1a1745 46%, #0f0d2e 100%);
+    box-shadow: 0 12px 26px -16px rgba(30, 27, 75, 0.8);
+}
+.tc-mh-pop.is-op-pick::before,
+.tc-m-qcard.is-op-pick::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent 0%, rgba(199, 210, 254, 0.9) 50%, transparent 100%);
+}
+.tc-mh .is-op-pick .tc-mh-pop-title,
+.tc-mh .is-op-pick .tc-m-qcard-title { color: #fff; }
+.tc-mh .is-op-pick .tc-mh-pop-rank { color: #a5b4fc; }
+.tc-mh .is-op-pick .tc-mh-pop-meta,
+.tc-mh .is-op-pick .tc-m-qcard-meta,
+.tc-mh .is-op-pick .tc-m-stat,
+.tc-mh .is-op-pick .tc-m-author { color: rgba(224, 231, 255, 0.72); }
+.tc-m-op-pick {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    margin: 0 6px 6px 0;
+    padding: 2px 9px;
+    border-radius: 999px;
+    font-size: 0.6875rem;
+    font-weight: 700;
+    color: #1e1b4b;
+    background: linear-gradient(135deg, #eef2ff 0%, #c7d2fe 100%);
+}
+.tc-m-op-pick i { color: #4f46e5; font-size: 0.625rem; }
+.tc-mh .is-op-pick .tc-m-stat,
+.tc-mh .is-op-pick .tc-m-qcard-meta { border-color: rgba(255, 255, 255, 0.14); }

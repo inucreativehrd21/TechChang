@@ -132,6 +132,20 @@ def question_delete(request, question_id):
     return render(request, 'community/question_delete_confirm.html', context)
 
 @login_required(login_url='common:login')
+def question_operator_pick(request, question_id):
+    """운영자 픽 지정/해제 — 관리자(superuser)만, POST 로만."""
+    if request.method != 'POST' or not request.user.is_superuser:
+        messages.error(request, '운영자 픽은 관리자만 지정할 수 있습니다')
+        return redirect('community:detail', question_id=question_id)
+    question = get_object_or_404(Question, pk=question_id, is_deleted=False)
+    question.operator_pick = not question.operator_pick
+    question.operator_pick_at = timezone.now() if question.operator_pick else None
+    question.save(update_fields=['operator_pick', 'operator_pick_at'])
+    messages.success(request, '운영자 픽으로 지정했습니다' if question.operator_pick else '운영자 픽을 해제했습니다')
+    return redirect('community:detail', question_id=question.id)
+
+
+@login_required(login_url='common:login')
 def question_vote(request, question_id):
     question = get_object_or_404(Question, pk=question_id)
     if request.user == question.author:

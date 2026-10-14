@@ -22,7 +22,7 @@
 
 {% block extra_css %}
 {% if making %}<link href="{% static 'css/making.css' %}?v={{ STATIC_VERSION }}" rel="stylesheet">{% endif %}
-<style>.tc-premium{display:inline-flex;align-items:center;gap:6px;margin:0 0 10px;padding:4px 12px;border-radius:999px;background:rgba(79,70,229,.08);color:#4f46e5;font-size:.8rem;font-weight:700;text-decoration:none;letter-spacing:.01em}.tc-premium:hover{background:rgba(79,70,229,.14);color:#4338ca}</style>
+{% include 'community/_title_badges_style.html' %}
 <style>
 /* Premium Detail Page Styles */
 .detail-container {
@@ -598,7 +598,7 @@
                 {% endif %}
             </div>
 
-            {% if premium_score %}<a class="tc-premium"{% if making %} href="{% url 'office:making' question.id %}"{% endif %} title="연구팀 편집 심사 {{ premium_score }}점 — 90점 이상인 칼럼에 붙는 표시입니다. 제작 과정 보기"><i class="fas fa-gem" aria-hidden="true"></i> 프리미엄 칼럼 · {{ premium_score }}점</a>{% endif %}
+            {% include 'community/_title_badges.html' %}
             <h1 class="question-title">{{ question.subject }}</h1>
             {% include 'community/_ai_notice.html' %}
 

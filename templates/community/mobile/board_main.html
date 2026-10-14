@@ -53,6 +53,13 @@
     text-decoration: none;
 }
 .m-post-row:first-child { border-top: none; }
+/* 운영자 픽 — 짙은 인디고 줄(PC 카드와 같은 재질) */
+.m-post-row.is-op-pick { background: linear-gradient(155deg, #1e1b4b 0%, #17153a 100%); border-top-color: transparent; }
+.m-post-row.is-op-pick .m-post-subject { color: #fff; }
+.m-post-row.is-op-pick .m-post-answer { color: rgba(224, 231, 255, .72); }
+.m-op-pick { display: inline-flex; align-items: center; gap: 4px; margin-right: 6px; padding: 1px 8px; border-radius: 999px;
+    font-size: .6875rem; font-weight: 700; color: #1e1b4b; background: linear-gradient(135deg, #e0e7ff, #c7d2fe); vertical-align: 1px; }
+.m-op-pick i { color: #4f46e5; font-size: .625rem; }
 .m-post-subject {
     flex: 1;
     min-width: 0;
@@ -110,8 +117,8 @@
     </div>
     <div class="tc-m-card">
         {% for post in s.posts %}
-        <a href="{% url 'community:detail' post.id %}" class="m-post-row">
-            <span class="m-post-subject">{% if post.is_locked and not user.is_authenticated %}<i class="fas fa-lock m-post-lock" aria-hidden="true"></i><span class="visually-hidden">회원 전용: </span>{% endif %}{{ post.subject }}</span>
+        <a href="{% url 'community:detail' post.id %}" class="m-post-row{% if post.operator_pick %} is-op-pick{% endif %}">
+            <span class="m-post-subject">{% if post.operator_pick %}<span class="m-op-pick"><i class="fas fa-crown" aria-hidden="true"></i> 운영자 픽</span>{% endif %}{% if post.is_locked and not user.is_authenticated %}<i class="fas fa-lock m-post-lock" aria-hidden="true"></i><span class="visually-hidden">회원 전용: </span>{% endif %}{{ post.subject }}</span>
             <span class="m-post-answer {% if post.answer_count %}has-answer{% endif %}">
                 <i class="far fa-comment" aria-hidden="true"></i> {{ post.answer_count }}
             </span>

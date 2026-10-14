@@ -75,6 +75,9 @@ class Question(models.Model):
     is_deleted = models.BooleanField(default=False, db_index=True)  # 인덱스 추가 (필터링에 자주 사용)
     deleted_date = models.DateTimeField(null=True, blank=True)
     is_locked = models.BooleanField(default=False, help_text="회원 전용 글 (로그인 필요)")  # 글 잠금 기능
+    # 운영자 픽 — 관리자(superuser)가 직접 고른 글. 카드가 짙은 인디고로 돋보인다(home.css .is-op-pick)
+    operator_pick = models.BooleanField(default=False, db_index=True, verbose_name='운영자 픽')
+    operator_pick_at = models.DateTimeField(null=True, blank=True, verbose_name='운영자 픽 지정 시각')
     # 시리즈 연재 (단편 칼럼은 둘 다 NULL)
     series = models.ForeignKey(
         'ColumnSeries', on_delete=models.SET_NULL, null=True, blank=True, related_name='episodes'

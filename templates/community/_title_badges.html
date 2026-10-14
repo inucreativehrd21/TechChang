@@ -1,0 +1,16 @@
+{% comment %}칼럼 상세 제목 위 배지 줄(PC·모바일 공용) — 운영자 픽 · 프리미엄 칼럼 · 관리자 전용 운영자 픽 버튼.
+스타일은 _title_badges_style.html(각 상세 템플릿 머리에서 include).{% endcomment %}
+{% if question.operator_pick or premium_score or request.user.is_superuser %}
+<div class="tc-title-badges">
+    {% if question.operator_pick %}<span class="tc-op-badge" title="운영자가 직접 고른 글입니다"><i class="fas fa-crown" aria-hidden="true"></i> 운영자 픽</span>{% endif %}
+    {% if premium_score %}<a class="tc-premium"{% if making %} href="{% url 'office:making' question.id %}"{% endif %} title="연구팀 편집 심사 {{ premium_score }}점 — 90점 이상인 칼럼에 붙는 표시입니다. 제작 과정 보기"><i class="fas fa-gem" aria-hidden="true"></i> 프리미엄 칼럼 · {{ premium_score }}점</a>{% endif %}
+    {% if request.user.is_superuser %}
+    <form method="post" action="{% url 'community:question_operator_pick' question.id %}" class="tc-op-form">
+        {% csrf_token %}
+        <button type="submit" class="tc-op-toggle{% if question.operator_pick %} is-on{% endif %}" aria-pressed="{% if question.operator_pick %}true{% else %}false{% endif %}">
+            <i class="fas fa-crown" aria-hidden="true"></i> {% if question.operator_pick %}운영자 픽 해제{% else %}운영자 픽 지정{% endif %}
+        </button>
+    </form>
+    {% endif %}
+</div>
+{% endif %}

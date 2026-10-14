@@ -39,6 +39,7 @@ urlpatterns = [
 
     # vote
     path('question/vote/<int:question_id>/', question_views.question_vote, name='question_vote'),
+    path('question/pick/<int:question_id>/', question_views.question_operator_pick, name='question_operator_pick'),
     path('answer/vote/<int:answer_id>/', answer_views.answer_vote, name='answer_vote'),
 
     # comment_views.py - 비활성화 (답변을 댓글로 사용)

@@ -131,10 +131,10 @@
         </div>
         <div class="tc-popular">
             {% for question in popular_posts %}
-            <a href="{% url 'community:detail' question.id %}" class="tc-popular-card{% if question.id in picks %} is-pick{% endif %}" data-reveal>
+            <a href="{% url 'community:detail' question.id %}" class="tc-popular-card{% if question.id in picks %} is-pick{% endif %}{% if question.operator_pick %} is-op-pick{% endif %}" data-reveal>
                 <span class="tc-popular-rank">{{ forloop.counter|stringformat:"02d" }}</span>
                 <span class="tc-popular-body">
-                    <span class="tc-card-tags">{% if question.id in picks %}<span class="tc-pick" title="연구팀 편집 심사 {{ picks|get_item:question.id }}점 — 프리미엄 칼럼(90점 이상)"><i class="fas fa-gem" aria-hidden="true"></i> 프리미엄</span>{% endif %}{% if question.category %}<span class="tc-card-badge tc-badge-{{ question.category.name|category_slug }}">{{ question.category.name }}</span>{% endif %}</span>
+                    <span class="tc-card-tags">{% if question.operator_pick %}<span class="tc-op-pick" title="운영자가 직접 고른 글"><i class="fas fa-crown" aria-hidden="true"></i> 운영자 픽</span>{% endif %}{% if question.id in picks %}<span class="tc-pick" title="연구팀 편집 심사 {{ picks|get_item:question.id }}점 — 프리미엄 칼럼(90점 이상)"><i class="fas fa-gem" aria-hidden="true"></i> 프리미엄</span>{% endif %}{% if question.category %}<span class="tc-card-badge tc-badge-{{ question.category.name|category_slug }}">{{ question.category.name }}</span>{% endif %}</span>
                     <span class="tc-popular-title">{{ question.subject }}</span>
                     <span class="tc-popular-meta">
                         <span><i class="far fa-eye" aria-hidden="true"></i> {{ question.view_count }}</span>
@@ -214,8 +214,8 @@
         <!-- Grid (12개/페이지 = 3열·2열 공배수) -->
         <div class="tc-grid">
             {% for question in question_list %}
-            <a href="{% url 'community:detail' question.id %}" class="tc-card{% if question.id in picks %} is-pick{% endif %}" data-reveal>
-                <span class="tc-card-tags">{% if question.id in picks %}<span class="tc-pick" title="연구팀 편집 심사 {{ picks|get_item:question.id }}점 — 프리미엄 칼럼(90점 이상)"><i class="fas fa-gem" aria-hidden="true"></i> 프리미엄</span>{% endif %}{% if question.category %}<span class="tc-card-badge tc-badge-{{ question.category.name|category_slug }}">{{ question.category.name }}</span>{% endif %}</span>
+            <a href="{% url 'community:detail' question.id %}" class="tc-card{% if question.id in picks %} is-pick{% endif %}{% if question.operator_pick %} is-op-pick{% endif %}" data-reveal>
+                <span class="tc-card-tags">{% if question.operator_pick %}<span class="tc-op-pick" title="운영자가 직접 고른 글"><i class="fas fa-crown" aria-hidden="true"></i> 운영자 픽</span>{% endif %}{% if question.id in picks %}<span class="tc-pick" title="연구팀 편집 심사 {{ picks|get_item:question.id }}점 — 프리미엄 칼럼(90점 이상)"><i class="fas fa-gem" aria-hidden="true"></i> 프리미엄</span>{% endif %}{% if question.category %}<span class="tc-card-badge tc-badge-{{ question.category.name|category_slug }}">{{ question.category.name }}</span>{% endif %}</span>
 
                 <h3 class="tc-card-title">{{ question.subject }}</h3>
 
