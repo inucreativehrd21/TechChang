@@ -29,7 +29,7 @@ from office.services import audit_style
 
 BOT = 'techchang연구팀'
 OLD_FOOTER = '본 칼럼은 AI 보조로 작성'
-FIG_HEAD = re.compile(r'^(?:\*\*|#+\s*)(?:그림|표)\s*\d+\.', re.M)   # **그림 N.** 또는 ### 표 N. 머리
+FIG_HEAD = re.compile(r'^(?:\*\*|#+\s*)(그림|표)\s*(\d+)\.', re.M)   # **그림 N.** 또는 ### 표 N. 머리
 IMG = re.compile(r'^!\[', re.M)
 TABLE = re.compile(r'^\|', re.M)
 
@@ -50,11 +50,14 @@ def audit_one(q) -> dict:
         else:
             tags.add('data')
 
-    imgs, tables, heads = len(IMG.findall(c)), len(TABLE.findall(c)), len(FIG_HEAD.findall(c))
+    labels = [f'{k} {n}' for k, n in FIG_HEAD.findall(c)]
+    imgs, tables, heads = len(IMG.findall(c)), len(TABLE.findall(c)), len(labels)
+    # 같은 번호의 머리가 두 번 = 같은 도판이 두 벌. 그림 1 과 표 1 처럼 서로 다른 도판은 중복이 아니다(#115)
+    repeated = len(labels) != len(set(labels))
     if not imgs and not tables:
         flaws.append('차트·표가 없습니다 — 데이터 근거가 그림으로 남지 않았습니다')
         tags.add('visual')
-    elif imgs > 1 or heads > 1:
+    elif imgs > 1 or repeated:
         flaws.append(f'도판이 여러 벌 들어 있습니다 (이미지 {imgs} · 캡션 {heads})')
         tags.add('visual')
     elif (imgs or tables) and not heads:

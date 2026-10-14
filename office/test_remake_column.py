@@ -1,5 +1,6 @@
 """remake_column --content-file — 사람 교열본을 심사·보완하되, 근거에 없는 수치는 되살아나지 못한다."""
 import os
+import uuid
 import tempfile
 from io import StringIO
 from unittest import mock
@@ -72,3 +73,39 @@ class HandEditReviewTests(TestCase):
         self.run_cmd([qa('minor', 74)])                     # 패치·재작성 모두 실패
         self.q.refresh_from_db()
         self.assertEqual((self.q.subject, self.q.content), ('옛 제목', '옛 본문'))
+
+
+class PriorEvidenceTests(HandEditReviewTests):
+    """발행된 글을 고칠 때 — 처음 제작 때 확인한 근거를 이어받고, 자기 자신과는 중복 대조하지 않는다(#115)."""
+
+    def test_original_evidence_is_carried_and_self_is_excluded(self):
+        from office.models import ColumnDraft, StageRun
+        d = ColumnDraft.objects.create(topic='hrd', subject='옛 제목', status=ColumnDraft.STATUS_PUBLISHED, question=self.q,
+                                       check_report={'claims': [{'claim': '직무 교육 실시 업체 59.3%', 'status': 'verified',
+                                                                 'note': 'https://kosis.kr/x 에서 확인'}]})
+        StageRun.objects.create(run_id=uuid.uuid4(), draft=d, seq=1, stage='brief', agent='lead', output={'kosis': [{
+            'title': '직무관련 교육·훈련 실시여부', 'org': '중소벤처기업부', 'period': '2024', 'url': 'https://kosis.kr/y',
+            'rows': [{'label': '실시', 'value': '59.3', 'unit': '%'}]}]})
+        check, rv, *_ = self.run_cmd([qa('accept', 82)])
+        verified = check.call_args.kwargs['verified']
+        self.assertIn('122,974', verified)                  # 운영자가 준 사실
+        self.assertIn('59.3', verified)                     # 처음 제작 때 KOSIS·검증관이 확인한 사실
+        self.assertIn('59.3', rv.call_args.kwargs['verified'])
+        self.assertEqual(check.call_args.kwargs['exclude_question_id'], self.q.pk)
+
+
+class FigureAuditTests(TestCase):
+    def audit(self, body):
+        from office.management.commands.audit_columns import audit_one
+        bot, _ = User.objects.get_or_create(username='techchang연구팀')
+        cat, _ = Category.objects.get_or_create(name='HRD')
+        q = Question.objects.create(author=bot, category=cat, subject='t', content=body, create_date=timezone.now())
+        return [f for f in audit_one(q)['flaws'] if '여러 벌' in f]
+
+    def test_one_figure_and_one_table_is_not_a_duplicate(self):
+        body = ('![그림 1. 분포](/m/a.png)\n\n**그림 1. 분포**\n\n설명\n\n### 표 1. 조건\n\n| a | b |\n|---|---|\n| 1 | 2 |\n')
+        self.assertEqual(self.audit(body), [])
+
+    def test_same_figure_twice_is_a_duplicate(self):
+        body = '![그림 1. 분포](/m/a.png)\n\n**그림 1. 분포**\n\n설명\n\n**그림 1. 분포**\n'
+        self.assertTrue(self.audit(body))

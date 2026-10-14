@@ -939,8 +939,9 @@ def verified_block(verified: str, role: str) -> str:
 
 
 @live_step('check', 'checker')
-def step_check(subject: str, content: str, recent: list, verified: str = '') -> dict:
+def step_check(subject: str, content: str, recent: list, verified: str = '', exclude_question_id=None) -> dict:
     """3) 팩트체크. verified: 운영자가 원문을 확인한 사실(office_revise --facts).
+    exclude_question_id: 발행된 글을 고칠 때 그 글 자신 — 본문 대조에서 빼지 않으면 자기와 겹친다고 중복 판정한다(#115).
 
     본문 대조(similarity — 제목만 보던 중복 판정 보완)와 검증 원장(ledger — 이전에 원문을 확인한
     사실)을 함께 넘기고, 근거 URL 이 붙은 판정은 원장에 다시 쌓는다.
@@ -951,7 +952,7 @@ def step_check(subject: str, content: str, recent: list, verified: str = '') -> 
     links = dead_links(content)           # 본문 URL 을 실제로 열어 본다(죽은 출처를 검증관에게 알림)
     check = ask_agent_json('checker', CHECK_PROMPT.format(
         titles='\n'.join(f'- {t}' for t in recent) or '(없음)', subject=subject, content=content,
-        recency=recency_rule()) + similarity_block(content) + ledger.ledger_block(content) + link_block(links)
+        recency=recency_rule()) + similarity_block(content, exclude_question_id=exclude_question_id) + ledger.ledger_block(content) + link_block(links)
         + WEB_CHECK_RULE + verified_block(verified, 'checker'),
         max_tokens=4000, tools=WEB_TOOLS)
     if isinstance(check, dict):

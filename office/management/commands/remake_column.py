@@ -50,6 +50,24 @@ REMAKE_PROMPT = (
 MAX_REMAKE_REVISIONS = 2   # 72점(수정 요청)처럼 한 번 더 고치면 넘을 원고를 놓치지 않게(#94)
 
 
+def prior_pack(q) -> str:
+    """이 글을 만들 때 이미 원문으로 확인한 근거 — 처음 발행한 제작 기록과 이전 리메이크 기록에서 모은다.
+
+    리메이크·교열본 심사가 빈 근거 묶음으로 시작하면, 처음 제작 때 KOSIS API 로 받은 공식 통계나 검증관이
+    URL 로 확인한 수치까지 '확인 불가(치명)'로 판정된다(#115: 59.3%·40.7% 등 16개).
+    """
+    from django.db.models import Q
+
+    from office.models import ColumnDraft, StageRun
+    drafts = list(ColumnDraft.objects.filter(Q(question=q) | Q(target_question=q)))
+    runs = StageRun.objects.filter(Q(draft__in=drafts) | Q(question=q)).order_by('created_at')
+    parts = [P.brief_facts(r.output or {}) for r in runs.filter(stage='brief')]
+    parts += [((r.output or {}).get('verify') or {}).get('pack', '') for r in runs.filter(stage='blueprint')]
+    parts += [E.from_check(r.output or {}) for r in runs.filter(stage__in=('check', 'recheck', 'reverify'))]
+    parts += [E.from_check(d.check_report or {}) for d in drafts]
+    return E.merge(*dict.fromkeys(p for p in parts if p))
+
+
 class Command(BaseCommand):
     help = '발행된 칼럼을 현재 기준으로 다시 만들어 제자리에서 갱신합니다.'
 
@@ -85,7 +103,8 @@ class Command(BaseCommand):
         for f in flaws:
             out(f'    · {f[:120]}')
         hand_file = opts.get('content_file') or ''
-        facts = (opts.get('facts') or '').strip()
+        # 운영자가 준 사실 + 이 글을 처음 만들 때 원문으로 확인한 근거
+        facts = E.merge((opts.get('facts') or '').strip(), prior_pack(q))
         if not flaws and not hand_file:
             out(self.style.SUCCESS('  이미 현재 기준을 통과합니다 — 손대지 않습니다.'))
             return
@@ -161,7 +180,7 @@ class Command(BaseCommand):
         """
         recent = list(Question.objects.filter(is_deleted=False).exclude(pk=q.pk)
                       .order_by('-create_date').values_list('subject', flat=True)[:20])
-        check = P.step_check(subject, content, recent, verified=pack)
+        check = P.step_check(subject, content, recent, verified=pack, exclude_question_id=q.pk)
         stages.record('check', 'checker', check, kind='report', sender='checker', recipient='editor')
         rec('checker', 'check', f"팩트체크 {check.get('verdict')}")
         pack = E.merge(pack, E.from_check(check))
@@ -216,7 +235,7 @@ class Command(BaseCommand):
                 subject, content = p_subject, p_content
                 rec(writer, 'revise', f'편집 심사 필수 수정 {len(notes)}건 반영해 재작성 ({P.body_length(content)}자)')
                 if P.new_numeric_sentences(prev_content, content):
-                    check = P.step_check(subject, content, recent, verified=pack)
+                    check = P.step_check(subject, content, recent, verified=pack, exclude_question_id=q.pk)
                     rec('checker', 'check', f"재작성 수치 재검증 {check.get('verdict')}")
                     pack = E.merge(pack, E.from_check(check))
                 # 재작성이 기억으로 들여온 새 수치는 지운다(이전 판에 있던 수치는 그대로)
