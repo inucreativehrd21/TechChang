@@ -7,14 +7,18 @@
 
 최종 점수는 그 글의 마지막 판 기준이다. 처음 발행(ColumnDraft) 뒤에 리메이크·교열본 심사로 제자리 갱신됐으면
 그 실행의 점수가 최종이다(StageRun question=…: 'applied', 또는 예전 리메이크의 통과 'final').
+발행·갱신 기록(WorkLog publish '… (id=N, 83점)')도 원천이다 — 10월 초 리메이크 일괄은 점수를 여기에만 남겼다.
 점수 체계가 생기기 전에 쓰인 칼럼은 점수가 없어 대상이 아니다. 홈은 자주 열리므로 10분 캐시한다.
 """
 from __future__ import annotations
 
+import re
+
 from django.core.cache import cache
 
 PREMIUM_SCORE = 80
-CACHE_KEY = 'home:premium:v2'
+CACHE_KEY = 'home:premium:v3'
+_LOG_SCORE = re.compile(r'\(id=(\d+),\s*(\d+)점')
 
 
 def _score(v):
@@ -26,7 +30,7 @@ def _score(v):
 
 def final_scores() -> dict:
     """{question_id: 마지막 판의 편집 심사 점수} — 연구팀 칼럼 전부(점수 있는 것만)."""
-    from office.models import ColumnDraft, StageRun
+    from office.models import ColumnDraft, StageRun, WorkLog
     latest = {}
 
     def put(qid, at, score):
@@ -42,6 +46,10 @@ def final_scores() -> dict:
         o = r.output or {}
         if r.stage == 'applied' or o.get('verdict') == 'accept':   # 리메이크는 통과해야만 반영됐다
             put(r.question_id, r.created_at, _score(o.get('score')))
+    for w in WorkLog.objects.filter(action='publish', text__contains='id=').only('text', 'created_at'):
+        m = _LOG_SCORE.search(w.text or '')
+        if m:
+            put(int(m.group(1)), w.created_at, int(m.group(2)))
     return {qid: s for qid, (_at, s) in latest.items()}
 
 

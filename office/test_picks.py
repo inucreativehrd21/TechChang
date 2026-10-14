@@ -8,7 +8,7 @@ from django.test import TestCase
 from django.utils import timezone
 
 from community.models import Category, Question
-from office.models import ColumnDraft, StageRun
+from office.models import ColumnDraft, StageRun, WorkLog
 from office.picks import PREMIUM_SCORE, final_scores, premium_scores
 
 
@@ -74,3 +74,16 @@ class PremiumTests(TestCase):
                    'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) Mobile/15E148'):
             self.assertContains(self.client.get(f'/{top.id}/', HTTP_USER_AGENT=ua), '프리미엄 칼럼 · 86점')
             self.assertNotContains(self.client.get(f'/{plain.id}/', HTTP_USER_AGENT=ua), '프리미엄 칼럼 ·')
+
+    def test_publish_log_scores_count_and_latest_wins(self):
+        bot, _ = User.objects.get_or_create(username='techchang연구팀')
+        cat, _ = Category.objects.get_or_create(name='HRD')
+        legacy = Question.objects.create(author=bot, category=cat, subject='옛 칼럼', content='본문', create_date=timezone.now())
+        WorkLog.objects.create(agent='editor', action='publish', text=f'리메이크 반영(제자리 갱신): 옛 칼럼 (id={legacy.id}, 91점)')
+        manual = column('수동 갱신', 70)
+        w = WorkLog.objects.create(agent='editor', action='publish',
+                                   text=f'리메이크 반영(제자리 갱신): 수동 갱신 (id={manual.id}, 68점·필수 수정 0건)')
+        WorkLog.objects.filter(pk=w.pk).update(created_at=timezone.now() + timedelta(hours=1))
+        f = final_scores()
+        self.assertEqual((f[legacy.id], f[manual.id]), (91, 68))
+        self.assertIn(legacy.id, premium_scores())
