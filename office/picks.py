@@ -9,16 +9,25 @@
 최종 점수는 그 글의 마지막 판 기준이다. 처음 발행(ColumnDraft) 뒤에 리메이크·교열본 심사로 제자리 갱신됐으면
 그 실행의 점수가 최종이다(StageRun question=…: 'applied', 또는 예전 리메이크의 통과 'final').
 발행·갱신 기록(WorkLog publish '… (id=N, 83점)')도 원천이다 — 10월 초 리메이크 일괄은 점수를 여기에만 남겼다.
+
+단, 심사 개편(REVIEW_REFORM, 2026-10-10 필수/제안 분리·근거 묶음) 전에 받은 **리메이크** 점수는 세지 않는다.
+그 일괄 리메이크는 지금보다 후한 심사로 90점대를 받아, 리메이크한 글이 전부 프리미엄으로 떴다(운영자 지적).
+처음 제작 때 받은 점수와 개편 뒤 리메이크·교열본 심사 점수는 그대로 센다. 옛 리메이크 점수뿐인 글은
+다시 심사받기 전까지 프리미엄이 아니다.
 점수 체계가 생기기 전에 쓰인 칼럼은 점수가 없어 대상이 아니다. 홈은 자주 열리므로 10분 캐시한다.
 """
 from __future__ import annotations
 
 import re
 
+from datetime import datetime
+
 from django.core.cache import cache
+from django.utils import timezone
 
 PREMIUM_SCORE = 90
-CACHE_KEY = 'home:premium:v5'
+CACHE_KEY = 'home:premium:v6'
+REVIEW_REFORM = datetime(2026, 10, 10, 12, 0)    # 79ee858 배포 — 이 전의 리메이크 점수는 세지 않는다
 _LOG_SCORE = re.compile(r'\(id=(\d+),\s*(\d+)점')
 
 
@@ -32,25 +41,29 @@ def _score(v):
 def final_scores() -> dict:
     """{question_id: 마지막 판의 편집 심사 점수} — 연구팀 칼럼 전부(점수 있는 것만)."""
     from office.models import ColumnDraft, StageRun, WorkLog
+    from office.publiclog import is_remake
     latest = {}
+    reform = timezone.make_aware(REVIEW_REFORM)
 
-    def put(qid, at, score):
+    def put(qid, at, score, remake=False):
+        if remake and at < reform:          # 개편 전 리메이크 점수 — 후한 심사라 세지 않는다
+            return
         if qid and score is not None and (qid not in latest or at >= latest[qid][0]):
             latest[qid] = (at, score)
 
     for d in (ColumnDraft.objects.filter(status=ColumnDraft.STATUS_PUBLISHED)
               .only('question_id', 'target_question_id', 'qa_report', 'created_at', 'decided_at')):
         at = d.decided_at or d.created_at
-        put(d.question_id or d.target_question_id, at, d.qa_score)
+        put(d.question_id or d.target_question_id, at, d.qa_score, remake=not d.question_id)
     for r in StageRun.objects.filter(question__isnull=False, stage__in=('applied', 'final')).only(
             'question_id', 'stage', 'output', 'created_at'):
         o = r.output or {}
         if r.stage == 'applied' or o.get('verdict') == 'accept':   # 리메이크는 통과해야만 반영됐다
-            put(r.question_id, r.created_at, _score(o.get('score')))
-    for w in WorkLog.objects.filter(action='publish', text__contains='id=').only('text', 'created_at'):
+            put(r.question_id, r.created_at, _score(o.get('score')), remake=True)
+    for w in WorkLog.objects.filter(action='publish', text__contains='id=').only('action', 'text', 'created_at'):
         m = _LOG_SCORE.search(w.text or '')
         if m:
-            put(int(m.group(1)), w.created_at, int(m.group(2)))
+            put(int(m.group(1)), w.created_at, int(m.group(2)), remake=is_remake(w))
     return {qid: s for qid, (_at, s) in latest.items()}
 
 

@@ -87,3 +87,23 @@ class PremiumTests(TestCase):
         f = final_scores()
         self.assertEqual((f[legacy.id], f[manual.id]), (91, 68))
         self.assertIn(legacy.id, premium_scores())
+
+    def test_pre_reform_remake_scores_do_not_count(self):
+        from office.picks import REVIEW_REFORM
+        before = timezone.make_aware(REVIEW_REFORM) - timedelta(days=2)
+        bot, _ = User.objects.get_or_create(username='techchang연구팀')
+        cat, _ = Category.objects.get_or_create(name='HRD')
+
+        def logged(subject, text, at):
+            q = Question.objects.create(author=bot, category=cat, subject=subject, content='본문', create_date=timezone.now())
+            w = WorkLog.objects.create(agent='editor', action='publish', text=text.format(id=q.id))
+            WorkLog.objects.filter(pk=w.pk).update(created_at=at)
+            return q
+
+        old_remake = logged('옛 리메이크', '리메이크 반영(제자리 갱신): 옛 리메이크 (id={id}, 98점)', before)
+        old_original = logged('개편 전 새 글', '발행: 개편 전 새 글 (id={id}, 100점)', before)
+        new_remake = logged('개편 후 리메이크', '리메이크 반영(제자리 갱신): 개편 후 리메이크 (id={id}, 92점)', timezone.now())
+        f = final_scores()
+        self.assertNotIn(old_remake.id, f)                      # 후한 옛 심사 — 다시 심사받기 전엔 프리미엄 아님
+        self.assertEqual((f[old_original.id], f[new_remake.id]), (100, 92))
+        self.assertEqual(set(premium_scores()), {old_original.id, new_remake.id})
