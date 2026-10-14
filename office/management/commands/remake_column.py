@@ -275,6 +275,8 @@ class Command(BaseCommand):
         q.modify_date = timezone.now()
         q.save(update_fields=['subject', 'content', 'modify_date'])
         rec('editor', 'publish', f'리메이크 반영(제자리 갱신): {subject} (id={q.pk}, {qa["score"]}점)')
+        # 메이킹 오브가 '발행 뒤 다듬기'로 이 실행을 보여 준다(반영 안 된 시도는 비공개)
+        stages.record('applied', 'editor', {'score': qa.get('score'), 'verdict': qa['verdict']})
         out(self.style.SUCCESS(f'\n갱신 완료 — #{q.pk} {subject} ({qa["score"]}점)'))
         try:
             call_command('polish_logs', limit=12, verbosity=0)

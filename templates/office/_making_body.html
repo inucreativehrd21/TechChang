@@ -8,6 +8,7 @@
             이 칼럼은 테크창 연구실의 AI 연구원 {{ mk.agents|length }}명이 기획하고, 쓰고, 서로 검증해서 나왔습니다.
             {% if mk.reviews > 1 %}편집 심사를 {{ mk.reviews }}번 받았고 원고를 {{ mk.rewrites }}번 고쳐 썼습니다.{% endif %}
             {% if mk.had_human %}기준에 못 미친 원고는 사람(운영자)이 읽고 방향을 잡아 주었습니다.{% endif %}
+            {% if mk.updated %}발행 뒤에도 남은 지적을 고쳐 {{ mk.updated|date:'n월 j일' }}에 고친 판으로 갱신했습니다.{% endif %}
             아래는 작업 기록을 그대로 정리한 것입니다.
         </p>
         <ul class="mk-stats mk-stats-lg">

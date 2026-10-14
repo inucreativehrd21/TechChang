@@ -142,3 +142,53 @@ class SuggestionGistTests(TestCase):
                          '핵심 산출물인 시점별 일정표가 없습니다.')
         self.assertEqual(_gist('수치가 세 번 반복됨 — 한두 번으로 압축 필요'), '수치가 세 번 반복됨')
         self.assertTrue(_gist('가' * 200).endswith('…'))
+
+
+class AfterPublishTests(BuildAndViewTests):
+    """발행 뒤 다듬기(remake_column) — 반영된 실행만 메이킹에 이어 붙고, 교열 내용은 비공개(#115)."""
+
+    def add_run(self, applied, scores, hand=True, offset=1):
+        import uuid
+
+        from office.models import StageRun
+        rid, t = uuid.uuid4(), timezone.now() + timedelta(hours=offset)
+        rows = [('audit', 'editor', {'flaws': []}),
+                ('draft', 'editor', {'content': '교열 비밀 본문', 'why': '운영자 교열본' if hand else ''}),
+                ('check', 'checker', {'verdict': 'pass', 'claims': [{'claim': '갱신판 주장', 'status': 'verified'}]}),
+                ('critique', 'critic', {'verdict': 'revise', 'issues': ['a'], 'reason': '곁가지가 깁니다'})]
+        for i, sc in enumerate(scores):
+            if i:
+                rows.append(('revise', 'hrd', {'content': 'x'}))
+            rows.append(('review', 'editor', {'score': sc, 'verdict': 'minor' if sc < 80 else 'accept', 'fatal': [],
+                                              'notes': f'{sc}점 심사평', 'scores': {'depth': 4, 'logic': 4}}))
+        if applied:
+            rows.append(('applied', 'editor', {'score': scores[-1], 'verdict': 'minor'}))
+        for seq, (stage, agent, out) in enumerate(rows, 1):
+            r = StageRun.objects.create(run_id=rid, question=self.q, seq=seq, stage=stage, agent=agent, output=out,
+                                        attempt=sum(1 for x in rows[:seq] if x[0] == 'review') if stage == 'review' else 1)
+            StageRun.objects.filter(pk=r.pk).update(created_at=t + timedelta(minutes=seq))
+
+    def test_applied_run_is_appended_and_becomes_final(self):
+        self.add_run(applied=False, scores=[51, 62], offset=1)      # 반영 안 된 시도 — 비공개
+        self.add_run(applied=True, scores=[56, 75, 68], offset=2)
+        mk = build_making(self.draft)
+        self.assertEqual(mk['score_trail'], [54, 100, 56, 75, 68])
+        self.assertEqual(mk['final_score'], 68)
+        self.assertIsNotNone(mk['updated'])
+        titles = [r['title'] for r in mk['rounds']]
+        self.assertEqual(titles[2:], ['발행 뒤 다시 심사', '발행 뒤 2차 원고', '발행 뒤 3차 원고'])
+        self.assertEqual(mk['events'][-1]['stage'], '갱신')
+        self.assertEqual(mk['claims'][0]['claim'], '갱신판 주장')
+        self.assertTrue(any(e['agent']['key'] == 'operator' and '교열본' in e['summary'] for e in mk['events']))
+        res = self.client.get(f'/lab/making/{self.q.id}/', HTTP_USER_AGENT='Mozilla/5.0')
+        body = res.content.decode()
+        self.assertIn('고친 판으로 갱신했습니다', body)
+        self.assertIn('75점', body)
+        self.assertNotIn('62점', body)
+        self.assertNotIn('교열 비밀 본문', body)
+
+    def test_no_applied_run_keeps_original_making(self):
+        self.add_run(applied=False, scores=[51, 62])
+        mk = build_making(self.draft)
+        self.assertEqual(mk['score_trail'], [54, 100])
+        self.assertIsNone(mk['updated'])

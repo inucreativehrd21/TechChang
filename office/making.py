@@ -33,6 +33,7 @@ STAGES = {
     'headline':   ('제목 다듬기', 'qa'),
     'publish':    ('발행', 'publish'),
 }
+# 발행 뒤 다듬기(remake_column)는 WorkLog 가 아니라 StageRun(question=…, run_id) 에 남는다 — _after_publish
 
 FATAL_LABELS = {
     'unverified_data': '확인되지 않은 수치',
@@ -226,6 +227,60 @@ def _event(log) -> dict | None:
     return ev
 
 
+def _stage_event(s) -> dict | None:
+    """발행 뒤 다듬기 실행(remake_column)의 단계 기록 → 타임라인 사건. 모르는 단계는 보이지 않는다."""
+    o = s.output or {}
+    ev = {'action': s.stage, 'stage': '', 'icon': '', 'at': s.created_at, 'agent': _agent(s.agent or 'editor'),
+          'summary': '', 'detail': '', 'badge': '', 'tone': 'neutral', 'after_publish': True}
+    if s.stage == 'draft':
+        if o.get('why') == '운영자 교열본':
+            # 교열 내용은 비공개 — 사람이 읽고 고쳤다는 사실만(admin_note 와 같은 원칙)
+            ev.update(action='admin_note', stage=STAGES['admin_note'][0], icon='human', agent=_agent('operator'),
+                      summary='발행된 원고를 직접 읽고, 남은 지적을 고친 교열본을 다시 심사에 올렸습니다.')
+        else:
+            ev.update(action='revise', stage='재집필', icon='revise', summary='현재 편집 기준에 맞춰 원고를 다시 썼습니다.')
+    elif s.stage == 'check':
+        word = CHECK_WORDS.get(o.get('verdict', ''), '')
+        ev.update(stage='팩트체크', icon='check', badge=word, tone='pass' if o.get('verdict') == 'pass' else 'warn',
+                  summary='고친 원고의 수치와 출처를 다시 확인했습니다.')
+    elif s.stage == 'critique':
+        label, tone = CRITIC_VERDICTS.get(o.get('verdict', ''), (o.get('verdict', ''), 'neutral'))
+        n = len(o.get('issues') or [])
+        ev.update(stage='평론', icon='critique', badge=label, tone=tone, detail=str(o.get('reason', '')),
+                  summary=f'지적 {n}건을 남겼습니다.' if n else '독자 입장에서 읽고 판단했습니다.')
+    elif s.stage == 'review':
+        label, tone = VERDICTS.get(o.get('verdict', ''), ('', 'neutral'))
+        qa = {'score': o.get('score'), 'verdict': o.get('verdict'), 'verdict_label': label, 'tone': tone,
+              'fatal': [FATAL_LABELS.get(f, f) for f in (o.get('fatal') or [])], 'note': o.get('notes', ''),
+              'retry': (s.attempt or 1) > 1}
+        ev.update(action='qa', stage='편집 심사', icon='qa', qa=qa, tone=tone, detail=qa['note'],
+                  badge=f"{qa['score']}점 · {label}" if qa['score'] is not None else label,
+                  summary=('재심' if qa['retry'] else '심사') + f' 결과 {label}.')
+    elif s.stage == 'revise':
+        ev.update(stage='재집필', icon='revise', summary='편집 심사의 필수 수정을 반영해 다시 썼습니다.')
+    elif s.stage == 'applied':
+        ev.update(action='publish', stage='갱신', icon='publish', tone='pass',
+                  badge=f"{o['score']}점" if o.get('score') is not None else '',
+                  summary=o.get('summary') or '고친 판으로 발행된 글을 갱신했습니다.')
+    else:
+        return None
+    return ev
+
+
+def _after_publish(question) -> list:
+    """발행 뒤 다듬기 — 글을 실제로 갱신한 실행만(기준 미달로 원문을 지킨 시도는 비공개). [(run_id, 사건 목록)]"""
+    if question is None:
+        return []
+    from office.models import StageRun
+    runs = []
+    for applied in StageRun.objects.filter(question=question, stage='applied').order_by('created_at'):
+        evs = [e for e in (_stage_event(s) for s in StageRun.objects.filter(run_id=applied.run_id).order_by('seq', 'id'))
+               if e]
+        if evs:
+            runs.append((applied.run_id, evs))
+    return runs
+
+
 def build_making(draft) -> dict | None:
     """발행된 ColumnDraft → 공개용 메이킹 데이터. 보여 줄 게 없으면 None."""
     if draft is None or draft.status != draft.STATUS_PUBLISHED or not draft.question_id:
@@ -264,6 +319,30 @@ def build_making(draft) -> dict | None:
             scores.append(final_score)
     else:
         final_score = scores[-1] if scores else None
+    check_report = draft.check_report or {}
+    rounds = _rounds(events)
+
+    # 발행 뒤 다듬기 — 최종 점수·루브릭·팩트체크는 마지막으로 반영된 판 기준
+    from office.models import StageRun
+    updated = None
+    for run_id, evs in _after_publish(draft.question):
+        events += evs
+        scores += [e['qa']['score'] for e in evs if e.get('qa') and e['qa']['score'] is not None]
+        start = len(rounds)
+        for i, r in enumerate(_rounds(evs)):
+            r['n'] = start + i + 1
+            r['title'] = '발행 뒤 다시 심사' if i == 0 else f'발행 뒤 {i + 1}차 원고'
+            rounds.append(r)
+        last = StageRun.objects.filter(run_id=run_id, stage='review').order_by('-seq', '-id').first()
+        if last:
+            final = last.output or {}
+            final_score = final.get('score', final_score)
+        chk = StageRun.objects.filter(run_id=run_id, stage='check').order_by('-seq', '-id').first()
+        if chk and (chk.output or {}).get('claims'):
+            check_report = chk.output
+        updated = evs[-1]['at']
+    for i, r in enumerate(rounds):
+        r['open'] = i == 0 or i == len(rounds) - 1
 
     agents = []
     for e in events:
@@ -275,7 +354,8 @@ def build_making(draft) -> dict | None:
         'question_id': draft.question_id,
         'subject': draft.question.subject if draft.question else draft.subject,
         'events': events,
-        'rounds': _rounds(events),
+        'rounds': rounds,
+        'updated': updated,
         'score_trail': scores,
         'score_svg': _sparkline(scores),
         'score_chart': _sparkline(scores, w=640, h=170, pad=22),
@@ -294,7 +374,7 @@ def build_making(draft) -> dict | None:
         # 남은 개선 제안은 접어서 핵심 한 문장만 — 전문(최대 5개)이 페이지의 큰 비중을 차지했다
         'suggestions': [_gist(s) for s in (final.get('issues') or []) if isinstance(s, str)][:3],
         'suggestions_total': len([s for s in (final.get('issues') or []) if isinstance(s, str)]),
-        'claims': _claims(draft.check_report or {}),
+        'claims': _claims(check_report),
     }
 
 
