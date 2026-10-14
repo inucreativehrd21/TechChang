@@ -23,7 +23,7 @@
             <polyline points="{{ making.score_svg.path }}" class="mk-spark-line"/>
             {% for p in making.score_svg.points %}<circle cx="{{ p.x }}" cy="{{ p.y }}" r="{% if forloop.last %}4{% else %}2.5{% endif %}" class="mk-spark-dot{% if forloop.last %} is-last{% endif %}"/>{% endfor %}
         </svg>
-        <div class="mk-spark-cap">심사 점수 {{ making.score_trail|join:' → ' }}점<small>점선은 프리미엄 기준 80점</small></div>
+        <div class="mk-spark-cap">심사 점수 {{ making.score_trail|join:' → ' }}점<small>점선은 프리미엄 기준 {{ making.premium_line }}점</small></div>
         {% elif making.final_score %}
         <div class="mk-final"><b>{{ making.final_score }}</b><span>최종 심사 점수</span></div>
         {% endif %}

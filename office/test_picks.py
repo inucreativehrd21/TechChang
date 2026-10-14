@@ -1,4 +1,4 @@
-"""프리미엄 칼럼 — 최종 편집 심사 80점 이상(office.picks). 발행 기준(필수 수정·치명 결함 없음)과 따로 간다."""
+"""프리미엄 칼럼 — 최종 편집 심사 85점 이상(office.picks). 발행 기준(필수 수정·치명 결함 없음)과 따로 간다."""
 import uuid
 from datetime import timedelta
 
@@ -30,7 +30,7 @@ class PremiumTests(TestCase):
     def setUp(self):
         cache.clear()
 
-    def test_only_published_columns_at_or_above_80(self):
+    def test_only_published_columns_at_or_above_85(self):
         top = column('프리미엄 칼럼', PREMIUM_SCORE)
         column('발행은 됐지만 프리미엄 아님', PREMIUM_SCORE - 1)
         column('보류된 원고', 95, status=ColumnDraft.STATUS_HOLD)
@@ -38,25 +38,25 @@ class PremiumTests(TestCase):
         self.assertEqual(premium_scores(), {top.id: PREMIUM_SCORE, legacy.id: 90})
 
     def test_final_score_follows_the_last_applied_version(self):
-        up = column('발행 70 → 갱신 84', 70)
+        up = column('발행 70 → 갱신 86', 70)
         down = column('발행 82 → 갱신 68', 82)
-        remade(up, 84)
+        remade(up, 86)
         remade(down, 68)
         old = column('옛 리메이크 통과', 60)
         remade(old, 88, stage='final', verdict='accept')       # 예전 리메이크는 통과 final 만 남았다
-        rejected = column('리메이크 미달', 81)
+        rejected = column('리메이크 미달', 87)
         remade(rejected, 50, stage='final', verdict='major')   # 반영 안 됨 — 원래 점수 유지
         self.assertEqual(final_scores()[down.id], 68)
-        self.assertEqual(premium_scores(), {up.id: 84, old.id: 88, rejected.id: 81})
+        self.assertEqual(premium_scores(), {up.id: 86, old.id: 88, rejected.id: 87})
 
     def test_home_shows_premium_badge_only_on_premium(self):
         column('프리미엄 칼럼입니다', 92)
-        column('일반 칼럼입니다', 79)
+        column('발행됐지만 85 미만', 84)
         res = self.client.get('/', HTTP_USER_AGENT='Mozilla/5.0 (Windows NT 10.0) Chrome/130')
         self.assertEqual(res.status_code, 200)
         html = res.content.decode()
         self.assertEqual(html.count('class="tc-pick"'), 2)        # 인기 레일 + 게시글 카드 (일반 칼럼엔 없음)
-        self.assertIn('연구팀 편집 심사 92점 — 프리미엄 칼럼(80점 이상)', html)
+        self.assertIn('연구팀 편집 심사 92점 — 프리미엄 칼럼(85점 이상)', html)
         self.assertIn('누구나 무료로 읽을 수 있습니다', html)
         self.assertNotIn('질문하고 답하며 함께 성장하는', html)
 
