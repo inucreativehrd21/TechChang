@@ -54,7 +54,7 @@ def final_scores() -> dict:
     for d in (ColumnDraft.objects.filter(status=ColumnDraft.STATUS_PUBLISHED)
               .only('question_id', 'target_question_id', 'qa_report', 'created_at', 'decided_at')):
         at = d.decided_at or d.created_at
-        put(d.question_id or d.target_question_id, at, d.qa_score, remake=not d.question_id)
+        put(d.question_id or d.target_question_id, at, d.qa_score, remake=bool(d.target_question_id))
     for r in StageRun.objects.filter(question__isnull=False, stage__in=('applied', 'final')).only(
             'question_id', 'stage', 'output', 'created_at'):
         o = r.output or {}

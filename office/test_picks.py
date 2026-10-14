@@ -107,3 +107,13 @@ class PremiumTests(TestCase):
         self.assertNotIn(old_remake.id, f)                      # 후한 옛 심사 — 다시 심사받기 전엔 프리미엄 아님
         self.assertEqual((f[old_original.id], f[new_remake.id]), (100, 92))
         self.assertEqual(set(premium_scores()), {old_original.id, new_remake.id})
+
+    def test_series_remake_draft_before_reform_does_not_count(self):
+        from office.picks import REVIEW_REFORM
+        q = column('연재 2편', 60)
+        d = ColumnDraft.objects.create(topic='coding', subject='연재 2편', status=ColumnDraft.STATUS_PUBLISHED,
+                                       target_question=q, qa_report={'score': 91})
+        ColumnDraft.objects.filter(pk=d.pk).update(created_at=timezone.make_aware(REVIEW_REFORM) - timedelta(days=1))
+        ColumnDraft.objects.filter(question=q).update(created_at=timezone.make_aware(REVIEW_REFORM) - timedelta(days=30))
+        self.assertEqual(final_scores()[q.id], 60)               # 옛 연재 리메이크 91점은 빼고 원래 점수
+        self.assertNotIn(q.id, premium_scores())
