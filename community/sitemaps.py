@@ -69,7 +69,7 @@ class QuestionSitemap(Sitemap):
 
 
 class ColumnSitemap(QuestionSitemap):
-    """연구팀 칼럼 — 사이트의 핵심 콘텐츠. 프리미엄(최종 편집 심사 85점+) 칼럼은 최우선."""
+    """연구팀 칼럼 — 사이트의 핵심 콘텐츠. 프리미엄(최종 편집 심사 90점+) 칼럼은 최우선."""
     changefreq = 'weekly'
 
     def items(self):

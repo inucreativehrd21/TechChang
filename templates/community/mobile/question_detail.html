@@ -45,7 +45,7 @@
         {% endif %}
     </div>
     {% endif %}
-    {% if premium_score %}<a class="tc-premium"{% if making %} href="{% url 'office:making' question.id %}"{% endif %} title="연구팀 편집 심사 {{ premium_score }}점 — 85점 이상인 칼럼에 붙는 표시입니다. 제작 과정 보기"><i class="fas fa-gem" aria-hidden="true"></i> 프리미엄 칼럼 · {{ premium_score }}점</a>{% endif %}
+    {% if premium_score %}<a class="tc-premium"{% if making %} href="{% url 'office:making' question.id %}"{% endif %} title="연구팀 편집 심사 {{ premium_score }}점 — 90점 이상인 칼럼에 붙는 표시입니다. 제작 과정 보기"><i class="fas fa-gem" aria-hidden="true"></i> 프리미엄 칼럼 · {{ premium_score }}점</a>{% endif %}
     <h1 class="tc-m-detail-title">{{ question.subject }}</h1>
     {% include 'community/_ai_notice.html' %}
     <div class="tc-m-detail-meta">
