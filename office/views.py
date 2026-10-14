@@ -170,10 +170,12 @@ def office_admin(request):
     meetings = Meeting.objects.prefetch_related('decisions').order_by('-held_at')[:8]
     held = ColumnDraft.objects.filter(
         status__in=[ColumnDraft.STATUS_HOLD, ColumnDraft.STATUS_REVISING]).select_related('decision')
+    ready = list(ColumnDraft.objects.filter(status=ColumnDraft.STATUS_READY).order_by('publish_at'))
     recent_drafts = ColumnDraft.objects.exclude(
-        status__in=[ColumnDraft.STATUS_HOLD, ColumnDraft.STATUS_REVISING]).select_related('question')[:12]
+        status__in=[ColumnDraft.STATUS_HOLD, ColumnDraft.STATUS_REVISING, ColumnDraft.STATUS_READY]
+    ).select_related('question')[:12]
     logs = decorate_logs(WorkLog.objects.select_related('draft', 'meeting')[:80])
-    for d in list(held) + list(recent_drafts):
+    for d in list(held) + list(recent_drafts) + ready:
         d.topic_name = TOPIC_LABEL.get(d.topic, '')
     for m in meetings:
         for d in m.decisions.all():
@@ -190,7 +192,7 @@ def office_admin(request):
                       .select_related('decision')[:10])
     job_log = _job_log_tail()
     return render(request, 'office/admin.html', {
-        'meetings': meetings, 'held': held, 'recent_drafts': recent_drafts, 'logs': logs,
+        'meetings': meetings, 'held': held, 'ready': ready, 'recent_drafts': recent_drafts, 'logs': logs,
         'tasks': tasks, 'done_tasks': done_tasks, 'github_ok': github.available(),
         'crew_pending': sum(1 for t in tasks if t.status == Task.ST_BACKLOG),
         'agents': AGENTS, 'topic_label': TOPIC_LABEL, 'job_log': job_log,
@@ -240,7 +242,19 @@ def draft_publish(request, draft_id):
     from common.management.commands.auto_write_columns import TOPICS, _get_or_create_bot_user
     from community.models import Category, Question
 
+    from . import schedule as S
+    if request.POST.get('now'):        # 공개 대기 원고를 예정 시각 전에 바로 공개
+        draft = get_object_or_404(ColumnDraft, pk=draft_id, status=ColumnDraft.STATUS_READY)
+        q = S.publish_now(draft, by=request.user)
+        messages.success(request, f'바로 공개: {draft.subject} (#{q.pk})')
+        return redirect('office:admin')
     draft = get_object_or_404(ColumnDraft, pk=draft_id, status=ColumnDraft.STATUS_HOLD)
+    if draft.publish_at and draft.publish_at > timezone.now() and not draft.target_question_id:
+        draft.status, draft.decided_by, draft.decided_at = ColumnDraft.STATUS_READY, request.user, timezone.now()
+        draft.save(update_fields=['status', 'decided_by', 'decided_at'])
+        WorkLog.objects.create(agent='lead', action='ready', draft=draft, text=S.ready_line(draft))
+        messages.success(request, f'공개 대기: {draft.subject} — {timezone.localtime(draft.publish_at):%m.%d %H:%M}에 공개됩니다')
+        return redirect('office:admin')
     if draft.series_key:      # 연재 원고 — 새 회차로 발행하거나, 리메이크면 대상 글을 제자리 갱신
         from office.series_pipeline import publish as publish_series
         q = publish_series(draft, by=request.user)

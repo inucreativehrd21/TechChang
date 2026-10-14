@@ -13,6 +13,8 @@ r"""
   python manage.py auto_write_series --series agent --dry-run    # 저장 없이 결과만
   python manage.py auto_write_series --revise-draft 42 --note "…"   # 보류 원고에 운영자 지시 반영(관리 화면이 호출)
   python manage.py auto_write_series --revise-held --wait-on-limit  # 보류 원고 전부를 받은 지적으로 고쳐 재검증
+  python manage.py auto_write_series --series auto --prepare     # 다음 월요일 몫을 미리 만들어 '공개 대기'로
+  python manage.py auto_write_series --series auto --if-missing  # 오늘 공개 몫이 없을 때만(당일 안전망)
 
 기획서(시리즈 정의·목차·회차 골격·발행 일정·코드 발췌)는 community/series_catalog.py — 연재 화면과 공유한다.
 
@@ -26,6 +28,7 @@ from datetime import datetime, timedelta
 
 from django.core.management import call_command
 from django.core.management.base import BaseCommand, CommandError
+from django.utils import timezone
 
 from community.series_catalog import MIN_GAP_DAYS, OUTLINES, SERIES, too_soon
 
@@ -55,7 +58,7 @@ class Command(BaseCommand):
     help = '연재 회차를 연구실 검증을 거쳐 발행하거나, 발행된 회차를 리메이크합니다.'
 
     def add_arguments(self, parser):
-        parser.add_argument('--series', choices=list(SERIES.keys()), default='django',
+        parser.add_argument('--series', choices=list(SERIES.keys()) + ['auto'], default='django',
                             help='시리즈 키 (기본: django)')
         parser.add_argument('--episode', type=int, default=None,
                             help='새로 발행할 회차 강제 지정 (기본: 다음 미발행 회차)')
@@ -69,6 +72,10 @@ class Command(BaseCommand):
         parser.add_argument('--dry-run', action='store_true', help='저장하지 않고 결과만 출력')
         parser.add_argument('--force', action='store_true',
                             help='직전 회차 후 최소 간격(MIN_GAP_DAYS)이 안 지났어도 발행')
+        parser.add_argument('--prepare', action='store_true',
+                            help='다음 공개 시각(월 10시) 몫을 전날 미리 만든다 — 통과하면 공개 대기, 미달이면 보류 + 운영자 메일')
+        parser.add_argument('--if-missing', action='store_true',
+                            help='오늘 공개 몫의 원고가 없을 때만 만든다(당일 안전망)')
         parser.add_argument('--wait-on-limit', action='store_true',
                             help='구독 사용 한도에 걸리면 초기화 시각까지 기다렸다가 같은 회차부터 이어서 진행')
 
@@ -92,7 +99,26 @@ class Command(BaseCommand):
         from community.models import Category, ColumnSeries
         from office.series_pipeline import produce_episode
 
-        key, cfg = opts['series'], SERIES[opts['series']]
+        from office import schedule as S
+        slot = None
+        if opts.get('prepare') or opts.get('if_missing'):
+            key, slot = S.series_slot(upcoming=bool(opts.get('prepare')))
+            if slot is None or key is None:
+                self.stdout.write('오늘은 연재 공개일이 아닙니다. 건너뜁니다.')
+                return
+            if opts['series'] not in ('auto', key):
+                self.stdout.write(f'{timezone.localtime(slot):%m.%d} 몫은 {key} 시리즈 차례입니다. 건너뜁니다.')
+                return
+            have = S.taken(slot, series_key=key)
+            if have is not None:
+                self.stdout.write(f'{timezone.localtime(slot):%m.%d %H:%M} 몫이 이미 있습니다'
+                                  f'({have.get_status_display()}: {have.subject or have.brief}). 건너뜁니다.')
+                return
+        elif opts['series'] == 'auto':
+            raise CommandError('--series auto 는 --prepare 또는 --if-missing 과 함께 씁니다.')
+        else:
+            key = opts['series']
+        cfg = SERIES[key]
         series = ColumnSeries.objects.filter(slug=cfg['slug']).first()
         if series is None and not opts['dry_run']:
             series = ColumnSeries.objects.create(
@@ -102,7 +128,7 @@ class Command(BaseCommand):
             self.stdout.write(self.style.SUCCESS(f'시리즈 생성: {series.title}'))
 
         last = series.published_episodes.last() if series else None
-        if opts['episode'] is None and not opts['force'] and last and too_soon(last.create_date):
+        if opts['episode'] is None and not opts['force'] and last and too_soon(last.create_date, now=slot):
             self.stdout.write(f'직전 회차({last.episode_number}편, {last.create_date:%m-%d}) 후 {MIN_GAP_DAYS}일이 '
                               '지나지 않아 이번 차례는 건너뜁니다. (--force 로 강제)')
             return
@@ -110,8 +136,13 @@ class Command(BaseCommand):
         if not any(o['no'] == no for o in OUTLINES[key]):
             self.stdout.write(self.style.SUCCESS(f'발행할 회차가 없습니다. (총 {len(OUTLINES[key])}편 완결)'))
             return
-        self._report(self._produce(opts, lambda: produce_episode(key, no, dry=opts['dry_run'], out=self.stdout.write)),
-                     key, no)
+        res = self._produce(opts, lambda: produce_episode(key, no, dry=opts['dry_run'], out=self.stdout.write,
+                                                          publish_at=slot))
+        self._report(res, key, no)
+        if slot is not None and res.get('status') in ('hold', 'failed') and res.get('draft') is not None:
+            reason = (f"심사를 통과하지 못했습니다({res.get('score')}점)" if res['status'] == 'hold'
+                      else '제작 중 오류로 멈췄습니다. 22시에 한 번 더 시도합니다')
+            S.alert_not_ready(res['draft'], f"연재 「{cfg['title']}」 {no}편", reason)
 
     # ── 리메이크(제자리 갱신)
     def _remake(self, opts):
@@ -182,6 +213,9 @@ class Command(BaseCommand):
         if status in ('published', 'updated'):
             verb = '제자리 갱신' if status == 'updated' else '발행'
             self.stdout.write(self.style.SUCCESS(f"{head} {verb} 완료 — {res['score']}점 (id={res['question'].pk})"))
+        elif status == 'ready':
+            self.stdout.write(self.style.SUCCESS(f"{head} 공개 대기 — {res['score']}점 · "
+                                                 f"{timezone.localtime(res['draft'].publish_at):%m.%d %H:%M} 공개"))
         elif status == 'hold':
             self.stdout.write(self.style.WARNING(f"{head} 기준 미달({res['score']}점) — 보류. /lab/admin/ 에서 검토"
                                                  + (' (원문은 그대로 둡니다)' if res['draft'].target_question_id else '')))

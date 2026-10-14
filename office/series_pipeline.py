@@ -385,7 +385,7 @@ def _recorder(draft, dry, out):
     return rec
 
 
-def produce_episode(key: str, no: int, *, target=None, dry: bool = False, out=print) -> dict:
+def produce_episode(key: str, no: int, *, target=None, dry: bool = False, out=print, publish_at=None) -> dict:
     """회차 1편을 연구실 검증을 거쳐 만든다. target(Question)이 있으면 리메이크.
 
     반환: {'status': 'published'|'updated'|'hold'|'failed'|'dry', 'score', 'question', 'draft'}
@@ -400,7 +400,8 @@ def produce_episode(key: str, no: int, *, target=None, dry: bool = False, out=pr
     mode = '리메이크' if target is not None else '새 회차'
     draft = None if dry else ColumnDraft.objects.create(
         topic=TOPIC_KEY, status=ColumnDraft.STATUS_FAILED, series_key=key, episode_number=no,
-        target_question=target, brief=f"[연재·{mode}] {cfg['title']} · {no_title(outline)}"[:300])
+        target_question=target, publish_at=publish_at,
+        brief=f"[연재·{mode}] {cfg['title']} · {no_title(outline)}"[:300])
     rec = _recorder(draft, dry, out)
     try:
         live.mark('draft', writer, TOPIC_KEY)
@@ -592,8 +593,15 @@ def gate(draft, key: str, no: int, subject: str, content: str, *, target=None, b
     draft.check_report, draft.qa_report = check, qa
     draft.revisions = (draft.revisions or 0) + reviews - 1
     if qa['verdict'] == 'accept':
+        from . import schedule as S
+        if target is None:
+            q = S.finish_accepted(draft, publish, by=by)
+            if q is None:          # 공개 예정 시각 전 — 그 시각에 공개(office.schedule)
+                rec('lead', 'ready', S.ready_line(draft))
+                return {**result, 'status': 'ready', 'draft': draft}
+        else:
+            q = publish(draft, by=by)
         live.mark('publish', 'lead', TOPIC_KEY)
-        q = publish(draft, by=by)
         rec('lead', 'publish', (f'리메이크 반영(제자리 갱신): {subject} (id={q.pk}, {qa["score"]}점)' if target
                                 else f'발행: {subject} (id={q.pk}, {qa["score"]}점)'))
         return {**result, 'status': 'updated' if target else 'published', 'question': q, 'draft': draft}

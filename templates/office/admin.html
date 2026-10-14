@@ -185,6 +185,25 @@
     </section>
 
     <section class="tab-pane narrow" data-pane="held" hidden>
+      {% if ready %}
+      <h2 class="pane-title">공개 대기 <small class="muted">심사를 통과해 예정 시각에 자동 공개됩니다</small></h2>
+      {% for d in ready %}
+      <div class="draft" data-draft="{{ d.id }}">
+        <div><b>{{ d.subject }}</b> <span class="chip">{{ d.publish_at|date:"m/d(D) H:i" }} 공개</span></div>
+        <div class="meta">
+          <span>{{ d.topic_name }}{% if d.series_key %} · 연재 {{ d.episode_number }}편{% endif %}</span>
+          <span>편집 심사 <span class="score {% if d.qa_score >= 85 %}ok{% endif %}">{{ d.qa_score|default:"-" }}/100</span></span>
+          <span>재작성 {{ d.revisions }}회</span>
+          <span>준비 {{ d.created_at|date:"m/d H:i" }}</span>
+        </div>
+        <details><summary>본문 미리보기</summary><div class="preview">{{ d.content|mark }}</div></details>
+        <div class="btns">
+          <form method="post" action="{% url 'office:draft_publish' d.id %}">{% csrf_token %}<input type="hidden" name="now" value="1"><button class="pub" type="submit" data-confirm="예정 시각 전에 지금 바로 공개할까요?">지금 공개</button></form>
+        </div>
+      </div>
+      {% endfor %}
+      <h2 class="pane-title" style="margin-top:22px;">검수 대기</h2>
+      {% endif %}
       {% for d in held %}
       <div class="draft" data-draft="{{ d.id }}">
         <div><b>{{ d.subject }}</b>{% if d.status == 'revising' %} <span class="chip live">재작성 중</span>{% endif %}</div>

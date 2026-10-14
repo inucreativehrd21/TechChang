@@ -33,6 +33,7 @@ STAGES = {
     'admin_note': ('운영자 검토', 'human'),
     'headline':   ('제목 다듬기', 'qa'),
     'publish':    ('발행', 'publish'),
+    'ready':      ('공개 대기', 'publish'),
 }
 # 발행 뒤 다듬기(remake_column)는 WorkLog 가 아니라 StageRun(question=…, run_id) 에 남는다 — _after_publish
 
@@ -216,6 +217,11 @@ def _event(log) -> dict | None:
         m = re.match(r'제목 다듬기: 「(.+?)」 → 「(.+?)」', text)
         ev['summary'] = '발행 직전 제목을 다듬었습니다.'
         ev['detail'] = f'「{m.group(1)}」 → 「{m.group(2)}」' if m else ''
+    elif action == 'ready':
+        m = re.search(r'(\d{2})\.(\d{2}) (\d{2}):(\d{2}) 공개 예정', text)
+        ev['summary'] = ('심사를 통과해 ' + (f'{int(m.group(1))}월 {int(m.group(2))}일 {m.group(3)}:{m.group(4)} '
+                                          if m else '예정 시각 ') + '공개를 기다렸습니다.')
+        ev['tone'] = 'pass'
     elif action == 'publish':
         m = re.search(r'(\d+)점', log.text or '')
         ev['summary'] = '칼럼을 발행했습니다.'

@@ -20,6 +20,7 @@ from office import live
 from office import evidence as E
 from office import pipeline as P
 from office import review_protocol as R
+from office import schedule as S
 from office.agents import AGENTS, TOPIC_AGENT
 from office.models import ColumnDraft
 from office.services import ask_agent, log
@@ -159,9 +160,13 @@ class Command(BaseCommand):
                 if new_title != subject:
                     rec('editor', 'headline', f'제목 다듬기: 「{subject}」 → 「{new_title}」 — {why}'[:300])
                     subject = draft.subject = new_title
-                q = P.publish_draft(draft, by=by)
-                rec('lead', 'publish', f'운영자 지시 반영 후 발행: {subject} (id={q.pk}, {qa["score"]}점)')
-                out(self.style.SUCCESS(f'발행 완료 [{label}] {subject} (id={q.pk}, {qa["score"]}점)'))
+                q = S.finish_accepted(draft, P.publish_draft, by=by)
+                if q is None:       # 공개 예정 시각 전 — 그 시각에 공개(office.schedule)
+                    rec('lead', 'ready', S.ready_line(draft))
+                    out(self.style.SUCCESS(f'공개 대기 [{label}] {subject} ({qa["score"]}점)'))
+                else:
+                    rec('lead', 'publish', f'운영자 지시 반영 후 발행: {subject} (id={q.pk}, {qa["score"]}점)')
+                    out(self.style.SUCCESS(f'발행 완료 [{label}] {subject} (id={q.pk}, {qa["score"]}점)'))
             else:
                 draft.status = ColumnDraft.STATUS_HOLD
                 draft.save()

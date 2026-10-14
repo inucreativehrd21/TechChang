@@ -37,6 +37,7 @@ PUBLIC_ACTIONS = {
     'revise':   ('재집필', '지적사항을 반영해 다시 썼습니다{title}.'),
     'hold':     ('보완', '기준에 못 미쳐 보완 중입니다{title}.'),
     'publish':  ('발행', '칼럼을 발행했습니다{title}.'),
+    'ready':    ('공개 준비', '칼럼 준비를 마치고 공개 시각을 기다립니다.'),   # 제목은 공개 전이라 싣지 않는다
 }
 # 리메이크(발행된 글을 같은 주소에서 고쳐 씀)는 새 발행이 아니다. 예전엔 둘 다 '발행했습니다'로 나가
 # 독자가 홈에서 새 글을 찾다 못 찾았다(#89, 2026-10-11) — 라벨과 문장을 따로 둔다.
@@ -58,6 +59,9 @@ _TRAILING_ID = re.compile(r'#\d+')
 def _title_of(log) -> str:
     """로그에 딸린 칼럼 제목. 없으면 빈 문자열."""
     draft = getattr(log, 'draft', None)
+    # 예약 공개 원고는 공개 시각 전까지 제목을 내보내지 않는다 — 전날 물밑에서 만든다(office.schedule)
+    if draft is not None and getattr(draft, 'publish_at', None) and getattr(draft, 'status', '') != 'published':
+        return ''
     if draft is not None and getattr(draft, 'subject', ''):
         return draft.subject
     # 'xxx: 제목 (1234자)' 형태에서 제목만 떼어 낸다

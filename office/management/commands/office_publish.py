@@ -13,11 +13,15 @@
   python manage.py office_publish --topic data --dry-run      # DB 저장 없이 콘솔 출력
   python manage.py office_publish --topic data --no-publish   # 끝까지 만들되 발행하지 않고 보류로 저장(검증용)
   python manage.py office_publish --topic coding --no-chart
+  python manage.py office_publish --topic hrd --prepare      # 다음 공개 시각 몫을 미리 만들어 '공개 대기'로
+  python manage.py office_publish --topic hrd --if-missing   # 오늘 공개 몫이 아예 없을 때만 바로 만든다
 
-cron:
-  0 10 * * 2  .../python manage.py office_publish --topic hrd
-  0 10 * * 4  .../python manage.py office_publish --topic data
-  0 10 * * 6  .../python manage.py office_publish --topic coding
+cron (예약 공개 — office/schedule.py):
+  0 13 * * 1  ... office_publish --topic hrd --prepare        # 전날 13시 준비, 22시 재시도(실패했을 때만)
+  0 22 * * 1  ... office_publish --topic hrd --prepare
+  0 10 * * 2  ... office_publish --topic hrd --if-missing     # 당일 안전망
+  (data: 수 13·22시 / 목 10시, coding: 금 13·22시 / 토 10시)
+  */10 * * * * ... office_release                              # 예정 시각이 지난 공개 대기 원고 발행
 """
 import json
 import time
@@ -34,6 +38,7 @@ from office import quality
 from office import blueprint as B
 from office import review_protocol as R
 from office import evidence as E
+from office import schedule as S
 from office.patching import patch_revise
 from office.agents import AGENTS, TOPIC_AGENT
 from office.models import ColumnDraft
@@ -50,6 +55,10 @@ class Command(BaseCommand):
         parser.add_argument('--no-chart', action='store_true')
         parser.add_argument('--no-publish', action='store_true',
                             help='심사를 통과해도 발행하지 않고 보류로 저장 (로컬 검증용)')
+        parser.add_argument('--prepare', action='store_true',
+                            help='다음 공개 시각 몫을 미리 만든다 — 통과하면 공개 대기, 미달이면 보류 + 운영자 메일')
+        parser.add_argument('--if-missing', action='store_true',
+                            help='오늘 공개 시각 몫의 원고가 없을 때만 만든다(당일 안전망)')
 
     def handle(self, *args, **opts):
         # 어떻게 끝나든(발행·보류·실패) 연구실 라이브 표시를 정리한다
@@ -65,9 +74,22 @@ class Command(BaseCommand):
         label = TOPICS[topic_key]['label']
         out = self.stdout.write
 
+        prepare = opts.get('prepare')
+        slot = None
+        if prepare or opts.get('if_missing'):
+            slot = S.column_slot(topic_key, upcoming=bool(prepare))
+            if slot is None:
+                out(f'{label} — 오늘은 공개 요일이 아닙니다. 건너뜁니다.')
+                return
+            have = S.taken(slot, topic=topic_key)
+            if have is not None:
+                out(f'{label} — {timezone.localtime(slot):%m.%d %H:%M} 몫이 이미 있습니다'
+                    f'({have.get_status_display()}: {have.subject or have.brief}). 건너뜁니다.')
+                return
+
         brief_decision = take_column_brief(topic_key)
         draft = None if dry else ColumnDraft.objects.create(
-            topic=topic_key, decision=brief_decision, status=ColumnDraft.STATUS_FAILED,
+            topic=topic_key, decision=brief_decision, status=ColumnDraft.STATUS_FAILED, publish_at=slot,
             brief=(brief_decision.chosen or {}).get('title', '') if brief_decision else '')
         stages = StageRecorder(draft=draft, dry=dry)
 
@@ -176,7 +198,8 @@ class Command(BaseCommand):
 
             # 기준 미달이면 — 보류든 수정 요청이든 — 자동으로 MAX_AUTO_REVISIONS 번까지 다시 쓴다.
             # 편집장 지적·팩트체크·평론을 함께 물려 준다. 그 뒤로는 사람이 /lab/admin/ 에서 지시한다.
-            for attempt in range(1, P.MAX_AUTO_REVISIONS + 1):
+            max_rev = P.MAX_AUTO_REVISIONS + (1 if prepare else 0)   # 전날 준비는 시간이 있어 한 번 더 고친다
+            for attempt in range(1, max_rev + 1):
                 if qa['verdict'] not in ('minor', 'major'):
                     break
                 prev_content, prev_qa = content, qa
@@ -238,7 +261,7 @@ class Command(BaseCommand):
                            attempt=attempt + 1)
                 # 마지막 재심의 '수정 요청'은 남은 것이 제안뿐일 때만 통과로 본다(학술지의 minor revision 수리).
                 # 필수 수정이 남았거나 치명 결함이 있으면 보류 → 운영자 검수(R.accept_after_revision).
-                if attempt == P.MAX_AUTO_REVISIONS and R.accept_after_revision(qa):
+                if attempt == max_rev and R.accept_after_revision(qa):
                     qa['verdict'] = 'accept'
                     qa['accepted_after_revision'] = True
                 rec('editor', 'qa', '재심 ' + self._qa_line(qa))
@@ -263,15 +286,22 @@ class Command(BaseCommand):
                 if new_title != subject:
                     rec('editor', 'headline', f'제목 다듬기: 「{subject}」 → 「{new_title}」 — {why}'[:300])
                     subject = draft.subject = new_title
-                q = P.publish_draft(draft)
-                rec('lead', 'publish', f'발행: {subject} (id={q.pk}, {qa["score"]}점)')
-                out(self.style.SUCCESS(f'발행 완료 [{label}] {subject} (id={q.pk}, {qa["score"]}점)'))
+                q = S.finish_accepted(draft, P.publish_draft)
+                if q is None:       # 공개 예정 시각 전 — 공개 대기
+                    rec('lead', 'ready', S.ready_line(draft))
+                    out(self.style.SUCCESS(f'공개 대기 [{label}] {subject} — '
+                                           f'{timezone.localtime(draft.publish_at):%m.%d %H:%M} 공개 ({qa["score"]}점)'))
+                else:
+                    rec('lead', 'publish', f'발행: {subject} (id={q.pk}, {qa["score"]}점)')
+                    out(self.style.SUCCESS(f'발행 완료 [{label}] {subject} (id={q.pk}, {qa["score"]}점)'))
             else:
                 draft.status = ColumnDraft.STATUS_HOLD
                 draft.save()
                 why = '발행 생략(--no-publish)' if qa['verdict'] == 'accept' else '운영자 검수 대기'
                 rec('lead', 'hold', f'보류({qa["verdict"]}, {qa["score"]}점): {subject} — {why}')
                 out(self.style.WARNING(f'보류 [{label}] {subject} — /lab/admin/ 에서 검수'))
+                if slot is not None and qa['verdict'] != 'accept':
+                    S.alert_not_ready(draft, label, f'심사를 통과하지 못했습니다({qa["score"]}점)')
 
             # 이번에 쌓인 활동 기록을 공개용 말투로 다듬어 둔다. 연구실 페이지가 폴링하므로
             # 조회 시점에 만들 수 없고, 여기서 한 번(한 호출) 처리한다. 실패해도 본작업과
@@ -287,6 +317,8 @@ class Command(BaseCommand):
                 draft.status = ColumnDraft.STATUS_FAILED
                 draft.save(update_fields=['status'])
                 log('lead', 'fail', f'{label} 제작 실패: {str(ex)[:200]}', draft=draft)
+                if slot is not None:
+                    S.alert_not_ready(draft, label, f'제작 중 오류로 멈췄습니다({type(ex).__name__}). 22시에 한 번 더 시도합니다')
             raise
 
     @staticmethod

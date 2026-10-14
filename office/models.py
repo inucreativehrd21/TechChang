@@ -82,9 +82,10 @@ class ColumnDraft(models.Model):
     STATUS_REVISING = 'revising'  # 운영자 코멘트 반영 재작성 진행 중
     STATUS_REJECTED = 'rejected'
     STATUS_FAILED = 'failed'
+    STATUS_READY = 'ready'        # 심사 통과 → 공개 예정 시각(publish_at)을 기다림(office.schedule)
     STATUS_CHOICES = [
         (STATUS_PUBLISHED, '발행'), (STATUS_HOLD, '검수 대기'), (STATUS_REVISING, '재작성 중'),
-        (STATUS_REJECTED, '반려'), (STATUS_FAILED, '실패'),
+        (STATUS_REJECTED, '반려'), (STATUS_FAILED, '실패'), (STATUS_READY, '공개 대기'),
     ]
 
     topic = models.CharField(max_length=10, db_index=True)
@@ -105,6 +106,8 @@ class ColumnDraft(models.Model):
     episode_number = models.PositiveSmallIntegerField(null=True, blank=True, verbose_name='연재 회차')
     target_question = models.ForeignKey('community.Question', null=True, blank=True, on_delete=models.SET_NULL,
                                         related_name='+', verbose_name='리메이크 대상 글')
+    # 공개 예정 시각 — 전날 미리 만들어 심사·보완을 끝내 두고(ready) 이 시각에 공개한다(office.schedule)
+    publish_at = models.DateTimeField(null=True, blank=True, db_index=True, verbose_name='공개 예정 시각')
     created_at = models.DateTimeField(auto_now_add=True)
     decided_by = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL, related_name='+')
     decided_at = models.DateTimeField(null=True, blank=True)
