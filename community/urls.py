@@ -123,6 +123,7 @@ urlpatterns = [
     path('portfolios/create/', portfolio_views.portfolio_collection_create, name='portfolio_collection_create'),
     re_path(r'^portfolios/(?P<slug>[-\w가-힣]+)/$', portfolio_views.portfolio_collection_detail, name='portfolio_collection_detail'),
     re_path(r'^portfolios/(?P<slug>[-\w가-힣]+)/raw/$', portfolio_views.portfolio_collection_raw, name='portfolio_collection_raw'),
+    re_path(r'^portfolios/(?P<slug>[-\w가-힣]+)/coffee-chat/$', portfolio_views.portfolio_coffee_chat, name='portfolio_coffee_chat'),
     re_path(r'^portfolios/(?P<slug>[-\w가-힣]+)/asset/(?P<asset_id>\d+)/$', portfolio_views.portfolio_collection_asset, name='portfolio_collection_asset'),
     re_path(r'^portfolios/(?P<slug>[-\w가-힣]+)/asset/(?P<asset_id>\d+)/delete/$', portfolio_views.collection_asset_delete, name='collection_asset_delete'),
     re_path(r'^portfolios/(?P<slug>[-\w가-힣]+)/edit/$', portfolio_views.portfolio_collection_edit, name='portfolio_collection_edit'),

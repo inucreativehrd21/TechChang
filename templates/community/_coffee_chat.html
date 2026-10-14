@@ -1,0 +1,144 @@
+{% comment %}커피챗 제안 — HTML 포트폴리오(샌드박스 iframe)가 보낸 신호(tc:coffee-chat)를 받아 폼을 띄우고,
+community:portfolio_coffee_chat 으로 보낸다 → 포트폴리오 주인 이메일로 전달(사이트에 저장하지 않음).
+portfolio_view.html 의 HTML 모드에서 include. iframe 은 .portfolio-html-embed.{% endcomment %}
+<style>
+.tc-cc { width: min(520px, calc(100vw - 32px)); max-height: calc(100vh - 48px); padding: 0; border: 0; border-radius: 18px;
+    box-shadow: 0 30px 80px -24px rgba(15, 23, 42, .45); color: #18181b; font-family: inherit; }
+.tc-cc::backdrop { background: rgba(15, 23, 42, .45); backdrop-filter: blur(2px); }
+.tc-cc-in { padding: 28px 28px 24px; overflow-y: auto; }
+.tc-cc-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.tc-cc h2 { margin: 0; font-size: 1.25rem; font-weight: 800; letter-spacing: -.02em; }
+.tc-cc-sub { margin: 6px 0 0; font-size: .9rem; color: #52525b; line-height: 1.6; }
+.tc-cc-x { border: 0; background: transparent; font-size: 1.4rem; line-height: 1; color: #71717a; cursor: pointer; padding: 2px 6px; border-radius: 8px; }
+.tc-cc-x:hover { background: #f4f4f5; color: #18181b; }
+.tc-cc form { margin-top: 18px; display: grid; gap: 14px; }
+.tc-cc-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.tc-cc label { display: grid; gap: 6px; font-size: .82rem; font-weight: 700; color: #3f3f46; }
+.tc-cc label small { font-weight: 500; color: #a1a1aa; }
+.tc-cc input, .tc-cc textarea { width: 100%; box-sizing: border-box; padding: 11px 13px; border: 1px solid #e4e4e7; border-radius: 10px;
+    font: inherit; font-size: .95rem; color: #18181b; background: #fff; transition: border-color .15s, box-shadow .15s; }
+.tc-cc textarea { min-height: 150px; resize: vertical; line-height: 1.6; }
+.tc-cc input:focus, .tc-cc textarea:focus { outline: none; border-color: #4f46e5; box-shadow: 0 0 0 3px rgba(79, 70, 229, .15); }
+.tc-cc .is-bad { border-color: #dc2626; }
+.tc-cc-err { font-size: .78rem; font-weight: 500; color: #dc2626; }
+.tc-cc-err:empty { display: none; }
+.tc-cc-hp { position: absolute; left: -9999px; width: 1px; height: 1px; overflow: hidden; }
+.tc-cc-count { justify-self: end; font-size: .75rem; color: #a1a1aa; font-variant-numeric: tabular-nums; margin-top: -8px; }
+.tc-cc-note { margin: 0; font-size: .78rem; color: #71717a; line-height: 1.55; }
+.tc-cc-actions { display: flex; justify-content: flex-end; gap: 8px; }
+.tc-cc-btn { border: 0; border-radius: 10px; padding: 11px 18px; font: inherit; font-size: .92rem; font-weight: 700; cursor: pointer; }
+.tc-cc-btn.ghost { background: #f4f4f5; color: #3f3f46; }
+.tc-cc-btn.primary { background: #4f46e5; color: #fff; }
+.tc-cc-btn.primary:hover { background: #4338ca; }
+.tc-cc-btn:disabled { opacity: .6; cursor: progress; }
+.tc-cc-btn:focus-visible, .tc-cc-x:focus-visible { outline: 2px solid #4f46e5; outline-offset: 2px; }
+.tc-cc-done { text-align: center; padding: 18px 4px 6px; }
+.tc-cc-done .ic { font-size: 2.2rem; }
+.tc-cc-done h2 { margin-top: 10px; }
+.tc-cc-alert { margin: 0; padding: 10px 12px; border-radius: 10px; background: #fef2f2; color: #b91c1c; font-size: .85rem; }
+@media (max-width: 520px) { .tc-cc-row { grid-template-columns: 1fr; } .tc-cc-in { padding: 22px 18px 18px; } }
+</style>
+
+<dialog class="tc-cc" id="tc-cc" aria-labelledby="tc-cc-title">
+  <div class="tc-cc-in">
+    <div id="tc-cc-form-wrap">
+      <div class="tc-cc-head">
+        <div>
+          <h2 id="tc-cc-title">☕ 커피챗 제안하기</h2>
+          <p class="tc-cc-sub">{{ portfolio.get_display_name }} 님에게 메시지가 이메일로 전달돼요. 답장은 적어 주신 이메일로 받게 됩니다.</p>
+        </div>
+        <button type="button" class="tc-cc-x" data-close aria-label="닫기">×</button>
+      </div>
+      <form id="tc-cc-form" method="post" action="{% url 'community:portfolio_coffee_chat' portfolio.slug %}" novalidate>
+        {% csrf_token %}
+        <div class="tc-cc-row">
+          <label><span>이름</span><input name="name" maxlength="40" autocomplete="name" required><span class="tc-cc-err" data-err="name"></span></label>
+          <label><span>소속 <small>(선택)</small></span><input name="org" maxlength="60" autocomplete="organization"><span class="tc-cc-err" data-err="org"></span></label>
+        </div>
+        <label><span>답장 받을 이메일</span><input name="email" type="email" maxlength="120" autocomplete="email" required><span class="tc-cc-err" data-err="email"></span></label>
+        <label><span>메시지</span><textarea name="message" maxlength="2000" required placeholder="어떤 이야기를 나누고 싶은지, 편한 시간대나 방식(온라인·오프라인)을 적어 주세요."></textarea><span class="tc-cc-err" data-err="message"></span></label>
+        <span class="tc-cc-count" id="tc-cc-count">0 / 2000</span>
+        <label class="tc-cc-hp" aria-hidden="true">웹사이트<input name="website" tabindex="-1" autocomplete="off"></label>
+        <p class="tc-cc-alert" id="tc-cc-alert" hidden></p>
+        <p class="tc-cc-note">적어 주신 이름·이메일·메시지는 이 포트폴리오 주인에게 이메일로만 전달되고 테크창에는 저장되지 않아요.</p>
+        <div class="tc-cc-actions">
+          <button type="button" class="tc-cc-btn ghost" data-close>취소</button>
+          <button type="submit" class="tc-cc-btn primary" id="tc-cc-send">보내기</button>
+        </div>
+      </form>
+    </div>
+    <div class="tc-cc-done" id="tc-cc-done" hidden>
+      <div class="ic" aria-hidden="true">☕</div>
+      <h2>메시지를 전달했어요</h2>
+      <p class="tc-cc-sub">답장은 적어 주신 이메일로 갈 거예요. 감사합니다.</p>
+      <div class="tc-cc-actions" style="justify-content:center;margin-top:16px"><button type="button" class="tc-cc-btn primary" data-close>닫기</button></div>
+    </div>
+  </div>
+</dialog>
+
+<script nonce="{{ csp_nonce }}">
+(function () {
+  var dlg = document.getElementById('tc-cc'), form = document.getElementById('tc-cc-form');
+  var frame = document.querySelector('.portfolio-html-embed');
+  if (!dlg || !form) return;
+  var alertBox = document.getElementById('tc-cc-alert'), send = document.getElementById('tc-cc-send');
+  var done = document.getElementById('tc-cc-done'), wrap = document.getElementById('tc-cc-form-wrap');
+  var msg = form.elements.message, count = document.getElementById('tc-cc-count');
+
+  function open() {
+    wrap.hidden = false; done.hidden = true; alertBox.hidden = true;
+    if (typeof dlg.showModal === 'function') dlg.showModal(); else dlg.setAttribute('open', '');
+    setTimeout(function () { form.elements.name.focus(); }, 30);
+  }
+  function close() { if (dlg.open) dlg.close(); else dlg.removeAttribute('open'); }
+  function clearErrors() {
+    form.querySelectorAll('[data-err]').forEach(function (e) { e.textContent = ''; });
+    form.querySelectorAll('.is-bad').forEach(function (e) { e.classList.remove('is-bad'); });
+    alertBox.hidden = true;
+  }
+  function showErrors(errs) {
+    Object.keys(errs || {}).forEach(function (k) {
+      var slot = form.querySelector('[data-err="' + k + '"]'), field = form.elements[k];
+      if (slot) slot.textContent = errs[k];
+      if (field) field.classList.add('is-bad');
+    });
+    var first = Object.keys(errs || {})[0];
+    if (first && form.elements[first]) form.elements[first].focus();
+  }
+
+  // 포트폴리오(iframe) 안의 '커피챗 제안하기' — 샌드박스라 출처가 null 이므로 보낸 창으로 확인한다
+  window.addEventListener('message', function (e) {
+    if (frame && e.source === frame.contentWindow && e.data && e.data.type === 'tc:coffee-chat') open();
+  });
+  // 같은 페이지에서 직접 여는 링크도 지원(#coffee-chat)
+  if (location.hash === '#coffee-chat') open();
+
+  dlg.addEventListener('click', function (e) {
+    if (e.target === dlg || e.target.closest('[data-close]')) close();
+  });
+  msg.addEventListener('input', function () { count.textContent = msg.value.length + ' / 2000'; });
+
+  form.addEventListener('submit', function (e) {
+    e.preventDefault();
+    clearErrors();
+    var local = {};
+    if (!form.elements.name.value.trim()) local.name = '이름을 적어 주세요.';
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.elements.email.value.trim())) local.email = '답장을 받을 이메일을 확인해 주세요.';
+    if (msg.value.trim().length < 10) local.message = '메시지를 10자 이상 적어 주세요.';
+    if (Object.keys(local).length) { showErrors(local); return; }
+    send.disabled = true; send.textContent = '보내는 중…';
+    fetch(form.action, {
+      method: 'POST', body: new FormData(form), credentials: 'same-origin',
+      headers: { 'X-CSRFToken': form.elements.csrfmiddlewaretoken.value, 'X-Requested-With': 'XMLHttpRequest' }
+    }).then(function (r) { return r.json().catch(function () { return { ok: false }; }); })
+      .then(function (d) {
+        if (d && d.ok) { form.reset(); count.textContent = '0 / 2000'; wrap.hidden = true; done.hidden = false; return; }
+        if (d && d.errors) { showErrors(d.errors); return; }
+        alertBox.textContent = (d && d.error) || '보내지 못했어요. 잠시 뒤에 다시 시도해 주세요.';
+        alertBox.hidden = false;
+      })
+      .catch(function () { alertBox.textContent = '네트워크 문제로 보내지 못했어요. 다시 시도해 주세요.'; alertBox.hidden = false; })
+      .finally(function () { send.disabled = false; send.textContent = '보내기'; });
+  });
+})();
+</script>

@@ -784,6 +784,102 @@ def _build_raw_html_csp(request):
     )
 
 
+# ───────────────────────────── 커피챗 제안
+# 업로드 HTML 은 샌드박스 iframe(외부 통신·폼 전송 금지)이라 mailto·폼이 제대로 동작하지 않는다.
+# HTML 안의 [data-tc-coffee-chat] 또는 href="#coffee-chat" 를 누르면 부모 페이지에 신호만 보내고,
+# 부모(portfolio_view.html)가 사이트의 폼을 띄워 portfolio_coffee_chat 으로 보낸다 → 주인 이메일로 전달.
+COFFEE_BRIDGE = (
+    '<script>(function(){document.addEventListener("click",function(e){'
+    'var t=e.target&&e.target.closest&&e.target.closest(\'[data-tc-coffee-chat],a[href="#coffee-chat"]\');'
+    'if(!t)return;e.preventDefault();try{parent.postMessage({type:"tc:coffee-chat"},"*")}catch(_){}},true)})();</script>'
+)
+COFFEE_LIMITS = {'name': 40, 'email': 120, 'org': 60, 'message': 2000}
+COFFEE_PER_IP_HOUR = 3
+COFFEE_PER_PORTFOLIO_DAY = 30
+
+
+def _inject_coffee_bridge(html: str) -> str:
+    i = html.lower().rfind('</body>')
+    return html[:i] + COFFEE_BRIDGE + html[i:] if i >= 0 else html + COFFEE_BRIDGE
+
+
+def _coffee_recipient(collection) -> str:
+    """받는 주소 — 포트폴리오에 적은 연락 이메일이 먼저(운영자 계정 이메일은 자리표시자일 수 있다)."""
+    return (collection.email or '').strip() or (collection.user.email or '').strip()
+
+
+def portfolio_coffee_chat(request, slug):
+    """커피챗 제안 — 방문자가 쓴 메시지를 포트폴리오 주인 이메일로 전달한다(사이트에는 저장하지 않음)."""
+    from django.conf import settings
+    from django.core.cache import cache
+    from django.core.mail import EmailMessage
+    from django.core.validators import validate_email
+    from django.core.exceptions import ValidationError
+    from common.views import _client_ip
+
+    if request.method != 'POST':
+        return JsonResponse({'ok': False, 'error': 'POST 로만 보낼 수 있어요.'}, status=405)
+    collection = get_object_or_404(PortfolioCollection, slug=slug)
+    if not collection.is_publicly_visible():
+        return JsonResponse({'ok': False, 'error': '공개된 포트폴리오가 아니에요.'}, status=403)
+    if (request.POST.get('website') or '').strip():          # 봇이 채우는 숨은 칸
+        return JsonResponse({'ok': True})
+
+    data = {k: (request.POST.get(k) or '').strip() for k in COFFEE_LIMITS}
+    errors = {}
+    if not data['name']:
+        errors['name'] = '이름을 적어 주세요.'
+    try:
+        validate_email(data['email'])
+    except ValidationError:
+        errors['email'] = '답장을 받을 이메일을 확인해 주세요.'
+    if len(data['message']) < 10:
+        errors['message'] = '메시지를 10자 이상 적어 주세요.'
+    for k, n in COFFEE_LIMITS.items():
+        if len(data[k]) > n:
+            errors[k] = f'{n}자 이내로 적어 주세요.'
+    if errors:
+        return JsonResponse({'ok': False, 'errors': errors}, status=400)
+
+    to = _coffee_recipient(collection)
+    if not to:
+        return JsonResponse({'ok': False, 'error': '받을 이메일이 설정되지 않은 포트폴리오예요.'}, status=503)
+
+    ip_key = f'coffee:ip:{_client_ip(request)}'
+    pf_key = f'coffee:pf:{collection.pk}:{timezone.localdate():%Y%m%d}'
+    if cache.get(ip_key, 0) >= COFFEE_PER_IP_HOUR or cache.get(pf_key, 0) >= COFFEE_PER_PORTFOLIO_DAY:
+        return JsonResponse({'ok': False, 'error': '잠시 뒤에 다시 보내 주세요. 짧은 시간에 너무 많이 보냈어요.'}, status=429)
+
+    name = collection.get_display_name()
+    body = '\n'.join([
+        f'{name} 님, 포트폴리오에서 커피챗 제안이 도착했어요.',
+        '',
+        f'보낸 분: {data["name"]}' + (f' ({data["org"]})' if data['org'] else ''),
+        f'답장 주소: {data["email"]}',
+        f'보낸 시각: {timezone.localtime():%Y-%m-%d %H:%M}',
+        '',
+        '─' * 30,
+        data['message'],
+        '─' * 30,
+        '',
+        '이 메일에 회신하면 보낸 분에게 바로 전달됩니다.',
+        f'포트폴리오: {request.build_absolute_uri(reverse("community:portfolio_collection_detail", args=[collection.slug]))}',
+        '— 테크창(techchang.com) 커피챗. 보낸 내용은 사이트에 저장하지 않습니다.',
+    ])
+    msg = EmailMessage(subject=f'[테크창] 커피챗 제안 — {data["name"]}', body=body,
+                       from_email=settings.DEFAULT_FROM_EMAIL, to=[to], reply_to=[data['email']])
+    try:
+        msg.send(fail_silently=False)
+    except Exception:  # noqa: BLE001 — 메일 서버 문제는 방문자에게 다시 시도하라고만 알린다
+        import logging
+        logging.getLogger(__name__).exception('커피챗 메일 전송 실패: collection=%s', collection.pk)
+        return JsonResponse({'ok': False, 'error': '메일을 보내지 못했어요. 잠시 뒤에 다시 시도해 주세요.'}, status=502)
+
+    cache.set(ip_key, cache.get(ip_key, 0) + 1, 3600)
+    cache.set(pf_key, cache.get(pf_key, 0) + 1, 86400)
+    return JsonResponse({'ok': True})
+
+
 @xframe_options_sameorigin
 def portfolio_collection_raw(request, slug):
     """업로드된 HTML 원본을 서빙 (샌드박스 iframe 전용).
@@ -821,6 +917,8 @@ def portfolio_collection_raw(request, slug):
     from community import site_stats
     if site_stats.is_site_owner(collection.user):
         html = site_stats.fill_stat_tags(html)
+
+    html = _inject_coffee_bridge(html)
 
     response = HttpResponse(html, content_type='text/html; charset=utf-8')
     # django-csp 미들웨어가 덮어쓰지 않도록 헤더를 직접 설정 (no_header 체크에 의해 보존됨)

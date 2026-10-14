@@ -53,12 +53,10 @@
     text-decoration: none;
 }
 .m-post-row:first-child { border-top: none; }
-/* 운영자 픽 — 짙은 인디고 줄(PC 카드와 같은 재질) */
-.m-post-row.is-op-pick { background: linear-gradient(155deg, #1e1b4b 0%, #17153a 100%); border-top-color: transparent; }
-.m-post-row.is-op-pick .m-post-subject { color: #fff; }
-.m-post-row.is-op-pick .m-post-answer { color: rgba(224, 231, 255, .72); }
+/* 운영자 픽 — 옅은 인디고 번짐 + 왼쪽 인디고 선(PC 카드와 같은 결) */
+.m-post-row.is-op-pick { background: linear-gradient(90deg, #f5f3ff 0%, #ffffff 75%); box-shadow: inset 3px 0 0 #4f46e5; }
 .m-op-pick { display: inline-flex; align-items: center; gap: 4px; margin-right: 6px; padding: 1px 8px; border-radius: 999px;
-    font-size: .6875rem; font-weight: 700; color: #1e1b4b; background: linear-gradient(135deg, #e0e7ff, #c7d2fe); vertical-align: 1px; }
+    font-size: .6875rem; font-weight: 700; color: #4338ca; background: #fff; border: 1px solid #c7d2fe; vertical-align: 1px; }
 .m-op-pick i { color: #4f46e5; font-size: .625rem; }
 .m-post-subject {
     flex: 1;
