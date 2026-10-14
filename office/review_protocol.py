@@ -64,6 +64,15 @@ def must_fix_items(qa: dict | None) -> list[dict]:
     return items[:MAX_MUST_FIX]
 
 
+def accept_after_revision(qa: dict) -> bool:
+    """마지막 자동 재심의 '수정 요청'(minor)을 통과로 볼 수 있나 — 남은 것이 제안뿐일 때만.
+
+    학술지의 minor revision 수리처럼 다루되, 필수 수정(must_fix)이 하나라도 남았으면 운영자 검수로 넘긴다.
+    2026-10-13 #115 가 필수 수정 4건(서두 조건 개수 불일치·비교 주장 수위·자기 선언·현황 절 연결)을 남긴 채
+    70점으로 발행돼서 막았다."""
+    return qa.get('verdict') == 'minor' and not qa.get('fatal') and not must_fix_items(qa)
+
+
 def as_line(m: dict) -> str:
     where = f"[{m['where']}] " if m.get('where') else ''
     fix = f" → {m['fix']}" if m.get('fix') else ''

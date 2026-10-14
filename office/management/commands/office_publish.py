@@ -236,9 +236,9 @@ class Command(BaseCommand):
                            lambda: P.step_review(subject, content, check, chart_rel, visual_report, critique,
                                              verified=pack, previous=prev_qa, previous_content=prev_content),
                            attempt=attempt + 1)
-                # 마지막 재심에서는 '수정 요청'을 통과로 본다 (학술지의 minor revision 수리와 같은 처리).
-                # 치명 결함이 남아 있으면 verdict 가 major 라 그대로 보류된다.
-                if attempt == P.MAX_AUTO_REVISIONS and qa['verdict'] == 'minor':
+                # 마지막 재심의 '수정 요청'은 남은 것이 제안뿐일 때만 통과로 본다(학술지의 minor revision 수리).
+                # 필수 수정이 남았거나 치명 결함이 있으면 보류 → 운영자 검수(R.accept_after_revision).
+                if attempt == P.MAX_AUTO_REVISIONS and R.accept_after_revision(qa):
                     qa['verdict'] = 'accept'
                     qa['accepted_after_revision'] = True
                 rec('editor', 'qa', '재심 ' + self._qa_line(qa))

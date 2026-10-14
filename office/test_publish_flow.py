@@ -84,6 +84,22 @@ class PublishFlowTests(TestCase):
         self.assertEqual(len(checks), 1)
         self.assertFalse(StageRun.objects.filter(draft=draft, stage='reverify').exists())
 
+    def test_last_review_with_must_fix_left_is_not_accepted(self):
+        rewritten = 'TITLE: 제목\n---\n' + column(30).replace('리드 문단입니다.', '고친 리드입니다.')
+        left ={**qa('minor', 70), 'must_fix': [{'where': '서두', 'problem': '조건 개수 불일치', 'fix': '다섯 개로'}]}
+        draft, _ = self.run_publish(editor_raw=rewritten, reviews=[qa('minor', 68), left])
+        final = StageRun.objects.get(draft=draft, stage='final').output
+        self.assertEqual(final['verdict'], 'minor')                      # 통과로 바꾸지 않는다
+        self.assertFalse(draft.qa_report.get('accepted_after_revision'))
+        self.assertTrue(draft.logs.filter(action='hold', text__contains='운영자 검수 대기').exists())
+
+    def test_last_review_with_only_suggestions_is_accepted(self):
+        rewritten = 'TITLE: 제목\n---\n' + column(30).replace('리드 문단입니다.', '고친 리드입니다.')
+        clean ={**qa('minor', 74), 'must_fix': [], 'suggestions': ['사례 하나 더']}
+        draft, _ = self.run_publish(editor_raw=rewritten, reviews=[qa('minor', 68), clean])
+        self.assertEqual(StageRun.objects.get(draft=draft, stage='final').output['verdict'], 'accept')
+        self.assertTrue(draft.qa_report.get('accepted_after_revision'))
+
 
 class ConcurrentSpoolTests(TestCase):
     def setUp(self):
@@ -125,3 +141,19 @@ class ConcurrentSpoolTests(TestCase):
         done = sorted(n for n in os.listdir(self.spool) if n.endswith('.prompt.md'))
         self.assertEqual(done, ['done.1.prompt.md', 'done.2.prompt.md'])
         self.assertFalse(os.path.exists(os.path.join(self.spool, 'pending.md')))
+
+
+class AcceptAfterRevisionTests(TestCase):
+    """마지막 자동 재심의 '수정 요청'은 남은 것이 제안뿐일 때만 통과 — 필수 수정이 남은 70점 글이 발행됐던 일(#115)."""
+
+    def test_only_suggestions_left_is_accepted(self):
+        from office import review_protocol as R
+        self.assertTrue(R.accept_after_revision({'verdict': 'minor', 'fatal': [], 'must_fix': [],
+                                                 'suggestions': ['사례 하나 더']}))
+
+    def test_remaining_must_fix_or_fatal_goes_to_operator(self):
+        from office import review_protocol as R
+        left = [{'where': '서두', 'problem': '조건 개수 불일치', 'fix': '다섯 개로', 'done_when': ''}]
+        self.assertFalse(R.accept_after_revision({'verdict': 'minor', 'fatal': [], 'must_fix': left}))
+        self.assertFalse(R.accept_after_revision({'verdict': 'minor', 'fatal': ['unverified_data'], 'must_fix': []}))
+        self.assertFalse(R.accept_after_revision({'verdict': 'major', 'fatal': [], 'must_fix': []}))
