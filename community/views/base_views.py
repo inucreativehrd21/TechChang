@@ -397,6 +397,9 @@ def detail(request, question_id):
     except Exception:  # noqa: BLE001 — 부가 카드 하나 때문에 본문 페이지가 500 이 나면 안 된다
         logging.getLogger(__name__).exception('메이킹 카드 생성 실패: question=%s', question.id)
 
+    # 프리미엄 칼럼(최종 편집 심사 80점 이상) — 제목 옆 배지
+    premium_score = _pick_scores().get(question.id)
+
     # 본문 아래 '함께 읽으면 좋은 칼럼' — 내부 링크(검색엔진 주제 묶음·크롤링 동선)
     from office.related import related_columns
     related = related_columns(question) if question.is_indexable else []
@@ -407,6 +410,7 @@ def detail(request, question_id):
         'sort': sort,
         'series_nav': series_nav,
         'making': making,
+        'premium_score': premium_score,
         'related': related,
     }
     template = 'community/mobile/question_detail.html' if getattr(request, 'is_mobile', False) else 'community/question_detail.html'

@@ -360,6 +360,7 @@ def build_making(draft) -> dict | None:
         'score_svg': _sparkline(scores),
         'score_chart': _sparkline(scores, w=640, h=170, pad=22),
         'final_score': final_score,
+        'premium': final_score is not None and final_score >= 80,
         'reviews': sum(1 for e in events if e['action'] == 'qa'),
         'rewrites': sum(1 for e in events if e['action'] == 'revise'),
         'human_steps': sum(1 for e in events if e['action'] == 'admin_note'),
@@ -459,7 +460,7 @@ def _sparkline(scores: list, *, w: int = 240, h: int = 64, pad: int = 8) -> dict
     """점수 추이 선 그래프 좌표 (viewBox 0 0 W H). 2개 미만이면 그리지 않는다."""
     if len(scores) < 2:
         return None
-    # 점수가 있는 구간만 쓴다 (발행 기준 80점은 항상 보이게)
+    # 점수가 있는 구간만 쓴다 (프리미엄 기준 80점은 항상 보이게)
     hi = 100
     lo = max(0, (min(min(scores), 80) - 10) // 10 * 10)
     step = (w - pad * 2) / (len(scores) - 1)
@@ -468,5 +469,5 @@ def _sparkline(scores: list, *, w: int = 240, h: int = 64, pad: int = 8) -> dict
         x = pad + i * step
         y = pad + (hi - max(lo, min(hi, s))) / (hi - lo) * (h - pad * 2)
         pts.append({'x': round(x, 1), 'y': round(y, 1), 'score': s})
-    pass_y = round(pad + (hi - 80) / (hi - lo) * (h - pad * 2), 1)  # 발행 기준선 80점
+    pass_y = round(pad + (hi - 80) / (hi - lo) * (h - pad * 2), 1)  # 프리미엄 기준선 80점(office.picks)
     return {'w': w, 'h': h, 'points': pts, 'path': ' '.join(f"{p['x']},{p['y']}" for p in pts), 'pass_y': pass_y}

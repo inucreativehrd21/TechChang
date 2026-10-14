@@ -192,3 +192,11 @@ class AfterPublishTests(BuildAndViewTests):
         mk = build_making(self.draft)
         self.assertEqual(mk['score_trail'], [54, 100])
         self.assertIsNone(mk['updated'])
+
+    def test_premium_line_replaces_publish_line(self):
+        self.add_run(applied=True, scores=[56, 75, 68], offset=2)
+        self.assertFalse(build_making(self.draft)['premium'])          # 68점 — 발행은 됐지만 프리미엄 아님
+        body = self.client.get(f'/lab/making/{self.q.id}/', HTTP_USER_AGENT='Mozilla/5.0').content.decode()
+        self.assertIn('프리미엄 기준 80', body)
+        self.assertIn('80점 이상이면 프리미엄 칼럼입니다', body)
+        self.assertNotIn('발행 기준 80', body)
