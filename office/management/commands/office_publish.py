@@ -19,6 +19,7 @@
 cron (예약 공개 — office/schedule.py):
   0 13 * * 1  ... office_publish --topic hrd --prepare        # 전날 13시 준비, 22시 재시도(실패했을 때만)
   0 22 * * 1  ... office_publish --topic hrd --prepare
+  0 4 * * 2   ... office_publish --topic hrd --prepare        # 당일 4시 — 밤사이 구독 한도가 풀린 뒤 한 번 더
   0 10 * * 2  ... office_publish --topic hrd --if-missing     # 당일 안전망
   (data: 수 13·22시 / 목 10시, coding: 금 13·22시 / 토 10시)
   */10 * * * * ... office_release                              # 예정 시각이 지난 공개 대기 원고 발행

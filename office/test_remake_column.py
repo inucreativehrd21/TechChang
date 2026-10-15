@@ -57,6 +57,12 @@ class HandEditReviewTests(TestCase):
         self.assertIn('122,974', check.call_args.kwargs['verified'])
         self.assertIn('122,974', rv.call_args.kwargs['verified'])
 
+    def test_only_suggestions_left_is_applied(self):
+        # 발행 규칙과 같게 — 필수 수정·미해결 지적 없이 제안만 남으면 80점 아래여도 반영(#115·#116)
+        self.run_cmd([{**qa('minor', 74), 'resolved': [True]}])
+        self.q.refresh_from_db()
+        self.assertEqual(self.q.subject, '새 제목')
+
     def test_minor_edit_is_patched_and_numbers_from_memory_are_dropped(self):
         # 보완 패치가 근거에 없는 수치(10,035건)를 들여와도 그 문장은 지워지고, 재심 통과면 갱신된다
         patched = EDITED.replace('집계했습니다.', '집계했습니다. 응답은 10,035건이었습니다.')
@@ -70,7 +76,8 @@ class HandEditReviewTests(TestCase):
         self.assertEqual(rv.call_args.kwargs['previous_content'].strip(), EDITED.strip())
 
     def test_still_failing_edit_keeps_original(self):
-        self.run_cmd([qa('minor', 74)])                     # 패치·재작성 모두 실패
+        left = {**qa('minor', 74), 'must_fix': [{'where': '서두', 'problem': '논지가 끊김', 'fix': '잇기'}]}
+        self.run_cmd([left])                                # 필수 수정이 남았고 패치·재작성 모두 실패
         self.q.refresh_from_db()
         self.assertEqual((self.q.subject, self.q.content), ('옛 제목', '옛 본문'))
 

@@ -70,7 +70,14 @@ def accept_after_revision(qa: dict) -> bool:
     학술지의 minor revision 수리처럼 다루되, 필수 수정(must_fix)이 하나라도 남았으면 운영자 검수로 넘긴다.
     2026-10-13 #115 가 필수 수정 4건(서두 조건 개수 불일치·비교 주장 수위·자기 선언·현황 절 연결)을 남긴 채
     70점으로 발행돼서 막았다."""
-    return qa.get('verdict') == 'minor' and not qa.get('fatal') and not must_fix_items(qa)
+    return (qa.get('verdict') == 'minor' and not qa.get('fatal') and not must_fix_items(qa)
+            and not unresolved(qa))
+
+
+def unresolved(qa: dict) -> int:
+    """재심에서 '해결 안 됨'으로 판정된 직전 필수 수정 수. 2026-10-15 #116: 편집장이 6건 중 2건 미해결이라고 적었는데
+    그 2건이 다른 문구로 다시 지적되며 '바뀌지 않은 곳의 새 지적'으로 제안에 내려가, 필수 수정 0건으로 67점 발행됐다."""
+    return sum(1 for r in (qa.get('resolved') or []) if r is False)
 
 
 def as_line(m: dict) -> str:
@@ -125,6 +132,8 @@ def demote_stale(qa: dict, previous: dict | None, prev_content: str, content: st
     직전 필수 수정과 비슷한 항목(미해결 재지적)도 그대로 둔다.
     """
     if not previous or not prev_content or (qa.get('fatal') or []):
+        return []
+    if unresolved(qa):        # 직전 필수 수정이 남아 있으면, 다른 문구로 다시 지적된 그 항목일 수 있다 — 내리지 않는다
         return []
     before = must_fix_items(previous)
     keep, demoted = [], []

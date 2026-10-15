@@ -116,6 +116,16 @@ class LockAndReviewTests(SimpleTestCase):
         prev = '표를 위에서 아래로 읽으면 간극이 보입니다.'
         self.assertEqual(R.demote_stale(qa, {'must_fix': []}, prev, prev), [])
 
+    def test_unresolved_previous_items_block_demotion(self):
+        # #116: 직전 필수 수정 2건 미해결 — 다른 문구로 다시 지적된 것을 '새 지적'으로 내리면 안 된다
+        prev = '전후 비교가 취약한 이유는 크게 세 가지입니다. 비교 집단의 힘은 무엇인가.'
+        qa = R.normalize({'fatal': [], 'resolved': [False, True], 'must_fix': [
+            {'where': "'전후 비교가 취약한 이유는 크게 세 가지입니다'", 'problem': '예고 뒤 논지가 끊김', 'fix': 'x'}]})
+        self.assertEqual(R.demote_stale(qa, {'must_fix': [{'where': '현황', 'problem': '곁가지 통계'}]}, prev, prev), [])
+        self.assertEqual(len(qa['must_fix']), 1)
+        self.assertFalse(R.accept_after_revision({'verdict': 'minor', 'fatal': [], 'must_fix': [], 'resolved': [False, True]}))
+        self.assertTrue(R.accept_after_revision({'verdict': 'minor', 'fatal': [], 'must_fix': [], 'resolved': [True, True]}))
+
 
 class SeriesStatsOnlyTests(SimpleTestCase):
     def test_series_lock_ignores_versions_ports_and_status_codes(self):

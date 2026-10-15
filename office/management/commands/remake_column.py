@@ -259,6 +259,11 @@ class Command(BaseCommand):
                 rec(writer, 'revise', f'재작성 실패 — {why}')
                 break
 
+        # 발행 규칙과 같게 — 남은 것이 제안뿐이면(필수 수정·치명 결함·미해결 지적 없음) 반영한다(office.review_protocol)
+        from office import review_protocol as R
+        if qa['verdict'] == 'minor' and R.accept_after_revision(qa):
+            qa['verdict'], qa['accepted_after_revision'] = 'accept', True
+            rec('editor', 'qa', f"남은 것은 제안뿐 — {qa['score']}점으로 반영")
         if qa['verdict'] != 'accept':
             out(self.style.WARNING(
                 f"  기준 미달({qa['score']}점) — 원문을 그대로 둡니다. 발행된 글을 더 나쁜 "
