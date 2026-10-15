@@ -9,7 +9,6 @@ from django.utils import timezone
 from django.conf import settings
 from django.contrib.auth.models import User
 from django.contrib.auth.decorators import login_required
-from django.contrib.auth.views import redirect_to_login
 from django.contrib import messages
 from django.db import transaction
 from django.utils.http import urlencode
@@ -331,16 +330,14 @@ def detail(request, question_id):
         pk=question_id
     )
 
-    # 잠금된 글은 로그인한 사용자만 볼 수 있음 (로그인 후 이 글로 돌아오도록 next 전달)
+    # 잠금된 글은 로그인한 사용자만, 문의글은 작성자·관리자만 — 나머지에게는 안내 페이지(200 + noindex).
+    # 예전엔 로그인 주소(?next=글마다 다름)로 302 했는데, 그 주소가 robots.txt 로 막혀 있어 GSC 에
+    # '리디렉션 포함'·'robots.txt 차단'이 글마다 쌓였다(2026-10-15).
     if question.is_locked and not request.user.is_authenticated:
-        messages.error(request, '회원 전용 글입니다. 로그인 후 이용해주세요.')
-        return redirect_to_login(request.get_full_path())
-
-    # 문의 게시판은 관리자/작성자만 열람 가능
+        return render(request, 'community/question_gate.html', {'question': question, 'gate': 'locked'})
     if question.category and question.category.name == '문의':
         if not (request.user.is_staff or request.user == question.author):
-            messages.error(request, '문의글은 관리자만 확인할 수 있습니다.')
-            return redirect('community:index')
+            return render(request, 'community/question_gate.html', {'question': question, 'gate': 'inquiry'})
 
     # 조회수 중복 방지 (5분)
     session_key = f'viewed_question_{question_id}'

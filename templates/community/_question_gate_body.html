@@ -1,0 +1,34 @@
+{% comment %}회원 전용·문의 글 안내(PC·모바일 공용). 로그인 리디렉트 대신 200 + noindex —
+302 → robots 로 막힌 로그인 주소가 글마다 생겨 GSC '리디렉션'·'robots.txt 차단'이 쌓였다(2026-10-15).{% endcomment %}
+<style>
+.qg { max-width: 560px; margin: 64px auto 96px; padding: 0 16px; text-align: center; }
+.qg-ic { width: 56px; height: 56px; margin: 0 auto; border-radius: 16px; display: grid; place-items: center;
+  background: rgba(79, 70, 229, .08); color: #4f46e5; font-size: 1.3rem; }
+.qg-cat { margin-top: 18px; font-size: .8rem; font-weight: 700; color: #4f46e5; letter-spacing: .04em; }
+.qg h1 { margin: 8px 0 0; font-size: 1.4rem; font-weight: 800; letter-spacing: -.02em; line-height: 1.45; word-break: keep-all; }
+.qg p { margin: 12px 0 0; color: #52525b; line-height: 1.7; }
+.qg-btns { margin-top: 24px; display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
+.qg-btns a { padding: 11px 18px; border-radius: 10px; font-weight: 700; text-decoration: none; }
+.qg-pri { background: #4f46e5; color: #fff; }
+.qg-pri:hover { background: #4338ca; color: #fff; }
+.qg-sec { background: #f4f4f5; color: #3f3f46; }
+</style>
+<main class="qg">
+  <div class="qg-ic"><i class="fas fa-lock" aria-hidden="true"></i></div>
+  {% if gate == 'inquiry' %}
+    <div class="qg-cat">문의</div>
+    <h1>작성자와 관리자만 볼 수 있는 문의글이에요</h1>
+    <p>문의 내용은 공개되지 않습니다. 문의를 남기셨다면 작성한 계정으로 로그인해 확인해 주세요.</p>
+  {% else %}
+    {% if question.category %}<div class="qg-cat">{{ question.category.name }} · 회원 전용</div>{% endif %}
+    <h1>{{ question.subject }}</h1>
+    <p>회원에게만 공개된 글이에요. 로그인하면 바로 이 글로 돌아와 읽을 수 있어요.</p>
+  {% endif %}
+  <div class="qg-btns">
+    {% if not user.is_authenticated %}
+    <a class="qg-pri" rel="nofollow" href="{% url 'common:login' %}?next={{ request.path|urlencode }}">로그인</a>
+    <a class="qg-sec" rel="nofollow" href="{% url 'common:signup' %}">회원가입</a>
+    {% endif %}
+    <a class="qg-sec" href="{% url 'community:index' %}">홈으로</a>
+  </div>
+</main>

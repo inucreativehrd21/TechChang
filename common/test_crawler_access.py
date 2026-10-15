@@ -141,3 +141,42 @@ class RobotsTxtTests(TestCase):
     def test_sitemap_is_advertised(self):
         self.assertIn('Sitemap: https://techchang.com/sitemap.xml',
                       self.client.get('/robots.txt').content.decode('utf-8'))
+
+
+class GatePageTests(TestCase):
+    """회원 전용·문의 글 — 로그인 302 대신 200 안내 + noindex(2026-10-15, GSC 리디렉션·robots 차단 누적)."""
+
+    def setUp(self):
+        self.author = User.objects.create_user('writer', password='x')
+        self.cat, _ = Category.objects.get_or_create(name='공지사항', defaults={'description': '공지'})
+        self.inquiry, _ = Category.objects.get_or_create(name='문의', defaults={'description': '문의'})
+
+    def _q(self, subject, category, **kw):
+        return Question.objects.create(subject=subject, content='본문 ' * 40, author=self.author, category=category,
+                                       create_date=timezone.now(), **kw)
+
+    def test_locked_post_shows_gate_with_noindex_not_redirect(self):
+        q = self._q('회원만 보는 공지', self.cat, is_locked=True)
+        for ua in ('Mozilla/5.0 (compatible; Googlebot/2.1)', 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) Mobile/15E148'):
+            r = self.client.get(f'/{q.id}/', HTTP_USER_AGENT=ua)
+            self.assertEqual(r.status_code, 200)
+            self.assertContains(r, 'noindex')
+            self.assertContains(r, '회원만 보는 공지')
+            self.assertContains(r, f'next=/{q.id}/')
+            self.assertNotContains(r, '본문 본문')                 # 본문은 내보내지 않는다
+
+    def test_inquiry_hides_title_and_body(self):
+        q = self._q('개인 사정이 담긴 문의 제목', self.inquiry)
+        r = self.client.get(f'/{q.id}/', HTTP_USER_AGENT='Mozilla/5.0')
+        self.assertEqual(r.status_code, 200)
+        self.assertContains(r, 'noindex')
+        self.assertNotContains(r, '개인 사정이 담긴 문의 제목')
+
+    def test_members_still_read_locked_post(self):
+        q = self._q('회원만 보는 공지', self.cat, is_locked=True)
+        member = User.objects.create_user('member', password='x')
+        if hasattr(member, 'profile'):
+            member.profile.is_email_verified = True
+            member.profile.save()
+        self.client.force_login(member)
+        self.assertContains(self.client.get(f'/{q.id}/', HTTP_USER_AGENT='Mozilla/5.0'), '본문 본문')

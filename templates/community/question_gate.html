@@ -1,0 +1,5 @@
+{% extends 'base.html' %}
+{% comment %}회원 전용·문의 글 안내 — community.views.base_views.detail{% endcomment %}
+{% block title %}{% if gate == 'inquiry' %}문의글{% else %}{{ question.subject }}{% endif %} - 테크창{% endblock %}
+{% block meta_robots %}noindex, follow{% endblock %}
+{% block content %}{% include 'community/_question_gate_body.html' %}{% endblock %}
