@@ -79,5 +79,5 @@ sudo systemctl status mysite nginx
 - **로그**: `sudo journalctl -u mysite -n 50`, `logs/django.log`
 - **정적파일**: `python manage.py collectstatic --clear`
 - **DB 백업**: `python manage.py backup_db` → `backups/db_<ts>.sql.gz` (cron 매일 03:00)
-- **cron**: ubuntu 계정 `crontab -l` (backup_db, send_log_report, send_visitor_report, hold_meeting 일 20:00, office_publish 화/목/토, auto_write_series)
-- **AI 모델**: 사이트 전체 `ClaudeModel.SONNET_5_5`(claude-sonnet-5-5)로 통일(2026-10-09, 4.x 사용 중단). `common/services/claude.ask` 는 text 블록만 합치고, 빈 응답이면 출력 예산을 늘려 1회 재시도(adaptive thinking 대응). `CLAUDE_BACKEND=cli` 면 구독 CLI 우선
+- **cron**: ubuntu 계정 `crontab -l` (backup_db, send_log_report, send_visitor_report, hold_meeting 일 20:00, 칼럼·연재 **예약 공개**: 전날 13·22시 `--prepare` → 공개 대기 → `office_release` 10분마다 / 당일 10시 `--if-missing` 안전망(office/schedule.py), make_newsletter 금 10:00)
+- **AI 모델**: 사이트 전체 `ClaudeModel.SONNET_5_5`(claude-sonnet-5-5)로 통일(2026-10-09, 4.x 사용 중단). `common/services/claude.ask` 는 text 블록만 합치고, 빈 응답이면 출력 예산을 늘려 1회 재시도(adaptive thinking 대응). `CLAUDE_BACKEND=cli` 면 구독 CLI 만 사용(**서버 `.env` CLAUDE_CLI_FALLBACK=false — 2026-10-15부터 유료 API 폴백 끔**, 한도 소진 시 그 작업은 실패하고 예약 공개 재시도·당일 4시 준비가 받친다)
