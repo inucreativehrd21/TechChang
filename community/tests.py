@@ -26,8 +26,10 @@ class InquiryDetailAccessTests(TestCase):
             is_locked=False,
         )
 
-    def test_anonymous_user_is_redirected_not_500(self):
+    def test_anonymous_user_gets_gate_not_500(self):
+        # 2026-10-15: 홈으로 302 대신 문의글 안내(200 + noindex) — 제목·본문은 내보내지 않는다
         response = self.client.get(f'/{self.question.pk}/')
         self.assertNotEqual(response.status_code, 500)
-        self.assertEqual(response.status_code, 302)
-        self.assertEqual(response.url, reverse('community:index'))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'noindex')
+        self.assertNotContains(response, self.question.subject)
