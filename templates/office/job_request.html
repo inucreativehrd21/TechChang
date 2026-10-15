@@ -1,0 +1,50 @@
+{% extends 'base.html' %}
+{% comment %}운영자 메일 버튼의 확인 화면 — office.views.job_request. GET 은 안내, POST 해야 예약된다.{% endcomment %}
+{% block title %}작업 예약 - 테크창 연구실{% endblock %}
+{% block meta_robots %}noindex, nofollow{% endblock %}
+{% block extra_css %}
+<style>
+.jr { max-width: 560px; margin: 56px auto 80px; padding: 0 16px; }
+.jr-card { background: #fff; border: 1px solid #e5e7eb; border-radius: 18px; padding: 28px; box-shadow: 0 18px 40px -26px rgba(15, 23, 42, .35); }
+.jr-eyebrow { font-size: .78rem; font-weight: 800; letter-spacing: .14em; color: #4f46e5; }
+.jr h1 { margin: 8px 0 0; font-size: 1.35rem; font-weight: 800; letter-spacing: -.02em; line-height: 1.4; }
+.jr dl { margin: 18px 0 0; display: grid; grid-template-columns: 6em 1fr; gap: 8px 12px; font-size: .92rem; }
+.jr dt { color: #6b7280; }
+.jr dd { margin: 0; word-break: break-all; }
+.jr code { font-size: .82rem; background: #f4f4f5; padding: 2px 6px; border-radius: 6px; }
+.jr-note { margin: 16px 0 0; padding: 10px 14px; border-radius: 10px; background: rgba(79, 70, 229, .06); font-size: .88rem; line-height: 1.6; color: #3f3f46; }
+.jr-btn { margin-top: 20px; width: 100%; border: 0; border-radius: 12px; padding: 13px 18px; background: #4f46e5; color: #fff; font-size: 1rem; font-weight: 700; cursor: pointer; }
+.jr-btn:hover { background: #4338ca; }
+.jr-ok { margin-top: 18px; padding: 14px; border-radius: 12px; background: #ecfdf5; color: #065f46; font-weight: 600; line-height: 1.6; }
+.jr-err { color: #b91c1c; font-weight: 600; }
+.jr a { color: #4f46e5; }
+</style>
+{% endblock %}
+{% block content %}
+<main class="jr">
+  <div class="jr-card">
+    <div class="jr-eyebrow">TECHCHANG LAB · 운영자 메일</div>
+    {% if error %}
+      <h1 class="jr-err">{{ error }}</h1>
+      <p style="margin-top:14px"><a href="{% url 'office:admin' %}">연구실 관리 화면으로 →</a></p>
+    {% else %}
+      <h1>{{ data.l }}</h1>
+      <dl>
+        <dt>종류</dt><dd>{% if data.k == 'revise' %}재심 요청 — 남은 지적을 고쳐 다시 심사{% else %}작업 다시 실행{% endif %}</dd>
+        <dt>명령</dt><dd><code>manage.py {{ command }}</code></dd>
+        <dt>실행 예정</dt><dd>{% if job %}{{ job.run_after|date:"m.d(D) H:i" }}{% else %}{{ planned|date:"m.d(D) H:i" }}{% endif %}</dd>
+      </dl>
+      {% if limited %}<p class="jr-note">지금은 구독 한도 중입니다(해제 {{ limited|date:"m.d H:i" }}). 해제 5분 뒤 이후에 실행됩니다.</p>{% endif %}
+      {% if job %}
+        <div class="jr-ok">{% if created %}예약했습니다.{% else %}이미 같은 작업이 예약돼 있습니다.{% endif %}
+          {{ job.run_after|date:"m.d H:i" }} 이후 10분 안에 시작됩니다. 진행은 <a href="{% url 'office:admin' %}">관리 화면</a> 작업 로그에서 볼 수 있습니다.</div>
+      {% else %}
+        <form method="post">{% csrf_token %}
+          <button type="submit" class="jr-btn">{% if data.k == 'revise' %}재심 요청 예약{% else %}다시 실행 예약{% endif %}</button>
+        </form>
+        <p class="jr-note" style="background:#f9fafb">이 링크는 운영자에게만 보낸 것입니다. 버튼을 눌러야 예약되며, 같은 작업을 두 번 눌러도 한 번만 실행됩니다.</p>
+      {% endif %}
+    {% endif %}
+  </div>
+</main>
+{% endblock %}

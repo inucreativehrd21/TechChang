@@ -185,6 +185,15 @@
     </section>
 
     <section class="tab-pane narrow" data-pane="held" hidden>
+      {% if jobs %}
+      <h2 class="pane-title">예약된 재실행 <small class="muted">메일 버튼으로 예약 — 10분마다 실행 시각이 된 것을 띄웁니다</small></h2>
+      <table class="logs">
+        {% for j in jobs %}
+        <tr><td>{{ j.run_after|date:"m/d H:i" }}</td><td>{{ j.get_kind_display }}</td><td>{{ j.label }}</td>
+          <td><form method="post" action="{% url 'office:job_cancel' j.id %}">{% csrf_token %}<button class="rej" type="submit">취소</button></form></td></tr>
+        {% endfor %}
+      </table>
+      {% endif %}
       {% if ready %}
       <h2 class="pane-title">공개 대기 <small class="muted">심사를 통과해 예정 시각에 자동 공개됩니다</small></h2>
       {% for d in ready %}

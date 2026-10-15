@@ -18,5 +18,7 @@ urlpatterns = [
     path('admin/task/new/', views.task_create, name='task_create'),
     path('admin/task/<int:task_id>/', views.task_action, name='task_action'),
     path('admin/run/', views.run_job, name='run_job'),
+    path('job/<str:token>/', views.job_request, name='job_request'),          # 운영자 메일 버튼(서명 링크)
+    path('admin/job/<int:job_id>/cancel/', views.job_cancel, name='job_cancel'),
     path('admin/column-map/', views.column_map, name='column_map'),
 ]

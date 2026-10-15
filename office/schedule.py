@@ -129,8 +129,15 @@ def alert(subject: str, lines: list[str]) -> bool:
         return False
 
 
-def alert_not_ready(draft, label: str, reason: str) -> bool:
-    """전날 준비가 심사를 통과하지 못했다 — 공개 전까지 운영자가 손볼 수 있게 알린다."""
+def alert_not_ready(draft, label: str, reason: str, *, rerun_args: list | None = None) -> bool:
+    """전날 준비가 심사를 통과하지 못했다 — 공개 전까지 운영자가 손볼 수 있게 알린다.
+    메일에 [지적대로 고쳐 재심 요청](보류)·[다시 준비](실패) 버튼을 단다(office.jobmail)."""
+    try:
+        from office.jobmail import not_ready_mail
+        if not_ready_mail(draft, label, reason, rerun_args=rerun_args):
+            return True
+    except Exception:  # noqa: BLE001 — 버튼 메일이 안 되면 아래 기본 메일로
+        logger.exception('준비 미달 메일(버튼) 실패 — 기본 메일로 보냅니다')
     from office import review_protocol as R
     qa = draft.qa_report or {}
     when = f'{timezone.localtime(draft.publish_at):%m.%d(%a) %H:%M}' if draft.publish_at else '(예정 없음)'

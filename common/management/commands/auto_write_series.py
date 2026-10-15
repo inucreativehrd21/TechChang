@@ -141,8 +141,10 @@ class Command(BaseCommand):
         self._report(res, key, no)
         if slot is not None and res.get('status') in ('hold', 'failed') and res.get('draft') is not None:
             reason = (f"심사를 통과하지 못했습니다({res.get('score')}점)" if res['status'] == 'hold'
-                      else '제작 중 오류로 멈췄습니다. 22시에 한 번 더 시도합니다')
-            S.alert_not_ready(res['draft'], f"연재 「{cfg['title']}」 {no}편", reason)
+                      else '제작 중 오류로 멈췄습니다')
+            S.alert_not_ready(res['draft'], f"연재 「{cfg['title']}」 {no}편", reason,
+                              rerun_args=['auto_write_series', '--series', 'auto',
+                                          '--prepare' if opts.get('prepare') else '--if-missing'])
 
     # ── 리메이크(제자리 갱신)
     def _remake(self, opts):

@@ -319,7 +319,9 @@ class Command(BaseCommand):
                 draft.save(update_fields=['status'])
                 log('lead', 'fail', f'{label} 제작 실패: {str(ex)[:200]}', draft=draft)
                 if slot is not None:
-                    S.alert_not_ready(draft, label, f'제작 중 오류로 멈췄습니다({type(ex).__name__}). 22시에 한 번 더 시도합니다')
+                    S.alert_not_ready(draft, label, f'제작 중 오류로 멈췄습니다({type(ex).__name__})',
+                                      rerun_args=['office_publish', '--topic', topic_key,
+                                                  '--prepare' if prepare else '--if-missing'])
             raise
 
     @staticmethod

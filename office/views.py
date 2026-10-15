@@ -171,6 +171,8 @@ def office_admin(request):
     held = ColumnDraft.objects.filter(
         status__in=[ColumnDraft.STATUS_HOLD, ColumnDraft.STATUS_REVISING]).select_related('decision')
     ready = list(ColumnDraft.objects.filter(status=ColumnDraft.STATUS_READY).order_by('publish_at'))
+    from .models import JobRequest
+    jobs = list(JobRequest.objects.filter(status=JobRequest.ST_PENDING).select_related('draft'))
     recent_drafts = ColumnDraft.objects.exclude(
         status__in=[ColumnDraft.STATUS_HOLD, ColumnDraft.STATUS_REVISING, ColumnDraft.STATUS_READY]
     ).select_related('question')[:12]
@@ -192,7 +194,7 @@ def office_admin(request):
                       .select_related('decision')[:10])
     job_log = _job_log_tail()
     return render(request, 'office/admin.html', {
-        'meetings': meetings, 'held': held, 'ready': ready, 'recent_drafts': recent_drafts, 'logs': logs,
+        'meetings': meetings, 'held': held, 'ready': ready, 'jobs': jobs, 'recent_drafts': recent_drafts, 'logs': logs,
         'tasks': tasks, 'done_tasks': done_tasks, 'github_ok': github.available(),
         'crew_pending': sum(1 for t in tasks if t.status == Task.ST_BACKLOG),
         'agents': AGENTS, 'topic_label': TOPIC_LABEL, 'job_log': job_log,
@@ -501,4 +503,38 @@ def newsletter_detail(request, slug):
         'cards': [(u, alts[i] if i < len(alts) else f'{i + 1}번째 카드') for i, u in enumerate(issue.cards)],
         'og_abs': request.build_absolute_uri(issue.og_image) if issue.og_image else '',
     })
+
+
+# ───────────────────────────── 운영자 메일 버튼(재실행·재심 요청)
+def job_request(request, token):
+    """메일의 서명 링크 — GET 은 무엇을 언제 할지 보여 주고, POST 해야 예약한다(링크를 미리 여는 메일 검사기 대비)."""
+    from django.core import signing
+
+    from . import jobmail
+    try:
+        data = jobmail.read_token(token)
+    except signing.SignatureExpired:
+        return render(request, 'office/job_request.html', {'error': '링크 기한(3일)이 지났습니다. 관리 화면에서 직접 실행해 주세요.'},
+                      status=410)
+    except signing.BadSignature:
+        return render(request, 'office/job_request.html', {'error': '올바르지 않은 링크입니다.'}, status=400)
+    job, created = None, False
+    if request.method == 'POST':
+        job, created = jobmail.enqueue(data)
+    from datetime import datetime
+    wanted = datetime.fromisoformat(data['r']) if data.get('r') else None
+    planned = max(wanted, jobmail.earliest_run()) if wanted else jobmail.earliest_run()
+    return render(request, 'office/job_request.html', {
+        'data': data, 'command': ' '.join(data['a']), 'planned': planned, 'limited': jobmail.limited_until(),
+        'job': job, 'created': created,
+    })
+
+
+@admin_required
+@require_POST
+def job_cancel(request, job_id):
+    from .models import JobRequest
+    JobRequest.objects.filter(pk=job_id, status=JobRequest.ST_PENDING).update(status=JobRequest.ST_CANCELLED)
+    messages.info(request, '예약을 취소했습니다.')
+    return redirect('office:admin')
 

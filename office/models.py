@@ -354,3 +354,37 @@ class Newsletter(models.Model):
 
     def __str__(self):
         return f'No.{self.issue_no} {self.title}'
+
+
+class CliLimit(models.Model):
+    """구독(CLI) 사용 한도에 걸린 기록 — 해제 예정 시각. 재실행 예약이 이 시각 뒤로 잡힌다(office.jobmail).
+    프로세스마다 캐시가 따로(LocMem)라 DB 에 둔다."""
+    reset_at = models.DateTimeField(db_index=True, verbose_name='해제 예정 시각')
+    reason = models.CharField(max_length=300, blank=True)
+    job = models.CharField(max_length=200, blank=True, verbose_name='멈춘 작업')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+
+class JobRequest(models.Model):
+    """메일 버튼으로 예약한 재실행 — '한도 풀리면 다시 실행', '지적대로 고쳐 재심'. office_release(10분마다)가 실행한다."""
+    KIND_RERUN, KIND_REVISE = 'rerun', 'revise'
+    KIND_CHOICES = [(KIND_RERUN, '다시 실행'), (KIND_REVISE, '재심 요청')]
+    ST_PENDING, ST_STARTED, ST_SKIPPED, ST_CANCELLED = 'pending', 'started', 'skipped', 'cancelled'
+    ST_CHOICES = [(ST_PENDING, '대기'), (ST_STARTED, '실행함'), (ST_SKIPPED, '건너뜀'), (ST_CANCELLED, '취소')]
+
+    kind = models.CharField(max_length=10, choices=KIND_CHOICES)
+    args = models.JSONField(default=list, verbose_name='manage.py 인자')
+    label = models.CharField(max_length=200, blank=True, verbose_name='무엇을')
+    draft = models.ForeignKey(ColumnDraft, null=True, blank=True, on_delete=models.SET_NULL, related_name='job_requests')
+    run_after = models.DateTimeField(db_index=True, verbose_name='실행 예정')
+    status = models.CharField(max_length=10, choices=ST_CHOICES, default=ST_PENDING, db_index=True)
+    note = models.CharField(max_length=300, blank=True)
+    requested_via = models.CharField(max_length=20, default='mail')
+    created_at = models.DateTimeField(auto_now_add=True)
+    started_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ['run_after']

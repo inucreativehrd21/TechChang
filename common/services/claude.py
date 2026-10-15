@@ -231,6 +231,14 @@ def _alert_fallback(rec: dict, *, fallback_enabled: bool) -> None:
 
         from django.core.mail import send_mail
 
+        if not fallback_enabled:
+            # 구독만 쓰는 운영: 멈춘 작업·한도 해제 시각·[한도 풀리면 다시 실행] 버튼(office.jobmail)
+            try:
+                from office.jobmail import limit_mail
+                if limit_mail(sys.argv[1:], rec.get('fallback', ''), rec.get('model', '')):
+                    return
+            except Exception:  # noqa: BLE001 — 버튼 메일이 안 되면 아래 기본 메일로
+                logger.exception('한도 중단 메일(버튼) 실패 — 기본 메일로 보냅니다')
         recipients = [email for _name, email in getattr(settings, 'ADMINS', []) if email]
         if not recipients:
             return
