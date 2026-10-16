@@ -9,6 +9,8 @@
         <div class="rk-who">
             <b class="rk-name">{{ p.name }}</b>
             <span class="rk-meta">{{ pos_label|default:role_label }}{% if p.focus %}, 주특기 {{ focus_label }}{% endif %}</span>
+            {% if ladder %}<span class="rk-role-line"><b>{{ ladder.label }}</b>{% if ladder.style %} · {{ ladder.style }}{% endif %}</span>
+            {% if ladder.top_speed %}<span class="rk-meta">최고 {{ ladder.top_speed }}km/h · {{ ladder.pitches|join:'·' }}</span>{% endif %}{% endif %}
             {% if rank %}<span class="rk-meta">OVR 리그 {{ rank }}위</span>{% endif %}
         </div>
         <div class="rk-ovr"><small>OVR</small><b>{{ p.ovr|floatformat:1 }}</b></div>

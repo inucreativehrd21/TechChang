@@ -40,6 +40,16 @@
     </section>
 </div>
 <div class="rk-col is-side">
+    {% if ladder %}
+    <section class="rk-panel rk-ladder" aria-label="타순·보직">
+        <div class="rk-head"><h2>{% if p.role == 'pitcher' %}보직{% else %}타순{% endif %}</h2><span class="rk-fine">매일 밤 경기 전에 한 계단씩</span></div>
+        <ol class="rk-steps">
+            {% for st in ladder.steps %}<li class="is-{{ st.state }}">{{ st.label }}</li>{% endfor %}
+        </ol>
+        <p class="rk-ladder-now"><b>{{ ladder.label }}</b>{% if ladder.stuff %} · 구위 {{ ladder.stuff }}{% endif %}</p>
+        <p class="rk-hint">{{ ladder.hint }}</p>
+    </section>
+    {% endif %}
     <section class="rk-panel rk-earn" aria-label="오늘의 TP">
         <div class="rk-head"><h2>오늘의 TP</h2><span class="rk-fine">하루 최대 {{ daily_max }}</span></div>
         <ul class="rk-earn-list">

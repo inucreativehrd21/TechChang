@@ -1,7 +1,10 @@
 {# 전광판 — 최근 경기일의 경기들. 맥락: season, games, games_day, dnp, p #}
 <section class="rk-board" aria-label="전광판">
     <header class="rk-board-head">
-        {% if games %}
+        {% if relief_log %}
+        <span>최근 등판 {{ games|length }}경기 · {{ games.0.league }}</span>
+        <span>{{ ladder.label }}</span>
+        {% elif games %}
         <span>{{ games_day|date:'n월 j일 l' }} · {{ games.0.league }}</span>
         <span>{{ games|length }}경기</span>
         {% else %}
@@ -12,14 +15,14 @@
     <ol class="rk-board-rows{% if p.role == 'pitcher' %} is-pitcher{% endif %}">
         {% for g in games %}
         <li class="{% if g.win %}is-win{% endif %}">
-            <span class="rk-gno">{{ g.no }}</span>
+            <span class="rk-gno">{% if relief_log %}{{ g.day|date:'n.j' }}{% else %}{{ g.no }}{% endif %}</span>
             <span class="rk-score"><b>{{ g.me }}</b><em>{{ g.mine }}</em><i>:</i><em>{{ g.theirs }}</em><span>{{ g.opp }}</span></span>
             <span class="rk-wl">{% if g.win %}승{% else %}패{% endif %}</span>
-            <span class="rk-gsum">{% if g.vs_label %}<span class="rk-vs is-{{ g.vs }}" title="{{ g.vs_label }}, 상대 능력 {{ g.vs_lvl }}">{{ g.vs_short }} {{ g.vs_lvl }}</span>{% endif %}{{ g.summary }}{% if p.role == 'pitcher' and g.line.np %}, 투구수 {{ g.line.np }}{% endif %}</span>
+            <span class="rk-gsum">{% if g.vs_label %}<span class="rk-vs is-{{ g.vs }}" title="{{ g.vs_label }}, 상대 능력 {{ g.vs_lvl }}">{{ g.vs_short }}{% if not g.relief and g.vs_lvl %} {{ g.vs_lvl }}{% endif %}</span>{% endif %}{{ g.summary }}{% if p.role == 'pitcher' and g.line.np and not g.relief %}, 투구수 {{ g.line.np }}{% endif %}</span>
         </li>
         {% endfor %}
     </ol>
-    {% if p.role == 'pitcher' and games|length == 1 %}{% with b=games.0.line %}
+    {% if p.role == 'pitcher' and games|length == 1 and not games.0.relief %}{% with b=games.0.line %}
     <dl class="rk-box" aria-label="투구 기록">
         <div><dt>이닝</dt><dd>{{ games.0.ip }}</dd></div>
         <div><dt>피안타</dt><dd>{{ b.h|default:0 }}</dd></div>
@@ -36,7 +39,7 @@
     </ul>
     {% endif %}
     {% endwith %}{% endif %}
-    {% if opp_levels %}<p class="rk-board-note">{{ games.0.league }} 상대 능력: 에이스 {{ opp_levels.ace }}, 주전 {{ opp_levels.reg }}, 백업 {{ opp_levels.bak }}. 내 OVR은 {{ p.ovr|floatformat:1 }}입니다.</p>{% endif %}
+    {% if opp_levels %}<p class="rk-board-note">{% if p.role == 'pitcher' %}{{ games.0.league }} 상대 타선: 상위 {{ opp_levels.top }}(출루·주루), 중심 {{ opp_levels.heart }}(클러치·장타), 하위 {{ opp_levels.bottom }}. 내 구위는 {{ ladder.stuff }}입니다.{% else %}{{ games.0.league }} 상대 선발 구위: 에이스 {{ opp_levels.ace }}, 주전 {{ opp_levels.reg }}, 백업 {{ opp_levels.bak }}. 내 OVR은 {{ p.ovr|floatformat:1 }}입니다.{% endif %}</p>{% endif %}
     {% if dnp %}<p class="rk-board-note">어제는 결장했습니다. 경기일 포함 최근 3일 안에 활동해야 엔트리에 듭니다.</p>{% endif %}
     {% elif season.phase == 'pre' %}
     <div class="rk-board-empty">

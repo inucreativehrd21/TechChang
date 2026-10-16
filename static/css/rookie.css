@@ -115,6 +115,17 @@
 .rk-next-label { display: flex; justify-content: space-between; gap: 8px; margin-bottom: 6px; font-size: 0.82rem; color: var(--rk-ink-3); }
 .rk-next-label b { color: var(--rk-ink); }
 .rk-card-note { margin: 10px 0 0; font-size: 0.78rem; color: var(--rk-ink-3); }
+.rk-role-line { margin-top: 3px; font-size: 0.82rem; color: var(--rk-ink-2); }
+.rk-role-line b { font-weight: 800; color: var(--rk-accent); }
+
+/* 타순·보직 계단 */
+.rk-steps { display: flex; gap: 4px; margin: 10px 0 0; padding: 0; list-style: none; }
+.rk-steps li { flex: 1 1 0; min-width: 0; padding: 7px 4px; border-radius: 8px; font-size: 0.72rem; font-weight: 800; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--rk-ink-4); background: var(--rk-line-soft); }
+.rk-steps li.is-done { color: var(--rk-accent); background: var(--rk-accent-wash); }
+.rk-steps li.is-cur { color: #fff; background: var(--rk-accent); }
+.rk-ladder-now { margin: 10px 0 0; font-size: 0.92rem; }
+.rk-ladder-now b { font-weight: 900; }
+.rk-ladder .rk-hint { margin-bottom: 0; }
 
 /* 전광판 — 화면의 단 하나의 어두운 면. 점 무늬는 LED 판 */
 .rk-board {
@@ -202,6 +213,7 @@
 .rk-grade.is-reg { color: var(--rk-ink); background: var(--rk-line-soft); }
 .rk-grade.is-bak { color: var(--rk-ink-3); box-shadow: inset 0 0 0 1px var(--rk-line); }
 .rk-grade.is-pen { color: var(--rk-accent); background: var(--rk-accent-wash); }
+.rk-grade-note { display: block; margin-top: 2px; font-size: 0.68rem; font-weight: 600; color: var(--rk-ink-4); }
 .rk-split-note { margin: 8px 0 0; font-size: 0.74rem; line-height: 1.55; color: var(--rk-ink-4); }
 .rk-line-sub { margin: 12px 0 0; padding-top: 10px; border-top: 1px solid var(--rk-line-soft); font-size: 0.78rem; line-height: 1.6; color: var(--rk-ink-3); font-variant-numeric: tabular-nums; }
 
@@ -410,7 +422,7 @@ a.rk-rank-main:hover b { color: var(--rk-accent); }
 .rk-spot.is-c { left: 50%; top: 91%; }
 .rk-spot.is-dh { left: 86%; top: 91%; }
 
-.rk-titles { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; margin: 0; padding: 0; list-style: none; }
+.rk-titles { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin: 0; padding: 0; list-style: none; }
 .rk-titles li { display: flex; flex-direction: column; gap: 2px; padding: 14px 14px 12px; border: 1px solid var(--rk-line); border-top: 3px solid var(--team); border-radius: 12px; background: #fff; }
 .rk-title-name { font-size: 0.76rem; font-weight: 800; color: var(--rk-ink-3); }
 .rk-titles b { font-size: 1.4rem; font-weight: 900; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }

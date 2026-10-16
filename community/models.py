@@ -1148,6 +1148,10 @@ class RookiePlayer(models.Model):
     stats = models.JSONField(default=dict, verbose_name='능력치')     # {능력 키: 실수}
     focus = models.CharField(max_length=10, blank=True, verbose_name='주특기')   # 성장 ×1.25 인 능력 키
     position = models.CharField(max_length=3, blank=True, verbose_name='수비 위치')  # SP(투수) / C 1B 2B 3B SS OF DH
+    # 타순·보직(매일 밤 경기 전 rookie_sim 이 한 계단씩 정한다). 타자: bench lower table contact slugger five,
+    # 투수: mop chase win setup closer sp. slot = 타순(1~9, 백업 0) 또는 선발 순번(1~5, 불펜 0)
+    lineup = models.CharField(max_length=8, blank=True, verbose_name='타순·보직')
+    slot = models.PositiveSmallIntegerField(default=0, verbose_name='타순·선발 순번')
     ovr = models.FloatField(default=25, db_index=True, verbose_name='종합(OVR)')
     best_ovr = models.FloatField(default=25, verbose_name='최고 OVR')
     tier = models.PositiveSmallIntegerField(choices=TIER_CHOICES, default=0, db_index=True, verbose_name='소속')
@@ -1171,7 +1175,8 @@ class RookiePlayer(models.Model):
 class RookieLog(models.Model):
     """선수 기록 — TP 획득(일일 한도·중복 지급 방지 근거), 훈련, 감쇠, 승격·강등."""
     KIND_CHOICES = [('start', '입단'), ('earn', '획득'), ('train', '훈련'), ('decay', '감쇠'),
-                    ('test', '승격 심사'), ('promote', '승격'), ('demote', '강등'), ('award', '수상')]
+                    ('test', '승격 심사'), ('promote', '승격'), ('demote', '강등'), ('award', '수상'),
+                    ('role', '타순·보직')]
 
     player = models.ForeignKey(RookiePlayer, on_delete=models.CASCADE, related_name='logs')
     kind = models.CharField(max_length=8, choices=KIND_CHOICES)

@@ -337,7 +337,8 @@ def promotion_test(user, rng=None) -> dict:
         p.test_on = today
         if passed:
             p.tier = nxt['tier']
-        p.save(update_fields=['test_on', 'tier', 'updated_at'])
+            p.lineup, p.slot = '', 0                 # 새 리그에선 백업·패전조부터 다시 증명한다
+        p.save(update_fields=['test_on', 'tier', 'lineup', 'slot', 'updated_at'])
         won = sum(g['ok'] for g in games)
         _log(p, 'promote' if passed else 'test',
              f"{nxt['name']} 승격!" if passed else f"{nxt['name']} 승격 심사 {won}/{TEST_GAMES} — 탈락", day=today)

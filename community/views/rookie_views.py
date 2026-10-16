@@ -160,6 +160,7 @@ def rookie_player(request, pk: int):
     ctx = dict(_base_ctx(request, 'league'), p=p, team=R.TEAM.get(p.team, {}), role_label=R.ROLES[p.role]['label'],
                pos_label=L.POS_LABEL.get(p.position, ''), tier_name=R.TIERS[p.tier]['name'],
                focus_label=dict((k, lab) for k, lab, _w in R.ROLES[p.role]['stats']).get(p.focus, ''),
+               ladder=L.ladder_of(p),
                title=R.title(p.role, p.tier, p.ovr), stats=R.stat_rows(p), career=L.season_lines(career),
                games=games, trophies=list(RookieAward.objects.filter(player=p).select_related('season')
                                           .order_by('-season__number', 'order')),

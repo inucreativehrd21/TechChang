@@ -8,7 +8,17 @@
         </p>
     </div>
     {% with v=x.v %}
-    {% if role == 'pitcher' %}
+    {% if role == 'pitcher' and v.gr and not v.gs %}
+    <dl class="rk-line-main">
+        <div><dt>경기</dt><dd>{{ v.g|default:0 }}</dd></div>
+        <div><dt>세이브</dt><dd>{{ v.sv|default:0 }}</dd></div>
+        <div><dt>홀드</dt><dd>{{ v.hld|default:0 }}</dd></div>
+        <div><dt>평균자책점</dt><dd>{{ v.era_text }}</dd></div>
+        <div><dt>이닝</dt><dd>{{ v.ip_text }}</dd></div>
+        <div class="is-war"><dt>WAR</dt><dd>{{ x.s.war }}</dd></div>
+    </dl>
+    <p class="rk-line-sub">승패 {{ v.w|default:0 }}-{{ v.l|default:0 }} · 블론세이브 {{ v.bs|default:0 }} · WHIP {{ v.whip_text }} · 탈삼진 {{ v.so|default:0 }} · 볼넷 {{ v.bb|default:0 }} · 피홈런 {{ v.hr|default:0 }} · 9이닝당 탈삼진 {{ v.k9|floatformat:1 }}</p>
+    {% elif role == 'pitcher' %}
     <dl class="rk-line-main">
         <div><dt>경기</dt><dd>{{ v.g|default:0 }}</dd></div>
         <div><dt>승패</dt><dd>{{ v.w|default:0 }}<small>-</small>{{ v.l|default:0 }}</dd></div>
@@ -27,7 +37,7 @@
         <div><dt>OPS</dt><dd>{{ v.ops_text }}</dd></div>
         <div class="is-war"><dt>WAR</dt><dd>{{ x.s.war }}</dd></div>
     </dl>
-    <p class="rk-line-sub">출루율 {{ v.obp_text }} · 장타율 {{ v.slg_text }} · 안타 {{ v.h|default:0 }} · 2루타 {{ v.d|default:0 }} · 득점 {{ v.r|default:0 }} · 도루 {{ v.sb|default:0 }} · 볼넷 {{ v.bb|default:0 }} · 삼진 {{ v.so|default:0 }} · 실책 {{ v.e|default:0 }}</p>
+    <p class="rk-line-sub">출루율 {{ v.obp_text }} · 장타율 {{ v.slg_text }} · 안타 {{ v.h|default:0 }} · 2루타 {{ v.d|default:0 }} · 득점 {{ v.r|default:0 }} · 도루 {{ v.sb|default:0 }} · 볼넷 {{ v.bb|default:0 }} · 삼진 {{ v.so|default:0 }} · 실책 {{ v.e|default:0 }}{% if v.ph or v.pr or v.dr %} · 대타 {{ v.ph|default:0 }} · 대주자 {{ v.pr|default:0 }} · 대수비 {{ v.dr|default:0 }}{% endif %}</p>
     {% endif %}
     {% endwith %}
     {% if x.splits %}
@@ -45,7 +55,7 @@
             <tbody>
                 {% for r in x.splits %}
                 <tr class="is-{{ r.code }}">
-                    <th scope="row"><span class="rk-grade is-{{ r.code }}">{{ r.label }}</span></th>
+                    <th scope="row"><span class="rk-grade is-{{ r.code }}">{{ r.label }}</span>{% if r.note %}<small class="rk-grade-note">{{ r.note }}</small>{% endif %}</th>
                     <td>{{ r.level }}</td><td>{{ r.pa }}</td><td class="is-key">{{ r.avg_text }}</td><td>{{ r.obp_text }}</td>
                     <td>{{ r.hr }}</td><td>{{ r.bb }}</td><td>{{ r.so }}</td>
                 </tr>
@@ -53,7 +63,7 @@
             </tbody>
         </table>
         </div>
-        <p class="rk-split-note">{% if role == 'pitcher' %}중심타자는 3·4·5번, 주전은 1·2·6번, 백업은 7·8·9번 타자입니다. 상대 라인업은 경기마다 강타선·정상·백업 위주로 바뀝니다.{% else %}선발은 에이스 20%, 주전 55%, 백업 25% 확률로 나옵니다. 선발과 3타석(백업 선발은 2타석)을 치른 뒤 불펜과 붙습니다.{% endif %}</p>
+        <p class="rk-split-note">{% if role == 'pitcher' %}상위타선(1·2번)은 선구안·주루, 중심타선(3·4·5번)은 클러치에 컨택·파워를 갖췄고, 하위타선(6~9번)은 밋밋합니다. 상대 라인업은 경기마다 강타선·정상·백업 위주로 바뀝니다. 상대 능력은 구간 대표값입니다.{% else %}선발은 에이스 20%, 주전 55%, 백업 25% 확률로 나옵니다. 선발과 3타석(백업 선발은 2타석)을 치른 뒤 불펜(필승조·마무리 또는 추격·패전조)과 붙습니다. 상대 능력은 구위(구속·변화구·제구 평균)입니다.{% endif %}</p>
     </div>
     {% endif %}
 </section>
