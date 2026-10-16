@@ -43,6 +43,7 @@ class CollectTests(TestCase):
             {'agent': 'hrd', 'round': 1, 'text': '한빈입니다. "피어러닝"이 노출 4회에 클릭 0이라 '
                                                  '「피어러닝이 성과로 이어지는 조건」을 제안합니다. 검색하는 사람은 있는데 답이 없습니다.'},
             {'agent': 'critic', 'round': 2, 'text': '피어러닝이 성과로 이어지는 조건은 사례 하나로 열면 좋겠습니다.'},
+            {'agent': 'data', 'round': 2, 'text': '피어러닝이 성과로 이어지는 조건을 보려면 적용 사례를 함께 모아야 합니다.'},
             {'agent': 'coding', 'round': 1, 'text': '서버 로그 이야기는 따로 하겠습니다.'}])
         d = Decision.objects.create(meeting=m, kind='column', topic='hrd', question='다음 주 HRD 칼럼 주제', chosen_key='a',
                                     options=[{'key': 'a', 'title': '피어러닝이 성과로 이어지는 조건', 'proposed_by': '한빈'}])
@@ -67,8 +68,10 @@ class CollectTests(TestCase):
         pick = facts['picks'][0]
         self.assertIn('한빈 제안', pick['origin']['from'])
         lines = facts['meeting']['lines']
-        self.assertEqual([ln['agent'] for ln in lines], ['lead', 'hrd', 'critic'])   # 브리핑·제안·반응, 무관한 발언은 빼고
-        self.assertIn('클릭 0', lines[1]['text'])
+        # 팀장의 지표 브리핑은 싣지 않고(방문·클릭 수), 제안·반응만. 제안 발언에서도 지표 문장은 빠진다
+        self.assertEqual([ln['agent'] for ln in lines], ['hrd', 'critic', 'data'])
+        self.assertNotIn('클릭', lines[0]['text'])
+        self.assertIn('검색하는 사람은 있는데 답이 없습니다', lines[0]['text'])
         text = N._facts_text(facts)
         self.assertNotIn('비밀 지시문', text)          # 운영자 지시문은 싣지 않는다
         self.assertNotIn('62/100', text)              # 제작 과정 점수도 싣지 않는다
@@ -95,18 +98,18 @@ FACTS = {'start': '2026-10-09', 'end': '2026-10-15',
          'published': [{'id': 7, 'title': '코칭 문화', 'cat': 'HRD', 'remake': False, 'score': 84, 'author_key': 'hrd',
                         'date': '10.13', 'summary': PICK['summary'], 'url': '/7/'}],
          'picks': [PICK],
-         'meeting': {'date': '10.04', 'lines': [{'agent': 'lead', 'text': '검색 클릭은 10회였습니다.'},
-                                                {'agent': 'hrd', 'text': '코칭 검색은 많은데 우리 글이 없었습니다.'},
+         'meeting': {'date': '10.04', 'lines': [{'agent': 'hrd', 'text': '코칭에 예산을 쓰는 조직이 늘었는데 효과를 묻는 질문은 드뭅니다.'},
+                                                {'agent': 'data', 'text': '효과는 조직 안에서 직접 재야 한다는 점을 짚겠습니다.'},
                                                 {'agent': 'critic', 'text': '사례 하나로 열면 좋겠습니다.'}]},
          'next': [{'day': '토', 'what': '프로그래밍 칼럼', 'note': '10.17(토)', 'agent': 'coding', 'date': '2026-10-17'}]}
 
 
 def good(**kw):
     c = {'theme': '코칭, *유행*일까 효과일까', 'intro': '이번 주 추천은 코칭 칼럼이에요. 왜 골랐는지도 같이 적었어요.',
-         'chat': [{'agent': 'lead', 'line': '검색 클릭이 10회뿐이었어요.'},
-                  {'agent': 'hrd', 'line': '코칭은 찾는데 우리 글이 없더라고요.'},
+         'chat': [{'agent': 'hrd', 'line': '코칭 예산은 늘었는데 효과를 묻는 사람은 드물어요.'},
+                  {'agent': 'data', 'line': '효과는 조직 안에서 직접 재야 해요.'},
                   {'agent': 'critic', 'line': '사례 하나로 열면 좋겠어요.'}],
-         'picks': {'7': {'hook': '코칭, 돈 쓴 만큼 효과 있을까?', 'why_now': '코칭을 찾는 사람은 많은데 답해 줄 글이 없었어요.',
+         'picks': {'7': {'hook': '코칭, 돈 쓴 만큼 효과 있을까?', 'why_now': '코칭 예산을 정하는 시기라 효과를 따져 볼 근거가 필요해요.',
                          'points': ['시장 규모는 효과의 증거가 아니에요', '비교 집단을 두는 법', '조직에서 재는 순서'],
                          'for_whom': 'HRD·교육 담당자'}}}
     c.update(kw)
@@ -213,7 +216,7 @@ class PageTests(TestCase):
         r = self.client.get('/newsletter/2026-w42/', HTTP_USER_AGENT='Mozilla/5.0')
         self.assertContains(r, 'pick-1.png')
         self.assertContains(r, '추천 칼럼 1 — 코칭 문화')
-        self.assertContains(r, '코칭은 찾는데 우리 글이 없더라고요.')          # 회의실 대화
+        self.assertContains(r, '코칭 예산은 늘었는데 효과를 묻는 사람은 드물어요.')   # 회의실 대화
         self.assertContains(r, '코칭, 돈 쓴 만큼 효과 있을까?')               # 추천 훅
         self.assertContains(r, '비교 집단을 두는 법')
         self.assertContains(r, 'http://testserver/media/newsletter/2026-w42/og.png')
@@ -231,3 +234,50 @@ class PageTests(TestCase):
         self.assertNotContains(r, '/newsletter/2026-w43/')
         r = self.client.get('/', HTTP_USER_AGENT='Mozilla/5.0')
         self.assertContains(r, '/newsletter/2026-w42/')
+
+
+
+class PublicGuardTests(TestCase):
+    """2026-10-16 No.2 — 회의실 카드에 '방문자 3301명, 클릭 10회, 추천 0'이 나가고 말풍선이 아래 상자에 닿았다."""
+
+    def test_site_metrics_and_catalog_gaps_are_rejected(self):
+        bad = good(chat=[{'agent': 'lead', 'line': '방문자 3301명, 검색 클릭은 10회뿐. 추천은 전부 0이에요.'},
+                         {'agent': 'hrd', 'line': '학습 전이는 최근 HRD 칼럼에 같은 주제가 없었어요.'},
+                         {'agent': 'critic', 'line': '사례 하나로 열면 좋겠어요.'}],
+                   picks={'7': {**good()['picks']['7'], 'why_now': '회의에서 검색어에 코칭이 보였어요.'}})
+        probs = N.public_problems(bad, FACTS)
+        self.assertTrue(any('chat[0]' in p and '지표' in p for p in probs))
+        self.assertTrue(any('chat[1]' in p and '운영 사정' in p for p in probs))
+        self.assertTrue(any('why_now' in p and '회의에서' in p for p in probs))
+        self.assertEqual(N.public_problems(good(), FACTS), [])
+
+    def test_meeting_scrub_drops_metric_sentences(self):
+        text = '방문자는 3301명으로 늘었습니다. 현장에서는 교육 뒤 적용이 안 된다는 고민이 많습니다. 최근 HRD 칼럼 중 같은 주제는 없었습니다.'
+        self.assertEqual(N._scrub(text), '현장에서는 교육 뒤 적용이 안 된다는 고민이 많습니다.')
+
+    def test_meeting_card_trims_bubbles_until_it_fits(self):
+        copy = good(chat=good()['chat'] + [{'agent': 'lead', 'line': '정리해 볼게요.'}])
+        self.assertTrue(N._fix_layout(['layout:meeting'], copy))
+        self.assertEqual(len(copy['chat']), 3)
+        self.assertFalse(N._fix_layout(['layout:meeting'], copy))          # 3개 밑으로는 줄이지 않는다
+        self.assertFalse(N._fix_layout(['layout:pick-1'], copy))
+
+    def test_broken_layout_is_held_not_published(self):
+        run = date(2026, 10, 16)
+        with mock.patch('office.jobmail.send') as send:
+            obj = N.make(run, renderer=lambda nl, d: ['layout:next'], use_model=False, out=lambda *_: None)
+        self.assertEqual(obj.status, Newsletter.STATUS_HOLD)
+        self.assertIsNone(obj.published_at)
+        send.assert_called_once()
+        self.assertIn('공개 보류', send.call_args.args[0])
+        self.assertEqual(self.client.get('/newsletter/', HTTP_USER_AGENT='Mozilla/5.0').status_code, 200)
+        self.assertEqual(self.client.get(f'/newsletter/{obj.slug}/', HTTP_USER_AGENT='Mozilla/5.0').status_code, 404)
+
+    def test_rerun_with_problems_keeps_the_published_issue(self):
+        run = date(2026, 10, 16)
+        ok = N.make(run, renderer=lambda nl, d: [], use_model=False, out=lambda *_: None)
+        with mock.patch('office.jobmail.send'):
+            again = N.make(run, renderer=lambda nl, d: ['layout:cover'], use_model=False, out=lambda *_: None)
+        self.assertEqual(again.pk, ok.pk)
+        ok.refresh_from_db()
+        self.assertEqual(ok.status, Newsletter.STATUS_PUBLISHED)

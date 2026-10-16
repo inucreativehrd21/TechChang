@@ -102,7 +102,7 @@ def _next_week(run_date: date) -> list[dict]:
     """다음 한 주 일정 — 토 프로그래밍, 일 편집회의, 월 연재(격주), 화 HRD, 목 데이터."""
     from community.models import ColumnSeries
     from community.series_catalog import SERIES
-    from office.models import Decision
+    from office.models import ColumnDraft, Decision
     from office.series_pipeline import outline_of
 
     def chosen(topic):
@@ -129,7 +129,10 @@ def _next_week(run_date: date) -> list[dict]:
                          'note': f"{label(d)} · 연재 {no}편" + (f" — {ol.get('title')}" if ol.get('title') else ''),
                          'agent': 'coding'})
         else:
-            pick = chosen(topic)
+            ready = (ColumnDraft.objects.filter(topic=topic, series_key='', publish_at__date=d,
+                                                status__in=(ColumnDraft.STATUS_READY, ColumnDraft.STATUS_PUBLISHED))
+                     .exclude(subject='').order_by('-created_at').first())
+            pick = ready.subject if ready else chosen(topic)      # 이미 준비된 원고면 실제 제목
             rows.append({'date': d, 'day': WEEKDAY[wd], 'what': f'{CAT_LABEL[topic]} 칼럼',
                          'note': f'{label(d)} · ' + (pick or '편집회의가 정한 주제로'), 'agent': topic})
     rows.sort(key=lambda r: r['date'])
@@ -143,6 +146,21 @@ def _next_week(run_date: date) -> list[dict]:
 # 재료: 추천 글의 요약·키워드·소제목(칼럼 지도) + 그 주제를 정한 편집회의 발언(팀장 브리핑, 제안자의 이유, 반응).
 # 운영자 지시문과 운영·보안 안건은 칼럼 안건이 아니므로 애초에 닿지 않는다.
 FOR_WHOM = {'HRD': 'HRD·교육 담당자', '데이터분석': '데이터로 일하는 HR 실무자', '프로그래밍': '개발이 궁금한 비전공자'}
+
+# 공개 문구 가드레일(2026-10-16 No.2 '방문자 3301명, 검색 클릭 10회, 추천 0' 이 회의실 카드에 그대로 나갔다).
+# 독자에게 사이트 운영 지표를 말하면 '아무도 안 보는 사이트'로 읽힌다 — 회의 재료에서 빼고, 문구에서도 막는다.
+SITE_METRIC = re.compile(r'방문자?|클릭|노출|조회\s*수|추천(은|이|수)?\s*(전부\s*)?0|평균\s*순위|검색\s*순위|CTR|트래픽|유입|'
+                         r'\d[\d,]*\s*(명|회)\s*(방문|조회)')
+# '우리 사이트에 그 주제 글이 없었다'는 운영 사정이지 독자가 읽을 이유가 아니다
+CATALOG_GAP = re.compile(r'(같은|겹치는|비슷한)\s*(주제|칼럼|글)[^.]{0,6}없|최근\s*[^.]{0,12}칼럼\s*(중|에)|발행\s*목록|'
+                         r'우리\s*(글|칼럼|사이트)|칼럼\s*중\s*같은')
+CHAT_RANGE = (3, 4)             # 회의실 카드 말풍선 — 5개면 '그래서 고른 칼럼' 상자와 부딪혔다(No.2)
+
+
+def _scrub(text: str) -> str:
+    """회의 발언에서 사이트 지표·카탈로그 사정이 담긴 문장을 뺀다(큐레이터에게 애초에 주지 않는다)."""
+    keep = [s for s in _sentences(text) if not SITE_METRIC.search(s) and not CATALOG_GAP.search(s)]
+    return ' '.join(keep)
 
 
 def _clip(s: str, n: int) -> str:
@@ -222,15 +240,16 @@ def _meeting_talk(picks) -> dict:
     turns = [t for t in (meeting.transcript or []) if isinstance(t, dict) and t.get('text') and t.get('agent')]
     heads = {(p['origin']['pitch'] or '')[:8]: p['origin']['proposer'] for p in picks if p['origin'].get('decision_id')}
     picked = []
-    for i, t in enumerate(turns):
+    for t in turns:
         hit = next((h for h in heads if h and h in t['text']), None)
-        if (i == 0 and t['agent'] == 'lead') or hit:
-            picked.append({'agent': t['agent'], 'text': _around(t['text'], hit, 140, 300) if hit else _clip(t['text'], 380)})
+        if hit:     # 팀장의 지표 브리핑(방문·클릭·추천 수)은 싣지 않는다 — 독자에게 내부 운영 수치다
+            picked.append({'agent': t['agent'], 'text': _around(t['text'], hit, 140, 300)})
     if len(picked) < 2:   # 제목이 그대로 안 나오면 제안자 발언으로
         props = set(heads.values())
-        picked = [{'agent': t['agent'], 'text': _clip(t['text'], 380)} for t in turns
-                  if t['agent'] in props or t['agent'] == 'lead'][:6]
-    return {'date': f"{timezone.localtime(meeting.held_at):%m.%d}", 'lines': picked[:8]}
+        picked = [{'agent': t['agent'], 'text': _clip(t['text'], 380)} for t in turns if t['agent'] in props][:6]
+    picked = [{**ln, 'text': _scrub(ln['text'])} for ln in picked]
+    picked = [ln for ln in picked if len(ln['text']) >= 20]
+    return {'date': f"{timezone.localtime(meeting.held_at):%m.%d}", 'lines': picked[:6]}
 
 
 def collect(run_date: date) -> dict:
@@ -258,11 +277,13 @@ PROMPT = (
     '- theme: {theme}자 이내. 이번 주 추천 글들을 관통하는 훅 한 구절 — 질문이나 반전으로 궁금하게. "○편 발행" 같은 보고서 제목 금지. '
     '핵심 낱말 하나를 *별표*로 감쌉니다.\n'
     '- intro: {intro}자 이내 두 문장. 이번 주에 무엇을 추천하는지.\n'
-    '- chat: meeting.lines 가 있으면 4~5줄, 회의 순서대로. 각 line {chat}자 이내. 무엇을 찾아봤고(검색어, 반응 좋던 글, 비어 있던 주제) '
-    '그래서 어떤 주제가 좋아 보였는지가 드러나게. agent 는 그 말을 한 연구원 키({agents}). meeting 이 비어 있으면 [].\n'
-    '- picks: 추천 글(picks)마다. hook {hook}자 이내 — 독자가 멈춰 읽을 질문이나 한 줄. why_now {why_now}자 이내 — 왜 지금 이 글인지 '
-    '(회의에서 본 신호를 근거로). points 정확히 3개, 각 {point}자 이내 — 이 글에서 얻는 것(요약·소제목 근거). '
+    '- chat: meeting.lines 가 있으면 3~4줄, 회의 순서대로. 각 line {chat}자 이내. 연구원이 현장·업계에서 무엇을 보고 '
+    '이 주제가 독자에게 필요하다고 판단했는지가 드러나게. agent 는 그 말을 한 연구원 키({agents}). meeting 이 비어 있으면 [].\n'
+    '- picks: 추천 글(picks)마다. hook {hook}자 이내 — 독자가 멈춰 읽을 질문이나 한 줄. why_now {why_now}자 이내 — 독자의 일·업계에서 '
+    '지금 이 글이 필요한 이유("회의에서~"로 시작하지 않기). points 정확히 3개, 각 {point}자 이내 — 이 글에서 얻는 것(요약·소제목 근거). '
     'for_whom {for_whom}자 이내 — 이런 분께 추천.\n'
+    '- 절대 쓰지 않기: 우리 사이트의 방문자·클릭·노출·조회·추천 수·검색 순위 같은 운영 지표, "우리 칼럼에 같은 주제가 없었다" 같은 '
+    '운영 사정. 독자는 그걸 보고 읽을 이유를 얻지 못하고, 사이트가 초라해 보입니다.\n'
     '- 숫자는 아라비아 숫자로, [이번 주 사실]에 있는 값만. 맞춤법을 한 번 더 봅니다.{retry}'
 )
 
@@ -299,9 +320,13 @@ def _problems(copy: dict, facts: dict) -> list[str]:
     if _too_long(copy.get('intro'), LIMITS['intro']):
         out.append(f"intro 를 {LIMITS['intro']}자 이내로")
     chat = copy.get('chat') or []
-    if (facts.get('meeting') or {}).get('lines'):
-        if not 3 <= len(chat) <= 5:
-            out.append('chat 은 4~5줄로')
+    usable = len((facts.get('meeting') or {}).get('lines') or [])
+    if usable >= CHAT_RANGE[0]:
+        if not CHAT_RANGE[0] <= len(chat) <= CHAT_RANGE[1]:
+            out.append(f'chat 은 {CHAT_RANGE[0]}~{CHAT_RANGE[1]}줄로')
+    elif chat:      # 쓸 만한 회의 발언이 적으면 회의실 카드를 빼는 게 낫다(말풍선 한두 개는 빈약해 보인다)
+        out.append('chat 은 [] 로(쓸 만한 회의 발언이 적음)')
+    if usable:
         if any(c.get('agent') not in AGENT_ORDER or _too_long(c.get('line'), LIMITS['chat']) for c in chat if isinstance(c, dict)):
             out.append(f"chat 의 agent 는 정해진 키, line 은 {LIMITS['chat']}자 이내로")
     texts = [copy.get('theme', ''), copy.get('intro', '')] + [str(c.get('line', '')) for c in chat if isinstance(c, dict)]
@@ -317,6 +342,25 @@ def _problems(copy: dict, facts: dict) -> list[str]:
     loose = E.unmatched(' '.join(texts).replace('*', ''), _facts_text(facts))
     if loose:
         out.append(f"사실에 없는 숫자 {', '.join(sorted({n for n, _ in loose}))} 를 빼거나 사실의 값으로")
+    out += public_problems(copy, facts)
+    return out
+
+
+def public_problems(copy: dict, facts: dict) -> list[str]:
+    """독자에게 내보내면 안 되는 문구 — 사이트 운영 지표, 카탈로그 사정, '회의에서~'로 시작하는 읽을 이유."""
+    out = []
+    fields = [('theme', copy.get('theme', '')), ('intro', copy.get('intro', ''))]
+    fields += [(f'chat[{i}]', c.get('line', '')) for i, c in enumerate(copy.get('chat') or []) if isinstance(c, dict)]
+    for p in facts.get('picks') or []:
+        c = _pick_copy(copy, p['id'])
+        fields += [(f"picks[{p['id']}].{k}", str(c.get(k, ''))) for k in ('hook', 'why_now', 'for_whom')]
+        if str(c.get('why_now', '')).lstrip().startswith('회의에서'):
+            out.append(f"picks[{p['id']}].why_now 를 '회의에서~'가 아니라 독자의 일에서 지금 필요한 이유로")
+    for name, text in fields:
+        if SITE_METRIC.search(text or ''):
+            out.append(f'{name} 에서 사이트 운영 지표(방문·클릭·노출·조회·추천 수·순위)를 빼세요')
+        elif CATALOG_GAP.search(text or ''):
+            out.append(f'{name} 에서 "우리 칼럼에 없던 주제" 같은 운영 사정을 빼고 독자 관점의 이유로')
     return out
 
 
@@ -333,8 +377,8 @@ def default_copy(facts: dict) -> dict:
              if picks else '이번 주에는 새 글 대신 다음 주제를 준비했어요. 다음 주 일정을 확인해 주세요.')
     lines = (facts.get('meeting') or {}).get('lines') or []
     chat = [{'agent': ln['agent'], 'line': _fit((_sentences(ln['text']) or [''])[0].lstrip('…'), LIMITS['chat'])}
-            for ln in lines[:5]]
-    if lines and len(chat) < 3:
+            for ln in lines[:CHAT_RANGE[1]]]
+    if lines and len(chat) < CHAT_RANGE[0]:
         chat = []
     out = {}
     for p in picks:
@@ -345,8 +389,7 @@ def default_copy(facts: dict) -> dict:
             pts.append(_fit('키워드 ' + '·'.join(p['keywords'][:3] or ['칼럼']), LIMITS['point']))
         cat = p['cat'].split('·')[-1].strip()
         out[str(p['id'])] = {'hook': _fit(p['title'], LIMITS['hook']),
-                             'why_now': _fit(p['origin']['pitch'] and f"회의에서 나온 주제예요: {p['origin']['pitch']}" or p['title'],
-                                             LIMITS['why_now']),
+                             'why_now': _fit((sents[0] if sents else p['title']), LIMITS['why_now']),
                              'points': pts[:3], 'for_whom': _fit(FOR_WHOM.get(cat, '테크창 독자'), LIMITS['for_whom'])}
     return {'theme': theme, 'intro': _fit(intro, LIMITS['intro']), 'chat': chat, 'picks': out, 'source': 'default'}
 
@@ -413,8 +456,27 @@ def context(facts: dict, copy: dict, issue_no: int, run_date: date) -> dict:
     }
 
 
-OVERFLOW_JS = """() => [...document.querySelectorAll('.fit')]
-  .filter(e => e.scrollHeight > e.clientHeight + 4).map(e => e.dataset.fit)"""
+OVERFLOW_JS = """() => {
+  const out = [...document.querySelectorAll('.fit')]
+    .filter(e => e.scrollHeight > e.clientHeight + 4).map(e => e.dataset.fit);
+  // 카드 레이아웃 — 블록끼리 겹치거나(말풍선이 아래 상자에 닿음), 꼬리말 선을 침범하면 'layout:<카드>'
+  for (const card of document.querySelectorAll('section.card')) {
+    const frame = card.querySelector('.frame');
+    if (!frame) continue;
+    const kids = [...frame.children].filter(k => k.offsetHeight > 0);
+    const foot = kids.find(k => k.classList.contains('bottom'));
+    const body = kids.filter(k => k !== foot);
+    let bad = false;
+    for (let i = 1; i < body.length; i++) {
+      if (body[i].getBoundingClientRect().top < body[i - 1].getBoundingClientRect().bottom + 12) bad = true;
+    }
+    if (foot && body.length && body[body.length - 1].getBoundingClientRect().bottom > foot.getBoundingClientRect().top - 12) bad = true;
+    const fr = frame.getBoundingClientRect();
+    if (frame.scrollHeight > frame.clientHeight + 2 || body.some(k => k.getBoundingClientRect().bottom > fr.bottom)) bad = true;
+    if (bad) out.push('layout:' + card.id);
+  }
+  return out;
+}"""
 
 
 def render(nl: dict, out_dir: str | None) -> list[str]:
@@ -438,6 +500,14 @@ def render(nl: dict, out_dir: str | None) -> list[str]:
 
 
 CURATED_KEYS = re.compile(r'^(theme|og-theme|intro|chat-\d+|hook-\d+|why-\d+|pt-\d+-\d+|whom-\d+)$')
+
+
+def _fix_layout(issues: list, copy: dict) -> bool:
+    """코드로 고칠 수 있는 레이아웃 — 회의실 카드가 넘치면 말풍선을 하나 줄인다. 고쳤으면 True."""
+    if 'layout:meeting' in issues and len(copy.get('chat') or []) > CHAT_RANGE[0]:
+        copy['chat'] = copy['chat'][:-1]
+        return True
+    return False
 
 
 def make(run_date: date | None = None, *, dry: bool = False, ask_json=None, renderer=None, use_model: bool = True,
@@ -466,16 +536,47 @@ def make(run_date: date | None = None, *, dry: bool = False, ask_json=None, rend
         copy = default_copy(facts)
         nl = context(facts, copy, issue_no, run_date)
 
+    # 마지막 관문 — 카드 레이아웃(블록 겹침·넘침)과 공개 금지 문구. 코드로 고칠 수 있으면 고치고, 아니면 공개하지 않는다
+    issues = renderer(nl, None)
+    for _ in range(3):
+        if not _fix_layout(issues, copy):
+            break
+        nl = context(facts, copy, issue_no, run_date)
+        issues = renderer(nl, None)
+    blockers = [k for k in issues if k.startswith('layout:') or CURATED_KEYS.match(k)] + public_problems(copy, facts)
+
     rel = f"newsletter/{'_dry' if dry else slug}"          # URL 에도 쓰므로 os.path.join 이 아닌 '/'
     renderer(nl, os.path.join(settings.MEDIA_ROOT, 'newsletter', '_dry' if dry else slug))
     stamp = timezone.now().strftime('%Y%m%d%H%M')
     urls = [f"{settings.MEDIA_URL}{rel}/{cid}.png?v={stamp}" for cid in nl['card_ids']]
     out(f"  문구 출처: {copy.get('source')} · 제목: {nl['theme_plain']}")
+    if blockers:
+        out(f'  공개 보류 — {blockers}')
     if dry:
-        return {'facts': facts, 'copy': copy, 'cards': urls}
-    data = {'facts': facts, 'copy': copy, 'alts': nl['alts']}
+        return {'facts': facts, 'copy': copy, 'cards': urls, 'blockers': blockers}
+    data = {'facts': facts, 'copy': copy, 'alts': nl['alts'], 'blockers': blockers}
+    if blockers and existing and existing.status == Newsletter.STATUS_PUBLISHED:
+        _alert_blocked(run_date, code, blockers, kept=True)     # 이미 공개된 판은 그대로 둔다
+        return existing
     obj, _ = Newsletter.objects.update_or_create(slug=slug, defaults={
         'issue_no': issue_no, 'week_start': date.fromisoformat(facts['start']), 'week_end': date.fromisoformat(facts['end']),
         'title': nl['theme_plain'], 'intro': nl['intro'], 'data': data, 'cards': urls[:-1], 'og_image': urls[-1],
-        'status': Newsletter.STATUS_PUBLISHED, 'published_at': timezone.now()})
+        'status': Newsletter.STATUS_HOLD if blockers else Newsletter.STATUS_PUBLISHED,
+        'published_at': None if blockers else timezone.now()})
+    if blockers:
+        _alert_blocked(run_date, code, blockers, kept=False)
     return obj
+
+
+def _alert_blocked(run_date, code, blockers, *, kept: bool):
+    """검사를 통과하지 못한 호 — 공개하지 않고 운영자에게 [다시 만들기] 버튼과 함께 알린다."""
+    try:
+        from office import jobmail as J
+        args = ['make_newsletter', '--date', run_date.isoformat()]
+        J.send(f'위클리 {code} 공개 보류 — 카드·문구 검사 실패',
+               [f'{code} 위클리가 공개 전 검사를 통과하지 못해 ' + ('이전 공개판을 그대로 두었습니다.' if kept else '공개하지 않았습니다.'),
+                '', '걸린 항목:'] + [f'  - {b}' for b in blockers[:12]],
+               [('다시 만들기', J.link(J.make_token('rerun', args, f'위클리 {code} 다시 만들기')),
+                 '같은 주의 위클리를 처음부터 다시 만들고 다시 검사합니다.')])
+    except Exception:  # noqa: BLE001 — 알림 실패가 제작을 막지 않게
+        logger.exception('위클리 보류 알림 실패')
