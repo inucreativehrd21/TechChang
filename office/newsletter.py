@@ -466,15 +466,15 @@ OVERFLOW_JS = """() => {
     const kids = [...frame.children].filter(k => k.offsetHeight > 0);
     const foot = kids.find(k => k.classList.contains('bottom'));
     const body = kids.filter(k => k !== foot);
-    // 남는 높이를 채우는 블록(flex-grow)은 상자 끝이 아니라 안쪽 내용의 끝으로 잰다 — 채우기만 한 빈칸은 겹침이 아니다
-    const end = el => {
-      if (parseFloat(getComputedStyle(el).flexGrow) > 0 && el.children.length)
-        return Math.max(...[...el.children].map(k => k.getBoundingClientRect().bottom));
-      return el.getBoundingClientRect().bottom;
-    };
+    // 블록의 위·아래는 상자가 아니라 안쪽 내용으로 잰다 — 남는 높이를 채우는 블록(flex-grow)이나 안쪽 여백은 겹침이 아니다
+    const kidsOf = el => [...el.children].filter(k => k.offsetHeight > 0);
+    const end = el => kidsOf(el).length ? Math.max(...kidsOf(el).map(k => k.getBoundingClientRect().bottom))
+                                        : el.getBoundingClientRect().bottom;
+    const start = el => (parseFloat(getComputedStyle(el).flexGrow) > 0 && kidsOf(el).length)
+                        ? Math.min(...kidsOf(el).map(k => k.getBoundingClientRect().top)) : el.getBoundingClientRect().top;
     let bad = false;
     for (let i = 1; i < body.length; i++) {
-      if (body[i].getBoundingClientRect().top < end(body[i - 1]) + 12) bad = true;
+      if (start(body[i]) < end(body[i - 1]) + 12) bad = true;
     }
     if (foot && body.length && end(body[body.length - 1]) > foot.getBoundingClientRect().top - 12) bad = true;
     const fr = frame.getBoundingClientRect();
