@@ -367,15 +367,18 @@ def baseball_leaderboard(request):
     if difficulty not in ['normal', 'hard']:
         difficulty = 'normal'
 
+    from ..game_visibility import visible
+    games = visible(NumberBaseballGame.objects.all())      # 운영자(admin) 기록은 순위·통계에서 뺀다
+
     # 디버깅: 난이도별 게임 수 확인
-    total_games = NumberBaseballGame.objects.filter(difficulty=difficulty).count()
-    won_games = NumberBaseballGame.objects.filter(difficulty=difficulty, status='won').count()
+    total_games = games.filter(difficulty=difficulty).count()
+    won_games = games.filter(difficulty=difficulty, status='won').count()
     logger.info(f"Baseball leaderboard - difficulty: {difficulty}, total_games: {total_games}, won_games: {won_games}")
 
     # Bulk 쿼리 최적화: N+1 쿼리 방지
 
     # 승리한 게임이 있는 사용자만 가져오기 (중복 제거를 확실히 하기 위해 list로 변환)
-    users_with_wins = list(set(NumberBaseballGame.objects.filter(
+    users_with_wins = list(set(games.filter(
         status='won',
         difficulty=difficulty
     ).values_list('player_id', flat=True)))
@@ -386,7 +389,7 @@ def baseball_leaderboard(request):
     users_dict = {user.id: user for user in User.objects.select_related('profile').filter(id__in=users_with_wins)}
 
     # 모든 사용자의 통계를 한 번의 쿼리로 가져오기
-    stats_qs = NumberBaseballGame.objects.filter(
+    stats_qs = games.filter(
         player_id__in=users_with_wins,
         difficulty=difficulty
     ).values('player_id').annotate(

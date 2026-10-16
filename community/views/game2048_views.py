@@ -482,8 +482,9 @@ def game2048_leaderboard(request):
         difficulty = 'normal'
 
     # 디버깅: 난이도별 게임 수 확인
-    total_games = Game2048.objects.filter(difficulty=difficulty).count()
-    won_games = Game2048.objects.filter(difficulty=difficulty, status='won').count()
+    from ..game_visibility import hidden_usernames, visible
+    total_games = visible(Game2048.objects.filter(difficulty=difficulty)).count()   # 운영자(admin) 기록 제외
+    won_games = visible(Game2048.objects.filter(difficulty=difficulty, status='won')).count()
     logger.info(f"2048 leaderboard - difficulty: {difficulty}, total_games: {total_games}, won_games: {won_games}")
 
     # 사용자별 최고 점수 서브쿼리 (난이도별)
@@ -493,8 +494,9 @@ def game2048_leaderboard(request):
     ).order_by('-best_score').values('best_score')[:1]
 
     # 최고 점수가 있는 사용자만 가져오기
+    players = User.objects.exclude(username__in=hidden_usernames())
     try:
-        top_players = User.objects.annotate(
+        top_players = players.annotate(
             top_score=models.Subquery(user_best_scores)
         ).filter(
             top_score__isnull=False,
@@ -502,7 +504,7 @@ def game2048_leaderboard(request):
         ).select_related('profile').order_by('-top_score')[:100]
     except Exception:
         # profile이 없는 경우를 위해 select_related 제외
-        top_players = User.objects.annotate(
+        top_players = players.annotate(
             top_score=models.Subquery(user_best_scores)
         ).filter(
             top_score__isnull=False,

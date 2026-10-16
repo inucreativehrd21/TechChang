@@ -117,7 +117,8 @@ def minesweeper_leaderboard(request):
     if difficulty not in ['easy', 'medium', 'hard']:
         difficulty = 'easy'
 
-    qs = MinesweeperGame.objects.filter(difficulty=difficulty)
+    from ..game_visibility import visible
+    qs = visible(MinesweeperGame.objects.filter(difficulty=difficulty))     # 운영자(admin) 기록 제외
     total_games = qs.count()
     wins_qs = qs.filter(status='won')
     losses_qs = qs.filter(status='lost')

@@ -119,10 +119,11 @@ def _home_live_data():
         logging.getLogger(__name__).exception('home lab block unavailable')
         lab = None
 
+    from ..game_visibility import visible      # 운영자(admin) 판은 세지 않는다
     games_played_total = (
-        NumberBaseballGame.objects.count()
-        + Game2048.objects.count()
-        + MinesweeperGame.objects.count()
+        visible(NumberBaseballGame.objects.all()).count()
+        + visible(Game2048.objects.all()).count()
+        + visible(MinesweeperGame.objects.all()).count()
     )
     return {'lab': lab,
             'games_played_total': games_played_total}
@@ -557,6 +558,9 @@ def games_index(request):
     """게임 대시보드 - 모든 게임 목록"""
     from ..models import NumberBaseballGame, Game2048, GuestBook, MinesweeperGame
     from django.db.models import F
+    from ..game_visibility import visible
+    bb, g2, ms = (visible(NumberBaseballGame.objects.all()), visible(Game2048.objects.all()),
+                  visible(MinesweeperGame.objects.all()))      # 운영자(admin) 판은 세지 않는다
 
     # 각 게임의 통계 정보
     games_info = [
@@ -567,8 +571,8 @@ def games_index(request):
             'url': 'community:baseball_start',
             'icon': '⚾',
             'color': 'warning',
-            'total_games': NumberBaseballGame.objects.count(),
-            'active_games': NumberBaseballGame.objects.filter(status='playing').count(),
+            'total_games': bb.count(),
+            'active_games': bb.filter(status='playing').count(),
             'features': ['싱글 플레이', '논리 퍼즐', '추리 게임'],
         },
         {
@@ -578,8 +582,8 @@ def games_index(request):
             'url': 'community:game2048_start',
             'icon': '🎮',
             'color': 'info',
-            'total_games': Game2048.objects.count(),
-            'active_games': Game2048.objects.filter(status='playing').count(),
+            'total_games': g2.count(),
+            'active_games': g2.filter(status='playing').count(),
             'features': ['퍼즐', '싱글 플레이', '키보드 조작'],
         },
         {
@@ -589,19 +593,15 @@ def games_index(request):
             'url': 'community:minesweeper_start',
             'icon': '💣',
             'color': 'danger',
-            'total_games': MinesweeperGame.objects.count(),
-            'active_games': MinesweeperGame.objects.filter(status='playing').count(),
+            'total_games': ms.count(),
+            'active_games': ms.filter(status='playing').count(),
             'features': ['논리 퍼즐', '싱글 플레이', '3가지 난이도'],
         },
     ]
 
     # 최근 활동 통계
     recent_stats = {
-        'total_games_played': (
-            NumberBaseballGame.objects.count() +
-            Game2048.objects.count() +
-            MinesweeperGame.objects.count()
-        ),
+        'total_games_played': bb.count() + g2.count() + ms.count(),
         'active_players': request.user.is_authenticated,
     }
 
