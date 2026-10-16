@@ -15,7 +15,7 @@
             <span class="rk-gno">{{ g.no }}</span>
             <span class="rk-score"><b>{{ g.me }}</b><em>{{ g.mine }}</em><i>:</i><em>{{ g.theirs }}</em><span>{{ g.opp }}</span></span>
             <span class="rk-wl">{% if g.win %}승{% else %}패{% endif %}</span>
-            <span class="rk-gsum">{{ g.summary }}{% if p.role == 'pitcher' and g.line.np %}, 투구수 {{ g.line.np }}{% endif %}</span>
+            <span class="rk-gsum">{% if g.vs_label %}<span class="rk-vs is-{{ g.vs }}" title="{{ g.vs_label }}, 상대 능력 {{ g.vs_lvl }}">{{ g.vs_short }} {{ g.vs_lvl }}</span>{% endif %}{{ g.summary }}{% if p.role == 'pitcher' and g.line.np %}, 투구수 {{ g.line.np }}{% endif %}</span>
         </li>
         {% endfor %}
     </ol>
@@ -30,7 +30,13 @@
         <div><dt>피홈런</dt><dd>{{ b.hr|default:0 }}</dd></div>
         <div><dt>투구수</dt><dd>{{ b.np|default:0 }}</dd></div>
     </dl>
+    {% if games.0.splits %}
+    <ul class="rk-box-split" aria-label="상대 타자 등급별">
+        {% for x in games.0.splits %}<li class="is-{{ x.code }}"><b>{{ x.label }}</b> {{ x.ab }}타수 {{ x.h }}피안타{% if x.hr %} {{ x.hr }}피홈런{% endif %}{% if x.so %} {{ x.so }}삼진{% endif %}</li>{% endfor %}
+    </ul>
+    {% endif %}
     {% endwith %}{% endif %}
+    {% if opp_levels %}<p class="rk-board-note">{{ games.0.league }} 상대 능력: 에이스 {{ opp_levels.ace }}, 주전 {{ opp_levels.reg }}, 백업 {{ opp_levels.bak }}. 내 OVR은 {{ p.ovr|floatformat:1 }}입니다.</p>{% endif %}
     {% if dnp %}<p class="rk-board-note">어제는 결장했습니다. 경기일 포함 최근 3일 안에 활동해야 엔트리에 듭니다.</p>{% endif %}
     {% elif season.phase == 'pre' %}
     <div class="rk-board-empty">

@@ -42,6 +42,7 @@ def _base_ctx(request, section: str) -> dict:
             'teams': [R.TEAM[c] for c, _n, _c in R.TEAMS], 'roles': R.ROLES, 'earn': R.EARN, 'tiers': R.TIERS,
             'welcome': R.WELCOME_TP, 'cost': R.TRAIN_COST, 'daily_max': R.DAILY_MAX, 'fatigue_at': R.FATIGUE_AT,
             'focus_bonus': int(round((R.FOCUS_BONUS - 1) * 100)), 'positions': L.POSITIONS,
+            'opp_first': L.opp_levels(2),
             'my_id': RookiePlayer.objects.filter(user_id=request.user.id).values_list('id', flat=True).first()}
 
 
@@ -155,7 +156,7 @@ def rookie_player(request, pk: int):
         raise Http404
     _catch_up()
     career = list(RookieSeasonStat.objects.filter(player=p).select_related('season').order_by('-season__number', '-league'))
-    games = [L.game_view(g, p.team) for g in RookieGame.objects.filter(player=p).order_by('-day', '-no')[:20]]
+    games = [L.game_view(g, p.team, p.role) for g in RookieGame.objects.filter(player=p).order_by('-day', '-no')[:20]]
     ctx = dict(_base_ctx(request, 'league'), p=p, team=R.TEAM.get(p.team, {}), role_label=R.ROLES[p.role]['label'],
                pos_label=L.POS_LABEL.get(p.position, ''), tier_name=R.TIERS[p.tier]['name'],
                focus_label=dict((k, lab) for k, lab, _w in R.ROLES[p.role]['stats']).get(p.focus, ''),

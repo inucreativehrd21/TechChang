@@ -155,6 +155,14 @@
 .rk-box > div { text-align: center; }
 .rk-box dt { font-size: 0.7rem; font-weight: 600; color: var(--rk-board-dim); }
 .rk-box dd { margin: 4px 0 0; font-size: 1.45rem; font-weight: 900; color: #fff; font-variant-numeric: tabular-nums; }
+/* 상대 등급 표시 — 전광판(어두운 면) 위 */
+.rk-vs { display: inline-block; margin-right: 8px; padding: 1px 7px; border-radius: 5px; font-size: 0.7rem; font-weight: 800; white-space: nowrap; vertical-align: 1px; font-variant-numeric: tabular-nums; }
+.rk-vs.is-ace, .rk-vs.is-strong { color: var(--rk-board); background: #fff; }
+.rk-vs.is-reg, .rk-vs.is-normal { color: var(--rk-board-ink); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .35); }
+.rk-vs.is-bak, .rk-vs.is-weak { color: var(--rk-board-dim); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .14); }
+.rk-box-split { display: flex; flex-wrap: wrap; gap: 6px 16px; margin: 12px 0 0; padding: 0; list-style: none; font-size: 0.8rem; color: var(--rk-board-ink); font-variant-numeric: tabular-nums; }
+.rk-box-split b { font-weight: 800; }
+.rk-box-split .is-bak { color: var(--rk-board-dim); }
 .rk-board-empty { display: flex; flex-direction: column; gap: 8px; padding: 22px 0 6px; }
 .rk-board-empty b { font-size: 2.8rem; font-weight: 900; line-height: 1; letter-spacing: -0.03em; color: var(--rk-led); text-shadow: 0 0 22px rgba(165, 180, 252, .45); font-variant-numeric: tabular-nums; }
 .rk-board-empty span { max-width: 46ch; font-size: 0.9rem; line-height: 1.6; color: var(--rk-board-dim); }
@@ -179,6 +187,22 @@
 .rk-line-main dd { margin: 2px 0 0; font-size: 1.75rem; font-weight: 900; letter-spacing: -0.02em; line-height: 1.1; font-variant-numeric: tabular-nums; }
 .rk-line-main dd small { margin: 0 2px; font-size: 1rem; color: var(--rk-ink-4); }
 .rk-line-main .is-war dd { color: var(--rk-accent); }
+/* 상대 등급별 성적(밝은 면) */
+.rk-split { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--rk-line-soft); }
+.rk-split h3 { margin: 0 0 8px; font-size: 0.85rem; font-weight: 800; color: var(--rk-ink-2); }
+.rk-split-wrap { overflow-x: auto; }
+.rk-split-table { width: 100%; border-collapse: collapse; font-size: 0.84rem; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.rk-split-table th, .rk-split-table td { padding: 7px 10px; text-align: right; border-bottom: 1px solid var(--rk-line-soft); }
+.rk-split-table thead th { font-size: 0.72rem; font-weight: 700; color: var(--rk-ink-3); }
+.rk-split-table th[scope="row"], .rk-split-table thead th:first-child { text-align: left; padding-left: 0; }
+.rk-split-table tbody tr:last-child th, .rk-split-table tbody tr:last-child td { border-bottom: 0; }
+.rk-split-table .is-key { font-weight: 900; }
+.rk-grade { display: inline-block; padding: 2px 8px; border-radius: 6px; font-size: 0.74rem; font-weight: 800; }
+.rk-grade.is-ace { color: #fff; background: var(--rk-ink); }
+.rk-grade.is-reg { color: var(--rk-ink); background: var(--rk-line-soft); }
+.rk-grade.is-bak { color: var(--rk-ink-3); box-shadow: inset 0 0 0 1px var(--rk-line); }
+.rk-grade.is-pen { color: var(--rk-accent); background: var(--rk-accent-wash); }
+.rk-split-note { margin: 8px 0 0; font-size: 0.74rem; line-height: 1.55; color: var(--rk-ink-4); }
 .rk-line-sub { margin: 12px 0 0; padding-top: 10px; border-top: 1px solid var(--rk-line-soft); font-size: 0.78rem; line-height: 1.6; color: var(--rk-ink-3); font-variant-numeric: tabular-nums; }
 
 /* 아래 두 단: 훈련 | 오늘의 TP·컨디션·기록 */
@@ -284,6 +308,8 @@
 .rk-rule-list { margin: 0; padding-left: 1.2em; display: flex; flex-direction: column; gap: 10px; }
 .rk-rule-list li { font-size: 0.85rem; line-height: 1.6; color: var(--rk-ink-2); }
 .rk-rule-list b { display: block; color: var(--rk-ink); }
+.rk-rule-list span { display: block; }
+.rk-rule-list span + span { margin-top: 4px; }
 
 /* ── 리그: 조작부·리더·순위 ─────────────────────────── */
 .rk-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 16px; }

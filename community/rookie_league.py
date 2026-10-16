@@ -6,9 +6,17 @@
 - 리그는 소속 그대로: 1군 · 퓨처스(2군) · 3군(육성군 연습경기). 기록은 리그별로 따로 쌓는다.
 - 타자는 그날 모든 경기에, 투수는 선발 로테이션으로 하루 한 경기에 나간다(시즌 ≈ 28선발 170이닝).
 
-경기 모형: 타석마다 볼넷·사구·삼진·인플레이를 '내 능력치 − 상대 리그 수준'으로 정하고(로지스틱),
-인플레이는 홈런율·BABIP·장타 비율로 나눈다. 같은 수준끼리면 리그 평균 ≈ .265/.325/.430(OPS .755),
-평균자책점 ≈ 4.3 — test_rookie_league 가 몬테카를로로 지킨다. 투수는 주자 상황을 따라가며 실점을 센다.
+경기 모형: 타석마다 볼넷·사구·삼진·인플레이를 '내 능력치 − 그 타석 상대의 능력'으로 정하고(로지스틱),
+인플레이는 홈런율·BABIP·장타 비율로 나눈다. 같은 수준끼리면 리그 평균 ≈ .267/.325/.435,
+평균자책점 ≈ 3.9 — test_rookie_league 가 몬테카를로로 지킨다. 투수는 주자 상황을 따라가며 실점을 센다.
+
+상대 선수 등급(2026-10-17): 상대는 '리그 평균 ± 무작위'가 아니라 누구인지가 분명하다.
+- 타자가 만나는 상대 선발 = 에이스(리그 수준 +12, 20%) · 주전(±0, 55%) · 백업(−10, 25%).
+  선발과 3타석(백업 선발은 일찍 내려가 2타석), 나머지는 불펜(리그 수준).
+- 투수가 만나는 상대 타순 = 3·4·5번 중심타자(+12) · 1·2·6번 주전(±0) · 7·8·9번 백업(−10),
+  경기마다 라인업 형태가 바뀐다(강타선 +4 · 정상 · 백업 위주 −6).
+- 가중 평균이 리그 수준과 같아 리그 평균 보정(LG_WOBA·FIP_C)은 그대로다. 경기마다 상대 등급을 남기고,
+  시즌 기록에 상대 등급별 성적(<등급>_pa·ab·h·hr·bb·so)을 따로 쌓는다.
 
 WAR(추정, 실제 KBO 공식이 아니라 같은 뼈대의 근사):
 - 타자 = (wRAA + 대체 수준 20점/600타석 + 포지션 보정 + 수비 + 주루) / 10, wOBA 가중치는 흔히 쓰는 근사값.
@@ -38,6 +46,16 @@ POSITIONS = [('C', '포수'), ('1B', '1루수'), ('2B', '2루수'), ('3B', '3루
 POS_LABEL = dict(POSITIONS, SP='선발투수')
 POS_ADJ = {'C': 12.0, 'SS': 7.0, '2B': 3.0, '3B': 2.0, 'OF': -2.0, '1B': -10.0, 'DH': -15.0}   # 144경기 기준 점수
 ERR_BASE = {'C': .03, '1B': .03, '2B': .05, '3B': .07, 'SS': .08, 'OF': .03}
+
+OPP_OFFSET = {'ace': 12.0, 'reg': 0.0, 'bak': -10.0, 'pen': 0.0}           # 상대 능력 = 리그 수준 + 보정
+STARTER_GRADES = (('ace', 20), ('reg', 55), ('bak', 25))                    # 상대 선발 등급과 확률(%)
+STARTER_PA = {'ace': 3, 'reg': 3, 'bak': 2}                                 # 선발과 붙는 타석, 나머지는 불펜
+LINEUP = ('reg', 'reg', 'ace', 'ace', 'ace', 'reg', 'bak', 'bak', 'bak')    # 상대 타순 1~9번의 등급
+LINEUP_FORMS = (('strong', '강타선', 4.0, 25), ('normal', '정상 라인업', 0.0, 50), ('weak', '백업 위주', -6.0, 25))
+GRADE_LABEL = {'ace': '에이스', 'reg': '주전', 'bak': '백업', 'pen': '불펜'}
+BAT_SPLITS = (('ace', '에이스 선발'), ('reg', '주전 선발'), ('bak', '백업 선발'), ('pen', '불펜'))
+PIT_SPLITS = (('ace', '중심타자'), ('reg', '주전 타자'), ('bak', '백업 타자'))
+META_KEYS = ('vs', 'vs_lvl')                                                # 경기 줄의 설명 값 — 시즌 누적에서 뺀다
 
 BAT_KEYS = ('g', 'pa', 'ab', 'h', 'd', 't', 'hr', 'rbi', 'r', 'bb', 'hbp', 'so', 'sb', 'cs', 'e', 'def')
 PIT_KEYS = ('g', 'gs', 'w', 'l', 'qs', 'cg', 'sho', 'outs', 'h', 'r', 'er', 'bb', 'hbp', 'so', 'hr', 'bf', 'np')
@@ -150,13 +168,38 @@ def _binom(n: int, p: float, rng) -> int:
 
 
 # ───────────────────────────── 경기 시뮬레이션
+def _split(line, grade: str, o: str):
+    """상대 등급별 누적 — 타석·타수·안타·홈런·볼넷(사구 포함)·삼진."""
+    line[f'{grade}_pa'] += 1
+    if o in ('BB', 'HBP'):
+        line[f'{grade}_bb'] += 1
+        return
+    line[f'{grade}_ab'] += 1
+    if o in ('1B', '2B', '3B', 'HR'):
+        line[f'{grade}_h'] += 1
+    if o == 'HR':
+        line[f'{grade}_hr'] += 1
+    if o == 'SO':
+        line[f'{grade}_so'] += 1
+
+
+def opp_levels(league: int) -> dict:
+    """리그별 상대 등급의 능력 수치 — 화면 안내용."""
+    return {g: round(LEVEL[league] + off) for g, off in OPP_OFFSET.items() if g != 'pen'}
+
+
 def batter_game(s: dict, position: str, lvl: float, rng) -> dict:
-    opp = lvl + rng.gauss(0, 4)
-    probs = batter_probs(s, opp)
-    ds = (float(s.get('speed', 25)) - opp) / 10
+    grade = rng.choices([g for g, _w in STARTER_GRADES], weights=[w for _g, w in STARTER_GRADES])[0]
+    starter = lvl + OPP_OFFSET[grade] + rng.gauss(0, 2)
+    pen = lvl + rng.gauss(0, 2)
+    probs = {'sp': batter_probs(s, starter), 'pen': batter_probs(s, pen)}
     line = Counter(g=1)
-    for _ in range(4 if rng.random() < 0.6 else 5):
-        o = _pick(probs, rng)
+    for i in range(4 if rng.random() < 0.6 else 5):
+        who = grade if i < STARTER_PA[grade] else 'pen'
+        opp = pen if who == 'pen' else starter
+        ds = (float(s.get('speed', 25)) - opp) / 10
+        o = _pick(probs['pen' if who == 'pen' else 'sp'], rng)
+        _split(line, who, o)
         on = rng.choices((0, 1, 2, 3), weights=(55, 30, 12, 3))[0]        # 그 타석의 주자 수
         line['pa'] += 1
         if o in ('BB', 'HBP'):
@@ -190,7 +233,7 @@ def batter_game(s: dict, position: str, lvl: float, rng) -> dict:
             score = {'2B': .45, '3B': .7}.get(o, .30 + .08 * _sig(ds))
             line['r'] += rng.random() < score
     if position != 'DH':
-        d = (float(s.get('defense', 25)) - opp) / 12
+        d = (float(s.get('defense', 25)) - lvl) / 12
         line['e'] += rng.random() < ERR_BASE.get(position, .04) * (1.6 - _sig(d))
         # 수비 득점(경기당): 수비 능력(144경기 ≈ ±10점) + 실책을 평균보다 덜 하면 더한다(실책 1개 = 0.4점)
         line['def'] = round((_sig(d) - 0.5) * 2 * 0.07 + 0.4 * (ERR_BASE.get(position, .04) * 1.1 - line['e']), 4)
@@ -198,11 +241,20 @@ def batter_game(s: dict, position: str, lvl: float, rng) -> dict:
     opp_runs = _poisson(4.3, rng)
     if team == opp_runs:
         team, opp_runs = (team + 1, opp_runs) if rng.random() < 0.5 else (team, opp_runs + 1)
-    return {'line': dict(line), 'team_runs': team, 'opp_runs': opp_runs, 'summary': bat_summary(line)}
+    out = dict(line, vs=grade, vs_lvl=round(starter))
+    return {'line': out, 'team_runs': team, 'opp_runs': opp_runs, 'summary': bat_summary(line)}
 
 
 def pitcher_game(s: dict, lvl: float, rng) -> dict:
-    opp = lvl + rng.gauss(0, 4)
+    form, _label, form_off, _w = rng.choices(LINEUP_FORMS, weights=[f[3] for f in LINEUP_FORMS])[0]
+    base = lvl + form_off + rng.gauss(0, 2)                               # 오늘 상대 라인업의 바탕 수준
+    cache = {}
+
+    def probs_for(grade, risp):
+        if (grade, risp) not in cache:
+            cache[(grade, risp)] = pitcher_probs(s, base + OPP_OFFSET[grade], risp=risp)
+        return cache[(grade, risp)]
+
     limit = 12 + 0.22 * float(s.get('stamina', 25)) + rng.gauss(0, 3)     # 상대 타자 수(체력 64 ≈ 6이닝)
     t = Counter(g=1, gs=1)
     bases = [False, False, False]
@@ -212,7 +264,9 @@ def pitcher_game(s: dict, lvl: float, rng) -> dict:
             break                                                         # 이닝 시작 때 교체
         if t['r'] >= 7 or t['bf'] >= limit + 6:
             break                                                         # 이닝 중 강판
-        o = _pick(pitcher_probs(s, opp, risp=bases[1] or bases[2]), rng)
+        grade = LINEUP[t['bf'] % 9]                                       # 1번 타자부터 차례로
+        o = _pick(probs_for(grade, bool(bases[1] or bases[2])), rng)
+        _split(t, grade, o)
         t['bf'] += 1
         t['np'] += {'SO': 5, 'BB': 5.5, 'HBP': 3}.get(o, 3.4)
         runs = 0
@@ -274,7 +328,8 @@ def pitcher_game(s: dict, lvl: float, rng) -> dict:
     t['qs'] = int(t['outs'] >= 18 and t['er'] <= 3)
     t['cg'] = int(t['outs'] >= 27)
     t['sho'] = int(t['cg'] and t['r'] == 0)
-    return {'line': dict(t), 'team_runs': team, 'opp_runs': opp_runs, 'summary': pit_summary(t)}
+    out = dict(t, vs=form, vs_lvl=round(base))
+    return {'line': out, 'team_runs': team, 'opp_runs': opp_runs, 'summary': pit_summary(t)}
 
 
 # ───────────────────────────── 표기
@@ -313,8 +368,22 @@ def pit_summary(t) -> str:
 def add(totals: dict, line: dict) -> dict:
     out = dict(totals)
     for k, v in line.items():
+        if k in META_KEYS or not isinstance(v, (int, float)):
+            continue
         out[k] = round(out.get(k, 0) + v, 4) if isinstance(v, float) else out.get(k, 0) + v
     return out
+
+
+def splits(role: str, t: dict, league: int | None = None) -> list:
+    """상대 등급별 성적 — 타자는 상대 선발 등급·불펜, 투수는 상대 타자 등급. 투수의 타율은 피안타율."""
+    rows = []
+    for code, label in (PIT_SPLITS if role == 'pitcher' else BAT_SPLITS):
+        g = {k: t.get(f'{code}_{k}', 0) for k in ('pa', 'ab', 'h', 'hr', 'bb', 'so')}
+        rows.append(dict(g, code=code, label=label,
+                         avg_text=rate(g['h'] / g['ab']) if g['ab'] else '-',
+                         obp_text=rate((g['h'] + g['bb']) / g['pa']) if g['pa'] else '-',
+                         level=round(LEVEL[league] + OPP_OFFSET[code]) if league is not None else None))
+    return rows
 
 
 def batting(t: dict) -> dict:
@@ -627,8 +696,18 @@ def team_short(code: str) -> str:
     return R.TEAM.get(code, {}).get('name', code).split()[0]
 
 
-def game_view(g, my_team: str) -> dict:
+def vs_label(role: str, vs: str) -> str:
+    if role == 'pitcher':
+        return next((label for key, label, _o, _w in LINEUP_FORMS if key == vs), '')
+    return f"{GRADE_LABEL[vs]} 선발" if vs in GRADE_LABEL else ''
+
+
+def game_view(g, my_team: str, role: str = 'batter') -> dict:
+    vs = g.line.get('vs', '')
     return {'no': g.no, 'day': g.day, 'league': LEAGUE.get(g.league, ''), 'me': team_short(my_team),
+            'vs': vs, 'vs_label': vs_label(role, vs), 'vs_lvl': g.line.get('vs_lvl'),
+            'vs_short': GRADE_LABEL.get(vs, '') if role != 'pitcher' else vs_label(role, vs),
+            'splits': [x for x in splits(role, g.line) if x['pa']] if role == 'pitcher' else [],
             'opp': team_short(g.opponent), 'opp_code': g.opponent, 'mine': g.team_runs, 'theirs': g.opp_runs,
             'win': g.team_runs > g.opp_runs, 'summary': g.summary, 'line': g.line, 'home': g.home,
             'ip': ip_text(g.line.get('outs', 0))}
@@ -642,6 +721,7 @@ def season_lines(stats, season=None) -> list:
         need = (QUAL_IP if r.role == 'pitcher' else QUAL_PA) * tg
         have = r.totals.get('outs', 0) / 3 if r.role == 'pitcher' else r.totals.get('pa', 0)
         out.append({'s': r, 'v': line_view(r.role, r.totals), 'league': LEAGUE.get(r.league, ''),
+                    'splits': splits(r.role, r.totals, r.league),
                     'qual_need': int(math.ceil(need)), 'qual_have': int(have),
                     'qual_pct': round(min(100.0, have / need * 100), 1) if need else 0.0,
                     'qualified': bool(need) and have >= need})
@@ -661,13 +741,16 @@ def player_board(p, today: date | None = None) -> dict:
         lines = season_lines(rows, season)
     main = next((x for x in lines if x['s'].league == p.tier), lines[0] if lines else None)
     last_day = RookieGame.objects.filter(player=p).order_by('-day').values_list('day', flat=True).first()
-    games = [game_view(g, p.team) for g in RookieGame.objects.filter(player=p, day=last_day).order_by('no')] \
+    games = [game_view(g, p.team, p.role) for g in RookieGame.objects.filter(player=p, day=last_day).order_by('no')] \
         if last_day else []
     sim = season.simulated_through if season else None
     dnp = bool(sim and sim >= max(season.start, p.created_at.date()) and (not last_day or last_day < sim))
     trophies = list(RookieAward.objects.filter(player=p).select_related('season').order_by('-season__number', 'order'))
+    league = (RookieGame.objects.filter(player=p, day=last_day).values_list('league', flat=True).first()
+              if last_day else p.tier)
     return {'season': st, 'season_obj': season, 'lines': lines, 'main_line': main, 'games': games,
-            'games_day': last_day, 'dnp': dnp, 'trophies': trophies, 'pos_label': POS_LABEL.get(p.position, '')}
+            'games_day': last_day, 'dnp': dnp, 'trophies': trophies, 'pos_label': POS_LABEL.get(p.position, ''),
+            'opp_levels': opp_levels(league if league is not None else p.tier)}
 
 
 def highlights(stat) -> list:

@@ -113,6 +113,8 @@ class SimulateDayTests(TestCase):
         st = RookieSeasonStat.objects.get(player=self.bat, league=2)
         self.assertEqual(st.totals['pa'], sum(g.line['pa'] for g in RookieGame.objects.filter(player=self.bat)))
         self.assertEqual(st.totals['g'], len(L.games_on(D1)))
+        self.assertNotIn('vs', st.totals)                                                        # 상대 등급은 경기 줄에만
+        self.assertEqual(sum(st.totals.get(f'{c}_pa', 0) for c in ('ace', 'reg', 'bak', 'pen')), st.totals['pa'])
         self.assertEqual(L.simulate_day(D1), 0)                                                  # 같은 날 두 번 치르지 않는다
         g = RookieGame.objects.filter(player=self.bat).first()
         self.assertNotEqual(g.opponent, 'lg')
@@ -270,3 +272,70 @@ class ScreenTests(TestCase):
         st = RookieSeasonStat.objects.get(name='은퇴선수')
         self.assertIsNone(st.player)
         self.assertFalse(RookieAward.objects.exists())
+
+
+class OpponentGradeTests(TestCase):
+    """상대가 에이스·주전·백업 중 누구였는지 경기마다 남고, 등급이 높을수록 실제로 더 어렵다."""
+
+    def test_batter_game_records_starter_grade_and_splits(self):
+        rng = random.Random(11)
+        s = {k: 64.0 for k in ('contact', 'power', 'eye', 'speed', 'defense')}
+        seen = set()
+        for _ in range(200):
+            r = L.batter_game(s, 'SS', 64.0, rng)
+            line = r['line']
+            seen.add(line['vs'])
+            self.assertEqual(sum(line.get(f'{c}_pa', 0) for c in ('ace', 'reg', 'bak', 'pen')), line['pa'])
+            self.assertLessEqual(line.get(f"{line['vs']}_pa", 0), L.STARTER_PA[line['vs']])
+            self.assertAlmostEqual(line['vs_lvl'], 64 + L.OPP_OFFSET[line['vs']], delta=8)
+        self.assertEqual(seen, {'ace', 'reg', 'bak'})
+
+    def test_pitcher_game_faces_lineup_by_slot(self):
+        rng = random.Random(12)
+        s = {k: 64.0 for k in ('velocity', 'control', 'breaking', 'stamina', 'mental')}
+        forms = set()
+        for _ in range(100):
+            line = L.pitcher_game(s, 64.0, rng)['line']
+            forms.add(line['vs'])
+            self.assertEqual(sum(line.get(f'{c}_pa', 0) for c in ('ace', 'reg', 'bak')), line['bf'])
+            self.assertEqual(line.get('reg_pa', 0) >= line.get('bak_pa', 0) - 3, True)
+        self.assertEqual(forms, {'strong', 'normal', 'weak'})
+        self.assertNotIn('vs', L.add({}, line))
+
+    def test_aces_are_harder_than_backups(self):
+        rng = random.Random(13)
+        bat = {k: 64.0 for k in ('contact', 'power', 'eye', 'speed', 'defense')}
+        pit = {k: 64.0 for k in ('velocity', 'control', 'breaking', 'stamina', 'mental')}
+        tb, tp = {}, {}
+        for _ in range(12 * 144):                                       # 백업 선발 타석이 적어(25%×2타석) 표본을 넉넉히
+            tb = L.add(tb, L.batter_game(bat, 'SS', 64.0, rng)['line'])
+        for _ in range(10 * 28):
+            tp = L.add(tp, L.pitcher_game(pit, 64.0, rng)['line'])
+        b = {x['code']: x for x in L.splits('batter', tb, 2)}
+        p = {x['code']: x for x in L.splits('pitcher', tp, 2)}
+        avg = lambda x: x['h'] / x['ab']  # noqa: E731
+        self.assertLess(avg(b['ace']) + .03, avg(b['reg']))
+        self.assertLess(avg(b['reg']) + .015, avg(b['bak']))
+        self.assertGreater(avg(p['ace']), avg(p['reg']) + .015)         # 투수에겐 중심타자가 가장 잘 친다
+        self.assertGreater(avg(p['ace']), avg(p['bak']) + .035)         # (투수 모형은 타자보다 민감도가 낮다)
+        self.assertEqual((b['ace']['level'], b['reg']['level'], b['bak']['level']), (76, 64, 54))
+
+    def test_screens_show_grades(self):
+        bat = player('등급타자', 'batter', 'lg', 'SS')
+        pit = player('등급투수', 'pitcher', 'kia', 'SP')
+        for p in (bat, pit):
+            active_on(p, D1)
+        L.simulate_day(D1, rng=random.Random(4))
+        with mock.patch('django.utils.timezone.localdate', return_value=D1 + timedelta(days=1)):
+            self.client.force_login(bat.user)
+            r = self.client.get('/rookie/', HTTP_USER_AGENT=PC)
+            self.assertContains(r, '선발, 상대 능력')                   # 전광판 칩(주전 64) — 풀이는 title 에
+            self.assertContains(r, 'class="rk-vs is-')
+            self.assertContains(r, '상대 등급별 성적')
+            self.assertContains(r, '1군 상대 능력: 에이스 76, 주전 64, 백업 54')
+            self.client.force_login(pit.user)
+            r = self.client.get('/rookie/', HTTP_USER_AGENT=MOBILE)
+            self.assertContains(r, '중심타자')
+            self.assertContains(r, 'rk-box-split')
+            r = self.client.get(f'/rookie/p/{bat.pk}/', HTTP_USER_AGENT=PC)
+            self.assertContains(r, '에이스 선발')

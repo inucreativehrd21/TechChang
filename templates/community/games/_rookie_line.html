@@ -30,4 +30,30 @@
     <p class="rk-line-sub">출루율 {{ v.obp_text }} · 장타율 {{ v.slg_text }} · 안타 {{ v.h|default:0 }} · 2루타 {{ v.d|default:0 }} · 득점 {{ v.r|default:0 }} · 도루 {{ v.sb|default:0 }} · 볼넷 {{ v.bb|default:0 }} · 삼진 {{ v.so|default:0 }} · 실책 {{ v.e|default:0 }}</p>
     {% endif %}
     {% endwith %}
+    {% if x.splits %}
+    <div class="rk-split">
+        <h3>상대 등급별 성적</h3>
+        <div class="rk-split-wrap">
+        <table class="rk-split-table">
+            <thead>
+                <tr>
+                    <th scope="col">상대</th><th scope="col">상대 능력</th><th scope="col">타석</th>
+                    {% if role == 'pitcher' %}<th scope="col">피안타율</th><th scope="col">피출루율</th><th scope="col">피홈런</th><th scope="col">볼넷</th><th scope="col">탈삼진</th>
+                    {% else %}<th scope="col">타율</th><th scope="col">출루율</th><th scope="col">홈런</th><th scope="col">볼넷</th><th scope="col">삼진</th>{% endif %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for r in x.splits %}
+                <tr class="is-{{ r.code }}">
+                    <th scope="row"><span class="rk-grade is-{{ r.code }}">{{ r.label }}</span></th>
+                    <td>{{ r.level }}</td><td>{{ r.pa }}</td><td class="is-key">{{ r.avg_text }}</td><td>{{ r.obp_text }}</td>
+                    <td>{{ r.hr }}</td><td>{{ r.bb }}</td><td>{{ r.so }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        </div>
+        <p class="rk-split-note">{% if role == 'pitcher' %}중심타자는 3·4·5번, 주전은 1·2·6번, 백업은 7·8·9번 타자입니다. 상대 라인업은 경기마다 강타선·정상·백업 위주로 바뀝니다.{% else %}선발은 에이스 20%, 주전 55%, 백업 25% 확률로 나옵니다. 선발과 3타석(백업 선발은 2타석)을 치른 뒤 불펜과 붙습니다.{% endif %}</p>
+    </div>
+    {% endif %}
 </section>
