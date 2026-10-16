@@ -466,11 +466,17 @@ OVERFLOW_JS = """() => {
     const kids = [...frame.children].filter(k => k.offsetHeight > 0);
     const foot = kids.find(k => k.classList.contains('bottom'));
     const body = kids.filter(k => k !== foot);
+    // 남는 높이를 채우는 블록(flex-grow)은 상자 끝이 아니라 안쪽 내용의 끝으로 잰다 — 채우기만 한 빈칸은 겹침이 아니다
+    const end = el => {
+      if (parseFloat(getComputedStyle(el).flexGrow) > 0 && el.children.length)
+        return Math.max(...[...el.children].map(k => k.getBoundingClientRect().bottom));
+      return el.getBoundingClientRect().bottom;
+    };
     let bad = false;
     for (let i = 1; i < body.length; i++) {
-      if (body[i].getBoundingClientRect().top < body[i - 1].getBoundingClientRect().bottom + 12) bad = true;
+      if (body[i].getBoundingClientRect().top < end(body[i - 1]) + 12) bad = true;
     }
-    if (foot && body.length && body[body.length - 1].getBoundingClientRect().bottom > foot.getBoundingClientRect().top - 12) bad = true;
+    if (foot && body.length && end(body[body.length - 1]) > foot.getBoundingClientRect().top - 12) bad = true;
     const fr = frame.getBoundingClientRect();
     if (frame.scrollHeight > frame.clientHeight + 2 || body.some(k => k.getBoundingClientRect().bottom > fr.bottom)) bad = true;
     if (bad) out.push('layout:' + card.id);
