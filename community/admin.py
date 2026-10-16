@@ -105,3 +105,23 @@ admin.site.register(NumberBaseballGame, NumberBaseballGameAdmin)
 admin.site.register(NumberBaseballAttempt, NumberBaseballAttemptAdmin)
 admin.site.register(GuestBook, GuestBookAdmin)
 admin.site.register(Game2048, Game2048Admin)
+
+# 야구선수 키우기 (규칙 community/rookie.py)
+from .models import RookieLog, RookiePlayer  # noqa: E402
+
+
+class RookieLogInline(admin.TabularInline):
+    model = RookieLog
+    extra = 0
+    fields = ('day', 'kind', 'source', 'tp', 'text')
+    readonly_fields = fields
+    ordering = ('-created_at',)
+    max_num = 0
+
+
+@admin.register(RookiePlayer)
+class RookiePlayerAdmin(admin.ModelAdmin):
+    list_display = ('name', 'user', 'team', 'role', 'tier', 'ovr', 'tp', 'last_active')
+    list_filter = ('tier', 'role', 'team')
+    search_fields = ('name', 'user__username')
+    inlines = [RookieLogInline]

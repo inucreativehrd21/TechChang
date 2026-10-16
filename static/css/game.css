@@ -55,6 +55,7 @@
     background: var(--gm-bg-mute);
 }
 .gm-pill.is-hard { color: var(--gm-fail); background: var(--gm-fail-wash); }
+.gm-pill.gm-new { padding: 1px 8px; font-size: 0.66rem; letter-spacing: .04em; color: #fff; background: var(--gm-accent); }
 
 /* 상태 수치 */
 .gm-stats { display: flex; gap: 8px; margin-bottom: 12px; }

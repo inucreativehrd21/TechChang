@@ -1,0 +1,33 @@
+{# 시즌 기록 한 줄(내 선수·선수 페이지). 맥락: x = rookie_league.season_lines 의 항목, role, season_no #}
+<section class="rk-line" aria-label="시즌 기록">
+    <div class="rk-line-head">
+        <h2>시즌 {{ x.s.season.number }} {{ x.league }} 기록</h2>
+        <p class="rk-qual{% if x.qualified %} is-ok{% endif %}">
+            <span>{% if role == 'pitcher' %}규정이닝{% else %}규정타석{% endif %} {{ x.qual_have }}/{{ x.qual_need }}</span>
+            <i aria-hidden="true"><i style="width: {{ x.qual_pct }}%"></i></i>
+        </p>
+    </div>
+    {% with v=x.v %}
+    {% if role == 'pitcher' %}
+    <dl class="rk-line-main">
+        <div><dt>경기</dt><dd>{{ v.g|default:0 }}</dd></div>
+        <div><dt>승패</dt><dd>{{ v.w|default:0 }}<small>-</small>{{ v.l|default:0 }}</dd></div>
+        <div><dt>평균자책점</dt><dd>{{ v.era_text }}</dd></div>
+        <div><dt>이닝</dt><dd>{{ v.ip_text }}</dd></div>
+        <div><dt>탈삼진</dt><dd>{{ v.so|default:0 }}</dd></div>
+        <div class="is-war"><dt>WAR</dt><dd>{{ x.s.war }}</dd></div>
+    </dl>
+    <p class="rk-line-sub">WHIP {{ v.whip_text }} · FIP {{ v.fip_text }} · QS {{ v.qs|default:0 }} · 피안타 {{ v.h|default:0 }} · 볼넷 {{ v.bb|default:0 }} · 피홈런 {{ v.hr|default:0 }} · 9이닝당 탈삼진 {{ v.k9|floatformat:1 }}</p>
+    {% else %}
+    <dl class="rk-line-main">
+        <div><dt>경기</dt><dd>{{ v.g|default:0 }}</dd></div>
+        <div><dt>타율</dt><dd>{{ v.avg_text }}</dd></div>
+        <div><dt>홈런</dt><dd>{{ v.hr|default:0 }}</dd></div>
+        <div><dt>타점</dt><dd>{{ v.rbi|default:0 }}</dd></div>
+        <div><dt>OPS</dt><dd>{{ v.ops_text }}</dd></div>
+        <div class="is-war"><dt>WAR</dt><dd>{{ x.s.war }}</dd></div>
+    </dl>
+    <p class="rk-line-sub">출루율 {{ v.obp_text }} · 장타율 {{ v.slg_text }} · 안타 {{ v.h|default:0 }} · 2루타 {{ v.d|default:0 }} · 득점 {{ v.r|default:0 }} · 도루 {{ v.sb|default:0 }} · 볼넷 {{ v.bb|default:0 }} · 삼진 {{ v.so|default:0 }} · 실책 {{ v.e|default:0 }}</p>
+    {% endif %}
+    {% endwith %}
+</section>

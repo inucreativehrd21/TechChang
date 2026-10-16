@@ -1,0 +1,46 @@
+{# 선수 카드 — 내 선수·선수 페이지 공용. 맥락: p, team, role_label, pos_label, tier_name, title, (rank, trophies, next, demote_at, owner) #}
+<section class="rk-card" style="--team: {{ team.color|default:'#4f46e5' }}" aria-label="선수 카드">
+    <div class="rk-card-top">
+        <span class="rk-team"><i class="rk-dot" aria-hidden="true"></i>{{ team.name }}</span>
+        <span class="rk-tier is-t{{ p.tier }}">{{ tier_name }}{% if title %} {{ title }}{% endif %}</span>
+    </div>
+    <div class="rk-card-main">
+        <span class="rk-number" aria-hidden="true">{{ p.number }}</span>
+        <div class="rk-who">
+            <b class="rk-name">{{ p.name }}</b>
+            <span class="rk-meta">{{ pos_label|default:role_label }}{% if p.focus %}, 주특기 {{ focus_label }}{% endif %}</span>
+            {% if rank %}<span class="rk-meta">OVR 리그 {{ rank }}위</span>{% endif %}
+        </div>
+        <div class="rk-ovr"><small>OVR</small><b>{{ p.ovr|floatformat:1 }}</b></div>
+    </div>
+    {% if trophies %}
+    <ul class="rk-trophies" aria-label="수상">
+        {% for a in trophies|slice:':6' %}
+        <li class="is-{{ a.kind }}" title="시즌 {{ a.season.number }} {{ a.label }}">
+            {% include 'community/games/_rookie_glove.html' %}<span>S{{ a.season.number }} {{ a.label }}</span>
+        </li>
+        {% endfor %}
+    </ul>
+    {% endif %}
+    {% if owner %}
+        {% if next %}
+        <div class="rk-next">
+            <div class="rk-next-label"><span>{{ next.name }} 승격 심사까지</span><b>{% if next.ready %}도전 가능{% else %}{{ next.left|floatformat:1 }} 남음{% endif %}</b></div>
+            <div class="rk-bar is-next"><i style="width: {{ next.pct }}%"></i></div>
+            {% if next.ready %}
+                {% if next.tried_today %}
+                <p class="rk-card-note">오늘 심사는 끝났습니다. 내일 다시 도전하세요.</p>
+                {% else %}
+                <form method="post" action="{% url 'community:rookie_test' %}">
+                    {% csrf_token %}
+                    <button type="submit" class="gm-btn is-primary is-block rk-mt">{{ next.name }} 승격 심사 받기</button>
+                </form>
+                {% endif %}
+            {% endif %}
+            {% if p.tier %}<p class="rk-card-note">OVR {{ demote_at|floatformat:0 }} 아래로 떨어지면 한 단계 내려갑니다.</p>{% endif %}
+        </div>
+        {% else %}
+        <p class="rk-card-note">OVR {{ demote_at|floatformat:0 }} 아래로 떨어지면 2군으로 내려갑니다.</p>
+        {% endif %}
+    {% endif %}
+</section>

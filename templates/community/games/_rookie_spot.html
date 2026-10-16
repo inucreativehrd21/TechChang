@@ -1,0 +1,11 @@
+{% load rookie_tags %}{# 다이아몬드 위 수비 위치 하나. 맥락: spot(pos, label), a(수상자 또는 None), slot(외야 1~3) #}
+<div class="rk-spot is-{{ spot.pos|lower }}{{ slot }}{% if not a %} is-vacant{% endif %}"{% if a %} style="--team: {{ a.team|team_color }}"{% endif %}>
+    <span class="rk-spot-pos">{{ spot.label }}</span>
+    {% if a %}
+    <b>{% if a.player_id %}<a href="{% url 'community:rookie_player' a.player_id %}">{{ a.name }}</a>{% else %}{{ a.name }}{% endif %}</b>
+    <span class="rk-spot-team"><i class="rk-dot" aria-hidden="true"></i>{{ a.team|team_short }}</span>
+    <span class="rk-spot-val">{{ a.value }}</span>
+    {% else %}
+    <span class="rk-spot-none">수상자 없음</span>
+    {% endif %}
+</div>

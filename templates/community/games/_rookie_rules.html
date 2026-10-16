@@ -1,0 +1,26 @@
+{# 야구선수 키우기 규칙 안내 — 숫자는 모두 community/rookie.py·rookie_league.py 에서 온다 #}
+<section class="rk-panel rk-rules">
+    <h2>어떻게 키우나요</h2>
+    <ol class="rk-rule-list">
+        <li>
+            <b>사이트 활동으로 훈련 포인트(TP)를 법니다</b>
+            <span>{% for key, e in earn.items %}{{ e.label }} +{{ e.tp }}{% if e.cap > 1 %}(하루 {{ e.cap }}번){% endif %}{% if not forloop.last %}, {% endif %}{% endfor %}. 하루 최대 {{ daily_max }} TP, 같은 칼럼은 한 번만, 댓글은 10자 이상이어야 합니다.</span>
+        </li>
+        <li>
+            <b>TP로 훈련합니다</b>
+            <span>1회 {{ cost }} TP. 능력치가 낮을 땐 쑥쑥, 높을수록 조금씩 오릅니다. 하루 {{ fatigue_at }}회를 넘기면 피로로 효율이 절반이라 몰아서보다 매일이 강합니다.</span>
+        </li>
+        <li>
+            <b>매일 밤 경기를 치릅니다</b>
+            <span>한 시즌은 4주, 144경기(하루 5~6경기)입니다. 경기일을 포함해 최근 3일 안에 활동해야 엔트리에 듭니다. 결장이 잦으면 규정타석·규정이닝을 못 채워 타이틀 경쟁에서 빠집니다.</span>
+        </li>
+        <li>
+            <b>쉬면 감각이 떨어집니다</b>
+            <span>능력치는 매일 조금씩 빠지고(높을수록 많이), 활동이 이틀 넘게 끊기면 날마다 더 크게 빠집니다. 출석 체크 한 번이면 멈춥니다.</span>
+        </li>
+        <li>
+            <b>승격하고, 시즌이 끝나면 시상합니다</b>
+            <span>{% for t in tiers %}{% if t.at %}{{ t.name }} OVR {{ t.at|floatformat:0 }}{% if not forloop.last %}, {% endif %}{% endif %}{% endfor %}부터 승격 심사(청백전 3경기 중 2경기 합격). 1군 선수 가운데 MVP, 신인왕, 위치별 골든글러브, 개인 타이틀을 뽑아 기록실에 남깁니다.</span>
+        </li>
+    </ol>
+</section>

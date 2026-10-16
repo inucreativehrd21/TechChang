@@ -1,0 +1,182 @@
+{# 야구선수 키우기 내 선수 (PC·모바일 공용). mode = intro(비로그인) / create(선수 없음) / play — rookie_views.rookie_home #}
+<div class="gm rk">
+<div class="gm-wrap is-wide">
+    {% include 'community/games/_rookie_top.html' %}
+
+    {% if mode == 'play' %}
+        {% if test %}
+        <section class="rk-board rk-test {% if test.passed %}is-pass{% endif %}" aria-live="polite" aria-label="승격 심사 결과">
+            <header class="rk-board-head"><span>{{ test.tier_name }} 승격 심사 · 청백전 {{ test.total }}경기</span><span>{{ test.won }}경기 합격</span></header>
+            <p class="rk-test-verdict">{% if test.passed %}{{ test.tier_name }} 승격{% else %}탈락, 내일 다시{% endif %}</p>
+            <ol class="rk-board-rows">
+                {% for g in test.games %}
+                <li class="{% if g.ok %}is-win{% endif %}">
+                    <span class="rk-gno">{{ g.no }}</span>
+                    <span class="rk-gsum">{{ g.line }}</span>
+                    <span class="rk-wl">{% if g.ok %}합격{% else %}불합격{% endif %}</span>
+                </li>
+                {% endfor %}
+            </ol>
+        </section>
+        {% endif %}
+        <div id="rk-play">{% include 'community/games/_rookie_play.html' %}</div>
+        <div class="rk-toast" id="rk-toast" role="status" aria-live="polite" hidden></div>
+
+    {% elif mode == 'create' %}
+        <form class="rk-create" method="post" action="{% url 'community:rookie_create' %}">
+            {% csrf_token %}
+            <section class="rk-panel">
+                <h2>투수인가요, 타자인가요</h2>
+                <div class="rk-roles">
+                    {% for key, role in roles.items %}
+                    <label class="rk-role">
+                        <input type="radio" name="role" value="{{ key }}" {% if forloop.first %}checked{% endif %} required>
+                        <span class="rk-role-box">
+                            <b>{{ role.label }}</b>
+                            <small>{% for k, label, w in role.stats %}{{ label }}{% if not forloop.last %}, {% endif %}{% endfor %}</small>
+                            <small>{% if key == 'pitcher' %}선발 로테이션으로 하루 한 경기 등판{% else %}하루 5~6경기 모두 출장{% endif %}</small>
+                        </span>
+                    </label>
+                    {% endfor %}
+                </div>
+                <fieldset class="rk-focus" data-role="batter">
+                    <legend>수비 위치 <small>골든글러브는 위치별로 뽑습니다</small></legend>
+                    <div class="rk-chips">
+                        {% for code, label in positions %}
+                        <label class="rk-chip"><input type="radio" name="position" value="{{ code }}" {% if code == 'SS' %}checked{% endif %}><span>{{ label }}</span></label>
+                        {% endfor %}
+                    </div>
+                </fieldset>
+                {% for key, role in roles.items %}
+                <fieldset class="rk-focus" data-role="{{ key }}">
+                    <legend>주특기 <small>이 능력은 훈련 효과가 {{ focus_bonus }}% 더 큽니다</small></legend>
+                    <div class="rk-chips">
+                        {% for k, label, w in role.stats %}
+                        <label class="rk-chip"><input type="radio" name="focus_{{ key }}" value="{{ k }}" {% if forloop.first %}checked{% endif %}><span>{{ label }}</span></label>
+                        {% endfor %}
+                    </div>
+                </fieldset>
+                {% endfor %}
+            </section>
+
+            <section class="rk-panel">
+                <h2>응원 팀</h2>
+                <div class="rk-teams">
+                    {% for t in teams %}
+                    <label class="rk-teamopt" style="--team: {{ t.color }}">
+                        <input type="radio" name="team" value="{{ t.code }}" required>
+                        <span><i class="rk-dot" aria-hidden="true"></i>{{ t.name }}</span>
+                    </label>
+                    {% endfor %}
+                </div>
+                <p class="rk-fine">구단명은 응원 팀 표시용이며 KBO와 각 구단과는 관계없습니다.</p>
+            </section>
+
+            <section class="rk-panel">
+                <h2>이름과 등번호</h2>
+                <div class="rk-fields">
+                    <label class="rk-field"><span>이름</span><input type="text" name="name" value="{{ default_name }}" maxlength="12" required></label>
+                    <label class="rk-field is-num"><span>등번호</span><input type="number" name="number" value="0" min="0" max="99" inputmode="numeric"></label>
+                </div>
+                <button type="submit" class="gm-btn is-primary is-block rk-mt">육성군 입단하기 (입단 보너스 {{ welcome }} TP)</button>
+            </section>
+        </form>
+        {% include 'community/games/_rookie_rules.html' %}
+
+    {% else %}
+        <section class="rk-panel rk-intro">
+            <h2>내 선수를 1군까지</h2>
+            <p>투수나 타자를 골라 응원 팀 육성군에 입단하고, 칼럼 읽기와 댓글, 출석 체크로 번 훈련 포인트로 능력치를 올리세요. 매일 밤 경기를 치르고, 시즌이 끝나면 골든글러브를 뽑습니다. 쉬면 감각이 떨어지고 경기에도 못 나갑니다.</p>
+            <div class="gm-actions">
+                <a rel="nofollow" class="gm-btn is-primary" href="{% url 'common:login' %}?next={{ request.get_full_path|urlencode }}">로그인하고 시작</a>
+                <a class="gm-btn" href="{% url 'common:signup' %}">회원가입</a>
+            </div>
+        </section>
+        {% include 'community/games/_rookie_rules.html' %}
+    {% endif %}
+</div>
+</div>
+
+<script nonce="{{ csp_nonce }}">
+(function () {
+    // 입단: 고른 포지션(투수·타자)의 항목만 보이게(자바스크립트가 없으면 모두 보인다)
+    var form = document.querySelector('.rk-create');
+    if (form) {
+        var sync = function () {
+            var role = (form.querySelector('input[name=role]:checked') || {}).value;
+            form.querySelectorAll('.rk-focus').forEach(function (fs) { fs.hidden = fs.dataset.role !== role; });
+        };
+        form.addEventListener('change', sync);
+        sync();
+    }
+
+    var play = document.getElementById('rk-play');
+    var toast = document.getElementById('rk-toast');
+    var calm = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    var timer;
+    function say(text, kind) {
+        if (!toast) return;
+        toast.textContent = text;
+        toast.className = 'rk-toast' + (kind ? ' is-' + kind : '');
+        toast.hidden = false;
+        clearTimeout(timer);
+        timer = setTimeout(function () { toast.hidden = true; }, 2600);
+    }
+    // 훈련 뒤 한 번의 연출: 훈련한 능력의 막대가 예전 길이에서 새 길이로 자라고 숫자가 올라간다
+    function grow(stat, before) {
+        var row = play.querySelector('.rk-stat[data-stat="' + stat + '"]');
+        if (!row || calm || !before) return;
+        var bar = row.querySelector('.rk-bar i'), val = row.querySelector('.rk-stat-val');
+        var to = bar.style.width, end = parseInt(val.textContent, 10), start = before.value;
+        bar.style.transition = 'none';
+        bar.style.width = before.width;
+        bar.getBoundingClientRect();
+        bar.style.transition = '';
+        bar.style.width = to;
+        row.classList.add('is-up');
+        var t0 = performance.now();
+        (function tick(t) {
+            var k = Math.min(1, (t - t0) / 600);
+            val.textContent = Math.round(start + (end - start) * k);
+            if (k < 1) requestAnimationFrame(tick);
+        })(t0);
+        setTimeout(function () { row.classList.remove('is-up'); }, 1200);
+    }
+    if (play) {
+        play.addEventListener('submit', function (e) {
+            var f = e.target.closest('.rk-train-form');
+            if (!f || !window.fetch) return;
+            e.preventDefault();
+            var stat = f.querySelector('[name=stat]').value;
+            var row = play.querySelector('.rk-stat[data-stat="' + stat + '"]');
+            var before = row && { width: row.querySelector('.rk-bar i').style.width,
+                                  value: parseInt(row.querySelector('.rk-stat-val').textContent, 10) };
+            var btns = play.querySelectorAll('.rk-train-form button');
+            btns.forEach(function (b) { b.disabled = true; });
+            fetch(f.action, { method: 'POST', body: new FormData(f), credentials: 'same-origin',
+                              headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+                .then(function (r) { return r.json(); })
+                .then(function (d) {
+                    if (d.ok) {
+                        play.innerHTML = d.html;
+                        grow(d.stat, before);
+                        say(d.toast, d.great ? 'great' : '');
+                    } else {
+                        say(d.message || '훈련하지 못했습니다.', 'warn');
+                        btns.forEach(function (b) { b.disabled = false; });
+                    }
+                })
+                .catch(function () { f.submit(); });
+        });
+        // 출석 체크: 출석 기록이 생기면 서버가 TP 를 준다 — 끝나면 새로고침
+        play.addEventListener('click', function (e) {
+            var a = e.target.closest('[data-rk-checkin]');
+            if (!a || !window.fetch) return;
+            e.preventDefault();
+            fetch(a.href, { credentials: 'same-origin', headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+                .then(function () { location.reload(); })
+                .catch(function () { location.href = a.href; });
+        });
+    }
+})();
+</script>

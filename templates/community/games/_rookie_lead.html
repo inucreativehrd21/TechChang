@@ -1,0 +1,19 @@
+{# 기록 리더 한 부문. 맥락: c = rookie_league.leaders 항목 #}
+{% load rookie_tags %}
+<article class="rk-lead">
+    <h3>{{ c.label }}</h3>
+    {% if c.rows %}
+    <ol>
+        {% for r in c.rows %}
+        <li class="{% if forloop.first %}is-first{% endif %}{% if r.s.player_id == my_id and my_id %} is-me{% endif %}">
+            {% if r.s.player_id %}<a href="{% url 'community:rookie_player' r.s.player_id %}">{% else %}<span>{% endif %}
+                <i class="rk-dot" style="--team: {{ r.s.team|team_color }}" aria-hidden="true"></i>{{ r.s.name }}
+            {% if r.s.player_id %}</a>{% else %}</span>{% endif %}
+            <b>{{ r.value }}</b>
+        </li>
+        {% endfor %}
+    </ol>
+    {% else %}
+    <p class="rk-empty">{% if c.qual %}아직 규정을 채운 선수가 없습니다{% else %}아직 기록이 없습니다{% endif %}</p>
+    {% endif %}
+</article>

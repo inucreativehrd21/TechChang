@@ -1,0 +1,51 @@
+{# 전광판 — 최근 경기일의 경기들. 맥락: season, games, games_day, dnp, p #}
+<section class="rk-board" aria-label="전광판">
+    <header class="rk-board-head">
+        {% if games %}
+        <span>{{ games_day|date:'n월 j일 l' }} · {{ games.0.league }}</span>
+        <span>{{ games|length }}경기</span>
+        {% else %}
+        <span>전광판</span><span>{% if season.phase == 'pre' %}시범 기간{% else %}시즌 {{ season.number }}{% endif %}</span>
+        {% endif %}
+    </header>
+    {% if games %}
+    <ol class="rk-board-rows{% if p.role == 'pitcher' %} is-pitcher{% endif %}">
+        {% for g in games %}
+        <li class="{% if g.win %}is-win{% endif %}">
+            <span class="rk-gno">{{ g.no }}</span>
+            <span class="rk-score"><b>{{ g.me }}</b><em>{{ g.mine }}</em><i>:</i><em>{{ g.theirs }}</em><span>{{ g.opp }}</span></span>
+            <span class="rk-wl">{% if g.win %}승{% else %}패{% endif %}</span>
+            <span class="rk-gsum">{{ g.summary }}{% if p.role == 'pitcher' and g.line.np %}, 투구수 {{ g.line.np }}{% endif %}</span>
+        </li>
+        {% endfor %}
+    </ol>
+    {% if p.role == 'pitcher' and games|length == 1 %}{% with b=games.0.line %}
+    <dl class="rk-box" aria-label="투구 기록">
+        <div><dt>이닝</dt><dd>{{ games.0.ip }}</dd></div>
+        <div><dt>피안타</dt><dd>{{ b.h|default:0 }}</dd></div>
+        <div><dt>실점</dt><dd>{{ b.r|default:0 }}</dd></div>
+        <div><dt>자책</dt><dd>{{ b.er|default:0 }}</dd></div>
+        <div><dt>볼넷</dt><dd>{{ b.bb|default:0 }}</dd></div>
+        <div><dt>탈삼진</dt><dd>{{ b.so|default:0 }}</dd></div>
+        <div><dt>피홈런</dt><dd>{{ b.hr|default:0 }}</dd></div>
+        <div><dt>투구수</dt><dd>{{ b.np|default:0 }}</dd></div>
+    </dl>
+    {% endwith %}{% endif %}
+    {% if dnp %}<p class="rk-board-note">어제는 결장했습니다. 경기일 포함 최근 3일 안에 활동해야 엔트리에 듭니다.</p>{% endif %}
+    {% elif season.phase == 'pre' %}
+    <div class="rk-board-empty">
+        <b>D-{{ season.dday }}</b>
+        <span>{{ season.opening|date:'n월 j일' }} 개막. 하루 5~6경기, 4주 동안 144경기를 치릅니다. 그때까지 훈련으로 몸을 만들어 두세요.</span>
+    </div>
+    {% elif dnp %}
+    <div class="rk-board-empty">
+        <b>결장</b>
+        <span>경기일 포함 최근 3일 안에 활동해야 엔트리에 듭니다. 출석 체크 한 번이면 오늘 밤 경기에 나섭니다.</span>
+    </div>
+    {% else %}
+    <div class="rk-board-empty">
+        <b>첫 경기 대기</b>
+        <span>오늘 밤 경기에 나섭니다. 결과는 내일 아침 이 전광판에 뜹니다.</span>
+    </div>
+    {% endif %}
+</section>

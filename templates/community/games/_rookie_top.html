@@ -1,0 +1,21 @@
+{# 야구선수 키우기 공용 머리 — 제목·시즌 상황·화면 메뉴. 맥락: section, season_now, h1(선택) #}
+<header class="rk-top">
+    <div class="rk-top-main">
+        <a class="gm-back" href="{% url 'community:games_index' %}">← 게임 목록</a>
+        <h1 class="rk-title">{{ h1|default:'야구선수 키우기' }}</h1>
+    </div>
+    <p class="rk-season">
+        {% if season_now.phase == 'pre' %}
+            <b>개막 D-{{ season_now.dday }}</b><span>시즌 1 · {{ season_now.opening|date:'n월 j일' }} 플레이볼</span>
+        {% else %}
+            <b>시즌 {{ season_now.number }}</b><span>{{ season_now.played }}/{{ season_now.total }}경기</span>
+            <i class="rk-season-bar" aria-hidden="true"><i style="width: {{ season_now.pct }}%"></i></i>
+        {% endif %}
+    </p>
+</header>
+<nav class="rk-nav" aria-label="야구선수 키우기 메뉴">
+    <a href="{% url 'community:rookie_home' %}" {% if section == 'home' %}aria-current="page"{% endif %}>내 선수</a>
+    <a href="{% url 'community:rookie_league' %}" {% if section == 'league' %}aria-current="page"{% endif %}>리그</a>
+    <a href="{% url 'community:rookie_awards' %}" {% if section == 'awards' %}aria-current="page"{% endif %}>시상식</a>
+    <a href="{% url 'community:rookie_records' %}" {% if section == 'records' %}aria-current="page"{% endif %}>기록실</a>
+</nav>

@@ -5,7 +5,7 @@
         <div class="gm-head-text">
             <span class="gm-eyebrow">Game Center</span>
             <h1 class="gm-title">게임</h1>
-            <p class="gm-sub">잠깐 머리 식히기 좋은 퍼즐 게임 {{ games_info|length }}종 · 지금까지 {{ recent_stats.total_games_played }}판이 플레이됐습니다.</p>
+            <p class="gm-sub">게임 {{ games_info|length }}종 · 퍼즐 게임은 지금까지 {{ recent_stats.total_games_played }}판이 플레이됐습니다.</p>
         </div>
     </div>
 
@@ -14,9 +14,9 @@
         <a class="gm-option" href="{% url game.url %}">
             <span class="gm-game-icon" aria-hidden="true">{{ game.icon }}</span>
             <div class="gm-option-main">
-                <div class="gm-option-name">{{ game.name }}</div>
+                <div class="gm-option-name">{{ game.name }}{% if game.is_new %} <span class="gm-pill gm-new">NEW</span>{% endif %}</div>
                 <p class="gm-option-desc">{{ game.description }}</p>
-                <span class="gm-option-meta">누적 {{ game.total_games }}판{% if game.active_games %} · 진행 중 {{ game.active_games }}판{% endif %}</span>
+                <span class="gm-option-meta">{% if game.meta %}{{ game.meta }}{% else %}누적 {{ game.total_games }}판{% if game.active_games %} · 진행 중 {{ game.active_games }}판{% endif %}{% endif %}</span>
             </div>
             <span class="gm-option-go" aria-hidden="true">→</span>
         </a>
@@ -26,6 +26,7 @@
     <div class="gm-card" style="margin-top:16px;">
         <h2 class="gm-h2">순위 보기</h2>
         <div class="gm-links">
+            <a class="gm-btn" href="{% url 'community:rookie_league' %}">야구선수</a>
             <a class="gm-btn" href="{% url 'community:baseball_leaderboard' %}">숫자야구</a>
             <a class="gm-btn" href="{% url 'community:game2048_leaderboard' %}">2048</a>
             <a class="gm-btn" href="{% url 'community:minesweeper_leaderboard' %}">지뢰찾기</a>

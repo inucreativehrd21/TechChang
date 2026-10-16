@@ -348,6 +348,13 @@ def detail(request, question_id):
         Question.objects.filter(pk=question_id).update(view_count=F('view_count') + 1)
         request.session[session_key] = now
 
+    # 야구선수 키우기 — 연구팀 칼럼을 처음 읽으면 훈련 포인트(같은 칼럼은 한 번, 하루 3편)
+    if request.user.is_authenticated and question.is_column:
+        from ..rookie import safe_award
+        got = safe_award(request.user, 'column', ref=str(question.id))
+        if got:
+            messages.info(request, f"⚾ 야구선수 훈련 포인트 +{got['tp']} TP — 칼럼 읽기 {got['count']}/{got['cap']}")
+
     # 답변 정렬 방식
     sort = request.GET.get('sort', 'recent')
 
@@ -556,14 +563,24 @@ def series_detail(request, slug):
 
 def games_index(request):
     """게임 대시보드 - 모든 게임 목록"""
-    from ..models import NumberBaseballGame, Game2048, GuestBook, MinesweeperGame
+    from ..models import NumberBaseballGame, Game2048, GuestBook, MinesweeperGame, RookiePlayer
     from django.db.models import F
     from ..game_visibility import visible
+    rookies = visible(RookiePlayer.objects.all(), 'user')
     bb, g2, ms = (visible(NumberBaseballGame.objects.all()), visible(Game2048.objects.all()),
                   visible(MinesweeperGame.objects.all()))      # 운영자(admin) 판은 세지 않는다
 
     # 각 게임의 통계 정보
     games_info = [
+        {
+            'name': '야구선수 키우기',
+            'title': 'Baseball Career',
+            'description': '투수·타자를 골라 응원 팀 육성군에서 1군까지. 칼럼 읽기·댓글·출석으로 훈련 포인트를 모아 키우세요. 쉬면 감각이 떨어집니다!',
+            'url': 'community:rookie_home',
+            'icon': '🧢',
+            'is_new': True,
+            'meta': f"선수 {rookies.count()}명 · 1군 {rookies.filter(tier=2).count()}명",
+        },
         {
             'name': '숫자야구',
             'title': 'Number Baseball',

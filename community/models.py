@@ -1133,3 +1133,138 @@ class DailyVisitor(models.Model):
         verbose_name = '일일 방문자'
         verbose_name_plural = '일일 방문자 통계'
         ordering = ['-date']
+
+
+class RookiePlayer(models.Model):
+    """야구선수 키우기 — 회원 한 명당 선수 한 명. 규칙·수식은 community/rookie.py."""
+    ROLE_CHOICES = [('pitcher', '투수'), ('batter', '타자')]
+    TIER_CHOICES = [(0, '육성군'), (1, '2군'), (2, '1군')]
+
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='rookie')
+    name = models.CharField(max_length=12, verbose_name='선수 이름')
+    number = models.PositiveSmallIntegerField(default=0, verbose_name='등번호')
+    role = models.CharField(max_length=8, choices=ROLE_CHOICES, verbose_name='포지션')
+    team = models.CharField(max_length=10, verbose_name='구단')       # rookie.TEAMS 코드
+    stats = models.JSONField(default=dict, verbose_name='능력치')     # {능력 키: 실수}
+    focus = models.CharField(max_length=10, blank=True, verbose_name='주특기')   # 성장 ×1.25 인 능력 키
+    position = models.CharField(max_length=3, blank=True, verbose_name='수비 위치')  # SP(투수) / C 1B 2B 3B SS OF DH
+    ovr = models.FloatField(default=25, db_index=True, verbose_name='종합(OVR)')
+    best_ovr = models.FloatField(default=25, verbose_name='최고 OVR')
+    tier = models.PositiveSmallIntegerField(choices=TIER_CHOICES, default=0, db_index=True, verbose_name='소속')
+    tp = models.PositiveIntegerField(default=0, verbose_name='보유 훈련 포인트')
+    tp_earned = models.PositiveIntegerField(default=0, verbose_name='누적 획득 TP')
+    last_active = models.DateField(verbose_name='마지막 활동일')          # TP 를 번 마지막 날
+    settled_through = models.DateField(verbose_name='감쇠 정산일')        # 이날까지 감쇠 반영
+    test_on = models.DateField(null=True, blank=True, verbose_name='마지막 승격 심사일')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = '야구선수 키우기 선수'
+        verbose_name_plural = '야구선수 키우기 선수'
+        ordering = ['-tier', '-ovr']
+
+    def __str__(self):
+        return f'{self.name}({self.user.username})'
+
+
+class RookieLog(models.Model):
+    """선수 기록 — TP 획득(일일 한도·중복 지급 방지 근거), 훈련, 감쇠, 승격·강등."""
+    KIND_CHOICES = [('start', '입단'), ('earn', '획득'), ('train', '훈련'), ('decay', '감쇠'),
+                    ('test', '승격 심사'), ('promote', '승격'), ('demote', '강등'), ('award', '수상')]
+
+    player = models.ForeignKey(RookiePlayer, on_delete=models.CASCADE, related_name='logs')
+    kind = models.CharField(max_length=8, choices=KIND_CHOICES)
+    source = models.CharField(max_length=10, blank=True)      # earn: checkin / column / comment
+    ref = models.CharField(max_length=40, blank=True)         # earn: 칼럼 id·댓글 id 등(같은 것으로 두 번 못 번다)
+    tp = models.IntegerField(default=0)
+    text = models.CharField(max_length=200)
+    day = models.DateField(db_index=True)                     # 로컬 날짜 — 일일 한도 집계
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = '야구선수 키우기 기록'
+        verbose_name_plural = '야구선수 키우기 기록'
+        ordering = ['-created_at', '-id']
+        indexes = [models.Index(fields=['player', 'kind', 'day']), models.Index(fields=['player', 'source', 'ref'])]
+
+
+class RookieSeason(models.Model):
+    """야구선수 키우기 시즌 — 4주 144경기. 규칙·시뮬레이션은 community/rookie_league.py."""
+    number = models.PositiveIntegerField(unique=True, verbose_name='시즌')
+    start = models.DateField()
+    end = models.DateField()
+    simulated_through = models.DateField(null=True, blank=True, verbose_name='경기 진행일')   # 이날 경기까지 끝남
+    closed = models.BooleanField(default=False, verbose_name='시상 완료')
+    closed_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        verbose_name = '야구선수 키우기 시즌'
+        verbose_name_plural = '야구선수 키우기 시즌'
+        ordering = ['-number']
+
+    def __str__(self):
+        return f'시즌 {self.number}'
+
+
+class RookieSeasonStat(models.Model):
+    """선수 한 명의 한 시즌·한 리그 누적 기록. 은퇴해도 기록실에 남도록 이름 등은 따로 적어 둔다."""
+    season = models.ForeignKey(RookieSeason, on_delete=models.CASCADE, related_name='stats')
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='rookie_stats')
+    player = models.ForeignKey(RookiePlayer, null=True, blank=True, on_delete=models.SET_NULL, related_name='season_stats')
+    league = models.PositiveSmallIntegerField(db_index=True)          # 0 3군 · 1 퓨처스 · 2 1군
+    name = models.CharField(max_length=12)
+    number = models.PositiveSmallIntegerField(default=0)
+    team = models.CharField(max_length=10)
+    role = models.CharField(max_length=8)
+    position = models.CharField(max_length=3, blank=True)
+    totals = models.JSONField(default=dict)                           # 누적 기록(키는 rookie_league.BAT_KEYS·PIT_KEYS)
+    war = models.FloatField(default=0, db_index=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = '야구선수 키우기 시즌 기록'
+        verbose_name_plural = '야구선수 키우기 시즌 기록'
+        unique_together = [('season', 'player', 'league')]
+
+
+class RookieGame(models.Model):
+    """경기 한 판의 내 기록(박스스코어 한 줄)."""
+    season = models.ForeignKey(RookieSeason, on_delete=models.CASCADE, related_name='games')
+    player = models.ForeignKey(RookiePlayer, on_delete=models.CASCADE, related_name='games')
+    league = models.PositiveSmallIntegerField()
+    day = models.DateField(db_index=True)
+    no = models.PositiveSmallIntegerField(verbose_name='시즌 경기 번호')
+    opponent = models.CharField(max_length=10)
+    home = models.BooleanField(default=True)
+    team_runs = models.PositiveSmallIntegerField(default=0)
+    opp_runs = models.PositiveSmallIntegerField(default=0)
+    line = models.JSONField(default=dict)
+    summary = models.CharField(max_length=80)
+
+    class Meta:
+        verbose_name = '야구선수 키우기 경기'
+        verbose_name_plural = '야구선수 키우기 경기'
+        ordering = ['-day', '-no']
+        indexes = [models.Index(fields=['player', 'day'])]
+
+
+class RookieAward(models.Model):
+    """시즌 시상 — MVP·신인왕·골든글러브·타이틀·퓨처스 MVP."""
+    season = models.ForeignKey(RookieSeason, on_delete=models.CASCADE, related_name='awards')
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='rookie_awards')
+    player = models.ForeignKey(RookiePlayer, null=True, blank=True, on_delete=models.SET_NULL, related_name='awards')
+    stat = models.ForeignKey(RookieSeasonStat, null=True, blank=True, on_delete=models.SET_NULL, related_name='awards')
+    kind = models.CharField(max_length=12)          # mvp / rookie / gg / title / futures
+    label = models.CharField(max_length=30)         # '골든글러브 유격수', '홈런왕' …
+    position = models.CharField(max_length=3, blank=True)
+    name = models.CharField(max_length=12)
+    team = models.CharField(max_length=10)
+    role = models.CharField(max_length=8)
+    value = models.CharField(max_length=80)         # '38홈런', 'WAR 6.2 · .341/.420/.612'
+    order = models.PositiveSmallIntegerField(default=0)
+
+    class Meta:
+        verbose_name = '야구선수 키우기 시상'
+        verbose_name_plural = '야구선수 키우기 시상'
+        ordering = ['season', 'order', 'id']

@@ -3,7 +3,7 @@ from django.urls import path, re_path
 
 # 실시간 게임 비활성화 (나중을 위해 파일은 유지)
 # from .views import wordchain_views, tictactoe_views
-from .views import map_views
+from .views import map_views, rookie_views
 from .views import base_views, question_views, answer_views, comment_views, profile_views, board_views, baseball_views, guestbook_views, game2048_views, minesweeper_views, portfolio_views
 
 app_name = 'community'
@@ -101,6 +101,18 @@ urlpatterns = [
     path('minesweeper/<int:game_id>/flag/', minesweeper_views.minesweeper_flag, name='minesweeper_flag'),
     path('minesweeper/<int:game_id>/update-time/', minesweeper_views.minesweeper_update_time, name='minesweeper_update_time'),
     path('minesweeper/leaderboard/', minesweeper_views.minesweeper_leaderboard, name='minesweeper_leaderboard'),
+
+    # rookie_views.py - 야구선수 키우기(사이트 활동으로 키우는 성장 게임, 규칙 community/rookie.py)
+    path('rookie/', rookie_views.rookie_home, name='rookie_home'),
+    path('rookie/create/', rookie_views.rookie_create, name='rookie_create'),
+    path('rookie/train/', rookie_views.rookie_train, name='rookie_train'),
+    path('rookie/test/', rookie_views.rookie_test, name='rookie_test'),
+    path('rookie/retire/', rookie_views.rookie_retire, name='rookie_retire'),
+    path('rookie/ranking/', rookie_views.rookie_ranking, name='rookie_ranking'),   # 예전 주소 → 리그
+    path('rookie/league/', rookie_views.rookie_league, name='rookie_league'),
+    path('rookie/awards/', rookie_views.rookie_awards, name='rookie_awards'),
+    path('rookie/records/', rookie_views.rookie_records, name='rookie_records'),
+    path('rookie/p/<int:pk>/', rookie_views.rookie_player, name='rookie_player'),
 
     # portfolio_views.py - 포트폴리오
     path('members/', portfolio_views.members_list, name='members_list'),
