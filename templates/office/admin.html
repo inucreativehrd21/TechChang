@@ -25,6 +25,7 @@
   .opt:has(input:checked), .opt.chosen { border-color: #4f46e5; background: rgba(79,70,229,.06); }
   .opt b { display: block; }
   .opt small { color: var(--text-secondary); }
+  .opt .rec { display: inline-block; font-size: 11px; font-weight: 700; color: #fff; background: #4f46e5; border-radius: 4px; padding: 1px 6px; vertical-align: 1px; }
   .decision .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
   .decision input[type=text] { flex: 1; min-width: 160px; border: 1px solid var(--border-color, #e5e7eb); border-radius: 8px; padding: 5px 8px; font-size: .85rem; }
   .decision button { border: 0; border-radius: 8px; padding: 6px 12px; font-weight: 600; font-size: .85rem; color: #fff; background: #111827; cursor: pointer; }
@@ -164,14 +165,14 @@
             {% if d.chosen_key %}
               {% for o in d.options %}
               <div class="opt {% if o.key == d.chosen_key %}chosen{% endif %}"><span>{% if o.key == d.chosen_key %}✓{% else %}&nbsp;{% endif %}</span>
-                <div><b>{{ o.title }}</b><small>{{ o.detail }} — {{ o.proposed_by }}</small>{% if o.demand_note %}<small style="color:#4f46e5">▸ {{ o.demand_note }}</small>{% endif %}</div></div>
+                <div><b>{% if o.recommended %}<span class="rec">★ 추천</span> {% endif %}{{ o.title }}</b><small>{{ o.detail }} — {{ o.proposed_by }}</small>{% if o.demand_note %}<small style="color:#4f46e5">▸ {{ o.demand_note }}</small>{% endif %}</div></div>
               {% endfor %}
               {% if d.note %}<small style="color:var(--text-secondary)">메모: {{ d.note }}</small>{% endif %}
             {% else %}
               <form method="post" action="{% url 'office:decision_choose' d.id %}">{% csrf_token %}
                 {% for o in d.options %}
                 <label class="opt"><input type="radio" name="key" value="{{ o.key }}" id="d{{ d.id }}-{{ o.key }}" required>
-                  <span><b>{{ o.title }}</b><small>{{ o.detail }} — {{ o.proposed_by }}</small>{% if o.demand_note %}<small style="color:#4f46e5">▸ {{ o.demand_note }}</small>{% endif %}</span></label>
+                  <span><b>{% if o.recommended %}<span class="rec">★ 추천</span> {% endif %}{{ o.title }}</b><small>{{ o.detail }} — {{ o.proposed_by }}</small>{% if o.demand_note %}<small style="color:#4f46e5">▸ {{ o.demand_note }}</small>{% endif %}</span></label>
                 {% endfor %}
                 <div class="row"><input type="text" name="note" id="note-{{ d.id }}" placeholder="메모 (선택)" maxlength="300"><button type="submit">결정</button></div>
               </form>

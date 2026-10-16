@@ -22,10 +22,11 @@ from django.utils import timezone
 from django.utils.html import escape
 
 from common.services.claude import call_tags, track_calls
-from office import live
+from office import live, trends
 from office.agents import AGENTS, MEETING_ORDER
 from office.models import Decision, Meeting
-from office.services import ask_agent, ask_agent_json, collect_site_snapshot, log, snapshot_as_text, week_monday
+from office.services import (WEB_TOOLS, ask_agent, ask_agent_json, collect_site_snapshot, log, snapshot_as_text,
+                             week_monday)
 
 ROUND1 = (
     '{who} — 지금은 주간 편집회의 1라운드(제안)입니다.\n\n[사이트 지표·현황]\n{brief}\n\n[지금까지 발언]\n{transcript}\n\n'
@@ -37,14 +38,20 @@ ROUND2 = (
     '[사이트 지표·현황]\n{brief}\n\n[발언 기록]\n{transcript}'
 )
 
-# 검색 노출을 늘리는 것이 이번 분기 목표다(2026-10-09). 지표의 [검색 기회]를 주제 선정의 1순위 근거로 쓰게 한다.
-COLUMN_TASK = ('당신 분야에서 다음 주 칼럼으로 다룰 만한 주제 2개를 각각 한 줄 근거와 함께 제안하세요. 최근 발행 칼럼과 겹치지 않게. '
-               '지표의 [검색 기회]에 당신 분야 검색어가 있으면 2개 중 1개는 반드시 그 검색어를 정면으로 겨냥하고, '
-               '어떤 검색어인지 밝히세요(이미 그 검색어로 걸리는 우리 칼럼이 있으면 새 글이 그 칼럼과 어떻게 다른지도).')
+# 검색 유입을 늘리는 것이 이번 분기 목표다(2026-10-09 → 10-16 '공격적으로'). 회의 전 정찰한
+# [이번 주 트렌드·검색 수요](office/trends.py)와 [검색 기회]를 주제 선정의 근거로 쓰게 한다.
+COLUMN_TASK = ('당신 분야에서 다음 주 칼럼으로 다룰 주제 2개를 각각 한 줄 근거와 함께 제안하세요. 목표는 검색 유입을 공격적으로 '
+               '늘리는 것입니다 — 사람들이 지금 실제로 많이 찾는 주제를 먼저 잡으세요. '
+               '2개 중 1개는 반드시 [이번 주 트렌드·검색 수요]의 당신 분야 후보 가운데 수요가 높은 것을 정면으로 다루고, '
+               '겨냥할 검색어와 그 수요를 밝히세요. 나머지 1개는 [검색 기회]에 당신 분야 검색어가 있으면 그 검색어를 겨냥하고'
+               '(이미 그 검색어로 걸리는 우리 칼럼이 있으면 새 글이 어떻게 다른지도), 없으면 트렌드 후보를 하나 더 쓰거나 '
+               '독자가 꾸준히 찾는 검색어를 제안하세요. 제목은 겨냥한 검색어를 앞쪽에 그대로 넣어 무엇을 답하는 글인지 '
+               '검색 결과에서 바로 보이게 하세요. 최근 발행 칼럼과 겹치지 않게.')
 
 TASKS = {
     'lead': ('회의를 열며 지표를 해석해 주세요: 무엇이 늘고 줄었는지, 어떤 분야·형식의 글이 반응이 좋았는지, '
-             '이번 주 팀이 집중해야 할 한두 가지. 마지막에 각 칼럼니스트에게 주제 제안을 요청하세요.'),
+             '이번 주 팀이 집중해야 할 한두 가지. 회의 전에 정리한 [이번 주 트렌드·검색 수요]에서 수요가 큰 후보를 '
+             '분야별로 짚고, 마지막에 각 칼럼니스트에게 그 수요를 겨냥한 주제 제안을 요청하세요.'),
     'hrd': COLUMN_TASK,
     'data': COLUMN_TASK,
     'coding': COLUMN_TASK,
@@ -72,6 +79,8 @@ SYNTHESIS = (
     '}}\n'
     '규칙: 검증관이 중복·검증 불가로 지목한 주제는 options 에 넣지 않는다. 각 option.key 는 a,b,c. '
     '[검색 기회]에 그 분야 검색어가 있으면 그 칼럼 안건의 options 중 최소 1개는 그 검색어를 keywords 에 글자 그대로 넣은 주제로 한다. '
+    '[이번 주 트렌드·검색 수요]에 그 분야 후보가 있으면 options 중 최소 1개는 발언에서 나온 트렌드 주제로 하고, 그 후보의 '
+    '검색어를 keywords 에 글자 그대로 넣는다. keywords 는 독자가 검색창에 실제로 치는 짧은 한국어 검색어(문장 말고). '
     'dev/ops 는 지표·지적사항에 근거한 구체적 작업으로. 발언에 근거 없는 항목을 만들지 않는다.'
 )
 
@@ -153,6 +162,7 @@ class Command(BaseCommand):
         live.mark('meeting', 'lead')
         self.stdout.write(f'[{timezone.localtime():%H:%M:%S}] {week} 주차 편집회의 소집 — 지표 수집 중...')
         snap = self._step('지표 수집', collect_site_snapshot)
+        snap['trends'] = self._step('트렌드 정찰 · 은혜(분석관·팀장)', lambda: self._scout(snap))
         brief = snapshot_as_text(snap)
 
         transcript = []
@@ -176,7 +186,7 @@ class Command(BaseCommand):
         result = self._step('결론 정리 · ' + who('lead'),
                             lambda: ask_agent_json('lead', SYNTHESIS.format(brief=brief, transcript=tx()), max_tokens=8000))
         decisions = [d for d in result.get('decisions', []) if isinstance(d, dict) and d.get('options')]
-        self._step('검색 수요 비교', lambda: self._attach_demand(decisions))
+        self._step('검색 수요 측정·추천', lambda: self._rank(decisions))
         self._step('검색 기회 반영 점검', lambda: self._attach_gsc_targets(decisions, snap.get('gsc_gaps') or []))
         summary = str(result.get('summary', '')).strip()
         self.stdout.write(f'  결론: {summary[:80]}... / 안건 {len(decisions)}건')
@@ -187,19 +197,23 @@ class Command(BaseCommand):
 
         return self._step('회의록·안건 저장', lambda: self._save(week, brief, transcript, snap, summary, decisions))
 
-    @staticmethod
-    def _attach_demand(decisions):
-        """안건마다 후보 주제의 네이버 검색 수요를 한 번에 비교해 붙인다(같은 요청 안에서만 비교 가능)."""
-        from office.datasources import demand_note, naver_trend
-        for d in decisions:
-            opts = [o for o in d.get('options') or [] if isinstance(o, dict) and o.get('title')]
-            groups = [{'name': o['title'][:40], 'keywords': [k for k in (o.get('keywords') or []) if isinstance(k, str)]}
-                      for o in opts]
-            trend = naver_trend(groups)
-            for o in opts:
-                note = demand_note(trend.get(o['title'][:40], {}))
-                if note:
-                    o['demand_note'] = note
+    def _scout(self, snap):
+        """회의 전 트렌드 정찰(office/trends.py). 실패해도 회의는 계속 — 단계 메모에 남긴다."""
+        titles = (snap or {}).get('all_column_titles') or []
+        tr = trends.scout(titles, who='은혜(분석관·팀장)', tools=WEB_TOOLS,
+                          ask_json=lambda p, tools: ask_agent_json('lead', p, max_tokens=5000, tools=tools))
+        n = sum(len(v) for v in tr.get('fields', {}).values())
+        src = tr.get('sources') or {}
+        self.steps[-1]['note'] = (f"후보 {n}개 · GeekNews {src.get('geeknews', 0)} · 구글 트렌드 {src.get('google_trends', 0)}"
+                                  + (f" · {trends.UNIT_LABEL[tr['unit']]}" if tr.get('unit') else '')
+                                  + (f" · {tr['note']}" if tr.get('note') else ''))
+        return tr
+
+    def _rank(self, decisions):
+        """칼럼 선택지를 검색 수요 순으로 세우고 1위에 '추천'을 단다."""
+        r = trends.rank_options(decisions)
+        self.steps[-1]['note'] = (f"측정 {r['measured']}개 · {trends.UNIT_LABEL[r['unit']]}" if r['measured']
+                                  else '검색 수요 측정 안 됨(키 없음·호출 실패·검색어 없음)')
 
     def _attach_gsc_targets(self, decisions, gaps):
         """선택지 keywords 가 [검색 기회] 검색어와 맞으면 표시한다. 한 건도 없으면 단계 메모에 남긴다(메일 실행 결과)."""
@@ -221,6 +235,8 @@ class Command(BaseCommand):
                                    'detail': str(o.get('detail', ''))[:600], 'proposed_by': str(o.get('proposed_by', ''))[:20],
                                    'keywords': [str(k)[:30] for k in (o.get('keywords') or [])][:3],
                                    'demand_note': str(o.get('demand_note', ''))[:160],
+                                   'demand': o.get('demand') if isinstance(o.get('demand'), (int, float)) else None,
+                                   'recommended': bool(o.get('recommended')),
                                    'gsc_target': str(o.get('gsc_target', ''))[:60]})
             if not opts_clean:
                 continue
@@ -329,14 +345,17 @@ class Command(BaseCommand):
             html.append(f'<p style="margin:14px 0 4px;font-weight:600">{escape(label)}</p><ul style="margin:0;padding-left:20px">')
             for o in d.options:
                 by = f" — 제안 {o['proposed_by']}" if o.get('proposed_by') else ''
-                txt.append(f"  ({o['key']}) {o['title']}{by}")
+                star = '★ 추천(검색 수요 1위) ' if o.get('recommended') else ''
+                txt.append(f"  ({o['key']}) {star}{o['title']}{by}")
                 if o.get('detail'):
                     txt.append(f"      {o['detail']}")
                 if o.get('demand_note'):
                     txt.append(f"      ▸ {o['demand_note']}")
                 if o.get('gsc_target'):
                     txt.append(f"      🔎 검색 기회 겨냥: {o['gsc_target']}")
-                html.append(f'<li style="margin-bottom:6px"><b>({escape(o["key"])}) {escape(o["title"])}</b>'
+                html.append(f'<li style="margin-bottom:6px"><b>({escape(o["key"])}) '
+                            + ('<span style="color:#4f46e5">★ 추천</span> ' if o.get('recommended') else '')
+                            + f'{escape(o["title"])}</b>'
                             f'<span style="color:#6b7280">{escape(by)}</span>'
                             + (f'<br><span style="color:#374151">{escape(o["detail"])}</span>' if o.get('detail') else '')
                             + (f'<br><span style="color:#4f46e5;font-size:12px">▸ {escape(o["demand_note"])}</span>'

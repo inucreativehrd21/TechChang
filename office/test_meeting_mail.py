@@ -11,8 +11,14 @@ from office.models import Meeting
 SYNTHESIS = {
     'summary': '이번 주는 HRD 칼럼에 집중한다.',
     'decisions': [{'kind': 'column', 'topic': 'hrd', 'question': '다음 주 HRD 칼럼 주제',
-                   'options': [{'key': 'a', 'title': '사내 AI 교육의 ROI', 'detail': '측정 지표 3가지를 다룬다', 'proposed_by': '한빈'}]}],
+                   'options': [{'key': 'a', 'title': '사내 AI 교육의 ROI', 'detail': '측정 지표 3가지를 다룬다', 'proposed_by': '한빈',
+                                'keywords': ['AI 교육 ROI']},
+                               {'key': 'b', 'title': '내일배움카드 개편 총정리', 'detail': '11월 바뀌는 것', 'proposed_by': '한빈',
+                                'keywords': ['내일배움카드']}]}],
 }
+TRENDS = {'unit': 'volume', 'note': '', 'sources': {'geeknews': 20, 'google_trends': 20},
+          'fields': {'hrd': [{'topic': '내일배움카드 개편', 'why': '11월 제도 변경', 'url': '', 'keywords': ['내일배움카드'],
+                              'demand_kw': '내일배움카드', 'demand': 90000, 'demand_note': '월 90,000회 검색'}]}}
 
 
 def fake_cli(fail_on=()):
@@ -35,6 +41,8 @@ class MeetingMailTests(TestCase):
             mock.patch.dict('os.environ', {'CLAUDE_BACKEND': 'cli'}),
             mock.patch('office.management.commands.hold_meeting.collect_site_snapshot', return_value={}),
             mock.patch('office.management.commands.hold_meeting.snapshot_as_text', return_value='방문자 120명'),
+            mock.patch('office.trends.scout', return_value=TRENDS),
+            mock.patch('office.trends.measure', return_value=({'내일배움카드': 90000, 'AI 교육 ROI': 30}, 'volume')),
         ]
         for p in patches:
             p.start()
@@ -82,3 +90,19 @@ class MeetingMailTests(TestCase):
         self.assertIn('결론 정리', msg.subject)
         self.assertIn('결론 정리 중 오류', msg.body)
         self.assertIn('발언 전문', msg.body)  # 실패 전까지의 발언도 남긴다
+
+    def test_trend_scout_runs_before_talk_and_options_ranked_by_demand(self):
+        from office.models import Decision
+        with mock.patch('common.services.claude._cli_ask', side_effect=fake_cli()):
+            call_command('hold_meeting', email='admin@example.com', stdout=mock.MagicMock())
+        meeting = Meeting.objects.get()
+        self.assertEqual(meeting.snapshot['trends']['fields']['hrd'][0]['demand'], 90000)
+        opts = Decision.objects.get().options
+        self.assertEqual([(o['key'], o['title']) for o in opts], [('a', '내일배움카드 개편 총정리'), ('b', '사내 AI 교육의 ROI')])
+        self.assertTrue(opts[0]['recommended'])
+        self.assertEqual(opts[0]['demand'], 90000)
+        body = mail.outbox[0].body
+        self.assertIn('★ 추천(검색 수요 1위) 내일배움카드 개편 총정리', body)
+        self.assertIn('트렌드 정찰', body)
+        self.assertIn('후보 1개 · GeekNews 20', body)
+        self.assertIn("네이버 검색어 '내일배움카드' 월 90,000회 검색", body)

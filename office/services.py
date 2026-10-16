@@ -317,6 +317,8 @@ def snapshot_as_text(snap: dict) -> str:
         for q in gaps[:12]:
             lines.append(f"  - {q['query']}: {q['impr']} / {q['clicks']} / {q['position']}위"
                          f" / {q.get('page') or '-'}")
+    from office.trends import brief_lines          # 회의 전 정찰한 지금 뜨는 후보·검색 수요(hold_meeting)
+    lines += brief_lines(snap.get('trends'))
     cols = snap['recent_columns']
     if cols:
         views = sum(c['views'] for c in cols)

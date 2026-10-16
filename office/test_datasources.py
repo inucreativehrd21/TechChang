@@ -77,31 +77,6 @@ class KosisTests(TestCase):
         op.assert_not_called()
 
 
-class NaverTrendTests(TestCase):
-    def test_trend_summary_and_note(self):
-        series = [{'period': f'2025-{m:02d}-01', 'ratio': r} for m, r in
-                  zip(range(1, 13), [10, 10, 10, 10, 10, 10, 20, 20, 20, 40, 40, 40])]
-        body = {'results': [{'title': '학습 전이 점검', 'data': series}]}
-        with mock.patch.dict('os.environ', KEYS), \
-                mock.patch('office.datasources.urllib.request.urlopen', return_value=resp(body)) as op:
-            out = DS.naver_trend([{'name': '학습 전이 점검', 'keywords': ['학습 전이']}])
-        req = op.call_args.args[0]
-        self.assertEqual(req.get_header('X-ncp-apigw-api-key-id'), 'i')
-        d = out['학습 전이 점검']
-        self.assertEqual((d['recent'], d['prev'], d['change']), (40.0, 20.0, 100))
-        self.assertIn('직전 3개월 대비 +100%', DS.demand_note(d))
-
-    def test_meeting_attaches_demand_to_options(self):
-        from office.management.commands.hold_meeting import Command
-        decisions = [{'kind': 'column', 'options': [{'key': 'a', 'title': '주제 A', 'keywords': ['검색어 A']},
-                                                    {'key': 'b', 'title': '주제 B', 'keywords': []}]}]
-        with mock.patch('office.datasources.naver_trend',
-                        return_value={'주제 A': {'recent': 55.0, 'prev': 50.0, 'change': 10, 'peak': 100}}):
-            Command._attach_demand(decisions)
-        self.assertIn('네이버 검색 수요 55', decisions[0]['options'][0]['demand_note'])
-        self.assertNotIn('demand_note', decisions[0]['options'][1])
-
-
 class KosisLabelTests(TestCase):
     def test_case_counts_and_repeated_title_are_dropped(self):
         cache.clear()

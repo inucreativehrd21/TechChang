@@ -3,7 +3,7 @@
 - KOSIS(국가통계포털) OpenAPI: 재원이 고른 검색어로 공식 통계표를 찾고 최신 값을 받는다.
   코드가 공식 API 로 받은 값이므로 검증관·편집장에게 '확인된 사실'로 넘긴다(KOSIS 화면은 자바스크립트로
   그려져 웹 도구로 열면 확인 불가가 나기 쉽다).
-- 네이버 검색어트렌드(NAVER API HUB): 편집회의 후보 주제들의 검색 수요를 같은 기준(최고=100)으로 비교.
+- 검색 수요(네이버 데이터랩·검색광고)는 office/trends.py 로 옮겼다(2026-10-16, 회의 전 정찰 + 기준어 지수).
 - GSC 기회 검색어: 우리 사이트가 노출은 되는데 클릭이 적은 검색어 — 새 글·보강 후보.
 
 키가 없거나 호출이 실패해도 제작을 멈추지 않는다 — 모든 함수는 실패하면 빈 값을 돌려준다.
@@ -27,7 +27,6 @@ logger = logging.getLogger(__name__)
 
 KOSIS_SEARCH = 'https://kosis.kr/openapi/statisticsSearch.do'
 KOSIS_DATA = 'https://kosis.kr/openapi/Param/statisticsParameterData.do'
-NAVER_TREND = 'https://naverapihub.apigw.ntruss.com/search-trend/v1/search'
 TOTAL_WORDS = ('전체', '계', '합계', '소계', '전국')
 _last_call = [0.0]
 
@@ -188,47 +187,6 @@ def kosis_facts(tables: list) -> str:
         return ''
     return '\n'.join(['- 아래 값은 국가통계포털(KOSIS) OpenAPI 로 시스템이 직접 받은 공식 통계입니다. '
                       '본문 수치가 이 값과 같으면 verified 로 판정하세요.'] + [f'  · {line}' for line in kosis_lines(tables)])
-
-
-# ───────────────────────────── 네이버 검색어트렌드
-def naver_trend(groups: list, months: int = 12) -> dict:
-    """[{'name': 주제, 'keywords': [...]}] (최대 5개) → {주제: {'recent', 'prev', 'change', 'peak'}}.
-
-    값은 이번 요청 안에서 가장 많이 검색된 구간을 100으로 둔 상대 비율이다 — 같은 요청으로 묶은
-    주제끼리만 비교할 수 있다."""
-    cid, sec = _key('NAVER_API_HUB_CLIENT_ID'), _key('NAVER_API_HUB_CLIENT_SECRET')
-    groups = [g for g in groups if g.get('name') and g.get('keywords')][:5]
-    if not (cid and sec and groups):
-        return {}
-    end = timezone.localdate().replace(day=1) - timedelta(days=1)          # 지난달 말일까지
-    start = (end.replace(day=1) - timedelta(days=31 * (months - 1))).replace(day=1)
-    body = {'startDate': start.isoformat(), 'endDate': end.isoformat(), 'timeUnit': 'month',
-            'keywordGroups': [{'groupName': g['name'][:40], 'keywords': [k[:30] for k in g['keywords'][:20]]}
-                              for g in groups]}
-    req = urllib.request.Request(NAVER_TREND, data=json.dumps(body).encode('utf-8'), method='POST', headers={
-        'X-NCP-APIGW-API-KEY-ID': cid, 'X-NCP-APIGW-API-KEY': sec, 'Content-Type': 'application/json'})
-    try:
-        res = json.loads(urllib.request.urlopen(req, timeout=20).read().decode('utf-8'))
-    except Exception:  # noqa: BLE001
-        logger.warning('네이버 검색어트렌드 조회 실패', exc_info=True)
-        return {}
-    out = {}
-    for g in res.get('results') or []:
-        series = [float(d.get('ratio') or 0) for d in g.get('data') or []]
-        recent = sum(series[-3:]) / 3 if series else 0.0
-        prev = sum(series[-6:-3]) / 3 if len(series) >= 6 else 0.0
-        out[g.get('title', '')] = {
-            'recent': round(recent, 1), 'prev': round(prev, 1), 'peak': round(max(series), 1) if series else 0,
-            'change': round((recent - prev) / prev * 100) if prev else None, 'months': len(series),
-        }
-    return out
-
-
-def demand_note(d: dict) -> str:
-    if not d:
-        return ''
-    change = '' if d.get('change') is None else f", 직전 3개월 대비 {d['change']:+d}%"
-    return f"네이버 검색 수요 {d['recent']:g}(최근 3개월 평균, 안건 내 최고=100 기준{change})"
 
 
 # ───────────────────────────── GSC 기회 검색어
