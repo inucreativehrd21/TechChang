@@ -16,16 +16,22 @@ WAR(추정, 실제 KBO 공식이 아니라 같은 뼈대의 근사):
 """
 from __future__ import annotations
 
+import logging
 import math
 import random
 from collections import Counter
-from datetime import date, timedelta
+from datetime import date, datetime, time, timedelta
 
 from django.db import transaction
 from django.utils import timezone
 
+logger = logging.getLogger(__name__)
+
 EPOCH = date(2026, 10, 19)
 SEASON_DAYS, SEASON_GAMES = 28, 144
+OFF_DAYS = 2                    # 시즌 사이 쉬는 날 — 시상식·(앞으로) 포스트시즌 자리. 날짜가 흔들리지 않게 개막 전에 정했다
+CYCLE = SEASON_DAYS + OFF_DAYS
+MIN_STAY = 2                    # 타순·보직은 한 자리에서 최소 이틀(경기일 기준)을 보내야 다음 계단으로
 LEVEL = {0: 34.0, 1: 48.0, 2: 64.0}                # 리그별 상대 평균 수준(능력치 척도)
 LEAGUE = {0: '3군', 1: '퓨처스', 2: '1군'}
 ACTIVE_DAYS = 3                                    # 경기일 포함 최근 3일 안에 활동해야 출전
@@ -50,12 +56,19 @@ LG_WOBA, WOBA_SCALE, FIP_C, REPL_FIP = 0.327, 1.20, 2.94, 5.10   # 몬테카를�
 
 # ───────────────────────────── 시즌 달력
 def season_no(day: date) -> int:
-    return (day - EPOCH).days // SEASON_DAYS + 1 if day >= EPOCH else 0
+    """day 가 속한 시즌 번호(그 시즌 뒤 쉬는 날 포함). 개막 전이면 0."""
+    return (day - EPOCH).days // CYCLE + 1 if day >= EPOCH else 0
 
 
 def season_bounds(n: int) -> tuple[date, date]:
-    start = EPOCH + timedelta(days=(n - 1) * SEASON_DAYS)
+    """(개막일, 정규시즌 마지막 날). 그 뒤 OFF_DAYS 는 쉬는 날."""
+    start = EPOCH + timedelta(days=(n - 1) * CYCLE)
     return start, start + timedelta(days=SEASON_DAYS - 1)
+
+
+def in_season(day: date) -> bool:
+    n = season_no(day)
+    return bool(n) and (day - season_bounds(n)[0]).days < SEASON_DAYS
 
 
 def games_through(day: date) -> int:
@@ -63,16 +76,15 @@ def games_through(day: date) -> int:
     n = season_no(day)
     if not n:
         return 0
-    i = (day - season_bounds(n)[0]).days
+    i = min((day - season_bounds(n)[0]).days, SEASON_DAYS - 1)     # 쉬는 날이면 전 경기
     return (i + 1) * SEASON_GAMES // SEASON_DAYS
 
 
 def games_on(day: date) -> range:
     """day 에 치르는 시즌 경기 번호들(1부터)."""
-    n = season_no(day)
-    if not n:
+    if not in_season(day):
         return range(0)
-    i = (day - season_bounds(n)[0]).days
+    i = (day - season_bounds(season_no(day))[0]).days
     return range(i * SEASON_GAMES // SEASON_DAYS + 1, (i + 1) * SEASON_GAMES // SEASON_DAYS + 1)
 
 
@@ -89,6 +101,10 @@ def season_state(today: date | None = None) -> dict:
         return {'phase': 'pre', 'number': 1, 'dday': (EPOCH - today).days, 'opening': EPOCH}
     n = season_no(today)
     start, end = season_bounds(n)
+    if today > end:                                            # 시즌 사이 쉬는 날
+        opening = season_bounds(n + 1)[0]
+        return {'phase': 'off', 'number': n, 'next': n + 1, 'opening': opening, 'dday': (opening - today).days,
+                'played': SEASON_GAMES, 'total': SEASON_GAMES, 'pct': 100.0, 'end': end}
     played = games_through(today - timedelta(days=1)) if today > start else 0
     return {'phase': 'season', 'number': n, 'start': start, 'end': end, 'played': played,
             'total': SEASON_GAMES, 'pct': round(played / SEASON_GAMES * 100, 1), 'left_days': (end - today).days + 1}
@@ -206,7 +222,8 @@ def war(role: str, position: str, t: dict) -> float:
     b = batting(t)
     wraa = (b['woba'] - LG_WOBA) / WOBA_SCALE * pa
     games = t.get('g', 0)
-    runs = (wraa + 20 * pa / 600 + POS_ADJ.get(position, 0) * games / SEASON_GAMES + t.get('def', 0)
+    full = SEASON_GAMES * 4.2                                   # 주전 한 시즌 타석
+    runs = (wraa + 20 * pa / 600 + POS_ADJ.get(position, 0) * min(games / SEASON_GAMES, pa / full) + t.get('def', 0)
             + 0.2 * t.get('sb', 0) - 0.4 * t.get('cs', 0))
     return round(runs / 10, 1)
 
@@ -221,18 +238,33 @@ def line_view(role: str, t: dict) -> dict:
     """화면용 시즌 줄 — 숫자·표기 모두."""
     if role == 'pitcher':
         p = pitching(t)
-        return dict(t, **p, era_text=f"{p['era']:.2f}", whip_text=f"{p['whip']:.2f}", fip_text=f"{p['fip']:.2f}",
-                    wpct_text=rate(p['wpct']))
+        no = not t.get('outs')
+        return dict(t, **p, era_text='-' if no else f"{p['era']:.2f}", whip_text='-' if no else f"{p['whip']:.2f}",
+                    fip_text='-' if no else f"{p['fip']:.2f}", wpct_text=rate(p['wpct']) if p['decisions'] else '-')
     b = batting(t)
-    return dict(t, **b, avg_text=rate(b['avg']), obp_text=rate(b['obp']), slg_text=rate(b['slg']),
-                ops_text=rate(b['ops']))
+    no_ab, no_pa = not t.get('ab'), not t.get('pa')
+    return dict(t, **b, avg_text='-' if no_ab else rate(b['avg']), obp_text='-' if no_pa else rate(b['obp']),
+                slg_text='-' if no_ab else rate(b['slg']), ops_text='-' if no_pa else rate(b['ops']))
 
 
 # ───────────────────────────── 하루 진행
-def active_players(day: date) -> set:
+def _active_q(day: date):
     from .models import RookieLog
-    return set(RookieLog.objects.filter(kind__in=('earn', 'start'), day__gt=day - timedelta(days=ACTIVE_DAYS),
-                                        day__lte=day).values_list('player_id', flat=True))
+    return RookieLog.objects.filter(kind__in=('earn', 'start'), day__gt=day - timedelta(days=ACTIVE_DAYS), day__lte=day)
+
+
+def active_players(day: date) -> set:
+    return set(_active_q(day).values_list('player_id', flat=True))
+
+
+def was_active(p, day: date) -> bool:
+    return _active_q(day).filter(player=p).exists()
+
+
+def day_end(day: date):
+    """그날이 끝나는 순간(현지 시각) — 날짜 비교를 DB 시간대 변환(__date)에 기대지 않으려고.
+    MySQL 에 시간대 테이블이 없으면 __date 조회가 비어 아무도 경기에 못 나간다."""
+    return timezone.make_aware(datetime.combine(day + timedelta(days=1), time.min))
 
 
 def simulate_day(day: date, rng=None) -> int:
@@ -240,56 +272,72 @@ def simulate_day(day: date, rng=None) -> int:
     from .models import RookieGame, RookiePlayer, RookieSeason, RookieSeasonStat
     from . import rookie as R
     rng = rng or random.SystemRandom()
-    n = season_no(day)
-    if not n:
+    if not in_season(day):
         return 0
-    season = get_season(n)
-    played = 0
+    season = get_season(season_no(day))
+    played = failed = 0
     with transaction.atomic():
-        s = RookieSeason.objects.select_for_update().get(pk=season.pk)
-        if s.simulated_through and s.simulated_through >= day:
+        # 다른 프로세스(밤 cron·화면 따라잡기)가 같은 시즌을 치르는 중이면 기다리지 않고 넘어간다
+        s = RookieSeason.objects.select_for_update(skip_locked=True).filter(pk=season.pk).first()
+        if s is None or (s.simulated_through and s.simulated_through >= day):
             return 0
         nos = list(games_on(day))
         active = active_players(day)
         teams = [c for c, _n, _c in R.TEAMS]
-        for p in RookiePlayer.objects.filter(created_at__date__lte=day).select_related('user'):
+        for p in RookiePlayer.objects.filter(created_at__lt=day_end(day)).select_related('user'):
             if p.pk not in active:
                 continue
-            league, lvl = p.tier, LEVEL[p.tier]
-            assign_role(p, day, lvl)
-            stat, _ = RookieSeasonStat.objects.get_or_create(
-                season=s, player=p, league=league,
-                defaults={'user': p.user, 'name': p.name, 'number': p.number, 'team': p.team, 'role': p.role,
-                          'position': p.position})
-            games = []
-            results = []
-            if p.role == 'batter':
-                for no in nos:
-                    r = batter_game(p.stats, p.position or 'DH', lvl, rng, role=p.lineup, slot=p.slot)
-                    if r:
-                        results.append((no, r))
-            elif p.lineup == 'sp':
-                results.append((nos[p.pk % len(nos)], starter_game(p.stats, lvl, rng)))
-            else:
-                for no in nos:
-                    if len(results) < RELIEF_PER_DAY and rng.random() < RELIEF[p.lineup][0]:
-                        results.append((no, relief_game(p.stats, lvl, rng, p.lineup)))
-            for no, r in results:
-                games.append(RookieGame(season=s, player=p, league=league, day=day, no=no,
-                                        opponent=rng.choice([c for c in teams if c != p.team]),
-                                        home=rng.random() < 0.5, team_runs=r['team_runs'], opp_runs=r['opp_runs'],
-                                        line=r['line'], summary=r['summary']))
-                stat.totals = add(stat.totals, r['line'])
-            RookieGame.objects.bulk_create(games)
-            stat.name, stat.number, stat.team, stat.position = p.name, p.number, p.team, p.position
-            stat.war = war(p.role, p.position, stat.totals)
-            stat.save()
-            played += 1
+            try:
+                with transaction.atomic():             # 선수 한 명의 오류가 다른 선수의 경기를 막지 않게
+                    _play(p, s, day, nos, teams, rng)
+                played += 1
+            except Exception:  # noqa: BLE001
+                failed += 1
+                logger.exception('야구선수 키우기 경기 진행 실패: player=%s day=%s', p.pk, day)
         s.simulated_through = day
         s.save(update_fields=['simulated_through'])
+    if failed:
+        logger.error('야구선수 키우기 %s 경기 진행: 성공 %s명, 실패 %s명', day, played, failed)
     if day == s.end:
-        close_season(s)
+        try:
+            close_season(s)
+        except Exception:  # noqa: BLE001 — 다음 실행의 close_due 가 다시 시도한다
+            logger.exception('야구선수 키우기 시즌 %s 시상 실패', s.number)
     return played
+
+
+def _play(p, s, day: date, nos: list, teams: list, rng):
+    """선수 한 명의 그날 경기 — 타순·보직 판정 → 출전 → 누적."""
+    from .models import RookieGame, RookieSeasonStat
+    league, lvl = p.tier, LEVEL[p.tier]
+    assign_role(p, day, lvl)
+    stat, _ = RookieSeasonStat.objects.get_or_create(
+        season=s, player=p, league=league,
+        defaults={'user': p.user, 'name': p.name, 'number': p.number, 'team': p.team, 'role': p.role,
+                  'position': p.position})
+    games = []
+    results = []
+    if p.role == 'batter':
+        for no in nos:
+            r = batter_game(p.stats, p.position or 'DH', lvl, rng, role=p.lineup, slot=p.slot)
+            if r:
+                results.append((no, r))
+    elif p.lineup == 'sp':
+        results.append((nos[p.pk % len(nos)], starter_game(p.stats, lvl, rng)))
+    else:
+        for no in nos:
+            if len(results) < RELIEF_PER_DAY and rng.random() < RELIEF[p.lineup][0]:
+                results.append((no, relief_game(p.stats, lvl, rng, p.lineup)))
+    for no, r in results:
+        games.append(RookieGame(season=s, player=p, league=league, day=day, no=no,
+                                opponent=rng.choice([c for c in teams if c != p.team]),
+                                home=rng.random() < 0.5, team_runs=r['team_runs'], opp_runs=r['opp_runs'],
+                                line=r['line'], summary=r['summary']))
+        stat.totals = add(stat.totals, r['line'])
+    RookieGame.objects.bulk_create(games)
+    stat.name, stat.number, stat.team, stat.position = p.name, p.number, p.team, p.position
+    stat.war = war(p.role, p.position, stat.totals)
+    stat.save()
 
 
 def recent_lines(p, day: date, league: int, days: int = 10) -> list:
@@ -308,11 +356,25 @@ def assign_role(p, day: date, lvl: float) -> str:
         role, slot, why = batter_role(p.lineup, p.stats, p.ovr, lvl, recent)
     if (role, slot) != (p.lineup, p.slot):
         first = not p.lineup
+        up = role_rank(p.role, role) > role_rank(p.role, p.lineup)
+        if up and not first and p.role_since and (day - p.role_since).days < MIN_STAY:
+            return ''                                   # 새 자리에서 아직 증명할 시간이 필요하다
+        changed_role = role != p.lineup
         p.lineup, p.slot = role, slot
-        p.save(update_fields=['lineup', 'slot'])
+        if changed_role:
+            p.role_since = day
+        p.save(update_fields=['lineup', 'slot', 'role_since'])
         if why and not first:
             R._log(p, 'role', why, day=day)
     return why
+
+
+def role_rank(kind: str, role: str) -> int:
+    """계단 높이 — 타자 백업 0 · 하위 1 · 상위·중심 2, 투수 패전조 0 … 마무리 4, 선발 2."""
+    from .rookie_sim import BAT_STEP, PEN_LADDER
+    if kind == 'pitcher':
+        return 2 if role == 'sp' else PEN_LADDER.index(role) if role in PEN_LADDER else -1
+    return BAT_STEP.get(role, -1)
 
 
 def advance(today: date | None = None, *, max_days: int = 60) -> int:
@@ -327,9 +389,26 @@ def advance(today: date | None = None, *, max_days: int = 60) -> int:
     day = max(done + timedelta(days=1) if done else EPOCH, last - timedelta(days=max_days - 1))
     n = 0
     while day <= last:
-        simulate_day(day)
-        n += 1
+        if in_season(day):
+            simulate_day(day)
+            n += 1
         day += timedelta(days=1)
+    close_due(today)
+    return n
+
+
+def close_due(today: date | None = None) -> int:
+    """정규시즌이 끝났는데 아직 시상하지 않은 시즌을 시상한다(시상 실패 뒤 재시도)."""
+    from .models import RookieSeason
+    today = today or timezone.localdate()
+    n = 0
+    for s in RookieSeason.objects.filter(closed=False, end__lt=today):
+        if s.simulated_through and s.simulated_through >= s.end:
+            try:
+                close_season(s)
+                n += 1
+            except Exception:  # noqa: BLE001
+                logger.exception('야구선수 키우기 시즌 %s 시상 재시도 실패', s.number)
     return n
 
 
@@ -378,7 +457,9 @@ def career_highs(role: str, limit: int = 20) -> list:
     qs = visible(RookieSeasonStat.objects.filter(league=2, role=role), 'user').select_related('season')
     best = {}
     for r in qs:
-        key = r.player_id or f's{r.pk}'
+        if not r.season.closed and team_games(r.season) < SEASON_GAMES // 2:
+            continue                                    # 진행 중 시즌은 반환점을 지나야 견준다
+        key = r.player_id or f'u{r.user_id}:{r.name}'   # 은퇴한 선수도 한 사람에 한 줄
         if key not in best or r.war > best[key].war:
             best[key] = r
     rows = sorted(best.values(), key=lambda r: r.war, reverse=True)[:limit]
@@ -396,10 +477,10 @@ RECORDS = [('batter', 'hr', '시즌 최다 홈런', False, 'hr'), ('batter', 'av
 
 
 def season_records() -> list:
-    """1군 단일 시즌 기록 — 비율 기록은 그 시즌 규정을 채운 시즌만."""
+    """1군 단일 시즌 기록 — 끝난 시즌만(진행 중 시즌의 첫날 .500 이 기록이 되지 않게), 비율 기록은 규정을 채운 시즌만."""
     from .game_visibility import visible
     from .models import RookieSeasonStat
-    rows = list(visible(RookieSeasonStat.objects.filter(league=2), 'user').select_related('season'))
+    rows = list(visible(RookieSeasonStat.objects.filter(league=2, season__closed=True), 'user').select_related('season'))
     out = []
     for role, key, label, needs_qual, shown in RECORDS:
         pool = []
@@ -453,24 +534,32 @@ def close_season(season) -> list:
         def val(r):
             return pit_val(r) if r.role == 'pitcher' else bat_val(r)
 
+        def rank_key(r):                    # WAR 가 같으면 타자는 OPS, 투수는 낮은 평균자책점·많은 이닝
+            if r.role == 'pitcher':
+                p = pitching(r.totals)
+                return (r.war, -p['era'], p['ip'])
+            b = batting(r.totals)
+            return (r.war, b['ops'], r.totals.get('pa', 0))
+
         cand_b = [r for r in bats if qualified('batter', r.totals, tg, AWARD_PA)]
         cand_p = [r for r in pits if qualified('pitcher', r.totals, tg, AWARD_IP)]
         everyone = cand_b + cand_p
         if everyone:
-            mvp = max(everyone, key=lambda r: r.war)
+            mvp = max(everyone, key=rank_key)
             give('mvp', 'MVP', mvp, val(mvp), order=1)
-        earlier = set(RookieSeasonStat.objects.filter(league=2, season__number__lt=s.number)
-                      .exclude(player=None).values_list('player_id', flat=True))
-        rookies = [r for r in bats + pits if r.player_id not in earlier
+        # 신인왕: 이 회원이 예전 시즌에 1군 경기를 뛴 적이 없어야 한다(은퇴 뒤 재입단한 베테랑은 신인이 아니다)
+        earlier = {uid for uid, t in RookieSeasonStat.objects.filter(league=2, season__number__lt=s.number)
+                   .values_list('user_id', 'totals') if (t or {}).get('g', 0) > 0}
+        rookies = [r for r in bats + pits if r.user_id not in earlier
                    and qualified(r.role, r.totals, tg, AWARD_PA / 2 if r.role == 'batter' else AWARD_IP / 2)]
         if rookies:
-            roy = max(rookies, key=lambda r: r.war)
+            roy = max(rookies, key=rank_key)
             give('rookie', '신인왕', roy, val(roy), order=2)
         if cand_p:
-            gp = max(cand_p, key=lambda r: r.war)
+            gp = max(cand_p, key=rank_key)
             give('gg', '골든글러브 투수', gp, gg_val(gp), position='SP', order=10)
         for i, (pos, label) in enumerate(POSITIONS):
-            pool = sorted([r for r in cand_b if r.position == pos], key=lambda r: r.war, reverse=True)
+            pool = sorted([r for r in cand_b if r.position == pos], key=rank_key, reverse=True)
             for r in pool[:3 if pos == 'OF' else 1]:
                 give('gg', f'골든글러브 {label}', r, gg_val(r), position=pos, order=11 + i)
         titles = [('batter', '타격왕', lambda r: batting(r.totals)['avg'], True, lambda r: rate(batting(r.totals)['avg'])),
@@ -493,8 +582,10 @@ def close_season(season) -> list:
                     and (label != '승률왕' or pitching(r.totals)['decisions'] >= 10)]
             pool = [r for r in pool if needs_qual or key(r) > 0]
             if pool:
-                best = max(pool, key=key)
-                give('title', label, best, shown(best), order=30 + j)
+                best = shown(max(pool, key=key))
+                for r in pool:                  # 공동 수상 — 화면에 보이는 값이 같으면 함께 받는다
+                    if shown(r) == best:
+                        give('title', label, r, best, order=30 + j)
         fut = [r for r in stat_rows(s, 1, 'batter') + stat_rows(s, 1, 'pitcher')
                if qualified(r.role, r.totals, tg, AWARD_PA if r.role == 'batter' else AWARD_IP)]
         if fut:
@@ -575,7 +666,8 @@ def player_board(p, today: date | None = None) -> dict:
         games = [game_view(g, p.team, p.role) for g in RookieGame.objects.filter(player=p, day=last_day).order_by('no')] \
             if last_day else []
     sim = season.simulated_through if season else None
-    dnp = bool(sim and sim >= max(season.start, p.created_at.date()) and (not last_day or last_day < sim))
+    created = timezone.localtime(p.created_at).date()           # UTC 날짜로 비교하면 오전 입단자가 결장으로 보인다
+    dnp = bool(sim and sim >= max(season.start, created) and not was_active(p, sim))
     trophies = list(RookieAward.objects.filter(player=p).select_related('season').order_by('-season__number', 'order'))
     league = (RookieGame.objects.filter(player=p, day=last_day).values_list('league', flat=True).first()
               if last_day else p.tier)

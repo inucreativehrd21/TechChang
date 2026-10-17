@@ -9,7 +9,7 @@ from datetime import timedelta
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
-from django.db import transaction
+from django.db import IntegrityError, transaction
 from django.db.models import Count, Q, Sum
 from django.http import Http404, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
@@ -29,8 +29,11 @@ def _ajax(request) -> bool:
     return request.headers.get('X-Requested-With') == 'XMLHttpRequest'
 
 
-def _catch_up():
-    """밤 cron 이 빠졌을 때 화면을 연 사람이 전날 경기를 대신 치르게 한다(이미 치렀으면 할 일 없음)."""
+def _catch_up(request):
+    """밤 cron 이 빠졌을 때 로그인한 회원이 화면을 열면 전날 경기를 대신 치른다(이미 치렀으면 할 일 없음).
+    비로그인·크롤러 요청은 무거운 배치를 돌리지 않는다. 다른 프로세스가 치르는 중이면 기다리지 않는다(skip_locked)."""
+    if not request.user.is_authenticated:
+        return
     try:
         L.advance()
     except Exception:  # noqa: BLE001 — 경기 진행 실패가 화면을 막지 않게
@@ -65,7 +68,7 @@ def _pick_season(request, seasons, *, closed_only=False):
 
 # ───────────────────────────── 내 선수
 def rookie_home(request):
-    _catch_up()
+    _catch_up(request)
     if not request.user.is_authenticated:
         return render(request, 'community/rookie.html', dict(_base_ctx(request, 'home'), mode='intro'))
     with transaction.atomic():
@@ -99,6 +102,8 @@ def rookie_create(request):
     except R.GameError as ex:
         messages.warning(request, str(ex))
         return redirect('community:rookie_home')
+    except IntegrityError:                      # 입단 버튼을 두 번 눌렀다 — 이미 만들어졌다
+        return redirect('community:rookie_home')
     messages.success(request, f"{p.name} 선수, {R.TEAM[p.team]['name']} 육성군 입단! 입단 보너스 {R.WELCOME_TP} TP로 첫 훈련을 해 보세요.")
     return redirect('community:rookie_home')
 
@@ -109,9 +114,10 @@ def rookie_train(request):
     try:
         r = R.train(request.user, request.POST.get('stat', ''), request.POST.get('times', 1))
     except (R.GameError, ValueError) as ex:
+        text = str(ex) if isinstance(ex, R.GameError) else '훈련 요청이 올바르지 않습니다. 화면을 새로고침해 주세요.'
         if _ajax(request):
-            return JsonResponse({'ok': False, 'message': str(ex)}, status=400)
-        messages.warning(request, str(ex))
+            return JsonResponse({'ok': False, 'message': text}, status=400)
+        messages.warning(request, text)
         return redirect('community:rookie_home')
     toast = f"{r['label']} {r['before']:.1f} → {r['after']:.1f}"
     if r['great']:
@@ -154,7 +160,7 @@ def rookie_player(request, pk: int):
     p = get_object_or_404(RookiePlayer.objects.select_related('user'), pk=pk)
     if is_hidden(p.user) and p.user_id != request.user.id:
         raise Http404
-    _catch_up()
+    _catch_up(request)
     career = list(RookieSeasonStat.objects.filter(player=p).select_related('season').order_by('-season__number', '-league'))
     games = [L.game_view(g, p.team, p.role) for g in RookieGame.objects.filter(player=p).order_by('-day', '-no')[:20]]
     ctx = dict(_base_ctx(request, 'league'), p=p, team=R.TEAM.get(p.team, {}), role_label=R.ROLES[p.role]['label'],
@@ -170,12 +176,13 @@ def rookie_player(request, pk: int):
 
 # ───────────────────────────── 리그
 def rookie_league(request):
-    _catch_up()
-    R.settle_all()                      # 쉬는 선수를 순위에 그대로 두지 않게(밤 cron 이 돌았으면 할 일 없음)
+    _catch_up(request)
+    if request.user.is_authenticated:
+        R.settle_all()                  # 쉬는 선수를 순위에 그대로 두지 않게(밤 cron 이 돌았으면 할 일 없음)
     tab = request.GET.get('tab') if request.GET.get('tab') in ('leaders', 'players', 'teams') else 'leaders'
     seasons = _seasons()
     season = _pick_season(request, seasons)
-    lg = 1 if request.GET.get('lg') == '1' else 2
+    lg = _pick_league(request, season)
     role = request.GET.get('role', '')
     ctx = dict(_base_ctx(request, 'league'), tab=tab, seasons=seasons, cur=season, lg=lg, lg_name=L.LEAGUE[lg],
                role=role if role in R.ROLES else '')
@@ -210,6 +217,20 @@ def rookie_league(request):
     return render(request, 'community/rookie_league.html', ctx)
 
 
+def _pick_league(request, season) -> int:
+    """리더 화면의 리그 — 고른 리그, 아니면 내 선수의 리그, 아니면 기록이 있는 가장 높은 리그."""
+    if request.GET.get('lg') in ('0', '1', '2'):
+        return int(request.GET['lg'])
+    mine = RookiePlayer.objects.filter(user_id=request.user.id).values_list('tier', flat=True).first()
+    if mine is not None:
+        return mine
+    if season:
+        for lg in (2, 1, 0):
+            if RookieSeasonStat.objects.filter(season=season, league=lg).exists():
+                return lg
+    return 2
+
+
 def rookie_ranking(request):
     """예전 주소 — 리그의 선수 순위 탭으로."""
     tab = 'teams' if request.GET.get('tab') == 'teams' else 'players'
@@ -218,7 +239,7 @@ def rookie_ranking(request):
 
 # ───────────────────────────── 시상식
 def rookie_awards(request):
-    _catch_up()
+    _catch_up(request)
     seasons = _seasons()
     season = _pick_season(request, seasons, closed_only=True)
     ctx = dict(_base_ctx(request, 'awards'), seasons=[s for s in seasons if s.closed], cur=season,
@@ -252,7 +273,7 @@ def rookie_awards(request):
 
 # ───────────────────────────── 기록실
 def rookie_records(request):
-    _catch_up()
+    _catch_up(request)
     role = 'pitcher' if request.GET.get('role') == 'pitcher' else 'batter'
     highs = L.career_highs(role)
     ctx = dict(_base_ctx(request, 'records'), role=role, highs=highs, top=highs[0] if highs else None,

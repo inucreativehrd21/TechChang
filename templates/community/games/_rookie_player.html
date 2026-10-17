@@ -60,7 +60,7 @@
                 <span class="rk-gno">{{ g.day|date:'n.j' }}</span>
                 <span class="rk-score"><b>{{ g.me }}</b><em>{{ g.mine }}</em><i>:</i><em>{{ g.theirs }}</em><span>{{ g.opp }}</span></span>
                 <span class="rk-wl">{% if g.win %}승{% else %}패{% endif %}</span>
-                <span class="rk-gsum">{% if g.vs_label %}<span class="rk-vs is-{{ g.vs }}">{{ g.vs_label }} {{ g.vs_lvl }}</span>{% endif %}{{ g.summary }}</span>
+                <span class="rk-gsum">{% if g.vs_label %}<span class="rk-vs is-{{ g.vs }}" title="{{ g.vs_label }}">{{ g.vs_short }}{% if not g.relief and g.vs_lvl %} {{ g.vs_lvl }}{% endif %}</span>{% endif %}{{ g.summary }}</span>
             </li>
             {% endfor %}
         </ol>

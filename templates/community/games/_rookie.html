@@ -34,7 +34,7 @@
                         <span class="rk-role-box">
                             <b>{{ role.label }}</b>
                             <small>{% for k, label, w in role.stats %}{{ label }}{% if not forloop.last %}, {% endif %}{% endfor %}</small>
-                            <small>{% if key == 'pitcher' %}선발 로테이션으로 하루 한 경기 등판{% else %}하루 5~6경기 모두 출장{% endif %}</small>
+                            <small>{% if key == 'pitcher' %}패전조에서 시작해 필승조·마무리, 체력이 좋으면 선발 로테이션까지{% else %}대타·대주자(백업)에서 시작해 주전 자리를 따냅니다{% endif %}</small>
                         </span>
                     </label>
                     {% endfor %}
@@ -166,7 +166,7 @@
                         btns.forEach(function (b) { b.disabled = false; });
                     }
                 })
-                .catch(function () { f.submit(); });
+                .catch(function () { location.reload(); });   // 응답이 깨져도 같은 훈련을 다시 보내지 않는다(TP 이중 차감 방지)
         });
         // 출석 체크: 출석 기록이 생기면 서버가 TP 를 준다 — 끝나면 새로고침
         play.addEventListener('click', function (e) {

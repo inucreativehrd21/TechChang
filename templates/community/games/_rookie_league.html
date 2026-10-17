@@ -13,6 +13,7 @@
         <nav class="rk-seg is-quiet" aria-label="리그">
             <a href="?tab=leaders&amp;season={{ cur.number }}&amp;lg=2" {% if lg == 2 %}aria-current="page"{% endif %}>1군</a>
             <a href="?tab=leaders&amp;season={{ cur.number }}&amp;lg=1" {% if lg == 1 %}aria-current="page"{% endif %}>퓨처스</a>
+            <a href="?tab=leaders&amp;season={{ cur.number }}&amp;lg=0" {% if lg == 0 %}aria-current="page"{% endif %}>3군</a>
         </nav>
         {% if seasons|length > 1 %}
         <nav class="rk-seg is-quiet" aria-label="시즌">
@@ -28,7 +29,12 @@
     </div>
 
     {% if tab == 'leaders' %}
-        {% if not cur %}
+        {% if cur and not team_games %}
+        <section class="rk-board rk-empty-board">
+            <header class="rk-board-head"><span>시즌 {{ cur.number }}</span><span>첫 경기 전</span></header>
+            <div class="rk-board-empty"><b>집계 대기</b><span>첫 경기일 밤에 경기를 치르고, 다음 날 아침부터 이곳에 기록 리더가 뜹니다.</span></div>
+        </section>
+        {% elif not cur %}
         <section class="rk-board rk-empty-board">
             <header class="rk-board-head"><span>시즌 1</span><span>개막 전</span></header>
             <div class="rk-board-empty"><b>D-{{ season_now.dday }}</b><span>{{ season_now.opening|date:'n월 j일' }}에 개막합니다. 첫 경기가 끝나면 다음 날 아침부터 이곳에 기록 리더가 뜹니다.</span></div>

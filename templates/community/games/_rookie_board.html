@@ -8,7 +8,7 @@
         <span>{{ games_day|date:'n월 j일 l' }} · {{ games.0.league }}</span>
         <span>{{ games|length }}경기</span>
         {% else %}
-        <span>전광판</span><span>{% if season.phase == 'pre' %}시범 기간{% else %}시즌 {{ season.number }}{% endif %}</span>
+        <span>전광판</span><span>{% if season.phase == 'pre' %}시범 기간{% elif season.phase == 'off' %}시즌 사이 휴식{% else %}시즌 {{ season.number }}{% endif %}</span>
         {% endif %}
     </header>
     {% if games %}
@@ -41,6 +41,11 @@
     {% endwith %}{% endif %}
     {% if opp_levels %}<p class="rk-board-note">{% if p.role == 'pitcher' %}{{ games.0.league }} 상대 타선: 상위 {{ opp_levels.top }}(출루·주루), 중심 {{ opp_levels.heart }}(클러치·장타), 하위 {{ opp_levels.bottom }}. 내 구위는 {{ ladder.stuff }}입니다.{% else %}{{ games.0.league }} 상대 선발 구위: 에이스 {{ opp_levels.ace }}, 주전 {{ opp_levels.reg }}, 백업 {{ opp_levels.bak }}. 내 OVR은 {{ p.ovr|floatformat:1 }}입니다.{% endif %}</p>{% endif %}
     {% if dnp %}<p class="rk-board-note">어제는 결장했습니다. 경기일 포함 최근 3일 안에 활동해야 엔트리에 듭니다.</p>{% endif %}
+    {% elif season.phase == 'off' %}
+    <div class="rk-board-empty">
+        <b>D-{{ season.dday }}</b>
+        <span>시즌 {{ season.number }}이 끝났습니다. 시상 결과는 시상식에서 볼 수 있고, {{ season.opening|date:'n월 j일' }}에 시즌 {{ season.next }}이 개막합니다. 쉬는 동안에도 훈련은 이어집니다.</span>
+    </div>
     {% elif season.phase == 'pre' %}
     <div class="rk-board-empty">
         <b>D-{{ season.dday }}</b>

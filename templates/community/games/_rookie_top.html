@@ -7,6 +7,8 @@
     <p class="rk-season">
         {% if season_now.phase == 'pre' %}
             <b>개막 D-{{ season_now.dday }}</b><span>시즌 1 · {{ season_now.opening|date:'n월 j일' }} 플레이볼</span>
+        {% elif season_now.phase == 'off' %}
+            <b>시즌 {{ season_now.number }} 폐막</b><span>시즌 {{ season_now.next }} 개막 D-{{ season_now.dday }}</span>
         {% else %}
             <b>시즌 {{ season_now.number }}</b><span>{{ season_now.played }}/{{ season_now.total }}경기</span>
             <i class="rk-season-bar" aria-hidden="true"><i style="width: {{ season_now.pct }}%"></i></i>

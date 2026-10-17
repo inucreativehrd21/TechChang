@@ -14,7 +14,7 @@
     --rk-ink: #171a33;
     --rk-ink-2: #3d4160;
     --rk-ink-3: #6b7090;
-    --rk-ink-4: #a1a5be;
+    --rk-ink-4: #6f7491;        /* 흰 바탕 대비 4.6:1 — 작은 설명 글자도 읽히게(예전 #a1a5be 는 2.4:1) */
     --rk-line: #e3e5ee;
     --rk-line-soft: #eef0f5;
     --rk-accent: #4f46e5;
@@ -30,6 +30,8 @@
     --rk-r: 14px;
     background: var(--rk-paper);
     color: var(--rk-ink);
+    word-break: keep-all;       /* 한국어 단어 중간 줄바꿈('0실/점') 방지 */
+    overflow-wrap: anywhere;
 }
 .rk .rk-mt { margin-top: 12px; }
 .rk .rk-fine { font-size: 0.75rem; color: var(--rk-ink-4); text-decoration: none; }
@@ -279,7 +281,7 @@
 .rk-log-list { margin: 6px 0 0; padding: 0; list-style: none; }
 .rk-log-list li { display: flex; gap: 10px; padding: 7px 0; border-top: 1px solid var(--rk-line-soft); font-size: 0.82rem; }
 .rk-log-list li:first-child { border-top: 0; }
-.rk-log-list time { flex: none; width: 5.6em; color: var(--rk-ink-4); font-variant-numeric: tabular-nums; }
+.rk-log-list time { flex: none; width: 6.8em; white-space: nowrap; color: var(--rk-ink-4); font-variant-numeric: tabular-nums; }
 .rk-log-list li.is-decay span, .rk-log-list li.is-demote span { color: var(--rk-fail); }
 .rk-log-list li.is-promote span, .rk-log-list li.is-award span { color: var(--rk-accent); font-weight: 700; }
 .rk-retire { margin-top: 14px; font-size: 0.8rem; color: var(--rk-ink-3); }

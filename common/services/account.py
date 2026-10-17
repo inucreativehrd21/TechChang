@@ -57,6 +57,12 @@ def withdraw(user) -> None:
         pf.delete()
     PortfolioCollection.objects.filter(user=user).delete()
 
+    # 야구선수 키우기 — 선수 이름(기본값이 닉네임)·시즌 기록·수상이 공개 순위·기록실에 남지 않게 함께 파기
+    from community.models import RookieAward, RookiePlayer, RookieSeasonStat
+    RookieAward.objects.filter(user=user).delete()
+    RookieSeasonStat.objects.filter(user=user).delete()
+    RookiePlayer.objects.filter(user=user).delete()
+
     # 3) 소셜 로그인 연동 정보(카카오 회원번호·토큰·닉네임·이메일)
     if old_username.startswith('kakao_'):
         kakao_id = old_username.removeprefix('kakao_')

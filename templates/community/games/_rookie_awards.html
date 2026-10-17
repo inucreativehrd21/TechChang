@@ -87,7 +87,7 @@
         <section class="rk-board">
             <header class="rk-board-head"><span>시즌 {{ season_now.number }} 시상식</span><span>{{ ceremony|date:'n월 j일' }}</span></header>
             <div class="rk-board-empty">
-                <b>{% if season_now.phase == 'pre' %}개막 전{% else %}MVP 레이스{% endif %}</b>
+                <b>{% if season_now.phase == 'pre' %}개막 전{% elif season_now.phase == 'off' %}시상 준비 중{% else %}MVP 레이스{% endif %}</b>
                 <span>시즌이 끝난 다음 날 아침({{ ceremony|date:'n월 j일' }}) MVP, 신인왕, 위치별 골든글러브, 개인 타이틀을 발표합니다. 후보가 되려면 1군에서 타자는 {{ award_pa }}타석, 투수는 {{ award_ip }}이닝 이상 뛰어야 합니다.</span>
             </div>
             {% if race %}

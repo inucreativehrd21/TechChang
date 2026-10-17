@@ -1152,6 +1152,7 @@ class RookiePlayer(models.Model):
     # 투수: mop chase win setup closer sp. slot = 타순(1~9, 백업 0) 또는 선발 순번(1~5, 불펜 0)
     lineup = models.CharField(max_length=8, blank=True, verbose_name='타순·보직')
     slot = models.PositiveSmallIntegerField(default=0, verbose_name='타순·선발 순번')
+    role_since = models.DateField(null=True, blank=True, verbose_name='지금 타순·보직을 맡은 날')
     ovr = models.FloatField(default=25, db_index=True, verbose_name='종합(OVR)')
     best_ovr = models.FloatField(default=25, verbose_name='최고 OVR')
     tier = models.PositiveSmallIntegerField(choices=TIER_CHOICES, default=0, db_index=True, verbose_name='소속')

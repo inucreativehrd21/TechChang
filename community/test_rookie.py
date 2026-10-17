@@ -291,3 +291,33 @@ class ViewTests(TestCase):
         p.refresh_from_db()
         self.assertLess(p.ovr, 60)
         self.assertEqual(p.settled_through, timezone.localdate() - timedelta(days=1))
+
+
+
+class ColumnRepeatTests(TestCase):
+    def test_same_column_pays_again_after_30_days(self):
+        from datetime import timedelta
+        u = member('재독자')
+        p = R.create(u, name='재독', role='batter', team='kia')
+        self.assertTrue(R.award(u, 'column', '77'))
+        self.assertIsNone(R.award(u, 'column', '77'))
+        p.logs.filter(source='column').update(day=timezone.localdate() - timedelta(days=31))
+        self.assertTrue(R.award(u, 'column', '77'))
+
+
+class CreateTwiceTests(TestCase):
+    def test_double_submit_does_not_500(self):
+        from django.db import IntegrityError
+        u = member('두번누름')
+        self.client.force_login(u)
+        with mock.patch('community.rookie.create', side_effect=IntegrityError('dup')):
+            r = self.client.post('/rookie/create/', {'role': 'batter', 'team': 'lg', 'name': 'x'})
+        self.assertEqual(r.status_code, 302)
+
+    def test_bad_train_input_has_friendly_message(self):
+        u = member('이상입력')
+        R.create(u, name='x', role='batter', team='lg')
+        self.client.force_login(u)
+        r = self.client.post('/rookie/train/', {'stat': 'contact', 'times': 'abc'}, HTTP_X_REQUESTED_WITH='XMLHttpRequest')
+        self.assertEqual(r.status_code, 400)
+        self.assertNotIn('invalid literal', r.json()['message'])

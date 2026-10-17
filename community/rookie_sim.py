@@ -522,7 +522,9 @@ def relief_game(s: dict, lvl: float, rng, role: str) -> dict:
         return t['r'] >= 4 or t['bf'] >= 3 * innings + 7
     _pitch(t, s, base, rng, rng.randint(1, 9), 3 * innings, pull)
     opp_at = _poisson(2.8 if lead > 0 else 4.4, rng)
-    team_at = max(0, opp_at + lead)
+    if lead < 0:
+        opp_at = max(opp_at, -lead + rng.randint(0, 2))      # 뒤진 점수 차가 화면 표시와 맞게(0점 아래로 자르지 않게)
+    team_at = opp_at + lead
     opp_runs = opp_at + t['r'] + (_poisson(0.25, rng) if role != 'closer' else 0)
     team_runs = team_at + (_poisson(0.35, rng) if role != 'closer' else 0)
     dec = ''

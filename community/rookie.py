@@ -77,6 +77,7 @@ EARN = {'checkin': {'tp': 20, 'cap': 1, 'label': '출석 체크'},
         'comment': {'tp': 10, 'cap': 3, 'label': '댓글·답변'}}
 DAILY_MAX = sum(e['tp'] * e['cap'] for e in EARN.values())
 MIN_COMMENT = 10                  # 이보다 짧은 댓글은 TP 를 주지 않는다
+REPEAT_DAYS = 30                  # 같은 칼럼을 다시 읽어 TP 를 받을 수 있는 간격
 
 
 class GameError(ValueError):
@@ -181,7 +182,8 @@ def create(user, *, name: str, role: str, team: str, number: int = 0, focus: str
                                         team=team, stats=stats, focus=focus, position=position,
                                         ovr=overall(role, stats), best_ovr=FLOOR,
                                         tp=WELCOME_TP, tp_earned=WELCOME_TP, last_active=today,
-                                        settled_through=today - timedelta(days=1))
+                                        settled_through=today - timedelta(days=1),
+                                        lineup='mop' if role == 'pitcher' else 'bench', role_since=today)
         _log(p, 'start', f"{TEAM[team]['name']} 육성군 입단 — 입단 보너스 +{WELCOME_TP} TP", tp=WELCOME_TP)
     return p
 
@@ -207,10 +209,9 @@ def settle(p, today: date | None = None) -> dict:
         demoted.append(TIERS[p.tier - 1]['name'])
         p.tier -= 1
     p.save(update_fields=['stats', 'ovr', 'settled_through', 'tier', 'updated_at'])
-    if before - p.ovr >= 0.05:
-        idle = (today - p.last_active).days
-        why = '유지 훈련 부족' if idle <= 1 else f'{idle - 1}일 활동 없음'
-        _log(p, 'decay', f'감각 저하({why}) — OVR {before:.1f} → {p.ovr:.1f}', day=today)
+    idle = (today - p.last_active).days
+    if before - p.ovr >= 0.05 and idle >= 2:          # 매일의 유지비는 기록하지 않는다 — 쉬어서 빠질 때만
+        _log(p, 'decay', f'감각 저하({idle - 1}일 활동 없음) — OVR {before:.1f} → {p.ovr:.1f}', day=today)
     for name in demoted:
         _log(p, 'demote', f'OVR {p.ovr:.1f} — {name}으로 내려갔습니다', day=today)
     return {'days': days, 'before': before, 'after': p.ovr, 'demoted': demoted}
@@ -233,7 +234,8 @@ def award(user, source: str, ref: str = '') -> dict | None:
             return None
         settle(p, today)
         earned = p.logs.filter(kind='earn', source=source)
-        if ref and earned.filter(ref=ref).exists():
+        # 같은 칼럼·댓글로는 30일에 한 번 — 밀린 칼럼을 다 읽은 장기 회원도 다시 읽으면 TP 를 받는다
+        if ref and earned.filter(ref=ref, day__gt=today - timedelta(days=REPEAT_DAYS)).exists():
             return None
         count = earned.filter(day=today).count()
         if count >= rule['cap']:
@@ -337,11 +339,13 @@ def promotion_test(user, rng=None) -> dict:
         p.test_on = today
         if passed:
             p.tier = nxt['tier']
-            p.lineup, p.slot = '', 0                 # 새 리그에선 백업·패전조부터 다시 증명한다
-        p.save(update_fields=['test_on', 'tier', 'lineup', 'slot', 'updated_at'])
+            p.lineup = 'mop' if p.role == 'pitcher' else 'bench'   # 새 리그에선 백업·패전조부터 다시 증명한다
+            p.slot, p.role_since = 0, today
+        p.save(update_fields=['test_on', 'tier', 'lineup', 'slot', 'role_since', 'updated_at'])
         won = sum(g['ok'] for g in games)
         _log(p, 'promote' if passed else 'test',
-             f"{nxt['name']} 승격!" if passed else f"{nxt['name']} 승격 심사 {won}/{TEST_GAMES} — 탈락", day=today)
+             f"{nxt['name']} 승격! {'패전조' if p.role == 'pitcher' else '백업'}부터 다시 자리를 따냅니다" if passed
+             else f"{nxt['name']} 승격 심사 {won}/{TEST_GAMES} — 탈락", day=today)
     return {'passed': passed, 'tier_name': nxt['name'], 'games': games, 'won': won, 'player': p}
 
 
@@ -413,7 +417,9 @@ def dashboard(p) -> dict:
         progress = {'name': nxt['name'], 'at': nxt['at'], 'left': round(max(0.0, nxt['at'] - p.ovr), 1),
                     'pct': round(min(100.0, max(0.0, (p.ovr - cur_at) / span * 100)), 1),
                     'ready': p.ovr >= nxt['at'], 'tried_today': p.test_on == timezone.localdate()}
-    rank = visible(RookiePlayer.objects.filter(ovr__gt=p.ovr), 'user').count() + 1
+    from django.db.models import Q
+    # 선수 순위 탭과 같은 순서 — 소속(1군 먼저), 같은 소속이면 OVR
+    rank = visible(RookiePlayer.objects.filter(Q(tier__gt=p.tier) | Q(tier=p.tier, ovr__gt=p.ovr)), 'user').count() + 1
     done = trained_today(p)
     focus_label = dict((k, l) for k, l, _w in ROLES[p.role]['stats']).get(p.focus, '')
     return {
