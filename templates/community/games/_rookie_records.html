@@ -1,25 +1,38 @@
-{# 기록실 — 1군 커리어하이 시즌 비교(선수마다 가장 좋았던 시즌 하나, WAR 순)와 단일 시즌 기록. 맥락: rookie_views.rookie_records #}
+{# 기록실 — 리그별 커리어하이·단일 시즌 기록 / 통산 순위 / 명예의 전당 + 최근 이정표. 맥락: rookie_views.rookie_records #}
 {% load rookie_tags %}
 <div class="gm rk">
 <div class="gm-wrap is-wide">
     {% include 'community/games/_rookie_top.html' with h1='기록실' %}
 
     <div class="rk-controls">
-        <nav class="rk-seg" aria-label="타자·투수">
-            <a href="?role=batter" {% if role == 'batter' %}aria-current="page"{% endif %}>타자</a>
-            <a href="?role=pitcher" {% if role == 'pitcher' %}aria-current="page"{% endif %}>투수</a>
+        <nav class="rk-seg" aria-label="기록실 화면">
+            <a href="?view=highs&amp;lg={{ lg }}" {% if view == 'highs' %}aria-current="page"{% endif %}>커리어하이</a>
+            <a href="?view=career&amp;lg={{ lg }}" {% if view == 'career' %}aria-current="page"{% endif %}>통산 순위</a>
+            <a href="?view=hof" {% if view == 'hof' %}aria-current="page"{% endif %}>명예의 전당</a>
+        </nav>
+        {% if lg_choices|length > 1 %}
+        <nav class="rk-seg is-quiet" aria-label="리그">
+            {% for c in lg_choices %}<a href="?view={{ view }}&amp;lg={{ c.code }}{% if view == 'highs' %}&amp;role={{ role }}{% endif %}" {% if lg == c.code %}aria-current="page"{% endif %} title="{{ c.name }}">{{ c.short }}</a>{% endfor %}
+        </nav>
+        {% endif %}
+        {% if view == 'highs' %}
+        <nav class="rk-seg is-quiet" aria-label="타자·투수">
+            <a href="?view=highs&amp;lg={{ lg }}&amp;role=batter" {% if role == 'batter' %}aria-current="page"{% endif %}>타자</a>
+            <a href="?view=highs&amp;lg={{ lg }}&amp;role=pitcher" {% if role == 'pitcher' %}aria-current="page"{% endif %}>투수</a>
         </nav>
         {% if mine %}<p class="rk-note is-inline">내 커리어하이는 {{ mine }}위입니다.</p>{% endif %}
+        {% endif %}
     </div>
 
-    <h2 class="rk-h2">커리어하이</h2>
-    <p class="rk-note">1군에서 뛴 선수마다 가장 좋았던 시즌(WAR) 하나씩을 나란히 놓았습니다.</p>
+    {% if view == 'highs' %}
+    <h2 class="rk-h2">커리어하이 · {{ lg_name }}</h2>
+    <p class="rk-note">{{ lg_name }}에서 뛴 선수마다 가장 좋았던 시즌(WAR) 하나씩을 나란히 놓았습니다. 리그마다 수준이 달라 따로 견줍니다.</p>
     {% if top %}
     <section class="rk-hof" style="--team: {{ top.s.team|team_color }}">
         <div class="rk-hof-rank">1</div>
         <div class="rk-hof-main">
             <h3>{% if top.s.player_id %}<a href="{% url 'community:rookie_player' top.s.player_id %}">{{ top.s.name }}</a>{% else %}{{ top.s.name }}{% endif %}</h3>
-            <p class="rk-hof-meta"><i class="rk-dot" aria-hidden="true"></i>시즌 {{ top.s.season.number }} {{ top.s.team|team_name }}{% if top.live %} <span class="rk-live">진행 중</span>{% endif %}</p>
+            <p class="rk-hof-meta"><i class="rk-dot" aria-hidden="true"></i>시즌 {{ top.s.season.number }} {{ top.s.team|team_name }}{% if top.s.age %} · {{ top.s.age }}세{% endif %}{% if top.live %} <span class="rk-live">진행 중</span>{% endif %}</p>
             {% if role == 'pitcher' %}
             <p class="rk-hof-line"><b>{{ top.v.w|default:0 }}승 {{ top.v.l|default:0 }}패</b><b>{{ top.v.era_text }}</b><span>{{ top.v.ip_text }}이닝 {{ top.v.so|default:0 }}탈삼진, WHIP {{ top.v.whip_text }}</span></p>
             {% else %}
@@ -44,10 +57,10 @@
     </ol>
     {% endif %}
     {% else %}
-    <section class="rk-panel"><p class="rk-empty">아직 1군 시즌 기록이 없습니다. 1군 선수가 경기를 치르면 이곳에 커리어하이가 쌓입니다.</p></section>
+    <section class="rk-panel"><p class="rk-empty">아직 {{ lg_name }} 시즌 기록이 없습니다. 이 리그에서 시즌을 반 넘게 치르면 이곳에 커리어하이가 쌓입니다.</p></section>
     {% endif %}
 
-    <h2 class="rk-h2">단일 시즌 기록</h2>
+    <h2 class="rk-h2">단일 시즌 기록 · {{ lg_short }}</h2>
     <ul class="rk-records">
         {% for r in records %}
         <li{% if r.s %} style="--team: {{ r.s.team|team_color }}"{% endif %}>
@@ -61,5 +74,37 @@
         </li>
         {% endfor %}
     </ul>
+
+    {% else %}
+    <h2 class="rk-h2">{% if view == 'hof' %}명예의 전당{% else %}통산 순위{% endif %} · {{ lg_name }}</h2>
+    <p class="rk-note">{% if view == 'hof' %}은퇴한 선수 가운데 {{ lg_name }}에서 반 시즌 이상 뛰었거나 상을 받은 선수입니다. {% endif %}순서는 MVP 수 → 이 리그에서의 최고 OVR → 수상 수 → 통산 WAR입니다.</p>
+    {% if rows %}
+    <div class="rk-table-wrap">
+        <table class="rk-table rk-career-table">
+            <thead><tr><th scope="col">#</th><th scope="col">선수</th><th scope="col">소속</th><th>MVP</th><th>최고 OVR</th><th>수상</th><th>WAR</th><th>시즌</th><th scope="col" class="is-text">통산</th></tr></thead>
+            <tbody>
+                {% for r in rows %}
+                <tr class="{% if r.p.id == my_id %}is-first{% endif %}">
+                    <td>{{ forloop.counter }}</td>
+                    <th scope="row"><a href="{% url 'community:rookie_player' r.p.pk %}">{{ r.p.name }}</a>{% if r.p.retired_at and view != 'hof' %} <small class="rk-fine">은퇴</small>{% endif %}</th>
+                    <td class="is-text"><i class="rk-dot" style="--team: {{ r.team|team_color }}" aria-hidden="true"></i> {{ r.team|team_short }}</td>
+                    <td>{{ r.mvp }}</td><td>{{ r.best|floatformat:1 }}</td><td>{{ r.awards }}</td><td class="is-war">{{ r.war }}</td><td>{{ r.seasons }}</td>
+                    <td class="is-text">{% if r.p.role == 'pitcher' %}{{ r.v.g|default:0 }}경기 {{ r.v.w|default:0 }}승 {{ r.v.sv|default:0 }}세이브, 평균자책점 {{ r.v.era_text }}, {{ r.v.so|default:0 }}탈삼진{% else %}{{ r.v.g|default:0 }}경기 {{ r.v.avg_text }}, {{ r.v.h|default:0 }}안타 {{ r.v.hr|default:0 }}홈런 {{ r.v.rbi|default:0 }}타점{% endif %}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <section class="rk-panel"><p class="rk-empty">{% if view == 'hof' %}아직 {{ lg_name }} 명예의 전당에 오른 선수가 없습니다. 은퇴한 선수가 생기면 이곳에 이름이 걸립니다.{% else %}아직 {{ lg_name }} 기록이 없습니다.{% endif %}</p></section>
+    {% endif %}
+    {% endif %}
+
+    {% if miles %}
+    <h2 class="rk-h2">최근 이정표</h2>
+    <ul class="rk-miles">
+        {% for m in miles %}<li><time datetime="{{ m.created_at|date:'c' }}">{{ m.day|date:'n.j' }}</time><a href="{% url 'community:rookie_player' m.player_id %}">{{ m.player.name }}</a><span>{{ m.text }}</span></li>{% endfor %}
+    </ul>
+    {% endif %}
 </div>
 </div>

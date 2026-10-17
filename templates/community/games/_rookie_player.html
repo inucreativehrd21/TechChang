@@ -1,4 +1,4 @@
-{# 선수 페이지(공개) — 카드·능력치·통산 시즌 기록·최근 경기. 맥락: rookie_views.rookie_player #}
+{# 선수 페이지(공개) — 카드·능력치·진로·통산 성적(리그별·프로·평생)·시즌 기록·이정표·최근 경기. 맥락: rookie_views.rookie_player #}
 {% load rookie_tags %}
 <div class="gm rk">
 <div class="gm-wrap is-wide">
@@ -6,36 +6,64 @@
 
     <div class="rk-hero is-profile">
         {% include 'community/games/_rookie_card.html' %}
-        <section class="rk-panel rk-ratings" aria-label="능력치">
-            <div class="rk-head"><h2>능력치</h2>{% if is_me %}<a class="rk-fine" href="{% url 'community:rookie_home' %}">훈련하러 가기</a>{% endif %}</div>
-            <ul class="rk-stats is-compact">
-                {% for s in stats %}
-                <li class="rk-stat{% if s.focus %} is-focus{% endif %}">
-                    <div class="rk-stat-top"><span class="rk-stat-name">{{ s.label }}</span><b class="rk-stat-val">{{ s.shown }}</b></div>
-                    <div class="rk-bar"><i style="width: {{ s.bar }}%"></i></div>
-                </li>
-                {% endfor %}
-            </ul>
-        </section>
+        <div class="rk-col">
+            <section class="rk-panel rk-ratings" aria-label="능력치">
+                <div class="rk-head"><h2>능력치</h2>{% if is_me and not p.retired_at %}<a class="rk-fine" href="{% url 'community:rookie_home' %}">훈련하러 가기</a>{% endif %}</div>
+                <ul class="rk-stats is-compact">
+                    {% for s in stats %}
+                    <li class="rk-stat{% if s.focus %} is-focus{% endif %}">
+                        <div class="rk-stat-top"><span class="rk-stat-name">{{ s.label }}</span><b class="rk-stat-val">{{ s.shown }}</b></div>
+                        <div class="rk-bar"><i style="width: {{ s.bar }}%"></i></div>
+                    </li>
+                    {% endfor %}
+                </ul>
+            </section>
+            {% include 'community/games/_rookie_path.html' with career=path owner=is_me %}
+        </div>
     </div>
 
-    {% if career %}{% include 'community/games/_rookie_line.html' with x=career.0 role=p.role %}{% endif %}
+    {% if career and not p.retired_at %}{% include 'community/games/_rookie_line.html' with x=career.0 role=p.role %}{% endif %}
 
-    <h2 class="rk-h2">통산 기록</h2>
+    <h2 class="rk-h2">통산 성적</h2>
+    {% if life.leagues %}
+    <p class="rk-note">리그마다 수준이 달라 따로 더하고, 프로 통산과 평생 통산(학생 시절 포함)을 함께 적었습니다.{% if best9 %} 오늘의 베스트 9 {{ best9 }}회.{% endif %}</p>
+    <div class="rk-table-wrap">
+        <table class="rk-table">
+            <thead>
+                {% if p.role == 'pitcher' %}
+                <tr><th scope="col">리그</th><th>시즌</th><th>경기</th><th>승</th><th>패</th><th>세이브</th><th>홀드</th><th>평균자책점</th><th>이닝</th><th>탈삼진</th><th>WHIP</th><th>WAR</th></tr>
+                {% else %}
+                <tr><th scope="col">리그</th><th>시즌</th><th>경기</th><th>타율</th><th>안타</th><th>홈런</th><th>타점</th><th>득점</th><th>도루</th><th>출루율</th><th>장타율</th><th>OPS</th><th>WAR</th></tr>
+                {% endif %}
+            </thead>
+            <tbody>
+                {% for x in life.leagues %}
+                <tr>{% include 'community/games/_rookie_liferow.html' with label=x.name seasons=x.seasons v=x.v war=x.war %}</tr>
+                {% endfor %}
+                {% if life.pro and life.leagues|length > 1 %}<tr class="is-first is-sum">{% include 'community/games/_rookie_liferow.html' with label='프로 통산' seasons=life.pro.seasons v=life.pro.v war=life.pro.war %}</tr>{% endif %}
+                {% if life.all %}<tr class="is-first is-sum">{% include 'community/games/_rookie_liferow.html' with label='평생 통산' seasons=life.all.seasons v=life.all.v war=life.all.war %}</tr>{% endif %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <section class="rk-panel"><p class="rk-empty">아직 경기 기록이 없습니다.</p></section>
+    {% endif %}
+
+    <h2 class="rk-h2">시즌별 기록</h2>
     {% if career %}
     <div class="rk-table-wrap">
         <table class="rk-table">
             <thead>
                 {% if p.role == 'pitcher' %}
-                <tr><th scope="col">시즌</th><th scope="col">리그</th><th>경기</th><th>승</th><th>패</th><th>평균자책점</th><th>이닝</th><th>탈삼진</th><th>볼넷</th><th>WHIP</th><th>QS</th><th>WAR</th></tr>
+                <tr><th scope="col">시즌</th><th scope="col">리그</th><th scope="col">소속</th><th>나이</th><th>경기</th><th>승</th><th>패</th><th>평균자책점</th><th>이닝</th><th>탈삼진</th><th>볼넷</th><th>WHIP</th><th>QS</th><th>WAR</th></tr>
                 {% else %}
-                <tr><th scope="col">시즌</th><th scope="col">리그</th><th>경기</th><th>타율</th><th>안타</th><th>홈런</th><th>타점</th><th>득점</th><th>도루</th><th>출루율</th><th>장타율</th><th>OPS</th><th>WAR</th></tr>
+                <tr><th scope="col">시즌</th><th scope="col">리그</th><th scope="col">소속</th><th>나이</th><th>경기</th><th>타율</th><th>안타</th><th>홈런</th><th>타점</th><th>득점</th><th>도루</th><th>출루율</th><th>장타율</th><th>OPS</th><th>WAR</th></tr>
                 {% endif %}
             </thead>
             <tbody>
                 {% for x in career %}
-                <tr class="{% if x.s.league == 2 %}is-first{% endif %}">
-                    <th scope="row">{{ x.s.season.number }}</th><td class="is-text">{{ x.league }}</td><td>{{ x.v.g|default:0 }}</td>
+                <tr class="{% if x.top %}is-first{% endif %}">
+                    <th scope="row">{{ x.s.season.number }}</th><td class="is-text">{{ x.league }}</td><td class="is-text">{{ x.s.team|team_short }}</td><td>{{ x.s.age|default:'-' }}</td><td>{{ x.v.g|default:0 }}</td>
                     {% if p.role == 'pitcher' %}
                     <td>{{ x.v.w|default:0 }}</td><td>{{ x.v.l|default:0 }}</td><td>{{ x.v.era_text }}</td><td>{{ x.v.ip_text }}</td><td>{{ x.v.so|default:0 }}</td><td>{{ x.v.bb|default:0 }}</td><td>{{ x.v.whip_text }}</td><td>{{ x.v.qs|default:0 }}</td>
                     {% else %}
@@ -49,6 +77,13 @@
     </div>
     {% else %}
     <section class="rk-panel"><p class="rk-empty">아직 경기 기록이 없습니다.</p></section>
+    {% endif %}
+
+    {% if miles %}
+    <h2 class="rk-h2">이정표</h2>
+    <ul class="rk-miles">
+        {% for m in miles %}<li><time datetime="{{ m.created_at|date:'c' }}">{{ m.day|date:'Y.n.j' }}</time><span>{{ m.text }}</span></li>{% endfor %}
+    </ul>
     {% endif %}
 
     <h2 class="rk-h2">최근 경기</h2>

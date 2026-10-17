@@ -566,7 +566,9 @@ def games_index(request):
     from ..models import NumberBaseballGame, Game2048, GuestBook, MinesweeperGame, RookiePlayer
     from django.db.models import F
     from ..game_visibility import visible
-    rookies = visible(RookiePlayer.objects.all(), 'user')
+    from ..rookie_world import LEAGUES, is_pro
+    PRO_LEAGUES = [c for c in LEAGUES if is_pro(c)]
+    rookies = visible(RookiePlayer.objects.filter(retired_at__isnull=True), 'user')
     bb, g2, ms = (visible(NumberBaseballGame.objects.all()), visible(Game2048.objects.all()),
                   visible(MinesweeperGame.objects.all()))      # 운영자(admin) 판은 세지 않는다
 
@@ -575,11 +577,11 @@ def games_index(request):
         {
             'name': '야구선수 키우기',
             'title': 'Baseball Career',
-            'description': '투수·타자를 골라 응원 팀 육성군에서 1군까지. 칼럼 읽기·댓글·출석으로 훈련 포인트를 모아 키우세요. 쉬면 감각이 떨어집니다!',
+            'description': '리틀야구에서 시작해 중·고교, 드래프트를 거쳐 KBO·메이저리그·일본·대만까지. 칼럼 읽기·댓글·출석으로 훈련 포인트를 모아 키우세요. 쉬면 감각이 떨어집니다!',
             'url': 'community:rookie_home',
             'icon': '🧢',
             'is_new': True,
-            'meta': f"선수 {rookies.count()}명 · 1군 {rookies.filter(tier=2).count()}명",
+            'meta': f"선수 {rookies.count()}명 · 프로 {rookies.filter(league__in=PRO_LEAGUES).count()}명",
         },
         {
             'name': '숫자야구',

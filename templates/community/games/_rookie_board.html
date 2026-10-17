@@ -40,7 +40,13 @@
     {% endif %}
     {% endwith %}{% endif %}
     {% if opp_levels %}<p class="rk-board-note">{% if p.role == 'pitcher' %}{{ games.0.league }} 상대 타선: 상위 {{ opp_levels.top }}(출루·주루), 중심 {{ opp_levels.heart }}(클러치·장타), 하위 {{ opp_levels.bottom }}. 내 구위는 {{ ladder.stuff }}입니다.{% else %}{{ games.0.league }} 상대 선발 구위: 에이스 {{ opp_levels.ace }}, 주전 {{ opp_levels.reg }}, 백업 {{ opp_levels.bak }}. 내 OVR은 {{ p.ovr|floatformat:1 }}입니다.{% endif %}</p>{% endif %}
+    {% if xp_rows %}<p class="rk-board-note is-xp">경기 경험 {% for x in xp_rows %}{{ x.label }} +{{ x.gain|floatformat:2 }}{% if not forloop.last %} · {% endif %}{% endfor %}</p>{% endif %}
     {% if dnp %}<p class="rk-board-note">어제는 결장했습니다. 경기일 포함 최근 3일 안에 활동해야 엔트리에 듭니다.</p>{% endif %}
+    {% elif graduated %}
+    <div class="rk-board-empty">
+        <b>졸업</b>
+        <span>드래프트가 끝났습니다. 위에서 진로를 고르면 새 팀에서 다시 경기에 나섭니다.</span>
+    </div>
     {% elif season.phase == 'off' %}
     <div class="rk-board-empty">
         <b>D-{{ season.dday }}</b>
@@ -49,7 +55,7 @@
     {% elif season.phase == 'pre' %}
     <div class="rk-board-empty">
         <b>D-{{ season.dday }}</b>
-        <span>{{ season.opening|date:'n월 j일' }} 개막. 하루 5~6경기, 4주 동안 144경기를 치릅니다. 그때까지 훈련으로 몸을 만들어 두세요.</span>
+        <span>{{ season.opening|date:'n월 j일' }} 개막. 프로는 하루 5~6경기(4주 144경기), 학생은 하루 한 경기를 치릅니다. 그때까지 훈련으로 몸을 만들어 두세요.</span>
     </div>
     {% elif dnp %}
     <div class="rk-board-empty">

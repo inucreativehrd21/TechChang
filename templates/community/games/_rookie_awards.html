@@ -1,22 +1,28 @@
-{# 시상식 — 끝난 시즌의 MVP·신인왕·골든글러브(다이아몬드 위 수비 위치)·타이틀. 끝난 시즌이 없으면 MVP 레이스. 맥락: rookie_views.rookie_awards #}
+{% comment %}시상식 — 끝난 시즌의 리그별 시상. 최상위 리그는 MVP·신인왕·(사이영상·사와무라상)·포지션별 수상(다이아몬드)·타이틀,
+하위·아마추어 리그는 리그 MVP·최우수선수와 타이틀. 끝난 시즌이 없으면 MVP 레이스. 맥락: rookie_views.rookie_awards{% endcomment %}
 {% load rookie_tags %}
 <div class="gm rk">
 <div class="gm-wrap is-wide">
     {% include 'community/games/_rookie_top.html' with h1='시상식' %}
 
     {% if cur %}
-        {% if seasons|length > 1 %}
         <div class="rk-controls">
-            <nav class="rk-seg is-quiet" aria-label="시즌">
-                {% for s in seasons %}<a href="?season={{ s.number }}" {% if s.number == cur.number %}aria-current="page"{% endif %}>시즌 {{ s.number }}</a>{% endfor %}
+            {% if lg_choices|length > 1 %}
+            <nav class="rk-seg is-quiet" aria-label="리그">
+                {% for c in lg_choices %}<a href="?season={{ cur.number }}&amp;lg={{ c.code }}" {% if c.code == lg %}aria-current="page"{% endif %} title="{{ c.name }}">{{ c.short }}</a>{% endfor %}
             </nav>
+            {% endif %}
+            {% if seasons|length > 1 %}
+            <nav class="rk-seg is-quiet" aria-label="시즌">
+                {% for s in seasons %}<a href="?season={{ s.number }}&amp;lg={{ lg }}" {% if s.number == cur.number %}aria-current="page"{% endif %}>시즌 {{ s.number }}</a>{% endfor %}
+            </nav>
+            {% endif %}
         </div>
-        {% endif %}
 
         <div class="rk-podium">
             {% if mvp %}
             <section class="rk-plaque is-mvp" style="--team: {{ mvp.team|team_color }}">
-                <p class="rk-plaque-kind">{% include 'community/games/_rookie_glove.html' %}시즌 {{ cur.number }} MVP</p>
+                <p class="rk-plaque-kind">{% include 'community/games/_rookie_glove.html' %}시즌 {{ cur.number }} {% if mvp.kind == 'mvp' %}{{ lg_name }} MVP{% else %}{{ mvp.label }}{% endif %}</p>
                 <h2>{% if mvp.player_id %}<a href="{% url 'community:rookie_player' mvp.player_id %}">{{ mvp.name }}</a>{% else %}{{ mvp.name }}{% endif %}</h2>
                 <p class="rk-plaque-team"><i class="rk-dot" aria-hidden="true"></i>{{ mvp.team|team_name }}</p>
                 {% if mvp_nums %}
@@ -27,29 +33,32 @@
                 <p class="rk-plaque-value">{{ mvp.value }}</p>
                 {% endif %}
             </section>
+            {% else %}
+            <section class="rk-plaque is-mvp"><p class="rk-plaque-kind">시즌 {{ cur.number }} {{ lg_name }}</p><h3>수상자 없음</h3><p class="rk-plaque-value">후보 기준(타석·이닝)을 채운 선수가 없었습니다.</p></section>
             {% endif %}
             <div class="rk-podium-side">
                 {% if roy %}
                 <section class="rk-plaque" style="--team: {{ roy.team|team_color }}">
                     <p class="rk-plaque-kind">신인왕</p>
-                    <h3>{{ roy.name }}</h3>
+                    <h3>{% if roy.player_id %}<a href="{% url 'community:rookie_player' roy.player_id %}">{{ roy.name }}</a>{% else %}{{ roy.name }}{% endif %}</h3>
                     <p class="rk-plaque-team"><i class="rk-dot" aria-hidden="true"></i>{{ roy.team|team_name }}</p>
                     <p class="rk-plaque-value">{{ roy.value }}</p>
                 </section>
                 {% endif %}
-                {% if futures %}
-                <section class="rk-plaque" style="--team: {{ futures.team|team_color }}">
-                    <p class="rk-plaque-kind">퓨처스 MVP</p>
-                    <h3>{{ futures.name }}</h3>
-                    <p class="rk-plaque-team"><i class="rk-dot" aria-hidden="true"></i>{{ futures.team|team_name }}</p>
-                    <p class="rk-plaque-value">{{ futures.value }}</p>
+                {% if ace %}
+                <section class="rk-plaque" style="--team: {{ ace.team|team_color }}">
+                    <p class="rk-plaque-kind">{{ ace.label }}</p>
+                    <h3>{% if ace.player_id %}<a href="{% url 'community:rookie_player' ace.player_id %}">{{ ace.name }}</a>{% else %}{{ ace.name }}{% endif %}</h3>
+                    <p class="rk-plaque-team"><i class="rk-dot" aria-hidden="true"></i>{{ ace.team|team_name }}</p>
+                    <p class="rk-plaque-value">{{ ace.value }}</p>
                 </section>
                 {% endif %}
             </div>
         </div>
 
-        <h2 class="rk-h2">골든글러브</h2>
-        <section class="rk-diamond" aria-label="포지션별 골든글러브">
+        {% if style %}
+        <h2 class="rk-h2">{{ style.gg }}</h2>
+        <section class="rk-diamond" aria-label="포지션별 {{ style.gg }}">
             <svg class="rk-park" viewBox="0 0 1000 760" aria-hidden="true" focusable="false">
                 <path d="M500 735 L60 300 A620 620 0 0 1 940 300 Z" class="rk-park-grass"/>
                 <path d="M500 690 L330 520 L500 350 L670 520 Z" class="rk-park-dirt"/>
@@ -69,9 +78,23 @@
                 {% endif %}
             {% endfor %}
         </section>
+        {% endif %}
+
+        {% if others %}
+        <h2 class="rk-h2">다른 리그 MVP</h2>
+        <ul class="rk-titles is-others">
+            {% for a in others %}
+            <li style="--team: {{ a.team|team_color }}">
+                <span class="rk-title-name">{{ a.league|league_name }}</span>
+                <b>{% if a.player_id %}<a href="{% url 'community:rookie_player' a.player_id %}">{{ a.name }}</a>{% else %}{{ a.name }}{% endif %}</b>
+                <span class="rk-title-who"><i class="rk-dot" aria-hidden="true"></i>{{ a.team|team_short }} · <a href="?season={{ cur.number }}&amp;lg={{ a.league }}">시상 보기</a></span>
+            </li>
+            {% endfor %}
+        </ul>
+        {% endif %}
 
         {% if titles %}
-        <h2 class="rk-h2">개인 타이틀</h2>
+        <h2 class="rk-h2">{% if style %}개인 타이틀{% else %}부문별 수상{% endif %}</h2>
         <ul class="rk-titles">
             {% for a in titles %}
             <li style="--team: {{ a.team|team_color }}">
@@ -88,7 +111,7 @@
             <header class="rk-board-head"><span>시즌 {{ season_now.number }} 시상식</span><span>{{ ceremony|date:'n월 j일' }}</span></header>
             <div class="rk-board-empty">
                 <b>{% if season_now.phase == 'pre' %}개막 전{% elif season_now.phase == 'off' %}시상 준비 중{% else %}MVP 레이스{% endif %}</b>
-                <span>시즌이 끝난 다음 날 아침({{ ceremony|date:'n월 j일' }}) MVP, 신인왕, 위치별 골든글러브, 개인 타이틀을 발표합니다. 후보가 되려면 1군에서 타자는 {{ award_pa }}타석, 투수는 {{ award_ip }}이닝 이상 뛰어야 합니다.</span>
+                <span>시즌이 끝난 다음 날 아침({{ ceremony|date:'n월 j일' }}) 리그마다 시상합니다. KBO 1군은 MVP, 신인왕, 위치별 골든글러브, 개인 타이틀 — 후보가 되려면 타자는 {{ award_pa }}타석, 투수는 {{ award_ip }}이닝 이상 뛰어야 합니다. 메이저리그는 사이영상·실버슬러거, 일본은 사와무라상·베스트 나인, 대만은 베스트 텐, 하위 리그와 학생 리그는 리그 MVP·최우수선수를 뽑습니다.</span>
             </div>
             {% if race %}
             <ol class="rk-board-rows is-race">

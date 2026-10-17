@@ -1,24 +1,26 @@
-{# 선수 카드 — 내 선수·선수 페이지 공용. 맥락: p, team, role_label, pos_label, tier_name, title, (rank, trophies, next, demote_at, owner) #}
+{% load rookie_tags %}{# 선수 카드 — 내 선수·선수 페이지 공용. 맥락: rookie.identity(p) + (rank, trophies, next, demote_at, owner, ladder, career) #}
 <section class="rk-card" style="--team: {{ team.color|default:'#4f46e5' }}" aria-label="선수 카드">
     <div class="rk-card-top">
         <span class="rk-team"><i class="rk-dot" aria-hidden="true"></i>{{ team.name }}</span>
-        <span class="rk-tier is-t{{ p.tier }}">{{ tier_name }}{% if title %} {{ title }}{% endif %}</span>
+        {% if p.retired_at %}<span class="rk-tier is-retired">은퇴</span>{% else %}<span class="rk-tier is-{{ league_kind }}">{{ league_short }}{% if title %} {{ title }}{% endif %}</span>{% endif %}
     </div>
     <div class="rk-card-main">
         <span class="rk-number" aria-hidden="true">{{ p.number }}</span>
         <div class="rk-who">
             <b class="rk-name">{{ p.name }}</b>
             <span class="rk-meta">{{ pos_label|default:role_label }}{% if p.focus %}, 주특기 {{ focus_label }}{% endif %}</span>
+            <span class="rk-meta">{% if grade_label and not p.retired_at %}{{ grade_label }} · {% endif %}{{ p.age }}세</span>
+            {% if league_kind == 'am' and want.name and not p.retired_at %}<span class="rk-meta">희망 구단 <i class="rk-dot is-sm" style="--team: {{ want.color }}" aria-hidden="true"></i>{{ want.name }}</span>{% endif %}
             {% if ladder %}<span class="rk-role-line"><b>{{ ladder.label }}</b>{% if ladder.style %} · {{ ladder.style }}{% endif %}</span>
             {% if ladder.top_speed %}<span class="rk-meta">최고 {{ ladder.top_speed }}km/h · {{ ladder.pitches|join:'·' }}</span>{% endif %}{% endif %}
-            {% if rank %}<span class="rk-meta">OVR 리그 {{ rank }}위</span>{% endif %}
+            {% if rank %}<span class="rk-meta">{{ league_short }} OVR {{ rank }}위</span>{% endif %}
         </div>
         <div class="rk-ovr"><small>OVR</small><b>{{ p.ovr|floatformat:1 }}</b></div>
     </div>
     {% if trophies %}
     <ul class="rk-trophies" aria-label="수상">
         {% for a in trophies|slice:':6' %}
-        <li class="is-{{ a.kind }}" title="시즌 {{ a.season.number }} {{ a.label }}">
+        <li class="is-{{ a.kind }}" title="시즌 {{ a.season.number }} {{ a.league|league_short }} {{ a.label }}">
             {% include 'community/games/_rookie_glove.html' %}<span>S{{ a.season.number }} {{ a.label }}</span>
         </li>
         {% endfor %}
@@ -39,10 +41,15 @@
                 </form>
                 {% endif %}
             {% endif %}
-            {% if p.tier %}<p class="rk-card-note">OVR {{ demote_at|floatformat:0 }} 아래로 떨어지면 한 단계 내려갑니다.</p>{% endif %}
+            {% if demote_at %}<p class="rk-card-note">OVR {{ demote_at|floatformat:0 }} 아래로 떨어지면 한 단계 내려갑니다.</p>{% endif %}
         </div>
-        {% else %}
-        <p class="rk-card-note">OVR {{ demote_at|floatformat:0 }} 아래로 떨어지면 2군으로 내려갑니다.</p>
+        {% elif career.grade_left is not None %}
+        <div class="rk-next">
+            <div class="rk-next-label"><span>{{ career.next_label }}까지</span><b>{% if career.grade_left %}{{ career.grade_left }}일{% else %}오늘 밤{% endif %}</b></div>
+            <div class="rk-bar is-next"><i style="width: {{ career.grade_pct }}%"></i></div>
+        </div>
+        {% elif demote_at %}
+        <p class="rk-card-note">OVR {{ demote_at|floatformat:0 }} 아래로 떨어지면 한 단계 내려갑니다.</p>
         {% endif %}
     {% endif %}
 </section>

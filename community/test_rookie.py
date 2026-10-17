@@ -33,6 +33,16 @@ class FixedRng:
         return seq[0]
 
 
+def adult(p, **over):
+    """프로 성인 선수로(나이 한계·잠재력·특성이 성장 수식을 흔들지 않게) — 저장까지."""
+    fields = dict(age=25, potential=99, traits=[], traits_seen=[], grade=0, grade_since=None, pending={})
+    fields.update(over)
+    for k, v in fields.items():
+        setattr(p, k, v)
+    p.save()
+    return p
+
+
 def member(name='member1', nick='회원선수'):
     u = User.objects.create_user(username=name, password='pw12345!', email=f'{name}@example.com')
     p, _ = Profile.objects.get_or_create(user=u)
@@ -76,20 +86,28 @@ class EngineTests(TestCase):
     def setUp(self):
         cache.clear()
         self.u = member()
-        self.p = R.create(self.u, name='김테크', role='pitcher', team='lg', number=17, focus='control')
+        self.p = adult(R.create(self.u, name='김테크', role='pitcher', team='lg', number=17, focus='control',
+                                region='서울'))
 
     def refresh(self):
         self.p.refresh_from_db()
         return self.p
 
     def test_create_starts_at_floor_with_welcome_tp(self):
+        p = R.create(member('새내기'), name='리틀', role='pitcher', team='kia', focus='control', region='부산')
+        self.assertEqual((p.tp, p.league, p.club, p.age, p.grade, p.focus),
+                         (R.WELCOME_TP, 'little', '부산 리틀야구단', 12, 6, 'control'))
+        self.assertEqual(p.pending, {'kind': 'apply', 'to': 'ms', 'choice': ''})        # 초6 = 졸업 학년 → 중학교 지원
         p = self.p
-        self.assertEqual((p.tp, p.tier, p.focus), (R.WELCOME_TP, 0, 'control'))
         self.assertEqual(set(p.stats), {'velocity', 'control', 'breaking', 'stamina', 'mental'})
         self.assertEqual(p.ovr, 25.0)
         self.assertEqual(p.logs.get().kind, 'start')
         with self.assertRaises(R.GameError):
-            R.create(member('m2'), name='x', role='pitcher', team='mlb')
+            R.create(member('m2'), name='x', role='pitcher', team='mlb', region='서울')      # 희망 구단은 KBO 만
+        with self.assertRaises(R.GameError):
+            R.create(member('m3'), name='x', role='pitcher', team='lg', region='화성')
+        with self.assertRaises(R.GameError):
+            R.create(self.u, name='둘째', role='batter', team='lg', region='서울')           # 현역은 한 명
 
     def test_awards_have_daily_caps_and_no_repeats(self):
         self.assertIsNone(R.award(member('nobody'), 'column', '1'))        # 선수가 없으면 없다
@@ -114,14 +132,14 @@ class EngineTests(TestCase):
         p = self.p
         today = timezone.localdate()
         p.stats = {k: 70.0 for k in p.stats}
-        p.ovr, p.tier = 70.0, 2
+        p.ovr, p.league, p.club = 70.0, 'kbo1', 'lg'
         p.last_active = today - timedelta(days=10)
         p.settled_through = today - timedelta(days=11)
         p.save()
         r = R.settle(p, today)
         self.assertEqual(r['days'], 10)
-        self.assertLess(p.ovr, 60)
-        self.assertEqual(p.tier, 1)                              # 1군 → 2군 (60 아래)
+        self.assertLess(p.ovr, 58)
+        self.assertEqual(p.league, 'kbo2')                       # 1군(64) − 6 아래 → 퓨처스
         self.assertTrue(p.logs.filter(kind='decay').exists())
         self.assertTrue(p.logs.filter(kind='demote').exists())
         self.assertEqual(R.settle(p, today)['days'], 0)          # 같은 날 두 번 정산하지 않는다
@@ -161,24 +179,28 @@ class EngineTests(TestCase):
 
     def test_promotion_test_rules(self):
         with self.assertRaises(R.GameError):
-            R.promotion_test(self.u, rng=FixedRng(10))           # OVR 25 < 45
-        self.p.stats = {k: 46.0 for k in self.p.stats}
-        self.p.ovr = 46.0
+            R.promotion_test(self.u, rng=FixedRng(10))           # 학생(리틀)은 승격 심사가 없다
+        self.p.league, self.p.club = 'kbo3', 'lg'
+        self.p.save()
+        with self.assertRaises(R.GameError):
+            R.promotion_test(self.u, rng=FixedRng(10))           # OVR 25 < 퓨처스 49
+        self.p.stats = {k: 50.0 for k in self.p.stats}
+        self.p.ovr = 50.0
         self.p.save()
         r = R.promotion_test(self.u, rng=FixedRng(5))
         self.assertTrue(r['passed'])
-        self.assertEqual(self.refresh().tier, 1)
+        self.assertEqual(self.refresh().league, 'kbo2')
         self.assertEqual(r['games'][0]['line'], '6이닝 1실점 6탈삼진')
         with self.assertRaises(R.GameError):
             R.promotion_test(self.u, rng=FixedRng(5))            # 하루 한 번(이미 2군이라도 오늘 심사함)
 
-    def test_failed_test_keeps_tier(self):
-        self.p.stats = {k: 46.0 for k in self.p.stats}
-        self.p.ovr = 46.0
+    def test_failed_test_keeps_league(self):
+        self.p.stats = {k: 50.0 for k in self.p.stats}
+        self.p.ovr, self.p.league, self.p.club = 50.0, 'kbo3', 'lg'
         self.p.save()
         r = R.promotion_test(self.u, rng=FixedRng(-9))
         self.assertFalse(r['passed'])
-        self.assertEqual(self.refresh().tier, 0)
+        self.assertEqual(self.refresh().league, 'kbo3')
         self.assertEqual(self.p.logs.filter(kind='test').count(), 1)
 
 
@@ -202,23 +224,26 @@ class ViewTests(TestCase):
     def test_create_then_play_pc_and_mobile(self):
         self.client.force_login(self.u)
         r = self.get('/rookie/')
-        self.assertContains(r, '육성군 입단하기')
+        self.assertContains(r, '리틀야구단 입단하기')
         self.assertContains(r, '회원선수')                       # 이름 기본값 = 닉네임
         r = self.client.post('/rookie/create/', {'role': 'batter', 'team': 'kia', 'name': '창이', 'number': '7',
-                                                 'focus_batter': 'power'}, HTTP_USER_AGENT=PC)
+                                                 'focus_batter': 'power', 'region': '광주'}, HTTP_USER_AGENT=PC)
         self.assertRedirects(r, '/rookie/', fetch_redirect_response=False)
         p = RookiePlayer.objects.get(user=self.u)
         self.assertEqual((p.role, p.team, p.focus, p.number), ('batter', 'kia', 'power', 7))
         for ua in (PC, MOBILE):
             r = self.get('/rookie/', ua=ua)
             self.assertContains(r, '창이')
-            self.assertContains(r, 'KIA 타이거즈')
+            self.assertContains(r, '광주 리틀야구단')
+            self.assertContains(r, '희망 구단')
+            self.assertContains(r, '중학야구 진학 지원')                # 초6 = 졸업 학년
+            self.assertContains(r, '충장중')                          # 광주 중학교가 먼저
             self.assertContains(r, '오늘의 TP')
             self.assertContains(r, 'nonce=')
         self.assertTemplateUsed(self.get('/rookie/', ua=MOBILE), 'base_mobile.html')
 
     def test_train_ajax_returns_play_area(self):
-        R.create(self.u, name='창이', role='batter', team='kia')
+        adult(R.create(self.u, name='창이', role='batter', team='kia', region='서울'))
         self.client.force_login(self.u)
         r = self.client.post('/rookie/train/', {'stat': 'contact', 'times': '5'}, HTTP_X_REQUESTED_WITH='XMLHttpRequest')
         d = r.json()
@@ -234,7 +259,7 @@ class ViewTests(TestCase):
         self.assertRedirects(r, '/rookie/', fetch_redirect_response=False)
 
     def test_promotion_result_is_shown_once(self):
-        p = R.create(self.u, name='창이', role='batter', team='kia')
+        p = adult(R.create(self.u, name='창이', role='batter', team='kia', region='서울'), league='kbo3', club='kia')
         p.stats = {k: 60.0 for k in p.stats}
         p.ovr = 60.0
         p.save()
@@ -246,7 +271,7 @@ class ViewTests(TestCase):
         self.assertNotContains(self.get('/rookie/'), 'rk-test')
 
     def test_column_read_pays_tp_with_message_once(self):
-        R.create(self.u, name='창이', role='batter', team='kia')
+        R.create(self.u, name='창이', role='batter', team='kia', region='서울')
         bot = User.objects.create(username=Question.BOT_USERNAME)
         cat, _ = Category.objects.get_or_create(name='HRD')
         col = Question.objects.create(author=bot, category=cat, subject='칼럼', content='본문 ' * 100,
@@ -259,28 +284,33 @@ class ViewTests(TestCase):
 
     def test_ranking_hides_admin_and_shows_teams(self):
         admin = member('admin', '운영자')
-        R.create(admin, name='운영선수', role='pitcher', team='lg')
-        R.create(self.u, name='회원투수', role='pitcher', team='lg')
+        R.create(admin, name='운영선수', role='pitcher', team='lg', region='서울')
+        R.create(self.u, name='회원투수', role='pitcher', team='lg', region='서울')
         r = self.get('/rookie/league/?tab=players')
         self.assertContains(r, '회원투수')
         self.assertNotContains(r, '운영선수')
         r = self.get('/rookie/league/?tab=teams')
         self.assertContains(r, 'LG 트윈스')
-        self.assertContains(r, '선수 1명')
+        self.assertContains(r, '지망 유망주 1명')                  # 운영자 선수는 세지 않는다
         self.assertContains(r, '아직 선수 없음')
 
     def test_games_index_lists_rookie_and_retire_needs_confirm(self):
         self.assertContains(self.get('/games/'), '야구선수 키우기')
-        R.create(self.u, name='창이', role='batter', team='kia')
+        R.create(self.u, name='창이', role='batter', team='kia', region='서울')
         self.client.force_login(self.u)
         self.client.post('/rookie/retire/', {})
-        self.assertTrue(RookiePlayer.objects.filter(user=self.u).exists())
+        self.assertTrue(R.current(self.u.id))
         self.client.post('/rookie/retire/', {'confirm': 'yes'})
-        self.assertFalse(RookiePlayer.objects.filter(user=self.u).exists())
+        self.assertIsNone(R.current(self.u.id))
+        p = RookiePlayer.objects.get(user=self.u)                 # 은퇴한 선수는 기록으로 남는다
+        self.assertIsNotNone(p.retired_at)
+        self.assertTrue(p.logs.filter(kind='retire').exists())
+        self.assertContains(self.get('/rookie/'), '지난 선수')        # 새 선수 만들기 + 지난 선수 안내
+        self.assertEqual(self.get(f'/rookie/p/{p.pk}/').status_code, 200)
 
     def test_settle_command(self):
         from django.core.management import call_command
-        p = R.create(self.u, name='창이', role='batter', team='kia')
+        p = R.create(self.u, name='창이', role='batter', team='kia', region='서울')
         p.stats = {k: 60.0 for k in p.stats}
         p.ovr = 60.0
         p.last_active = timezone.localdate() - timedelta(days=5)
@@ -298,7 +328,7 @@ class ColumnRepeatTests(TestCase):
     def test_same_column_pays_again_after_30_days(self):
         from datetime import timedelta
         u = member('재독자')
-        p = R.create(u, name='재독', role='batter', team='kia')
+        p = R.create(u, name='재독', role='batter', team='kia', region='서울')
         self.assertTrue(R.award(u, 'column', '77'))
         self.assertIsNone(R.award(u, 'column', '77'))
         p.logs.filter(source='column').update(day=timezone.localdate() - timedelta(days=31))
@@ -311,12 +341,12 @@ class CreateTwiceTests(TestCase):
         u = member('두번누름')
         self.client.force_login(u)
         with mock.patch('community.rookie.create', side_effect=IntegrityError('dup')):
-            r = self.client.post('/rookie/create/', {'role': 'batter', 'team': 'lg', 'name': 'x'})
+            r = self.client.post('/rookie/create/', {'role': 'batter', 'team': 'lg', 'name': 'x', 'region': '서울'})
         self.assertEqual(r.status_code, 302)
 
     def test_bad_train_input_has_friendly_message(self):
         u = member('이상입력')
-        R.create(u, name='x', role='batter', team='lg')
+        R.create(u, name='x', role='batter', team='lg', region='서울')
         self.client.force_login(u)
         r = self.client.post('/rookie/train/', {'stat': 'contact', 'times': 'abc'}, HTTP_X_REQUESTED_WITH='XMLHttpRequest')
         self.assertEqual(r.status_code, 400)

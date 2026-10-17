@@ -1,4 +1,4 @@
-{# 리그 — 기록 리더 / 선수 OVR 순위 / 구단 전력. 맥락: rookie_views.rookie_league #}
+{# 리그 — 기록 리더 / 오늘의 베스트 9 / 선수 OVR 순위 / 구단 전력. 맥락: rookie_views.rookie_league #}
 <div class="gm rk">
 <div class="gm-wrap is-wide">
     {% include 'community/games/_rookie_top.html' with h1='리그' %}
@@ -6,16 +6,17 @@
     <div class="rk-controls">
         <nav class="rk-seg" aria-label="리그 화면">
             <a href="?tab=leaders" {% if tab == 'leaders' %}aria-current="page"{% endif %}>기록 리더</a>
+            <a href="?tab=best9" {% if tab == 'best9' %}aria-current="page"{% endif %}>오늘의 베스트 9</a>
             <a href="?tab=players" {% if tab == 'players' %}aria-current="page"{% endif %}>선수 순위</a>
             <a href="?tab=teams" {% if tab == 'teams' %}aria-current="page"{% endif %}>구단 전력</a>
         </nav>
-        {% if tab == 'leaders' and cur %}
+        {% if tab == 'leaders' or tab == 'best9' %}
+        {% if lg_choices|length > 1 %}
         <nav class="rk-seg is-quiet" aria-label="리그">
-            <a href="?tab=leaders&amp;season={{ cur.number }}&amp;lg=2" {% if lg == 2 %}aria-current="page"{% endif %}>1군</a>
-            <a href="?tab=leaders&amp;season={{ cur.number }}&amp;lg=1" {% if lg == 1 %}aria-current="page"{% endif %}>퓨처스</a>
-            <a href="?tab=leaders&amp;season={{ cur.number }}&amp;lg=0" {% if lg == 0 %}aria-current="page"{% endif %}>3군</a>
+            {% for c in lg_choices %}<a href="?tab={{ tab }}{% if cur and tab == 'leaders' %}&amp;season={{ cur.number }}{% endif %}&amp;lg={{ c.code }}" {% if lg == c.code %}aria-current="page"{% endif %} title="{{ c.name }}">{{ c.short }}</a>{% endfor %}
         </nav>
-        {% if seasons|length > 1 %}
+        {% endif %}
+        {% if tab == 'leaders' and cur and seasons|length > 1 %}
         <nav class="rk-seg is-quiet" aria-label="시즌">
             {% for s in seasons %}<a href="?tab=leaders&amp;season={{ s.number }}&amp;lg={{ lg }}" {% if s.number == cur.number %}aria-current="page"{% endif %}>시즌 {{ s.number }}</a>{% endfor %}
         </nav>
@@ -31,7 +32,7 @@
     {% if tab == 'leaders' %}
         {% if cur and not team_games %}
         <section class="rk-board rk-empty-board">
-            <header class="rk-board-head"><span>시즌 {{ cur.number }}</span><span>첫 경기 전</span></header>
+            <header class="rk-board-head"><span>시즌 {{ cur.number }} · {{ lg_name }}</span><span>첫 경기 전</span></header>
             <div class="rk-board-empty"><b>집계 대기</b><span>첫 경기일 밤에 경기를 치르고, 다음 날 아침부터 이곳에 기록 리더가 뜹니다.</span></div>
         </section>
         {% elif not cur %}
@@ -51,9 +52,33 @@
         </div>
         {% endif %}
 
+    {% elif tab == 'best9' %}
+        {% if nine_day %}
+        <p class="rk-note">{{ nine_day|date:'n월 j일' }} {{ lg_name }} — 위치마다 그날 가장 잘한 선수입니다. 타자는 루타·볼넷·도루·타점·득점, 투수는 게임 스코어로 견줍니다.</p>
+        <section class="rk-diamond" aria-label="오늘의 베스트 9">
+            <svg class="rk-park" viewBox="0 0 1000 760" aria-hidden="true" focusable="false">
+                <path d="M500 735 L60 300 A620 620 0 0 1 940 300 Z" class="rk-park-grass"/>
+                <path d="M500 690 L330 520 L500 350 L670 520 Z" class="rk-park-dirt"/>
+                <path d="M500 690 L60 255 M500 690 L940 255" class="rk-park-line"/>
+                <circle cx="500" cy="530" r="34" class="rk-park-mound"/>
+                <rect x="490" y="680" width="20" height="20" transform="rotate(45 500 690)" class="rk-park-base"/>
+                <rect x="320" y="510" width="20" height="20" transform="rotate(45 330 520)" class="rk-park-base"/>
+                <rect x="490" y="340" width="20" height="20" transform="rotate(45 500 350)" class="rk-park-base"/>
+                <rect x="660" y="510" width="20" height="20" transform="rotate(45 670 520)" class="rk-park-base"/>
+            </svg>
+            {% for x in spots %}{% include 'community/games/_rookie_spot.html' with spot=x a=x.a slot=x.slot %}{% endfor %}
+        </section>
+        {% else %}
+        <section class="rk-board rk-empty-board">
+            <header class="rk-board-head"><span>오늘의 베스트 9 · {{ lg_name }}</span><span>경기 전</span></header>
+            <div class="rk-board-empty"><b>{% if season_now.phase == 'pre' %}D-{{ season_now.dday }}{% else %}대기{% endif %}</b><span>이 리그의 경기가 끝나면 다음 날 아침 위치마다 그날의 주인공을 뽑습니다.</span></div>
+        </section>
+        {% endif %}
+
     {% elif tab == 'players' %}
     <section class="rk-panel">
         {% if rows %}
+        <p class="rk-note is-flush">높은 리그가 먼저, 같은 리그 안에서는 OVR 순입니다.</p>
         <ol class="rk-rank">
             {% for r in rows %}
             <li class="{% if r.is_me %}is-me{% endif %}">
@@ -61,9 +86,9 @@
                 <span class="rk-dot is-lg" style="--team: {{ r.team.color }}" aria-hidden="true"></span>
                 <a class="rk-rank-main" href="{% url 'community:rookie_player' r.p.pk %}">
                     <b>{{ r.p.name }} <small>{{ r.p.number }}</small></b>
-                    <span>{{ r.team.name }}, {{ r.pos_label|default:r.role_label }}</span>
+                    <span>{{ r.team.name }}, {{ r.pos_label|default:r.role_label }}, {{ r.p.age }}세</span>
                 </a>
-                <span class="rk-tier is-t{{ r.p.tier }}">{{ r.tier_name }}{% if r.title %} {{ r.title }}{% endif %}</span>
+                <span class="rk-tier is-{{ r.league_kind }}">{{ r.league_short }}{% if r.title %} {{ r.title }}{% endif %}</span>
                 <b class="rk-rank-val">{{ r.p.ovr|floatformat:1 }}</b>
             </li>
             {% endfor %}
@@ -75,15 +100,15 @@
 
     {% else %}
     <section class="rk-panel">
-        <p class="rk-note is-flush">구단 전력은 소속 선수 OVR의 합입니다. 응원 팀 팬이 많고 열심일수록 올라갑니다.</p>
+        <p class="rk-note is-flush">구단 전력은 KBO 소속 선수(육성군·퓨처스·1군) OVR의 합입니다. 지망 유망주는 그 구단을 희망하는 학생 선수입니다.</p>
         <ol class="rk-rank">
             {% for t in team_rows %}
-            <li class="{% if t.team.code == my_team %}is-me{% endif %}{% if not t.n %} is-dim{% endif %}">
+            <li class="{% if t.team.code == my_team %}is-me{% endif %}{% if not t.n and not t.fans %} is-dim{% endif %}">
                 <span class="rk-rank-no">{{ forloop.counter }}</span>
                 <span class="rk-dot is-lg" style="--team: {{ t.team.color }}" aria-hidden="true"></span>
                 <span class="rk-rank-main">
                     <b>{{ t.team.name }}</b>
-                    <span>{% if t.n %}선수 {{ t.n }}명, 1군 {{ t.first }}명, 평균 OVR {{ t.avg }}{% else %}아직 선수 없음{% endif %}</span>
+                    <span>{% if t.n %}선수 {{ t.n }}명, 1군 {{ t.first }}명, 평균 OVR {{ t.avg }}{% if t.fans %} · {% endif %}{% endif %}{% if t.fans %}지망 유망주 {{ t.fans }}명{% endif %}{% if not t.n and not t.fans %}아직 선수 없음{% endif %}</span>
                 </span>
                 <b class="rk-rank-val">{{ t.power }}</b>
             </li>
@@ -91,6 +116,6 @@
         </ol>
     </section>
     {% endif %}
-    <p class="rk-fine rk-center">구단명은 응원 팀 표시용이며 KBO와 각 구단과는 관계없습니다.</p>
+    <p class="rk-fine rk-center">구단·학교 이름은 소속 표시용이며 KBO·MLB·NPB·CPBL과 각 구단·학교와는 관계없습니다.</p>
 </div>
 </div>

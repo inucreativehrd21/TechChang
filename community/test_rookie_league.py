@@ -27,10 +27,12 @@ def member(name, nick=None):
     return u
 
 
-def player(name, role='batter', team='lg', position='SS', level=60.0, tier=2):
-    p = R.create(member(name), name=name[:12], role=role, team=team, position=position)
+def player(name, role='batter', team='lg', position='SS', level=60.0, league='kbo1'):
+    """프로 성인 선수(기본 KBO 1군) — 나이 한계·잠재력·특성이 경기 보정을 흔들지 않게."""
+    p = R.create(member(name), name=name[:12], role=role, team=team, position=position, region='서울')
     p.stats = {k: level for k in p.stats}
-    p.ovr, p.tier = level, tier
+    p.ovr, p.league, p.club = level, league, team
+    p.age, p.potential, p.traits, p.grade, p.grade_since, p.pending = 25, 99, [], 0, None, {}
     p.save()
     return p
 
@@ -118,7 +120,7 @@ class SimulateDayTests(TestCase):
         self.assertEqual(RookieGame.objects.filter(player=self.bat).count(), len(L.games_on(D1)))   # 타자는 그날 전 경기
         self.assertEqual(RookieGame.objects.filter(player=self.pit).count(), 1)                    # 투수는 한 경기 선발
         self.assertFalse(RookieGame.objects.filter(player=self.lazy).exists())                     # 쉰 선수는 결장
-        st = RookieSeasonStat.objects.get(player=self.bat, league=2)
+        st = RookieSeasonStat.objects.get(player=self.bat, league='kbo1')
         self.assertEqual(st.totals['pa'], sum(g.line['pa'] for g in RookieGame.objects.filter(player=self.bat)))
         self.assertEqual(st.totals['g'], len(L.games_on(D1)))
         self.assertNotIn('vs', st.totals)                                                        # 상대 등급은 경기 줄에만
@@ -147,11 +149,11 @@ class SimulateDayTests(TestCase):
             b = L.player_board(self.bat, D1 + timedelta(days=5))
         self.assertEqual(b['games_day'], D1 + timedelta(days=1))
         self.assertTrue(b['dnp'])                                          # 넷째 날은 결장
-        self.assertEqual(b['main_line']['s'].league, 2)
+        self.assertEqual(b['main_line']['s'].league, 'kbo1')
 
 
 class CloseSeasonTests(TestCase):
-    def stat(self, p, league=2, **totals):
+    def stat(self, p, league='kbo1', **totals):
         return RookieSeasonStat.objects.create(season=self.season, user=p.user, player=p, league=league, name=p.name,
                                                number=p.number, team=p.team, role=p.role, position=p.position,
                                                totals=totals, war=L.war(p.role, p.position, totals))
@@ -165,13 +167,13 @@ class CloseSeasonTests(TestCase):
         self.ss2 = player('둘째유격', 'batter', 'kia', 'SS')
         self.of = player('외야수', 'batter', 'ssg', 'OF')
         self.ace = player('에이스', 'pitcher', 'doosan', 'SP')
-        self.fut = player('퓨처스', 'batter', 'nc', '2B', tier=1)
+        self.fut = player('퓨처스', 'batter', 'nc', '2B', league='kbo2')
         self.boss = player('admin', 'batter', 'kt', 'SS')
         self.stat(self.star, **big)
         self.stat(self.ss2, **ok)
         self.stat(self.of, **ok)
         self.stat(self.ace, g=28, gs=28, w=18, l=4, qs=22, outs=600, h=150, r=55, er=50, bb=40, hbp=3, so=210, hr=12, bf=800)
-        self.stat(self.fut, league=1, **ok)
+        self.stat(self.fut, league='kbo2', **ok)
         self.stat(self.boss, **dict(big, hr=60))                       # 운영자 — 시상에서 빠진다
 
     def test_awards(self):
@@ -218,7 +220,7 @@ class CloseSeasonTests(TestCase):
             self.assertContains(r, '강타자')
             self.assertContains(c.get('/rookie/records/?role=pitcher', HTTP_USER_AGENT=ua), '에이스')
         r = c.get(f'/rookie/p/{self.star.pk}/', HTTP_USER_AGENT=PC)
-        self.assertContains(r, '통산 기록')
+        self.assertContains(r, '통산 성적')
         self.assertContains(r, '골든글러브 유격수')
         self.assertEqual(c.get(f'/rookie/p/{self.boss.pk}/').status_code, 404)    # 운영자 선수 페이지는 남에게 없다
 
@@ -228,7 +230,7 @@ class ScreenTests(TestCase):
         cache.clear()
 
     def test_preseason_home_shows_dday(self):
-        p = player('개막대기', tier=0)
+        p = player('개막대기', league='kbo3')
         self.client.force_login(p.user)
         with mock.patch('django.utils.timezone.localdate', return_value=D1 - timedelta(days=3)):
             r = self.client.get('/rookie/', HTTP_USER_AGENT=PC)
@@ -247,9 +249,9 @@ class ScreenTests(TestCase):
             for ua in (PC, MOBILE):
                 r = self.client.get('/rookie/', HTTP_USER_AGENT=ua)
                 self.assertContains(r, 'rk-board-rows')
-                self.assertContains(r, '시즌 1 1군 기록')
+                self.assertContains(r, '시즌 1 KBO 1군 기록')
                 self.assertContains(r, '규정타석')
-                r = self.client.get('/rookie/league/?lg=2', HTTP_USER_AGENT=ua)
+                r = self.client.get('/rookie/league/?lg=kbo1', HTTP_USER_AGENT=ua)
                 self.assertContains(r, '홈런')
                 self.assertContains(r, '평균자책점')
                 self.assertContains(r, '리그투수')
@@ -259,17 +261,18 @@ class ScreenTests(TestCase):
             self.assertContains(r, '평균자책점')
             self.assertContains(r, '탈삼진')
             r = self.client.get('/rookie/records/', HTTP_USER_AGENT=PC)
-            self.assertContains(r, '아직 1군 시즌 기록이 없습니다')      # 진행 중 시즌 초반은 기록실에 오르지 않는다
+            self.assertContains(r, '아직 KBO리그 시즌 기록이 없습니다')   # 진행 중 시즌 초반은 기록실에 오르지 않는다
 
     def test_batter_position_saved(self):
         u = member('위치선택')
         self.client.force_login(u)
         self.client.post('/rookie/create/', {'role': 'batter', 'team': 'lg', 'name': '포수', 'position': 'C',
-                                             'focus_batter': 'eye'})
+                                             'focus_batter': 'eye', 'region': '서울'})
         self.assertEqual(RookiePlayer.objects.get(user=u).position, 'C')
         u2 = member('투수선택')
         self.client.force_login(u2)
-        self.client.post('/rookie/create/', {'role': 'pitcher', 'team': 'lg', 'name': '투수', 'position': 'C'})
+        self.client.post('/rookie/create/', {'role': 'pitcher', 'team': 'lg', 'name': '투수', 'position': 'C',
+                                             'region': '서울'})
         self.assertEqual(RookiePlayer.objects.get(user=u2).position, 'SP')
 
     def test_retired_players_records_survive(self):
@@ -278,8 +281,13 @@ class ScreenTests(TestCase):
         L.simulate_day(D1, rng=random.Random(9))
         R.retire(p.user)
         st = RookieSeasonStat.objects.get(name='은퇴선수')
-        self.assertIsNone(st.player)
+        self.assertEqual(st.player_id, p.pk)                       # 은퇴해도 선수와 기록이 이어져 있다
+        p.refresh_from_db()
+        self.assertIsNotNone(p.retired_at)
         self.assertFalse(RookieAward.objects.exists())
+        R.create(p.user, name='새출발', role='batter', team='lg', region='서울')     # 다시 시작할 수 있다
+        L.simulate_day(D1 + timedelta(days=1), rng=random.Random(9))
+        self.assertFalse(RookieGame.objects.filter(player=p, day=D1 + timedelta(days=1)).exists())
 
 
 class OpponentGradeTests(TestCase):
@@ -337,8 +345,8 @@ class OpponentGradeTests(TestCase):
             tb = L.add(tb, L.batter_game(bat, 'SS', 64.0, rng)['line'])
         for _ in range(8 * 28):
             tp = L.add(tp, L.pitcher_game(pit, 64.0, rng)['line'])
-        b = {x['code']: x for x in L.splits('batter', tb, 2)}
-        p = {x['code']: x for x in L.splits('pitcher', tp, 2)}
+        b = {x['code']: x for x in L.splits('batter', tb, 'kbo1')}
+        p = {x['code']: x for x in L.splits('pitcher', tp, 'kbo1')}
         avg = lambda x: x['h'] / x['ab']  # noqa: E731
         self.assertLess(avg(b['ace']) + .04, avg(b['reg']))
         self.assertLess(avg(b['reg']) + .02, avg(b['bak']))             # 백업 선발은 25%×2타석 — 표본이 작다
@@ -454,8 +462,8 @@ class LineupRoleTests(TestCase):
         L.simulate_day(D1, rng=random.Random(1))
         p.refresh_from_db()
         self.assertEqual((p.lineup, p.slot), ('lower', 8))          # OVR 60 = 리그 수준 −4 → 8번
-        p.stats = dict(p.stats, eye=74.0, speed=76.0)
-        p.ovr = 68.0
+        p.stats = dict(p.stats, contact=65.0, power=63.0, eye=74.0, speed=76.0, defense=65.0)
+        p.ovr = R.overall('batter', p.stats)                     # ≈ 68 — 경기 경험이 OVR 을 능력치로 다시 셈한다
         p.save()
         active_on(p, D1 + timedelta(days=1))
         L.simulate_day(D1 + timedelta(days=1), rng=random.Random(2))
@@ -540,7 +548,7 @@ class StageOneFixTests(TestCase):
 
     def test_promotion_starts_on_bench_again(self):
         from community.models import RookiePlayer as RP
-        p = player('승격타자', tier=1, level=50)
+        p = player('승격타자', league='kbo2', level=50)
         p.stats = {k: 66.0 for k in p.stats}
         p.ovr, p.lineup, p.slot = 66.0, 'table', 1
         p.save()
@@ -553,7 +561,7 @@ class StageOneFixTests(TestCase):
                 return seq[0]
         R.promotion_test(p.user, rng=Always())
         p = RP.objects.get(pk=p.pk)
-        self.assertEqual((p.tier, p.lineup, p.slot), (2, 'bench', 0))
+        self.assertEqual((p.league, p.lineup, p.slot), ('kbo1', 'bench', 0))
         self.assertTrue(p.logs.filter(kind='promote', text__contains='백업부터').exists())
 
     def test_daily_upkeep_is_not_logged_as_decay(self):

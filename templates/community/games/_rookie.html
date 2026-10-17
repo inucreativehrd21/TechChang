@@ -6,8 +6,8 @@
     {% if mode == 'play' %}
         {% if test %}
         <section class="rk-board rk-test {% if test.passed %}is-pass{% endif %}" aria-live="polite" aria-label="승격 심사 결과">
-            <header class="rk-board-head"><span>{{ test.tier_name }} 승격 심사 · 청백전 {{ test.total }}경기</span><span>{{ test.won }}경기 합격</span></header>
-            <p class="rk-test-verdict">{% if test.passed %}{{ test.tier_name }} 승격{% else %}탈락, 내일 다시{% endif %}</p>
+            <header class="rk-board-head"><span>{{ test.league_name }} 승격 심사 · 청백전 {{ test.total }}경기</span><span>{{ test.won }}경기 합격</span></header>
+            <p class="rk-test-verdict">{% if test.passed %}{{ test.league_name }} 승격{% else %}탈락, 내일 다시{% endif %}</p>
             <ol class="rk-board-rows">
                 {% for g in test.games %}
                 <li class="{% if g.ok %}is-win{% endif %}">
@@ -23,6 +23,12 @@
         <div class="rk-toast" id="rk-toast" role="status" aria-live="polite" hidden></div>
 
     {% elif mode == 'create' %}
+        {% if last %}
+        <section class="rk-panel rk-legacy-note">
+            <p class="rk-fine">지난 선수</p>
+            <p><a href="{% url 'community:rookie_player' last.pk %}"><b>{{ last.name }}</b></a> — {{ last_id.team.name }}, {{ last.career.retired.age|default:last.age }}세 은퇴. 기록과 수상은 선수 페이지와 기록실에 남아 있습니다.</p>
+        </section>
+        {% endif %}
         <form class="rk-create" method="post" action="{% url 'community:rookie_create' %}">
             {% csrf_token %}
             <section class="rk-panel">
@@ -34,7 +40,7 @@
                         <span class="rk-role-box">
                             <b>{{ role.label }}</b>
                             <small>{% for k, label, w in role.stats %}{{ label }}{% if not forloop.last %}, {% endif %}{% endfor %}</small>
-                            <small>{% if key == 'pitcher' %}패전조에서 시작해 필승조·마무리, 체력이 좋으면 선발 로테이션까지{% else %}대타·대주자(백업)에서 시작해 주전 자리를 따냅니다{% endif %}</small>
+                            <small>{% if key == 'pitcher' %}팀마다 패전조에서 시작해 필승조·마무리, 체력이 좋으면 선발 로테이션까지{% else %}팀마다 대타·대주자(백업)에서 시작해 주전 자리를 따냅니다{% endif %}</small>
                         </span>
                     </label>
                     {% endfor %}
@@ -60,7 +66,18 @@
             </section>
 
             <section class="rk-panel">
-                <h2>응원 팀</h2>
+                <h2>어느 동네 리틀야구단에서 시작할까요</h2>
+                <p class="rk-hint">초등학교 6학년, 열두 살. 일주일마다 한 학년씩 올라가고, 졸업 학년엔 희망 학교에 지원합니다. 지역은 진학할 때 떨어지면 배정받는 학교의 기준이 됩니다.</p>
+                <div class="rk-chips">
+                    {% for r in regions %}
+                    <label class="rk-chip"><input type="radio" name="region" value="{{ r }}" {% if forloop.first %}checked{% endif %} required><span>{{ r }}</span></label>
+                    {% endfor %}
+                </div>
+            </section>
+
+            <section class="rk-panel">
+                <h2>희망 구단</h2>
+                <p class="rk-hint">고교(또는 대학)를 마치면 신인 드래프트를 맞습니다. 활약이 좋을수록 이 구단에 지명될 확률이 오르고, 지명을 거절하면 대학이나 미국·일본·대만으로 갈 수도 있습니다.</p>
                 <div class="rk-teams">
                     {% for t in teams %}
                     <label class="rk-teamopt" style="--team: {{ t.color }}">
@@ -69,7 +86,7 @@
                     </label>
                     {% endfor %}
                 </div>
-                <p class="rk-fine">구단명은 응원 팀 표시용이며 KBO와 각 구단과는 관계없습니다.</p>
+                <p class="rk-fine">구단·학교 이름은 소속 표시용이며 KBO·MLB·NPB·CPBL과 각 구단·학교와는 관계없습니다.</p>
             </section>
 
             <section class="rk-panel">
@@ -78,15 +95,15 @@
                     <label class="rk-field"><span>이름</span><input type="text" name="name" value="{{ default_name }}" maxlength="12" required></label>
                     <label class="rk-field is-num"><span>등번호</span><input type="number" name="number" value="0" min="0" max="99" inputmode="numeric"></label>
                 </div>
-                <button type="submit" class="gm-btn is-primary is-block rk-mt">육성군 입단하기 (입단 보너스 {{ welcome }} TP)</button>
+                <button type="submit" class="gm-btn is-primary is-block rk-mt">리틀야구단 입단하기 (입단 보너스 {{ welcome }} TP)</button>
             </section>
         </form>
         {% include 'community/games/_rookie_rules.html' %}
 
     {% else %}
         <section class="rk-panel rk-intro">
-            <h2>내 선수를 1군까지</h2>
-            <p>투수나 타자를 골라 응원 팀 육성군에 입단하고, 칼럼 읽기와 댓글, 출석 체크로 번 훈련 포인트로 능력치를 올리세요. 매일 밤 경기를 치르고, 시즌이 끝나면 골든글러브를 뽑습니다. 쉬면 감각이 떨어지고 경기에도 못 나갑니다.</p>
+            <h2>리틀야구에서 메이저리그까지</h2>
+            <p>투수나 타자를 골라 동네 리틀야구단에서 시작하세요. 중학교·고교 야구부를 거쳐 신인 드래프트에서 희망 구단의 지명을 노리고, 대학이나 미국·일본·대만으로 갈 수도 있습니다. 칼럼 읽기와 댓글, 출석 체크로 번 훈련 포인트로 능력치를 올리고, 매일 밤 경기를 치릅니다. 쉬면 감각이 떨어지고 경기에도 못 나갑니다.</p>
             <div class="gm-actions">
                 <a rel="nofollow" class="gm-btn is-primary" href="{% url 'common:login' %}?next={{ request.get_full_path|urlencode }}">로그인하고 시작</a>
                 <a class="gm-btn" href="{% url 'common:signup' %}">회원가입</a>

@@ -1,8 +1,10 @@
-"""야구선수 키우기 화면 — 성장 규칙은 community/rookie.py, 리그·기록·시상은 community/rookie_league.py.
+"""야구선수 키우기 화면 — 성장 규칙 community/rookie.py, 진로 rookie_career, 리그·기록·시상 rookie_league,
+통산·이정표·베스트 9·명예의 전당 rookie_legacy, 리그·구단·학교 rookie_world.
 
 화면 넷 + 선수 페이지: 내 선수(/rookie/) · 리그(/rookie/league/) · 시상식(/rookie/awards/) · 기록실(/rookie/records/)
 · 선수(/rookie/p/<id>/). 훈련은 fetch 로 보내면 플레이 영역 HTML 을 통째로 돌려받아 갈아 끼운다
 (규칙을 JS 에 다시 쓰지 않으려고). 자바스크립트가 없으면 같은 폼이 그대로 POST → 되돌아오기로 동작한다.
+진학 지원·드래프트 결정은 일반 폼(POST → 되돌아오기).
 """
 import logging
 from datetime import timedelta
@@ -18,11 +20,15 @@ from django.utils import timezone
 from django.views.decorators.http import require_POST
 
 from .. import rookie as R
+from .. import rookie_career as C
 from .. import rookie_league as L
+from .. import rookie_legacy as G
+from .. import rookie_world as W
 from ..game_visibility import is_hidden, visible
 from ..models import RookieAward, RookieGame, RookiePlayer, RookieSeason, RookieSeasonStat
 
 logger = logging.getLogger(__name__)
+SYSTEM_ORDER = ('kbo', 'mlb', 'npb', 'cpbl', 'amateur')
 
 
 def _ajax(request) -> bool:
@@ -40,13 +46,30 @@ def _catch_up(request):
         logger.warning('야구선수 키우기 경기 진행 실패', exc_info=True)
 
 
+def _league_order(code: str):
+    """리그 고르기 순서 — KBO · 미국 · 일본 · 대만 · 아마추어, 같은 나라는 높은 리그부터."""
+    sysname = W.system_of(code)
+    return SYSTEM_ORDER.index(sysname), -W.LEAGUES[code]['step']
+
+
+def _choice(code: str) -> dict:
+    return {'code': code, 'short': W.short(code), 'name': W.league(code)['name'],
+            'system': W.SYSTEM_NAME[W.system_of(code)]}
+
+
+def _choices(codes) -> list:
+    return [_choice(c) for c in sorted(set(codes) & set(W.LEAGUES), key=_league_order)]
+
+
 def _base_ctx(request, section: str) -> dict:
+    me = R.current(request.user.id)
     return {'section': section, 'season_now': L.season_state(),
-            'teams': [R.TEAM[c] for c, _n, _c in R.TEAMS], 'roles': R.ROLES, 'earn': R.EARN, 'tiers': R.TIERS,
+            'teams': [R.TEAM[c] for c, _n, _c in R.TEAMS], 'roles': R.ROLES, 'earn': R.EARN,
             'welcome': R.WELCOME_TP, 'cost': R.TRAIN_COST, 'daily_max': R.DAILY_MAX, 'fatigue_at': R.FATIGUE_AT,
-            'focus_bonus': int(round((R.FOCUS_BONUS - 1) * 100)), 'positions': L.POSITIONS,
-            'opp_first': L.opp_levels(2),
-            'my_id': RookiePlayer.objects.filter(user_id=request.user.id).values_list('id', flat=True).first()}
+            'focus_bonus': int(round((R.FOCUS_BONUS - 1) * 100)), 'positions': L.POSITIONS, 'regions': W.REGIONS,
+            'opp_first': L.opp_levels('kbo1'), 'grade_days': C.GRADE_DAYS, 'tp_max': R.TP_MAX,
+            'lv': {c: int(v['level']) for c, v in W.LEAGUES.items()}, 'max_age': C.MAX_AGE,
+            'my_id': me.id if me else None, 'my_league': me.league if me else ''}
 
 
 def _play_ctx(request, p) -> dict:
@@ -66,6 +89,18 @@ def _pick_season(request, seasons, *, closed_only=False):
     return next((s for s in pool if s.number == n), pool[0] if pool else None)
 
 
+def _pick_league(request, choices: list, default: str = 'kbo1') -> str:
+    """고른 리그, 아니면 내 선수의 리그, 아니면 기본(KBO 1군)."""
+    codes = [c['code'] for c in choices]
+    want = request.GET.get('lg', '')
+    if want in codes:
+        return want
+    mine = R.current(request.user.id)
+    if mine and mine.league in codes:
+        return mine.league
+    return default if default in codes or not codes else codes[0]
+
+
 # ───────────────────────────── 내 선수
 def rookie_home(request):
     _catch_up(request)
@@ -75,11 +110,15 @@ def rookie_home(request):
         p = R.locked(request.user)
         if p is not None:
             R.settle(p)
+            if p.retired_at:                    # 정산하다 은퇴 나이가 됐다
+                p = None
     if p is None:
         profile = getattr(request.user, 'profile', None)
         name = (getattr(profile, 'nickname', '') or request.user.username)[:12]
+        last = RookiePlayer.objects.filter(user=request.user, retired_at__isnull=False).order_by('-retired_at').first()
         return render(request, 'community/rookie.html', dict(_base_ctx(request, 'home'), mode='create',
-                                                             default_name=name))
+                                                             default_name=name, last=last,
+                                                             last_id=R.identity(last) if last else None))
     ctx = _play_ctx(request, p)
     ctx['test'] = request.session.pop('rookie_test', None)
     return render(request, 'community/rookie.html', ctx)
@@ -88,7 +127,7 @@ def rookie_home(request):
 @login_required
 @require_POST
 def rookie_create(request):
-    if RookiePlayer.objects.filter(user=request.user).exists():
+    if R.current(request.user.id):
         return redirect('community:rookie_home')
     role = request.POST.get('role', '')
     try:
@@ -98,13 +137,14 @@ def rookie_create(request):
     try:
         p = R.create(request.user, name=request.POST.get('name', ''), role=role, team=request.POST.get('team', ''),
                      number=number, focus=request.POST.get(f'focus_{role}', ''),
-                     position=request.POST.get('position', ''))
+                     position=request.POST.get('position', ''), region=request.POST.get('region', ''))
     except R.GameError as ex:
         messages.warning(request, str(ex))
         return redirect('community:rookie_home')
     except IntegrityError:                      # 입단 버튼을 두 번 눌렀다 — 이미 만들어졌다
         return redirect('community:rookie_home')
-    messages.success(request, f"{p.name} 선수, {R.TEAM[p.team]['name']} 육성군 입단! 입단 보너스 {R.WELCOME_TP} TP로 첫 훈련을 해 보세요.")
+    messages.success(request, f'{p.name} 선수, {p.club} 입단! 입단 보너스 {R.WELCOME_TP} TP로 첫 훈련을 해 보세요. '
+                              f'중학교 진학까지 {C.GRADE_DAYS}일 — 희망 중학교도 골라 두세요.')
     return redirect('community:rookie_home')
 
 
@@ -124,6 +164,8 @@ def rookie_train(request):
         toast += f" · 대성공 {r['great']}회!"
     if r['tired']:
         toast += ' · 피로로 효율 절반'
+    if r['capped']:
+        toast += ' · 지금 한계에 닿았습니다'
     if not _ajax(request):
         messages.success(request, toast)
         return redirect('community:rookie_home')
@@ -139,8 +181,31 @@ def rookie_test(request):
     except R.GameError as ex:
         messages.warning(request, str(ex))
         return redirect('community:rookie_home')
-    request.session['rookie_test'] = {'passed': r['passed'], 'tier_name': r['tier_name'], 'won': r['won'],
+    request.session['rookie_test'] = {'passed': r['passed'], 'league_name': r['league_name'], 'won': r['won'],
                                       'games': r['games'], 'total': R.TEST_GAMES}
+    return redirect('community:rookie_home')
+
+
+@login_required
+@require_POST
+def rookie_apply(request):
+    """졸업 학년의 진학 지원 — 희망 학교 고르기(학년이 끝나는 날 합격 발표)."""
+    try:
+        messages.success(request, C.apply_school(request.user, request.POST.get('school', '')))
+    except R.GameError as ex:
+        messages.warning(request, str(ex))
+    return redirect('community:rookie_home')
+
+
+@login_required
+@require_POST
+def rookie_decide(request):
+    """드래프트 뒤 진로 — 계약 / 육성선수 / 대학 / 해외(미국·일본·대만)."""
+    try:
+        text = C.decide(request.user, request.POST.get('choice', ''), school=request.POST.get('school', ''))
+        messages.success(request, text or '진로를 정했습니다.')
+    except R.GameError as ex:
+        messages.warning(request, str(ex))
     return redirect('community:rookie_home')
 
 
@@ -151,7 +216,8 @@ def rookie_retire(request):
         messages.warning(request, '은퇴하려면 확인 칸에 체크해 주세요.')
         return redirect('community:rookie_home')
     if R.retire(request.user):
-        messages.info(request, '은퇴했습니다. 시즌 기록과 수상은 기록실에 남습니다. 새 선수로 다시 시작할 수 있습니다.')
+        messages.info(request, '은퇴했습니다. 선수 페이지와 기록·수상은 그대로 남고, 명예의 전당 후보가 됩니다. '
+                               '새 선수로 리틀야구부터 다시 시작할 수 있습니다.')
     return redirect('community:rookie_home')
 
 
@@ -161,15 +227,16 @@ def rookie_player(request, pk: int):
     if is_hidden(p.user) and p.user_id != request.user.id:
         raise Http404
     _catch_up(request)
-    career = list(RookieSeasonStat.objects.filter(player=p).select_related('season').order_by('-season__number', '-league'))
-    games = [L.game_view(g, p.team, p.role) for g in RookieGame.objects.filter(player=p).order_by('-day', '-no')[:20]]
-    ctx = dict(_base_ctx(request, 'league'), p=p, team=R.TEAM.get(p.team, {}), role_label=R.ROLES[p.role]['label'],
-               pos_label=L.POS_LABEL.get(p.position, ''), tier_name=R.TIERS[p.tier]['name'],
-               focus_label=dict((k, lab) for k, lab, _w in R.ROLES[p.role]['stats']).get(p.focus, ''),
-               ladder=L.ladder_of(p),
-               title=R.title(p.role, p.tier, p.ovr), stats=R.stat_rows(p), career=L.season_lines(career),
-               games=games, trophies=list(RookieAward.objects.filter(player=p).select_related('season')
-                                          .order_by('-season__number', 'order')),
+    career = sorted(RookieSeasonStat.objects.filter(player=p).select_related('season'),
+                    key=lambda r: (-r.season.number, -W.level(r.league)))
+    games = [L.game_view(g, p.club, p.role) for g in RookieGame.objects.filter(player=p).order_by('-day', '-no')[:20]]
+    ctx = dict(_base_ctx(request, 'league'), p=p, **R.identity(p), path=C.career_view(p),
+               ladder=None if p.retired_at else L.ladder_of(p), stats=R.stat_rows(p), career=L.season_lines(career),
+               life=G.lifetime(p), games=games,
+               trophies=list(RookieAward.objects.filter(player=p).select_related('season')
+                             .order_by('-season__number', 'order')),
+               miles=list(p.logs.filter(kind='mile').exclude(text__contains='베스트 9')[:12]),
+               best9=p.logs.filter(kind='mile', text__contains='베스트 9').count(),
                is_me=p.user_id == request.user.id)
     return render(request, 'community/rookie_player.html', ctx)
 
@@ -179,56 +246,65 @@ def rookie_league(request):
     _catch_up(request)
     if request.user.is_authenticated:
         R.settle_all()                  # 쉬는 선수를 순위에 그대로 두지 않게(밤 cron 이 돌았으면 할 일 없음)
-    tab = request.GET.get('tab') if request.GET.get('tab') in ('leaders', 'players', 'teams') else 'leaders'
+    tab = request.GET.get('tab') if request.GET.get('tab') in ('leaders', 'best9', 'players', 'teams') else 'leaders'
     seasons = _seasons()
     season = _pick_season(request, seasons)
-    lg = _pick_league(request, season)
+    if tab == 'best9':
+        codes = set(RookieGame.objects.values_list('league', flat=True).distinct()) | {'kbo1'}
+    else:
+        codes = set((RookieSeasonStat.objects.filter(season=season) if season else RookieSeasonStat.objects.none())
+                    .values_list('league', flat=True).distinct()) | {'kbo1'}
+    choices = _choices(codes)
+    lg = _pick_league(request, choices)
     role = request.GET.get('role', '')
-    ctx = dict(_base_ctx(request, 'league'), tab=tab, seasons=seasons, cur=season, lg=lg, lg_name=L.LEAGUE[lg],
-               role=role if role in R.ROLES else '')
-    base = visible(RookiePlayer.objects.all(), 'user')       # 운영자(admin) 선수는 순위에서 뺀다
+    ctx = dict(_base_ctx(request, 'league'), tab=tab, seasons=seasons, cur=season, lg=lg, lg_name=W.league(lg)['name'],
+               lg_short=W.short(lg), lg_choices=choices, role=role if role in R.ROLES else '')
     if tab == 'leaders':
         if season:
             ctx['bat'] = L.leaders(season, lg, 'batter')
             ctx['pit'] = L.leaders(season, lg, 'pitcher')
-            ctx['team_games'] = L.team_games(season)
+            ctx['team_games'] = L.team_games(season, lg)
             ctx['qual_pa'] = int(L.QUAL_PA * ctx['team_games'] + 0.999)
             ctx['qual_ip'] = int(L.QUAL_IP * ctx['team_games'] + 0.999)
+    elif tab == 'best9':
+        day = G.latest_day(lg)
+        nine = G.best_nine(day, lg) if day else []
+        ctx.update(nine_day=day, nine=nine, spots=[dict(x, a=_spot(x)) for x in nine])
     elif tab == 'players':
-        qs = base.select_related('user', 'user__profile')
+        qs = R.ranked().select_related('user', 'user__profile')
         if ctx['role']:
             qs = qs.filter(role=ctx['role'])
-        ctx['rows'] = [{'p': p, 'team': R.TEAM.get(p.team, {}), 'role_label': R.ROLES[p.role]['label'],
-                        'pos_label': L.POS_LABEL.get(p.position, ''), 'tier_name': R.TIERS[p.tier]['name'],
-                        'title': R.title(p.role, p.tier, p.ovr), 'is_me': p.user_id == request.user.id}
-                       for p in qs.order_by('-tier', '-ovr', 'created_at')[:100]]
+        ctx['rows'] = [dict(R.identity(p), p=p, is_me=p.user_id == request.user.id)
+                       for p in qs.order_by('-lv', '-ovr', 'created_at')[:100]]
     else:
-        agg = {a['team']: a for a in base.values('team').annotate(
-            n=Count('id'), first=Count('id', filter=Q(tier=2)), power=Sum('ovr'))}
+        base = R.ranked()
+        pro = base.filter(league__in=W.SYSTEMS['kbo'])
+        agg = {a['club']: a for a in pro.values('club').annotate(
+            n=Count('id'), first=Count('id', filter=Q(league='kbo1')), power=Sum('ovr'))}
+        fans = dict(base.filter(league__in=W.SYSTEMS['amateur']).values('team').annotate(n=Count('id'))
+                    .values_list('team', 'n'))
         teams = []
         for code, _name, _color in R.TEAMS:
             a = agg.get(code, {})
             n = a.get('n', 0)
             teams.append({'team': R.TEAM[code], 'n': n, 'first': a.get('first', 0), 'power': round(a.get('power') or 0),
-                          'avg': round((a.get('power') or 0) / n, 1) if n else 0})
-        teams.sort(key=lambda t: (-t['power'], t['team']['name']))
+                          'avg': round((a.get('power') or 0) / n, 1) if n else 0, 'fans': fans.get(code, 0)})
+        teams.sort(key=lambda t: (-t['power'], -t['fans'], t['team']['name']))
         ctx['team_rows'] = teams
-        ctx['my_team'] = RookiePlayer.objects.filter(user_id=request.user.id).values_list('team', flat=True).first() or ''
+        me = R.current(request.user.id)
+        ctx['my_team'] = (me.club if me and W.system_of(me.league) == 'kbo' else me.team) if me else ''
     return render(request, 'community/rookie_league.html', ctx)
 
 
-def _pick_league(request, season) -> int:
-    """리더 화면의 리그 — 고른 리그, 아니면 내 선수의 리그, 아니면 기록이 있는 가장 높은 리그."""
-    if request.GET.get('lg') in ('0', '1', '2'):
-        return int(request.GET['lg'])
-    mine = RookiePlayer.objects.filter(user_id=request.user.id).values_list('tier', flat=True).first()
-    if mine is not None:
-        return mine
-    if season:
-        for lg in (2, 1, 0):
-            if RookieSeasonStat.objects.filter(season=season, league=lg).exists():
-                return lg
-    return 2
+class _Spot:
+    """다이아몬드 칸(_rookie_spot.html)에 넘길 모양 — 수상 행과 같은 이름의 속성."""
+    def __init__(self, x):
+        p = x['p']
+        self.player_id, self.name, self.team, self.value = p.pk, p.name, x['team'], x['value']
+
+
+def _spot(x):
+    return _Spot(x) if x.get('p') else None
 
 
 def rookie_ranking(request):
@@ -245,26 +321,34 @@ def rookie_awards(request):
     ctx = dict(_base_ctx(request, 'awards'), seasons=[s for s in seasons if s.closed], cur=season,
                award_pa=int(L.AWARD_PA * L.SEASON_GAMES), award_ip=int(L.AWARD_IP * L.SEASON_GAMES + 0.999))
     if season:
-        awards = list(visible(RookieAward.objects.filter(season=season), 'user').select_related('player', 'stat'))
-        ctx['mvp'] = next((a for a in awards if a.kind == 'mvp'), None)
+        everyone = list(visible(RookieAward.objects.filter(season=season), 'user').select_related('player', 'stat'))
+        choices = _choices({a.league for a in everyone} or {'kbo1'})
+        lg = _pick_league(request, choices)
+        awards = [a for a in everyone if a.league == lg]
+        style = L.AWARD_STYLE.get(lg)
+        ctx.update(lg=lg, lg_name=W.league(lg)['name'], lg_choices=choices, style=style,
+                   mvp=next((a for a in awards if a.kind in ('mvp', 'minor')), None),
+                   roy=next((a for a in awards if a.kind == 'rookie'), None),
+                   ace=next((a for a in awards if a.kind == 'ace'), None),
+                   titles=[a for a in awards if a.kind == 'title'],
+                   others=sorted([a for a in everyone if a.league != lg and a.kind in ('mvp', 'minor')],
+                                 key=lambda a: _league_order(a.league)))
         ctx['mvp_nums'] = L.highlights(ctx['mvp'].stat) if ctx['mvp'] else []
-        ctx['roy'] = next((a for a in awards if a.kind == 'rookie'), None)
-        ctx['futures'] = next((a for a in awards if a.kind == 'futures'), None)
-        ctx['titles'] = [a for a in awards if a.kind == 'title']
         gg = [a for a in awards if a.kind == 'gg']
         spots = {}
         for a in gg:
             spots.setdefault(a.position, []).append(a)
         ctx['gg'] = gg
-        ctx['spots'] = [{'pos': pos, 'label': L.POS_LABEL[pos], 'winners': spots.get(pos, [])}
-                        for pos in ('SP', 'C', '1B', '2B', '3B', 'SS', 'OF', 'DH')]
+        order = ('SP', 'C', '1B', '2B', '3B', 'SS', 'OF', 'DH') if not style or style['gg_pitcher'] else \
+            ('C', '1B', '2B', '3B', 'SS', 'OF', 'DH')
+        ctx['spots'] = [{'pos': pos, 'label': L.POS_LABEL[pos], 'winners': spots.get(pos, [])} for pos in order]
     else:
         # 아직 끝난 시즌이 없다 — 지금 시즌의 MVP 레이스(WAR 상위)를 보여 준다
         now = L.season_state()
         live = L.get_season(now['number']) if now['phase'] == 'season' else None
         race = []
         if live:
-            race = sorted(L.stat_rows(live, 2, 'batter') + L.stat_rows(live, 2, 'pitcher'),
+            race = sorted(L.stat_rows(live, 'kbo1', 'batter') + L.stat_rows(live, 'kbo1', 'pitcher'),
                           key=lambda r: r.war, reverse=True)[:5]
         ctx['race'] = [{'s': r, 'v': L.line_view(r.role, r.totals)} for r in race]
         ctx['ceremony'] = L.season_bounds(now['number'])[1] + timedelta(days=1)
@@ -274,10 +358,21 @@ def rookie_awards(request):
 # ───────────────────────────── 기록실
 def rookie_records(request):
     _catch_up(request)
+    view = request.GET.get('view') if request.GET.get('view') in ('highs', 'career', 'hof') else 'highs'
     role = 'pitcher' if request.GET.get('role') == 'pitcher' else 'batter'
-    highs = L.career_highs(role)
-    ctx = dict(_base_ctx(request, 'records'), role=role, highs=highs, top=highs[0] if highs else None,
-               rest=highs[1:], records=[r for r in L.season_records() if r['role'] == role])
-    if ctx['my_id']:
-        ctx['mine'] = next((i for i, h in enumerate(highs, 1) if h['s'].player_id == ctx['my_id']), None)
+    if view == 'hof':
+        choices = _choices(W.TOP_LEAGUES)
+    else:
+        choices = _choices(set(RookieSeasonStat.objects.values_list('league', flat=True).distinct()) | {'kbo1'})
+    lg = _pick_league(request, choices)
+    ctx = dict(_base_ctx(request, 'records'), view=view, role=role, lg=lg, lg_name=W.league(lg)['name'],
+               lg_short=W.short(lg), lg_choices=choices, miles=G.recent_milestones())
+    if view == 'highs':
+        highs = L.career_highs(role, lg)
+        ctx.update(highs=highs, top=highs[0] if highs else None, rest=highs[1:],
+                   records=[r for r in L.season_records(lg) if r['role'] == role])
+        if ctx['my_id']:
+            ctx['mine'] = next((i for i, h in enumerate(highs, 1) if h['s'].player_id == ctx['my_id']), None)
+    else:
+        ctx['rows'] = G.league_career(lg, retired_only=view == 'hof')
     return render(request, 'community/rookie_records.html', ctx)

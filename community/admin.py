@@ -121,7 +121,7 @@ class RookieLogInline(admin.TabularInline):
 
 @admin.register(RookiePlayer)
 class RookiePlayerAdmin(admin.ModelAdmin):
-    list_display = ('name', 'user', 'team', 'role', 'tier', 'ovr', 'tp', 'last_active')
-    list_filter = ('tier', 'role', 'team')
+    list_display = ('name', 'user', 'league', 'club', 'role', 'age', 'ovr', 'tp', 'last_active', 'retired_at')
+    list_filter = ('league', 'role', 'team')
     search_fields = ('name', 'user__username')
     inlines = [RookieLogInline]

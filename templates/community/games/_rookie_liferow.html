@@ -1,0 +1,8 @@
+{# 통산 성적 한 줄. 맥락: label, seasons, v(line_view), war, p #}
+<th scope="row">{{ label }}</th><td>{{ seasons }}</td><td>{{ v.g|default:0 }}</td>
+{% if p.role == 'pitcher' %}
+<td>{{ v.w|default:0 }}</td><td>{{ v.l|default:0 }}</td><td>{{ v.sv|default:0 }}</td><td>{{ v.hld|default:0 }}</td><td>{{ v.era_text }}</td><td>{{ v.ip_text }}</td><td>{{ v.so|default:0 }}</td><td>{{ v.whip_text }}</td>
+{% else %}
+<td>{{ v.avg_text }}</td><td>{{ v.h|default:0 }}</td><td>{{ v.hr|default:0 }}</td><td>{{ v.rbi|default:0 }}</td><td>{{ v.r|default:0 }}</td><td>{{ v.sb|default:0 }}</td><td>{{ v.obp_text }}</td><td>{{ v.slg_text }}</td><td>{{ v.ops_text }}</td>
+{% endif %}
+<td class="is-war">{{ war }}</td>
