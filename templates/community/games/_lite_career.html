@@ -29,5 +29,6 @@
             {% if is_me and not c.retired_at %}<div class="gm-actions"><a class="gm-btn is-primary" href="{% url 'community:lite_home' %}">이어서 하기</a></div>{% endif %}
         </div>
     </div>
+    {% include 'community/games/_rookie_rights.html' %}
 </div>
 </div>

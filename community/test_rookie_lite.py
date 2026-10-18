@@ -1,9 +1,13 @@
 """야구선수 키우기 라이트(community/rookie_lite.py, 2026-10-18) — 한 판 30분 커리어 시뮬레이터."""
+import io
 import random
+from datetime import timedelta
 
 from django.contrib.auth.models import User
 from django.core.cache import cache
-from django.test import TestCase
+from django.core.management import call_command
+from django.test import Client, TestCase
+from django.utils import timezone
 
 from common.models import Profile
 from community import rookie_lite as X
@@ -12,6 +16,7 @@ from community.models import LiteCareer, LiteSeason
 
 PC = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/130'
 MOBILE = 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148'
+RIGHTS = '구단·대회 명칭과 로고의 권리는 각 권리자에게 있습니다.'
 
 
 def member(name):
@@ -163,22 +168,79 @@ class ViewTests(TestCase):
     def test_anonymous_and_public_pages(self):
         for url in ('/rookie/lite/', '/rookie/lite/hall/', '/rookie/lite/hall/?lg=kbo'):
             self.assertEqual(self.client.get(url, HTTP_USER_AGENT=PC).status_code, 200, url)
-        self.assertContains(self.client.get('/rookie/lite/', HTTP_USER_AGENT=PC), '로그인하고 시작')
-        self.assertContains(self.client.get('/games/', HTTP_USER_AGENT=PC), '야구선수 키우기 라이트')
+        for ua in (PC, MOBILE):
+            r = self.client.get('/rookie/lite/', HTTP_USER_AGENT=ua)
+            self.assertContains(r, '로그인하지 않아도 바로 할 수 있어요')               # 손님도 바로 만든다
+            self.assertContains(r, '고1 신입으로 야구부에 들어가기')
+            self.assertContains(r, RIGHTS)
+            r = self.client.get('/games/', HTTP_USER_AGENT=ua)
+            self.assertContains(r, 'gm-ball')                                          # 야구 두 판은 한 묶음
+            self.assertContains(r, '라이트 판')
+            self.assertContains(r, '로그인 없이 바로')
+            r = self.client.get('/', HTTP_USER_AGENT=ua)
+            self.assertContains(r, '야구선수 키우기, 문을 열었어요')                       # 홈 런칭 칸
+            self.assertNotContains(r, '브라우저 게임')
+        self.assertContains(self.client.get('/rookie/', HTTP_USER_AGENT=PC), RIGHTS)
+
+    def test_guest_plays_then_claims_on_login(self):
+        c = self.client
+        c.post('/rookie/lite/new/', {'role': 'batter', 'position_batter': 'SS', 'style_batter': 'contact',
+                                     'region': '서울', 'team': 'lg', 'name': '손님유격', 'number': '6'})
+        career = LiteCareer.objects.get(name='손님유격')
+        self.assertIsNone(career.user)
+        self.assertTrue(career.guest)
+        r = c.get('/rookie/lite/', HTTP_USER_AGENT=PC)
+        self.assertContains(r, '훈련 프로그램을')
+        self.assertContains(r, 'data-rl-count')                                        # 0 / 2 세기
+        self.assertContains(c.get(f'/rookie/lite/c/{career.pk}/', HTTP_USER_AGENT=PC), '이어서 하기')
+        # 다른 손님(다른 세션)은 이 판을 움직이지 못하고, 커리어 페이지에서도 주인이 아니다
+        other = Client()
+        self.assertNotContains(other.get(f'/rookie/lite/c/{career.pk}/', HTTP_USER_AGENT=PC), '이어서 하기')
+        other.post('/rookie/lite/act/', {'action': 'quit', 'confirm': 'yes'})
+        career.refresh_from_db()
+        self.assertIsNone(career.retired_at)
+        # 두 번째 판은 만들지 않는다
+        c.post('/rookie/lite/new/', {'role': 'batter', 'position_batter': 'CF', 'style_batter': 'power',
+                                     'region': '부산', 'team': 'lotte', 'name': '두번째', 'number': '7'})
+        self.assertFalse(LiteCareer.objects.filter(name='두번째').exists())
+        # 은퇴한 손님 판은 명예의 전당에 오르지 않는다
+        c.post('/rookie/lite/act/', {'action': 'quit', 'confirm': 'yes'})
+        career.refresh_from_db()
+        self.assertIsNotNone(career.retired_at)
+        self.assertNotIn('손님유격', [row['c'].name for row in X.hall()])
+        # 로그인하면 계정으로 옮겨진다
+        u = member('손님이었던')
+        c.force_login(u)
+        r = c.get('/rookie/lite/', HTTP_USER_AGENT=PC, follow=True)
+        self.assertContains(r, '내 계정으로 옮겼어요')
+        career.refresh_from_db()
+        self.assertEqual((career.user, career.guest), (u, ''))
+        self.assertIn('손님유격', [row['c'].name for row in X.hall()])
+
+    def test_guest_cleanup_after_two_weeks(self):
+        old = X.create(None, name='오래된손님', role='batter', position='SS', style='contact', region='서울', team='lg',
+                       rng=random.Random(3), guest='g' * 24)
+        fresh = X.create(None, name='새손님', role='batter', position='SS', style='contact', region='서울', team='lg',
+                         rng=random.Random(4), guest='h' * 24)
+        LiteCareer.objects.filter(pk=old.pk).update(updated_at=timezone.now() - timedelta(days=15))
+        call_command('rookie_daily', stdout=io.StringIO())
+        self.assertFalse(LiteCareer.objects.filter(pk=old.pk).exists())
+        self.assertTrue(LiteCareer.objects.filter(pk=fresh.pk).exists())
 
     def test_play_through_screens(self):
         u = member('화면라이트')
         c = self.client
         c.force_login(u)
         for ua in (PC, MOBILE):
-            self.assertContains(c.get('/rookie/lite/', HTTP_USER_AGENT=ua), '고1, 야구부 입단')
+            self.assertContains(c.get('/rookie/lite/', HTTP_USER_AGENT=ua), '고1 신입으로 야구부에 들어가기')
         c.post('/rookie/lite/new/', {'role': 'pitcher', 'position_pitcher': 'SP', 'style_pitcher': 'fire',
                                      'region': '부산', 'team': 'lotte', 'name': '갈매기', 'number': '11'})
         career = LiteCareer.objects.get(user=u)
         self.assertEqual((career.role, career.position, career.style, career.team), ('pitcher', 'SP', 'fire', 'lotte'))
         for ua in (PC, MOBILE):
             r = c.get('/rookie/lite/', HTTP_USER_AGENT=ua)
-            self.assertContains(r, '비시즌 훈련')
+            self.assertContains(r, '훈련 프로그램을 <em>두 개</em> 골라 주세요')
+            self.assertContains(r, 'rk-sprite')                                    # 코치가 말한다
             self.assertContains(r, '시즌 시작')
         r = c.post('/rookie/lite/act/', {'action': 'play', 'program': ['velocity'], 'intensity': 'normal'}, follow=True)
         self.assertContains(r, '두 개')                                            # 프로그램은 두 개

@@ -1296,7 +1296,8 @@ class RookieAward(models.Model):
 class LiteCareer(models.Model):
     """야구선수 키우기 라이트 — 한 판 30분, 고1부터 은퇴까지 분기점을 골라 가며 진행하는 커리어(community/rookie_lite.py).
     정식 판(RookiePlayer)과 따로 — 사이트 활동 TP 와 상관없다."""
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='lite_careers')
+    user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True, related_name='lite_careers')
+    guest = models.CharField(max_length=32, blank=True, db_index=True)   # 로그인 없이 하는 판 — 세션 표식(로그인하면 계정으로)
     name = models.CharField(max_length=12)
     number = models.PositiveSmallIntegerField(default=0)
     role = models.CharField(max_length=8)                        # pitcher / batter
@@ -1334,7 +1335,7 @@ class LiteCareer(models.Model):
         ordering = ['-created_at']
 
     def __str__(self):
-        return f'{self.name}({self.user.username})'
+        return f"{self.name}({self.user.username if self.user_id else '손님'})"
 
 
 class LiteSeason(models.Model):

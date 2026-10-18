@@ -6,12 +6,14 @@
 /rookie/lite/hall/       명예의 전당(전체 · KBO · MLB · NPB · CPBL)
 /rookie/lite/c/<id>/     커리어 페이지(공개)
 모든 진행은 POST → 되돌아오기. 자바스크립트는 전광판 연출과 훈련 두 개 고르기 도움만 한다.
+로그인 없이도 할 수 있다(2026-10-18 사용자 요청) — 손님 판은 세션 표식(SESSION_KEY)으로 찾고, 로그인하면 계정으로 옮긴다.
+명예의 전당에는 계정에 붙은 판만 오른다.
 """
 import logging
 import random
+import secrets
 
 from django.contrib import messages
-from django.contrib.auth.decorators import login_required
 from django.db import transaction
 from django.http import Http404
 from django.shortcuts import get_object_or_404, redirect, render
@@ -26,14 +28,45 @@ from ..models import LiteCareer
 
 logger = logging.getLogger(__name__)
 HALL_TABS = [('', '전체'), ('kbo', 'KBO'), ('mlb', '미국'), ('npb', '일본'), ('cpbl', '대만')]
+SESSION_KEY = 'lite_guest'
 
 
 def _rng():
     return random.SystemRandom()
 
 
-def _active(user):
-    return LiteCareer.objects.filter(user=user, retired_at__isnull=True).first() if user.is_authenticated else None
+def _guest(request, make: bool = False) -> str:
+    token = request.session.get(SESSION_KEY, '')
+    if not token and make:
+        token = secrets.token_hex(12)
+        request.session[SESSION_KEY] = token
+    return token
+
+
+def _mine(request):
+    """이 사람의 커리어들 — 회원이면 계정, 손님이면 세션 표식."""
+    if request.user.is_authenticated:
+        return LiteCareer.objects.filter(user=request.user)
+    token = _guest(request)
+    return LiteCareer.objects.filter(user__isnull=True, guest=token) if token else LiteCareer.objects.none()
+
+
+def _claim(request):
+    """로그인한 뒤 처음 열면 손님으로 하던 판을 계정으로 옮긴다."""
+    token = _guest(request)
+    if not (token and request.user.is_authenticated):
+        return
+    if X.claim_guest(request.user, token):
+        messages.info(request, '손님으로 하던 커리어를 내 계정으로 옮겼어요.')
+    if not LiteCareer.objects.filter(user__isnull=True, guest=token).exists():
+        request.session.pop(SESSION_KEY, None)
+
+
+def _is_mine(request, c) -> bool:
+    """이 판의 주인인가 — 회원 판은 계정, 손님 판은 세션 표식으로(비로그인끼리 None == None 이 되지 않게)."""
+    if c.user_id:
+        return c.user_id == request.user.id
+    return bool(c.guest) and c.guest == _guest(request)
 
 
 def _grade(c) -> str:
@@ -74,16 +107,18 @@ def _base(request, section: str) -> dict:
 
 def lite_home(request):
     ctx = _base(request, 'home')
-    if not request.user.is_authenticated:
-        ctx.update(mode='intro', hall=X.hall(limit=5))
-        return render(request, 'community/rookie_lite.html', ctx)
-    c = _active(request.user)
+    _claim(request)
+    mine = _mine(request)
+    c = mine.filter(retired_at__isnull=True).first()
     if c is None:
-        last = LiteCareer.objects.filter(user=request.user).order_by('-retired_at').first()
+        last = mine.filter(retired_at__isnull=False).order_by('-retired_at').first()
+        name = ''
+        if request.user.is_authenticated:
+            name = (getattr(getattr(request.user, 'profile', None), 'nickname', '') or request.user.username)[:12]
         ctx.update(mode='create', last=_identity(last) if last else None,
                    last_line=X.career_line(last) if last else None,
-                   mine=list(LiteCareer.objects.filter(user=request.user, retired_at__isnull=False)[:10]),
-                   default_name=(getattr(getattr(request.user, 'profile', None), 'nickname', '') or request.user.username)[:12])
+                   mine=list(mine.filter(retired_at__isnull=False)[:10]), default_name=name,
+                   hall=X.hall(limit=5))
         return render(request, 'community/rookie_lite.html', ctx)
     pend = c.pending or {}
     ctx.update(mode=pend.get('kind', 'plan'), **_identity(c), seasons=_season_rows(c))
@@ -102,7 +137,6 @@ def lite_home(request):
     return render(request, 'community/rookie_lite.html', ctx)
 
 
-@login_required
 @require_POST
 def lite_new(request):
     try:
@@ -111,38 +145,38 @@ def lite_new(request):
         number = 0
     role = request.POST.get('role', '')
     try:
-        X.create(request.user, name=request.POST.get('name', ''), role=role,
+        X.create(request.user if request.user.is_authenticated else None, name=request.POST.get('name', ''), role=role,
                  position=request.POST.get(f'position_{role}', ''), style=request.POST.get(f'style_{role}', ''),
-                 region=request.POST.get('region', ''), team=request.POST.get('team', ''), number=number, rng=_rng())
+                 region=request.POST.get('region', ''), team=request.POST.get('team', ''), number=number, rng=_rng(),
+                 guest='' if request.user.is_authenticated else _guest(request, make=True))
     except X.LiteError as ex:
         messages.warning(request, str(ex))
     return redirect('community:lite_home')
 
 
-@login_required
 @require_POST
 def lite_act(request):
     action = request.POST.get('action', '')
     rng = _rng()
     try:
         with transaction.atomic():
-            c = LiteCareer.objects.select_for_update().filter(user=request.user, retired_at__isnull=True).first()
+            c = _mine(request).select_for_update().filter(retired_at__isnull=True).first()
             if c is None:
-                raise X.LiteError('진행 중인 커리어가 없습니다.')
+                raise X.LiteError('진행 중인 커리어가 없어요. 새 선수를 만들어 주세요.')
             pend = c.pending or {}
             if action == 'play':
                 if pend.get('kind') != 'plan':
-                    raise X.LiteError('지금은 시즌을 시작할 차례가 아닙니다.')
+                    raise X.LiteError('지금은 시즌을 시작할 차례가 아니에요.')
                 valid = [p[0] for p in X.PROGRAMS[c.role]]
                 programs = [p for p in request.POST.getlist('program') if p in valid]
                 if len(set(programs)) != 2:
-                    raise X.LiteError('훈련 프로그램을 두 개 골라 주세요.')
+                    raise X.LiteError('훈련 프로그램을 꼭 두 개 골라 주세요.')
                 intensity = request.POST.get('intensity', '')
                 if intensity not in X.INTENSITY:
                     raise X.LiteError('훈련 강도를 골라 주세요.')
                 choice = request.POST.get('event_choice', '')
                 if pend.get('event') and choice not in [k for k, _l, _h in X.EVENTS[pend['event']]['choices']]:
-                    raise X.LiteError('이벤트에 어떻게 할지 골라 주세요.')
+                    raise X.LiteError('비시즌 이벤트에 어떻게 할지 먼저 골라 주세요.')
                 X.run_season(c, sorted(set(programs)), intensity, choice, rng)
             elif action == 'next':
                 X.next_season(c, rng)
@@ -180,4 +214,4 @@ def lite_career(request, pk: int):
     awards = [dict(a, year=s.year, age=s.age, league=W.short(s.league)) for s in c.seasons.all() for a in s.awards]
     return render(request, 'community/rookie_lite_career.html',
                   dict(_base(request, 'hall'), **_identity(c), seasons=_season_rows(c), line=X.career_line(c),
-                       awards=awards, is_me=c.user_id == request.user.id, peak=W.league(c.peak or 'hs')['name']))
+                       awards=awards, is_me=_is_mine(request, c), peak=W.league(c.peak or 'hs')['name']))

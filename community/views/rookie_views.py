@@ -155,7 +155,7 @@ def rookie_train(request):
     try:
         r = R.train(request.user, request.POST.get('stat', ''), request.POST.get('times', 1))
     except (R.GameError, ValueError) as ex:
-        text = str(ex) if isinstance(ex, R.GameError) else '훈련 요청이 올바르지 않습니다. 화면을 새로고침해 주세요.'
+        text = str(ex) if isinstance(ex, R.GameError) else '훈련 요청이 올바르지 않아요. 화면을 새로고침해 주세요.'
         if _ajax(request):
             return JsonResponse({'ok': False, 'message': text}, status=400)
         messages.warning(request, text)
@@ -166,7 +166,7 @@ def rookie_train(request):
     if r['tired']:
         toast += ' · 피로로 효율 절반'
     if r['capped']:
-        toast += ' · 지금 한계에 닿았습니다'
+        toast += ' · 지금 한계에 닿았어요'
     if not _ajax(request):
         messages.success(request, toast)
         return redirect('community:rookie_home')
@@ -204,7 +204,7 @@ def rookie_decide(request):
     """드래프트 뒤 진로 — 계약 / 육성선수 / 대학 / 해외(미국·일본·대만)."""
     try:
         text = C.decide(request.user, request.POST.get('choice', ''), school=request.POST.get('school', ''))
-        messages.success(request, text or '진로를 정했습니다.')
+        messages.success(request, text or '진로를 정했어요.')
     except R.GameError as ex:
         messages.warning(request, str(ex))
     return redirect('community:rookie_home')
@@ -217,8 +217,8 @@ def rookie_retire(request):
         messages.warning(request, '은퇴하려면 확인 칸에 체크해 주세요.')
         return redirect('community:rookie_home')
     if R.retire(request.user):
-        messages.info(request, '은퇴했습니다. 선수 페이지와 기록·수상은 그대로 남고, 명예의 전당 후보가 됩니다. '
-                               '새 선수로 리틀야구부터 다시 시작할 수 있습니다.')
+        messages.info(request, '은퇴했어요. 선수 페이지와 기록·수상은 그대로 남고, 명예의 전당 후보가 돼요. '
+                               '새 선수로 리틀야구부터 다시 시작할 수 있어요.')
     return redirect('community:rookie_home')
 
 

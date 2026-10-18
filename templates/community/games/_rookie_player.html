@@ -26,7 +26,7 @@
 
     <h2 class="rk-h2">통산 성적</h2>
     {% if life.leagues %}
-    <p class="rk-note">리그마다 수준이 달라 따로 더하고, 프로 통산과 평생 통산(학생 시절 포함)을 함께 적었습니다.{% if best9 %} 오늘의 베스트 9 {{ best9 }}회.{% endif %}</p>
+    <p class="rk-note">리그마다 수준이 달라 따로 더하고, 프로 통산과 평생 통산(학생 시절 포함)을 함께 적었어요.{% if best9 %} 오늘의 베스트 9 {{ best9 }}회.{% endif %}</p>
     <div class="rk-table-wrap">
         <table class="rk-table">
             <thead>
@@ -46,7 +46,7 @@
         </table>
     </div>
     {% else %}
-    <section class="rk-panel"><p class="rk-empty">아직 경기 기록이 없습니다.</p></section>
+    <section class="rk-panel"><p class="rk-empty">아직 경기 기록이 없어요.</p></section>
     {% endif %}
 
     <h2 class="rk-h2">시즌별 기록</h2>
@@ -76,7 +76,7 @@
         </table>
     </div>
     {% else %}
-    <section class="rk-panel"><p class="rk-empty">아직 경기 기록이 없습니다.</p></section>
+    <section class="rk-panel"><p class="rk-empty">아직 경기 기록이 없어요.</p></section>
     {% endif %}
 
     {% if miles %}
@@ -101,7 +101,8 @@
         </ol>
     </section>
     {% else %}
-    <section class="rk-panel"><p class="rk-empty">아직 경기 기록이 없습니다.</p></section>
+    <section class="rk-panel"><p class="rk-empty">아직 경기 기록이 없어요.</p></section>
     {% endif %}
+    {% include 'community/games/_rookie_rights.html' %}
 </div>
 </div>

@@ -38,7 +38,7 @@
             </ul>
             {% if next.ready %}
                 {% if next.tried_today %}
-                <p class="rk-card-note">오늘 심사는 끝났습니다. 내일 다시 도전하세요.</p>
+                <p class="rk-card-note">오늘 심사는 끝났어요. 내일 다시 도전하세요.</p>
                 {% else %}
                 <form method="post" action="{% url 'community:rookie_test' %}">
                     {% csrf_token %}
@@ -46,7 +46,7 @@
                 </form>
                 {% endif %}
             {% endif %}
-            {% if demote_at %}<p class="rk-card-note">OVR {{ demote_at|floatformat:0 }} 아래로 떨어지면 한 단계 내려갑니다.</p>{% endif %}
+            {% if demote_at %}<p class="rk-card-note">OVR {{ demote_at|floatformat:0 }} 아래로 떨어지면 한 단계 내려가요.</p>{% endif %}
         </div>
         {% elif career.grade_left is not None %}
         <div class="rk-next">
@@ -54,7 +54,7 @@
             <div class="rk-bar is-next"><i style="width: {{ career.grade_pct }}%"></i></div>
         </div>
         {% elif demote_at %}
-        <p class="rk-card-note">OVR {{ demote_at|floatformat:0 }} 아래로 떨어지면 한 단계 내려갑니다.</p>
+        <p class="rk-card-note">OVR {{ demote_at|floatformat:0 }} 아래로 떨어지면 한 단계 내려가요.</p>
         {% endif %}
     {% endif %}
 </section>

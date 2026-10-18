@@ -289,7 +289,7 @@ class ScreenTests(TestCase):
             self.assertContains(r, '평균자책점')
             self.assertContains(r, '탈삼진')
             r = self.client.get('/rookie/records/', HTTP_USER_AGENT=PC)
-            self.assertContains(r, '아직 KBO리그 시즌 기록이 없습니다')   # 진행 중 시즌 초반은 기록실에 오르지 않는다
+            self.assertContains(r, '아직 KBO리그 시즌 기록이 없어요')   # 진행 중 시즌 초반은 기록실에 오르지 않는다
 
     def test_batter_position_saved(self):
         u = member('위치선택')

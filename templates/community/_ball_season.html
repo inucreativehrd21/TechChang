@@ -1,0 +1,2 @@
+{# 홈 야구 칸 — 시즌 진행 한 줄. 맥락: s = rookie_league.season_state() (없으면 이름만) #}
+<span class="tc-led" aria-hidden="true"></span>{% if not s %}야구선수 키우기{% elif s.phase == 'pre' %}시즌 {{ s.number }} 개막 D-{{ s.dday }}{% elif s.phase == 'off' %}시즌 {{ s.number }} 끝 · 다음 개막 D-{{ s.dday }}{% else %}시즌 {{ s.number }} · {{ s.played }}/{{ s.total }}경기 진행 중{% endif %}

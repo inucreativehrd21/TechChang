@@ -33,15 +33,15 @@
         {% if cur and not team_games %}
         <section class="rk-board rk-empty-board">
             <header class="rk-board-head"><span>시즌 {{ cur.number }} · {{ lg_name }}</span><span>첫 경기 전</span></header>
-            <div class="rk-board-empty"><b>집계 대기</b><span>첫 경기일 밤에 경기를 치르고, 다음 날 아침부터 이곳에 기록 리더가 뜹니다.</span></div>
+            <div class="rk-board-empty"><b>집계 대기</b><span>첫 경기일 밤에 경기를 치르고, 다음 날 아침부터 이곳에 기록 리더가 떠요.</span></div>
         </section>
         {% elif not cur %}
         <section class="rk-board rk-empty-board">
             <header class="rk-board-head"><span>시즌 1</span><span>개막 전</span></header>
-            <div class="rk-board-empty"><b>D-{{ season_now.dday }}</b><span>{{ season_now.opening|date:'n월 j일' }}에 개막합니다. 첫 경기가 끝나면 다음 날 아침부터 이곳에 기록 리더가 뜹니다.</span></div>
+            <div class="rk-board-empty"><b>D-{{ season_now.dday }}</b><span>{{ season_now.opening|date:'n월 j일' }}에 개막해요. 첫 경기가 끝나면 다음 날 아침부터 이곳에 기록 리더가 떠요.</span></div>
         </section>
         {% else %}
-        <p class="rk-note">시즌 {{ cur.number }} {{ lg_name }}, {{ team_games }}경기 기준. 타율·OPS는 규정타석 {{ qual_pa }}, 평균자책점·WHIP는 규정이닝 {{ qual_ip }} 이상만 셉니다.</p>
+        <p class="rk-note">시즌 {{ cur.number }} {{ lg_name }}, {{ team_games }}경기 기준. 타율·OPS는 규정타석 {{ qual_pa }}, 평균자책점·WHIP는 규정이닝 {{ qual_ip }} 이상만 집계해요.</p>
         <h2 class="rk-h2">타자</h2>
         <div class="rk-leads">
             {% for c in bat %}{% include 'community/games/_rookie_lead.html' %}{% endfor %}
@@ -54,7 +54,7 @@
 
     {% elif tab == 'best9' %}
         {% if nine_day %}
-        <p class="rk-note">{{ nine_day|date:'n월 j일' }} {{ lg_name }} — 위치마다 그날 가장 잘한 선수입니다. 타자는 루타·볼넷·도루·타점·득점, 투수는 게임 스코어로 견줍니다.</p>
+        <p class="rk-note">{{ nine_day|date:'n월 j일' }} {{ lg_name }} — 위치마다 그날 가장 잘한 선수예요. 타자는 루타·볼넷·도루·타점·득점, 투수는 게임 스코어로 견줘요.</p>
         <section class="rk-diamond" aria-label="오늘의 베스트 9">
             <svg class="rk-park" viewBox="0 0 1000 760" aria-hidden="true" focusable="false">
                 <path d="M500 735 L60 300 A620 620 0 0 1 940 300 Z" class="rk-park-grass"/>
@@ -71,14 +71,14 @@
         {% else %}
         <section class="rk-board rk-empty-board">
             <header class="rk-board-head"><span>오늘의 베스트 9 · {{ lg_name }}</span><span>경기 전</span></header>
-            <div class="rk-board-empty"><b>{% if season_now.phase == 'pre' %}D-{{ season_now.dday }}{% else %}대기{% endif %}</b><span>이 리그의 경기가 끝나면 다음 날 아침 위치마다 그날의 주인공을 뽑습니다.</span></div>
+            <div class="rk-board-empty"><b>{% if season_now.phase == 'pre' %}D-{{ season_now.dday }}{% else %}대기{% endif %}</b><span>이 리그의 경기가 끝나면 다음 날 아침 위치마다 그날의 주인공을 뽑아요.</span></div>
         </section>
         {% endif %}
 
     {% elif tab == 'players' %}
     <section class="rk-panel">
         {% if rows %}
-        <p class="rk-note is-flush">높은 리그가 먼저, 같은 리그 안에서는 OVR 순입니다.</p>
+        <p class="rk-note is-flush">높은 리그가 먼저, 같은 리그 안에서는 OVR 순이에요.</p>
         <ol class="rk-rank">
             {% for r in rows %}
             <li class="{% if r.is_me %}is-me{% endif %}">
@@ -94,13 +94,13 @@
             {% endfor %}
         </ol>
         {% else %}
-        <p class="rk-empty">아직 선수가 없습니다. 첫 선수가 되어 보세요.</p>
+        <p class="rk-empty">아직 선수가 없어요. 첫 선수가 되어 보세요.</p>
         {% endif %}
     </section>
 
     {% else %}
     <section class="rk-panel">
-        <p class="rk-note is-flush">구단 전력은 KBO 소속 선수(육성군·퓨처스·1군) OVR의 합입니다. 지망 유망주는 그 구단을 희망하는 학생 선수입니다.</p>
+        <p class="rk-note is-flush">구단 전력은 KBO 소속 선수(육성군·퓨처스·1군) OVR의 합이에요. 지망 유망주는 그 구단을 희망하는 학생 선수예요.</p>
         <ol class="rk-rank">
             {% for t in team_rows %}
             <li class="{% if t.team.code == my_team %}is-me{% endif %}{% if not t.n and not t.fans %} is-dim{% endif %}">
@@ -116,6 +116,6 @@
         </ol>
     </section>
     {% endif %}
-    <p class="rk-fine rk-center">구단·학교 이름은 소속 표시용이며 KBO·MLB·NPB·CPBL과 각 구단·학교와는 관계없습니다.</p>
+    {% include 'community/games/_rookie_rights.html' %}
 </div>
 </div>

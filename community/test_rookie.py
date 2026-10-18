@@ -259,7 +259,7 @@ class ViewTests(TestCase):
         r = self.client.post('/rookie/train/', {'stat': 'contact', 'times': '10'}, HTTP_X_REQUESTED_WITH='XMLHttpRequest')
         r = self.client.post('/rookie/train/', {'stat': 'contact', 'times': '10'}, HTTP_X_REQUESTED_WITH='XMLHttpRequest')
         self.assertEqual(r.status_code, 400)
-        self.assertIn('모자랍니다', r.json()['message'])
+        self.assertIn('모자라요', r.json()['message'])
         r = self.client.post('/rookie/train/', {'stat': 'eye', 'times': '1'})            # 자바스크립트 없이
         self.assertRedirects(r, '/rookie/', fetch_redirect_response=False)
 

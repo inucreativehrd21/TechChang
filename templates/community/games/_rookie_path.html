@@ -8,10 +8,10 @@
         {% if career.scout %}
         <div><dt>스카우트 평가</dt><dd><span class="rk-stars" aria-label="별 {{ career.scout.stars }}개">{% for i in career.scout.range %}<i class="{% if i < career.scout.stars %}is-on{% endif %}" aria-hidden="true"></i>{% endfor %}</span> {{ career.scout.note }}</dd></div>
         {% elif owner and career.amateur %}
-        <div><dt>스카우트 평가</dt><dd>고교생이 되면 붙습니다</dd></div>
+        <div><dt>스카우트 평가</dt><dd>고교생이 되면 나와요</dd></div>
         {% endif %}
         {% if owner and career.age_cap %}
-        <div><dt>{{ career.age }}세 몸의 한계</dt><dd>능력치 {{ career.age_cap|floatformat:0 }} — 한 살 먹을 때마다 열립니다</dd></div>
+        <div><dt>{{ career.age }}세 몸의 한계</dt><dd>능력치 {{ career.age_cap|floatformat:0 }} — 한 살 먹을 때마다 열려요</dd></div>
         {% endif %}
         {% for d in career.drafts %}
         <div><dt>{% if d.src == 'hs' %}고졸{% else %}대졸{% endif %} 드래프트</dt><dd>{% if d.undrafted %}시즌 {{ d.season }} 미지명{% else %}시즌 {{ d.season }} {{ d.round }}라운드 {{ d.in_round }}순위 · {{ d.team_name }}{% endif %}</dd></div>
@@ -22,12 +22,12 @@
         {% for t in career.traits %}<li title="{{ t.desc }}"><b>{{ t.name }}</b><span>{{ t.desc }}</span></li>{% endfor %}
     </ul>
     {% elif owner %}
-    <p class="rk-hint">숨은 특성이 있다면 효과가 처음 드러나는 날 알려 드립니다.</p>
+    <p class="rk-hint">숨은 특성이 있다면 효과가 처음 드러나는 날 알려 드려요.</p>
     {% endif %}
     {% if career.path|length > 1 %}
     <ol class="rk-pathlist" aria-label="지나온 길">
         {% for x in career.path %}<li><span>{{ x.league_short }}</span><b>{{ x.club_name }}</b><small>{{ x.age }}세</small></li>{% endfor %}
     </ol>
     {% endif %}
-    {% if owner and career.retire_hint %}<p class="rk-hint">마흔다섯이 되는 시즌 개막에 은퇴합니다. 그 전에 스스로 유니폼을 벗을 수도 있습니다.</p>{% endif %}
+    {% if owner and career.retire_hint %}<p class="rk-hint">마흔다섯이 되는 시즌 개막에 은퇴해요. 그 전에 스스로 유니폼을 벗을 수도 있어요.</p>{% endif %}
 </section>

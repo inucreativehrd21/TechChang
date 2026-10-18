@@ -58,13 +58,13 @@ CLASS = {12: (36.0, 2.7), 13: (39.9, 3.9), 14: (43.3, 4.6), 15: (46.2, 5.2), 16:
 POTENTIAL_MEAN, POTENTIAL_SD, POTENTIAL_RANGE = 82, 6, (66, 97)
 
 TRAITS = {
-    'early': {'name': '조기 개화', 'desc': '또래보다 몸이 빨리 큽니다. 나이 한계가 한 살 먼저 열리고 고교까지 훈련 효과 +10%, 대신 노쇠가 2년 빨리 옵니다.'},
-    'late': {'name': '대기만성', 'desc': '늦게 피는 꽃입니다. 스물둘까지 훈련 효과 −10%, 스물여섯부터 +15%, 노쇠가 2년 늦게 옵니다.'},
-    'grinder': {'name': '연습벌레', 'desc': '훈련 효과 +8%, 하루 훈련 피로도 6회 늦게 옵니다.'},
-    'iron': {'name': '강철 체력', 'desc': '쉬는 날 빠지는 몫이 40% 적고, 노쇠가 절반 속도로 옵니다.'},
-    'clutch': {'name': '큰 경기 체질', 'desc': '승부처에 강합니다. 경기에서 클러치(타자)·멘탈(투수) +5.'},
-    'learner': {'name': '경험파', 'desc': '경기에서 배우는 게 많습니다. 출전 경험으로 오르는 능력치 +60%.'},
-    'natural': {'name': '천재형', 'desc': '주특기가 남다릅니다. 주특기 훈련 배율 ×1.45(보통 ×1.25), 주특기 한계 +8(보통 +4).'},
+    'early': {'name': '조기 개화', 'desc': '또래보다 몸이 빨리 커요. 나이 한계가 한 살 먼저 열리고 고교까지 훈련 효과 +10%, 대신 노쇠가 2년 빨리 와요.'},
+    'late': {'name': '대기만성', 'desc': '늦게 피는 꽃이에요. 스물둘까지 훈련 효과 −10%, 스물여섯부터 +15%, 노쇠가 2년 늦게 와요.'},
+    'grinder': {'name': '연습벌레', 'desc': '훈련 효과 +8%, 하루 훈련 피로도 6회 늦게 와요.'},
+    'iron': {'name': '강철 체력', 'desc': '쉬는 날 빠지는 몫이 40% 적고, 노쇠가 절반 속도로 와요.'},
+    'clutch': {'name': '큰 경기 체질', 'desc': '승부처에 강해요. 경기에서 클러치(타자)·멘탈(투수) +5.'},
+    'learner': {'name': '경험파', 'desc': '경기에서 배우는 게 많아요. 출전 경험으로 오르는 능력치 +60%.'},
+    'natural': {'name': '천재형', 'desc': '주특기가 남달라요. 주특기 훈련 배율 ×1.45(보통 ×1.25), 주특기 한계 +8(보통 +4).'},
 }
 # 드래프트 평가 점수(평균 50, 표준편차 약 10) → 라운드. 아래 값은 하네스로 맞춘다(활동량별 분포는 scratchpad bal_sim.py)
 DRAFT_ROUNDS = [(66, 1), (62, 2), (59, 3), (56, 4), (54, 5), (52, 6), (50, 7), (48, 8), (46, 9), (44, 10), (42, 11)]
@@ -223,8 +223,8 @@ def promotion_gate(p, today: date | None = None) -> dict:
 def cap_message(p, stat: str, label: str) -> str:
     cap = stat_cap(p, stat)
     if age_ratio(p) < 1.0:
-        return f'{label}은(는) {p.age}세 몸으로 오를 수 있는 끝({cap:.0f})에 닿았습니다. 한 살 더 먹으면 다시 열립니다.'
-    return f'{label}은(는) 타고난 한계({cap:.0f})에 닿았습니다. 다른 능력을 키워 보세요.'
+        return f'{label}은(는) {p.age}세 몸으로 오를 수 있는 끝({cap:.0f})에 닿았어요. 한 살 더 먹으면 다시 열려요.'
+    return f'{label}은(는) 타고난 한계({cap:.0f})에 닿았어요. 다른 능력을 키워 보세요.'
 
 
 def game_stats(p) -> dict:
@@ -384,9 +384,9 @@ def enter_school(p, to: str, day: date, rng, choice: str = '') -> str:
     open_apply(p)
     word = {'ms': '중학교', 'hs': '고등학교', 'univ': '대학교'}[to]
     if ok:
-        text = f'{school} 합격! {word} 1학년, {p.age}세 — 신입생은 백업부터 자리를 따냅니다'
+        text = f'{school} 합격! {word} 1학년, {p.age}세 — 신입생은 백업부터 자리를 따내야 해요'
     elif choice:
-        text = f'{choice} 불합격 — {near} {school}에 입학했습니다({word} 1학년, {p.age}세)'
+        text = f'{choice} 불합격 — {near} {school}에 입학했어요({word} 1학년, {p.age}세)'
     else:
         text = f'{school} 입학 — {word} 1학년, {p.age}세(희망 학교를 고르지 않아 {near} 학교로)'
     R._log(p, 'career', text, day=day)
@@ -422,7 +422,7 @@ def run_draft(p, day: date, rng) -> str:
     if offer:
         name = W.PRO_TEAM[offer['team']]['name']
         text = (f"시즌 {season} 신인 드래프트 {rnd}라운드 {offer['in_round']}순위(전체 {offer['pick']}순위) — {name} 지명!"
-                + (' 희망 구단입니다' if offer['team'] == p.team else ''))
+                + (' 희망 구단이에요' if offer['team'] == p.team else ''))
     else:
         text = f'시즌 {season} 신인 드래프트 미지명 — 육성선수 계약, ' + ('대학 진학, ' if src == 'hs' else '') + '해외 도전 가운데 고르세요'
     R._log(p, 'career', text, day=day)
@@ -460,34 +460,34 @@ def decide_now(p, choice: str, day: date, rng, school: str = '') -> str:
     from . import rookie as R
     pend = p.pending or {}
     if pend.get('kind') != 'draft':
-        raise R.GameError('지금은 정할 진로가 없습니다.')
+        raise R.GameError('지금은 정할 진로가 없어요.')
     offer, abroad = pend.get('offer'), pend.get('abroad') or {}
     if choice == 'sign':
         if not offer:
-            raise R.GameError('지명한 구단이 없습니다. 육성선수 계약이나 다른 길을 골라 주세요.')
+            raise R.GameError('지명한 구단이 없어요. 육성선수 계약이나 다른 길을 골라 주세요.')
         league = first_pro_league('kbo', p.ovr, college=pend.get('from') == 'univ')
         name = W.PRO_TEAM[offer['team']]['name']
-        join_pro(p, league, offer['team'], day, f"{name} 입단 계약 — {W.short(league)}에서 프로 생활을 시작합니다",
+        join_pro(p, league, offer['team'], day, f"{name} 입단 계약 — {W.short(league)}에서 프로 생활을 시작해요",
                  bonus=sign_bonus(offer.get('round')))
     elif choice == 'develop':
         if offer:
-            raise R.GameError('지명을 받았으니 정식 계약을 할 수 있습니다.')
+            raise R.GameError('지명을 받았으니 정식 계약을 할 수 있어요.')
         name = W.PRO_TEAM[p.team]['name']
-        join_pro(p, 'kbo3', p.team, day, f'{name} 육성선수 계약 — 육성군에서 정식 선수 등록을 노립니다')
+        join_pro(p, 'kbo3', p.team, day, f'{name} 육성선수 계약 — 육성군에서 정식 선수 등록을 노려요')
     elif choice in ABROAD:
         team = abroad.get(choice)
         if not team:
-            raise R.GameError(f'{W.SYSTEM_NAME[choice]} 구단의 제안이 없습니다.')
+            raise R.GameError(f'{W.SYSTEM_NAME[choice]} 구단의 제안이 없어요.')
         league = first_pro_league(choice, p.ovr, college=pend.get('from') == 'univ')
         join_pro(p, league, team, day, f"{W.SYSTEM_NAME[choice]} 진출 — {W.PRO_TEAM[team]['name']}와 계약, {W.short(league)}부터",
                  bonus=SIGN_BONUS[1][1])
     elif choice == 'univ':
         if pend.get('from') != 'hs':
-            raise R.GameError('대학 진학은 고교 졸업 때만 고를 수 있습니다.')
+            raise R.GameError('대학 진학은 고교 졸업 때만 고를 수 있어요.')
         if school not in [s for _r, s in W.schools('univ')]:
             raise R.GameError('진학할 대학을 골라 주세요.')
         if offer:
-            R._log(p, 'career', f"{W.PRO_TEAM[offer['team']]['name']}의 지명을 거절하고 대학 진학을 택했습니다", day=day)
+            R._log(p, 'career', f"{W.PRO_TEAM[offer['team']]['name']}의 지명을 거절하고 대학 진학을 택했어요", day=day)
         p.pending = {}
         return enter_school(p, 'univ', day, rng, choice=school)
     else:
@@ -499,7 +499,7 @@ def default_decision(p, day: date, rng) -> str:
     pend = p.pending or {}
     choice = 'sign' if pend.get('offer') else 'develop'
     from . import rookie as R
-    R._log(p, 'career', '결정 기한이 지나 ' + ('지명 구단과 계약합니다' if choice == 'sign' else '희망 구단 육성선수로 계약합니다'), day=day)
+    R._log(p, 'career', '결정 기한이 지나 ' + ('지명 구단과 계약해요' if choice == 'sign' else '희망 구단 육성선수로 계약해요'), day=day)
     return decide_now(p, choice, day, rng)
 
 
@@ -513,7 +513,7 @@ def retire_player(p, reason: str, day: date | None = None):
     p.career, p.pending, p.retired_at = career, {}, timezone.now()
     p.save(update_fields=['career', 'pending', 'retired_at', 'updated_at'])
     where = W.club_label(p.league, p.club)
-    R._log(p, 'retire', f'{reason} — {p.age}세, {where}에서 유니폼을 벗었습니다', day=day)
+    R._log(p, 'retire', f'{reason} — {p.age}세, {where}에서 유니폼을 벗었어요', day=day)
 
 
 def _deadline(pend: dict, today: date) -> date:
@@ -613,14 +613,14 @@ def apply_school(user, school: str) -> str:
         R.settle(p)
         pend = p.pending or {}
         if pend.get('kind') != 'apply':
-            raise R.GameError('지금은 진학 지원 기간이 아닙니다.')
+            raise R.GameError('지금은 진학 지원 기간이 아니에요.')
         to = pend['to']
         if school not in [s for _r, s in W.schools(to)]:
             raise R.GameError('지원할 학교를 다시 골라 주세요.')
         p.pending = dict(pend, choice=school)
         p.save(update_fields=['pending', 'updated_at'])
         c = accept_chance(p, to, school)
-    return f'{school}에 지원했습니다. 합격 가능성 {chance_label(c)} — 학년이 끝나는 날 발표합니다.'
+    return f'{school}에 지원했어요. 합격 가능성 {chance_label(c)} — 학년이 끝나는 날 발표해요.'
 
 
 def decide(user, choice: str, school: str = '', rng=None) -> str:
@@ -631,7 +631,7 @@ def decide(user, choice: str, school: str = '', rng=None) -> str:
         raise R.GameError(R.gone(user))
     now = p0.pending or {}
     if now.get('kind') == 'draft' and now != before:
-        raise R.GameError('드래프트 결과가 방금 나왔습니다. 제안을 확인하고 다시 골라 주세요.')
+        raise R.GameError('드래프트 결과가 방금 나왔어요. 제안을 확인하고 다시 골라 주세요.')
     with transaction.atomic():
         p = R.locked(user)
         if p is None:

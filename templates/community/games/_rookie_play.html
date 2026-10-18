@@ -15,7 +15,8 @@
             <h2>훈련</h2>
             <span class="rk-tp"><b>{{ p.tp }}</b> TP{% if tp_full %} <em>보유 한도</em>{% endif %}</span>
         </div>
-        <p class="rk-hint">1회 {{ cost }} TP. 오늘 {{ trained }}/{{ fatigue_at }}회{% if tired %} — <strong>피로가 쌓여 지금부터 효율이 절반입니다</strong>{% else %}, 넘으면 효율이 절반{% endif %}.{% if career.age_cap %} 막대의 눈금은 {{ p.age }}세 몸으로 오를 수 있는 끝입니다.{% endif %}{% if tp_full %} TP는 {{ tp_max }}까지만 쌓입니다.{% endif %}</p>
+        {% if not trained and p.tp >= cost %}<div class="rl-say is-small">{% include 'community/games/_rookie_staff.html' with who='coding' %}<div class="rl-bubble"><p class="rl-who"><b>윤성</b> 코치</p><p>오늘은 아직 훈련 전이에요. 키우고 싶은 능력 옆 <b>‘훈련 1회’</b>를 눌러 보세요. 한 번에 {{ cost }} TP를 써요.</p></div></div>{% endif %}
+        <p class="rk-hint">1회 {{ cost }} TP. 오늘 {{ trained }}/{{ fatigue_at }}회{% if tired %} — <strong>피로가 쌓여 지금부터 효율이 절반이에요</strong>{% else %}, 넘으면 효율이 절반{% endif %}.{% if career.age_cap %} 막대의 눈금은 {{ p.age }}세 몸으로 오를 수 있는 끝이에요.{% endif %}{% if tp_full %} TP는 {{ tp_max }}까지만 쌓여요.{% endif %}</p>
         <ul class="rk-stats">
             {% for s in stats %}
             <li class="rk-stat{% if s.focus %} is-focus{% endif %}{% if s.capped %} is-capped{% endif %}" data-stat="{{ s.key }}">
@@ -37,7 +38,7 @@
             </li>
             {% endfor %}
         </ul>
-        {% if p.tp < cost %}<p class="rk-hint rk-mt">훈련 포인트가 모자랍니다. 오늘의 TP에서 벌어 오세요.</p>{% endif %}
+        {% if p.tp < cost %}<p class="rk-hint rk-mt">훈련 포인트가 모자라요. ‘오늘의 TP’ 칸을 보고 칼럼 읽기·댓글·출석으로 벌어 오세요.</p>{% endif %}
     </section>
 </div>
 <div class="rk-col is-side">
@@ -72,7 +73,7 @@
     <section class="rk-panel rk-cond is-{{ cond.state }}" aria-label="컨디션">
         <div class="rk-head"><h2>컨디션</h2><span class="rk-cond-badge">{% if cond.state == 'good' %}상승세{% elif cond.state == 'ok' %}유지{% else %}하락세{% endif %}</span></div>
         <p class="rk-cond-note">{{ cond.note }}</p>
-        <p class="rk-hint">지금 능력치를 지키는 데 하루 약 <b>{{ cond.upkeep }} TP</b>의 훈련이 듭니다{% if cond.upkeep_over %} — <strong>하루 한도로도 다 지킬 수 없는 수준입니다</strong>{% endif %}. 능력치가 높을수록 유지비가 커집니다.{% if cond.aging %} 서른을 넘어 구속·체력·파워·주루가 해마다 조금씩 더 빨리 빠집니다.{% endif %}</p>
+        <p class="rk-hint">지금 능력치를 지키는 데 하루 약 <b>{{ cond.upkeep }} TP</b>의 훈련이 들어요{% if cond.upkeep_over %} — <strong>하루 한도로도 다 지킬 수 없는 수준이에요</strong>{% endif %}. 능력치가 높을수록 유지비가 커져요.{% if cond.aging %} 서른을 넘어 구속·체력·파워·주루가 해마다 조금씩 더 빨리 빠져요.{% endif %}</p>
     </section>
 
     <section class="rk-panel rk-logs" aria-label="최근 기록">
@@ -81,14 +82,14 @@
             {% for l in logs %}
             <li class="is-{{ l.kind }}"><time datetime="{{ l.created_at|date:'c' }}">{{ l.created_at|date:'n.j H:i' }}</time><span>{{ l.text }}</span></li>
             {% empty %}
-            <li><span>아직 기록이 없습니다.</span></li>
+            <li><span>아직 기록이 없어요.</span></li>
             {% endfor %}
         </ul>
         <details class="rk-retire">
             <summary>은퇴하고 새로 시작</summary>
             <form method="post" action="{% url 'community:rookie_retire' %}">
                 {% csrf_token %}
-                <label><input type="checkbox" name="confirm" value="yes" required> 이 선수는 은퇴합니다(되돌릴 수 없음). 기록·수상은 선수 페이지와 기록실에 남고 명예의 전당 후보가 됩니다. 남은 TP는 사라지고, 새 선수는 리틀야구부터 시작합니다</label>
+                <label><input type="checkbox" name="confirm" value="yes" required> 이 선수를 은퇴시킬게요(되돌릴 수 없어요). 기록·수상은 선수 페이지와 기록실에 남고 명예의 전당 후보가 돼요. 남은 TP는 사라지고, 새 선수는 리틀야구부터 시작해요</label>
                 <button type="submit" class="gm-btn">은퇴하기</button>
             </form>
         </details>

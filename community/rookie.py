@@ -229,7 +229,7 @@ def create(user, *, name: str, role: str, team: str, number: int = 0, focus: str
     with transaction.atomic():
         User.objects.select_for_update().filter(pk=user.pk).first()      # 같은 회원의 입단 두 번을 줄 세운다
         if RookiePlayer.objects.filter(user=user, retired_at__isnull=True).exists():
-            raise GameError('이미 현역 선수가 있습니다.')
+            raise GameError('이미 현역 선수가 있어요.')
         heir = inherits_from(user)
         club = W.little_club(region)
         p = RookiePlayer.objects.create(
@@ -289,7 +289,7 @@ def _decay(p, today: date) -> dict:
         if idle >= 4 and C.reveal(p, 'iron', today):
             p.save(update_fields=['traits_seen'])
     for name in demoted:
-        _log(p, 'demote', f'OVR {p.ovr:.1f} — {name}(으)로 내려갔습니다', day=today)
+        _log(p, 'demote', f'OVR {p.ovr:.1f} — {name}(으)로 내려갔어요', day=today)
     return {'days': days, 'before': before, 'after': p.ovr, 'demoted': demoted}
 
 
@@ -326,7 +326,7 @@ def gone(user) -> str:
     """현역 선수가 없을 때의 안내 — 방금 은퇴했으면 그렇게 말한다."""
     from .models import RookiePlayer
     if RookiePlayer.objects.filter(user=user, retired_at__isnull=False).exists():
-        return '선수가 은퇴했습니다. 새 선수로 다시 시작해 주세요.'
+        return '선수가 은퇴했어요. 새 선수로 다시 시작해 주세요.'
     return '먼저 선수를 만들어 주세요.'
 
 
@@ -401,7 +401,7 @@ def train(user, stat: str, times: int = 1, rng=None) -> dict:
             raise GameError(C.cap_message(p, stat, label))
         cost = TRAIN_COST * times
         if p.tp < cost:
-            raise GameError(f'훈련 포인트가 모자랍니다(필요 {cost} TP, 보유 {p.tp} TP).')
+            raise GameError(f'훈련 포인트가 모자라요(필요 {cost} TP, 보유 {p.tp} TP).')
         done = trained_today(p, today)
         fat = C.fatigue_at(p)
         m = mult(stat, p.focus, C.focus_bonus(p)) * C.age_mult(p)
@@ -456,22 +456,22 @@ def promotion_test(user, rng=None) -> dict:
             raise GameError(gone(user))
         settle(p, today)
         if not W.is_pro(p.league):
-            raise GameError('학생 선수는 학년이 오르며 진학합니다. 승격 심사는 프로에서 받습니다.')
+            raise GameError('학생 선수는 학년이 오르면서 진학해요. 승격 심사는 프로에서 받을 수 있어요.')
         nxt = W.next_league(p.league)
         if nxt is None:
-            raise GameError(f"이미 {W.league(p.league)['name']}입니다.")
+            raise GameError(f"이미 {W.league(p.league)['name']} 선수예요.")
         at = W.promote_at(p.league)
         name = W.league(nxt)['name']
         if p.ovr < at:
-            raise GameError(f'{name} 승격 심사는 OVR {at:g}부터 받을 수 있습니다.')
+            raise GameError(f'{name} 승격 심사는 OVR {at:g}부터 받을 수 있어요.')
         gate = C.promotion_gate(p, today)
         if gate['stay_left']:
-            raise GameError(f"{name} 승격 심사는 지금 리그에서 {gate['stay_need']}일을 뛴 뒤에 받을 수 있습니다"
+            raise GameError(f"{name} 승격 심사는 지금 리그에서 {gate['stay_need']}일을 뛴 뒤에 받을 수 있어요"
                             f"({gate['stay_left']}일 남음).")
         if not gate['mission']['ok']:
             raise GameError(f"승격 심사 조건: {gate['mission']['text']}(지금 {gate['mission']['now']}).")
         if p.test_on == today:
-            raise GameError('승격 심사는 하루 한 번입니다. 내일 다시 도전하세요.')
+            raise GameError('승격 심사는 하루 한 번이에요. 내일 다시 도전해 주세요.')
         games = []
         for i in range(TEST_GAMES):
             margin = p.ovr + rng.gauss(0, TEST_SPREAD) - at
@@ -485,7 +485,7 @@ def promotion_test(user, rng=None) -> dict:
         p.save(update_fields=['test_on', 'league', 'league_since', 'lineup', 'slot', 'role_since', 'updated_at'])
         won = sum(g['ok'] for g in games)
         _log(p, 'promote' if passed else 'test',
-             f"{name} 승격! {'패전조' if p.role == 'pitcher' else '백업'}부터 다시 자리를 따냅니다" if passed
+             f"{name} 승격! {'패전조' if p.role == 'pitcher' else '백업'}부터 다시 자리를 따내야 해요" if passed
              else f'{name} 승격 심사 {won}/{TEST_GAMES} — 탈락', day=today)
     return {'passed': passed, 'league_name': name, 'games': games, 'won': won, 'player': p}
 
@@ -556,11 +556,11 @@ def condition(p, today: date | None = None) -> dict:
     idle = (today - p.last_active).days
     rate = decay_rate(idle + 1)          # 오늘도 아무것도 안 하면 오늘 밤 빠질 비율
     if idle == 0:
-        state, note = 'good', '오늘 활동 완료 — 오늘 밤엔 유지비만 빠집니다.'
+        state, note = 'good', '오늘 활동 완료 — 오늘 밤엔 유지비만 빠져요.'
     elif idle == 1:
-        state, note = 'ok', f'어제 마지막 활동 — 오늘 활동하지 않으면 오늘 밤 {rate * 100:g}%가 빠집니다.'
+        state, note = 'ok', f'어제 마지막 활동 — 오늘 활동하지 않으면 오늘 밤 {rate * 100:g}%가 빠져요.'
     else:
-        state, note = 'bad', f'{idle}일째 활동 없음 — 하루 {rate * 100:g}%씩 빠지는 중. 출석 체크 한 번이면 멈춥니다.'
+        state, note = 'bad', f'{idle}일째 활동 없음 — 하루 {rate * 100:g}%씩 빠지는 중. 출석 체크 한 번이면 멈춰요.'
     aging = p.age >= C.decline_start(p)
     upkeep, over = upkeep_of(p)
     return {'state': state, 'idle': idle, 'rate': rate, 'note': note, 'aging': aging, 'upkeep': upkeep,

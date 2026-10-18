@@ -48,7 +48,7 @@ class AdminGameRecordsHiddenTests(TestCase):
 
     def test_play_counts_skip_admin(self):
         r = self.page('/games/')
-        self.assertContains(r, '지금까지 3판이 플레이됐습니다')       # 회원 3판만(운영자 3판 제외)
+        self.assertContains(r, '퍼즐 게임은 지금까지 3판 플레이됐어요')       # 회원 3판만(운영자 3판 제외)
         r = self.client.get('/', HTTP_USER_AGENT=PC)
         self.assertEqual(r.status_code, 200)
 

@@ -147,31 +147,42 @@
     </section>
     {% endif %}
 
-    <!-- ===== 게임 밴드 ===== -->
-    <section class="tc-section">
-        <div class="tc-games" data-reveal>
-            <div class="tc-games-intro">
-                <h2 class="tc-section-title">브라우저 게임</h2>
-                <p class="tc-games-count">지금까지 <strong>{{ games_played_total }}</strong>판 플레이됨</p>
-                <a href="{% url 'community:games_index' %}" class="tc-section-link">게임센터 <i class="fas fa-arrow-right" aria-hidden="true"></i></a>
+    <!-- ===== 야구선수 키우기 런칭 — 전광판 하나에 코칭스태프, 아래 두 판 ===== -->
+    <section class="tc-section" aria-labelledby="tc-ball-title">
+        <div class="tc-ball" data-reveal>
+            <div class="tc-ball-board">
+                <div class="tc-ball-copy">
+                    <p class="tc-ball-live">{% include 'community/_ball_season.html' with s=ball.season %}</p>
+                    <h2 class="tc-ball-title" id="tc-ball-title">야구선수 키우기, 문을 열었어요</h2>
+                    <p class="tc-ball-lede">리틀야구부터 드래프트, 프로 무대와 은퇴까지. 훈련과 진로를 직접 골라 한 선수의 야구 인생을 키워 보세요.</p>
+                    {% if ball %}
+                    <dl class="tc-ball-nums">
+                        <div><dt>정식 판 현역</dt><dd>{{ ball.players }}<small>명</small></dd></div>
+                        <div><dt>라이트 판 커리어</dt><dd>{{ ball.lites }}<small>편</small></dd></div>
+                    </dl>
+                    {% endif %}
+                </div>
+                <ul class="tc-ball-crew" aria-label="코칭스태프">
+                    {% for who, name, role in ball_crew %}
+                    <li><span class="tc-ball-sprite" style="--sprite: url('/media/lab/chars/{{ who }}_idle.png')" aria-hidden="true"></span><b>{{ name }}</b><small>{{ role }}</small></li>
+                    {% endfor %}
+                </ul>
             </div>
-            <div class="tc-games-tiles">
-                <a href="{% url 'community:baseball_start' %}" class="tc-game">
-                    <i class="fas fa-baseball" aria-hidden="true"></i>
-                    <span class="tc-game-name">숫자야구</span>
-                    <span class="tc-game-desc">숨겨진 4자리 숫자 추리</span>
+            <div class="tc-ball-modes">
+                <a href="{% url 'community:lite_home' %}" class="tc-ball-mode is-lite">
+                    <span class="tc-ball-tag">로그인 없이 바로</span>
+                    <b>라이트 판</b>
+                    <span>한 판 30분이면 끝나요. 시즌마다 훈련 두 개와 진로를 골라 고1부터 은퇴까지, 명예의 전당을 노려요.</span>
+                    <span class="tc-ball-go">라이트 판 바로 하기 <i class="fas fa-arrow-right" aria-hidden="true"></i></span>
                 </a>
-                <a href="{% url 'community:game2048_start' %}" class="tc-game">
-                    <i class="fas fa-table-cells" aria-hidden="true"></i>
-                    <span class="tc-game-name">2048</span>
-                    <span class="tc-game-desc">타일을 합쳐 2048 만들기</span>
-                </a>
-                <a href="{% url 'community:minesweeper_start' %}" class="tc-game">
-                    <i class="fas fa-bomb" aria-hidden="true"></i>
-                    <span class="tc-game-name">지뢰찾기</span>
-                    <span class="tc-game-desc">숫자 힌트로 지뢰 피하기</span>
+                <a href="{% url 'community:rookie_home' %}" class="tc-ball-mode">
+                    <span class="tc-ball-tag">로그인하고 매일</span>
+                    <b>정식 판</b>
+                    <span>칼럼 읽기·댓글·출석으로 모은 훈련 포인트로 키워요. 경기는 매일 밤 열리고, KBO·메이저리그·일본·대만까지 갈 수 있어요.</span>
+                    <span class="tc-ball-go">정식 판 하러 가기 <i class="fas fa-arrow-right" aria-hidden="true"></i></span>
                 </a>
             </div>
+            <p class="tc-ball-more">숫자야구·2048·지뢰찾기는 <a href="{% url 'community:games_index' %}">게임센터</a>에 있어요.</p>
         </div>
     </section>
 

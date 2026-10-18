@@ -103,6 +103,12 @@
     scrollbar-width: none;
 }
 .tc-mh-rail::-webkit-scrollbar { display: none; }
+.tc-mh-stack {
+    display: grid;
+    gap: 12px;
+    padding: 4px 16px 16px;
+}
+.tc-mh-stack > .tc-mh-card { min-width: 0; }
 
 .tc-mh-card {
     flex: 0 0 82%;
@@ -112,10 +118,6 @@
     border: 1px solid var(--tc-line);
     border-radius: var(--tc-r-lg);
     box-shadow: var(--tc-shadow-xs);
-}
-.tc-mh-card-games {
-    background: var(--tc-accent-wash);
-    border-color: var(--tc-accent-line);
 }
 .tc-mh-card-head {
     display: flex;
@@ -162,36 +164,115 @@
 }
 .tc-mh-empty { font-size: 0.8125rem; color: var(--tc-ink-3); }
 
-.tc-mh-games-count {
-    margin: 0 0 10px;
-    font-size: 0.8125rem;
-    color: var(--tc-ink-2);
+/* ── 야구선수 키우기 런칭 카드 — 위는 전광판(남색·LED), 아래는 두 판 ── */
+.tc-mh-ball {
+    --tc-board: #15183d;
+    --tc-board-dim: #9ea4d6;
+    --tc-led: #a5b4fc;
+    padding: 0;
+    overflow: hidden;
+    border-color: var(--tc-accent-line);
 }
-.tc-mh-games-count strong {
-    color: var(--tc-accent);
+.tc-mh-ball-board {
+    padding: 16px 16px 12px;
+    color: #eef0ff;
+    background-color: var(--tc-board);
+    background-image: radial-gradient(rgba(255, 255, 255, .055) 1px, transparent 1.3px);
+    background-size: 6px 6px;
+}
+.tc-mh-ball-live {
+    display: flex;
+    align-items: center;
+    margin: 0 0 8px;
+    font-size: 0.75rem;
     font-weight: 700;
+    color: var(--tc-led);
     font-variant-numeric: tabular-nums;
 }
-.tc-mh-games {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 6px;
+.tc-mh .tc-led {
+    flex: none;
+    width: 7px;
+    height: 7px;
+    margin-right: 7px;
+    border-radius: 50%;
+    background: var(--tc-led);
+    box-shadow: 0 0 0 3px rgba(165, 180, 252, .18), 0 0 8px rgba(165, 180, 252, .8);
 }
-.tc-mh-games a {
+.tc-mh-ball-board h2 {
+    margin: 0;
+    font-size: 1.1875rem;
+    font-weight: 900;
+    letter-spacing: -0.02em;
+    color: #fff;
+}
+.tc-mh-ball-lede {
+    margin: 6px 0 0;
+    font-size: 0.8125rem;
+    line-height: 1.6;
+    color: var(--tc-board-dim);
+    word-break: keep-all;
+}
+.tc-mh-ball-crew {
+    display: flex;
+    gap: 14px;
+    margin: 12px 0 0;
+    padding: 0;
+    list-style: none;
+}
+.tc-mh-ball-crew li {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 6px;
-    padding: 12px 4px;
-    font-size: 0.75rem;
+    gap: 2px;
+    font-size: 0.6875rem;
     font-weight: 600;
-    color: var(--tc-ink);
+    color: var(--tc-board-dim);
+}
+.tc-mh-ball-sprite {
+    display: block;
+    width: 32px;
+    height: 64px;
+    background-image: var(--sprite);
+    background-repeat: no-repeat;
+    background-size: 768px 64px;
+    background-position: -576px 0;
+    image-rendering: pixelated;
+    animation: tc-mh-breathe 1s steps(6) infinite;
+}
+.tc-mh-ball-crew li:nth-child(2) .tc-mh-ball-sprite { animation-delay: -0.35s; }
+.tc-mh-ball-crew li:nth-child(3) .tc-mh-ball-sprite { animation-delay: -0.7s; }
+.tc-mh-ball-crew li:nth-child(4) .tc-mh-ball-sprite { animation-delay: -0.15s; }
+@keyframes tc-mh-breathe { from { background-position: -576px 0; } to { background-position: -768px 0; } }
+.tc-mh-ball-modes {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    padding: 12px 12px 4px;
+}
+.tc-mh-ball-modes a {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 12px;
     background: var(--tc-bg);
     border: 1px solid var(--tc-accent-line);
     border-radius: var(--tc-r-md);
 }
-.tc-mh-games a:active { transform: scale(0.97); }
-.tc-mh-games i { font-size: 1.125rem; color: var(--tc-accent); }
+.tc-mh-ball-modes a:active { transform: scale(0.97); }
+.tc-mh-ball-modes b { font-size: 0.9375rem; font-weight: 800; color: var(--tc-ink); }
+.tc-mh-ball-modes span { font-size: 0.75rem; line-height: 1.45; color: var(--tc-ink-3); word-break: keep-all; }
+.tc-mh-ball-modes a.is-lite { background: var(--tc-accent); border-color: var(--tc-accent); }
+.tc-mh-ball-modes a.is-lite b { color: #fff; }
+.tc-mh-ball-modes a.is-lite span { color: #e0e7ff; }
+.tc-mh-ball-more {
+    display: block;
+    padding: 8px 14px 12px;
+    font-size: 0.75rem;
+    color: var(--tc-ink-3);
+}
+@media (prefers-reduced-motion: reduce) {
+    .tc-mh-ball-sprite { animation: none; }
+}
 
 /* ── 인기 게시글 레일 ── */
 .tc-mh-head { padding: 4px 16px 8px; }

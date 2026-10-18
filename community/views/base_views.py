@@ -94,10 +94,12 @@ def ensure_default_categories():
 # 연구실 칼럼 발행 일정 (office_publish cron: 화 HRD / 목 데이터분석 / 토 프로그래밍, 10:00)
 LAB_SLOTS = [(1, 'hrd', 'HRD'), (3, 'data', '데이터분석'), (5, 'coding', '프로그래밍')]
 WEEKDAYS = '월화수목금토일'
+# 홈 야구 칸 전광판에 서는 연구실 사람들(media/lab/chars 픽셀 인물) — (키, 이름, 게임 속 역할)
+BALL_CREW = (('lead', '은혜', '감독'), ('coding', '윤성', '코치'), ('data', '수정', '스카우트'), ('editor', '승현', '기자'))
 
 
 def _home_live_data():
-    """홈 라이브 패널의 연구실 소식(다음 칼럼 주제·연재 진행)·게임 누적 판수 (5분 캐시)."""
+    """홈 라이브 패널의 연구실 소식(다음 칼럼 주제·연재 진행)·야구선수 키우기 런칭 칸 숫자 (5분 캐시)."""
     from office.agents import MEETING_ORDER
     from office.services import take_column_brief
     from ..models import ColumnSeries, NumberBaseballGame, Game2048, MinesweeperGame
@@ -126,7 +128,22 @@ def _home_live_data():
         + visible(MinesweeperGame.objects.all()).count()
     )
     return {'lab': lab,
+            'ball': _ball_numbers(),
             'games_played_total': games_played_total}
+
+
+def _ball_numbers():
+    """야구선수 키우기 전광판 숫자 — 시즌 진행, 정식 판 현역, 라이트 판 커리어. 실패하면 숫자 줄만 숨긴다."""
+    try:
+        from ..models import LiteCareer, RookiePlayer
+        from ..game_visibility import visible
+        from .. import rookie_league as RL
+        return {'season': RL.season_state(),
+                'players': visible(RookiePlayer.objects.filter(retired_at__isnull=True), 'user').count(),
+                'lites': visible(LiteCareer.objects.all(), 'user').count()}
+    except Exception:  # noqa: BLE001
+        logging.getLogger(__name__).exception('home ball block unavailable')
+        return None
 
 
 def _next_column_slot(briefs):
@@ -258,7 +275,7 @@ def index(request):
         .select_related('category')\
         .order_by('-create_date')[:3]
 
-    live = cache.get_or_set('home:live:v2', _home_live_data, 300)
+    live = cache.get_or_set('home:live:v3', _home_live_data, 300)
 
     # 페이지 링크가 검색어·카테고리·정렬을 잃지 않도록 미리 인코딩
     page_qs = urlencode({k: v for k, v in (
@@ -313,6 +330,8 @@ def index(request):
         'lab': live['lab'],
         'next_slot': _next_column_slot(live['lab']['briefs']) if live['lab'] else None,
         'games_played_total': live['games_played_total'],
+        'ball': live['ball'],
+        'ball_crew': BALL_CREW,
         'page_qs': page_qs,
         'launch_days': launch_days,
         'total_users': total_users,
@@ -574,26 +593,16 @@ def games_index(request):
     bb, g2, ms = (visible(NumberBaseballGame.objects.all()), visible(Game2048.objects.all()),
                   visible(MinesweeperGame.objects.all()))      # 운영자(admin) 판은 세지 않는다
 
-    # 각 게임의 통계 정보
+    # 야구선수 키우기 — 정식 판·라이트 판을 맨 위 한 묶음으로
+    ball = {
+        'players': rookies.count(),
+        'pros': rookies.filter(league__in=PRO_LEAGUES).count(),
+        'retired': lites.filter(retired_at__isnull=False).count(),
+        'running': lites.filter(retired_at__isnull=True).count(),
+    }
+
+    # 퍼즐 게임
     games_info = [
-        {
-            'name': '야구선수 키우기',
-            'title': 'Baseball Career',
-            'description': '리틀야구에서 시작해 중·고교, 드래프트를 거쳐 KBO·메이저리그·일본·대만까지. 칼럼 읽기·댓글·출석으로 훈련 포인트를 모아 키우세요. 쉬면 감각이 떨어집니다!',
-            'url': 'community:rookie_home',
-            'icon': '🧢',
-            'is_new': True,
-            'meta': f"선수 {rookies.count()}명 · 프로 {rookies.filter(league__in=PRO_LEAGUES).count()}명",
-        },
-        {
-            'name': '야구선수 키우기 라이트',
-            'title': 'Baseball Career Lite',
-            'description': '한 판 30분. 고1부터 은퇴까지 훈련과 진로를 골라 가며 드래프트·병역·포스팅·FA를 지나 명예의 전당까지. 사이트 활동 없이 혼자 끝까지 즐깁니다.',
-            'url': 'community:lite_home',
-            'icon': '⏱️',
-            'is_new': True,
-            'meta': f"은퇴한 커리어 {lites.filter(retired_at__isnull=False).count()}개 · 진행 중 {lites.filter(retired_at__isnull=True).count()}개",
-        },
         {
             'name': '숫자야구',
             'title': 'Number Baseball',
@@ -636,6 +645,7 @@ def games_index(request):
     }
 
     context = {
+        'ball': ball,
         'games_info': games_info,
         'recent_stats': recent_stats,
     }

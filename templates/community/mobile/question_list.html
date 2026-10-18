@@ -32,8 +32,23 @@
     {% endif %}
 </section>
 
-<!-- 라이브 레일: 랭킹 / 게임 -->
-<div class="tc-mh-rail" aria-label="연구실 소식과 게임">
+<!-- 야구선수 키우기 런칭 칸 + 연구실 소식 (한 줄씩 꽉 차게) -->
+<div class="tc-mh-stack">
+    <section class="tc-mh-card tc-mh-ball" aria-labelledby="tc-mh-ball-title">
+        <div class="tc-mh-ball-board">
+            <p class="tc-mh-ball-live">{% include 'community/_ball_season.html' with s=ball.season %}</p>
+            <h2 id="tc-mh-ball-title">야구선수 키우기, 문을 열었어요</h2>
+            <p class="tc-mh-ball-lede">리틀야구부터 프로와 은퇴까지, 한 선수의 야구 인생을 키워 보세요.</p>
+            <ul class="tc-mh-ball-crew" aria-hidden="true">
+                {% for who, name, role in ball_crew %}<li><span class="tc-mh-ball-sprite" style="--sprite: url('/media/lab/chars/{{ who }}_idle.png')"></span>{{ role }}</li>{% endfor %}
+            </ul>
+        </div>
+        <div class="tc-mh-ball-modes">
+            <a href="{% url 'community:lite_home' %}" class="is-lite"><b>라이트 판</b><span>한 판 30분 · 로그인 없이 바로</span></a>
+            <a href="{% url 'community:rookie_home' %}"><b>정식 판</b><span>로그인하고 매일 키우기</span></a>
+        </div>
+        <a class="tc-mh-ball-more" href="{% url 'community:games_index' %}">숫자야구·2048·지뢰찾기는 게임센터에 있어요</a>
+    </section>
 {% if lab %}
     <section class="tc-mh-card tc-mh-lab">
         <div class="tc-mh-card-head">
@@ -62,18 +77,6 @@
     </section>
 {% endif %}
 
-    <section class="tc-mh-card tc-mh-card-games">
-        <div class="tc-mh-card-head">
-            <h2>브라우저 게임</h2>
-            <a href="{% url 'community:games_index' %}">전체</a>
-        </div>
-        <p class="tc-mh-games-count">지금까지 <strong>{{ games_played_total }}</strong>판 플레이됨</p>
-        <div class="tc-mh-games">
-            <a href="{% url 'community:baseball_start' %}"><i class="fas fa-baseball" aria-hidden="true"></i>숫자야구</a>
-            <a href="{% url 'community:game2048_start' %}"><i class="fas fa-table-cells" aria-hidden="true"></i>2048</a>
-            <a href="{% url 'community:minesweeper_start' %}"><i class="fas fa-bomb" aria-hidden="true"></i>지뢰찾기</a>
-        </div>
-    </section>
 </div>
 
 <!-- 인기 게시글 TOP 5 -->

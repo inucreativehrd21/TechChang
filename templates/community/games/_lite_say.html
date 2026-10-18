@@ -1,0 +1,5 @@
+{# 라이트 — 연구실 사람이 말하는 칸. 맥락: who, name, role, text #}
+<div class="rl-say">
+    {% include 'community/games/_rookie_staff.html' with who=who %}
+    <div class="rl-bubble"><p class="rl-who"><b>{{ name }}</b> {{ role }}</p><p>{{ text }}</p></div>
+</div>

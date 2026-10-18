@@ -257,6 +257,7 @@ a.gm-rank-name:hover { color: var(--gm-accent); }
 .gm-note a { color: var(--gm-accent); font-weight: 700; text-decoration: none; }
 .gm-links { display: flex; flex-wrap: wrap; gap: 8px; }
 .gm-links .gm-btn { flex: 1 1 0; min-width: 0; }
+.gm-links.gm-mt { margin-top: 8px; }
 
 @media (max-width: 575.98px) {
     .gm { padding: 20px 16px 96px; min-height: auto; }
@@ -268,4 +269,74 @@ a.gm-rank-name:hover { color: var(--gm-accent); }
 
 @media (prefers-reduced-motion: reduce) {
     .gm * { transition: none !important; animation: none !important; }
+}
+
+/* ── 게임센터: 야구선수 키우기 묶음 — 전광판(남색·LED, rookie.css .rk-board 와 같은 빛) + 두 판(고정 2열) ── */
+.gm-ball { margin-bottom: 28px; }
+.gm-ball-board {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 20px;
+    padding: 22px 24px 16px;
+    color: #eef0ff;
+    background-color: #15183d;
+    background-image: radial-gradient(rgba(255, 255, 255, .055) 1px, transparent 1.3px);
+    background-size: 6px 6px;
+    border-radius: var(--gm-r-lg) var(--gm-r-lg) 0 0;
+}
+.gm-ball-copy { align-self: center; max-width: 30em; }
+.gm-ball-title { display: flex; align-items: center; gap: 8px; margin: 0; font-size: 1.4rem; font-weight: 900; letter-spacing: -0.02em; color: #fff; }
+.gm-ball-copy p { margin: 8px 0 0; font-size: 0.9rem; line-height: 1.65; color: #9ea4d6; word-break: keep-all; }
+.gm-ball-crew { display: flex; gap: 14px; flex: none; margin: 0; padding: 0; list-style: none; }
+.gm-ball-crew li { display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: 0.7rem; font-weight: 700; color: #9ea4d6; }
+.gm-ball-sprite {
+    display: block;
+    width: 40px;
+    height: 80px;
+    background-image: var(--sprite);
+    background-repeat: no-repeat;
+    background-size: 960px 80px;
+    background-position: -720px 0;
+    image-rendering: pixelated;
+    animation: gm-breathe 1s steps(6) infinite;
+}
+.gm-ball-crew li:nth-child(2) .gm-ball-sprite { animation-delay: -0.4s; }
+.gm-ball-crew li:nth-child(3) .gm-ball-sprite { animation-delay: -0.75s; }
+@keyframes gm-breathe { from { background-position: -720px 0; } to { background-position: -960px 0; } }
+.gm-ball-modes {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    border: 1px solid var(--gm-line);
+    border-top: 0;
+    border-radius: 0 0 var(--gm-r-lg) var(--gm-r-lg);
+    background: var(--gm-bg);
+    overflow: hidden;
+}
+.gm-ball-mode {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 18px 20px 20px;
+    color: var(--gm-ink-3);
+    text-decoration: none;
+    transition: background-color .15s ease;
+}
+.gm-ball-mode + .gm-ball-mode { border-left: 1px solid var(--gm-line); }
+.gm-ball-mode:hover { color: var(--gm-ink-3); background: var(--gm-accent-wash); }
+.gm-ball-mode:focus-visible { outline: 2px solid var(--gm-accent); outline-offset: -2px; }
+.gm-ball-mode b { font-size: 1.1rem; font-weight: 800; color: var(--gm-ink); }
+.gm-ball-mode b small { margin-left: 4px; font-size: 0.8rem; font-weight: 700; color: var(--gm-accent); }
+.gm-ball-desc { font-size: 0.86rem; line-height: 1.6; word-break: keep-all; }
+.gm-ball-meta { margin-top: auto; padding-top: 4px; font-size: 0.75rem; color: var(--gm-ink-4); }
+.gm-ball-tag { align-self: flex-start; padding: 3px 10px; border-radius: 99px; font-size: 0.72rem; font-weight: 800; color: var(--gm-accent); background: var(--gm-accent-wash); }
+.gm-ball-mode.is-lite .gm-ball-tag { color: #fff; background: var(--gm-accent); }
+.gm-list-title { margin: 0 0 10px; }
+@media (max-width: 575.98px) {
+    .gm-ball-board { flex-direction: column; align-items: flex-start; padding: 18px 16px 14px; }
+    .gm-ball-crew { gap: 12px; }
+    .gm-ball-sprite { width: 32px; height: 64px; background-size: 768px 64px; background-position: -576px 0; animation-name: gm-breathe-sm; }
+    @keyframes gm-breathe-sm { from { background-position: -576px 0; } to { background-position: -768px 0; } }
+    .gm-ball-modes { grid-template-columns: 1fr; }
+    .gm-ball-mode + .gm-ball-mode { border-left: 0; border-top: 1px solid var(--gm-line); }
 }

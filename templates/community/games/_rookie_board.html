@@ -39,33 +39,33 @@
     </ul>
     {% endif %}
     {% endwith %}{% endif %}
-    {% if opp_levels %}<p class="rk-board-note">{% if p.role == 'pitcher' %}{{ games.0.league }} 상대 타선: 상위 {{ opp_levels.top }}(출루·주루), 중심 {{ opp_levels.heart }}(클러치·장타), 하위 {{ opp_levels.bottom }}. 내 구위는 {{ ladder.stuff }}입니다.{% else %}{{ games.0.league }} 상대 선발 구위: 에이스 {{ opp_levels.ace }}, 주전 {{ opp_levels.reg }}, 백업 {{ opp_levels.bak }}. 내 OVR은 {{ p.ovr|floatformat:1 }}입니다.{% endif %}</p>{% endif %}
+    {% if opp_levels %}<p class="rk-board-note">{% if p.role == 'pitcher' %}{{ games.0.league }} 상대 타선: 상위 {{ opp_levels.top }}(출루·주루), 중심 {{ opp_levels.heart }}(클러치·장타), 하위 {{ opp_levels.bottom }}. 내 구위는 {{ ladder.stuff }} 정도예요.{% else %}{{ games.0.league }} 상대 선발 구위: 에이스 {{ opp_levels.ace }}, 주전 {{ opp_levels.reg }}, 백업 {{ opp_levels.bak }}. 지금 내 OVR {{ p.ovr|floatformat:1 }}.{% endif %}</p>{% endif %}
     {% if xp_rows %}<p class="rk-board-note is-xp">경기 경험 {% for x in xp_rows %}{{ x.label }} +{{ x.gain|floatformat:2 }}{% if not forloop.last %} · {% endif %}{% endfor %}</p>{% endif %}
-    {% if dnp %}<p class="rk-board-note">어제는 결장했습니다. 경기일 포함 최근 3일 안에 활동해야 엔트리에 듭니다.</p>{% endif %}
+    {% if dnp %}<p class="rk-board-note">어제는 결장했어요. 경기일 포함 최근 3일 안에 활동해야 엔트리에 들어요.</p>{% endif %}
     {% elif graduated %}
     <div class="rk-board-empty">
         <b>졸업</b>
-        <span>드래프트가 끝났습니다. 위에서 진로를 고르면 새 팀에서 다시 경기에 나섭니다.</span>
+        <span>드래프트가 끝났어요. 위에서 진로를 고르면 새 팀에서 다시 경기에 나서요.</span>
     </div>
     {% elif season.phase == 'off' %}
     <div class="rk-board-empty">
         <b>D-{{ season.dday }}</b>
-        <span>시즌 {{ season.number }}이 끝났습니다. 시상 결과는 시상식에서 볼 수 있고, {{ season.opening|date:'n월 j일' }}에 시즌 {{ season.next }}이 개막합니다. 쉬는 동안에도 훈련은 이어집니다.</span>
+        <span>시즌 {{ season.number }} 일정이 모두 끝났어요. 시상 결과는 시상식에서 볼 수 있고, 시즌 {{ season.next }} 개막은 {{ season.opening|date:'n월 j일' }}이에요. 쉬는 동안에도 훈련은 이어져요.</span>
     </div>
     {% elif season.phase == 'pre' %}
     <div class="rk-board-empty">
         <b>D-{{ season.dday }}</b>
-        <span>{{ season.opening|date:'n월 j일' }} 개막. 프로는 하루 5~6경기(4주 144경기), 학생은 하루 한 경기를 치릅니다. 그때까지 훈련으로 몸을 만들어 두세요.</span>
+        <span>{{ season.opening|date:'n월 j일' }} 개막. 프로는 하루 5~6경기(4주 144경기), 학생은 하루 한 경기를 치러요. 그때까지 훈련으로 몸을 만들어 두세요.</span>
     </div>
     {% elif dnp %}
     <div class="rk-board-empty">
         <b>결장</b>
-        <span>경기일 포함 최근 3일 안에 활동해야 엔트리에 듭니다. 출석 체크 한 번이면 오늘 밤 경기에 나섭니다.</span>
+        <span>경기일 포함 최근 3일 안에 활동해야 엔트리에 들어요. 출석 체크 한 번이면 오늘 밤 경기에 나서요.</span>
     </div>
     {% else %}
     <div class="rk-board-empty">
         <b>첫 경기 대기</b>
-        <span>오늘 밤 경기에 나섭니다. 결과는 내일 아침 이 전광판에 뜹니다.</span>
+        <span>오늘 밤 경기에 나서요. 결과는 내일 아침 이 전광판에 떠요.</span>
     </div>
     {% endif %}
 </section>

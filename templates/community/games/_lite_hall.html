@@ -8,7 +8,7 @@
             {% for code, label in tabs %}<a href="?lg={{ code }}" {% if tab == code %}aria-current="page"{% endif %}>{{ label }}</a>{% endfor %}
         </nav>
     </div>
-    <p class="rk-note">은퇴한 커리어를 MVP → 최고 OVR → 수상 → 프로 WAR 순으로 세웠습니다.{% if not tab %} 전체 순위의 MVP 는 리그 수준만큼 무게를 줍니다(메이저리그 3 · 일본 1.5 · KBO 1.2 · 대만 0.6).{% else %} {{ tab_name }} 리그에서 뛴 시즌만 셉니다.{% endif %}</p>
+    <p class="rk-note">은퇴한 커리어를 MVP → 최고 OVR → 수상 → 프로 WAR 순으로 세웠어요.{% if not tab %} 전체 순위에선 MVP에 리그 수준만큼 무게를 줘요(메이저리그 3, 일본 1.5, KBO 1.2, 대만 0.6). 로그인한 커리어만 올라요.{% else %} {{ tab_name }} 리그에서 뛴 시즌만 세요.{% endif %}</p>
     {% if rows %}
     <div class="rk-table-wrap">
         <table class="rk-table rk-career-table">
@@ -26,8 +26,9 @@
         </table>
     </div>
     {% else %}
-    <section class="rk-panel"><p class="rk-empty">아직 은퇴한 커리어가 없습니다. 첫 번째 전설이 되어 보세요.</p></section>
+    <section class="rk-panel"><p class="rk-empty">아직 은퇴한 커리어가 없어요. 첫 번째 전설이 되어 보세요.</p></section>
     {% endif %}
-    <div class="gm-actions"><a class="gm-btn is-primary" href="{% url 'community:lite_home' %}">내 커리어로</a></div>
+    <div class="gm-actions"><a class="gm-btn is-primary" href="{% url 'community:lite_home' %}">내 커리어 보기</a></div>
+    {% include 'community/games/_rookie_rights.html' %}
 </div>
 </div>
