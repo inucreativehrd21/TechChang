@@ -104,7 +104,7 @@ STAR_NOTE = {5: '특급 유망주', 4: '상위 지명감', 3: '프로 지명감'
 # ───────────────────────────── 성장 배율·한계
 def age_cap(p) -> float:
     cap = AGE_CAPS.get(p.age, CAP if p.age > max(AGE_CAPS) else AGE_CAPS[min(AGE_CAPS)])
-    if has(p, 'early') and p.age <= 22:
+    if 'early' in (p.traits_seen or []) and p.age <= 22:     # 드러난 뒤부터(입단 화면에서 미리 티가 나지 않게)
         cap += 5
     return min(CAP, float(cap))
 
@@ -248,11 +248,18 @@ def chance_label(c: float) -> str:
     return '높음' if c >= .8 else '보통' if c >= .5 else '낮음' if c >= .25 else '매우 낮음'
 
 
-def fallback_school(to: str, region: str, rng, exclude: str = '') -> str:
-    pool = [s for r, s in W.schools(to) if r == region and not W.powerhouse(to, s) and s != exclude]
-    if not pool:
-        pool = [s for _r, s in W.schools(to) if not W.powerhouse(to, s) and s != exclude]
-    return rng.choice(pool)
+def fallback_school(to: str, region: str, rng, exclude: str = '') -> tuple[str, str]:
+    """떨어졌거나 고르지 않은 학생의 배정 — 우리 지역, 없으면 맞닿은 지역부터 한 겹씩(강호는 되도록 피한다).
+    (학교, 그 학교의 지역)"""
+    by_region = W.SCHOOLS_BY_LEAGUE.get(to, {})
+    for layer in W.region_layers(region):
+        pool = [(r, s) for r in layer for s in by_region.get(r, ()) if s != exclude]
+        if pool:
+            easy = [(r, s) for r, s in pool if not W.powerhouse(to, s)]
+            r, s = rng.choice(easy or pool)
+            return s, r
+    r, s = rng.choice([(r, s) for r, s in W.schools(to) if s != exclude])
+    return s, r
 
 
 def draft_score(p, rng, perf: float | None = None) -> float:
@@ -285,11 +292,16 @@ def open_apply(p):
 
 
 def enter_school(p, to: str, day: date, rng, choice: str = '') -> str:
-    """다음 학교로 — 지원한 학교 합격 판정(떨어지면 같은 지역 다른 학교). 기록 문장을 돌려준다."""
+    """다음 학교로 — 지원한 학교 합격 판정(떨어지면 우리 지역, 목록에 없으면 가까운 지역 학교). 기록 문장을 돌려준다."""
     from . import rookie as R
     perf = performance(p, p.league)
+    home = p.region
     ok = bool(choice) and rng.random() < accept_chance(p, to, choice, perf)
-    school = choice if ok else fallback_school(to, W.school_region(to, choice) or p.region, rng, exclude=choice)
+    if ok:
+        school, where = choice, W.school_region(to, choice)
+    else:
+        school, where = fallback_school(to, home, rng, exclude=choice)
+    near = '우리 지역' if where == home else f'가까운 {where} 지역'
     p.league, p.grade, p.club, p.grade_since = to, 1, school, day
     p.age = W.age_of(to, 1)
     _reset_role(p, day)
@@ -299,9 +311,9 @@ def enter_school(p, to: str, day: date, rng, choice: str = '') -> str:
     if ok:
         text = f'{school} 합격! {word} 1학년, {p.age}세 — 신입생은 백업부터 자리를 따냅니다'
     elif choice:
-        text = f'{choice} 불합격 — {school}에 입학했습니다({word} 1학년, {p.age}세)'
+        text = f'{choice} 불합격 — {near} {school}에 입학했습니다({word} 1학년, {p.age}세)'
     else:
-        text = f'{school} 입학 — {word} 1학년, {p.age}세(희망 학교를 고르지 않아 같은 지역 학교로)'
+        text = f'{school} 입학 — {word} 1학년, {p.age}세(희망 학교를 고르지 않아 {near} 학교로)'
     R._log(p, 'career', text, day=day)
     if to == 'ms':
         reveal(p, 'early', day)
@@ -418,14 +430,27 @@ def retire_player(p, reason: str, day: date | None = None):
     R._log(p, 'retire', f'{reason} — {p.age}세, {where}에서 유니폼을 벗었습니다', day=day)
 
 
+def _deadline(pend: dict, today: date) -> date:
+    """진로 결정 기한 — 기록이 망가져 없으면 이미 지난 것으로 본다(밤 정산이 멈추지 않게)."""
+    dl = (pend or {}).get('deadline')
+    try:
+        return date.fromisoformat(dl) if dl else today - timedelta(days=1)
+    except (TypeError, ValueError):
+        return today - timedelta(days=1)
+
+
 def _deadline_passed(p, today: date) -> bool:
     pend = p.pending or {}
-    return pend.get('kind') == 'draft' and date.fromisoformat(pend['deadline']) < today
+    return pend.get('kind') == 'draft' and _deadline(pend, today) < today
 
 
 def _school_due(p, today: date) -> bool:
-    return (W.system_of(p.league) == 'amateur' and p.grade_since is not None
-            and (today - p.grade_since).days >= GRADE_DAYS and (p.pending or {}).get('kind') != 'draft')
+    from . import rookie_league as L
+    if not (W.system_of(p.league) == 'amateur' and p.grade_since is not None
+            and (today - p.grade_since).days >= GRADE_DAYS and (p.pending or {}).get('kind') != 'draft'):
+        return False
+    turn = p.grade_since + timedelta(days=GRADE_DAYS)
+    return L.games_done(turn - timedelta(days=1))      # 전날 경기를 치른 뒤에만 — 마지막 학교 경기가 옛 학교 기록으로
 
 
 def _next_grade(p, rng):
@@ -462,7 +487,7 @@ def progress(p, today: date | None = None, rng=None) -> bool:
     before = (p.league, p.club, p.grade, p.grade_since, p.age, p.age_season, p.pending, len(p.traits_seen or []))
     for _ in range(16):                                   # 오래 비웠으면 밀린 학년을 차례로(기한 지난 결정은 기본값)
         if _deadline_passed(p, today):
-            default_decision(p, date.fromisoformat(p.pending['deadline']) + timedelta(days=1), rng)
+            default_decision(p, min(today, _deadline(p.pending, today) + timedelta(days=1)), rng)
         elif _school_due(p, today):
             _next_grade(p, rng)
         else:
@@ -490,10 +515,11 @@ def progress(p, today: date | None = None, rng=None) -> bool:
 # ───────────────────────────── 사용자 동작
 def apply_school(user, school: str) -> str:
     from . import rookie as R
+    R.settled(user)                                    # 학년 전환은 먼저 커밋(아래가 실패해도 되돌려지지 않게)
     with transaction.atomic():
         p = R.locked(user)
         if p is None:
-            raise R.GameError('먼저 선수를 만들어 주세요.')
+            raise R.GameError(R.gone(user))
         R.settle(p)
         pend = p.pending or {}
         if pend.get('kind') != 'apply':
@@ -510,10 +536,16 @@ def apply_school(user, school: str) -> str:
 def decide(user, choice: str, school: str = '', rng=None) -> str:
     from . import rookie as R
     rng = rng or random.SystemRandom()
+    p0, before = R.settled(user)                       # 드래프트는 먼저 커밋 — 실패한 결정과 함께 되돌려져 다시 뽑히지 않게
+    if p0 is None:
+        raise R.GameError(R.gone(user))
+    now = p0.pending or {}
+    if now.get('kind') == 'draft' and now != before:
+        raise R.GameError('드래프트 결과가 방금 나왔습니다. 제안을 확인하고 다시 골라 주세요.')
     with transaction.atomic():
         p = R.locked(user)
         if p is None:
-            raise R.GameError('먼저 선수를 만들어 주세요.')
+            raise R.GameError(R.gone(user))
         R.settle(p)
         decide_now(p, choice, timezone.localdate(), rng, school=school)
         p.save(update_fields=FIELDS)
@@ -567,11 +599,12 @@ def career_view(p, today: date | None = None) -> dict:
         regions.sort(key=lambda r: not r['home'])
         choice = pend.get('choice', '')
         v['apply'] = {'to': to, 'to_name': W.league(to)['name'], 'choice': choice, 'regions': regions,
+                      'home': p.region, 'home_has': bool(W.SCHOOLS_BY_LEAGUE.get(to, {}).get(p.region)),
                       'chance': chance_label(accept_chance(p, to, choice, perf)) if choice else '',
                       'level': W.level(to), 'perf': perf}
     elif pend.get('kind') == 'draft':
         offer = pend.get('offer')
-        left = (date.fromisoformat(pend['deadline']) - today).days
+        left = (_deadline(pend, today) - today).days
         abroad = []
         for s in ABROAD:
             team = (pend.get('abroad') or {}).get(s, '')
@@ -594,7 +627,7 @@ def career_view(p, today: date | None = None) -> dict:
                       'offer': offer, 'team': W.PRO_TEAM.get((offer or {}).get('team', ''), {}),
                       'want': bool(offer and offer['team'] == p.team), 'want_team': W.PRO_TEAM.get(p.team, {}),
                       'sign_league': W.short(sign_league), 'abroad': abroad, 'univ': univ,
-                      'left': max(0, left), 'deadline': date.fromisoformat(pend['deadline'])}
+                      'left': max(0, left), 'deadline': _deadline(pend, today)}
     stars = scout_stars(p)
     v['scout'] = {'stars': stars, 'note': STAR_NOTE[stars], 'range': range(5)} if stars else None
     cap = age_cap(p)

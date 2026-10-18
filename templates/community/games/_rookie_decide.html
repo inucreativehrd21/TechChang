@@ -5,7 +5,7 @@
         <h2>{{ a.to_name }} 진학 지원</h2>
         <span class="rk-fine">{% if career.grade_left %}발표까지 {{ career.grade_left }}일{% else %}오늘 밤 발표{% endif %}</span>
     </div>
-    <p class="rk-hint">학년이 끝나는 날 합격이 갈립니다. OVR이 {{ a.to_name }} 수준({{ a.level|floatformat:0 }})보다 높을수록, 지금 리그에서 잘할수록 붙기 쉽고, <b>강호</b>는 문이 좁습니다. 떨어지거나 고르지 않으면 같은 지역의 다른 학교로 갑니다.</p>
+    <p class="rk-hint">학년이 끝나는 날 합격이 갈립니다. OVR이 {{ a.to_name }} 수준({{ a.level|floatformat:0 }})보다 높을수록, 지금 리그에서 잘할수록 붙기 쉽고, <b>강호</b>는 문이 좁습니다. 떨어지거나 고르지 않으면 우리 지역({{ a.home }}) 학교로 갑니다.{% if not a.home_has %} 지금 목록에 {{ a.home }} 지역 학교가 없어 가까운 지역 학교로 배정됩니다.{% endif %}</p>
     {% if a.choice %}<p class="rk-decide-now">지원한 학교 <b>{{ a.choice }}</b> · 합격 가능성 <b class="rk-chance is-{{ a.chance }}">{{ a.chance }}</b></p>{% endif %}
     <form class="rk-decide-form" method="post" action="{% url 'community:rookie_apply' %}">
         {% csrf_token %}

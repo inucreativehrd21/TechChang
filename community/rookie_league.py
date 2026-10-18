@@ -282,6 +282,29 @@ def day_end(day: date):
     return timezone.make_aware(datetime.combine(day + timedelta(days=1), time.min))
 
 
+def games_done(day: date) -> bool:
+    """day 의 경기를 이미 치렀나(시즌 밖이면 True). 학년 전환·드래프트는 전날 경기를 치른 뒤에만 한다
+    (rookie_career._school_due) — 자정에 출석해도 마지막 학교 경기가 새 학교 기록으로 들어가지 않게."""
+    if not in_season(day):
+        return True
+    from .models import RookieSeason
+    done = RookieSeason.objects.filter(number=season_no(day)).values_list('simulated_through', flat=True).first()
+    return bool(done and done >= day)
+
+
+def plays_on(p, day: date) -> bool:
+    """그날 경기에 나서나 — 드래프트를 맞아 진로를 고르는 중이면 쉬고, 그날보다 뒤에 옮긴 소속이면 건너뛴다."""
+    from .rookie_career import DECIDE_DAYS
+    pend = p.pending or {}
+    if pend.get('kind') == 'draft':
+        dl = pend.get('deadline')
+        drafted = date.fromisoformat(dl) - timedelta(days=DECIDE_DAYS) if dl else None
+        if drafted is None or drafted <= day:
+            return False
+    path = (p.career or {}).get('path') or []
+    return not (path and path[-1].get('day', '') > day.isoformat())
+
+
 def simulate_day(day: date, rng=None) -> int:
     """day 의 경기를 모든 출전 선수에 대해 치른다. 이미 치렀으면 0. 시즌 마지막 날이면 시상까지."""
     from .models import RookiePlayer, RookieSeason
@@ -295,18 +318,23 @@ def simulate_day(day: date, rng=None) -> int:
         s = RookieSeason.objects.select_for_update(skip_locked=True).filter(pk=season.pk).first()
         if s is None or (s.simulated_through and s.simulated_through >= day):
             return 0
+        pks = list(RookiePlayer.objects.filter(created_at__lt=day_end(day), retired_at__isnull=True)
+                   .order_by('pk').values_list('pk', flat=True))
         active = active_players(day)
-        for p in RookiePlayer.objects.filter(created_at__lt=day_end(day), retired_at__isnull=True) \
-                .select_related('user'):
-            if p.pk not in active or (p.pending or {}).get('kind') == 'draft':    # 졸업하고 진로를 고르는 중이면 쉰다
+        for pk in pks:
+            if pk not in active:
                 continue
             try:
                 with transaction.atomic():             # 선수 한 명의 오류가 다른 선수의 경기를 막지 않게
+                    # 잠근 최신 행으로 진행한다 — 미리 읽어 둔 객체로 저장하면 그사이 커밋된 훈련·정산을 덮어쓴다
+                    p = RookiePlayer.objects.select_for_update().filter(pk=pk, retired_at__isnull=True).first()
+                    if p is None or not plays_on(p, day):
+                        continue
                     _play(p, s, day, rng)
                 played += 1
             except Exception:  # noqa: BLE001
                 failed += 1
-                logger.exception('야구선수 키우기 경기 진행 실패: player=%s day=%s', p.pk, day)
+                logger.exception('야구선수 키우기 경기 진행 실패: player=%s day=%s', pk, day)
         try:
             from .rookie_legacy import after_day
             with transaction.atomic():
@@ -334,7 +362,7 @@ def _play(p, s, day: date, rng):
     assign_role(p, day, lvl)
     stat, _ = RookieSeasonStat.objects.get_or_create(
         season=s, player=p, league=league,
-        defaults={'user': p.user, 'name': p.name, 'number': p.number, 'team': p.club, 'role': p.role,
+        defaults={'user_id': p.user_id, 'name': p.name, 'number': p.number, 'team': p.club, 'role': p.role,
                   'position': p.position, 'age': p.age})
     nos = list(league_games_on(day, league))
     gs = C.game_stats(p)

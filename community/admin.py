@@ -107,6 +107,9 @@ admin.site.register(GuestBook, GuestBookAdmin)
 admin.site.register(Game2048, Game2048Admin)
 
 # 야구선수 키우기 (규칙 community/rookie.py)
+from django import forms  # noqa: E402
+
+from . import rookie_world as W  # noqa: E402
 from .models import RookieLog, RookiePlayer  # noqa: E402
 
 
@@ -119,9 +122,29 @@ class RookieLogInline(admin.TabularInline):
     max_num = 0
 
 
+class RookiePlayerForm(forms.ModelForm):
+    """리그는 목록에서 고르게 하고(자유 입력 오타가 밤 정산을 멈추지 않게), 프로면 소속이 그 나라 구단 코드인지 본다."""
+    league = forms.ChoiceField(label='리그', choices=[(c, f"{v['name']} ({c})") for c, v in W.LEAGUES.items()])
+
+    class Meta:
+        model = RookiePlayer
+        fields = '__all__'
+
+    def clean(self):
+        data = super().clean()
+        league, club = data.get('league'), data.get('club', '')
+        if league and W.is_pro(league):
+            codes = [c for c, _n, _col in W.SYSTEM_TEAMS[W.system_of(league)]]
+            if club not in codes:
+                self.add_error('club', f"{W.league(league)['name']} 구단 코드가 아닙니다: {', '.join(codes)}")
+        return data
+
+
 @admin.register(RookiePlayer)
 class RookiePlayerAdmin(admin.ModelAdmin):
+    form = RookiePlayerForm
     list_display = ('name', 'user', 'league', 'club', 'role', 'age', 'ovr', 'tp', 'last_active', 'retired_at')
     list_filter = ('league', 'role', 'team')
     search_fields = ('name', 'user__username')
+    readonly_fields = ('pending', 'career', 'traits', 'traits_seen')
     inlines = [RookieLogInline]

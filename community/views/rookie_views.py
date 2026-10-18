@@ -118,7 +118,8 @@ def rookie_home(request):
         last = RookiePlayer.objects.filter(user=request.user, retired_at__isnull=False).order_by('-retired_at').first()
         return render(request, 'community/rookie.html', dict(_base_ctx(request, 'home'), mode='create',
                                                              default_name=name, last=last,
-                                                             last_id=R.identity(last) if last else None))
+                                                             last_id=R.identity(last) if last else None,
+                                                             heir=bool(R.inherits_from(request.user))))
     ctx = _play_ctx(request, p)
     ctx['test'] = request.session.pop('rookie_test', None)
     return render(request, 'community/rookie.html', ctx)
@@ -245,7 +246,10 @@ def rookie_player(request, pk: int):
 def rookie_league(request):
     _catch_up(request)
     if request.user.is_authenticated:
-        R.settle_all()                  # 쉬는 선수를 순위에 그대로 두지 않게(밤 cron 이 돌았으면 할 일 없음)
+        try:
+            R.settle_all()              # 쉬는 선수를 순위에 그대로 두지 않게(밤 cron 이 돌았으면 할 일 없음)
+        except Exception:  # noqa: BLE001 — 정산 실패가 리그 화면을 막지 않게
+            logger.warning('야구선수 키우기 정산 실패', exc_info=True)
     tab = request.GET.get('tab') if request.GET.get('tab') in ('leaders', 'best9', 'players', 'teams') else 'leaders'
     seasons = _seasons()
     season = _pick_season(request, seasons)

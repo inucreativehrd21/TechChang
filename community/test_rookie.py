@@ -351,3 +351,57 @@ class CreateTwiceTests(TestCase):
         r = self.client.post('/rookie/train/', {'stat': 'contact', 'times': 'abc'}, HTTP_X_REQUESTED_WITH='XMLHttpRequest')
         self.assertEqual(r.status_code, 400)
         self.assertNotIn('invalid literal', r.json()['message'])
+
+
+
+class NightlyIsolationTests(TestCase):
+    """선수 한 명의 오류·망가진 데이터가 밤 정산 전체와 리그 화면을 멈추지 않는다(2026-10-18 감사 C7·V2)."""
+
+    def setUp(self):
+        cache.clear()
+
+    def stale(self, p):
+        p.settled_through = timezone.localdate() - timedelta(days=5)
+        p.last_active = timezone.localdate() - timedelta(days=5)
+        p.stats = {k: 60.0 for k in p.stats}
+        p.ovr = 60.0
+        p.save()
+
+    def test_broken_player_does_not_stop_others(self):
+        from community import rookie_world as W
+        bad = adult(R.create(member('망가짐'), name='망가짐', role='batter', team='lg', region='서울'),
+                    league='KBO1', club='lg', pending={'kind': 'draft'})           # 관리자 오타·기한 없는 결정
+        ok = adult(R.create(member('멀쩡함'), name='멀쩡함', role='batter', team='kia', region='서울'),
+                   league='kbo1', club='kia')
+        for p in (bad, ok):
+            self.stale(p)
+        self.assertIsNone(W.prev_league('KBO1'))
+        self.assertIsNone(W.next_league('KBO1'))
+        real = R.settle
+
+        def boom(p, *a, **kw):
+            if p.pk == bad.pk:
+                raise RuntimeError('boom')
+            return real(p, *a, **kw)
+        with mock.patch('community.rookie.settle', side_effect=boom):
+            self.assertEqual(R.settle_all(), 1)
+        ok.refresh_from_db()
+        self.assertEqual(ok.settled_through, timezone.localdate() - timedelta(days=1))
+        self.assertGreaterEqual(R.settle_all(), 1)                             # 망가진 데이터도 예외 없이 정산
+        bad.refresh_from_db()
+        self.assertEqual(bad.pending, {})                                     # 기한 없는 결정 = 지난 것 → 기본값
+        self.client.force_login(ok.user)
+        self.assertEqual(self.client.get('/rookie/league/', HTTP_USER_AGENT=PC).status_code, 200)
+
+    def test_admin_league_is_a_choice(self):
+        from community.admin import RookiePlayerForm
+        choices = dict(RookiePlayerForm.base_fields['league'].choices)
+        self.assertIn('kbo1', choices)
+        self.assertNotIn('KBO1', choices)
+        su = User.objects.create_superuser('운영', 'op@example.com', 'pw12345!')
+        p = adult(R.create(member('관리대상'), name='관리', role='batter', team='lg', region='서울'))
+        self.client.force_login(su)
+        from django.conf import settings
+        base = '/' + getattr(settings, 'ADMIN_URL', 'secret-control-panel/').strip('/') + '/'
+        r = self.client.get(f'{base}community/rookieplayer/{p.pk}/change/', HTTP_USER_AGENT=PC)
+        self.assertIn(r.status_code, (200, 302))

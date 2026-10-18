@@ -30,7 +30,7 @@
   능력 가중 평균으로 따로 낸다 → 훈련 흔들림, ROLES 가중치.
 
 감쇠는 '어제까지' 하루씩 정산한다(settle) — 페이지를 열 때·TP 를 벌 때 그 자리에서, 그리고 매일 밤
-rookie_settle 명령이 모든 선수를 정산해 순위표가 쉬는 선수를 그대로 두지 않게 한다.
+rookie_daily 명령이 모든 선수를 정산해 순위표가 쉬는 선수를 그대로 두지 않게 한다.
 """
 from __future__ import annotations
 
@@ -52,6 +52,7 @@ BASE_DECAY, MAX_DECAY = 0.015, 0.12
 WELCOME_TP = 150
 SETTLE_WINDOW = 120               # 그보다 오래 쉬었으면 마지막 120일만 계산(이미 바닥 근처)
 TP_MAX = 500                      # 보유 한도
+REROLL_GUARD_DAYS, SHORT_CAREER_DAYS = 14, 30   # 짧게 뛰고 곧바로 다시 입단하면 타고난 자질을 이어받는다(다시 뽑기 막기)
 TEST_GAMES, TEST_PASS, TEST_SPREAD = 3, 2, 7.0
 FOCUS_BONUS = 1.25                # 주특기 성장 배율
 FATIGUE_AT, FATIGUE_EFF = 15, 0.5  # 하루 훈련 15회를 넘으면 효율 절반
@@ -204,6 +205,7 @@ def create(user, *, name: str, role: str, team: str, number: int = 0, focus: str
         User.objects.select_for_update().filter(pk=user.pk).first()      # 같은 회원의 입단 두 번을 줄 세운다
         if RookiePlayer.objects.filter(user=user, retired_at__isnull=True).exists():
             raise GameError('이미 현역 선수가 있습니다.')
+        heir = inherits_from(user)
         club = W.little_club(region)
         p = RookiePlayer.objects.create(
             user=user, name=name, number=max(0, min(99, int(number or 0))), role=role, team=team, stats=stats,
@@ -211,12 +213,25 @@ def create(user, *, name: str, role: str, team: str, number: int = 0, focus: str
             tp=WELCOME_TP, tp_earned=WELCOME_TP, last_active=today, settled_through=today - timedelta(days=1),
             lineup='mop' if role == 'pitcher' else 'bench', role_since=today,
             league='little', club=club, region=region, age=12, grade=6, grade_since=today,
-            potential=C.roll_potential(rng), traits=C.roll_traits(rng),
+            potential=heir.potential if heir else C.roll_potential(rng),
+            traits=list(heir.traits or []) if heir else C.roll_traits(rng),
+            traits_seen=list(heir.traits_seen or []) if heir else [],
             career={'path': [{'league': 'little', 'club': club, 'age': 12, 'season': 0, 'day': today.isoformat()}]})
         C.open_apply(p)
         p.save(update_fields=['pending'])
         _log(p, 'start', f'{club} 입단 — 초등학교 6학년, 12세. 입단 보너스 +{WELCOME_TP} TP', tp=WELCOME_TP)
     return p
+
+
+def inherits_from(user):
+    """짧게 뛰고(30일 미만) 은퇴한 지 14일이 안 된 선수 — 새 선수가 잠재력·숨은 특성을 이어받는다.
+    입단하자마자 은퇴·재입단을 되풀이해 좋은 자질만 골라 뽑지 못하게(오래 뛴 뒤의 새 출발은 새로 뽑는다)."""
+    from .models import RookiePlayer
+    last = RookiePlayer.objects.filter(user=user, retired_at__isnull=False).order_by('-retired_at').first()
+    if last and timezone.now() - last.retired_at < timedelta(days=REROLL_GUARD_DAYS) \
+            and last.retired_at - last.created_at < timedelta(days=SHORT_CAREER_DAYS):
+        return last
+    return None
 
 
 def _decay(p, today: date) -> dict:
@@ -269,6 +284,26 @@ def locked(user):
     return RookiePlayer.objects.select_for_update().filter(user=user, retired_at__isnull=True).first()
 
 
+def settled(user, today: date | None = None):
+    """정산을 먼저 따로 커밋한다 — 학년 전환·드래프트·은퇴 같은 진행이 뒤따르는 동작의 실패와 함께 되돌려져
+    같은 요청을 되풀이할 때마다 다시 굴려지지 않게. (선수 또는 None, 정산 전 pending)"""
+    with transaction.atomic():
+        p = locked(user)
+        if p is None:
+            return None, None
+        before = dict(p.pending or {})
+        settle(p, today)
+    return p, before
+
+
+def gone(user) -> str:
+    """현역 선수가 없을 때의 안내 — 방금 은퇴했으면 그렇게 말한다."""
+    from .models import RookiePlayer
+    if RookiePlayer.objects.filter(user=user, retired_at__isnull=False).exists():
+        return '선수가 은퇴했습니다. 새 선수로 다시 시작해 주세요.'
+    return '먼저 선수를 만들어 주세요.'
+
+
 def current(user_id):
     from .models import RookiePlayer
     return RookiePlayer.objects.filter(user_id=user_id, retired_at__isnull=True).first() if user_id else None
@@ -281,13 +316,12 @@ def award(user, source: str, ref: str = '') -> dict | None:
         return None
     rule = EARN[source]
     today = timezone.localdate()
+    settled(user, today)
     with transaction.atomic():
         p = locked(user)
-        if p is None:
+        if p is None:                                   # 선수가 없거나 정산하다 은퇴했다
             return None
-        settle(p, today)
-        if p.retired_at:
-            return None
+        settle(p, today)                                # 이미 정산됨 — 할 일 없음
         earned = p.logs.filter(kind='earn', source=source)
         # 같은 칼럼·댓글로는 30일에 한 번 — 밀린 칼럼을 다 읽은 장기 회원도 다시 읽으면 TP 를 받는다
         if ref and earned.filter(ref=ref, day__gt=today - timedelta(days=REPEAT_DAYS)).exists():
@@ -326,10 +360,11 @@ def train(user, stat: str, times: int = 1, rng=None) -> dict:
     rng = rng or random.SystemRandom()
     times = max(1, min(10, int(times or 1)))
     today = timezone.localdate()
+    settled(user, today)
     with transaction.atomic():
         p = locked(user)
         if p is None:
-            raise GameError('먼저 선수를 만들어 주세요.')
+            raise GameError(gone(user))
         settle(p, today)
         if stat not in p.stats:
             raise GameError('훈련할 능력을 다시 골라 주세요.')
@@ -386,10 +421,11 @@ def promotion_test(user, rng=None) -> dict:
     """청백전 3경기 — 경기마다 OVR ± 흔들림(표준편차 7)이 문턱 이상이면 합격, 2경기 합격이면 같은 사다리 한 단계 위로."""
     rng = rng or random.SystemRandom()
     today = timezone.localdate()
+    settled(user, today)
     with transaction.atomic():
         p = locked(user)
         if p is None:
-            raise GameError('먼저 선수를 만들어 주세요.')
+            raise GameError(gone(user))
         settle(p, today)
         if not W.is_pro(p.league):
             raise GameError('학생 선수는 학년이 오르며 진학합니다. 승격 심사는 프로에서 받습니다.')
@@ -438,12 +474,18 @@ def settle_all(today: date | None = None, *, stale_only: bool = True) -> int:
     qs = RookiePlayer.objects.filter(retired_at__isnull=True)
     if stale_only:
         qs = qs.filter(settled_through__lt=today - timedelta(days=1))
-    n = 0
-    for pk in qs.values_list('pk', flat=True):
-        with transaction.atomic():
-            p = RookiePlayer.objects.select_for_update().get(pk=pk)
-            settle(p, today)
+    n = failed = 0
+    for pk in list(qs.values_list('pk', flat=True)):
+        try:
+            with transaction.atomic():
+                p = RookiePlayer.objects.select_for_update().get(pk=pk)
+                settle(p, today)
             n += 1
+        except Exception:  # noqa: BLE001 — 선수 한 명의 오류가 밤 정산 전체·리그 화면을 멈추지 않게
+            failed += 1
+            logger.exception('야구선수 키우기 정산 실패: player=%s', pk)
+    if failed:
+        logger.error('야구선수 키우기 정산: 성공 %s명, 실패 %s명', n, failed)
     return n
 
 

@@ -1,7 +1,10 @@
 """야구선수 키우기 — 선수 일생(rookie_career)·유산(rookie_legacy)·리그 코드 화면(2026-10-17 '선수 일생' 개편)."""
+import io
 import random
-from datetime import timedelta
+from datetime import datetime, timedelta
 from unittest import mock
+
+from django.core.management import call_command
 
 from django.contrib.auth.models import User
 from django.core.cache import cache
@@ -58,8 +61,20 @@ def kid(name='꼬마', role='batter', region='서울', team='kia', **over):
     fields.update(over)
     for k, v in fields.items():
         setattr(p, k, v)
+    p.career = {'path': [dict(p.career['path'][0], day='2026-10-01')]}
+    p.role_since = datetime(2026, 10, 1).date()
     p.save()
+    RookiePlayer.objects.filter(pk=p.pk).update(created_at=timezone.make_aware(datetime(2026, 10, 1, 12, 0)))
+    p.refresh_from_db()
     return p
+
+
+def played_until(day):
+    """그날까지 경기를 치른 것으로 — 학년 전환은 전날 경기를 치른 뒤에만 일어난다(rookie_career._school_due)."""
+    for n in range(1, L.season_no(day) + 1):
+        s = L.get_season(n)
+        s.simulated_through = min(s.end, day)
+        s.save()
 
 
 def set_stats(p, level):
@@ -134,6 +149,7 @@ class CapTests(TestCase):
 class SchoolPathTests(TestCase):
     def setUp(self):
         cache.clear()
+        played_until(timezone.localdate() + timedelta(days=60))
 
     def test_week_later_enters_chosen_middle_school(self):
         p = kid(region='경기')
@@ -151,13 +167,19 @@ class SchoolPathTests(TestCase):
 
     def test_rejected_or_no_choice_goes_to_local_school(self):
         p = kid(region='강원')
-        p.pending = dict(p.pending, choice='배명중')
+        p.pending = dict(p.pending, choice='배명중')                        # 서울 학교에 지원했다가 떨어짐
         p.save()
         C.progress(p, p.grade_since + timedelta(days=C.GRADE_DAYS), rng=Unlucky())
         p.refresh_from_db()
         self.assertEqual(p.league, 'ms')
-        self.assertNotEqual(p.club, '배명중')
-        self.assertTrue(p.logs.filter(kind='career', text__contains='배명중 불합격').exists())
+        self.assertIn(p.club, W.MIDDLE_SCHOOLS['강원'])                      # 지원한 학교 쪽이 아니라 우리 지역
+        self.assertTrue(p.logs.filter(kind='career', text__contains='배명중 불합격 — 우리 지역').exists())
+        for _ in range(5):                                                   # 목록 없는 지역 → 가까운 지역부터
+            b = kid(f'부산{_}', region='부산')
+            C.progress(b, b.grade_since + timedelta(days=C.GRADE_DAYS), rng=random.Random(_))
+            b.refresh_from_db()
+            self.assertIn(W.school_region('ms', b.club), ('경북', '대구'))
+            self.assertTrue(b.logs.filter(kind='career', text__contains='가까운').exists())
         q = kid('무지원', region='제주')
         C.progress(q, q.grade_since + timedelta(days=C.GRADE_DAYS), rng=Lucky())
         q.refresh_from_db()
@@ -178,6 +200,25 @@ class SchoolPathTests(TestCase):
         self.assertEqual((p.league, p.grade, p.age), ('hs', 1, 16))   # 초6 → 중1 → 중2 → 중3 → 고1
         self.assertEqual(p.pending, {})
 
+    def test_early_bloomer_is_hidden_until_revealed(self):
+        p = kid('조기', traits=['early'])
+        self.assertEqual(C.age_cap(p), 42)                                  # 입단 화면에서 티가 나지 않는다
+        self.assertEqual(C.career_view(p)['age_cap'], 42)
+        C.progress(p, p.grade_since + timedelta(days=C.GRADE_DAYS), rng=Lucky())
+        p.refresh_from_db()
+        self.assertIn('early', p.traits_seen)
+        self.assertEqual(C.age_cap(p), 45 + 5)
+
+    def test_quick_retire_cannot_reroll_talent(self):
+        p = kid('리롤', traits=['natural'], potential=95)
+        R.retire(p.user)
+        q = R.create(p.user, name='리롤2', role='batter', team='kia', region='서울', rng=random.Random(99))
+        self.assertEqual((q.potential, q.traits), (95, ['natural']))
+        R.retire(q.user)
+        from community.models import RookiePlayer as P
+        P.objects.filter(user=q.user).update(retired_at=timezone.now() - timedelta(days=15))
+        self.assertIsNone(R.inherits_from(q.user))                           # 시간이 지나면 새로 뽑는다
+
     def test_amateur_cannot_take_promotion_test(self):
         p = kid()
         with self.assertRaises(R.GameError):
@@ -185,6 +226,10 @@ class SchoolPathTests(TestCase):
 
 
 class DraftTests(TestCase):
+    def setUp(self):
+        cache.clear()
+        played_until(timezone.localdate() + timedelta(days=60))
+
     def senior(self, level=60, name='고3', **over):
         p = kid(name, **over)
         p.league, p.club, p.grade, p.age = 'hs', '덕수고', 3, 18
@@ -193,9 +238,6 @@ class DraftTests(TestCase):
         p.save()
         set_stats(p, level)
         return p
-
-    def setUp(self):
-        cache.clear()
 
     def test_star_is_drafted_by_wanted_team_and_signs(self):
         p = self.senior(62)
@@ -259,6 +301,33 @@ class DraftTests(TestCase):
         p.refresh_from_db()
         self.assertEqual((p.league, p.club), ('kbo2', 'kia'))
         self.assertTrue(p.logs.filter(text__contains='결정 기한이 지나').exists())
+
+    def test_failed_decision_cannot_reroll_the_draft(self):
+        p = self.senior(30, name='재추첨')                                   # 미지명 · 해외 제안 없음
+        with mock.patch('community.rookie_career.random.SystemRandom', return_value=Lucky()):
+            with self.assertRaises(R.GameError) as first:
+                C.decide(p.user, 'mlb')
+            self.assertIn('방금', str(first.exception))
+            p.refresh_from_db()
+            score = p.pending['score']
+            with self.assertRaises(R.GameError):
+                C.decide(p.user, 'mlb')
+        p.refresh_from_db()
+        self.assertEqual(p.pending['score'], score)
+        self.assertEqual(p.logs.filter(kind='career', text__contains='드래프트').count(), 1)
+
+    def test_training_after_retirement_age_is_refused(self):
+        p = kid('마지막')
+        p.league, p.club, p.grade, p.grade_since, p.pending = 'kbo1', 'lg', 0, None, {}
+        p.age, p.age_season, p.tp = 44, 3, 200
+        p.save()
+        with mock.patch('django.utils.timezone.localdate', return_value=L.season_bounds(4)[0]):
+            with self.assertRaises(R.GameError) as ex:
+                R.train(p.user, 'contact', 1)
+        self.assertIn('은퇴', str(ex.exception))
+        p.refresh_from_db()
+        self.assertIsNotNone(p.retired_at)
+        self.assertEqual(p.tp, 200)
 
     def test_pro_ages_each_season_and_retires_at_45(self):
         p = kid('노장')
@@ -330,6 +399,27 @@ class LeagueLifeTests(TestCase):
         st = RookieSeasonStat.objects.get(player=p)
         self.assertEqual((st.league, st.team, st.age), ('hs', '덕수고', 17))
 
+    def test_midnight_checkin_waits_for_last_school_game(self):
+        """자정에 출석해도 전날 경기를 치르기 전엔 학년이 넘어가지 않는다(2026-10-18 감사 C4)."""
+        p = kid('자정중3')
+        set_stats(p, 40)
+        D = D1 + timedelta(days=5)
+        p.league, p.club, p.grade, p.age = 'ms', '배명중', 3, 15
+        p.grade_since, p.pending = D - timedelta(days=7), {'kind': 'apply', 'to': 'hs', 'choice': ''}
+        p.settled_through, p.last_active = D - timedelta(days=1), D - timedelta(days=1)
+        p.save()
+        for d in (D - timedelta(days=2), D - timedelta(days=1)):
+            self.active(p, d)
+        with mock.patch('django.utils.timezone.localdate', return_value=D):
+            R.award(p.user, 'checkin', 'midnight')
+            p.refresh_from_db()
+            self.assertEqual((p.league, p.grade), ('ms', 3))                  # 아직 경기 전
+            call_command('rookie_daily', stdout=io.StringIO())
+        p.refresh_from_db()
+        self.assertEqual((p.league, p.grade), ('hs', 1))
+        self.assertFalse(RookieGame.objects.filter(player=p, day=D - timedelta(days=1), league='hs').exists())
+        self.assertTrue(RookieSeasonStat.objects.filter(player=p, league='ms').exists())
+
     def test_draft_waiting_players_sit_out(self):
         p = kid('졸업생')
         p.league, p.club, p.grade = 'hs', '덕수고', 3
@@ -351,9 +441,9 @@ class LeagueLifeTests(TestCase):
         self.assertTrue(RookieLog.objects.filter(player=bat, kind='mile', text__contains='프로 데뷔전').exists())
         nine = G.best_nine(D1, 'mlb')
         self.assertEqual(nine[0]['pos'], 'SP')
-        self.assertEqual(nine[0]['p'].pk, pit.pk)
+        self.assertIn(nine[0]['p'].pk, (pit.pk, rival.pk))                 # 그날 게임 스코어가 높은 쪽
         self.assertTrue(any(x.get('p') and x['p'].pk == bat.pk for x in nine))
-        self.assertTrue(RookieLog.objects.filter(player=pit, text__contains='오늘의 베스트 9').exists())
+        self.assertTrue(RookieLog.objects.filter(player=nine[0]['p'], text__contains='오늘의 베스트 9').exists())
         self.assertFalse(RookieLog.objects.filter(player=bat, text__contains='오늘의 베스트 9').exists())   # 혼자 뛴 자리는 남기지 않는다
         st = RookieSeasonStat.objects.get(player=pit)
         self.assertGreaterEqual(st.best_ovr, 74.0)

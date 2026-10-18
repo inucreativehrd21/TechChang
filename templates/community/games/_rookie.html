@@ -27,6 +27,7 @@
         <section class="rk-panel rk-legacy-note">
             <p class="rk-fine">지난 선수</p>
             <p><a href="{% url 'community:rookie_player' last.pk %}"><b>{{ last.name }}</b></a> — {{ last_id.team.name }}, {{ last.career.retired.age|default:last.age }}세 은퇴. 기록과 수상은 선수 페이지와 기록실에 남아 있습니다.</p>
+            {% if heir %}<p class="rk-hint">짧게 뛰고 방금 은퇴했으니, 새 선수는 지난 선수의 타고난 자질(잠재력·숨은 특성)을 그대로 이어받습니다.</p>{% endif %}
         </section>
         {% endif %}
         <form class="rk-create" method="post" action="{% url 'community:rookie_create' %}">
@@ -67,7 +68,7 @@
 
             <section class="rk-panel">
                 <h2>어느 동네 리틀야구단에서 시작할까요</h2>
-                <p class="rk-hint">초등학교 6학년, 열두 살. 일주일마다 한 학년씩 올라가고, 졸업 학년엔 희망 학교에 지원합니다. 지역은 진학할 때 떨어지면 배정받는 학교의 기준이 됩니다.</p>
+                <p class="rk-hint">초등학교 6학년, 열두 살. 일주일마다 한 학년씩 올라가고, 졸업 학년엔 희망 학교에 지원합니다. 진학에서 떨어지거나 학교를 고르지 않으면 이 지역 학교로 배정되고, 목록에 학교가 없는 지역이면 가까운 지역 학교로 갑니다.</p>
                 <div class="rk-chips">
                     {% for r in regions %}
                     <label class="rk-chip"><input type="radio" name="region" value="{{ r }}" {% if forloop.first %}checked{% endif %} required><span>{{ r }}</span></label>

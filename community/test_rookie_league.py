@@ -33,8 +33,18 @@ def player(name, role='batter', team='lg', position='SS', level=60.0, league='kb
     p.stats = {k: level for k in p.stats}
     p.ovr, p.league, p.club = level, league, team
     p.age, p.potential, p.traits, p.grade, p.grade_since, p.pending = 25, 99, [], 0, None, {}
+    p.career = {'path': [{'league': league, 'club': team, 'age': 25, 'season': 0, 'day': '2026-10-01'}]}
+    p.role_since = date(2026, 10, 1)                 # 개막 전에 자리를 받은 것으로(최소 이틀 규칙이 실제 날짜에 기대지 않게)
     p.save()
+    backdate(p)
     return p
+
+
+def backdate(p):
+    """입단을 개막 전으로 — 테스트가 실제 날짜(개막 뒤 입단이면 지난 경기에 못 나간다)에 기대지 않게."""
+    from django.utils import timezone as tz
+    RookiePlayer.objects.filter(pk=p.pk).update(created_at=tz.make_aware(datetime(2026, 10, 1, 12, 0)))
+    p.refresh_from_db()
 
 
 def active_on(p, day):
@@ -129,6 +139,24 @@ class SimulateDayTests(TestCase):
         g = RookieGame.objects.filter(player=self.bat).first()
         self.assertNotEqual(g.opponent, 'lg')
         self.assertTrue(g.summary.startswith(f"{g.line['ab']}타수"))
+
+    def test_training_during_games_is_not_overwritten(self):
+        """경기 진행이 선수 목록을 읽은 뒤 커밋된 훈련이 경기 경험 저장에 덮이지 않는다(2026-10-18 감사 C3)."""
+        p = self.bat
+        RookiePlayer.objects.filter(pk=p.pk).update(tp=300)
+        seen = {}
+        real = L.active_players
+
+        def train_meanwhile(day):
+            r = R.train(p.user, 'contact', 5, rng=random.Random(1))
+            seen['after'] = r['after']
+            return real(day)
+        with mock.patch('community.rookie_league.active_players', side_effect=train_meanwhile):
+            L.simulate_day(D1, rng=random.Random(5))
+        q = RookiePlayer.objects.get(pk=p.pk)
+        self.assertGreaterEqual(float(q.stats['contact']), seen['after'])     # 훈련 결과 + 경기 경험
+        self.assertEqual(q.tp, 250)
+        self.assertTrue(RookieGame.objects.filter(player=p, day=D1).exists())
 
     def test_activity_window_is_three_days(self):
         active_on(self.lazy, D1 - timedelta(days=2))

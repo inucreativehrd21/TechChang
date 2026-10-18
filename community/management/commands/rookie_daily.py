@@ -15,5 +15,5 @@ class Command(BaseCommand):
 
     def handle(self, *args, **opts):
         days = L.advance()
-        n = R.settle_all()
+        n = R.settle_all(stale_only=False)     # 자정에 출석해 정산은 됐지만 경기 전이라 미룬 학년 전환까지
         self.stdout.write(f'[{timezone.localtime():%Y-%m-%d %H:%M}] 야구선수 키우기 — 경기일 {days}일 진행 · 정산 {n}명')

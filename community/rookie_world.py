@@ -72,6 +72,8 @@ def next_league(code: str) -> str | None:
     if sysname not in PRO_SYSTEMS:
         return None
     ladder = SYSTEMS[sysname]
+    if code not in ladder:                       # 알 수 없는 코드(관리자 오타 등) — 승격·강등 없음
+        return None
     i = ladder.index(code)
     return ladder[i + 1] if i + 1 < len(ladder) else None
 
@@ -81,6 +83,8 @@ def prev_league(code: str) -> str | None:
     if sysname not in PRO_SYSTEMS:
         return None
     ladder = SYSTEMS[sysname]
+    if code not in ladder:
+        return None
     i = ladder.index(code)
     return ladder[i - 1] if i > 0 else None
 
@@ -196,6 +200,31 @@ UNIVERSITIES = {
 UNIV_POWERHOUSE = {'고려대', '연세대', '성균관대', '한양대', '중앙대', '동국대', '건국대', '경희대', '인하대', '단국대',
                    '동아대', '영남대', '원광대'}
 SCHOOLS_BY_LEAGUE = {'ms': MIDDLE_SCHOOLS, 'hs': HIGH_SCHOOLS, 'univ': UNIVERSITIES}
+
+
+# 맞닿은 시·도(진학에서 떨어진 학생을 가까운 지역 학교로 보낼 때 — 그 지역 학교 목록이 비어 있으면 한 겹씩 넓힌다)
+_EDGES = [('서울', '경기'), ('서울', '인천'), ('인천', '경기'), ('경기', '강원'), ('경기', '충북'), ('경기', '충남'),
+          ('강원', '충북'), ('강원', '경북'), ('충북', '경북'), ('충북', '대전'), ('충북', '세종'), ('충북', '충남'),
+          ('충북', '전북'), ('충남', '대전'), ('충남', '세종'), ('충남', '전북'), ('대전', '세종'), ('대전', '전북'),
+          ('전북', '경남'), ('전북', '광주'), ('전북', '전남'), ('광주', '전남'), ('전남', '경남'), ('전남', '제주'),
+          ('경북', '대구'), ('경북', '경남'), ('경북', '울산'), ('대구', '경남'), ('울산', '경남'), ('울산', '부산'),
+          ('부산', '경남')]
+ADJACENT = {r: tuple(b if a == r else a for a, b in _EDGES if r in (a, b)) for r in REGIONS}
+
+
+def region_layers(region: str) -> list:
+    """[[우리 지역], [맞닿은 지역들], [그 다음 겹] …] — 가까운 순서."""
+    seen, layer, out = {region}, [region], []
+    while layer:
+        out.append(layer)
+        nxt = []
+        for r in layer:
+            for n in ADJACENT.get(r, ()):
+                if n not in seen:
+                    seen.add(n)
+                    nxt.append(n)
+        layer = nxt
+    return out
 
 
 def little_club(region: str) -> str:
