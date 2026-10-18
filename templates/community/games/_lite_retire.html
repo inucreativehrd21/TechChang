@@ -1,0 +1,41 @@
+{# 라이트 은퇴 카드 한 장(캡처해서 자랑하는 크기). 맥락: c, card(rookie_lite_views._card), team, pos_label, style_label, earnings #}
+<article class="rl-rcard is-{{ card.tier }}" style="--team: {{ team.color|default:'#4f46e5' }}" aria-label="{{ c.name }} 은퇴 카드">
+    <div class="rl-rcard-in">
+        <header class="rl-rcard-top">
+            <span class="rl-rcard-tier">{{ card.tier_label }}</span>
+            <span class="rl-rcard-years">{{ card.years }} · {{ card.seasons }}시즌</span>
+        </header>
+        <div class="rl-rcard-hero">
+            <span class="rl-rcard-no" aria-hidden="true">{{ c.number }}</span>
+            {% if card.epithet %}<p class="rl-rcard-ep">‘{{ card.epithet }}’</p>{% endif %}
+            <h2 class="rl-rcard-name">{{ c.name }}</h2>
+            <p class="rl-rcard-pos">{{ pos_label }} · {{ style_label }} · 최고 무대 {{ card.peak }}</p>
+        </div>
+        {% if card.line %}
+        <dl class="rl-rcard-line">
+            {% if c.role == 'pitcher' %}
+            <div><dt>경기</dt><dd>{{ card.line.g|default:0 }}</dd></div>
+            <div><dt>승패</dt><dd>{{ card.line.w|default:0 }}-{{ card.line.l|default:0 }}</dd></div>
+            <div><dt>세이브</dt><dd>{{ card.line.sv|default:0 }}</dd></div>
+            <div><dt>평균자책점</dt><dd>{{ card.line.era_text }}</dd></div>
+            <div><dt>탈삼진</dt><dd>{{ card.line.so|default:0 }}</dd></div>
+            {% else %}
+            <div><dt>경기</dt><dd>{{ card.line.g|default:0 }}</dd></div>
+            <div><dt>타율</dt><dd>{{ card.line.avg_text }}</dd></div>
+            <div><dt>홈런</dt><dd>{{ card.line.hr|default:0 }}</dd></div>
+            <div><dt>타점</dt><dd>{{ card.line.rbi|default:0 }}</dd></div>
+            <div><dt>OPS</dt><dd>{{ card.line.ops_text }}</dd></div>
+            {% endif %}
+        </dl>
+        {% endif %}
+        <div class="rl-rcard-key">
+            <div><span>프로 WAR</span><b>{{ card.war }}</b></div>
+            <div><span>최고 OVR</span><b>{{ card.best_ovr }}</b></div>
+            <div><span>통산 수입</span><b>{{ card.money }}</b></div>
+        </div>
+        {% if card.badges %}<ul class="rl-rcard-badges" aria-label="수상">{% for b in card.badges %}<li><b>{{ b.n }}</b>{{ b.label }}</li>{% endfor %}</ul>{% endif %}
+        {% if card.best %}<p class="rl-rcard-best"><span>커리어 하이</span>{{ card.best.year }} {{ card.best.league }} · {{ card.best.line }} · WAR {{ card.best.war }}</p>{% endif %}
+        {% if card.clubs %}<p class="rl-rcard-clubs">{{ card.clubs|join:' → ' }}{% if card.more_clubs %} 외 {{ card.more_clubs }}팀{% endif %}</p>{% endif %}
+        <footer class="rl-rcard-foot"><span>테크창 야구선수 키우기</span><span>techchang.com</span></footer>
+    </div>
+</article>

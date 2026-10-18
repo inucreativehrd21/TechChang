@@ -9,5 +9,6 @@
 <nav class="rk-nav" aria-label="야구선수 키우기 라이트 메뉴">
     <a href="{% url 'community:lite_home' %}" {% if section == 'home' %}aria-current="page"{% endif %}>내 커리어</a>
     <a href="{% url 'community:lite_hall' %}" {% if section == 'hall' %}aria-current="page"{% endif %}>명예의 전당</a>
+    <a href="{% url 'community:lite_cards' %}" {% if section == 'cards' %}aria-current="page"{% endif %}>카드 보관함</a>
     <a href="{% url 'community:rookie_home' %}">정식 판(매일 키우기)</a>
 </nav>

@@ -121,6 +121,8 @@ urlpatterns = [
     path('rookie/lite/act/', rookie_lite_views.lite_act, name='lite_act'),
     path('rookie/lite/hall/', rookie_lite_views.lite_hall, name='lite_hall'),
     path('rookie/lite/c/<int:pk>/', rookie_lite_views.lite_career, name='lite_career'),
+    path('rookie/lite/c/<int:pk>/card/', rookie_lite_views.lite_card, name='lite_card'),
+    path('rookie/lite/cards/', rookie_lite_views.lite_cards, name='lite_cards'),
 
     # portfolio_views.py - 포트폴리오
     path('members/', portfolio_views.members_list, name='members_list'),

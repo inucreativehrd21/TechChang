@@ -1,0 +1,36 @@
+{# 라이트 은퇴 카드 페이지(공개). 맥락: rookie_lite_views.lite_card — fresh 면 방금 은퇴한 주인 #}
+<div class="gm rk rl">
+<div class="gm-wrap is-wide">
+    {% include 'community/games/_lite_top.html' with h1='은퇴 카드' %}
+    <div class="rl-cardpage{% if fresh %} is-fresh{% endif %}">
+        <p class="rl-cardpage-head">{% if card.headline.tag %}<em>{{ card.headline.tag }}</em>{% endif %}<b>{{ card.headline.title }}</b></p>
+        {% if fresh %}<p class="rl-cardpage-lead">수고 많았어요! {{ c.name }} 선수의 커리어를 카드 한 장에 담았어요. 화면을 캡처해서 자랑해 보세요.</p>{% endif %}
+        {% include 'community/games/_lite_retire.html' %}
+        <div class="rl-cardpage-actions">
+            {% if fresh %}<a class="gm-btn is-primary" href="{% url 'community:lite_home' %}">새 선수 시작하기</a>{% endif %}
+            <button type="button" class="gm-btn" data-rl-share data-url="{{ request.scheme }}://{{ request.get_host }}{{ request.path }}" data-title="{{ c.name }} 은퇴 카드 — 테크창 야구선수 키우기">{% include 'community/games/_lite_icon.html' with name='share' %}<span>링크 공유</span></button>
+            <a class="gm-btn" href="{% url 'community:lite_career' c.pk %}">커리어 자세히</a>
+            {% if user.is_authenticated and is_me %}<a class="gm-btn" href="{% url 'community:lite_cards' %}">카드 보관함</a>{% endif %}
+        </div>
+        <p class="rl-share-done" data-rl-share-done hidden>링크를 복사했어요.</p>
+        {% if is_me and not user.is_authenticated %}<p class="rl-guest-note">로그인하면 이 카드를 보관함에 남겨 언제든 다시 볼 수 있어요. <a rel="nofollow" href="{% url 'common:login' %}?next={{ request.path|urlencode }}">로그인</a></p>{% endif %}
+    </div>
+    {% include 'community/games/_rookie_rights.html' %}
+</div>
+</div>
+<script nonce="{{ csp_nonce }}">
+(function () {
+    var b = document.querySelector('[data-rl-share]');
+    if (!b) return;
+    b.addEventListener('click', function () {
+        var url = b.dataset.url, done = document.querySelector('[data-rl-share-done]');
+        if (navigator.share) {
+            navigator.share({ title: b.dataset.title, url: url }).catch(function () {});
+            return;
+        }
+        if (navigator.clipboard) {
+            navigator.clipboard.writeText(url).then(function () { done.hidden = false; });
+        }
+    });
+})();
+</script>

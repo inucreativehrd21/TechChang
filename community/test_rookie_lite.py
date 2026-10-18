@@ -8,6 +8,7 @@ from django.core.cache import cache
 from django.core.management import call_command
 from django.test import Client, TestCase
 from django.utils import timezone
+from unittest import mock
 
 from common.models import Profile
 from community import rookie_lite as X
@@ -41,16 +42,20 @@ def autoplay(c, rng, max_steps=200):
             break
         pend = c.pending
         if pend['kind'] == 'plan':
-            progs = rng.sample([p[0] for p in X.PROGRAMS[c.role]], 2)
             ev = pend.get('event')
             choice = rng.choice([k for k, _l, _h in X.EVENTS[ev]['choices']]) if ev else ''
-            X.run_season(c, progs, rng.choice(list(X.INTENSITY)), choice, rng)
+            X.run_season(c, X.pick_programs(c, rng), rng.choice(list(X.INTENSITY)), choice, rng,
+                         intl={k: rng.choice(['go', 'skip']) for k in pend.get('intl') or []})
             seasons += 1
         elif pend['kind'] == 'review':
             X.next_season(c, rng)
         elif pend['kind'] == 'decision':
             what = pend['what']
             seen.add(what)
+            if what == 'meeting':
+                X.decide(c, what, rng.choice([k for k, *_ in X.MEET_CHOICES[pend['about']](c)]), rng)
+                c.save()
+                continue
             opts = {'draft': (['sign'] if pend.get('offer') else ['develop']) + list(pend.get('abroad') or {}),
                     'military': ['sangmu', 'active'], 'posting': ['mlb', 'npb', 'stay'],
                     'fa': [o['key'] for o in pend.get('offers') or []], 'return': ['kbo', 'stay'],
@@ -193,6 +198,156 @@ class EngineTests(TestCase):
         self.assertEqual([r['c'].name for r in X.hall('mlb')], [])
 
 
+def pro(name='프로', seed=1, league='kbo1', ovr=70.0, age=24):
+    c = new(name, seed=seed)
+    c.league, c.club, c.grade, c.age = league, 'lg', 0, age
+    c.stats = {k: ovr for k in c.stats}
+    c.ovr = ovr
+    c.peak = league
+    c.flags = dict(c.flags, start=2026, trust=50)
+    c.save()
+    return c
+
+
+class GameRulesTests(TestCase):
+    """2026-10-18 사용자 요청 묶음 — 훈련 가드레일, 감독 면담, 시즌 중 승격·강등, 기사, 국가대표."""
+
+    def test_training_guardrail(self):
+        c = new('가드레일', seed=3)
+        c.flags = dict(c.flags, train_log=[['contact', 'power'], ['eye', 'power']])
+        rules = X.train_rules(c)
+        self.assertEqual(rules, {'locked': ['power'], 'banned': ['eye', 'power']})
+        with self.assertRaises(X.LiteError):                    # 두 비시즌 연속 웨이트 → 세 번째는 잠김
+            X.check_programs(c, ['power', 'speed'])
+        c.flags['train_log'] = [['contact', 'eye']]
+        with self.assertRaises(X.LiteError):                    # 지난 비시즌과 같은 조합
+            X.check_programs(c, ['eye', 'contact'])
+        self.assertEqual(X.check_programs(c, ['eye', 'speed']), ['eye', 'speed'])
+        rng = random.Random(1)
+        for _ in range(50):
+            p = X.pick_programs(c, rng)
+            self.assertNotEqual(p, ['contact', 'eye'])
+        c.flags['train_log'] = []
+        c.save()
+        X.run_season(c, ['contact', 'power'], 'normal', 'accept' if c.pending.get('event') else '', rng)
+        self.assertEqual(c.flags['train_log'], [['contact', 'power']])
+
+    def test_trust_moves_playing_time(self):
+        c = pro('신뢰', seed=2)
+        base = X.duty_level(c)
+        c.flags['trust'] = 90
+        self.assertLess(X.duty_level(c), base)
+        c.flags['trust'] = 10
+        self.assertGreater(X.duty_level(c), base)
+
+    def test_josa(self):
+        self.assertEqual(X.josa('KBO리그', '으로/로'), '로')
+        self.assertEqual(X.josa('NPB 2군', '으로/로'), '으로')
+        self.assertEqual(X.josa('KBO 육성군', '으로/로'), '으로')
+        self.assertEqual(X.josa('일본프로야구(NPB)', '으로/로'), '로')
+        self.assertEqual(X.josa('서울', '으로/로'), '로')
+        self.assertEqual(X.josa('LG 트윈스', '와/과'), '와')
+        self.assertEqual(X.josa('두산', '와/과'), '과')
+
+    def test_midseason_callup_meeting(self):
+        rng = random.Random(5)
+        c = pro('콜업', seed=5, league='kbo2', ovr=66.0, age=22)
+        c.pending = X.plan_step(c, rng)
+        c.pending['event'] = None
+        state = X.start_season(c, ['contact', 'power'], 'normal', '', {k: 'skip' for k in c.pending['intl']}, rng)
+        t = X._sum_chunks(state['splits'][0]['chunks'])
+        m = X._meeting(c, 'promote', 'mid', t, 50, rng, to='kbo1')
+        c.pending = dict(m, half=state)
+        c.save()
+        view = X.decision_view(c)
+        self.assertEqual(view['what'], 'meeting')
+        self.assertIn('부진', view['text'])
+        self.assertTrue(view['rival']['name'])
+        text = X.decide(c, 'meeting', 'accept', rng)
+        self.assertIn('올라갔어요', text)
+        self.assertEqual(c.league, 'kbo1')
+        s = c.seasons.get(year=1)
+        self.assertEqual([x['league'] for x in s.splits], ['kbo2', 'kbo1'])
+        self.assertTrue(any(m['moved'] and m['move_kind'] == 'up' for m in s.months))
+        self.assertEqual(c.pending['kind'], 'review')
+        self.assertTrue(any('콜업' in p['tag'] for p in s.press))
+
+    def test_stubborn_backfires_or_sticks(self):
+        rng = random.Random(6)
+        c = pro('고집', seed=6, league='kbo2', ovr=60.0)
+        c.pending = X._meeting(c, 'promote', 'end', {}, 100, rng, to='kbo1')
+        with mock.patch.object(X, '_sticks', return_value=False):
+            text = X.decide(c, 'meeting', 'demand', rng)
+        self.assertIn('실망', text)
+        self.assertEqual(c.league, 'kbo2')                                    # 콜업 취소
+        self.assertEqual(X.trust(c), 38)
+        self.assertEqual(c.flags['doghouse'], 1)
+        self.assertTrue(any(p['tag'] == '[단독]' for p in c.flags['press']))  # 기사가 새어 나갔다
+        c2 = pro('배짱', seed=7, league='kbo2', ovr=60.0)
+        c2.pending = X._meeting(c2, 'promote', 'end', {}, 100, rng, to='kbo1')
+        with mock.patch.object(X, '_sticks', return_value=True):
+            X.decide(c2, 'meeting', 'demand', rng)
+        self.assertEqual(c2.league, 'kbo1')
+        self.assertLess(X.trust(c2), 50)
+
+    def test_season_end_move_goes_through_manager(self):
+        rng = random.Random(8)
+        c = pro('면담', seed=8, league='kbo2', ovr=70.0)
+        c.flags['move'] = {'kind': 'promote', 'to': 'kbo1'}
+        c.save()
+        step = X.next_step(c, rng)
+        self.assertEqual((step['what'], step['about'], step['phase']), ('meeting', 'promote', 'end'))
+        c.pending = step
+        X.decide(c, 'meeting', 'accept', rng)
+        self.assertEqual(c.league, 'kbo1')
+        self.assertNotEqual(c.pending.get('what'), 'meeting')
+        self.assertGreater(X.trust(c), 50)
+
+    def test_national_team_calendar_and_exemption(self):
+        c = pro('국대', seed=9, ovr=72.0, age=24)                          # 2026년 1번째 시즌 → WBC·아시안게임
+        self.assertEqual(set(X.intl_this_year(c)), {'wbc', 'asian'})
+        self.assertEqual(set(X.intl_offers(c)), {'wbc', 'asian'})
+        c.year = 2                                                            # 2027 → 프리미어12
+        self.assertEqual(X.intl_this_year(c), ['premier12'])
+        c.year = 3                                                            # 2028 → 올림픽
+        self.assertIn('olympics', X.intl_this_year(c))
+        gold = {'key': 'olympics', 'name': '올림픽', 'tier': 'gold', 'result': '금메달', 'line': '.400 2홈런'}
+        state = {'intl': [], 'press': [], 'news': [], 'mods': {'injury': 0.0}}
+        with mock.patch.object(X, 'play_intl', return_value=gold):
+            X._intl(c, 'olympics', state, random.Random(1))
+        self.assertTrue(c.flags['exempt'])                                    # 올림픽 금메달 → 병역 특례
+        self.assertGreater(state['mods']['injury'], 0)                       # 대가 — 부상 위험
+        self.assertTrue(any('병역 특례' in p['title'] for p in state['press']))
+        p12 = dict(gold, key='premier12', name='프리미어12', tier='champ', result='우승')
+        with mock.patch.object(X, 'play_intl', return_value=p12):
+            X._intl(c, 'premier12', state, random.Random(1))
+        self.assertEqual(c.flags['tired']['train'], 0.9)                      # 11월 대회 — 다음 시즌 몸이 무겁다
+        young = pro('어린국대', seed=10, ovr=67.0, age=30)
+        self.assertNotIn('asian', X.intl_offers(young))                       # 아시안게임은 25세 이하(+와일드카드)
+
+    def test_season_press_reads_like_headlines(self):
+        c = pro('기자', seed=11, ovr=75.0)
+        c.pending = X.plan_step(c, random.Random(2))
+        c.pending['event'] = None
+        c.save()
+        season = None
+        for _ in range(4):
+            season = X.run_season(c, X.pick_programs(c, random.Random(_)), 'normal', '', random.Random(_),
+                                  intl={k: 'skip' for k in c.pending.get('intl') or []})
+            if season is None:
+                X.decide(c, 'meeting', 'accept', random.Random(3))
+                season = c.seasons.order_by('-year').first()
+            self.assertTrue(season.press)                                     # 프로 시즌엔 기사가 꼭 있다
+            self.assertTrue(all(c.name in p['title'] or p['tag'] for p in season.press))
+            X.next_season(c, random.Random(4))
+            while c.pending['kind'] == 'decision':
+                pend = c.pending
+                ch = X.MEET_CHOICES[pend['about']](c)[0][0] if pend['what'] == 'meeting' else \
+                    {'military': 'sangmu', 'retire': 'continue'}.get(pend['what'], 'stay')
+                X.decide(c, pend['what'], ch, random.Random(5))
+                c.save()
+
+
 class ViewTests(TestCase):
     def setUp(self):
         cache.clear()
@@ -306,6 +461,59 @@ class ViewTests(TestCase):
         r = c.get('/rookie/lite/', HTTP_USER_AGENT=PC)
         self.assertContains(r, '지난 커리어')
         self.assertContains(c.get('/rookie/lite/hall/', HTTP_USER_AGENT=PC), '갈매기')
+
+    def test_retire_card_and_archive(self):
+        u = member('카드')
+        c = self.client
+        c.force_login(u)
+        career = new('은퇴카드', seed=4)
+        career.user = u
+        career.save()
+        self.assertRedirects(c.get(f'/rookie/lite/c/{career.pk}/card/'), f'/rookie/lite/c/{career.pk}/',
+                             fetch_redirect_response=False)                  # 현역은 카드가 아직 없다
+        r = c.post('/rookie/lite/act/', {'action': 'quit', 'confirm': 'yes'})
+        self.assertRedirects(r, f'/rookie/lite/c/{career.pk}/card/?new=1', fetch_redirect_response=False)
+        for ua in (PC, MOBILE):
+            r = c.get(f'/rookie/lite/c/{career.pk}/card/?new=1', HTTP_USER_AGENT=ua)
+            self.assertContains(r, 'rl-rcard')
+            self.assertContains(r, '은퇴카드')
+            self.assertContains(r, '[은퇴]')
+            self.assertContains(r, '새 선수 시작하기')
+            self.assertContains(r, RIGHTS)
+            r = c.get('/rookie/lite/cards/', HTTP_USER_AGENT=ua)
+            self.assertContains(r, f'/rookie/lite/c/{career.pk}/card/')
+            self.assertContains(r, 'noindex')
+        other = self.client_class()
+        self.assertNotContains(other.get(f'/rookie/lite/c/{career.pk}/card/?new=1', HTTP_USER_AGENT=PC),
+                               '새 선수 시작하기')                              # 남의 카드는 구경만
+        self.assertContains(other.get('/rookie/lite/cards/', HTTP_USER_AGENT=PC), '로그인하면 카드가 계정에 보관돼요')
+
+    def test_plan_and_meeting_screens(self):
+        u = member('개편화면')
+        self.client.force_login(u)
+        c = pro('화면', seed=12, ovr=72.0)
+        c.user = u
+        c.flags['train_log'] = [['contact', 'power'], ['eye', 'power']]
+        c.flags['press'] = [X.press('[오피셜]', '화면, 연봉 계약')]
+        c.pending = X.plan_step(c, random.Random(1))
+        c.save()
+        for ua in (PC, MOBILE):
+            r = self.client.get('/rookie/lite/', HTTP_USER_AGENT=ua)
+            self.assertContains(r, 'rl-hud')
+            self.assertContains(r, 'is-locked')                                   # 두 비시즌 연속 웨이트
+            self.assertContains(r, '화면, 연봉 계약')                              # 오프시즌 기사
+            self.assertContains(r, 'intl_wbc')                                      # 국가대표 소집
+        r = self.client.post('/rookie/lite/act/', {'action': 'play', 'program': ['power', 'speed'], 'intensity': 'normal'},
+                             follow=True)
+        self.assertContains(r, '두 비시즌 연속')
+        c.pending = X._meeting(c, 'role_down', 'end', {}, 144, random.Random(2),
+                               new_role=('bench', 0, '백업(대타·대주자)'), old_role=('lower', 6, '하위타선 주전 · 6번'))
+        c.save()
+        for ua in (PC, MOBILE):
+            r = self.client.get('/rookie/lite/', HTTP_USER_AGENT=ua)
+            self.assertContains(r, 'rl-room')
+            self.assertContains(r, '보직 변경 통보')
+            self.assertContains(r, '제 자리를 지키고 싶어요')
 
     def test_decision_screens_render(self):
         u = member('갈림길')

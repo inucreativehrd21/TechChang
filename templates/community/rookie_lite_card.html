@@ -1,0 +1,16 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ c.name }} 은퇴 카드 - 야구선수 키우기 라이트 - 테크창{% endblock %}
+{% block meta_description %}{{ c.name }}({{ pos_label }}) — {{ card.years }}, {{ card.seasons }}시즌, 최고 무대 {{ card.peak }}. 테크창 야구선수 키우기 라이트 은퇴 카드.{% endblock %}
+{% block og_title %}{{ c.name }} 은퇴 카드 — 테크창 야구선수 키우기{% endblock %}
+{% block og_description %}{{ card.headline.title }}{% endblock %}
+
+{% block extra_css %}
+<link href="{% static 'css/game.css' %}?v={{ STATIC_VERSION }}" rel="stylesheet">
+<link href="{% static 'css/rookie.css' %}?v={{ STATIC_VERSION }}" rel="stylesheet">
+{% endblock %}
+
+{% block content %}
+{% include 'community/games/_lite_cardpage.html' %}
+{% endblock %}

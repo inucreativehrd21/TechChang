@@ -1,0 +1,25 @@
+{# 라이트 은퇴 카드 보관함. 맥락: rookie_lite_views.lite_cards — rows: _identity + card #}
+<div class="gm rk rl">
+<div class="gm-wrap is-wide">
+    {% include 'community/games/_lite_top.html' with h1='카드 보관함' %}
+    {% if rows %}
+    <p class="rk-note">은퇴한 선수마다 카드 한 장씩 남아요. 눌러서 크게 보고 캡처해 보세요.</p>
+    <ul class="rl-minis">
+        {% for r in rows %}
+        <li><a class="rl-mini is-{{ r.card.tier }}" style="--team: {{ r.team.color|default:'#4f46e5' }}" href="{% url 'community:lite_card' r.c.pk %}">
+            <span class="rl-mini-top"><em>{{ r.card.tier_label }}</em><span>{{ r.card.years }}</span></span>
+            <span class="rl-mini-no" aria-hidden="true">{{ r.c.number }}</span>
+            <b class="rl-mini-name">{{ r.c.name }}</b>
+            <span class="rl-mini-pos">{{ r.pos_label }} · {{ r.style_label }}</span>
+            <span class="rl-mini-key"><span>최고 무대 {{ r.card.peak }}</span><span>WAR {{ r.card.war }}</span></span>
+        </a></li>
+        {% endfor %}
+    </ul>
+    {% else %}
+    <section class="rk-panel"><p class="rk-empty">아직 은퇴한 선수가 없어요. 첫 선수를 끝까지 키우면 여기 카드가 생겨요.</p>
+        <div class="gm-actions"><a class="gm-btn is-primary" href="{% url 'community:lite_home' %}">내 커리어로</a></div></section>
+    {% endif %}
+    {% if not user.is_authenticated %}<p class="rl-guest-note">지금은 이 브라우저에서 은퇴한 선수만 보여요. 로그인하면 카드가 계정에 보관돼요. <a rel="nofollow" href="{% url 'common:login' %}?next={{ request.path|urlencode }}">로그인</a></p>{% endif %}
+    {% include 'community/games/_rookie_rights.html' %}
+</div>
+</div>

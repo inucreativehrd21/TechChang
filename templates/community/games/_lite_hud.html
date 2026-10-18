@@ -1,0 +1,8 @@
+{# 라이트 HUD — 경기 중계 화면 맨 위 띠: 소속·달력·사다리·감독 신뢰·OVR. 맥락: rookie_lite_views._identity #}
+<section class="rl-hud" style="--team: {{ team.color|default:'#4f46e5' }}" aria-label="지금 상태">
+    <div class="rl-hud-team"><b><i class="rk-dot" aria-hidden="true"></i>{{ team.name }}</b><span>{{ league_short }}{% if grade_label %} · {{ grade_label }}{% endif %}</span></div>
+    <div class="rl-hud-time"><b>{{ cal_year }}</b><span>{{ c.year }}번째 시즌 · {{ c.age }}세</span></div>
+    <ol class="rl-hud-ladder" aria-label="지금 단계">{% for s in ladder %}<li class="{% if s.on %}is-on{% elif s.done %}is-done{% endif %}"{% if s.on %} aria-current="step"{% endif %}>{{ s.label }}</li>{% endfor %}</ol>
+    {% if trust is not None %}<div class="rl-hud-trust"><span>감독 신뢰</span><i class="rl-meter" style="--v: {{ trust }}%" aria-hidden="true"></i><b>{{ trust }}</b></div>{% endif %}
+    <div class="rl-hud-ovr"><span>OVR</span><b>{{ c.ovr|floatformat:1 }}</b></div>
+</section>

@@ -32,6 +32,7 @@ from . import rookie_sim as M
 from . import rookie_world as W
 
 START_AGE, RETIRE_FROM, RETIRE_AT = 16, 34, 42
+BASE_YEAR = 2026                 # 예전 커리어(flags.start 없음)의 고1 시즌 달력 연도
 POT_MEAN, POT_SD, POT_RANGE = 65, 7, (50, 92)
 HS_COMPETE = 3.0          # 강호 고교는 주전 경쟁이 세다 — 보직을 정할 때 리그 수준을 이만큼 높게 본다(학교를 고르게 되며 강호만 고르지 않게)
 CURVE = {16: .55, 17: .61, 18: .67, 19: .72, 20: .77, 21: .81, 22: .85, 23: .88, 24: .91, 25: .93, 26: .95,
@@ -168,9 +169,14 @@ def school_choices(region: str) -> list:
 
 
 def duty_level(c) -> float:
-    """보직을 정할 때 보는 리그 수준 — 강호 고교는 주전 경쟁이 세서 HS_COMPETE 만큼 높다."""
+    """보직을 정할 때 보는 리그 수준 — 강호 고교는 주전 경쟁이 세서 HS_COMPETE 만큼 높고,
+    프로는 감독 신뢰가 높을수록 낮게(기회를 더), 낮을수록 높게 본다(신뢰 0 → +4, 100 → −4)."""
     lvl = W.level(c.league)
-    return lvl + (HS_COMPETE if c.league == 'hs' and W.powerhouse('hs', c.club) else 0.0)
+    if c.league == 'hs' and W.powerhouse('hs', c.club):
+        lvl += HS_COMPETE
+    if W.is_pro(c.league):
+        lvl -= (trust(c) - TRUST_START) / 12.5
+    return lvl
 
 
 def create(user, *, name, role, position, style, region, team, number=0, rng=None, guest='', school=''):
@@ -206,7 +212,8 @@ def create(user, *, name, role, position, style, region, team, number=0, rng=Non
         c.stats = {k: round(max(25.0, stat_pot(c, k) * frac(c, k, START_AGE) + rng.gauss(0, 2)), 1)
                    for k in R.stat_keys(role)}
         c.ovr = c.best_ovr = R.overall(role, c.stats)
-        c.flags = {'kbo_years': 0, 'pro_years': 0, 'leagues': [], 'served': False, 'exempt': False}
+        c.flags = {'kbo_years': 0, 'pro_years': 0, 'leagues': [], 'served': False, 'exempt': False,
+                   'start': timezone.localdate().year, 'trust': TRUST_START}
         c.peak = 'hs'
         c.pending = plan_step(c, rng)
         c.save()
@@ -245,8 +252,6 @@ def _event_pool(c):
         pool.append(('position', 2))
     if c.role == 'pitcher' and c.age <= 30:
         pool.append(('pitch', 2))
-    if pro and c.ovr >= W.level('kbo1') + 2 and c.age <= 34:
-        pool.append(('national', 3 if c.league in ('kbo1', 'npb1', 'mlb') else 1))
     if last and last.games and _bad(last):
         pool.append(('slump', 4))
     if pro and last and last.duty.startswith(('백업', '패전')) and c.age >= 21:
@@ -308,7 +313,7 @@ def plan_step(c, rng) -> dict:
     if pool and rng.random() < 0.7:
         codes, weights = zip(*pool)
         ev = rng.choices(codes, weights)[0]
-    return {'kind': 'plan', 'event': ev}
+    return {'kind': 'plan', 'event': ev, 'intl': intl_offers(c)}
 
 
 def event_view(c, code: str | None) -> dict | None:
@@ -396,7 +401,10 @@ def apply_event(c, code: str, choice: str, rng, mods: dict) -> str:
             sysname = W.system_of(c.league)
             if sysname in W.SYSTEM_TEAMS:
                 c.club = rng.choice([t for t, _n, _col in W.SYSTEM_TEAMS[sysname] if t != c.club])
-                return f'{W.club_label(c.league, c.club)}로 트레이드됐어요'
+                c.flags['trust'] = TRUST_START
+                team = W.club_label(c.league, c.club)
+                mods.setdefault('press', []).append(press('[트레이드]', f"{c.name}, {team} 이적…‘출전 기회 찾아’"))
+                return f"{team}{josa(team, '으로/로')} 트레이드됐어요"
         bump('mental', 1)
         return '남아서 경쟁하기로 했어요'
     if code == 'media':
@@ -476,116 +484,6 @@ def _chunks(code: str) -> tuple:
     return CHUNKS.get(code if code in ('hs', 'univ') else 'pro')
 
 
-def play(c, programs, intensity, event_choice, rng) -> 'LiteSeason':
-    """비시즌 결정 → 한 시즌 시뮬레이션 → 성장·시상·승격. 시즌 기록을 만들고 c 를 고친다(저장은 부른 쪽)."""
-    from .models import LiteSeason
-    pend = c.pending or {}
-    mods = {'injury': 0.0, 'train': 1.0, 'salary': 1.0, 'national': ''}
-    news = []
-    if pend.get('event'):
-        news.append(apply_event(c, pend['event'], event_choice, rng, mods))
-    c.ovr = R.overall(c.role, c.stats)
-    ovr_start = c.ovr
-    code, lvl, G = c.league, W.level(c.league), GAMES.get(c.league, 120)
-    pro = W.is_pro(code)
-    role, slot, duty = duty_for(c, duty_level(c))
-    s = _game_stats(c)
-    # 부상 — 강도·나이·특성·이번 비시즌 선택
-    p_inj = INTENSITY[intensity][2] + max(0, c.age - 29) * 0.01 + mods['injury'] \
-        + (0.03 if 'velocity' in programs else 0.0)
-    p_inj *= 0.5 if has(c, 'iron') else 1.8 if has(c, 'glass') else 1.0
-    out = range(0)
-    if rng.random() < max(0.0, p_inj):
-        size = rng.choices((0.12, 0.3, 0.6), (0.55, 0.3, 0.15))[0]
-        start = rng.randrange(G)
-        out = range(start, min(G, start + max(1, int(G * size))))
-        news.append(f"{_chunks(code)[min(5, start * 6 // G)]}에 다쳐서 {len(out)}경기를 쉬었어요")
-        if size >= 0.6:
-            for k in PHYS:
-                if k in c.stats:
-                    c.stats[k] = round(max(25.0, float(c.stats[k]) - rng.uniform(1, 3)), 1)
-    lines, per = [], [[] for _ in range(6)]
-    offset = rng.randrange(5)
-    for i in range(G):
-        if i in out:
-            continue
-        r = None
-        if c.role == 'batter':
-            r = M.batter_game(s, c.position, lvl, rng, role=role, slot=slot)
-        elif role == 'sp':
-            if i % 5 == offset:
-                r = M.starter_game(s, lvl, rng)
-        elif rng.random() < M.RELIEF[role][0]:
-            r = M.relief_game(s, lvl, rng, role)
-        if r:
-            lines.append(r['line'])
-            per[min(5, i * 6 // G)].append(r['line'])
-    totals = {}
-    for ln in lines:
-        totals = L.add(totals, ln)
-    pos = 'SP' if c.role == 'pitcher' else c.position
-    war = L.war(c.role, pos, totals) if totals else 0.0
-    # 팀 성적(가상 리그)
-    strength = rng.gauss(0, 0.045) + (0.03 if W.powerhouse(code, c.club) else 0.0)
-    w = int(_clamp(round(G * (0.5 + strength) + rng.gauss(0, math.sqrt(G * 0.25)) + war * 0.9), 0, G))
-    team_n = TEAMS_N.get(code, 0)
-    rank = 0
-    champion = False
-    if team_n:
-        rank = 1 + sum(1 for _ in range(team_n - 1) if rng.gauss(0.5, 0.06) * G > w)
-        odds = POSTSEASON.get(code, ())
-        champion = rank <= len(odds) and rng.random() < odds[rank - 1]
-    # 월별 전광판
-    months, run = [], {}
-    for j, chunk in enumerate(per):
-        t = {}
-        for ln in chunk:
-            t = L.add(t, ln)
-        run = L.add(run, t)
-        months.append({'label': _chunks(code)[j], 'line': _short(c.role, t), 'run': _short(c.role, run),
-                       'hot': _hot(c.role, t), 'w': round(w * (j + 1) / 6), 'l': round((G - w) * (j + 1) / 6)})
-    season = LiteSeason(career=c, year=c.year, age=c.age, league=code, club=c.club, duty=duty, games=G,
-                        totals=totals, war=war, team_w=w, team_l=G - w, team_rank=rank, team_of=team_n,
-                        champion=champion, months=months, ovr_start=ovr_start)
-    # 시상
-    first = code not in (c.flags.get('leagues') or [])
-    season.awards = awards_for(c, code, totals, war, G, first, per, rng)
-    if mods['national']:
-        season.awards.append({'kind': 'national', 'label': f"국가대표 {mods['national']}"})
-    if champion:
-        season.awards.append({'kind': 'ring', 'label': '한국시리즈 우승' if code == 'kbo1' else '월드시리즈 우승'
-                              if code == 'mlb' else '일본시리즈 우승' if code == 'npb1' else '대만시리즈 우승'})
-    if code in TOURNAMENTS:
-        z = (c.ovr - lvl) / 5.0
-        for t in TOURNAMENTS[code]:
-            if rng.random() < 0.03 + 0.04 * max(0.0, z) + (0.03 if W.powerhouse(code, c.club) else 0.0):
-                season.awards.append({'kind': 'ring', 'label': f'{t} 우승'})
-                season.champion = True
-    # 연봉
-    season.salary = salary_for(c, war, mods['salary'])
-    # 성장
-    pt = 0.0
-    if totals:
-        pt = min(1.0, (totals.get('pa', 0) / (G * 4.0)) if c.role == 'batter'
-                 else (totals.get('outs', 0) / 3) / (G * (1.2 if role == 'sp' else 0.45)))
-    season.deltas = grow(c, programs, intensity, pt, war, rng, mods['train'])
-    season.ovr_end = c.ovr
-    # 승격·강등(프로)
-    if pro:
-        nxt = W.next_league(code)
-        below = W.demote_below(code)
-        star = war * (1.4 if c.role == 'pitcher' else 1.0) >= 4.0 * G / 144      # 리그를 압도하면 조금 모자라도 올린다
-        if nxt and _ok(c.role, totals, G) and (c.ovr >= W.level(nxt) - 1 or (star and c.ovr >= W.level(nxt) - 4)):
-            c.league = nxt
-            news.append(f'{W.league(nxt)["name"]}로 승격했어요!')
-        elif below is not None and c.ovr < below:
-            c.league = W.prev_league(code)
-            news.append(f'{W.league(c.league)["name"]}(으)로 내려갔어요')
-    news.extend(_headlines(c, season))
-    season.news = [n for n in news if n]
-    return season
-
-
 def _ok(role, t, G) -> bool:
     if role == 'pitcher':
         ip = t.get('outs', 0) / 3
@@ -615,7 +513,8 @@ def _hot(role, t) -> bool:
     return t.get('pa', 0) >= 40 and L.batting(t)['ops'] >= 1.000
 
 
-def awards_for(c, code, t, war, G, first, per, rng) -> list:
+def awards_for(c, code, t, war, G, first, half, rng) -> list:
+    """한 리그에서 뛴 몫의 시상. G 는 그 몫의 경기 수(시즌 중 옮기면 절반), half 는 전반기 기록(올스타)."""
     out = []
     if not t:
         return out
@@ -630,10 +529,6 @@ def awards_for(c, code, t, war, G, first, per, rng) -> list:
     pit = c.role == 'pitcher'
     if code in W.TOP_LEAGUES:
         style = L.AWARD_STYLE[code]
-        half = {}
-        for chunk in per[:3]:
-            for ln in chunk:
-                half = L.add(half, ln)
         if half and L.war(c.role, 'SP' if pit else c.position, half) >= bar('allstar'):
             give('allstar', '올스타')
         if war * (1.4 if pit else 1.0) >= bar('mvp'):
@@ -705,24 +600,797 @@ def salary_for(c, war: float, mult: float = 1.0) -> int:
     return int(base * mult)
 
 
-def _headlines(c, s) -> list:
-    out = []
-    t = s.totals or {}
-    if t.get('hr', 0) >= 40:
-        out.append(f"시즌 {t['hr']}홈런!")
-    if t.get('outs') and L.pitching(t)['era'] <= 2.0 and t.get('outs', 0) / 3 >= s.games:
-        out.append(f"평균자책점 {L.pitching(t)['era']:.2f} — 리그를 지배했어요")
-    if sum(1 for m in s.months if m['hot']) >= 3:
-        out.append('이달의 선수급 활약을 세 번 넘게 했어요')
-    if s.team_rank == 1:
-        out.append('팀이 정규시즌 1위를 했어요!')
+# ───────────────────────────── 조사(받침에 따라)
+_LETTER_BATCHIM = set('LMNRlmnr')
+_DIGIT_BATCHIM = {'0': 'ㅇ', '1': 'ㄹ', '3': 'ㅁ', '6': 'ㄱ', '7': 'ㄹ', '8': 'ㄹ'}
+
+
+def josa(word: str, pair: str) -> str:
+    """받침에 맞는 조사 — pair '이/가'·'을/를'·'은/는'·'와/과'·'으로/로'. 괄호 안 글자는 빼고 본다."""
+    w = (word or '').split('(')[0].rstrip(' ‘’\'"')
+    ch = w[-1:] if w else ''
+    batchim, rieul = False, False
+    if '가' <= ch <= '힣':
+        jong = (ord(ch) - 0xAC00) % 28
+        batchim, rieul = jong != 0, jong == 8
+    elif ch in _DIGIT_BATCHIM:
+        batchim, rieul = True, _DIGIT_BATCHIM[ch] == 'ㄹ'
+    elif ch in _LETTER_BATCHIM:
+        batchim, rieul = True, ch in 'LRlr'
+    first, second = pair.split('/')
+    if pair == '으로/로':
+        return '로' if (not batchim or rieul) else '으로'
+    if pair in ('이/가', '을/를', '은/는', '과/와'):
+        return first if batchim else second
+    return second if batchim else first          # '와/과' 처럼 받침 없는 쪽을 앞에 쓴 경우
+
+
+# ───────────────────────────── 훈련 가드레일(같은 판을 똑같이 돌리지 않게, 2026-10-18 사용자 요청)
+def train_rules(c) -> dict:
+    """같은 훈련은 연속 3번 금지 — 지난 두 비시즌에 모두 고른 훈련은 이번에 잠긴다. 같은 조합은 연속 2번 금지."""
+    log = [sorted(x) for x in ((c.flags or {}).get('train_log') or [])][-2:]
+    locked = sorted(set(log[-1]) & set(log[-2])) if len(log) >= 2 else []
+    return {'locked': locked, 'banned': log[-1] if log else []}
+
+
+def check_programs(c, programs) -> list:
+    valid = {p[0]: p[1] for p in PROGRAMS[c.role]}
+    progs = sorted({p for p in programs if p in valid})
+    if len(progs) != 2:
+        raise LiteError('훈련 프로그램을 꼭 두 개 골라 주세요.')
+    rules = train_rules(c)
+    for p in progs:
+        if p in rules['locked']:
+            raise LiteError(f'‘{valid[p]}’ 훈련은 두 비시즌 연속으로 했어요. 이번엔 다른 훈련을 골라 주세요.')
+    if progs == rules['banned']:
+        raise LiteError('지난 비시즌과 똑같은 조합이에요. 하나는 바꿔 주세요.')
+    return progs
+
+
+def pick_programs(c, rng) -> list:
+    """규칙 안에서 아무 조합 — 자동 진행(테스트·하네스)용."""
+    rules = train_rules(c)
+    pool = [p[0] for p in PROGRAMS[c.role] if p[0] not in rules['locked']]
+    while True:
+        progs = sorted(rng.sample(pool, 2))
+        if progs != rules['banned']:
+            return progs
+
+
+# ───────────────────────────── 달력·국가대표(2026-10-18 사용자 요청: 아시안게임·WBC·프리미어12, 올림픽 금메달 병역 면제)
+def cal_year(c, year: int | None = None) -> int:
+    """시즌의 달력 연도 — 고1 시즌이 선수를 만든 해."""
+    return int((c.flags or {}).get('start') or BASE_YEAR) + (year or c.year) - 1
+
+
+INTL = {   # 게임 속 일정(첫 해·주기). tiers = (코드, 결과, 누적 확률) — 내가 강할수록 위로 조금 당긴다
+    'wbc': {'name': 'WBC', 'when': 'pre', 'month': '3월', 'first': 2026, 'every': 3, 'need': 4.0, 'games': 7,
+            'injury': 0.04, 'tiers': (('champ', '우승', .07), ('final', '준우승', .15), ('semi', '4강', .32),
+                                      ('quarter', '8강', .62), ('out', '1라운드 탈락', 1.0))},
+    'olympics': {'name': '올림픽', 'when': 'mid', 'month': '8월', 'first': 2028, 'every': 4, 'need': 2.5, 'games': 6,
+                 'injury': 0.03, 'exempt': True,
+                 'tiers': (('gold', '금메달', .17), ('silver', '은메달', .33), ('bronze', '동메달', .52), ('out', '노메달', 1.0))},
+    'asian': {'name': '아시안게임', 'when': 'mid', 'month': '9월', 'first': 2026, 'every': 4, 'need': 2.5, 'young': 25,
+              'wild': 7.0, 'games': 5, 'injury': 0.03, 'exempt': True,
+              'tiers': (('gold', '금메달', .55), ('silver', '은메달', .78), ('bronze', '동메달', .92), ('out', '노메달', 1.0))},
+    'premier12': {'name': '프리미어12', 'when': 'post', 'month': '11월', 'first': 2027, 'every': 4, 'need': 2.5, 'games': 8,
+                  'injury': 0.03, 'tiers': (('champ', '우승', .18), ('final', '준우승', .34), ('semi', '4강', .56),
+                                            ('out', '슈퍼라운드 탈락', 1.0))},
+}
+INTL_LEVEL = 69.0                 # 국제대회 상대 수준(KBO 1군 + 5)
+INTL_TOP = ('champ', 'gold', 'final', 'silver')
+
+
+def intl_this_year(c) -> list:
+    y = cal_year(c)
+    return [k for k, t in INTL.items() if y >= t['first'] and (y - t['first']) % t['every'] == 0]
+
+
+def intl_offers(c) -> list:
+    """올해 대표팀에 뽑히는 대회 — 프로(해외 포함), 현역 복무 중 제외. 아시안게임은 25세 이하 + 와일드카드."""
+    flags = c.flags or {}
+    if not W.is_pro(c.league) or (flags.get('army') or {}).get('kind') == 'active':
+        return []
+    base, out = W.level('kbo1'), []
+    for k in intl_this_year(c):
+        t = INTL[k]
+        if k == 'asian':
+            ok = (c.age <= t['young'] and c.ovr >= base + t['need']) or c.ovr >= base + t['wild']
+        else:
+            ok = c.ovr >= base + t['need']
+        if ok:
+            out.append(k)
     return out
 
 
-# ───────────────────────────── 시즌을 넘기며(나이·학년·결정)
-def run_season(c, programs, intensity, choice, rng):
-    """비시즌 고른 것 → 시즌 → 저장 → 결산 화면(review). 잠근 행에서 부른다."""
-    season = play(c, programs, intensity, choice, rng)
+def intl_view(c, keys) -> list:
+    flags = c.flags or {}
+    free = not flags.get('served') and not flags.get('exempt')
+    return [{'key': k, 'name': INTL[k]['name'], 'month': INTL[k]['month'], 'when': INTL[k]['when'],
+             'risk': int(round(INTL[k]['injury'] * 100)), 'exempt': bool(INTL[k].get('exempt')) and free} for k in keys]
+
+
+def play_intl(c, key, rng) -> dict:
+    """대표팀으로 한 대회 — 내 성적과 대한민국 성적."""
+    t = INTL[key]
+    s = _game_stats(c)
+    role, slot, _d = duty_for(c, INTL_LEVEL)
+    tot = {}
+    for i in range(t['games']):
+        r = None
+        if c.role == 'batter':
+            r = M.batter_game(s, c.position, INTL_LEVEL, rng, role=role if role != 'bench' else 'lower', slot=slot or 7)
+        elif role == 'sp':
+            if i % 3 == 0:
+                r = M.starter_game(s, INTL_LEVEL, rng)
+        elif rng.random() < 0.55:
+            r = M.relief_game(s, INTL_LEVEL, rng, role)
+        if r:
+            tot = L.add(tot, r['line'])
+    u = rng.random() - _clamp(0.015 * (c.ovr - INTL_LEVEL + 2), -0.05, 0.10)
+    code, label = t['tiers'][-1][:2]
+    for tc, tl, cum in t['tiers']:
+        if u < cum:
+            code, label = tc, tl
+            break
+    return {'key': key, 'name': t['name'], 'tier': code, 'result': label, 'line': _short(c.role, tot)}
+
+
+def _intl(c, key, state, rng):
+    """대회 하나를 치르고 그 결과를 이번 시즌에 반영 — 부상 위험·멘탈·병역 특례·기사."""
+    t, nm = INTL[key], c.name
+    res = play_intl(c, key, rng)
+    state['intl'].append(res)
+    if t['when'] == 'post':                                   # 시즌 뒤(11월) — 다음 시즌 몸이 무겁다
+        c.flags['tired'] = {'injury': t['injury'], 'train': 0.9}
+    else:
+        state['mods']['injury'] += t['injury']
+    if res['tier'] in INTL_TOP:
+        k = 'mental' if c.role == 'pitcher' else 'eye'
+        c.stats[k] = round(min(stat_pot(c, k) + 2, float(c.stats[k]) + 1.0), 1)
+    if res['tier'] in ('gold', 'champ'):
+        title = f"대한민국 {res['result']}!…‘해결사’ {nm} 맹활약"
+    elif res['tier'] == 'out':
+        title = f"대한민국 {res['result']}…{nm}도 고개 숙여"
+    else:
+        title = f"대한민국 {res['result']}…{nm} 태극마크 투혼"
+    state['press'].append(press(f"[{t['name']}]", title, res['line']))
+    state['news'].append(f"{t['month']} {t['name']} 국가대표 — 대한민국 {res['result']}")
+    flags = c.flags
+    if t.get('exempt') and res['tier'] == 'gold' and not flags.get('served') and not flags.get('exempt') \
+            and not flags.get('army'):
+        flags['exempt'] = True
+        state['press'].append(press('[오피셜]', f"{nm}, {t['name']} 금메달로 병역 특례…‘꿈같은 하루’"))
+        state['news'].append(f"{t['name']} 금메달로 병역 특례를 받았어요")
+
+
+# ───────────────────────────── 감독 신뢰·면담(2026-10-18 사용자 요청: 보직 변경·강등·승격 때 면담, 고집은 역효과)
+TRUST_START = 50
+LG_OPS, LG_ERA = .750, 4.40               # 리그 수준과 같은 선수의 평균(rookie_sim 표본)
+ROLE_TIER = {'bench': 0, 'lower': 1, 'mop': 0, 'chase': 0, 'win': 1, 'setup': 1, 'closer': 2, 'sp': 2}
+
+
+def trust(c) -> int:
+    return int((c.flags or {}).get('trust', TRUST_START))
+
+
+def _trust(c, d: int):
+    c.flags['trust'] = int(_clamp(trust(c) + d, 0, 100))
+
+
+def role_tier(code: str) -> int:
+    return ROLE_TIER.get(code, 2)                         # 타자 상위·중심타선(테이블세터·교타자·거포·5툴)은 2
+
+
+def _role_text(c, role: str, slot: int, lvl: float) -> str:
+    if c.role == 'batter':
+        return M.BAT_ROLES[role] + (f' · {slot}번' if slot else '')
+    if role == 'sp':
+        return f'{M.rotation_rank(c.stats, lvl)}선발'
+    return M.PIT_ROLES[role]
+
+
+def shift_role(c, role: str, step: int, lvl: float) -> tuple:
+    """보직 한 계단 위·아래 — (role, slot, 보직 글)."""
+    if c.role == 'batter':
+        if step > 0:
+            new, slot = ('lower', 8) if role == 'bench' else (M.upper_fit(c.stats, lvl) or ('table', 2))
+        else:
+            new, slot = ('bench', 0) if role == 'lower' else ('lower', 6)
+    else:
+        slot = 0
+        if step > 0:
+            new = 'win' if role in ('mop', 'chase') else ('sp' if c.position == 'SP' else 'closer')
+        else:
+            new = 'win' if role == 'sp' else 'setup' if role == 'closer' else 'chase'
+    return new, slot, _role_text(c, new, slot, lvl)
+
+
+def perf_z(role: str, t: dict, G: float) -> float | None:
+    """평균 대비 성적(표준 단위) — 타자 OPS, 투수 평균자책점. 표본이 적으면 0 쪽으로 줄인다. 너무 적으면 None."""
+    if not t:
+        return None
+    if role == 'pitcher':
+        ip = t.get('outs', 0) / 3
+        if ip < 3:
+            return None
+        return round((LG_ERA - L.pitching(t)['era']) / 1.0 * min(1.0, ip / max(1.0, G * 0.2)), 2)
+    pa = t.get('pa', 0)
+    if pa < 10:
+        return None
+    return round((L.batting(t)['ops'] - LG_OPS) / 0.075 * min(1.0, pa / max(1.0, G * 2.0)), 2)
+
+
+SURNAMES = '김이박최정강조윤장임한오서신권황안송류홍'
+GIVEN = '민준서도현우지하윤재성태진승건영호석찬혁규원'
+ABROAD_NAMES = {
+    'mlb': (('제이크', '타일러', '라이언', '브랜든', '카일', '저스틴', '오스틴', '네이선', '루이스', '호세'),
+            ('존슨', '밀러', '윌리엄스', '브라운', '데이비스', '가르시아', '로드리게스', '마르티네스', '앤더슨', '테일러'), ' '),
+    'npb': (('다나카', '스즈키', '사토', '다카하시', '이토', '와타나베', '야마모토', '나카무라', '고바야시', '가토'),
+            ('쇼타', '유키', '다이스케', '겐타', '료', '하야토', '슌', '다쿠미', '렌', '가이토'), ' '),
+    'cpbl': (('천', '린', '황', '장', '왕', '리', '우', '차이'), ('즈웨이', '관위', '젠밍', '쯔하오', '위청', '쥔제'), ''),
+}
+
+
+def rival_name(league: str, rng) -> str:
+    sysname = W.system_of(league)
+    if sysname in ABROAD_NAMES:
+        a, b, sep = ABROAD_NAMES[sysname]
+        return f'{rng.choice(a)}{sep}{rng.choice(b)}'
+    return rng.choice(SURNAMES) + rng.choice(GIVEN) + rng.choice(GIVEN)
+
+
+def make_rival(c, league: str, kind: str, rng) -> dict:
+    """같은 자리 경쟁자(가상) — kind 'up'(윗리그·윗자리 주전, 주춤한 편) / 'down'(아랫리그·벤치 유망주, 잘하는 편)."""
+    z = round(rng.gauss(-0.3 if kind == 'up' else 0.4, 0.8), 2)
+    if c.role == 'batter':
+        pos = L.POS_LABEL.get(c.position, '야수')
+        line = f"타율 {L.rate(_clamp(.262 + z * .028, .160, .380))}, OPS {L.rate(_clamp(LG_OPS + z * .075, .450, 1.150))}"
+    else:
+        pos = '선발 투수' if c.position == 'SP' else '불펜 투수'
+        line = f'평균자책점 {max(0.8, LG_ERA - z * 0.9):.2f}'
+    return {'name': rival_name(league, rng), 'pos': pos, 'line': line, 'z': z, 'league': W.short(league)}
+
+
+def _want(c) -> str:
+    return '주전' if c.role == 'batter' else ('선발' if c.position == 'SP' else '필승조')
+
+
+STUBBORN_HINT = '성적이 받쳐 주면 통하지만, 아니면 역효과가 나요'
+MEET_CHOICES = {
+    'promote': lambda c: [('accept', '맡겨 주시는 자리에서 뭐든 할게요', '수용', '감독 신뢰 ↑'),
+                          ('demand', f'{_want(c)} 자리가 아니면 안 올라갈래요', '고집', STUBBORN_HINT)],
+    'demote': lambda c: [('accept', '받아들일게요. 내려가서 감을 찾아올게요', '수용', '감독 신뢰 ↑'),
+                         ('argue', '여기서 이겨 내고 싶어요. 한 번만 더 기회를 주세요', '고집', STUBBORN_HINT),
+                         ('trade', '차라리 트레이드해 주세요', '강수', '받아 주는 팀이 있으면 이적, 없으면 불화')],
+    'role_down': lambda c: [('accept', '팀을 위해서라면 할게요', '수용', '감독 신뢰 ↑'),
+                            ('argue', '제 자리를 지키고 싶어요', '고집', STUBBORN_HINT)],
+    'role_up': lambda c: [('accept', '기대에 꼭 보답할게요', '다짐', '감독 신뢰 ↑'),
+                          ('modest', '아직 부족해요. 지금 자리에서 더 배울게요', '신중', '지금 보직을 지켜요')],
+}
+
+
+def _meeting(c, about: str, phase: str, t: dict, G: float, rng, to=None, new_role=None, old_role=None) -> dict:
+    """면담 화면 — merit(성적·실력이 고집을 받쳐 주는 정도)를 지금 정해 둔다."""
+    z = perf_z(c.role, t, G) or 0.0
+    if about == 'promote':
+        gap = (c.ovr - (W.level(to) - 1)) / 3
+    elif about == 'demote':
+        gap = (c.ovr - (W.level(c.league) - 3)) / 3
+    else:
+        gap = (c.ovr - duty_level(c)) / 4
+    m = {'kind': 'decision', 'what': 'meeting', 'about': about, 'phase': phase, 'to': to,
+         'merit': round(0.6 * z + 0.4 * gap, 2), 'line': _short(c.role, t),
+         'rival': make_rival(c, to or c.league, 'up' if about in ('promote', 'role_up') else 'down', rng)}
+    if new_role:
+        m['new_role'] = list(new_role)
+    if old_role:
+        m['old_role'] = list(old_role)
+    return m
+
+
+def meeting_view(c, m) -> dict:
+    about, mid = m['about'], m.get('phase') == 'mid'
+    r = m.get('rival') or {}
+    to_name = W.league(m['to'])['name'] if m.get('to') else ''
+    duty = (m.get('new_role') or ['', 0, ''])[2]
+    feel = '타격감' if c.role == 'batter' else '구위'
+    if about == 'promote':
+        title = f"{W.short(m['to'])} 콜업"
+        text = (f"{to_name} {r['pos']} {r['name']} 선수가 부진해요({r['line']}). 전반기 {m['line']}, 지금 {feel}이면 충분하대요. 올라갈 준비 됐죠?"
+                if mid else f"시즌 내내 지켜봤어요({m['line']}). 다음 시즌엔 {to_name}에서 시작해요. 올라갈 준비 됐죠?")
+    elif about == 'demote':
+        title = f"{W.short(m['to'])}행 통보"
+        text = (f"{to_name}에서 {r['pos']} {r['name']} 선수가 펄펄 날고 있어요({r['line']}). 전반기 성적({m['line']})으로는 자리를 지키기 어려워요. 당분간 내려가서 감을 찾아오죠."
+                if mid else f"올 시즌은 힘들었죠({m['line']}). 다음 시즌은 {to_name}에서 다시 시작해요.")
+    elif about == 'role_down':
+        title = '보직 변경 통보'
+        text = (f"전반기 성적({m['line']})이 아쉬워요. {r['name']} 선수가 요즘 좋아서({r['line']}), 후반기엔 {duty} 자리에서 뛰어 줘요."
+                if mid else f"다음 시즌엔 {duty} 자리에서 시작해 줘요. {r['name']} 선수와 경쟁해서 다시 올라오면 돼요.")
+    else:
+        title = '보직 면담'
+        text = (f"전반기에 정말 잘해 줬어요({m['line']}). {r['name']} 선수가 주춤해서({r['line']}), 후반기엔 {duty} 자리를 맡아 줘요."
+                if mid else f"다음 시즌엔 {duty} 자리를 맡아 줘요. 기대가 커요.")
+    name, role = STAFF['lead']
+    return {'about': about, 'title': title, 'text': text, 'mid': mid, 'rival': r, 'who': 'lead', 'who_name': name,
+            'who_role': role, 'trust': trust(c),
+            'choices': [{'key': k, 'label': lab, 'tone': tone, 'hint': h} for k, lab, tone, h in MEET_CHOICES[about](c)]}
+
+
+def _move(c, to: str):
+    c.league = to
+    if W.is_pro(to) and (not W.is_pro(c.peak or 'hs') or W.level(to) > W.level(c.peak)):
+        c.peak = to
+
+
+def _pin(c, role_triple):
+    role, slot, duty = role_triple
+    c.flags['pin'] = {'year': c.year, 'league': c.league, 'role': role, 'slot': slot, 'duty': duty}
+
+
+def _sticks(merit: float, need: float, rng) -> bool:
+    """고집이 통하나 — merit 가 need 보다 높을수록 잘 통하지만(최대 92%), 낮아도 가끔 통한다(최소 8%)."""
+    return rng.random() < _clamp(0.5 + (merit - need) * 0.6, 0.08, 0.92)
+
+
+def _punish(c, rng):
+    """괘씸죄 — 지금(또는 다음 시즌 시작) 보직에서 한 계단 내려 못 박는다."""
+    role, _slot, _duty = _duty_now(c)
+    if role_tier(role) > 0:
+        _pin(c, shift_role(c, role, -1, duty_level(c)))
+
+
+def resolve_meeting(c, m: dict, choice: str, rng) -> tuple:
+    """면담 답의 결과 — (소식 글, 기사들). 고집은 merit 가 받쳐 주면 통하고, 아니면 신뢰·출전·기사로 돌아온다."""
+    about, merit = m['about'], float(m.get('merit') or 0.0)
+    if choice not in [k for k, *_ in MEET_CHOICES[about](c)]:
+        raise LiteError('면담에서 어떻게 답할지 골라 주세요.')
+    c.flags = dict(c.flags or {})
+    nm, out = c.name, []
+    to = m.get('to')
+    if about == 'promote':
+        lg = W.short(to)
+        if choice == 'accept':
+            _trust(c, 5)
+            _move(c, to)
+            out.append(press('[콜업]', f"{nm}, {lg} 부름 받았다…‘맡겨 주시면 뭐든’", m['line']))
+            return f"{W.league(to)['name']}{josa(W.league(to)['name'], '으로/로')} 올라갔어요!", out
+        if _sticks(merit, 1.0, rng):
+            _trust(c, -3)
+            _move(c, to)
+            want = 'sp' if c.position == 'SP' and c.role == 'pitcher' else 'setup' if c.role == 'pitcher' else 'lower'
+            lvl = duty_level(c)
+            natural = duty_for(c, lvl)
+            if role_tier(natural[0]) < role_tier(want):
+                _pin(c, (want, 6 if want == 'lower' else 0, _role_text(c, want, 6 if want == 'lower' else 0, lvl)))
+            out.append(press('', f"‘자신감 폭발’ {nm}, ‘{_want(c)} 아니면 안 간다’ 배짱 통했다", m['line']))
+            return f'배짱이 통했어요 — {_want(c)} 자리를 약속받고 올라갔어요', out
+        _trust(c, -12)
+        c.flags['doghouse'] = 1
+        _punish(c, rng)
+        out.append(press('[단독]', f"{lg} 콜업 거절한 {nm}…‘{_want(c)} 아니면 안 간다’ 구단 ‘황당’"))
+        return '감독이 크게 실망했어요 — 콜업은 없던 일이 되고, 출전도 줄었어요', out
+    if about == 'demote':
+        lg, here = W.short(to), W.short(c.league)
+        if choice == 'accept':
+            _trust(c, 6)
+            k = 'mental' if c.role == 'pitcher' else 'eye'
+            c.stats[k] = round(min(stat_pot(c, k) + 2, float(c.stats[k]) + 1.0), 1)
+            _move(c, to)
+            out.append(press('', f"{nm}, {lg}행…‘다시 올라오겠다’", m['line']))
+            return f"{lg}{josa(lg, '으로/로')} 내려갔어요. 다시 올라오면 돼요", out
+        if choice == 'argue':
+            if _sticks(merit, 0.2, rng):
+                _trust(c, -3)
+                out.append(press('', f"‘한 번 더’ {nm}, {here} 잔류…감독 ‘믿어 보겠다’", m['line']))
+                return '감독이 한 번 더 믿어 주기로 했어요', out
+            _trust(c, -10)
+            c.flags['doghouse'] = 1
+            _move(c, to)
+            if rng.random() < 0.55:
+                out.append(press('[단독]', f"{nm}, {lg}행 통보에 감독실서 언성…불화설 솔솔"))
+            return '감독의 마음은 바뀌지 않았어요 — 분위기만 나빠졌어요', out
+        sysname = W.system_of(c.league)
+        if _sticks(merit, 0.6, rng) and sysname in W.SYSTEM_TEAMS:
+            c.club = rng.choice([t for t, _n, _col in W.SYSTEM_TEAMS[sysname] if t != c.club])
+            c.flags['trust'] = TRUST_START
+            team = W.club_label(c.league, c.club)
+            out.append(press('[트레이드]', f"{nm}, {team} 유니폼…‘새 출발’", m['line']))
+            return f"{team}{josa(team, '으로/로')} 트레이드됐어요 — 새 팀에서 다시 시작해요", out
+        _trust(c, -15)
+        c.flags['doghouse'] = 1
+        _move(c, to)
+        out.append(press('[단독]', f"‘트레이드 요청’ {nm}, 결국 {lg}행…구단 ‘팀워크 해쳐’"))
+        return '받아 주는 팀이 없었어요 — 결국 내려가고, 감독과 사이도 틀어졌어요', out
+    new, old = m.get('new_role'), m.get('old_role')
+    mid = m.get('phase') == 'mid'
+    if about == 'role_down':
+        if choice == 'accept':
+            _trust(c, 6)
+            if mid and new:
+                _pin(c, new)
+            return '새 보직을 받아들였어요', out
+        if _sticks(merit, 0.2, rng):
+            _trust(c, -2)
+            if old:
+                _pin(c, old)
+            out.append(press('', f"{nm}, 보직 지켰다…감독 ‘실력으로 증명하라’", m['line']))
+            return '자리를 지켰어요 — 이제 실력으로 보여 줘야 해요', out
+        _trust(c, -10)
+        if new:
+            _pin(c, new)
+        if rng.random() < 0.45:
+            out.append(press('[단독]', f"보직 변경에 반기 든 {nm}…감독과 냉기류"))
+        prv = W.prev_league(c.league)
+        if prv and rng.random() < 0.35:
+            _move(c, prv)
+            c.flags.pop('pin', None)
+            lg = W.short(prv)
+            out.append(press('', f"결국 {lg}행…{nm}, 감독 눈 밖에 났다"))
+            return f"감독이 아예 {lg}{josa(lg, '으로/로')} 내려보냈어요", out
+        return '감독의 결정은 그대로예요 — 분위기만 나빠졌어요', out
+    # role_up
+    if choice == 'accept':
+        _trust(c, 4)
+        if mid and new:
+            _pin(c, new)
+        if new:
+            out.append(press('', f"{nm}, {new[2]} 낙점…‘기대에 보답하겠다’", m['line']))
+        return '새 보직을 맡았어요!', out
+    _trust(c, 2)
+    k = 'mental' if c.role == 'pitcher' else 'eye'
+    c.stats[k] = round(min(stat_pot(c, k) + 2, float(c.stats[k]) + 0.5), 1)
+    if old:
+        _pin(c, old)
+    return '지금 자리에서 더 배우기로 했어요', out
+
+
+# ───────────────────────────── 기사(2026-10-18 사용자 요청: 실제 스포츠 기사 제목처럼)
+EPITHET = {'contact': '안타 제조기', 'power': '거포', 'speed': '대도', 'glove': '수비 달인',
+           'fire': '파이어볼러', 'control': '제구 마술사', 'breaking': '변화구 장인', 'horse': '이닝이터'}
+
+
+def press(tag: str, title: str, sub: str = '') -> dict:
+    return {'tag': tag, 'title': title, 'sub': sub}
+
+
+def season_press(c, s, rows: list) -> list:
+    """시즌 기사 제목들 — 시상·기록·팀·부진. 많아야 여섯."""
+    out, nm, t = [], c.name, s.totals or {}
+    ep, pit = EPITHET.get(c.style, ''), c.role == 'pitcher'
+    lg, team, line = W.short(s.league), W.club_short(s.league, s.club), _short(c.role, t)
+    pro = W.is_pro(s.league)
+    G = rows[-1]['G'] if rows else s.games
+    b = L.batting(t) if t.get('pa') else None
+    p = L.pitching(t) if t.get('outs') else None
+    for a in s.awards:
+        k, lab = a['kind'], a['label']
+        if k == 'mvp':
+            n = c.mvp + 1
+            out.append(press('[오피셜]', f"‘{ep}’ {nm}, {'생애 첫' if n == 1 else f'통산 {n}번째'} {lg} MVP 등극", line))
+        elif k == 'rookie':
+            out.append(press('', f"‘괴물 신인’ {nm}, {lg} 신인왕 품었다", line))
+        elif k == 'ace':
+            out.append(press('[오피셜]', f"{nm}, {lab} 수상…‘{lg} 최고 투수’ 공인", line))
+        elif k == 'gg':
+            out.append(press('', f"{nm}, {lab} 수상…‘이 자리 최고’ 공인", line))
+        elif k == 'allstar':
+            out.append(press('', f"{nm}, {lg} 올스타 선정…팬들이 뽑았다"))
+        elif k == 'minor':
+            out.append(press('', f"‘{lg} 폭격’ {nm}, {lab}", line))
+        elif k == 'title':
+            tmpl = {'홈런왕': f"‘홈런 공장장’ {nm}, {t.get('hr', 0)}홈런으로 홈런왕 등극",
+                    '타격왕': f"{nm}, 타율 {L.rate(b['avg']) if b else ''} 타격왕…‘안타 기계’ 증명",
+                    '타점왕': f"‘해결사’ {nm}, {t.get('rbi', 0)}타점 쓸어 담아 타점왕",
+                    '도루왕': f"‘{ep}’ {nm}, {t.get('sb', 0)}도루로 도루왕",
+                    '다승왕': f"{nm}, {t.get('w', 0)}승 다승왕…‘에이스’ 공인",
+                    '평균자책점 1위': f"‘언터처블’ {nm}, 평균자책점 {p['era']:.2f} 1위" if p else '',
+                    '탈삼진왕': f"‘닥터 K’ {nm}, {t.get('so', 0)}탈삼진 탈삼진왕",
+                    '세이브왕': f"‘끝판왕’ {nm}, {t.get('sv', 0)}세이브 세이브왕",
+                    '홀드왕': f"‘불펜 지킴이’ {nm}, {t.get('hld', 0)}홀드 홀드왕"}.get(lab)
+            out.append(press('', tmpl or f"{W.club_short(s.league, s.club)} {nm}, {lab} 수상", line))
+    # 기록 이정표
+    if b and t.get('hr', 0) >= 40:
+        out.append(press('', f"{nm}, 시즌 {t['hr']}홈런 고지…‘{ep}’ 본색", line))
+    elif b and t.get('hr', 0) >= 30 and t.get('sb', 0) >= 30:
+        out.append(press('', f"{nm}, {t['hr']}-{t['sb']} 달성…호타준족의 정석", line))
+    if p and p['era'] <= 2.0 and t.get('outs', 0) / 3 >= G and pro:
+        out.append(press('', f"‘언터처블’ {nm}, 평균자책점 {p['era']:.2f}…리그를 지배했다", line))
+    if p and t.get('so', 0) >= 200:
+        out.append(press('', f"{nm}, 시즌 {t['so']}탈삼진…‘K 머신’ 가동", line))
+    # 팀
+    rings = [a['label'] for a in s.awards if a['kind'] == 'ring']
+    for r in rings:
+        out.append(press('[우승]', f"{team}, {r}…{nm} ‘{ep}’ 활약", line))
+    if pro and not rings and s.team_rank == 1:
+        out.append(press('', f"{team}, 정규시즌 1위 확정…{nm} 맹활약"))
+    if pro and s.team_of and s.team_rank == s.team_of:
+        out.append(press('', f"{team} 최하위 추락…{nm}도 고개 숙여"))
+    # 월간·부진
+    hot = [m['label'] for m in s.months if m.get('hot')]
+    if len(hot) >= 2 and pro:
+        out.append(press('', f"‘{hot[0]}의 사나이’ {nm}, 월간 MVP급 활약"))
+    if b and t.get('pa', 0) >= G * 2 and b['ops'] < .600:
+        out.append(press('', f"‘계륵’ 전락? {nm}, 타율 {L.rate(b['avg'])} 깊은 부진", line))
+    if p and t.get('outs', 0) / 3 >= G * 0.3 and p['era'] >= 6.0:
+        out.append(press('', f"흔들리는 {nm}, 평균자책점 {p['era']:.2f}…반등 절실", line))
+    if s.league == 'hs' and c.grade >= 3 and scout_stars(c) >= 4:
+        out.append(press('', f"‘스카우트 눈도장’ {W.club_short(s.league, s.club)} {nm}, 드래프트 상위 지명 후보"))
+    out = [x for x in out if x['title']]
+    if not out and pro and s.games:
+        z = perf_z(c.role, t, G)
+        if z is None:
+            out.append(press('', f"벤치 지킨 {nm}, 기회를 기다린다"))
+        elif z >= 1.0:
+            out.append(press('', f"‘{ep}’ {nm}, {team} 핵심으로 우뚝", line))
+        elif z >= 0:
+            out.append(press('', f"{nm}, 제 몫 다한 시즌…다음 시즌 도약 노린다", line))
+        else:
+            out.append(press('', f"{nm}, 아쉬움 남긴 시즌…‘겨울에 다시 만든다’", line))
+    return out[:6]
+
+
+# ───────────────────────────── 시즌(전반기 → 올스타 휴식기 면담 → 후반기)
+def _sum_chunks(chunks) -> dict:
+    t = {}
+    for x in chunks:
+        if x:
+            t = L.add(t, x)
+    return t
+
+
+def _duty_now(c) -> tuple:
+    pin = (c.flags or {}).get('pin')
+    if pin and pin.get('year') == c.year and pin.get('league') == c.league:
+        return pin['role'], pin['slot'], pin['duty']
+    return duty_for(c, duty_level(c))
+
+
+def _sim_chunks(c, state, lo: int, hi: int, rng):
+    """지금 줄(split)의 리그·보직으로 6구간 가운데 [lo, hi) 구간을 치른다."""
+    sp = state['splits'][-1]
+    code = sp['league']
+    lvl, G = W.level(code), GAMES.get(code, 120)
+    s = _game_stats(c)
+    a, b = state['out']
+    for i in range(G * lo // 6, G * hi // 6):
+        if a <= i / G < b:
+            continue
+        r = None
+        if c.role == 'batter':
+            r = M.batter_game(s, c.position, lvl, rng, role=sp['role'], slot=sp['slot'])
+        elif sp['role'] == 'sp':
+            if i % 5 == state['offset']:
+                r = M.starter_game(s, lvl, rng)
+        elif rng.random() < M.RELIEF[sp['role']][0]:
+            r = M.relief_game(s, lvl, rng, sp['role'])
+        if r:
+            j = min(5, i * 6 // G)
+            sp['chunks'][j] = L.add(sp['chunks'][j], r['line'])
+
+
+def start_season(c, programs, intensity, event_choice, intl_choices, rng) -> dict:
+    """비시즌 결정 → 3월 대회 → 전반기. 이어 갈 상태(state)를 돌려준다(JSON 으로 pending 에 담을 수 있게)."""
+    progs = check_programs(c, programs)
+    if intensity not in INTENSITY:
+        raise LiteError('훈련 강도를 골라 주세요.')
+    pend = c.pending or {}
+    offered = list(pend.get('intl') or [])
+    if any(intl_choices.get(k) not in ('go', 'skip') for k in offered):
+        raise LiteError('국가대표 소집에 어떻게 할지 먼저 골라 주세요.')
+    flags = c.flags = dict(c.flags or {})
+    flags['train_log'] = ([sorted(x) for x in flags.get('train_log') or []] + [progs])[-2:]
+    mods = {'injury': 0.0, 'train': 1.0, 'salary': 1.0, 'national': ''}
+    tired = flags.pop('tired', None)
+    if tired:
+        mods['injury'] += tired.get('injury', 0.0)
+        mods['train'] *= tired.get('train', 1.0)
+    state = {'programs': progs, 'intensity': intensity, 'mods': mods, 'news': [], 'intl': [],
+             'press': list(flags.pop('press', None) or []), 'go': [k for k in offered if intl_choices.get(k) == 'go']}
+    nm, code = c.name, c.league
+    if pend.get('event'):
+        state['news'].append(apply_event(c, pend['event'], event_choice, rng, mods))
+        state['press'].extend(mods.pop('press', []))
+    for k in offered:
+        if k not in state['go']:
+            state['press'].append(press('', f"{nm}, {INTL[k]['name']} 대표팀 고사…‘소속팀에 집중’"))
+    for k in state['go']:
+        if INTL[k]['when'] == 'pre':
+            _intl(c, k, state, rng)
+    c.ovr = R.overall(c.role, c.stats)
+    state['ovr_start'] = c.ovr
+    G = GAMES.get(code, 120)
+    # 부상 — 강도·나이·특성·이번 비시즌 선택·국가대표
+    p_inj = INTENSITY[intensity][2] + max(0, c.age - 29) * 0.01 + mods['injury'] + (0.03 if 'velocity' in progs else 0.0)
+    p_inj *= 0.5 if has(c, 'iron') else 1.8 if has(c, 'glass') else 1.0
+    state['out'] = [0.0, 0.0]
+    if rng.random() < max(0.0, p_inj):
+        size = rng.choices((0.12, 0.3, 0.6), (0.55, 0.3, 0.15))[0]
+        a = rng.random()
+        state['out'] = [a, min(1.0, a + size)]
+        n = max(1, int(G * (state['out'][1] - a)))
+        where = _chunks(code)[min(5, int(a * 6))]
+        state['news'].append(f"{where}에 다쳐서 {n}경기를 쉬었어요")
+        if size >= 0.3:
+            state['press'].append(press('', f"{nm}, {where} 부상 악재…{n}경기 결장"))
+        if size >= 0.6:
+            for k in PHYS:
+                if k in c.stats:
+                    c.stats[k] = round(max(25.0, float(c.stats[k]) - rng.uniform(1, 3)), 1)
+    role, slot, duty = _duty_now(c)
+    state['offset'] = rng.randrange(5)
+    state['splits'] = [{'league': code, 'club': c.club, 'role': role, 'slot': slot, 'duty': duty, 'from': 0,
+                        'chunks': [{} for _ in range(6)]}]
+    _sim_chunks(c, state, 0, 3, rng)
+    for k in state['go']:
+        if INTL[k]['when'] == 'mid':
+            _intl(c, k, state, rng)
+    return state
+
+
+def break_meeting(c, state, rng) -> dict | None:
+    """올스타 휴식기 — 윗리그 같은 자리 주전이 부진하고 내가 잘하면 콜업, 그 반대면 강등, 같은 리그 안에선 보직."""
+    flags = c.flags or {}
+    code = c.league
+    if not W.is_pro(code) or flags.get('army'):
+        return None
+    sp = state['splits'][-1]
+    t = _sum_chunks(sp['chunks'])
+    G = GAMES.get(code, 120) / 2
+    z = perf_z(c.role, t, G)
+    if z is None:
+        return None
+    tr = (trust(c) - TRUST_START) / 50
+    nxt, prv = W.next_league(code), W.prev_league(code)
+    if nxt and not flags.get('doghouse') and z >= 0.7 and c.ovr >= W.level(nxt) - 5:
+        m = _meeting(c, 'promote', 'mid', t, G, rng, to=nxt)
+        if z - m['rival']['z'] + (c.ovr - (W.level(nxt) - 1)) / 3 + tr >= 1.2:
+            return dict(m, half=state)
+    if prv and z <= -0.8:
+        m = _meeting(c, 'demote', 'mid', t, G, rng, to=prv)
+        if -z + m['rival']['z'] + (W.level(code) - 2 - c.ovr) / 3 - tr >= 1.5:
+            return dict(m, half=state)
+    tier, lvl = role_tier(sp['role']), duty_level(c)
+    old = (sp['role'], sp['slot'], sp['duty'])
+    if z >= 1.3 and tier < 2 and rng.random() < 0.6:
+        return dict(_meeting(c, 'role_up', 'mid', t, G, rng, new_role=shift_role(c, sp['role'], 1, lvl), old_role=old),
+                    half=state)
+    if z <= -1.3 and tier > 0 and rng.random() < 0.6:
+        return dict(_meeting(c, 'role_down', 'mid', t, G, rng, new_role=shift_role(c, sp['role'], -1, lvl), old_role=old),
+                    half=state)
+    return None
+
+
+def finish_season(c, state, rng):
+    """후반기 → 11월 대회 → 팀 성적·시상·연봉·성장 → 다음 시즌 이동(면담으로) → 저장·결산 화면."""
+    from .models import LiteSeason
+    flags = c.flags = dict(c.flags or {})
+    last = state['splits'][-1]
+    pin = flags.get('pin')
+    moved = c.league != last['league'] or c.club != last['club']
+    pinned = bool(pin and pin.get('year') == c.year and pin.get('league') == c.league
+                  and (pin['role'], pin['slot']) != (last['role'], last['slot']))
+    if moved or pinned:
+        role, slot, duty = _duty_now(c)
+        state['splits'].append({'league': c.league, 'club': c.club, 'role': role, 'slot': slot, 'duty': duty, 'from': 3,
+                                'chunks': [{} for _ in range(6)]})
+    _sim_chunks(c, state, 3, 6, rng)
+    for k in state['go']:
+        if INTL[k]['when'] == 'post':
+            _intl(c, k, state, rng)
+    mods = state['mods']
+    code, G = c.league, GAMES.get(c.league, 120)
+    pit = c.role == 'pitcher'
+    pos = 'SP' if pit else c.position
+    splits = state['splits']
+    rows, totals, war = [], {}, 0.0
+    for i, sp in enumerate(splits):
+        frm, to = sp['from'], (splits[i + 1]['from'] if i + 1 < len(splits) else 6)
+        t = _sum_chunks(sp['chunks'][frm:to])
+        w = round(L.war(c.role, pos, t), 1) if t else 0.0
+        rows.append({'league': sp['league'], 'club': sp['club'], 'role': sp['role'], 'slot': sp['slot'], 'duty': sp['duty'],
+                     'from': frm, 'to': to, 'G': round(GAMES.get(sp['league'], 120) * (to - frm) / 6, 1), 'totals': t,
+                     'war': w, 'chunks': sp['chunks']})
+        totals = L.add(totals, t)
+        war += w
+    war = round(war, 1)
+    fr = rows[-1]
+    # 팀 성적(가상 리그) — 시즌을 마친 팀 기준
+    strength = rng.gauss(0, 0.045) + (0.03 if W.powerhouse(code, c.club) else 0.0)
+    w = int(_clamp(round(G * (0.5 + strength) + rng.gauss(0, math.sqrt(G * 0.25)) + fr['war'] * 0.9), 0, G))
+    team_n = TEAMS_N.get(code, 0)
+    rank, champion = 0, False
+    if team_n:
+        rank = 1 + sum(1 for _ in range(team_n - 1) if rng.gauss(0.5, 0.06) * G > w)
+        odds = POSTSEASON.get(code, ())
+        champion = rank <= len(odds) and rng.random() < odds[rank - 1]
+    # 월별 전광판 — 옮겼으면 그 달부터 새 리그
+    months, run = [], {}
+    first_p = 0.5 + rng.gauss(0, 0.045)
+    for j in range(6):
+        row = next(r for r in rows if r['from'] <= j < r['to'])
+        t = row['chunks'][j] or {}
+        run = L.add(run, t)
+        if row is fr:
+            mw, ml = round(w * (j + 1) / 6), round((G - w) * (j + 1) / 6)
+        else:
+            g1 = GAMES.get(row['league'], 120)
+            mw = round(first_p * g1 * (j + 1) / 6)
+            ml = round(g1 * (j + 1) / 6) - mw
+        moved = j == row['from'] and row['from'] > 0
+        note = kind = ''
+        if moved:
+            prev = rows[rows.index(row) - 1]
+            if prev['league'] != row['league']:
+                up = W.level(row['league']) > W.level(prev['league'])
+                kind = 'up' if up else 'down'
+                note = f"{W.short(row['league'])}{josa(W.short(row['league']), '으로/로')} {'콜업' if up else '강등'} — {row['duty']}"
+            elif prev['club'] != row['club']:
+                kind, note = 'trade', f"{W.club_short(row['league'], row['club'])}{josa(W.club_short(row['league'], row['club']), '으로/로')} 트레이드 — {row['duty']}"
+            else:
+                up = role_tier(row['role']) > role_tier(prev['role'])
+                kind, note = 'role', f"보직 {'승격' if up else '변경'} — {row['duty']}"
+        months.append({'label': _chunks(row['league'])[j], 'line': _short(c.role, t), 'run': _short(c.role, run),
+                       'hot': _hot(c.role, t), 'w': mw, 'l': ml, 'lg': W.short(row['league']),
+                       'moved': moved, 'move_kind': kind, 'note': note})
+    season = LiteSeason(career=c, year=c.year, age=c.age, league=code, club=c.club, duty=fr['duty'], games=G,
+                        totals=totals, war=war, team_w=w, team_l=G - w, team_rank=rank, team_of=team_n,
+                        champion=champion, months=months, ovr_start=state['ovr_start'])
+    season.splits = [{k: r[k] for k in ('league', 'club', 'role', 'slot', 'duty', 'from', 'to', 'G', 'totals', 'war')}
+                     | {'line': _short(c.role, r['totals'])} for r in rows]
+    # 시상 — 리그마다 따로
+    seen = list(flags.get('leagues') or [])
+    awards = []
+    for r in rows:
+        half = _sum_chunks(r['chunks'][:3]) if r['from'] == 0 else None
+        awards += awards_for(c, r['league'], r['totals'], r['war'], r['G'], r['league'] not in seen, half, rng)
+    for res in state['intl']:
+        awards.append({'kind': 'national', 'label': f"{res['name']} {res['result']}"})
+    if mods.get('national'):
+        awards.append({'kind': 'national', 'label': f"국가대표 {mods['national']}"})
+    if champion:
+        awards.append({'kind': 'ring', 'label': '한국시리즈 우승' if code == 'kbo1' else '월드시리즈 우승'
+                       if code == 'mlb' else '일본시리즈 우승' if code == 'npb1' else '대만시리즈 우승'})
+    if code in TOURNAMENTS:
+        zz = (c.ovr - W.level(code)) / 5.0
+        for tn in TOURNAMENTS[code]:
+            if rng.random() < 0.03 + 0.04 * max(0.0, zz) + (0.03 if W.powerhouse(code, c.club) else 0.0):
+                awards.append({'kind': 'ring', 'label': f'{tn} 우승'})
+                season.champion = True
+    season.awards = awards
+    season.salary = salary_for(c, war, mods['salary'])
+    # 성장 — 출전 시간은 줄마다 그 리그 기준으로
+    pt = 0.0
+    for r in rows:
+        t, share = r['totals'], (r['to'] - r['from']) / 6
+        if not t or not r['G']:
+            continue
+        if pit:
+            pt += share * min(1.0, (t.get('outs', 0) / 3) / (r['G'] * (1.2 if r['role'] == 'sp' else 0.45)))
+        else:
+            pt += share * min(1.0, t.get('pa', 0) / (r['G'] * 4.0))
+    season.deltas = grow(c, state['programs'], state['intensity'], min(1.0, pt), war, rng, mods['train'])
+    season.ovr_end = c.ovr
+    # 다음 시즌 이동 — 바로 옮기지 않고 면담(next_step)에서 정한다
+    if W.is_pro(code) and not flags.get('army'):
+        nxt, below = W.next_league(code), W.demote_below(code)
+        star = fr['war'] * (1.4 if pit else 1.0) >= 4.0 * fr['G'] / 144
+        mv = None
+        if nxt and not flags.get('doghouse') and _ok(c.role, fr['totals'], fr['G']) \
+                and (c.ovr >= W.level(nxt) - 1 or (star and c.ovr >= W.level(nxt) - 4)):
+            mv = 'promote'
+        elif below is not None and c.ovr < below - (trust(c) - TRUST_START) / 25:
+            mv = 'demote'
+        elif W.prev_league(code) and trust(c) < 20 and rng.random() < 0.5:
+            mv = 'demote'                                     # 감독 눈 밖 — 실력이 돼도 내려보낸다
+        if mv:
+            flags['move'] = {'kind': mv, 'to': nxt if mv == 'promote' else W.prev_league(code)}
+    if flags.get('doghouse'):
+        flags['doghouse'] -= 1
+        if flags['doghouse'] <= 0:
+            flags.pop('doghouse')
+    season.news = [n for n in state['news'] if n]
+    season.press = state['press'] + season_press(c, season, rows)
     back = army_after_season(c)
     if back:
         season.news.append(back)
@@ -730,6 +1398,42 @@ def run_season(c, programs, intensity, choice, rng):
     wrap_season(c, season, rng)
     c.save()
     return season
+
+
+def end_meeting(c, rng) -> dict | None:
+    """시즌을 마치고 '다음' — 이동이 정해졌거나 다음 시즌 보직이 한 계단 바뀌면 감독실로."""
+    flags = c.flags = dict(c.flags or {})
+    mv = flags.pop('move', None)
+    if not W.is_pro(c.league) or flags.get('army'):
+        return None
+    last = c.seasons.order_by('-year').first()
+    fr = (last.splits or [{}])[-1] if last else {}
+    t, G = fr.get('totals') or (last.totals if last else {}) or {}, fr.get('G') or GAMES.get(c.league, 120)
+    if mv:
+        return _meeting(c, mv['kind'], 'end', t, G, rng, to=mv['to'])
+    if not fr or fr.get('league') != c.league or not fr.get('role'):
+        return None
+    role, slot, duty = duty_for(c, duty_level(c))
+    if role_tier(role) == role_tier(fr['role']):
+        return None
+    about = 'role_up' if role_tier(role) > role_tier(fr['role']) else 'role_down'
+    return _meeting(c, about, 'end', t, G, rng, new_role=(role, slot, duty),
+                    old_role=(fr['role'], fr.get('slot', 0), fr.get('duty', '')))
+
+
+# ───────────────────────────── 시즌을 넘기며(나이·학년·결정)
+def run_season(c, programs, intensity, choice, rng, intl=None):
+    """비시즌 고른 것 → 전반기 → (휴식기 면담이 있으면 멈춤) → 후반기 → 결산 화면(review). 잠근 행에서 부른다.
+    시즌 기록을 돌려준다(면담에서 멈췄으면 None — 면담 답(decide 'meeting') 뒤에 이어 친다).
+    intl: {대회: 'go'|'skip'} — 안 주면 모두 사양."""
+    offered = list((c.pending or {}).get('intl') or [])
+    state = start_season(c, programs, intensity, choice, intl if intl is not None else {k: 'skip' for k in offered}, rng)
+    meet = break_meeting(c, state, rng)
+    if meet:
+        c.pending = meet
+        c.save()
+        return None
+    return finish_season(c, state, rng)
 
 
 def next_season(c, rng):
@@ -782,8 +1486,8 @@ def wrap_season(c, season, rng):
     c.pending = {'kind': 'review', 'year': season.year}
 
 
-def next_step(c, rng) -> dict:
-    """다음에 올 화면 — 결정이 있으면 결정, 없으면 비시즌."""
+def next_step(c, rng, skip_meeting: bool = False) -> dict:
+    """다음에 올 화면 — 감독 면담 → 결정 → 비시즌 순."""
     flags = c.flags or {}
     code = c.league
     if c.age > RETIRE_AT:
@@ -792,6 +1496,11 @@ def next_step(c, rng) -> dict:
         return draft_offer(c, 'hs', rng)
     if code == 'univ' and c.grade > 4:
         return draft_offer(c, 'univ', rng)
+    if not skip_meeting:
+        m = end_meeting(c, rng)
+        if m:
+            return m
+        flags = c.flags or {}
     if W.is_pro(code) and c.age >= 32 and c.ovr < W.level(code) - 10 and W.prev_league(code) is None:
         return {'kind': 'decision', 'what': 'released'}
     if W.system_of(code) == 'kbo' and not flags.get('served') and not flags.get('exempt') and c.age >= 23 \
@@ -882,8 +1591,24 @@ def decide(c, what: str, choice: str, rng, school: str = '') -> str:
     pend = c.pending or {}
     if pend.get('kind') != 'decision' or pend.get('what') != what:
         raise LiteError('지금은 그 결정을 할 차례가 아니에요.')
+    if what == 'meeting':
+        text, items = resolve_meeting(c, pend, choice, rng)
+        if pend.get('phase') == 'mid':
+            state = pend['half']
+            state['news'].append(text)
+            state['press'].extend(items)
+            c.pending = {}
+            finish_season(c, state, rng)
+        else:
+            c.flags['press'] = list(c.flags.get('press') or []) + items
+            c.ovr = R.overall(c.role, c.stats)
+            c.pending = next_step(c, rng, skip_meeting=True)
+            _army_tick(c, rng)
+        return text
     flags = dict(c.flags or {})
     text = ''
+    old_club, nm = c.club, c.name
+    news = []
     if what == 'draft':
         offer, abroad = pend.get('offer'), pend.get('abroad') or {}
         college = pend.get('from') == 'univ'
@@ -892,18 +1617,23 @@ def decide(c, what: str, choice: str, rng, school: str = '') -> str:
             c.league = 'kbo2' if college or c.ovr >= W.level('kbo2') - 4 else 'kbo3'
             c.club = offer['team']
             text = f"{W.PRO_TEAM[offer['team']]['name']}에 입단했어요 — {offer['round']}라운드 {offer['in_round']}순위"
+            news.append(press('[드래프트]', f"{W.PRO_TEAM[offer['team']]['short']}, {offer['round']}라운드 {offer['in_round']}순위로 "
+                                         f"{W.club_short(pend.get('from') or 'hs', old_club)} {nm} 지명"))
         elif choice == 'develop' and not offer:
             c.league, c.club = 'kbo3', c.team
             text = f"{W.PRO_TEAM[c.team]['name']}와 육성선수 계약을 맺었어요"
+            news.append(press('', f"드래프트 미지명 {nm}, {W.PRO_TEAM[c.team]['short']} 육성선수로 재도전"))
         elif choice in abroad:
             ladder = W.SYSTEMS[choice]
             c.league = ladder[1] if college and choice == 'mlb' else ladder[0]
             c.club = abroad[choice]
-            text = f"{W.SYSTEM_NAME[choice]}로 진출했어요 — {W.PRO_TEAM[c.club]['name']}"
+            text = f"{W.SYSTEM_NAME[choice]}{josa(W.SYSTEM_NAME[choice], '으로/로')} 진출했어요 — {W.PRO_TEAM[c.club]['name']}"
+            news.append(press('[오피셜]', f"{W.club_short(pend.get('from') or 'hs', old_club)} {nm}, {W.PRO_TEAM[c.club]['name']} 계약…{W.SYSTEM_NAME[choice]} 직행"))
         elif choice == 'univ' and not college and school in (pend.get('univs') or []):
             c.age = 19
             c.league, c.club, c.grade = 'univ', school, 1
             text = f'{school}에 진학했어요 — 4년 뒤 다시 드래프트에 나가요'
+            news.append(press('', f"{nm}, 프로 대신 {school} 진학…‘4년 뒤를 보겠다’"))
         else:
             raise LiteError('그 길은 지금 고를 수 없어요.')
         if W.is_pro(c.league):
@@ -913,9 +1643,11 @@ def decide(c, what: str, choice: str, rng, school: str = '') -> str:
             flags['army'] = {'kind': 'sangmu', 'left': 2, 'back': [c.league, c.club]}
             c.league, c.club = 'kbo2', '국군체육부대(상무)'
             text = '상무에 입대했어요 — 퓨처스리그에서 2년 동안 뛰어요'
+            news.append(press('', f"{nm}, 상무 입대…‘더 강해져서 돌아오겠다’"))
         elif choice == 'active':
             flags['army'] = {'kind': 'active', 'left': 2, 'back': [c.league, c.club]}
             text = '현역으로 입대했어요 — 2년 동안 야구를 쉬어요'
+            news.append(press('', f"{nm}, 현역 입대…2년간 야구공 내려놓는다"))
         elif choice == 'later' and not pend.get('forced'):
             text = '입대를 미뤘어요'
         else:
@@ -926,9 +1658,11 @@ def decide(c, what: str, choice: str, rng, school: str = '') -> str:
             c.league = 'mlb' if c.ovr >= W.level('mlb') - 1 else 'mlb_aaa'
             c.club = rng.choice(W.MLB_TEAMS)[0]
             text = f"포스팅으로 {W.PRO_TEAM[c.club]['name']}에 입단했어요!"
+            news.append(press('[속보]', f"{nm}, 포스팅으로 {W.PRO_TEAM[c.club]['name']} 입단…‘꿈의 무대로’"))
         elif choice == 'npb':
             c.league, c.club = 'npb1', rng.choice(W.NPB_TEAMS)[0]
             text = f"포스팅으로 {W.PRO_TEAM[c.club]['name']}에 입단했어요!"
+            news.append(press('[속보]', f"{nm}, 포스팅으로 {W.PRO_TEAM[c.club]['name']} 입단…‘일본 무대 도전’"))
         elif choice == 'stay':
             text = 'KBO에 남기로 했어요'
         else:
@@ -945,12 +1679,14 @@ def decide(c, what: str, choice: str, rng, school: str = '') -> str:
         c.club = deal['team']
         flags['contract'] = {'years': deal['years'], 'annual': deal['annual']}
         text = f"FA 계약을 맺었어요 — {W.PRO_TEAM[c.club]['name']}, {deal['years']}년 총 {man(deal['annual'] * deal['years'])}"
+        news.append(press('[오피셜]', f"{nm} FA 계약…{W.PRO_TEAM[c.club]['name']}·{deal['years']}년 총액 {man(deal['annual'] * deal['years'])}"))
     elif what == 'return':
         flags['return_offered'] = True
         if choice == 'kbo':
             c.league = 'kbo1' if c.ovr >= W.level('kbo1') - 4 else 'kbo2'
             c.club = c.team
             text = f"KBO로 돌아왔어요 — {W.PRO_TEAM[c.team]['name']}"
+            news.append(press('[오피셜]', f"{nm}, KBO 복귀…{W.PRO_TEAM[c.team]['name']} 유니폼"))
         elif choice == 'stay':
             text = '해외에 남아서 다시 도전해요'
         else:
@@ -963,6 +1699,10 @@ def decide(c, what: str, choice: str, rng, school: str = '') -> str:
         text = '한 시즌 더 뛰어요'
     elif what in ('released', 'end'):
         return retire(c, '방출' if what == 'released' else '나이')
+    if c.club != old_club:
+        flags['trust'] = TRUST_START
+    if news:
+        flags['press'] = list(flags.get('press') or []) + news
     c.flags = flags
     c.ovr = R.overall(c.role, c.stats)
     c.pending = plan_step(c, rng)
@@ -1018,6 +1758,8 @@ def decision_view(c) -> dict | None:
     pend = c.pending or {}
     if pend.get('kind') != 'decision':
         return None
+    if pend.get('what') == 'meeting':
+        return dict(meeting_view(c, pend), what='meeting')
     v = dict(pend)
     v['who'] = DECISION_WHO.get(pend.get('what'), 'lead')
     v['who_name'], v['who_role'] = STAFF[v['who']]
@@ -1071,3 +1813,18 @@ def hall(system: str = '', limit: int = 50) -> list:
                      'best': round(best, 1), 'seasons': len(seasons), 'peak': W.short(c.peak or 'hs')})
     rows.sort(key=lambda r: (r['mvp_score'], r['best'], r['awards'], r['war']), reverse=True)
     return rows[:limit]
+
+
+def _sum_totals(seasons) -> dict:
+    t = {}
+    for s in seasons:
+        t = L.add(t, s.totals or {})
+    return t
+
+
+def retire_headline(c, seasons: int) -> dict:
+    """은퇴 카드 머리기사."""
+    ep = EPITHET.get(c.style, '')
+    why = (c.pending or {}).get('why', '')
+    tail = {'방출': '…그라운드와 작별', '나이': '…마흔둘까지 뛰었다'}.get(why, '…박수 받으며 떠난다')
+    return press('[은퇴]', f"‘{ep}’ {c.name}, {seasons}시즌 현역 마침표{tail}")

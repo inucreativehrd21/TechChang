@@ -1,0 +1,16 @@
+{% extends 'base_mobile.html' %}
+{% load static %}
+
+{% block title %}카드 보관함 - 야구선수 키우기 라이트 - 테크창{% endblock %}
+{% block tab_games %}active{% endblock %}
+{% block meta_robots %}noindex, follow{% endblock %}
+{% block meta_description %}야구선수 키우기 라이트 — 은퇴한 선수들의 카드 보관함.{% endblock %}
+
+{% block extra_css %}
+<link href="{% static 'css/game.css' %}?v={{ STATIC_VERSION }}" rel="stylesheet">
+<link href="{% static 'css/rookie.css' %}?v={{ STATIC_VERSION }}" rel="stylesheet">
+{% endblock %}
+
+{% block content %}
+{% include 'community/games/_lite_cards.html' %}
+{% endblock %}

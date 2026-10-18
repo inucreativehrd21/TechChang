@@ -93,7 +93,7 @@
     </form>
     {% if mine %}
     <h2 class="rk-h2">내 지난 커리어</h2>
-    <ul class="rk-rank">{% for m in mine %}<li><a class="rk-rank-main" href="{% url 'community:lite_career' m.pk %}"><b>{{ m.name }}</b><span>{{ m.peak|league_name }}까지 · MVP {{ m.mvp }} · 수상 {{ m.awards }} · WAR {{ m.war }}</span></a><b class="rk-rank-val">{{ m.best_ovr|floatformat:1 }}</b></li>{% endfor %}</ul>
+    <ul class="rk-rank">{% for m in mine %}<li><a class="rk-rank-main" href="{% url 'community:lite_card' m.pk %}"><b>{{ m.name }}</b><span>{{ m.peak|league_name }}까지 · MVP {{ m.mvp }} · 수상 {{ m.awards }} · WAR {{ m.war }}</span></a><b class="rk-rank-val">{{ m.best_ovr|floatformat:1 }}</b></li>{% endfor %}</ul>
     {% endif %}
     {% if hall %}
     <h2 class="rk-h2">명예의 전당 상위</h2>
@@ -103,17 +103,48 @@
     {% endif %}
 
     {% else %}
+    {% include 'community/games/_lite_hud.html' %}
     <div class="rl-main">
         <div class="rl-side">{% include 'community/games/_lite_card.html' %}</div>
         <div class="rl-stage">
 
         {% if mode == 'plan' %}
-        <form method="post" action="{% url 'community:lite_act' %}" class="rl-plan" data-rl-plan>
+        <form method="post" action="{% url 'community:lite_act' %}" class="rl-plan" data-rl-plan data-banned="{{ banned|join:',' }}">
             {% csrf_token %}<input type="hidden" name="action" value="play">
-            <p class="rl-stage-head"><b>{{ c.year }}번째 시즌을 앞두고 있어요</b><span>{{ c.age }}세, {{ league_name }} {{ team.name }}. 이번 시즌 예상 보직: {{ duty }}</span></p>
+            <header class="rl-scene">
+                <p class="rl-scene-kicker">{{ cal_year }} 비시즌 캠프</p>
+                <h2 class="rl-scene-title">{{ c.year }}번째 시즌을 준비해요</h2>
+                <p class="rl-scene-sub">{{ c.age }}세 · {{ league_name }} {{ team.name }} · 예상 보직 <b>{{ duty }}</b></p>
+            </header>
+            {% if offseason %}
+            <section class="rl-paper is-mini" aria-label="오프시즌 헤드라인">
+                <p class="rl-masthead"><b>테크창 스포츠</b><span>{{ cal_year }} 오프시즌</span></p>
+                <ul class="rl-heads">{% for n in offseason %}<li>{% if n.tag %}<em>{{ n.tag }}</em>{% endif %}<b>{{ n.title }}</b>{% if n.sub %}<small>{{ n.sub }}</small>{% endif %}</li>{% endfor %}</ul>
+            </section>
+            {% endif %}
+
+            {% if intl %}
+            <section class="rk-panel rl-callup" aria-labelledby="rl-step-intl">
+                <h2 class="rl-step" id="rl-step-intl"><span>{{ steps.intl }}</span>국가대표에 뽑혔어요. 갈지 정해 주세요</h2>
+                {% include 'community/games/_lite_say.html' with who='lead' name='은혜' role='감독' text='대표팀에서 연락이 왔어요. 큰 무대 경험은 값지지만, 몸에 무리가 갈 수 있어요.' %}
+                <ul class="rl-tourneys">
+                    {% for t in intl %}
+                    <li class="rl-tourney">
+                        <div class="rl-tourney-main"><b>{{ t.name }}</b><span>{{ t.month }} · {% if t.when == 'pre' %}개막 전{% elif t.when == 'post' %}시즌 뒤{% else %}시즌 중 휴식기{% endif %}</span></div>
+                        <div class="rl-tags"><span class="rl-tag is-risk">부상 위험 +{{ t.risk }}%</span>{% if t.when == 'post' %}<span class="rl-tag is-risk">다음 시즌 훈련 효과 −10%</span>{% endif %}{% if t.exempt %}<span class="rl-tag is-good">금메달이면 병역 특례</span>{% endif %}</div>
+                        <div class="rl-seg" role="radiogroup" aria-label="{{ t.name }} 참가">
+                            <label><input type="radio" name="intl_{{ t.key }}" value="go" required><span>태극마크 달기</span></label>
+                            <label><input type="radio" name="intl_{{ t.key }}" value="skip"><span>사양하기</span></label>
+                        </div>
+                    </li>
+                    {% endfor %}
+                </ul>
+            </section>
+            {% endif %}
+
             {% if event %}
             <section class="rk-panel rl-event" aria-labelledby="rl-step-event">
-                <h2 class="rl-step" id="rl-step-event"><span>1</span>비시즌 이벤트에 답해 주세요</h2>
+                <h2 class="rl-step" id="rl-step-event"><span>{{ steps.event }}</span>비시즌 이벤트에 답해 주세요</h2>
                 <div class="rl-say">
                     {% include 'community/games/_rookie_staff.html' with who=event.who %}
                     <div class="rl-bubble"><p class="rl-who"><b>{{ event.who_name }}</b> {{ event.who_role }} · {{ event.title }}</p><p>{{ event.text }}</p></div>
@@ -125,20 +156,29 @@
                 </div>
             </section>
             {% endif %}
+
             <section class="rk-panel rl-train" aria-labelledby="rl-step-train">
-                <h2 class="rl-step" id="rl-step-train"><span>{% if event %}2{% else %}1{% endif %}</span>훈련 프로그램을 <em>두 개</em> 골라 주세요<output class="rl-count" data-rl-count aria-live="polite">0 / 2</output></h2>
+                <h2 class="rl-step" id="rl-step-train"><span>{{ steps.train }}</span>훈련 프로그램을 <em>두 개</em> 골라 주세요<output class="rl-count" data-rl-count aria-live="polite">0 / 2</output></h2>
                 <div class="rl-say is-small">
                     {% include 'community/games/_rookie_staff.html' with who='coding' %}
-                    <div class="rl-bubble"><p class="rl-who"><b>윤성</b> 타격·투수 코치</p><p>이번 비시즌엔 뭘 집중해서 할까요? 딱 두 가지만 골라 주세요. 고른 능력이 더 크게 자라요.</p></div>
+                    <div class="rl-bubble"><p class="rl-who"><b>윤성</b> 타격·투수 코치</p><p>이번 비시즌엔 뭘 집중해서 할까요? 딱 두 가지만 골라 주세요.{% if banned %} 지난 비시즌 조합({{ banned_text }})은 그대로 다시 할 수 없고, 두 비시즌 내리 한 훈련은 한 번 쉬어야 해요.{% endif %}</p></div>
                 </div>
-                <div class="rl-programs" data-rl-pick="2" role="group" aria-label="훈련 프로그램, 두 개 고르기">
+                <div class="rl-skills" data-rl-pick="2" role="group" aria-label="훈련 프로그램, 두 개 고르기">
                     {% for p in programs %}
-                    <label class="rl-choice is-check"><input type="checkbox" name="program" value="{{ p.code }}"><span><b>{{ p.label }}</b><small>{{ p.hint }}</small></span></label>
+                    <label class="rl-skill{% if p.locked %} is-locked{% endif %}">
+                        <input type="checkbox" name="program" value="{{ p.code }}"{% if p.locked %} disabled data-rl-locked{% endif %}>
+                        <span class="rl-skill-card">
+                            <i class="rl-icon" aria-hidden="true">{% include 'community/games/_lite_icon.html' with name=p.icon %}</i>
+                            <b>{{ p.label }}</b><small>{{ p.hint }}</small>
+                            {% if p.locked %}<em class="rl-lock"><i aria-hidden="true">{% include 'community/games/_lite_icon.html' with name='lock' %}</i>두 비시즌 연속 — 이번엔 쉬어요</em>{% endif %}
+                        </span>
+                    </label>
                     {% endfor %}
                 </div>
-                <h3 class="rl-step is-sub"><span>{% if event %}3{% else %}2{% endif %}</span>훈련 강도를 골라 주세요</h3>
-                <div class="rk-chips" role="radiogroup" aria-label="훈련 강도">
-                    {% for i in intensity %}<label class="rk-chip"><input type="radio" name="intensity" value="{{ i.code }}" {% if i.code == 'normal' %}checked{% endif %}><span>{{ i.label }} · 부상 확률 {{ i.risk }}%</span></label>{% endfor %}
+                <p class="rl-warn" data-rl-banned hidden>지난 비시즌과 똑같은 조합이에요. 하나는 바꿔 주세요.</p>
+                <h3 class="rl-step is-sub"><span>{{ steps.power }}</span>훈련 강도를 골라 주세요</h3>
+                <div class="rl-gauge" role="radiogroup" aria-label="훈련 강도">
+                    {% for i in intensity %}<label class="rl-gauge-opt is-{{ i.code }}"><input type="radio" name="intensity" value="{{ i.code }}" {% if i.code == 'normal' %}checked{% endif %}><span><b>{{ i.label }}</b><small>부상 확률 {{ i.risk }}%</small><i class="rl-gauge-bar" aria-hidden="true"></i></span></label>{% endfor %}
                 </div>
                 <p class="rk-hint">강하게 할수록 더 크게 자라지만 다칠 확률이 올라가요(나이가 들수록 더). 잠재력에 가까워지면 훈련 효과가 줄어요.</p>
                 <button type="submit" class="gm-btn is-primary is-block rl-go" data-rl-go data-ready="시즌 시작하기">시즌 시작하기</button>
@@ -147,9 +187,10 @@
 
         {% elif mode == 'review' and season %}
         <section class="rk-board rl-ticker" data-rl-ticker aria-label="시즌 전광판">
-            <header class="rk-board-head"><span>{{ season.year }}번째 시즌 · {{ season.age }}세 · {{ season_league }}</span><span>{{ season_club }} · {{ season.duty }}</span></header>
+            <header class="rk-board-head"><span><i class="rl-live" aria-hidden="true">LIVE</i>{{ season_year }} · {{ season.age }}세 · {{ season_league }}</span><span>{{ season_club }} · {{ season.duty }}</span></header>
             <ol class="rk-board-rows rl-months">
                 {% for m in season.months %}
+                {% if m.moved %}<li class="rl-month is-move"><span class="rk-gno">휴식기</span><span class="rl-mline">{{ m.note|default:m.lg }}</span><span class="rl-wl">{% if m.move_kind == 'up' %}콜업{% elif m.move_kind == 'down' %}강등{% elif m.move_kind == 'trade' %}이적{% else %}보직{% endif %}</span></li>{% endif %}
                 <li class="rl-month{% if m.hot %} is-hot{% endif %}"><span class="rk-gno">{{ m.label }}</span><span class="rl-mline">{{ m.line }}</span><span class="rl-wl">{% if season.team_of %}{{ m.w }}승 {{ m.l }}패{% elif m.hot %}맹활약{% endif %}</span></li>
                 {% endfor %}
             </ol>
@@ -170,23 +211,53 @@
                 <div><dt>OPS</dt><dd>{{ season_line.ops_text }}</dd></div><div class="is-war"><dt>WAR</dt><dd>{{ season.war }}</dd></div>
                 {% endif %}
             </dl>
+            {% if splits %}<ul class="rl-splits" aria-label="리그별 성적">{% for x in splits %}<li><b>{{ x.lg }}</b><span>{{ x.club_name }} · {{ x.duty }}</span><span>{{ x.line }} · WAR {{ x.war }}</span></li>{% endfor %}</ul>{% endif %}
             {% else %}<p class="rk-empty">이번 시즌엔 경기에 나서지 못했어요.</p>{% endif %}
             {% if season.awards %}<ul class="rl-awards" aria-label="수상">{% for a in season.awards %}<li class="rl-award is-{{ a.kind }}">{% if a.kind != 'ring' and a.kind != 'national' and a.kind != 'allstar' %}{% include 'community/games/_rookie_glove.html' %}{% endif %}{{ a.label }}</li>{% endfor %}</ul>{% endif %}
             <h3 class="rk-h3">이만큼 자랐어요</h3>
             <ul class="rl-deltas" aria-label="능력치 변화">{% for d in deltas %}<li class="{% if d.value > 0 %}is-up{% elif d.value < 0 %}is-down{% endif %}"><span>{{ d.label }}</span><b>{% if d.value > 0 %}+{% endif %}{{ d.value }}</b></li>{% endfor %}</ul>
-            {% if season.news %}
-            <div class="rl-say is-news">
-                {% include 'community/games/_rookie_staff.html' with who='editor' %}
-                <div class="rl-bubble"><p class="rl-who"><b>승현</b> 야구 기자의 시즌 기사</p><ul class="rl-news">{% for n in season.news %}<li>{{ n }}</li>{% endfor %}</ul></div>
-            </div>
-            {% endif %}
             {% if season.salary %}<p class="rk-hint">이번 시즌 연봉은 {{ salary }}이에요.</p>{% endif %}
-            <form method="post" action="{% url 'community:lite_act' %}">{% csrf_token %}<input type="hidden" name="action" value="next">
-                <button type="submit" class="gm-btn is-primary is-block">다음 시즌으로</button></form>
         </section>
+        {% if press %}
+        <section class="rl-paper" aria-label="시즌 기사">
+            <p class="rl-masthead"><b>테크창 스포츠</b><span>{{ season_year }} 시즌 · 승현 기자</span></p>
+            {% with lead=press.0 %}<article class="rl-lead">{% if lead.tag %}<em>{{ lead.tag }}</em>{% endif %}<h3>{{ lead.title }}</h3>{% if lead.sub %}<p>{{ lead.sub }}</p>{% endif %}</article>{% endwith %}
+            {% if press|length > 1 %}<ul class="rl-heads">{% for n in press|slice:'1:' %}<li>{% if n.tag %}<em>{{ n.tag }}</em>{% endif %}<b>{{ n.title }}</b>{% if n.sub %}<small>{{ n.sub }}</small>{% endif %}</li>{% endfor %}</ul>{% endif %}
+            <p class="rl-byline">{% include 'community/games/_rookie_staff.html' with who='editor' %}<span><b>승현</b> 야구 기자</span></p>
+        </section>
+        {% endif %}
+        {% if season.news %}
+        <section class="rk-panel rl-diary" aria-label="시즌 일지">
+            <h3 class="rk-h3">시즌 일지</h3>
+            <ul class="rl-news">{% for n in season.news %}<li>{{ n }}</li>{% endfor %}</ul>
+        </section>
+        {% endif %}
+        <form method="post" action="{% url 'community:lite_act' %}" class="rl-next">{% csrf_token %}<input type="hidden" name="action" value="next">
+            <button type="submit" class="gm-btn is-primary is-block">{% if meet_next %}감독실로 가기{% else %}다음 시즌으로{% endif %}</button></form>
 
         {% elif mode == 'decision' and decision %}
         {% with d=decision %}
+        {% if d.what == 'meeting' %}
+        <section class="rl-room" aria-labelledby="rl-room-title">
+            <div class="rl-room-scene">
+                <p class="rl-room-tag">{% if d.mid %}올스타 휴식기{% else %}시즌을 마치고{% endif %} · 감독실</p>
+                <div class="rl-trust" title="감독 신뢰"><span>감독 신뢰</span><i class="rl-meter" style="--v: {{ d.trust }}%" aria-hidden="true"></i><b>{{ d.trust }}</b></div>
+                <div class="rl-room-desk">{% include 'community/games/_rookie_staff.html' with who='lead' huge=True %}</div>
+                {% if d.rival %}<aside class="rl-rival" aria-label="경쟁자"><small>{{ d.rival.league }} {{ d.rival.pos }}</small><b>{{ d.rival.name }}</b><span>{{ d.rival.line }}</span></aside>{% endif %}
+                <h2 class="rl-room-title" id="rl-room-title">{{ d.title }}</h2>
+            </div>
+            <div class="rl-dialog">
+                <p class="rl-dialog-name"><b>{{ d.who_name }}</b> {{ d.who_role }}</p>
+                <p class="rl-dialog-text">{{ d.text }}</p>
+            </div>
+            <div class="rl-replies" role="group" aria-label="답하기">
+                {% for ch in d.choices %}
+                <form method="post" action="{% url 'community:lite_act' %}">{% csrf_token %}<input type="hidden" name="action" value="decide"><input type="hidden" name="what" value="meeting"><input type="hidden" name="choice" value="{{ ch.key }}">
+                    <button type="submit" class="rl-reply is-{{ ch.key }}"><em class="rl-tone">{{ ch.tone }}</em><b>{{ ch.label }}</b><small>{{ ch.hint }}</small></button></form>
+                {% endfor %}
+            </div>
+        </section>
+        {% else %}
         <section class="rk-panel rk-decide is-draft" aria-label="갈림길">
             {% if d.what == 'draft' %}
             <div class="rk-head"><h2>{% if d.from == 'univ' %}대졸{% else %}고졸{% endif %} 신인 드래프트</h2><span class="rk-fine">스카우트 평가 {{ d.score }}점(평균 50)</span></div>
@@ -226,7 +297,7 @@
             <div class="rl-programs is-two">
                 {% include 'community/games/_lite_choice.html' with what='military' choice='sangmu' label='상무에 입대할게요' hint='퓨처스리그에서 2년, 실전 감각을 지켜요' main=True %}
                 {% include 'community/games/_lite_choice.html' with what='military' choice='active' label='현역으로 갈게요' hint='2년 동안 쉬어요. 능력치가 조금 빠져요' %}
-                {% if not d.forced %}{% include 'community/games/_lite_choice.html' with what='military' choice='later' label='입대를 미룰게요' hint='국가대표로 우승하면 특례를 받아요' %}{% endif %}
+                {% if not d.forced %}{% include 'community/games/_lite_choice.html' with what='military' choice='later' label='입대를 미룰게요' hint='아시안게임·올림픽 금메달이면 특례를 받아요' %}{% endif %}
             </div>
 
             {% elif d.what == 'posting' %}
@@ -261,7 +332,7 @@
             {% include 'community/games/_lite_say.html' with who=d.who name=d.who_name role=d.who_role text='몸이 예전 같지는 않죠. 한 시즌 더 뛸까요, 박수 받을 때 떠날까요?' %}
             <div class="rl-programs is-two">
                 {% include 'community/games/_lite_choice.html' with what='retire' choice='continue' label='한 시즌 더 뛸게요' hint='' main=True %}
-                {% include 'community/games/_lite_choice.html' with what='retire' choice='retire' label='은퇴할게요' hint='명예의 전당에 이름을 올려요' %}
+                {% include 'community/games/_lite_choice.html' with what='retire' choice='retire' label='은퇴할게요' hint='은퇴 카드를 받고 명예의 전당에 이름을 올려요' %}
             </div>
 
             {% else %}
@@ -271,9 +342,10 @@
             {% else %}
             {% include 'community/games/_lite_say.html' with who=d.who name=d.who_name role=d.who_role text='마흔둘, 이제 유니폼을 벗을 때가 됐어요. 그동안 정말 수고 많았어요.' %}
             {% endif %}
-            {% include 'community/games/_lite_choice.html' with what=d.what choice='retire' label='유니폼을 벗을게요' hint='커리어를 마치고 명예의 전당으로 가요' main=True %}
+            {% include 'community/games/_lite_choice.html' with what=d.what choice='retire' label='유니폼을 벗을게요' hint='은퇴 카드를 받고 명예의 전당으로 가요' main=True %}
             {% endif %}
         </section>
+        {% endif %}
         {% endwith %}
         {% endif %}
 
@@ -317,18 +389,27 @@
         form.addEventListener('change', sync);
         sync();
     }
-    // 비시즌: 훈련 두 개 세기 · 다 고르기 전엔 시작 버튼이 무엇이 남았는지 말한다
+    // 비시즌: 훈련 두 개 세기 · 잠긴 훈련·지난 조합 막기 · 다 고르기 전엔 시작 버튼이 무엇이 남았는지 말한다
     var plan = document.querySelector('[data-rl-plan]');
     if (plan) {
         var box = plan.querySelector('[data-rl-pick]'), count = plan.querySelector('[data-rl-count]');
         var go = plan.querySelector('[data-rl-go]'), max = parseInt(box.dataset.rlPick, 10);
+        var banned = (plan.dataset.banned || '').split(',').filter(Boolean).sort().join(',');
+        var warn = plan.querySelector('[data-rl-banned]');
         var check = function () {
-            var on = box.querySelectorAll('input:checked').length;
-            box.querySelectorAll('input').forEach(function (i) { i.disabled = !i.checked && on >= max; });
+            var picked = Array.prototype.map.call(box.querySelectorAll('input:checked'), function (i) { return i.value; });
+            var on = picked.length;
+            box.querySelectorAll('input').forEach(function (i) {
+                if (!i.hasAttribute('data-rl-locked')) i.disabled = !i.checked && on >= max;
+            });
             count.textContent = on + ' / ' + max;
             count.classList.toggle('is-done', on === max);
+            var same = on === max && banned && picked.sort().join(',') === banned;
+            warn.hidden = !same;
+            var intlLeft = Array.prototype.some.call(plan.querySelectorAll('.rl-tourney'), function (t) { return !t.querySelector('input:checked'); });
             var eventLeft = plan.querySelector('input[name=event_choice]') && !plan.querySelector('input[name=event_choice]:checked');
-            var need = eventLeft ? '먼저 이벤트에 답해 주세요' : on < max ? '훈련 프로그램을 ' + (max - on) + '개 더 골라 주세요' : '';
+            var need = intlLeft ? '먼저 국가대표 소집에 답해 주세요' : eventLeft ? '먼저 이벤트에 답해 주세요'
+                : on < max ? '훈련 프로그램을 ' + (max - on) + '개 더 골라 주세요' : same ? '지난 비시즌과 다른 조합으로 골라 주세요' : '';
             go.disabled = !!need;
             go.textContent = need || go.dataset.ready;
         };
@@ -339,7 +420,7 @@
     var board = document.querySelector('[data-rl-ticker]');
     if (board && !(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches)) {
         var rows = Array.prototype.slice.call(board.querySelectorAll('.rl-month'));
-        var rest = document.querySelectorAll('.rl-final, .rl-result');
+        var rest = document.querySelectorAll('.rl-final, .rl-result, .rl-paper, .rl-diary, .rl-next');
         board.classList.add('is-playing');
         rows.forEach(function (r) { r.classList.add('rl-wait'); });
         rest.forEach(function (r) { r.classList.add('rl-wait'); });

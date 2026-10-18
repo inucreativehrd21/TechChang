@@ -1361,6 +1361,8 @@ class LiteSeason(models.Model):
     ovr_end = models.FloatField(default=0)
     deltas = models.JSONField(default=dict, blank=True)
     salary = models.PositiveIntegerField(default=0)              # 만원
+    splits = models.JSONField(default=list, blank=True)          # 리그·보직별 몫(시즌 중 콜업·강등이면 둘)
+    press = models.JSONField(default=list, blank=True)           # 기사 제목 [{'tag','title','sub'}]
 
     class Meta:
         verbose_name = '야구선수 키우기 라이트 시즌'
