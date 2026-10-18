@@ -148,3 +148,15 @@ class RookiePlayerAdmin(admin.ModelAdmin):
     search_fields = ('name', 'user__username')
     readonly_fields = ('pending', 'career', 'traits', 'traits_seen')
     inlines = [RookieLogInline]
+
+
+from .models import LiteCareer  # noqa: E402
+
+
+@admin.register(LiteCareer)
+class LiteCareerAdmin(admin.ModelAdmin):
+    """야구선수 키우기 라이트 커리어 — 보기 위주(진행 상태는 화면에서만 바꾼다)."""
+    list_display = ('name', 'user', 'role', 'league', 'club', 'age', 'ovr', 'mvp', 'awards', 'war', 'retired_at')
+    list_filter = ('role', 'league')
+    search_fields = ('name', 'user__username')
+    readonly_fields = ('pending', 'flags', 'traits', 'traits_seen', 'stats')

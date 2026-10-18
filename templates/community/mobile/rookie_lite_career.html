@@ -1,0 +1,15 @@
+{% extends 'base_mobile.html' %}
+{% load static %}
+
+{% block title %}{{ c.name }} 커리어 - 야구선수 키우기 라이트 - 테크창{% endblock %}
+{% block tab_games %}active{% endblock %}
+{% block meta_description %}야구선수 키우기 라이트 커리어 기록.{% endblock %}
+
+{% block extra_css %}
+<link href="{% static 'css/game.css' %}?v={{ STATIC_VERSION }}" rel="stylesheet">
+<link href="{% static 'css/rookie.css' %}?v={{ STATIC_VERSION }}" rel="stylesheet">
+{% endblock %}
+
+{% block content %}
+{% include 'community/games/_lite_career.html' %}
+{% endblock %}

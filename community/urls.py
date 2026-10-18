@@ -3,7 +3,7 @@ from django.urls import path, re_path
 
 # 실시간 게임 비활성화 (나중을 위해 파일은 유지)
 # from .views import wordchain_views, tictactoe_views
-from .views import map_views, rookie_views
+from .views import map_views, rookie_lite_views, rookie_views
 from .views import base_views, question_views, answer_views, comment_views, profile_views, board_views, baseball_views, guestbook_views, game2048_views, minesweeper_views, portfolio_views
 
 app_name = 'community'
@@ -115,6 +115,12 @@ urlpatterns = [
     path('rookie/awards/', rookie_views.rookie_awards, name='rookie_awards'),
     path('rookie/records/', rookie_views.rookie_records, name='rookie_records'),
     path('rookie/p/<int:pk>/', rookie_views.rookie_player, name='rookie_player'),
+    # rookie_lite_views.py - 야구선수 키우기 라이트(한 판 30분 커리어 시뮬레이터, 규칙 community/rookie_lite.py)
+    path('rookie/lite/', rookie_lite_views.lite_home, name='lite_home'),
+    path('rookie/lite/new/', rookie_lite_views.lite_new, name='lite_new'),
+    path('rookie/lite/act/', rookie_lite_views.lite_act, name='lite_act'),
+    path('rookie/lite/hall/', rookie_lite_views.lite_hall, name='lite_hall'),
+    path('rookie/lite/c/<int:pk>/', rookie_lite_views.lite_career, name='lite_career'),
 
     # portfolio_views.py - 포트폴리오
     path('members/', portfolio_views.members_list, name='members_list'),

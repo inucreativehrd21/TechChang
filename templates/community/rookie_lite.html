@@ -1,0 +1,14 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}야구선수 키우기 라이트 - 테크창{% endblock %}
+{% block meta_description %}고1부터 은퇴까지 한 판 30분 — 진로와 훈련을 골라 가며 KBO·메이저리그·일본·대만을 누비는 야구선수 커리어 시뮬레이터.{% endblock %}
+
+{% block extra_css %}
+<link href="{% static 'css/game.css' %}?v={{ STATIC_VERSION }}" rel="stylesheet">
+<link href="{% static 'css/rookie.css' %}?v={{ STATIC_VERSION }}" rel="stylesheet">
+{% endblock %}
+
+{% block content %}
+{% include 'community/games/_lite.html' %}
+{% endblock %}

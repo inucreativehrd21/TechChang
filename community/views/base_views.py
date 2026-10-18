@@ -569,6 +569,8 @@ def games_index(request):
     from ..rookie_world import LEAGUES, is_pro
     PRO_LEAGUES = [c for c in LEAGUES if is_pro(c)]
     rookies = visible(RookiePlayer.objects.filter(retired_at__isnull=True), 'user')
+    from ..models import LiteCareer
+    lites = visible(LiteCareer.objects.all(), 'user')
     bb, g2, ms = (visible(NumberBaseballGame.objects.all()), visible(Game2048.objects.all()),
                   visible(MinesweeperGame.objects.all()))      # 운영자(admin) 판은 세지 않는다
 
@@ -582,6 +584,15 @@ def games_index(request):
             'icon': '🧢',
             'is_new': True,
             'meta': f"선수 {rookies.count()}명 · 프로 {rookies.filter(league__in=PRO_LEAGUES).count()}명",
+        },
+        {
+            'name': '야구선수 키우기 라이트',
+            'title': 'Baseball Career Lite',
+            'description': '한 판 30분. 고1부터 은퇴까지 훈련과 진로를 골라 가며 드래프트·병역·포스팅·FA를 지나 명예의 전당까지. 사이트 활동 없이 혼자 끝까지 즐깁니다.',
+            'url': 'community:lite_home',
+            'icon': '⏱️',
+            'is_new': True,
+            'meta': f"은퇴한 커리어 {lites.filter(retired_at__isnull=False).count()}개 · 진행 중 {lites.filter(retired_at__isnull=True).count()}개",
         },
         {
             'name': '숫자야구',

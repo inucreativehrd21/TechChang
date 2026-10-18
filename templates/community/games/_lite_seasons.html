@@ -1,0 +1,17 @@
+{# 라이트 시즌 연표. 맥락: seasons = rookie_lite_views._season_rows #}
+{% if seasons %}
+<div class="rk-table-wrap">
+    <table class="rk-table rl-years">
+        <thead><tr><th scope="col">시즌</th><th>나이</th><th scope="col" class="is-text">리그</th><th scope="col" class="is-text">소속</th><th scope="col" class="is-text">보직</th><th scope="col" class="is-text">성적</th><th>WAR</th><th scope="col" class="is-text">수상</th></tr></thead>
+        <tbody>
+            {% for r in seasons %}
+            <tr class="{% if 'mvp' in r.kinds %}is-first{% endif %}">
+                <th scope="row">{{ r.s.year }}</th><td>{{ r.s.age }}</td><td class="is-text">{{ r.league }}</td><td class="is-text">{{ r.club }}</td>
+                <td class="is-text">{{ r.s.duty }}</td><td class="is-text">{{ r.line }}</td><td class="is-war">{% if r.s.games %}{{ r.s.war }}{% else %}-{% endif %}</td>
+                <td class="is-text">{% for a in r.s.awards %}<span class="rl-award is-{{ a.kind }}">{{ a.label }}</span>{% endfor %}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endif %}

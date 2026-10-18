@@ -626,3 +626,81 @@ a.rk-rank-main:hover b { color: var(--rk-accent); }
 .rk-gate li.is-ok { color: var(--rk-ink); }
 .rk-gate li.is-ok::before { border-color: var(--rk-accent); background: var(--rk-accent); box-shadow: inset 0 0 0 2px #fff; }
 .rk-gate small { color: var(--rk-ink-4); }
+
+/* ── 야구선수 키우기 라이트(rl-) — 한 판 30분 커리어 ───────────────── */
+.rl-main { display: grid; grid-template-columns: minmax(0, 360px) minmax(0, 1fr); gap: 14px; align-items: start; }
+.rl-side { position: sticky; top: 76px; }
+.rl-stage { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.rl-stage .rk-h2 { margin: 14px 0 0; }
+.rl-stage-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 6px 12px; margin: 0; font-size: 0.9rem; color: var(--rk-ink-3); }
+.rl-stage-head b { font-size: 1.15rem; font-weight: 900; color: var(--rk-ink); }
+.rl-plan { display: flex; flex-direction: column; gap: 12px; }
+.rl-story { margin: 6px 0 12px; font-size: 0.92rem; line-height: 1.65; color: var(--rk-ink-2); }
+.rl-programs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.rl-programs.is-two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.rl-choice { position: relative; }
+.rl-choice input { position: absolute; opacity: 0; pointer-events: none; }
+.rl-choice span { display: flex; flex-direction: column; gap: 3px; height: 100%; padding: 12px 14px; border: 1.5px solid var(--rk-line); border-radius: 12px; background: #fff; cursor: pointer; }
+.rl-choice b { font-size: 0.95rem; font-weight: 800; }
+.rl-choice small { font-size: 0.76rem; line-height: 1.45; color: var(--rk-ink-3); }
+.rl-choice input:checked + span { border-color: var(--rk-accent); background: var(--rk-accent-wash); }
+.rl-choice input:focus-visible + span { outline: 2px solid var(--rk-accent); outline-offset: 2px; }
+.rl-choice input:disabled + span { opacity: .45; cursor: not-allowed; }
+.rl-pathcard { display: flex; flex-direction: column; gap: 8px; padding: 14px 16px; border: 1px solid var(--rk-line); border-top: 3px solid var(--team, var(--rk-line)); border-radius: 12px; background: #fff; }
+.rl-pathcard.is-main { border-color: var(--rk-accent-line); background: var(--rk-accent-wash); }
+.rl-pathcard > b { display: inline-flex; align-items: center; gap: 6px; font-size: 1rem; font-weight: 900; }
+.rl-pathcard > span { flex: 1; font-size: 0.8rem; line-height: 1.5; color: var(--rk-ink-3); }
+.rl-farewell { border-left: 4px solid var(--team); }
+.rl-farewell h2 { margin: 2px 0 6px; font-size: 1.15rem; font-weight: 900; }
+.rl-farewell h2 a { color: inherit; text-decoration: none; }
+.rl-farewell p { margin: 0; font-size: 0.86rem; line-height: 1.6; color: var(--rk-ink-2); }
+.rl-stats { margin-top: 12px; }
+.rl-card .rk-facts { margin-top: 12px; padding-top: 10px; border-top: 1px dashed var(--rk-line); }
+
+/* 시즌 전광판 — 달마다 한 줄 */
+.rk-board-rows li.rl-month { grid-template-columns: 7.2em minmax(0, 1fr) max-content; transition: opacity .35s ease, transform .35s ease; }
+.rl-month .rk-gno { white-space: nowrap; }
+.rl-mline { font-size: 0.92rem; font-weight: 700; color: var(--rk-board-ink); font-variant-numeric: tabular-nums; }
+.rl-wl { font-size: 0.8rem; font-weight: 700; color: var(--rk-board-dim); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.rl-month.is-hot .rl-mline { color: var(--rk-led); text-shadow: 0 0 14px rgba(165, 180, 252, .5); }
+.rl-final { margin: 10px 0 0; padding-top: 10px; border-top: 1px solid rgba(255, 255, 255, .09); font-size: 0.92rem; font-weight: 700; color: var(--rk-board-ink); transition: opacity .35s ease; }
+.rl-final b { color: var(--rk-led); }
+.rl-skip { display: none; margin-top: 10px; padding: 6px 12px; border: 1px solid rgba(255, 255, 255, .2); border-radius: 99px; background: transparent; color: var(--rk-board-dim); font-size: 0.78rem; font-weight: 700; cursor: pointer; }
+.rl-ticker.is-playing .rl-skip { display: inline-block; }
+.rl-wait { opacity: 0; transform: translateY(6px); pointer-events: none; }
+.rl-result.rl-wait { transform: none; }
+
+/* 결산 */
+.rl-line { margin: 10px 0 4px; }
+.rl-awards { display: flex; flex-wrap: wrap; gap: 6px; margin: 12px 0 0; padding: 0; list-style: none; }
+.rl-awards.is-list { flex-direction: column; align-items: flex-start; }
+.rl-award { display: inline-flex; align-items: center; gap: 4px; margin: 1px 4px 1px 0; padding: 3px 9px; border-radius: 99px; font-size: 0.74rem; font-weight: 700; color: var(--rk-ink-2); background: var(--rk-line-soft); white-space: nowrap; }
+.rl-award.is-mvp, .rl-award.is-gg, .rl-award.is-ace, .rl-award.is-title, .rl-award.is-rookie, .rl-award.is-minor { background: var(--rk-gold-wash); }
+.rl-award.is-ring { color: #fff; background: var(--rk-accent); }
+.rl-award.is-allstar, .rl-award.is-national { color: var(--rk-accent); background: var(--rk-accent-wash); }
+.rl-deltas { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; margin: 14px 0 0; padding: 0; list-style: none; }
+.rl-deltas li { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 8px 4px; border-radius: 10px; background: var(--rk-line-soft); font-size: 0.74rem; color: var(--rk-ink-3); }
+.rl-deltas b { font-size: 1.05rem; font-weight: 900; color: var(--rk-ink-2); font-variant-numeric: tabular-nums; }
+.rl-deltas li.is-up b { color: var(--rk-accent); }
+.rl-deltas li.is-down b { color: var(--rk-fail); }
+.rl-news { display: flex; flex-direction: column; gap: 4px; margin: 12px 0; padding: 0; list-style: none; font-size: 0.86rem; color: var(--rk-ink-2); }
+.rl-news li { padding-left: 14px; position: relative; }
+.rl-news li::before { content: ""; position: absolute; left: 2px; top: .6em; width: 5px; height: 5px; border-radius: 50%; background: var(--rk-accent); }
+.rl-years td.is-text { white-space: normal; min-width: 5em; }
+.rl-years td.is-text:nth-of-type(6) { min-width: 15em; }
+@media (max-width: 900px) {
+    .rl-main { grid-template-columns: minmax(0, 1fr); }
+    .rl-side { position: static; order: 2; }                 /* 좁은 화면은 할 일(비시즌·결산·갈림길)이 먼저 */
+    .rl-stage { order: 1; }
+    .rl-years td.is-text { white-space: nowrap; }            /* 연표는 옆으로 밀어 보게 */
+    .rl-programs { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 575.98px) {
+    .rl-programs, .rl-programs.is-two { grid-template-columns: minmax(0, 1fr); }
+    .rl-deltas { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .rk-board-rows li.rl-month { grid-template-columns: 6em minmax(0, 1fr); }
+    .rl-wl { grid-column: 2; }
+}
+@media (prefers-reduced-motion: reduce) {
+    .rl-wait { opacity: 1; transform: none; }
+}

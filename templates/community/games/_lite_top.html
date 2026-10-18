@@ -1,0 +1,13 @@
+{# 라이트 공용 머리 — 제목·메뉴. 맥락: section, h1(선택) #}
+<header class="rk-top">
+    <div class="rk-top-main">
+        <a class="gm-back" href="{% url 'community:games_index' %}">← 게임 목록</a>
+        <h1 class="rk-title">{{ h1|default:'야구선수 키우기 라이트' }}</h1>
+    </div>
+    <p class="rk-season"><b>한 판 30분</b><span>고1부터 은퇴까지</span></p>
+</header>
+<nav class="rk-nav" aria-label="야구선수 키우기 라이트 메뉴">
+    <a href="{% url 'community:lite_home' %}" {% if section == 'home' %}aria-current="page"{% endif %}>내 커리어</a>
+    <a href="{% url 'community:lite_hall' %}" {% if section == 'hall' %}aria-current="page"{% endif %}>명예의 전당</a>
+    <a href="{% url 'community:rookie_home' %}">정식 판(매일 키우기)</a>
+</nav>

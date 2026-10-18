@@ -1291,3 +1291,78 @@ class RookieAward(models.Model):
         verbose_name = '야구선수 키우기 시상'
         verbose_name_plural = '야구선수 키우기 시상'
         ordering = ['season', 'order', 'id']
+
+
+class LiteCareer(models.Model):
+    """야구선수 키우기 라이트 — 한 판 30분, 고1부터 은퇴까지 분기점을 골라 가며 진행하는 커리어(community/rookie_lite.py).
+    정식 판(RookiePlayer)과 따로 — 사이트 활동 TP 와 상관없다."""
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='lite_careers')
+    name = models.CharField(max_length=12)
+    number = models.PositiveSmallIntegerField(default=0)
+    role = models.CharField(max_length=8)                        # pitcher / batter
+    position = models.CharField(max_length=3)                    # SP RP / C 1B 2B 3B SS OF DH
+    style = models.CharField(max_length=10)                      # rookie_lite.STYLES
+    region = models.CharField(max_length=4)
+    team = models.CharField(max_length=10)                       # 희망 KBO 구단
+    potential = models.PositiveSmallIntegerField(default=70)     # 숨김
+    traits = models.JSONField(default=list, blank=True)
+    traits_seen = models.JSONField(default=list, blank=True)
+    stats = models.JSONField(default=dict)
+    ovr = models.FloatField(default=25)
+    best_ovr = models.FloatField(default=25)
+    age = models.PositiveSmallIntegerField(default=16)
+    year = models.PositiveSmallIntegerField(default=1)           # 몇 번째 시즌을 앞두고 있나
+    league = models.CharField(max_length=10, default='hs')
+    club = models.CharField(max_length=30, blank=True)
+    grade = models.PositiveSmallIntegerField(default=1)          # 학생 학년(프로 0)
+    pending = models.JSONField(default=dict, blank=True)         # 지금 단계(plan·review·decision·retired)
+    flags = models.JSONField(default=dict, blank=True)           # 병역·포스팅·FA·부상·KBO 연차 등
+    salary = models.PositiveIntegerField(default=0)              # 만원
+    earnings = models.BigIntegerField(default=0)                 # 만원
+    mvp = models.PositiveSmallIntegerField(default=0)
+    awards = models.PositiveSmallIntegerField(default=0)
+    rings = models.PositiveSmallIntegerField(default=0)
+    war = models.FloatField(default=0)                           # 프로 통산 WAR
+    peak = models.CharField(max_length=10, blank=True)           # 가장 높이 오른 리그
+    retired_at = models.DateTimeField(null=True, blank=True, db_index=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = '야구선수 키우기 라이트 커리어'
+        verbose_name_plural = '야구선수 키우기 라이트 커리어'
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f'{self.name}({self.user.username})'
+
+
+class LiteSeason(models.Model):
+    """라이트 커리어의 한 시즌 — 성적·시상·팀 순위·월별 전광판·성장."""
+    career = models.ForeignKey(LiteCareer, on_delete=models.CASCADE, related_name='seasons')
+    year = models.PositiveSmallIntegerField()
+    age = models.PositiveSmallIntegerField()
+    league = models.CharField(max_length=10, db_index=True)
+    club = models.CharField(max_length=30)
+    duty = models.CharField(max_length=20, blank=True)           # 타순·보직
+    games = models.PositiveSmallIntegerField(default=0)          # 팀 경기 수
+    totals = models.JSONField(default=dict)
+    war = models.FloatField(default=0)
+    team_w = models.PositiveSmallIntegerField(default=0)
+    team_l = models.PositiveSmallIntegerField(default=0)
+    team_rank = models.PositiveSmallIntegerField(default=0)
+    team_of = models.PositiveSmallIntegerField(default=0)
+    champion = models.BooleanField(default=False)
+    awards = models.JSONField(default=list, blank=True)          # [{'kind','label'}]
+    months = models.JSONField(default=list, blank=True)          # 전광판 — 달마다 줄
+    news = models.JSONField(default=list, blank=True)
+    ovr_start = models.FloatField(default=0)
+    ovr_end = models.FloatField(default=0)
+    deltas = models.JSONField(default=dict, blank=True)
+    salary = models.PositiveIntegerField(default=0)              # 만원
+
+    class Meta:
+        verbose_name = '야구선수 키우기 라이트 시즌'
+        verbose_name_plural = '야구선수 키우기 라이트 시즌'
+        ordering = ['career', 'year']
+        unique_together = [('career', 'year')]
