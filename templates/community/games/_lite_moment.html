@@ -1,0 +1,26 @@
+{# 라이트 결정적 순간 — 결승 승부처 한 타석. 맥락: d = rookie_lite.moment_view + what·i·n·done #}
+<section class="rl-moment" aria-labelledby="rl-moment-title">
+    <div class="rl-moment-scene">
+        <p class="rl-moment-tag">{% if d.n > 1 %}결정적 순간 {{ d.i }}/{{ d.n }} · {% else %}결정적 순간 · {% endif %}{% if d.when %}{{ d.when }} {% endif %}{{ d.stage }}</p>
+        <h2 class="rl-moment-title" id="rl-moment-title">{{ d.stage }}</h2>
+        <div class="rl-scorebug" aria-label="{{ d.sit.inning }}, {{ d.sit.outs }}아웃, 점수 우리 {{ d.sit.score }} 상대">
+            <span class="rl-sb-inn">{{ d.sit.inning }}</span>
+            <span class="rl-sb-score"><small>우리</small>{{ d.sit.score }}<small>상대</small></span>
+            <span class="rl-sb-outs" aria-hidden="true">{% for o in d.outs %}<i class="{% if o %}is-on{% endif %}"></i>{% endfor %}<small>아웃</small></span>
+            <span class="rl-diamond" aria-hidden="true"><i class="is-b2{% if d.bases.1 %} is-on{% endif %}"></i><i class="is-b3{% if d.bases.2 %} is-on{% endif %}"></i><i class="is-b1{% if d.bases.0 %} is-on{% endif %}"></i></span>
+        </div>
+        <aside class="rl-rival rl-scout" aria-label="스카우팅 리포트"><small>{% if d.side == 'bat' %}상대 {{ d.opp.role }}{% else %}상대 {{ d.opp.role }}{% endif %}</small><b>{{ d.opp.name }}</b><span>{{ d.opp.scout }}</span></aside>
+    </div>
+    <div class="rl-dialog">
+        <p class="rl-dialog-name"><b>{{ d.who_name }}</b> {{ d.who_role }}</p>
+        <p class="rl-dialog-text">{{ d.text }}</p>
+    </div>
+    <div class="rl-replies" role="group" aria-label="{% if d.side == 'bat' %}어떻게 칠까요{% else %}무엇을 던질까요{% endif %}">
+        <p class="rl-replies-q">{% if d.side == 'bat' %}어떻게 칠까요? 스카우팅 리포트를 보고 골라 주세요{% else %}무엇을 던질까요? 타자 성향을 보고 골라 주세요{% endif %}</p>
+        {% for ch in d.choices %}
+        <form method="post" action="{% url 'community:lite_act' %}">{% csrf_token %}<input type="hidden" name="action" value="decide"><input type="hidden" name="what" value="moment"><input type="hidden" name="choice" value="{{ ch.key }}">
+            <button type="submit" class="rl-reply is-{{ ch.key }}"><em class="rl-tone">{{ ch.tone }}</em><b>{{ ch.label }}</b><small>{{ ch.hint }}</small></button></form>
+        {% endfor %}
+    </div>
+    {% if d.done %}{% with last=d.done|last %}<p class="rl-moment-prev">앞선 승부 — {{ last.stage }}: {{ last.text }} → <b>{{ last.result }}</b></p>{% endwith %}{% endif %}
+</section>

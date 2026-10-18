@@ -1,9 +1,15 @@
 """야구선수 키우기 — 경기 모형: 타석 승부, 상대 선수, 내 타순·보직, 경기 시뮬레이션(2026-10-17 개편).
 
 타석 승부(pa_probs): 타자 능력(컨택·파워·선구안·주루·클러치) 대 투수 능력(구속·제구·변화구·멘탈)을
-항목끼리 맞붙인다 — 컨택 대 구위(구속+변화구), 선구안 대 제구, 파워 대 구위·제구, 득점권에선 클러치 대 멘탈.
-기울기 S=9(예전 12) — 실력 차이가 결과에 크게 드러나게(민감도 상향). 평균 타자 기준 타율:
-에이스 투수 상대 ≈ .200, 주전 ≈ .265, 백업 ≈ .330 (test_rookie_league 가 지킨다).
+항목끼리 맞붙인다 — 컨택 대 구위(구속·변화구·멘탈), 선구안 대 제구·멘탈(평정심), 파워 대 구위·멘탈, 득점권에선 클러치 대 멘탈.
+기울기 S=9 — 실력 차이가 결과에 크게 드러나게. 평균 타자 기준 타율: 에이스 상대 ≈ .205, 주전 ≈ .267, 백업 ≈ .326
+(test_rookie_league 가 지킨다).
+
+능력치 값 균등화(2026-10-18 점검): 예전엔 +5 의 시즌 WAR 가 컨택 0.97·파워 0.76 대 선구안 0.26·주루 0.20, 투수 멘탈 0·
+체력 0.04 로 한쪽만 키우는 게 당연했다. 그래서 확률식을 '리그 평균 값 + K·(시그모이드−0.5)' 꼴로 바꿔 모든 능력이
+리그 수준이면 예전과 같은 확률이 나오게 두고, 기울기(K)·구위 섞기(MIX)·수비 포지션 배율·주루의 수비 범위·
+선발 피로(체력)·불펜 연투 피로(체력)를 다시 나눴다 — +5 값이 타자 0.50~0.57, 선발 0.41~0.46, 불펜 0.12~0.13(유격수 기준,
+1루수는 수비 값이 절반, 지명타자 0). 기대값 계산(scratchpad ev.py)과 커리어 하네스로 맞췄다.
 
 상대는 가상 선수(이름 없음 — 실존 선수를 흉내 내지 않는다):
 - 상대 타선: 상위(1·2번 — 선구안·주루), 중심(3·4·5번 — 클러치 + 컨택·파워 중 둘), 하위(6~9번 — 밋밋)
@@ -23,6 +29,23 @@ from collections import Counter
 S = 9.0                                   # 승부 기울기(능력 차이 → 확률). 작을수록 민감
 BAT = ('contact', 'power', 'eye', 'speed', 'defense')
 PIT = ('velocity', 'control', 'breaking', 'stamina', 'mental')
+# 능력치마다 결과에 미치는 힘(기울기) — 리그 평균 값은 그대로, 시그모이드−0.5 에 곱한다
+K_BB, K_SO_CON, K_SO_EYE, K_HR = .115, .11, .12, .06
+K_BABIP_CON, K_BABIP_SPD, K_DOUBLE, K_TRIPLE = .063, .093, .06, .038
+MIX_CON = (.41, .50, .09)                 # 컨택이 맞서는 구위 — 구속·변화구·멘탈
+MIX_POW = (.45, .35, .03, .17)            # 파워가 맞서는 구위 — 구속·변화구·제구·멘탈
+MIX_EYE = (.57, .43)                      # 선구안이 맞서는 것 — 제구·멘탈(평정심)
+K_DEF = .128                              # 수비 기여(한 경기, 포지션 배율 곱)
+DEF_POS = {'C': 1.2, 'SS': 1.2, '2B': 1.0, '3B': .9, 'OF': .9, '1B': .5}      # 지명타자는 수비가 없다
+DEF_RANGE = {'SS': .165, '2B': .165, 'OF': .10, '3B': .08}                    # 수비 범위에 섞이는 주루 몫
+K_STEAL = .173                            # 도루 시도(주루)
+F_SP, LIM_SP = .64, .12                   # 선발 피로(리그 수준 대비 체력) · 체력이 늘리는 상대 타자 수
+K_RP = .32                                # 불펜 연투 피로(리그 수준 대비 체력)
+
+
+def _fatigue(k: float, lvl: float, stamina: float) -> float:
+    """체력이 리그 수준보다 낮으면 구위가 깎이고(+), 높으면 버틴다(−). 멀어질수록 덜 늘어난다(다른 능력과 같은 모양)."""
+    return k * 4 * S * (_sig((lvl - stamina) / S) - .5)
 
 
 def _sig(x: float) -> float:
@@ -57,21 +80,21 @@ def pa_probs(b: dict, p: dict, risp: bool = False) -> dict:
     con, pw, eye, spd = g(b, 'contact'), g(b, 'power'), g(b, 'eye'), g(b, 'speed')
     clutch = float(b.get('clutch', (con + eye) / 2))           # 내 타자는 클러치 능력치가 없다 → 컨택·선구안 평균
     vel, ctl, brk, men = g(p, 'velocity'), g(p, 'control'), g(p, 'breaking'), g(p, 'mental')
-    d_con = (con - (vel + brk) / 2) / S
-    d_eye = (eye - ctl) / S
-    d_pow = (pw - (vel * .4 + brk * .3 + ctl * .3)) / S
+    d_con = (con - (vel * MIX_CON[0] + brk * MIX_CON[1] + men * MIX_CON[2])) / S
+    d_eye = (eye - (ctl * MIX_EYE[0] + men * MIX_EYE[1])) / S
+    d_pow = (pw - (vel * MIX_POW[0] + brk * MIX_POW[1] + ctl * MIX_POW[2] + men * MIX_POW[3])) / S
     d_spd = (spd - (vel + ctl + brk) / 3) / S
-    bb = 0.035 + 0.08 * _sig(d_eye)
-    so = 0.33 - 0.20 * _sig(d_con) - 0.04 * _sig(d_eye)
+    bb = 0.075 + K_BB * (_sig(d_eye) - .5)
+    so = 0.21 - K_SO_CON * (_sig(d_con) - .5) - K_SO_EYE * (_sig(d_eye) - .5)
     hbp = 0.008
     contact = 1 - bb - so - hbp
-    hr = contact * (0.006 + 0.085 * _sig(d_pow * 1.2))
+    hr = contact * (0.0485 + K_HR * (_sig(d_pow * 1.2) - .5))
     bip = contact - hr
-    babip = 0.24 + 0.12 * _sig(d_con) + 0.025 * _sig(d_spd)
+    babip = 0.3125 + K_BABIP_CON * (_sig(d_con) - .5) + K_BABIP_SPD * (_sig(d_spd) - .5)
     if risp:                                                    # 득점권: 클러치 대 멘탈
         babip += 0.06 * (_sig((clutch - men) / S) - 0.5)
     hits = bip * babip
-    d_share, t_share = 0.16 + 0.12 * _sig(d_pow), 0.006 + 0.03 * _sig(d_spd)
+    d_share, t_share = 0.22 + K_DOUBLE * (_sig(d_pow) - .5), 0.021 + K_TRIPLE * (_sig(d_spd) - .5)
     return {'BB': bb, 'HBP': hbp, 'SO': so, 'HR': hr, '2B': hits * d_share, '3B': hits * t_share,
             '1B': hits * (1 - d_share - t_share), 'OUT': bip - hits}
 
@@ -292,7 +315,7 @@ def bat_style(s: dict) -> str:
 # ───────────────────────────── 경기 — 내 타자
 def _runner(line, o, ds, rng):
     """출루 뒤 도루 시도."""
-    if o in ('1B', 'BB', 'HBP') and rng.random() < 0.03 + 0.20 * _sig(ds):
+    if o in ('1B', 'BB', 'HBP') and rng.random() < 0.03 + K_STEAL * _sig(ds):
         if rng.random() < 0.55 + 0.35 * _sig(ds):
             line['sb'] += 1
         else:
@@ -339,10 +362,13 @@ def _defense(line, s, position, lvl, rng, share=1.0):
     from .rookie_league import ERR_BASE
     if position == 'DH':
         return
-    d = (float(s.get('defense', 25)) - lvl) / S
-    err = rng.random() < ERR_BASE.get(position, .04) * (1.6 - _sig(d)) * share
+    rw = DEF_RANGE.get(position, 0.0)                         # 유격·2루·외야는 발도 수비 범위다
+    d = (float(s.get('defense', 25)) * (1 - rw) + float(s.get('speed', 25)) * rw - lvl) / S
+    de = (float(s.get('defense', 25)) - lvl) / S              # 실책은 수비 능력만
+    err = rng.random() < ERR_BASE.get(position, .04) * (1.6 - _sig(de)) * share
     line['e'] += err
-    line['def'] = round(((_sig(d) - 0.5) * 2 * 0.07 + 0.4 * (ERR_BASE.get(position, .04) * 1.1 - err)) * share, 4)
+    line['def'] = round(((_sig(d) - 0.5) * 2 * K_DEF * DEF_POS.get(position, 1.0)
+                         + 0.4 * (ERR_BASE.get(position, .04) * 1.1 - err)) * share, 4)
 
 
 def _score(line, rng):
@@ -398,19 +424,25 @@ def batter_game(s: dict, position: str, lvl: float, rng, role: str = 'lower', sl
 
 
 # ───────────────────────────── 경기 — 내 투수
-def _pitch(t, s, lvl_base, rng, start_slot, max_outs, pull):
-    """상대 타순을 따라 던진다. pull(t, outs_inning) 이 True 면 내려온다. 다음 타순을 돌려준다."""
+def _pitch(t, s, lvl_base, rng, start_slot, max_outs, pull, lvl: float | None = None):
+    """상대 타순을 따라 던진다. pull(t, outs_inning) 이 True 면 내려온다. 다음 타순을 돌려준다.
+    lvl 을 주면(선발) 리그 수준 대비 체력만큼 공을 던질수록 구위가 떨어지거나 버틴다."""
     bases = [False, False, False]
     outs_inning = 0
     slot = start_slot
     cache = {}
+    tired = _fatigue(F_SP, lvl, float(s.get('stamina', 25))) if lvl is not None else 0.0
     while t['outs'] < max_outs:
         if pull(t, outs_inning):
             break
         risp = bool(bases[1] or bases[2])
-        key = (slot, risp)
+        fat = int(round(tired * min(t['bf'], 30) / 25))
+        key = (slot, risp, fat)
         if key not in cache:
-            cache[key] = pa_probs(opp_batter(slot, lvl_base), s, risp=risp)
+            mine = s
+            if fat:
+                mine = dict(s, **{k: float(s.get(k, 25)) - fat for k in ('velocity', 'control', 'breaking')})
+            cache[key] = pa_probs(opp_batter(slot, lvl_base), mine, risp=risp)
         o = _pick(cache[key], rng)
         _split(t, LINEUP_GROUP[slot], o)
         slot = slot % 9 + 1
@@ -475,14 +507,14 @@ def _form(lvl, rng):
 def starter_game(s: dict, lvl: float, rng) -> dict:
     from .rookie_league import pit_summary
     form, base = _form(lvl, rng)
-    limit = 12 + 0.22 * float(s.get('stamina', 25)) + rng.gauss(0, 3)     # 상대 타자 수(체력 64 ≈ 6이닝)
+    limit = 26.08 + LIM_SP * (float(s.get('stamina', 25)) - 64) + rng.gauss(0, 3)   # 상대 타자 수(체력 64 ≈ 6이닝)
     t = Counter(g=1, gs=1)
 
     def pull(t, outs_inning):
         if outs_inning == 0 and t['outs'] and (t['bf'] >= limit or t['r'] >= 5):
             return True
         return t['r'] >= 7 or t['bf'] >= limit + 6
-    _pitch(t, s, base, rng, 1, 27, pull)
+    _pitch(t, s, base, rng, 1, 27, pull, lvl=lvl)
     pen = _poisson(0.47 * (27 - t['outs']) / 3, rng)
     opp_runs, team = t['r'] + pen, _poisson(4.1, rng)
     if team == opp_runs:
@@ -514,6 +546,9 @@ def relief_game(s: dict, lvl: float, rng, role: str) -> dict:
     """구원 등판 한 번 — 세이브·홀드·블론세이브·구원승·패."""
     from .rookie_league import ip_text
     _p, innings, inn, (lo, hi) = RELIEF[role]
+    tired = _fatigue(K_RP, lvl, float(s.get('stamina', 25)))   # 연투 피로 — 체력이 낮으면 구위가 깎인다
+    if tired:
+        s = dict(s, **{k: float(s.get(k, 25)) - tired for k in ('velocity', 'control', 'breaking')})
     form, base = _form(lvl, rng)
     lead = rng.randint(lo, hi)
     t = Counter(g=1, gr=1)

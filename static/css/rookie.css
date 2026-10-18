@@ -1223,3 +1223,73 @@ a.rk-rank-main:hover b { color: var(--rk-accent); }
     .rl-welcome { margin-bottom: 10px; }
 }
 @keyframes rl-breathe-80 { from { background-position: -720px 0; } to { background-position: -960px 0; } }
+
+/* ══ 결정적 순간(결승 승부처) · 능력치가 바뀐 이유 — 2026-10-18 ══════════════════════════════
+ * 결정적 순간은 감독실과 같은 장면 문법(장면 → 대사 창 → 답)에, 무대만 야간 구장: 조명·전광판 점수 띠·주자 다이아몬드. */
+.rl-moment { overflow: hidden; border-radius: 18px; background: #fff; box-shadow: 0 0 0 1px var(--rk-line), 0 22px 44px -26px rgba(14, 17, 48, .6); }
+.rl-moment-scene { position: relative; height: 236px; overflow: hidden; color: #fff; background:
+    radial-gradient(140px 70px at 18% 0, rgba(238, 240, 255, .35), transparent 70%),
+    radial-gradient(140px 70px at 82% 0, rgba(238, 240, 255, .35), transparent 70%),
+    linear-gradient(180deg, transparent 0 64%, #1f5132 64% 66%, #173e27 66% 100%),
+    linear-gradient(180deg, #1a1f55 0, var(--rl-night) 64%); }
+.rl-moment-scene::after { content: ""; position: absolute; left: 50%; bottom: -60px; width: 300px; height: 150px; margin-left: -150px; border-radius: 50% 50% 0 0; background: #8a6a45; opacity: .35; }
+.rl-moment-tag { position: absolute; top: 14px; left: 18px; z-index: 2; margin: 0; padding: 3px 10px; border-radius: 99px; font-size: 0.74rem; font-weight: 800; color: var(--rl-night); background: var(--rk-led); }
+.rk .rl-moment-title { position: absolute; top: 44px; left: 18px; z-index: 2; margin: 0; font-size: 1.45rem; font-weight: 900; letter-spacing: -0.03em; color: #fff; text-shadow: 0 2px 10px rgba(0, 0, 0, .45); }
+.rl-scorebug { position: absolute; left: 18px; bottom: 26px; z-index: 2; display: flex; align-items: center; gap: 12px; padding: 7px 12px; border-radius: 10px; background: rgba(14, 17, 48, .85); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .1); }
+.rl-sb-inn { font-size: 0.86rem; font-weight: 900; color: var(--rk-led); }
+.rl-sb-score { display: inline-flex; align-items: baseline; gap: 6px; font-size: 1.25rem; font-weight: 900; color: #fff; font-variant-numeric: tabular-nums; }
+.rl-sb-score small { font-size: 0.66rem; font-weight: 700; color: var(--rk-board-dim); }
+.rl-sb-outs { display: inline-flex; align-items: center; gap: 3px; }
+.rl-sb-outs i { width: 9px; height: 9px; border-radius: 50%; box-shadow: inset 0 0 0 1.5px var(--rk-led); }
+.rl-sb-outs i.is-on { background: var(--rk-led); }
+.rl-sb-outs small { margin-left: 3px; font-size: 0.66rem; font-weight: 700; color: var(--rk-board-dim); }
+.rl-diamond { position: relative; display: inline-block; width: 34px; height: 26px; }
+.rl-diamond i { position: absolute; width: 10px; height: 10px; transform: rotate(45deg); box-shadow: inset 0 0 0 1.5px var(--rk-led); }
+.rl-diamond i.is-on { background: var(--rk-led); }
+.rl-diamond i.is-b2 { left: 12px; top: 1px; }
+.rl-diamond i.is-b3 { left: 2px; top: 11px; }
+.rl-diamond i.is-b1 { left: 22px; top: 11px; }
+.rl-scout { bottom: 72px; }
+.rl-replies-q { margin: 0 0 2px; font-size: 0.84rem; font-weight: 800; color: var(--rk-ink-2); }
+.rl-reply.is-short .rl-tone, .rl-reply.is-edge .rl-tone { color: var(--rk-ink-2); background: var(--rk-line-soft); }
+.rl-reply.is-fast .rl-tone, .rl-reply.is-break .rl-tone { color: #fff; background: var(--rk-accent); }
+.rl-moment-prev { margin: 0; padding: 10px 16px 14px; font-size: 0.8rem; color: var(--rk-ink-3); border-top: 1px dashed var(--rk-line); }
+
+/* 결산 — 결정적 순간 결과 */
+.rl-moments { display: flex; flex-direction: column; gap: 8px; transition: opacity .35s ease, transform .35s ease; }
+.rl-moment-res { padding: 14px 18px; border: 1px solid var(--rk-line); border-left: 5px solid var(--rk-ink-4); border-radius: 14px; background: #fff; }
+.rl-moment-res.is-won { border-left-color: var(--rk-accent); background: linear-gradient(90deg, var(--rk-accent-wash), #fff 60%); }
+.rl-moment-res-stage { margin: 0; font-size: 0.76rem; font-weight: 700; color: var(--rk-ink-3); }
+.rl-moment-res h3 { margin: 2px 0 4px; font-size: 1.3rem; font-weight: 900; letter-spacing: -0.02em; color: var(--rk-ink); }
+.rl-moment-res.is-won h3 { color: var(--rk-accent); }
+.rl-moment-res p { margin: 0; font-size: 0.88rem; line-height: 1.55; color: var(--rk-ink-2); }
+.rl-moment-res small { display: block; margin-top: 3px; font-size: 0.74rem; color: var(--rk-ink-3); }
+
+/* 능력치가 바뀐 이유 */
+.rl-why { margin-top: 10px; }
+.rl-why-title { margin: 0 0 6px; font-size: 0.84rem; font-weight: 800; color: var(--rk-fail); }
+.rl-why-list { display: flex; flex-direction: column; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.rl-why-list li { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; padding: 8px 10px; border-radius: 10px; background: var(--rk-paper); font-size: 0.82rem; }
+.rl-why-list b { flex: none; min-width: 5.4em; font-weight: 900; color: var(--rk-ink); font-variant-numeric: tabular-nums; }
+.rl-why-parts { display: flex; flex-wrap: wrap; gap: 4px; }
+.rl-why-parts em { padding: 1px 7px; border-radius: 6px; font-style: normal; font-size: 0.74rem; font-weight: 700; color: var(--rk-ink-2); background: #fff; box-shadow: inset 0 0 0 1px var(--rk-line); font-variant-numeric: tabular-nums; }
+.rl-why-parts em.is-down { color: var(--rk-fail); box-shadow: inset 0 0 0 1px #fecdd3; }
+.rl-why-parts em.is-up { color: var(--rk-accent); box-shadow: inset 0 0 0 1px var(--rk-accent-line); }
+.rl-why-all { margin-top: 8px; }
+.rl-why-all > summary { font-size: 0.8rem; font-weight: 700; color: var(--rk-ink-3); cursor: pointer; }
+.rl-why-all .rl-why-list { margin-top: 8px; }
+
+/* 정식 판 훈련 칸 — 능력치가 하는 일 · 밤사이 빠진 이유 */
+.rk-stat-role { margin: -2px 0 6px; font-size: 0.72rem; color: var(--rk-ink-3); }
+.rk-stat-why { margin: -2px 0 6px; font-size: 0.72rem; font-weight: 700; color: var(--rk-fail); }
+
+@media (max-width: 575.98px) {
+    .rl-moment-scene { height: 214px; }
+    .rk .rl-moment-title { top: 40px; font-size: 1.12rem; }
+    .rl-scorebug { left: 10px; bottom: 22px; gap: 8px; padding: 6px 9px; }
+    .rl-sb-score { font-size: 1.05rem; }
+    .rl-scout { top: 72px; right: 10px; bottom: auto; max-width: 72%; }
+    .rl-moment-res { padding: 12px 14px; }
+    .rl-moment-res h3 { font-size: 1.12rem; }
+    .rl-why-list li { padding: 7px 9px; font-size: 0.78rem; }
+}

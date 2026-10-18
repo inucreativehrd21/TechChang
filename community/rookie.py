@@ -60,14 +60,20 @@ SWING = (0.85, 1.15)              # 훈련 1회 흔들림
 GREAT_CHANCE, GREAT_MULT = 0.10, 1.5
 EXPECTED_MULT = (SWING[0] + SWING[1]) / 2 * (1 + GREAT_CHANCE * (GREAT_MULT - 1))   # 흔들림의 기대 배율
 
+# OVR = 다섯 능력의 평균(2026-10-18 능력치 값 균등화 — 예전 컨택·파워·구속·제구 .25, 주루·수비·체력·멘탈 .15 라
+# 승격·보직·드래프트에서 뒤 능력이 당연히 밀렸다). 경기에서의 값도 rookie_sim 에서 고르게 맞췄다.
 ROLES = {
-    'pitcher': {'label': '투수', 'stats': [('velocity', '구속', .25), ('control', '제구', .25),
-                                           ('breaking', '변화구', .20), ('stamina', '체력', .15),
-                                           ('mental', '멘탈', .15)]},
-    'batter': {'label': '타자', 'stats': [('contact', '컨택', .25), ('power', '파워', .25),
-                                         ('eye', '선구안', .20), ('speed', '주루', .15),
-                                         ('defense', '수비', .15)]},
+    'pitcher': {'label': '투수', 'stats': [('velocity', '구속', .20), ('control', '제구', .20),
+                                           ('breaking', '변화구', .20), ('stamina', '체력', .20),
+                                           ('mental', '멘탈', .20)]},
+    'batter': {'label': '타자', 'stats': [('contact', '컨택', .20), ('power', '파워', .20),
+                                         ('eye', '선구안', .20), ('speed', '주루', .20),
+                                         ('defense', '수비', .20)]},
 }
+# 능력치가 경기에서 하는 일 — 훈련 화면 안내
+STAT_ROLE = {'contact': '삼진↓ 안타↑', 'power': '홈런·장타', 'eye': '볼넷↑ 삼진↓', 'speed': '내야안타·도루·수비 범위',
+             'defense': '실점 막기(유격·포수일수록 큼)', 'velocity': '삼진↑ 장타↓', 'control': '볼넷↓',
+             'breaking': '헛스윙↑ 장타↓', 'stamina': '긴 이닝·막판 구위(불펜은 연투)', 'mental': '볼넷↓·위기에 강함'}
 # 희망 구단(KBO 10개 구단) — 이름은 표시용(로고 없음). 색은 카드 띠·점에만 쓴다. 해외 구단은 rookie_world.
 TEAMS = W.KBO_TEAMS
 TEAM = {code: W.PRO_TEAM[code] for code, _n, _c in TEAMS}
@@ -266,14 +272,26 @@ def _decay(p, today: date) -> dict:
     from . import rookie_career as C
     day = max(start, today - timedelta(days=SETTLE_WINDOW))
     stats = {k: float(p.stats.get(k, FLOOR)) for k in stat_keys(p.role)}
+    lost = {k: {'upkeep': 0.0, 'rest': 0.0, 'aging': 0.0} for k in stats}     # 빠진 몫을 이유별로(화면 안내)
     while day < today:
         base = decay_rate((day - p.last_active).days)
+        rest_rate = C.decay_for(p, base, '')                # 쉰 날 몫까지(강철 체력이면 줄어든다), 노쇠 빼고
         for k, s in stats.items():
-            stats[k] = round(s - (s - FLOOR) * C.decay_for(p, base, k), 3)
+            r = C.decay_for(p, base, k)
+            amt = (s - FLOOR) * r
+            stats[k] = round(s - amt, 3)
+            if r > 0:
+                up = min(BASE_DECAY, rest_rate)
+                lost[k]['upkeep'] += amt * up / r
+                lost[k]['rest'] += amt * max(0.0, rest_rate - up) / r
+                lost[k]['aging'] += amt * max(0.0, r - rest_rate) / r
         day += timedelta(days=1)
     days = (today - start).days
     before = p.ovr
     p.stats, p.ovr, p.settled_through = stats, overall(p.role, stats), today - timedelta(days=1)
+    p.career = dict(p.career or {}, decay={'to': today.isoformat(), 'days': days,
+                                          'by': {k: {why: round(v, 2) for why, v in d.items() if v >= 0.005}
+                                                 for k, d in lost.items()}})
     demoted = []
     while True:
         below = W.demote_below(p.league)
@@ -282,7 +300,7 @@ def _decay(p, today: date) -> dict:
         p.league = W.prev_league(p.league)
         p.league_since = today
         demoted.append(W.league(p.league)['name'])
-    p.save(update_fields=['stats', 'ovr', 'settled_through', 'league', 'league_since', 'updated_at'])
+    p.save(update_fields=['stats', 'ovr', 'settled_through', 'league', 'league_since', 'career', 'updated_at'])
     idle = (today - p.last_active).days
     if before - p.ovr >= 0.05 and idle >= 2:          # 매일의 유지비는 기록하지 않는다 — 쉬어서 빠질 때만
         _log(p, 'decay', f'감각 저하({idle - 1}일 활동 없음) — OVR {before:.1f} → {p.ovr:.1f}', day=today)
@@ -533,6 +551,25 @@ def today_earned(p, today: date | None = None) -> list:
              'done': counts.get(s, 0) >= r['cap']} for s, r in EARN.items()]
 
 
+DECAY_WHY = {'upkeep': '유지비', 'rest': '쉰 날 감각 저하', 'aging': '나이(노쇠)'}
+
+
+def stat_drop(p, k: str, today: date | None = None) -> dict | None:
+    """오늘 아침 정산에서 이 능력이 빠진 만큼과 이유 — 0.05 넘게 빠졌을 때만."""
+    d = (p.career or {}).get('decay') or {}
+    today = today or timezone.localdate()
+    if d.get('to') != today.isoformat():
+        return None
+    by = (d.get('by') or {}).get(k) or {}
+    total = round(sum(by.values()), 2)
+    if total < 0.05:
+        return None
+    days = d.get('days', 1)
+    return {'total': round(total, 1), 'when': '어젯밤' if days <= 1 else f'지난 {days}일',
+            'parts': [{'label': DECAY_WHY[w], 'value': round(v, 1) if v >= 0.05 else round(v, 2)}
+                      for w, v in sorted(by.items(), key=lambda x: -x[1]) if v >= 0.01]}
+
+
 def stat_rows(p, done_today: int = 0) -> list:
     from . import rookie_career as C
     fat, scale, bonus = C.fatigue_at(p), C.age_mult(p), C.focus_bonus(p)
@@ -546,7 +583,8 @@ def stat_rows(p, done_today: int = 0) -> list:
                      'cap_bar': round(cap / CAP * 100, 1) if cap < CAP else None,
                      'capped': s >= cap - 0.05, 'near': cap - s < C.TAPER,
                      'next_gain': round(train_value(s, 1, m, done_today, cap, fat) - s, 1),
-                     'five_gain': round(train_value(s, 5, m, done_today, cap, fat) - s, 1)})
+                     'five_gain': round(train_value(s, 5, m, done_today, cap, fat) - s, 1),
+                     'role': STAT_ROLE.get(k, ''), 'drop': stat_drop(p, k)})
     return rows
 
 

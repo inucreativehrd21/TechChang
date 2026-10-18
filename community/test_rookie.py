@@ -62,7 +62,7 @@ class ConvergenceTests(TestCase):
         self.assertGreater(R.gain(50), R.gain(80))
         self.assertGreater(R.gain(25) / R.gain(80), 8)
         curve, _ = R.simulate(20, 3)
-        self.assertGreaterEqual(curve[0], 38)                 # 출석만 해도 첫날 25 → 38+
+        self.assertGreaterEqual(curve[0], 37)                 # 출석만 해도 첫날 25 → 37+(OVR 다섯 능력 평균, 2026-10-18)
 
     def test_each_activity_level_converges(self):
         light = R.simulate(20, 150)[0]
@@ -73,7 +73,7 @@ class ConvergenceTests(TestCase):
         self.assertTrue(60 <= light[-1] < 65)                  # 출석만 → 2군 상위
         self.assertTrue(65 <= steady[-1] < 72)                 # 출석+칼럼 1편 → 1군
         self.assertTrue(78 <= full[-1] < 83)                   # 매일 한도 → 에이스
-        self.assertLessEqual(next(i for i, v in enumerate(full) if v >= 45) + 1, 2)   # 2군 문턱 이틀
+        self.assertLessEqual(next(i for i, v in enumerate(full) if v >= 45) + 1, 3)   # 2군 문턱 사흘
 
     def test_rest_drops_hard(self):
         _, stats = R.simulate(R.DAILY_MAX, 150)
@@ -83,6 +83,31 @@ class ConvergenceTests(TestCase):
         self.assertLess(two, 40)                                # 2주면 육성군 강등선
         self.assertEqual(R.decay_rate(0), R.decay_rate(1))
         self.assertEqual(R.decay_rate(30), R.MAX_DECAY)
+
+
+class DecayWhyTests(TestCase):
+    """훈련 뒤 밤사이 능력치가 빠진 이유(2026-10-18) — 유지비·쉰 날 감각 저하·노쇠로 나눠 남긴다."""
+
+    def test_overnight_drop_is_explained(self):
+        u = member('정산이유')
+        p = adult(R.create(u, name='이유', role='batter', team='lg', number=7, focus='contact', region='서울'))
+        p.stats = {k: 70.0 for k in p.stats}
+        p.age = 33
+        today = timezone.localdate()
+        p.last_active = today - timedelta(days=4)
+        p.settled_through = today - timedelta(days=4)
+        p.save()
+        R._decay(p, today)
+        rows = {r['key']: r for r in R.stat_rows(p)}
+        drop = rows['speed']['drop']
+        self.assertIsNotNone(drop)
+        labels = [x['label'] for x in drop['parts']]
+        self.assertIn('유지비', labels)
+        self.assertIn('쉰 날 감각 저하', labels)
+        self.assertIn('나이(노쇠)', labels)                                          # 주루는 몸 능력 — 서른셋이면 노쇠
+        self.assertNotIn('나이(노쇠)', [x['label'] for x in rows['eye']['drop']['parts']])   # 선구안은 노쇠가 없다
+        self.assertEqual(drop['when'], '지난 3일')
+        self.assertEqual(rows['contact']['role'], R.STAT_ROLE['contact'])
 
 
 class EngineTests(TestCase):

@@ -171,12 +171,16 @@ def lite_home(request):
     elif pend.get('kind') == 'review':
         s = c.seasons.filter(year=pend.get('year')).first()
         ctx.update(season=s, season_line=L.line_view(c.role, s.totals) if s and s.totals else None,
-                   deltas=[{'label': lab, 'value': (s.deltas or {}).get(k, 0)} for k, lab, _w in R.ROLES[c.role]['stats']] if s else [],
+                   deltas=[{'label': lab, 'value': (s.deltas or {}).get(k, 0), 'why': ((s.deltas or {}).get('_why') or {}).get(k, [])}
+                           for k, lab, _w in R.ROLES[c.role]['stats']] if s else [],
+                   moments=pend.get('moments') or [],
+                   drops=[],
                    season_league=W.league(s.league)['name'] if s else '', season_club=W.club_label(s.league, s.club) if s else '',
                    season_year=X.cal_year(c, s.year) if s else '', press=(s.press or []) if s else [],
                    splits=[dict(x, lg=W.league(x['league'])['name'], club_name=W.club_short(x['league'], x['club']))
                            for x in (s.splits or [])] if s and len(s.splits or []) > 1 else [],
                    meet_next=bool((c.flags or {}).get('move')))
+        ctx['drops'] = [d for d in ctx.get('deltas') or [] if d['value'] < 0]
     elif pend.get('kind') == 'decision':
         ctx['decision'] = X.decision_view(c)
     return render(request, 'community/rookie_lite.html', ctx)

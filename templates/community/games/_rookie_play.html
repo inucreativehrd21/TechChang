@@ -24,6 +24,8 @@
                     <span class="rk-stat-name">{{ s.label }}{% if s.focus %}<em>주특기</em>{% endif %}{% if s.capped %}<em class="is-cap">한계</em>{% endif %}</span>
                     <b class="rk-stat-val">{{ s.shown }}</b>
                 </div>
+                <p class="rk-stat-role">{{ s.role }}</p>
+                {% if s.drop %}<p class="rk-stat-why" title="밤사이 빠진 이유">{{ s.drop.when }} −{{ s.drop.total }} · {% for r in s.drop.parts %}{{ r.label }} −{{ r.value }}{% if not forloop.last %}, {% endif %}{% endfor %}</p>{% endif %}
                 <div class="rk-bar">{% if s.cap_bar %}<s class="rk-cap" style="left: {{ s.cap_bar }}%" title="지금 한계 {{ s.cap|floatformat:0 }}"></s>{% endif %}<i style="width: {{ s.bar }}%"></i></div>
                 <div class="rk-stat-act">
                     <form class="rk-train-form" method="post" action="{% url 'community:rookie_train' %}">

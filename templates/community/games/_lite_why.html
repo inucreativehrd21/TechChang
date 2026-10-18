@@ -1,0 +1,18 @@
+{# 라이트 결산 — 능력치가 왜 바뀌었나. 떨어진 능력은 이유를 바로 보여 주고, 나머지는 펼쳐서. 맥락: deltas·drops(label·value·why) #}
+{% if deltas %}
+<div class="rl-why">
+    {% if drops %}
+    <p class="rl-why-title">떨어진 능력은 이래서 떨어졌어요</p>
+    <ul class="rl-why-list">
+        {% for d in drops %}<li><b>{{ d.label }} {{ d.value }}</b><span class="rl-why-parts">{% for p in d.why %}<em class="{% if p.1 < 0 %}is-down{% else %}is-up{% endif %}">{{ p.0 }} {% if p.1 > 0 %}+{% endif %}{{ p.1 }}</em>{% empty %}<em>변화가 작아요</em>{% endfor %}</span></li>{% endfor %}
+    </ul>
+    {% endif %}
+    <details class="rl-why-all">
+        <summary>능력치마다 왜 바뀌었는지 보기</summary>
+        <ul class="rl-why-list">
+            {% for d in deltas %}<li><b>{{ d.label }} {% if d.value > 0 %}+{% endif %}{{ d.value }}</b><span class="rl-why-parts">{% for p in d.why %}<em class="{% if p.1 < 0 %}is-down{% else %}is-up{% endif %}">{{ p.0 }} {% if p.1 > 0 %}+{% endif %}{{ p.1 }}</em>{% empty %}<em>변화가 작아요</em>{% endfor %}</span></li>{% endfor %}
+        </ul>
+        <p class="rk-hint">성장 = 나이에 따라 잠재력 쪽으로 크는 몫 · 훈련 = 고른 훈련 · 출전 경험 = 뛴 만큼 · 나이(노쇠) = 서른 즈음부터 빠지는 몫(몸 능력이 먼저) · 훈련 부작용 = 웨이트의 주루처럼 따라오는 손해 · 컨디션 기복 = 해마다 생기는 작은 흔들림 · 잠재력 한계 = 타고난 끝에 닿아 더 못 오른 몫이에요.</p>
+    </details>
+</div>
+{% endif %}

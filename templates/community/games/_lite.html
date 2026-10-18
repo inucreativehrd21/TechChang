@@ -198,6 +198,18 @@
             <p class="rl-final">{% if season.team_of %}팀은 {{ season.team_w }}승 {{ season.team_l }}패, {{ season.team_of }}팀 중 {{ season.team_rank }}위로 시즌을 마쳤어요{% else %}시즌이 끝났어요{% endif %}{% if season.champion %} · <b>우승!</b>{% endif %}</p>
             <button type="button" class="rl-skip" data-rl-skip>바로 결과 보기</button>
         </section>
+        {% if moments %}
+        <section class="rl-moments" aria-label="결정적 순간">
+            {% for m in moments %}
+            <article class="rl-moment-res{% if m.won %} is-won{% endif %}">
+                <p class="rl-moment-res-stage">{% if m.when %}{{ m.when }} {% endif %}{{ m.stage }}</p>
+                <h3>{{ m.result }}</h3>
+                <p><b>{{ m.choice }}</b> → {{ m.text }}</p>
+                <small>{{ m.line }}</small>
+            </article>
+            {% endfor %}
+        </section>
+        {% endif %}
         <section class="rk-panel rl-result" aria-label="시즌 결산">
             <div class="rk-head"><h2>시즌 결산</h2><span class="rk-fine">OVR {{ season.ovr_start|floatformat:1 }} → {{ season.ovr_end|floatformat:1 }}</span></div>
             {% if season_line %}
@@ -217,6 +229,7 @@
             {% if season.awards %}<ul class="rl-awards" aria-label="수상">{% for a in season.awards %}<li class="rl-award is-{{ a.kind }}">{% if a.kind != 'ring' and a.kind != 'national' and a.kind != 'allstar' %}{% include 'community/games/_rookie_glove.html' %}{% endif %}{{ a.label }}</li>{% endfor %}</ul>{% endif %}
             <h3 class="rk-h3">이만큼 자랐어요</h3>
             <ul class="rl-deltas" aria-label="능력치 변화">{% for d in deltas %}<li class="{% if d.value > 0 %}is-up{% elif d.value < 0 %}is-down{% endif %}"><span>{{ d.label }}</span><b>{% if d.value > 0 %}+{% endif %}{{ d.value }}</b></li>{% endfor %}</ul>
+            {% include 'community/games/_lite_why.html' %}
             {% if season.salary %}<p class="rk-hint">이번 시즌 연봉은 {{ salary }}이에요.</p>{% endif %}
         </section>
         {% if press %}
@@ -258,6 +271,8 @@
                 {% endfor %}
             </div>
         </section>
+        {% elif d.what == 'moment' %}
+        {% include 'community/games/_lite_moment.html' %}
         {% else %}
         <section class="rk-panel rk-decide is-draft" aria-label="갈림길">
             {% if d.what == 'draft' %}
@@ -425,7 +440,7 @@
     var board = document.querySelector('[data-rl-ticker]');
     if (board && !(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches)) {
         var rows = Array.prototype.slice.call(board.querySelectorAll('.rl-month'));
-        var rest = document.querySelectorAll('.rl-final, .rl-result, .rl-paper, .rl-diary, .rl-next');
+        var rest = document.querySelectorAll('.rl-final, .rl-moments, .rl-result, .rl-paper, .rl-diary, .rl-next');
         board.classList.add('is-playing');
         rows.forEach(function (r) { r.classList.add('rl-wait'); });
         rest.forEach(function (r) { r.classList.add('rl-wait'); });

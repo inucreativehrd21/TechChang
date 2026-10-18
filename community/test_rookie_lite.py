@@ -56,6 +56,11 @@ def autoplay(c, rng, max_steps=200):
                 X.decide(c, what, rng.choice([k for k, *_ in X.MEET_CHOICES[pend['about']](c)]), rng)
                 c.save()
                 continue
+            if what == 'moment':
+                m = pend['moments'][pend.get('i', 0)]
+                X.decide(c, what, rng.choice([x[0] for x in m['choices']]), rng)
+                c.save()
+                continue
             opts = {'draft': (['sign'] if pend.get('offer') else ['develop']) + list(pend.get('abroad') or {}),
                     'military': ['sangmu', 'active'], 'posting': ['mlb', 'npb', 'stay'],
                     'fa': [o['key'] for o in pend.get('offers') or []], 'return': ['kbo', 'stay'],
@@ -126,8 +131,12 @@ class EngineTests(TestCase):
         s = X.run_season(c, ['contact', 'power'], 'normal', 'accept' if c.pending.get('event') else '', rng)
         self.assertEqual(len(s.months), 6)
         self.assertEqual(s.months[2]['label'], '황금사자기')
-        self.assertEqual(set(s.deltas), set(c.stats))
-        self.assertEqual(c.pending, {'kind': 'review', 'year': 1})
+        self.assertEqual(set(s.deltas) - {'_why'}, set(c.stats))
+        self.assertEqual(set(s.deltas['_why']), set(c.stats))                  # 능력치마다 바뀐 이유
+        if c.pending.get('what') == 'moment':                                  # 고교 대회 결승 — 승부하고 넘어간다
+            X.decide(c, 'moment', c.pending['moments'][0]['choices'][0][0], rng)
+            self.assertEqual(len(c.pending['moments']), 1)
+        self.assertEqual((c.pending['kind'], c.pending['year']), ('review', 1))
         self.assertEqual(c.age, 17)
 
     def test_training_and_intensity_matter(self):
@@ -315,9 +324,15 @@ class GameRulesTests(TestCase):
         state = {'intl': [], 'press': [], 'news': [], 'mods': {'injury': 0.0}}
         with mock.patch.object(X, 'play_intl', return_value=gold):
             X._intl(c, 'olympics', state, random.Random(1))
-        self.assertTrue(c.flags['exempt'])                                    # 올림픽 금메달 → 병역 특례
+        self.assertTrue(state['intl'][0]['final'])                           # 결승 진출 — 메달 색은 결정적 순간에서
+        self.assertFalse(c.flags.get('exempt'))
         self.assertGreater(state['mods']['injury'], 0)                       # 대가 — 부상 위험
-        self.assertTrue(any('병역 특례' in p['title'] for p in state['press']))
+        season = LiteSeason(career=c, year=1, age=c.age, league='kbo1', club='lg', awards=[], press=[], news=[])
+        X.resolve_moments(c, season, [{'kind': 'intl', 'key': 'olympics', 'won': True, 'ok': True, 'line': '', 'text': ''}],
+                          random.Random(1))
+        self.assertTrue(c.flags['exempt'])                                    # 올림픽 금메달 → 병역 특례
+        self.assertIn({'kind': 'national', 'label': '올림픽 금메달'}, season.awards)
+        self.assertTrue(any('병역 특례' in p['title'] for p in season.press))
         p12 = dict(gold, key='premier12', name='프리미어12', tier='champ', result='우승')
         with mock.patch.object(X, 'play_intl', return_value=p12):
             X._intl(c, 'premier12', state, random.Random(1))
@@ -337,15 +352,101 @@ class GameRulesTests(TestCase):
             if season is None:
                 X.decide(c, 'meeting', 'accept', random.Random(3))
                 season = c.seasons.order_by('-year').first()
+            while c.pending.get('what') == 'moment':
+                X.decide(c, 'moment', c.pending['moments'][c.pending.get('i', 0)]['choices'][2][0], random.Random(6))
+                season = c.seasons.order_by('-year').first()
             self.assertTrue(season.press)                                     # 프로 시즌엔 기사가 꼭 있다
             self.assertTrue(all(c.name in p['title'] or p['tag'] for p in season.press))
             X.next_season(c, random.Random(4))
             while c.pending['kind'] == 'decision':
                 pend = c.pending
                 ch = X.MEET_CHOICES[pend['about']](c)[0][0] if pend['what'] == 'meeting' else \
+                    pend['moments'][pend.get('i', 0)]['choices'][0][0] if pend['what'] == 'moment' else \
                     {'military': 'sangmu', 'retire': 'continue'}.get(pend['what'], 'stay')
                 X.decide(c, pend['what'], ch, random.Random(5))
                 c.save()
+
+
+class MomentAndWhyTests(TestCase):
+    """2026-10-18 사용자 요청 — 한국시리즈 같은 결승의 승부처 선택, 훈련 뒤 떨어진 능력치의 이유."""
+
+    def _series(self, c, choice, ok):
+        from community.models import LiteSeason
+        season = LiteSeason.objects.create(career=c, year=c.year, age=c.age, league='kbo1', club='lg', games=144,
+                                           awards=[], press=[], news=[])
+        m = X.make_moment(c, 'series', '한국시리즈 7차전', '10월', random.Random(4))
+        c.pending = {'kind': 'decision', 'what': 'moment', 'year': season.year, 'moments': [m], 'i': 0, 'done': []}
+        c.save()
+        with mock.patch.object(X, 'play_moment', return_value={'ok': ok, 'text': '끝내기 안타!' if ok else '헛스윙 삼진…',
+                                                                 'line': '직구 — 노림수 적중, 안타', 'outcome': '1B'}):
+            with mock.patch('random.Random.random', return_value=0.5):
+                text = X.decide(c, 'moment', choice, random.Random(1))
+        season.refresh_from_db()
+        return text, season
+
+    def test_moment_choices_and_series_result(self):
+        c = pro('승부처', seed=21, ovr=70.0)
+        m = X.make_moment(c, 'series', '한국시리즈 7차전', '10월', random.Random(2))
+        self.assertEqual([x[0] for x in m['choices']], ['fast', 'break', 'short'])        # 직구·결정구 노리기·짧게
+        self.assertIn('직구', m['opp']['scout'])
+        p = X.make_moment(_pitcher('투수승부'), 'series', '한국시리즈 7차전', '10월',
+                          random.Random(3))
+        self.assertEqual([x[0] for x in p['choices']], ['fast', 'break', 'edge'])        # 구종 선택
+        with self.assertRaises(X.LiteError):
+            X.play_moment(c, m, 'bunt', random.Random(1))
+        text, season = self._series(c, 'fast', ok=True)                                # 성공 → 우승(0.5 < 0.88)
+        self.assertIn('우승', text)
+        self.assertTrue(season.champion)
+        self.assertIn({'kind': 'ring', 'label': '한국시리즈 우승'}, season.awards)
+        self.assertEqual(c.pending['kind'], 'review')
+        self.assertTrue(c.pending['moments'][0]['won'])
+        c2 = pro('준우승', seed=23, ovr=70.0)
+        text, season = self._series(c2, 'short', ok=False)                             # 실패 → 준우승(0.5 > 0.20)
+        self.assertIn('준우승', text)
+        self.assertFalse(season.champion)
+
+    def test_reading_the_scouting_report_pays(self):
+        rng = random.Random(5)
+        c = pro('스카우팅', seed=24, ovr=68.0)
+        good = bad = 0
+        for _ in range(600):
+            m = X.make_moment(c, 'series', '한국시리즈 7차전', '10월', rng)
+            f = m['opp']['fast']
+            if f in (75, 25):
+                good += X.play_moment(c, m, 'fast' if f == 75 else 'break', rng)['ok']
+                bad += X.play_moment(c, m, 'break' if f == 75 else 'fast', rng)['ok']
+        self.assertGreater(good, bad * 1.3)                                          # 리포트대로 노리면 훨씬 낫다
+
+    def test_drop_reasons_are_recorded(self):
+        rng = random.Random(7)
+        c = pro('노장', seed=25, ovr=70.0, age=35)
+        c.pending = X.plan_step(c, rng)
+        c.pending['event'] = None
+        c.save()
+        s = X.run_season(c, ['power', 'contact'], 'normal', '', rng, intl={k: 'skip' for k in c.pending.get('intl') or []})
+        while s is None or c.pending.get('what') == 'moment':
+            pend = c.pending
+            if pend.get('what') == 'meeting':
+                X.decide(c, 'meeting', 'accept', rng)
+            else:
+                X.decide(c, 'moment', pend['moments'][pend.get('i', 0)]['choices'][0][0], rng)
+            s = c.seasons.order_by('-year').first()
+        why = s.deltas['_why']
+        labels = {lab for k in why for lab, _v in why[k]}
+        self.assertIn('나이(노쇠)', labels)                                            # 서른다섯 — 노쇠
+        self.assertIn('훈련 부작용', {lab for lab, _v in why['speed']})               # 웨이트 → 주루 −
+        for k in c.stats:                                                            # 이유를 더하면 변화와 맞는다
+            self.assertAlmostEqual(sum(v for _l, v in why[k]), s.deltas[k], delta=0.35)
+
+
+def _pitcher(name):
+    c = X.create(member(name), name=name, role='pitcher', position='RP', style='fire', region='서울', team='lg',
+                 rng=random.Random(9))
+    c.league, c.club, c.grade, c.age = 'kbo1', 'lg', 0, 26
+    c.stats = {k: 70.0 for k in c.stats}
+    c.ovr = 70.0
+    c.save()
+    return c
 
 
 class ViewTests(TestCase):
@@ -443,6 +544,12 @@ class ViewTests(TestCase):
             data['event_choice'] = X.EVENTS[event]['choices'][0][0]
         c.post('/rookie/lite/act/', data)
         career.refresh_from_db()
+        while career.pending.get('what') == 'moment':
+            for ua in (PC, MOBILE):
+                self.assertContains(c.get('/rookie/lite/', HTTP_USER_AGENT=ua), 'rl-moment')
+            m = career.pending['moments'][career.pending.get('i', 0)]
+            c.post('/rookie/lite/act/', {'action': 'decide', 'what': 'moment', 'choice': m['choices'][0][0]})
+            career.refresh_from_db()
         self.assertEqual(career.pending['kind'], 'review')
         for ua in (PC, MOBILE):
             r = c.get('/rookie/lite/', HTTP_USER_AGENT=ua)
