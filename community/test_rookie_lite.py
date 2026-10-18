@@ -503,6 +503,13 @@ class ViewTests(TestCase):
             self.assertContains(r, 'is-locked')                                   # 두 비시즌 연속 웨이트
             self.assertContains(r, '화면, 연봉 계약')                              # 오프시즌 기사
             self.assertContains(r, 'intl_wbc')                                      # 국가대표 소집
+            self.assertContains(r, 'rl-cta')                                        # 할 일 버튼은 아래에 붙는다
+        r = self.client.get('/rookie/lite/', HTTP_USER_AGENT=MOBILE)              # 모바일: 위쪽 선수 요약, 접는 연표
+        self.assertContains(r, 'rl-mcard')
+        self.assertNotContains(r, 'rl-side')
+        r = self.client.get('/rookie/lite/', HTTP_USER_AGENT=PC)
+        self.assertContains(r, 'rl-side')
+        self.assertNotContains(r, 'rl-mcard')
         r = self.client.post('/rookie/lite/act/', {'action': 'play', 'program': ['power', 'speed'], 'intensity': 'normal'},
                              follow=True)
         self.assertContains(r, '두 비시즌 연속')

@@ -1,0 +1,26 @@
+{# 라이트 모바일 선수 요약 — HUD 바로 아래 한 줄 + 다섯 능력치. 눌러서 특성·연봉·통산을 펼친다. 맥락: rookie_lite_views._identity #}
+<details class="rl-mcard" style="--team: {{ team.color|default:'#4f46e5' }}">
+    <summary>
+        <span class="rl-mcard-head">
+            <span class="rl-mcard-no" aria-hidden="true">{{ c.number }}</span>
+            <span class="rl-mcard-who"><b>{{ c.name }}</b><small>{{ pos_label }} · {{ style_label }}{% if grade_label %} · {{ grade_label }}{% endif %}</small></span>
+            <span class="rl-mcard-stars" role="img" aria-label="스카우트 별 {{ stars }}개">{% for i in star_range %}<i class="{% if i < stars %}is-on{% endif %}" aria-hidden="true"></i>{% endfor %}</span>
+            <span class="rl-mcard-more">자세히</span>
+        </span>
+        <span class="rl-mcard-stats" aria-label="능력치">
+            {% for s in stat_rows %}<span class="rl-mstat"><small>{{ s.label }}</small><b>{{ s.shown }}</b><i style="--w: {{ s.bar }}%" aria-hidden="true"></i></span>{% endfor %}
+        </span>
+    </summary>
+    <div class="rl-mcard-body">
+        <p class="rl-mcard-note">스카우트 평가 {{ star_note }}</p>
+        {% if traits %}
+        <ul class="rk-traits" aria-label="숨은 특성">{% for t in traits %}<li><b>{{ t.name }}</b><span>{{ t.desc }}</span></li>{% endfor %}</ul>
+        {% endif %}
+        <dl class="rk-facts">
+            <div><dt>연봉</dt><dd>{{ salary }}</dd></div>
+            <div><dt>통산 수입</dt><dd>{{ earnings }}</dd></div>
+            <div><dt>MVP · 수상 · 우승</dt><dd>{{ c.mvp }} · {{ c.awards }} · {{ c.rings }}</dd></div>
+            <div><dt>프로 통산 WAR</dt><dd>{{ c.war }}</dd></div>
+        </dl>
+    </div>
+</details>

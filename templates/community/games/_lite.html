@@ -88,8 +88,8 @@
                 <label class="rk-field"><span>이름</span><input type="text" name="name" value="{{ default_name }}" maxlength="12" placeholder="12자까지" required></label>
                 <label class="rk-field is-num"><span>등번호</span><input type="number" name="number" value="0" min="0" max="99" inputmode="numeric"></label>
             </div>
-            <button type="submit" class="gm-btn is-primary is-block rk-mt">고1 신입으로 야구부에 들어가기</button>
         </section>
+        <div class="rl-cta"><button type="submit" class="gm-btn is-primary is-block">고1 신입으로 야구부에 들어가기</button></div>
     </form>
     {% if mine %}
     <h2 class="rk-h2">내 지난 커리어</h2>
@@ -104,8 +104,9 @@
 
     {% else %}
     {% include 'community/games/_lite_hud.html' %}
+    {% if m %}{% include 'community/games/_lite_mcard.html' %}{% endif %}
     <div class="rl-main">
-        <div class="rl-side">{% include 'community/games/_lite_card.html' %}</div>
+        {% if not m %}<div class="rl-side">{% include 'community/games/_lite_card.html' %}</div>{% endif %}
         <div class="rl-stage">
 
         {% if mode == 'plan' %}
@@ -181,8 +182,8 @@
                     {% for i in intensity %}<label class="rl-gauge-opt is-{{ i.code }}"><input type="radio" name="intensity" value="{{ i.code }}" {% if i.code == 'normal' %}checked{% endif %}><span><b>{{ i.label }}</b><small>부상 확률 {{ i.risk }}%</small><i class="rl-gauge-bar" aria-hidden="true"></i></span></label>{% endfor %}
                 </div>
                 <p class="rk-hint">강하게 할수록 더 크게 자라지만 다칠 확률이 올라가요(나이가 들수록 더). 잠재력에 가까워지면 훈련 효과가 줄어요.</p>
-                <button type="submit" class="gm-btn is-primary is-block rl-go" data-rl-go data-ready="시즌 시작하기">시즌 시작하기</button>
             </section>
+            <div class="rl-cta"><button type="submit" class="gm-btn is-primary is-block rl-go" data-rl-go data-ready="시즌 시작하기">시즌 시작하기</button></div>
         </form>
 
         {% elif mode == 'review' and season %}
@@ -232,7 +233,7 @@
             <ul class="rl-news">{% for n in season.news %}<li>{{ n }}</li>{% endfor %}</ul>
         </section>
         {% endif %}
-        <form method="post" action="{% url 'community:lite_act' %}" class="rl-next">{% csrf_token %}<input type="hidden" name="action" value="next">
+        <form method="post" action="{% url 'community:lite_act' %}" class="rl-next rl-cta">{% csrf_token %}<input type="hidden" name="action" value="next">
             <button type="submit" class="gm-btn is-primary is-block">{% if meet_next %}감독실로 가기{% else %}다음 시즌으로{% endif %}</button></form>
 
         {% elif mode == 'decision' and decision %}
@@ -350,8 +351,12 @@
         {% endif %}
 
         {% if seasons %}
+        {% if m %}
+        <details class="rl-yearsbox"><summary>연표 보기 <span>{{ seasons|length }}시즌</span></summary>{% include 'community/games/_lite_seasons.html' %}</details>
+        {% else %}
         <h2 class="rk-h2">연표</h2>
         {% include 'community/games/_lite_seasons.html' %}
+        {% endif %}
         {% endif %}
         <details class="rk-retire">
             <summary>여기서 은퇴하기</summary>
