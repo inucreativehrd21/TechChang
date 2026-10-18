@@ -1157,6 +1157,7 @@ class RookiePlayer(models.Model):
     pending = models.JSONField(default=dict, blank=True, verbose_name='진로 결정 대기')  # 진학 지원·드래프트 제안
     career = models.JSONField(default=dict, blank=True, verbose_name='경력')   # 거쳐 온 학교·드래프트·해외 진출(rookie_career)
     age_season = models.PositiveSmallIntegerField(default=0, verbose_name='나이를 먹은 시즌')   # 프로는 시즌 개막마다 한 살
+    league_since = models.DateField(null=True, blank=True, verbose_name='지금 리그에 온 날')   # 승격 최소 체류(rookie_career.MIN_STAY)
     retired_at = models.DateTimeField(null=True, blank=True, db_index=True, verbose_name='은퇴')
     stats = models.JSONField(default=dict, verbose_name='능력치')     # {능력 키: 실수}
     focus = models.CharField(max_length=10, blank=True, verbose_name='주특기')   # 성장 ×1.25 인 능력 키

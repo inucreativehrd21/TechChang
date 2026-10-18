@@ -15,6 +15,9 @@ PC = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/130'
 MOBILE = 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148'
 
 
+GATE_OK = {'stay_need': 14, 'stay_left': 0, 'mission': {'text': '', 'now': '', 'ok': True}, 'ok': True}
+
+
 class FixedRng:
     """흔들림 없는 훈련·심사 — uniform 은 가운데, 대성공 없음, gauss 는 정해 준 값."""
     def __init__(self, gauss=0.0):
@@ -177,7 +180,8 @@ class EngineTests(TestCase):
         self.assertAlmostEqual(r['after'] - s, R.gain(s) * R.FATIGUE_EFF, places=2)
         self.assertEqual(r['tired'], 1)
 
-    def test_promotion_test_rules(self):
+    @mock.patch('community.rookie_career.promotion_gate', return_value=GATE_OK)
+    def test_promotion_test_rules(self, _gate):
         with self.assertRaises(R.GameError):
             R.promotion_test(self.u, rng=FixedRng(10))           # 학생(리틀)은 승격 심사가 없다
         self.p.league, self.p.club = 'kbo3', 'lg'
@@ -194,7 +198,8 @@ class EngineTests(TestCase):
         with self.assertRaises(R.GameError):
             R.promotion_test(self.u, rng=FixedRng(5))            # 하루 한 번(이미 2군이라도 오늘 심사함)
 
-    def test_failed_test_keeps_league(self):
+    @mock.patch('community.rookie_career.promotion_gate', return_value=GATE_OK)
+    def test_failed_test_keeps_league(self, _gate):
         self.p.stats = {k: 50.0 for k in self.p.stats}
         self.p.ovr, self.p.league, self.p.club = 50.0, 'kbo3', 'lg'
         self.p.save()
@@ -258,7 +263,8 @@ class ViewTests(TestCase):
         r = self.client.post('/rookie/train/', {'stat': 'eye', 'times': '1'})            # 자바스크립트 없이
         self.assertRedirects(r, '/rookie/', fetch_redirect_response=False)
 
-    def test_promotion_result_is_shown_once(self):
+    @mock.patch('community.rookie_career.promotion_gate', return_value=GATE_OK)
+    def test_promotion_result_is_shown_once(self, _gate):
         p = adult(R.create(self.u, name='창이', role='batter', team='kia', region='서울'), league='kbo3', club='kia')
         p.stats = {k: 60.0 for k in p.stats}
         p.ovr = 60.0

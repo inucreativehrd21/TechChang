@@ -29,8 +29,13 @@
     {% if owner %}
         {% if next %}
         <div class="rk-next">
-            <div class="rk-next-label"><span>{{ next.name }} 승격 심사까지</span><b>{% if next.ready %}도전 가능{% else %}{{ next.left|floatformat:1 }} 남음{% endif %}</b></div>
+            <div class="rk-next-label"><span>{{ next.name }} 승격 심사까지</span><b>{% if next.ready %}도전 가능{% elif next.ovr_ok %}조건 남음{% else %}OVR {{ next.left|floatformat:1 }} 남음{% endif %}</b></div>
             <div class="rk-bar is-next"><i style="width: {{ next.pct }}%"></i></div>
+            <ul class="rk-gate" aria-label="승격 심사 조건">
+                <li class="{% if next.ovr_ok %}is-ok{% endif %}">OVR {{ next.at|floatformat:0 }}</li>
+                <li class="{% if not next.gate.stay_left %}is-ok{% endif %}">이 리그 {{ next.gate.stay_need }}일{% if next.gate.stay_left %} ({{ next.gate.stay_left }}일 남음){% endif %}</li>
+                <li class="{% if next.gate.mission.ok %}is-ok{% endif %}">{{ next.gate.mission.text }} <small>지금 {{ next.gate.mission.now }}</small></li>
+            </ul>
             {% if next.ready %}
                 {% if next.tried_today %}
                 <p class="rk-card-note">오늘 심사는 끝났습니다. 내일 다시 도전하세요.</p>

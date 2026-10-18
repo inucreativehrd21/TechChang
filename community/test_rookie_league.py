@@ -574,7 +574,9 @@ class StageOneFixTests(TestCase):
         self.assertFalse(RookiePlayer.objects.filter(pk=p.pk).exists())
         self.assertFalse(RookieSeasonStat.objects.filter(name='탈퇴예정').exists())
 
-    def test_promotion_starts_on_bench_again(self):
+    @mock.patch('community.rookie_career.promotion_gate',
+                return_value={'stay_need': 14, 'stay_left': 0, 'mission': {'text': '', 'now': '', 'ok': True}, 'ok': True})
+    def test_promotion_starts_on_bench_again(self, _gate):
         from community.models import RookiePlayer as RP
         p = player('승격타자', league='kbo2', level=50)
         p.stats = {k: 66.0 for k in p.stats}

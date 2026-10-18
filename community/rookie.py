@@ -118,6 +118,27 @@ def train_value(s: float, times: int, m: float = 1.0, done_today: int = 0, cap: 
     return s
 
 
+def upkeep_of(p) -> tuple[int, bool]:
+    """이 선수가 지금 능력치를 지키는 데 하루 드는 TP — 노쇠·강철 체력·나이 배율·한계 근처 감속까지 넣어서.
+    (TP, 하루 한도로도 못 지키는지)"""
+    from . import rookie_career as C
+    bonus, scale = C.focus_bonus(p), C.age_mult(p)
+    need, lost = 0.0, False
+    for k in stat_keys(p.role):
+        s = float(p.stats.get(k, FLOOR))
+        if s <= FLOOR:
+            continue
+        loss = (s - FLOOR) * C.decay_for(p, BASE_DECAY, k)
+        at = s - loss                                  # 빠진 뒤의 자리에서 다시 올려야 한다
+        eff = gain(at) * mult(k, p.focus, bonus) * scale * EXPECTED_MULT * C.room(at, C.stat_cap(p, k))
+        if eff <= 0:
+            lost = True
+            continue
+        need += loss / eff
+    tp = int(round(need * TRAIN_COST))
+    return tp, lost or tp > DAILY_MAX
+
+
 def upkeep_tp(role: str, stats: dict, focus: str = '', scale: float = 1.0) -> int:
     """꾸준히 활동할 때 지금 능력치를 그대로 지키는 데 하루 드는 TP(유지비 ÷ 훈련 효율). scale = 나이 배율 등."""
     need = sum(BASE_DECAY * (float(stats[k]) - FLOOR) / (gain(float(stats[k])) * mult(k, focus) * EXPECTED_MULT * scale)
@@ -153,11 +174,15 @@ def league_kind(code: str) -> str:
     return 'top' if code in W.TOP_LEAGUES else 'pro' if W.is_pro(code) else 'am'
 
 
-def title(role: str, league: str, ovr: float) -> str:
-    """리그 수준과 견준 위상 — +14 에이스·간판 타자, +8 주전급(학생은 특급 유망주·유망주)."""
+def title(role: str, league: str, ovr: float, age: int | None = None) -> str:
+    """리그 수준과 견준 위상 — +14 에이스·간판 타자, +8 주전급. 학생은 같은 나이 동기 집단의 상위 5%·20%
+    (rookie_career.CLASS) — 학생 리그 수준이 낮아 모두가 '특급'이 되지 않게."""
     d = ovr - W.level(league)
     if not W.is_pro(league):
-        return '특급 유망주' if d >= 14 else '유망주' if d >= 8 else ''
+        from .rookie_career import CLASS
+        mean, sd = CLASS.get(min(max(age or 12, min(CLASS)), max(CLASS)))
+        z = (ovr - mean) / sd
+        return '특급 유망주' if z >= 1.65 else '유망주' if z >= 0.85 else ''
     if d >= 14:
         return '에이스' if role == 'pitcher' else '간판 타자'
     return '주전급' if d >= 8 else ''
@@ -169,7 +194,7 @@ def identity(p) -> dict:
     return {'team': {'name': W.club_label(p.league, p.club), 'short': W.club_short(p.league, p.club),
                      'color': W.club_color(p.league, p.club)},
             'league_short': W.short(p.league), 'league_name': W.league(p.league)['name'],
-            'league_kind': league_kind(p.league), 'title': title(p.role, p.league, p.ovr),
+            'league_kind': league_kind(p.league), 'title': title(p.role, p.league, p.ovr, p.age),
             'role_label': ROLES[p.role]['label'], 'pos_label': POS_LABEL.get(p.position, ''),
             'focus_label': dict((k, lab) for k, lab, _w in ROLES[p.role]['stats']).get(p.focus, ''),
             'want': TEAM.get(p.team, {}), 'grade_label': W.grade_label(p.league, p.grade)}
@@ -255,8 +280,9 @@ def _decay(p, today: date) -> dict:
         if below is None or p.ovr >= below:
             break
         p.league = W.prev_league(p.league)
+        p.league_since = today
         demoted.append(W.league(p.league)['name'])
-    p.save(update_fields=['stats', 'ovr', 'settled_through', 'league', 'updated_at'])
+    p.save(update_fields=['stats', 'ovr', 'settled_through', 'league', 'league_since', 'updated_at'])
     idle = (today - p.last_active).days
     if before - p.ovr >= 0.05 and idle >= 2:          # 매일의 유지비는 기록하지 않는다 — 쉬어서 빠질 때만
         _log(p, 'decay', f'감각 저하({idle - 1}일 활동 없음) — OVR {before:.1f} → {p.ovr:.1f}', day=today)
@@ -418,7 +444,9 @@ def box_line(role: str, margin: float, rng) -> str:
 
 
 def promotion_test(user, rng=None) -> dict:
-    """청백전 3경기 — 경기마다 OVR ± 흔들림(표준편차 7)이 문턱 이상이면 합격, 2경기 합격이면 같은 사다리 한 단계 위로."""
+    """청백전 3경기 — 경기마다 OVR ± 흔들림(표준편차 7)이 문턱 이상이면 합격, 2경기 합격이면 같은 사다리 한 단계 위로.
+    OVR 밖에 지금 리그 최소 체류와 최근 14일 성적 과제를 채워야 받을 수 있다(rookie_career.promotion_gate)."""
+    from . import rookie_career as C
     rng = rng or random.SystemRandom()
     today = timezone.localdate()
     settled(user, today)
@@ -436,6 +464,12 @@ def promotion_test(user, rng=None) -> dict:
         name = W.league(nxt)['name']
         if p.ovr < at:
             raise GameError(f'{name} 승격 심사는 OVR {at:g}부터 받을 수 있습니다.')
+        gate = C.promotion_gate(p, today)
+        if gate['stay_left']:
+            raise GameError(f"{name} 승격 심사는 지금 리그에서 {gate['stay_need']}일을 뛴 뒤에 받을 수 있습니다"
+                            f"({gate['stay_left']}일 남음).")
+        if not gate['mission']['ok']:
+            raise GameError(f"승격 심사 조건: {gate['mission']['text']}(지금 {gate['mission']['now']}).")
         if p.test_on == today:
             raise GameError('승격 심사는 하루 한 번입니다. 내일 다시 도전하세요.')
         games = []
@@ -445,10 +479,10 @@ def promotion_test(user, rng=None) -> dict:
         passed = sum(g['ok'] for g in games) >= TEST_PASS
         p.test_on = today
         if passed:
-            p.league = nxt
+            p.league, p.league_since = nxt, today
             p.lineup = 'mop' if p.role == 'pitcher' else 'bench'   # 새 리그에선 백업·패전조부터 다시 증명한다
             p.slot, p.role_since = 0, today
-        p.save(update_fields=['test_on', 'league', 'lineup', 'slot', 'role_since', 'updated_at'])
+        p.save(update_fields=['test_on', 'league', 'league_since', 'lineup', 'slot', 'role_since', 'updated_at'])
         won = sum(g['ok'] for g in games)
         _log(p, 'promote' if passed else 'test',
              f"{name} 승격! {'패전조' if p.role == 'pitcher' else '백업'}부터 다시 자리를 따냅니다" if passed
@@ -528,8 +562,9 @@ def condition(p, today: date | None = None) -> dict:
     else:
         state, note = 'bad', f'{idle}일째 활동 없음 — 하루 {rate * 100:g}%씩 빠지는 중. 출석 체크 한 번이면 멈춥니다.'
     aging = p.age >= C.decline_start(p)
-    return {'state': state, 'idle': idle, 'rate': rate, 'note': note, 'aging': aging,
-            'upkeep': upkeep_tp(p.role, p.stats, p.focus, C.age_mult(p))}
+    upkeep, over = upkeep_of(p)
+    return {'state': state, 'idle': idle, 'rate': rate, 'note': note, 'aging': aging, 'upkeep': upkeep,
+            'upkeep_over': over}
 
 
 def level_case():
@@ -554,10 +589,12 @@ def dashboard(p) -> dict:
     if nxt:
         at = W.promote_at(p.league)
         lo = W.level(p.league) - W.DEMOTE_GAP
+        gate = C.promotion_gate(p)
         progress = {'name': W.league(nxt)['name'], 'short': W.short(nxt), 'at': at,
                     'left': round(max(0.0, at - p.ovr), 1),
                     'pct': round(min(100.0, max(0.0, (p.ovr - lo) / (at - lo) * 100)), 1),
-                    'ready': p.ovr >= at, 'tried_today': p.test_on == timezone.localdate()}
+                    'ovr_ok': p.ovr >= at, 'ready': p.ovr >= at and gate['ok'], 'gate': gate,
+                    'tried_today': p.test_on == timezone.localdate()}
     rank = ranked().filter(league=p.league, ovr__gt=p.ovr).count() + 1      # 같은 리그 안에서
     done = trained_today(p)
     fat = C.fatigue_at(p)

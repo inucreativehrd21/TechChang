@@ -5,6 +5,7 @@
 해외: 미국(싱글A → 더블A → 트리플A → 메이저리그), 일본(NPB 2군 → 1군), 대만(CPBL 1군).
 
 리그 수준(level)은 경기 모형에서 '상대의 평균 능력'이다(rookie_sim). 능력치 척도는 25(신인 바닥)~99.
+학생 리그 수준은 그 나이대 가상 동기 집단(rookie_career.CLASS)의 단계 평균에 맞췄다(2026-10-18 밸런스 개편).
 학교 이름은 공개 자료에서 모았다(2026-10-17): 고교·대학 = 나무위키 '고교야구'·'한국대학야구/구단' 문서의
 지역별 목록(클럽 팀 BC·SC 등은 뺐다), 중학교 = 대한야구소프트볼협회 15세 이하부 등록 팀 목록 일부 + 대회 기사.
 중학교 목록은 일부만 확인됐다 — 운영자가 MIDDLE_SCHOOLS 에 덧붙이면 된다(협회 사이트는 robots.txt 로 자동 수집을
@@ -18,10 +19,10 @@ REGIONS = ('서울', '부산', '대구', '인천', '광주', '대전', '울산',
 # ───────────────────────────── 리그
 # system: 같은 사다리(승격·강등이 오가는 묶음). step: 사다리 안 순서(0 이 아래). kind: amateur / pro
 LEAGUES = {
-    'little':  {'name': '리틀야구', 'short': '리틀', 'country': 'KR', 'system': 'amateur', 'step': 0, 'level': 24.0},
-    'ms':      {'name': '중학야구', 'short': '중학', 'country': 'KR', 'system': 'amateur', 'step': 1, 'level': 30.0},
-    'hs':      {'name': '고교야구', 'short': '고교', 'country': 'KR', 'system': 'amateur', 'step': 2, 'level': 38.0},
-    'univ':    {'name': '대학야구', 'short': '대학', 'country': 'KR', 'system': 'amateur', 'step': 3, 'level': 45.0},
+    'little':  {'name': '리틀야구', 'short': '리틀', 'country': 'KR', 'system': 'amateur', 'step': 0, 'level': 31.0},
+    'ms':      {'name': '중학야구', 'short': '중학', 'country': 'KR', 'system': 'amateur', 'step': 1, 'level': 41.0},
+    'hs':      {'name': '고교야구', 'short': '고교', 'country': 'KR', 'system': 'amateur', 'step': 2, 'level': 49.0},
+    'univ':    {'name': '대학야구', 'short': '대학', 'country': 'KR', 'system': 'amateur', 'step': 3, 'level': 54.0},
     'kbo3':    {'name': 'KBO 육성군', 'short': '육성군', 'country': 'KR', 'system': 'kbo', 'step': 0, 'level': 42.0},
     'kbo2':    {'name': 'KBO 퓨처스리그', 'short': '퓨처스', 'country': 'KR', 'system': 'kbo', 'step': 1, 'level': 50.0},
     'kbo1':    {'name': 'KBO리그', 'short': 'KBO 1군', 'country': 'KR', 'system': 'kbo', 'step': 2, 'level': 64.0},

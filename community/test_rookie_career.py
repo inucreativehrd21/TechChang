@@ -107,9 +107,9 @@ class RollTests(TestCase):
 class CapTests(TestCase):
     def test_age_cap_stops_training_and_opens_with_age(self):
         cache.clear()
-        p = kid()
-        self.assertEqual(C.age_cap(p), 42)
-        self.assertEqual(C.stat_cap(p, p.focus), 46)                   # 주특기는 +4
+        p = kid()                                                          # 잠재력 90
+        self.assertEqual(C.age_cap(p), 90 * C.AGE_RATIO[12])               # 나이 한계 = 잠재력 × 나이 비율
+        self.assertEqual(C.stat_cap(p, p.focus), 90 * C.AGE_RATIO[12] + 4)  # 주특기는 +4
         p.tp = 2000
         p.save()
         with self.assertRaises(R.GameError) as ex:
@@ -117,18 +117,24 @@ class CapTests(TestCase):
                 R.train(p.user, 'power', 5, rng=Lucky())               # 파워(주특기 아님)는 42 에서 멈춘다
         self.assertIn('12세', str(ex.exception))
         p.refresh_from_db()
-        self.assertLessEqual(p.stats['power'], 42.0)
+        self.assertLessEqual(p.stats['power'], 90 * C.AGE_RATIO[12] + 1e-6)
         self.assertTrue(next(r for r in R.stat_rows(p) if r['key'] == 'power')['capped'])
         p.age = 16
-        self.assertEqual(C.age_cap(p), 54)
+        self.assertAlmostEqual(C.age_cap(p), 90 * C.AGE_RATIO[16])
         p.age, p.potential = 30, 70
         self.assertEqual(C.stat_cap(p, 'power'), 70)                 # 다 크면 잠재력이 한계
+        p.potential = 75
+        self.assertLess(C.age_cap(kid('비교한계', potential=75)), C.age_cap(kid('비교한계2', potential=90)))  # 학생 때도 잠재력이 작용
 
-    def test_young_grow_faster_and_old_decline(self):
+    def test_efficiency_peaks_in_early_twenties_and_old_decline(self):
         p = kid()
-        young = C.age_mult(p)
+        kid_eff = C.age_mult(p)
+        p.age = 24
+        peak = C.age_mult(p)
         p.age = 35
-        self.assertGreater(young, C.age_mult(p))
+        self.assertLess(kid_eff, peak)                                       # 몸이 덜 자란 학생은 효율이 낮다
+        self.assertGreater(peak, C.age_mult(p))
+        self.assertEqual(C.decline_start(p), 31)
         self.assertEqual(C.decay_for(p, R.BASE_DECAY, 'contact'), R.BASE_DECAY)
         self.assertGreater(C.decay_for(p, R.BASE_DECAY, 'power'), R.BASE_DECAY)   # 몸 능력은 노쇠
         p.traits = ['iron']
@@ -188,7 +194,7 @@ class SchoolPathTests(TestCase):
     def test_powerhouse_is_harder(self):
         p = kid()
         set_stats(p, 45)
-        p.league, p.grade = 'ms', 3
+        p.league, p.grade, p.age = 'ms', 3, 15
         self.assertGreater(C.accept_chance(p, 'hs', '서울동산고', 0), C.accept_chance(p, 'hs', '덕수고', 0))
         set_stats(p, 60)
         self.assertGreater(C.accept_chance(p, 'hs', '덕수고', 0), 0.6)  # 잘 크면 강호도 열린다
@@ -202,12 +208,14 @@ class SchoolPathTests(TestCase):
 
     def test_early_bloomer_is_hidden_until_revealed(self):
         p = kid('조기', traits=['early'])
-        self.assertEqual(C.age_cap(p), 42)                                  # 입단 화면에서 티가 나지 않는다
-        self.assertEqual(C.career_view(p)['age_cap'], 42)
+        self.assertEqual(C.age_cap(p), 90 * C.AGE_RATIO[12])               # 입단 화면에서 티가 나지 않는다
+        self.assertEqual(C.career_view(p)['age_cap'], 90 * C.AGE_RATIO[12])
         C.progress(p, p.grade_since + timedelta(days=C.GRADE_DAYS), rng=Lucky())
         p.refresh_from_db()
         self.assertIn('early', p.traits_seen)
-        self.assertEqual(C.age_cap(p), 45 + 5)
+        self.assertAlmostEqual(C.age_cap(p), 90 * C.AGE_RATIO[14])        # 13세지만 한 살 먼저 열린다
+        p.age = 24
+        self.assertEqual(C.age_ratio(p), 1.0)                                # 줄어들지 않고 이어진다
 
     def test_quick_retire_cannot_reroll_talent(self):
         p = kid('리롤', traits=['natural'], potential=95)
@@ -240,13 +248,15 @@ class DraftTests(TestCase):
         return p
 
     def test_star_is_drafted_by_wanted_team_and_signs(self):
-        p = self.senior(62)
+        p = self.senior(66)
+        tp0 = p.tp
         C.progress(p, timezone.localdate(), rng=Lucky())
         p.refresh_from_db()
         d = p.pending
         self.assertEqual(d['kind'], 'draft')
         self.assertEqual((d['offer']['team'], d['offer']['round']), ('kia', 1))
-        self.assertTrue(all(d['abroad'].values()))                   # 미·일·대만 모두 제안
+        self.assertTrue(d['abroad']['mlb'] and d['abroad']['npb'])     # 상위권 — 가장 높은 곳 + 가끔 한 곳 더
+        self.assertFalse(d['abroad']['cpbl'])
         self.assertTrue(p.logs.filter(kind='career', text__contains='1라운드').exists())
         text = C.decide(p.user, 'sign')
         p.refresh_from_db()
@@ -254,6 +264,8 @@ class DraftTests(TestCase):
         self.assertIn('입단', text)
         self.assertEqual(p.career['draft_hs']['round'], 1)
         self.assertEqual(p.lineup, 'bench')
+        self.assertEqual(p.tp, tp0 + C.sign_bonus(1))                      # 지명 순위만큼 계약 보너스
+        self.assertEqual(p.league_since, timezone.localdate())
 
     def test_undrafted_goes_develop_or_abroad_is_closed(self):
         p = self.senior(30, name='미지명')
@@ -277,9 +289,15 @@ class DraftTests(TestCase):
         C.decide(p.user, 'univ', school='고려대', rng=Lucky())
         p.refresh_from_db()
         self.assertEqual((p.league, p.club, p.grade, p.age), ('univ', '고려대', 1, 19))
-        p.grade, p.age = 4, 22
         p.grade_since = timezone.localdate() - timedelta(days=C.GRADE_DAYS)
         p.save()
+        C.progress(p, timezone.localdate(), rng=Lucky())
+        p.refresh_from_db()
+        self.assertEqual(p.grade, 1)                                         # 대학 한 학년은 30일(프로 한 시즌)
+        p.grade, p.age = 4, 22
+        p.grade_since = timezone.localdate() - timedelta(days=C.UNIV_GRADE_DAYS)
+        p.save()
+        set_stats(p, 80)
         C.progress(p, timezone.localdate(), rng=Lucky())
         p.refresh_from_db()
         self.assertEqual((p.pending['kind'], p.pending['from']), ('draft', 'univ'))
@@ -287,7 +305,7 @@ class DraftTests(TestCase):
             C.decide(p.user, 'univ', school='연세대')                # 대학은 한 번
         C.decide(p.user, 'mlb')
         p.refresh_from_db()
-        self.assertEqual((p.league, p.age), ('mlb_a', 23))
+        self.assertEqual((p.league, p.age), ('mlb_aa', 23))                 # 대졸은 한 단계 위(더블A)부터
         self.assertIn(p.club, [c for c, _n, _col in W.MLB_TEAMS])
         self.assertEqual(len(p.career['path']), 3)                   # 리틀(입단) → 대학 → 미국
 
@@ -528,7 +546,7 @@ class ScreenTests(TestCase):
         p.grade_since = timezone.localdate() - timedelta(days=C.GRADE_DAYS)
         p.pending = {}
         p.save()
-        set_stats(p, 62)
+        set_stats(p, 66)
         with mock.patch('community.rookie_career.random.SystemRandom', return_value=Lucky()):
             for ua in (PC, MOBILE):
                 r = c.get('/rookie/', HTTP_USER_AGENT=ua)
@@ -559,3 +577,64 @@ class ScreenTests(TestCase):
                     r = c.get(url, HTTP_USER_AGENT=ua)
                     self.assertContains(r, text, msg_prefix=url)
             self.assertContains(c.get('/rookie/records/', HTTP_USER_AGENT=PC), '최근 이정표')
+
+
+
+class BalanceTests(TestCase):
+    """2026-10-18 밸런스 개편 — 활동량이 드래프트를 가르고, 잠재력도 반영되고, 승격엔 체류·성적 과제가 붙는다."""
+
+    def senior(self, name, level, pot=82):
+        p = kid(name, potential=pot)
+        p.league, p.club, p.grade, p.age = 'hs', '서울동산고', 3, 18
+        p.save()
+        set_stats(p, level)
+        return p
+
+    def test_draft_score_weighs_class_rank_and_potential(self):
+        rng = Lucky()
+        busy, idle = self.senior('부지런', 60), self.senior('출석만', 51)
+        self.assertGreater(C.draft_score(busy, rng, 0)[0], C.draft_score(idle, rng, 0)[0] + 8)
+        star = self.senior('천재', 55, pot=92)
+        plain = self.senior('평범', 55, pot=74)
+        self.assertGreater(C.draft_score(star, rng, 0)[0], C.draft_score(plain, rng, 0)[0] + 5)
+        self.assertEqual(C.draft_round(C.draft_score(idle, rng, 0)[0]) or 99, max(C.draft_round(C.draft_score(idle, rng, 0)[0]) or 99, 7))
+
+    def test_student_titles_are_relative_to_class(self):
+        mean, sd = C.CLASS[17]
+        self.assertEqual(R.title('batter', 'hs', mean, 17), '')
+        self.assertEqual(R.title('batter', 'hs', mean + 1.0 * sd, 17), '유망주')
+        self.assertEqual(R.title('batter', 'hs', mean + 1.7 * sd, 17), '특급 유망주')
+
+    def test_promotion_needs_stay_and_recent_form(self):
+        p = kid('승격대기')
+        p.league, p.club, p.grade, p.grade_since, p.pending, p.age = 'kbo2', 'lg', 0, None, {}, 20
+        p.league_since = timezone.localdate() - timedelta(days=3)
+        p.save()
+        set_stats(p, 66)
+        gate = C.promotion_gate(p)
+        self.assertEqual((gate['stay_need'], gate['stay_left']), (C.MIN_STAY, C.MIN_STAY - 3))
+        self.assertFalse(gate['mission']['ok'])                              # 최근 경기 없음
+        with self.assertRaises(R.GameError) as ex:
+            R.promotion_test(p.user)
+        self.assertIn('일을 뛴 뒤', str(ex.exception))
+        p.league_since = timezone.localdate() - timedelta(days=20)
+        p.save()
+        s = L.get_season(1)
+        for i in range(6):
+            RookieGame.objects.create(season=s, player=p, league='kbo2', day=timezone.localdate() - timedelta(days=1 + i), no=i + 1,
+                                      opponent='kt', line={'g': 1, 'pa': 5, 'ab': 4, 'h': 2, 'd': 1, 'bb': 1}, summary='-')
+        gate = C.promotion_gate(p)
+        self.assertTrue(gate['ok'], gate)
+        p.career = dict(p.career, draft_univ={'round': 3})
+        self.assertEqual(C.promotion_gate(p)['stay_need'], C.MIN_STAY_COLLEGE)
+
+    def test_upkeep_counts_aging_and_caps(self):
+        p = kid('노장유지')
+        p.league, p.club, p.age, p.potential = 'kbo1', 'lg', 36, 90
+        p.save()
+        set_stats(p, 80)
+        young = kid('청년유지')
+        young.league, young.club, young.age, young.potential = 'kbo1', 'lg', 26, 90
+        young.save()
+        set_stats(young, 80)
+        self.assertGreater(R.upkeep_of(p)[0], R.upkeep_of(young)[0])          # 노쇠·낮은 효율이 유지비에 들어간다

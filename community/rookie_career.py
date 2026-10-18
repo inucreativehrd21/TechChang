@@ -4,16 +4,21 @@
   리틀야구(초6) → 중학교(1~3) → 고등학교(1~3) → 드래프트 ─ 지명·계약 → KBO 육성군·퓨처스 → 1군
                                                     ├ 거절 → 대학(1~4학년, 졸업 때 다시 드래프트)
                                                     └ 거절 → 해외: 미국 싱글A~메이저리그 · 일본 NPB 2군~1군 · 대만 CPBL
-- 학년: 한 학년 = 7일(선수마다 학년이 바뀐 날부터). 졸업 학년에는 희망 학교를 고르고(진학 지원), 학년이 끝나는 날
-  합격이 갈린다. 합격 확률은 OVR(다음 급 리그 수준 대비)과 지금 리그의 활약이 좋을수록 오르고, 전통 강호는 문이 좁다.
-  고르지 않았거나 떨어지면 같은 지역의 다른 학교로 간다.
-- 드래프트: 고3·대4 학년이 끝나는 날 선수마다. 지명 순위 = OVR + 활약 + 강호 학교 + 약간의 운(DRAFT_ROUNDS).
-  잘할수록 희망 구단에 뽑힐 확률이 오른다(10% → 최대 70%). 결정은 사흘 안에 — 안 고르면 지명 구단과 계약
-  (미지명이면 희망 구단 육성선수). 고졸은 대학 진학도 고를 수 있고, 활약이 크면 해외 구단의 제안이 온다(ABROAD_AT).
+- 학년: 리틀·중·고 한 학년 = 7일, 대학 한 학년 = 30일(프로 한 시즌과 같은 시계 — 2026-10-18 감사: 7일이면 대학이
+  나이 한계를 4배 빨리 푸는 지름길이 됐다). 졸업 학년에는 희망 학교를 고르고(진학 지원), 학년이 끝나는 날 합격이 갈린다.
+  합격 확률은 같은 나이 가상 동기 집단(CLASS) 안에서의 위치와 활약으로 오르고, 전통 강호는 문이 좁다.
+  고르지 않았거나 떨어지면 우리 지역(목록에 없으면 가까운 지역) 학교로 간다.
+- 드래프트: 고3·대4 학년이 끝나는 날 선수마다. 평가 점수(평균 50) = 스카우트가 본 잠재력(고졸 35%·대졸 25%, 오차 있음)
+  + 동기 집단 대비 OVR + 활약 + 강호 학교 → DRAFT_ROUNDS 구간(ZenGM 의 나이별 잠재력·현재 능력 가중, 파워프로 석세스의
+  평가치 구간을 참고). 잘할수록 희망 구단 확률이 오른다(10% → 최대 65%). 해외 제안은 상위층에만, 보통 한 나라.
+  결정은 사흘 안에 — 안 고르면 지명 구단과 계약(미지명이면 희망 구단 육성선수). 지명 순위만큼 계약 보너스 TP.
 - 나이: 학생은 학년마다 한 살, 프로는 시즌 개막마다 한 살. 마흔다섯이 되는 시즌 개막에 은퇴한다.
-- 성장 한계: 타고난 잠재력(숨김, 고교 때부터 스카우트 별점으로만 보인다)과 나이 한계(AGE_CAPS) 가운데 낮은 쪽.
-  주특기는 4 더. 한계 6 앞부터 훈련·경기 경험 효과가 줄고, 한계에 닿으면 멈춘다.
-  어릴수록 훈련 효과가 크고(age_mult), 서른셋부터는 몸(구속·체력·파워·주루)이 해마다 더 빨리 빠진다.
+- 성장 한계: 잠재력(숨김, 고교 때부터 스카우트 별점) × 나이 비율(AGE_RATIO, 25세부터 1) — 주특기는 FOCUS_ROOM 더.
+  한계 6 앞부터 훈련·경기 경험 효과가 줄고, 한계에 닿으면 멈춘다. 훈련 효율(AGE_EFF)은 몸이 덜 자란 학생일수록 낮아
+  활동량에 따라 수렴점이 갈린다(출석만과 하루 한도의 차이가 학생 때도 남게). 서른하나부터 몸(구속·체력·파워·주루)이
+  해마다 더 빨리 빠진다(파워프로 보통형 31세, FanGraphs 투수 구속 29세~).
+- 프로 승격: 위 리그 수준 − 1 + 지금 리그 최소 체류(MIN_STAY 14일, 대졸 7일) + 최근 14일 성적 과제(PROMO_MISSION)
+  — 고졸 신인이 며칠 만에 1군에 오르지 않게(파워프로 마이라이프의 2군 미션, 현실 마이너 단계당 약 1년).
 - 경기 경험: 출전해서 친 안타·볼넷·도루, 잡은 아웃·삼진이 관련 능력을 조금씩 올린다(game_xp) — 주전일수록 빨리 큰다.
 - 숨은 특성: 입단 때 0~2개(TRAITS). 효과가 처음 드러날 때 '숨은 특성 발견'으로 알려 준다.
 킥루(축구 선수 키우기)의 공개 가이드에서 뼈대(잠재력 상한·나이·출전·숨은 특성·은퇴 유산)만 참고했다 — 코드·화면은 가져오지 않았다.
@@ -28,30 +33,47 @@ from django.utils import timezone
 
 from . import rookie_world as W
 
-GRADE_DAYS = 7
+GRADE_DAYS = 7                  # 리틀·중·고 한 학년
+UNIV_GRADE_DAYS = 30            # 대학 한 학년 = 프로 한 시즌(rookie_league.CYCLE)
 DECIDE_DAYS = 3
+MIN_STAY, MIN_STAY_COLLEGE = 14, 7          # 프로 리그 한 단계 최소 체류(일) — 대졸은 짧게
+PROMO_DAYS = 14                             # 승격 심사의 최근 성적 과제를 보는 기간
+PROMO_MISSION = {'batter': {'pa': 20, 'ops': .700}, 'pitcher': {'outs': 24, 'era': 4.50}}
 MAX_AGE = 45
 RETIRE_HINT_AGE = 38
 TAPER = 6.0                     # 한계 몇 앞부터 성장이 줄어드나
-FOCUS_ROOM = 4.0                # 주특기는 한계 +4
+FOCUS_ROOM, NATURAL_ROOM = 4.0, 8.0         # 주특기는 한계 +4(천재형 +8)
 CAP = 99.0
-AGE_CAPS = {12: 42, 13: 45, 14: 48, 15: 51, 16: 54, 17: 57, 18: 61, 19: 65, 20: 69, 21: 73, 22: 77, 23: 81}
+# 나이 한계 = 잠재력 × 비율(25세부터 1) — 잠재력이 학생 때부터 성장에 작용한다
+AGE_RATIO = {12: .50, 13: .55, 14: .60, 15: .64, 16: .68, 17: .72, 18: .75, 19: .80, 20: .85, 21: .89, 22: .92,
+             23: .95, 24: .98}
+# 훈련 효율(나이 배율) — 12~21세는 이 표, 22~27세 1.0, 그 뒤로 줄어든다(age_mult)
+AGE_EFF = {12: .40, 13: .45, 14: .50, 15: .55, 16: .60, 17: .65, 18: .70, 19: .80, 20: .88, 21: .94}
 PHYSICAL = ('velocity', 'stamina', 'power', 'speed')
-DECLINE_AT, AGING_DECAY = 33, 0.003           # 서른셋부터 몸 능력 하루 감쇠 +0.3%p × (나이 − 32)
+DECLINE_AT, AGING_DECAY = 31, 0.003           # 서른하나부터 몸 능력 하루 감쇠 +0.3%p × (나이 − 30)
+# 같은 나이 가상 동기 집단의 OVR(평균, 표준편차) — scratchpad 하네스(활동량 섞임 × 잠재력 분포)로 뽑은 값.
+# 드래프트 평가·진학 합격·학생 '유망주' 표시·학생 리그 수준의 기준(회원 수가 적어 회원끼리 백분위를 매길 수 없다)
+CLASS = {12: (36.0, 2.7), 13: (39.9, 3.9), 14: (43.3, 4.6), 15: (46.2, 5.2), 16: (48.9, 5.7), 17: (51.4, 6.2),
+         18: (53.6, 6.4), 19: (58.7, 6.2), 20: (61.9, 6.4), 21: (63.9, 6.6), 22: (65.4, 6.8)}
 POTENTIAL_MEAN, POTENTIAL_SD, POTENTIAL_RANGE = 82, 6, (66, 97)
 
 TRAITS = {
-    'early': {'name': '조기 개화', 'desc': '또래보다 몸이 빨리 큽니다. 스물둘까지 나이 한계 +5, 고교까지 훈련 효과 +10%, 대신 노쇠가 2년 빨리 옵니다.'},
+    'early': {'name': '조기 개화', 'desc': '또래보다 몸이 빨리 큽니다. 나이 한계가 한 살 먼저 열리고 고교까지 훈련 효과 +10%, 대신 노쇠가 2년 빨리 옵니다.'},
     'late': {'name': '대기만성', 'desc': '늦게 피는 꽃입니다. 스물둘까지 훈련 효과 −10%, 스물여섯부터 +15%, 노쇠가 2년 늦게 옵니다.'},
-    'grinder': {'name': '연습벌레', 'desc': '하루 훈련 피로가 6회 늦게 옵니다.'},
+    'grinder': {'name': '연습벌레', 'desc': '훈련 효과 +8%, 하루 훈련 피로도 6회 늦게 옵니다.'},
     'iron': {'name': '강철 체력', 'desc': '쉬는 날 빠지는 몫이 40% 적고, 노쇠가 절반 속도로 옵니다.'},
     'clutch': {'name': '큰 경기 체질', 'desc': '승부처에 강합니다. 경기에서 클러치(타자)·멘탈(투수) +5.'},
     'learner': {'name': '경험파', 'desc': '경기에서 배우는 게 많습니다. 출전 경험으로 오르는 능력치 +60%.'},
-    'natural': {'name': '천재형', 'desc': '주특기가 남다릅니다. 주특기 훈련 배율 ×1.45(보통 ×1.25).'},
+    'natural': {'name': '천재형', 'desc': '주특기가 남다릅니다. 주특기 훈련 배율 ×1.45(보통 ×1.25), 주특기 한계 +8(보통 +4).'},
 }
-DRAFT_ROUNDS = [(58, 1), (55, 2), (52, 3), (50, 4), (48, 5), (46, 6), (44, 7), (42, 8), (40, 9), (38, 10), (36, 11)]
-ABROAD_AT = {'mlb': 54, 'npb': 51, 'cpbl': 45}      # 이 점수 이상이면 그 나라 구단이 계약을 제안한다
+# 드래프트 평가 점수(평균 50, 표준편차 약 10) → 라운드. 아래 값은 하네스로 맞춘다(활동량별 분포는 scratchpad bal_sim.py)
+DRAFT_ROUNDS = [(66, 1), (62, 2), (59, 3), (56, 4), (54, 5), (52, 6), (50, 7), (48, 8), (46, 9), (44, 10), (42, 11)]
+ABROAD_AT = {'mlb': 70, 'npb': 67, 'cpbl': 63}      # 이 점수 이상이면 그 나라 구단이 제안한다(가장 높은 한 곳 + 가끔 한 곳 더)
+ABROAD_POT = {'mlb': 86, 'npb': 0, 'cpbl': 0}       # 메이저리그는 스카우트가 본 잠재력도 높아야
 ABROAD = ('mlb', 'npb', 'cpbl')
+SIGN_BONUS = [(1, 200), (3, 150), (7, 100), (11, 50)]   # 지명 라운드까지 → 계약 보너스 TP(파워프로 지명 순위 보상)
+# 평가에서 잠재력의 무게와 스카우트 눈의 오차(표준편차) — 나머지는 동기 집단 대비 OVR(곧 활동량)이 정한다
+DRAFT_W = {'hs': (0.35, 4.0), 'univ': (0.25, 3.0)}
 
 # 경기 경험 — 줄의 기록 하나가 어느 능력에 몇 단위(훈련 1회 = 1단위 × gain)를 주나
 XP_RATE = 0.08
@@ -98,19 +120,31 @@ def scout_stars(p) -> int | None:
     return 5 if pot >= 92 else 4 if pot >= 87 else 3 if pot >= 81 else 2 if pot >= 75 else 1
 
 
-STAR_NOTE = {5: '특급 유망주', 4: '상위 지명감', 3: '프로 지명감', 2: '성장형', 1: '노력형'}
+STAR_NOTE = {5: '특급 유망주', 4: '상위 지명감', 3: '프로 지명감', 2: '성장 여지 보통', 1: '한계가 낮은 편'}
 
 
 # ───────────────────────────── 성장 배율·한계
+def age_ratio(p) -> float:
+    a = p.age + (1 if 'early' in (p.traits_seen or []) else 0)     # 조기 개화는 드러난 뒤부터 한 살 먼저(줄어들지 않게)
+    if a > max(AGE_RATIO):
+        return 1.0
+    return AGE_RATIO.get(a, AGE_RATIO[min(AGE_RATIO)])
+
+
 def age_cap(p) -> float:
-    cap = AGE_CAPS.get(p.age, CAP if p.age > max(AGE_CAPS) else AGE_CAPS[min(AGE_CAPS)])
-    if 'early' in (p.traits_seen or []) and p.age <= 22:     # 드러난 뒤부터(입단 화면에서 미리 티가 나지 않게)
-        cap += 5
-    return min(CAP, float(cap))
+    """지금 나이로 오를 수 있는 끝 = 잠재력 × 나이 비율."""
+    return min(CAP, float(p.potential or POTENTIAL_MEAN) * age_ratio(p))
 
 
 def stat_cap(p, stat: str) -> float:
-    return min(CAP, min(float(p.potential or CAP), age_cap(p)) + (FOCUS_ROOM if stat == p.focus else 0.0))
+    room = (NATURAL_ROOM if has(p, 'natural') else FOCUS_ROOM) if stat == p.focus else 0.0
+    return min(CAP, age_cap(p) + room)
+
+
+def class_z(p, ovr: float | None = None) -> float:
+    """같은 나이 가상 동기 집단에서의 위치(표준점수). 22세 넘으면 22세 기준."""
+    mean, sd = CLASS.get(min(max(p.age, min(CLASS)), max(CLASS)))
+    return ((p.ovr if ovr is None else ovr) - mean) / sd
 
 
 def room(s: float, cap: float) -> float:
@@ -122,12 +156,14 @@ def room(s: float, cap: float) -> float:
 
 def age_mult(p) -> float:
     a = p.age
-    m = (1.2 if a <= 15 else 1.15 if a <= 18 else 1.1 if a <= 22 else 1.0 if a <= 27 else 0.95 if a <= 30
+    m = (AGE_EFF.get(a, AGE_EFF[min(AGE_EFF)]) if a < 22 else 1.0 if a <= 27 else 0.95 if a <= 30
          else 0.85 if a <= 33 else 0.7 if a <= 36 else 0.55)
     if has(p, 'late'):
         m *= 0.9 if a <= 22 else 1.15 if a >= 26 else 1.0
     if has(p, 'early') and a <= 18:
         m *= 1.1
+    if has(p, 'grinder'):
+        m *= 1.08
     return m
 
 
@@ -158,9 +194,35 @@ def decay_for(p, base_rate: float, stat: str) -> float:
     return r
 
 
+def promotion_gate(p, today: date | None = None) -> dict:
+    """승격 심사의 OVR 밖 조건 — 지금 리그 최소 체류(대졸 짧게)와 최근 성적 과제. 화면 안내와 심사가 같은 값을 쓴다."""
+    from . import rookie_league as L
+    today = today or timezone.localdate()
+    need = MIN_STAY_COLLEGE if (p.career or {}).get('draft_univ') else MIN_STAY
+    stay_left = max(0, need - (today - p.league_since).days) if p.league_since else 0
+    t = {}
+    for line in L.recent_lines(p, today - timedelta(days=1), p.league, days=PROMO_DAYS):
+        t = L.add(t, line)
+    m = PROMO_MISSION[p.role]
+    if p.role == 'pitcher':
+        outs = t.get('outs', 0)
+        era = L.pitching(t)['era'] if outs else None
+        ok = outs >= m['outs'] and era is not None and era <= m['era']
+        text = f"최근 {PROMO_DAYS}일 {m['outs'] // 3}이닝 이상, 평균자책점 {m['era']:.2f} 이하"
+        now = f"{L.ip_text(outs)}이닝" + (f", {era:.2f}" if outs else '')
+    else:
+        pa = t.get('pa', 0)
+        ops = L.batting(t)['ops'] if pa else None
+        ok = pa >= m['pa'] and ops is not None and ops >= m['ops']
+        text = f"최근 {PROMO_DAYS}일 {m['pa']}타석 이상, OPS {L.rate(m['ops'])} 이상"
+        now = f"{pa}타석" + (f", OPS {L.rate(ops)}" if pa else '')
+    return {'stay_need': need, 'stay_left': stay_left, 'mission': {'text': text, 'now': now, 'ok': ok},
+            'ok': stay_left == 0 and ok}
+
+
 def cap_message(p, stat: str, label: str) -> str:
     cap = stat_cap(p, stat)
-    if age_cap(p) < (p.potential or CAP) and p.age <= max(AGE_CAPS):
+    if age_ratio(p) < 1.0:
         return f'{label}은(는) {p.age}세 몸으로 오를 수 있는 끝({cap:.0f})에 닿았습니다. 한 살 더 먹으면 다시 열립니다.'
     return f'{label}은(는) 타고난 한계({cap:.0f})에 닿았습니다. 다른 능력을 키워 보세요.'
 
@@ -239,9 +301,12 @@ def performance(p, league_code: str) -> float:
 
 
 def accept_chance(p, to: str, school: str, perf: float | None = None) -> float:
-    base = 0.25 if W.powerhouse(to, school) else 0.85
+    """동기 집단 안 위치(표준점수)와 활약으로 — 강호는 평균이면 4분의 1, 상위 7%쯤이면 3분의 2."""
+    hard = W.powerhouse(to, school)
     perf = performance(p, p.league) if perf is None else perf
-    return round(_clamp(base + 0.04 * (p.ovr - W.level(to)) + 0.06 * perf, 0.05, 0.98), 2)
+    z = class_z(p)
+    chance = (0.25 + 0.22 * z if hard else 0.85 + 0.08 * z) + 0.05 * _clamp(perf, -1.5, 1.5)
+    return round(_clamp(chance, 0.05, 0.98), 2)
 
 
 def chance_label(c: float) -> str:
@@ -263,8 +328,18 @@ def fallback_school(to: str, region: str, rng, exclude: str = '') -> tuple[str, 
 
 
 def draft_score(p, rng, perf: float | None = None) -> float:
+    """평가 점수(평균 50) — 스카우트가 본 잠재력(DRAFT_W: 고졸 35%·대졸 25%, 어릴수록 오차가 크다) + 동기 집단 대비 OVR
+    + 활약. 잠재력 무게를 ZenGM(18세 70%)보다 낮춘 것은 이 게임에서 활동량이 성장의 주인공이기 때문."""
     perf = performance(p, p.league) if perf is None else perf
-    return p.ovr + 3 * perf + (2 if W.powerhouse(p.league, p.club) else 0) + rng.gauss(0, 1.5)
+    w_pot, err = DRAFT_W['univ' if p.league == 'univ' else 'hs']
+    scout = (p.potential or POTENTIAL_MEAN) + rng.gauss(0, err)
+    z = (w_pot * (scout - POTENTIAL_MEAN) / POTENTIAL_SD + (1 - w_pot) * class_z(p)
+         + 0.25 * _clamp(perf, -1.5, 1.5) + (0.3 if W.powerhouse(p.league, p.club) else 0.0))
+    return round(50 + 10 * z, 1), scout
+
+
+def sign_bonus(rnd: int | None) -> int:
+    return next((tp for upto, tp in SIGN_BONUS if rnd and rnd <= upto), 0)
 
 
 def draft_round(score: float) -> int | None:
@@ -326,15 +401,18 @@ def run_draft(p, day: date, rng) -> str:
     from . import rookie_league as L
     src = p.league
     perf = performance(p, src)
-    score = draft_score(p, rng, perf)
+    score, scout = draft_score(p, rng, perf)
     rnd = draft_round(score)
     offer = None
     if rnd:
-        want = _clamp(0.10 + 0.03 * (score - 40) + 0.05 * perf, 0.10, 0.70)
+        top, floor_ = DRAFT_ROUNDS[0][0], DRAFT_ROUNDS[-1][0]
+        want = 0.10 + 0.55 * _clamp((score - floor_) / (top - floor_), 0.0, 1.0)
         team = p.team if rng.random() < want else rng.choice([c for c, _n, _col in W.KBO_TEAMS if c != p.team])
         k = rng.randint(1, 10)
         offer = {'team': team, 'round': rnd, 'in_round': k, 'pick': (rnd - 1) * 10 + k}
-    abroad = {s: (rng.choice(W.SYSTEM_TEAMS[s])[0] if score >= ABROAD_AT[s] else '') for s in ABROAD}
+    ok = [s for s in ABROAD if score >= ABROAD_AT[s] and scout >= ABROAD_POT[s]]
+    picked = ok[:1] + ([ok[1]] if len(ok) > 1 and rng.random() < 0.25 else [])     # 보통 한 나라, 가끔 한 곳 더
+    abroad = {s: (rng.choice(W.SYSTEM_TEAMS[s])[0] if s in picked else '') for s in ABROAD}
     season = L.season_no(day) or 1
     p.pending = {'kind': 'draft', 'from': src, 'season': season, 'score': round(score, 1), 'offer': offer,
                  'abroad': abroad, 'deadline': (day + timedelta(days=DECIDE_DAYS)).isoformat()}
@@ -351,7 +429,7 @@ def run_draft(p, day: date, rng) -> str:
     return text
 
 
-def join_pro(p, league: str, club: str, day: date, text: str):
+def join_pro(p, league: str, club: str, day: date, text: str, bonus: int = 0):
     from . import rookie as R
     from . import rookie_league as L
     from_univ = (p.pending or {}).get('from') == 'univ' or p.league == 'univ'
@@ -359,16 +437,22 @@ def join_pro(p, league: str, club: str, day: date, text: str):
     p.age = max(p.age + 1, 23 if from_univ else 19)            # 드래프트 이듬해 입단
     p.age_season = L.season_no(day)
     p.pending = {}
+    p.league_since = day
     _reset_role(p, day)
     _path(p, league, club, day)
-    R._log(p, 'career', text, day=day)
+    got = max(0, min(bonus, R.TP_MAX - p.tp))
+    p.tp += got
+    p.tp_earned += got
+    R._log(p, 'career', text + (f' · 계약 보너스 +{got} TP' if got else ''), tp=got, day=day)
 
 
-def first_pro_league(system: str, ovr: float) -> str:
-    """처음 뛸 리그 — KBO 는 퓨처스 수준에 가까우면 퓨처스, 아니면 육성군. 해외는 사다리 맨 아래."""
+def first_pro_league(system: str, ovr: float, college: bool = False) -> str:
+    """처음 뛸 리그 — KBO 는 퓨처스 수준에 가까우면(대졸은 늘) 퓨처스, 아니면 육성군. 미국은 고졸 싱글A·대졸 더블A,
+    일본은 2군, 대만은 1군."""
     if system == 'kbo':
-        return 'kbo2' if ovr >= W.level('kbo2') - 4 else 'kbo3'
-    return W.SYSTEMS[system][0]
+        return 'kbo2' if college or ovr >= W.level('kbo2') - 4 else 'kbo3'
+    ladder = W.SYSTEMS[system]
+    return ladder[1] if college and system == 'mlb' else ladder[0]
 
 
 def decide_now(p, choice: str, day: date, rng, school: str = '') -> str:
@@ -381,9 +465,10 @@ def decide_now(p, choice: str, day: date, rng, school: str = '') -> str:
     if choice == 'sign':
         if not offer:
             raise R.GameError('지명한 구단이 없습니다. 육성선수 계약이나 다른 길을 골라 주세요.')
-        league = first_pro_league('kbo', p.ovr)
+        league = first_pro_league('kbo', p.ovr, college=pend.get('from') == 'univ')
         name = W.PRO_TEAM[offer['team']]['name']
-        join_pro(p, league, offer['team'], day, f"{name} 입단 계약 — {W.short(league)}에서 프로 생활을 시작합니다")
+        join_pro(p, league, offer['team'], day, f"{name} 입단 계약 — {W.short(league)}에서 프로 생활을 시작합니다",
+                 bonus=sign_bonus(offer.get('round')))
     elif choice == 'develop':
         if offer:
             raise R.GameError('지명을 받았으니 정식 계약을 할 수 있습니다.')
@@ -393,8 +478,9 @@ def decide_now(p, choice: str, day: date, rng, school: str = '') -> str:
         team = abroad.get(choice)
         if not team:
             raise R.GameError(f'{W.SYSTEM_NAME[choice]} 구단의 제안이 없습니다.')
-        league = first_pro_league(choice, p.ovr)
-        join_pro(p, league, team, day, f"{W.SYSTEM_NAME[choice]} 진출 — {W.PRO_TEAM[team]['name']}와 계약, {W.short(league)}부터")
+        league = first_pro_league(choice, p.ovr, college=pend.get('from') == 'univ')
+        join_pro(p, league, team, day, f"{W.SYSTEM_NAME[choice]} 진출 — {W.PRO_TEAM[team]['name']}와 계약, {W.short(league)}부터",
+                 bonus=SIGN_BONUS[1][1])
     elif choice == 'univ':
         if pend.get('from') != 'hs':
             raise R.GameError('대학 진학은 고교 졸업 때만 고를 수 있습니다.')
@@ -444,18 +530,22 @@ def _deadline_passed(p, today: date) -> bool:
     return pend.get('kind') == 'draft' and _deadline(pend, today) < today
 
 
+def grade_days(code: str) -> int:
+    return UNIV_GRADE_DAYS if code == 'univ' else GRADE_DAYS
+
+
 def _school_due(p, today: date) -> bool:
     from . import rookie_league as L
     if not (W.system_of(p.league) == 'amateur' and p.grade_since is not None
-            and (today - p.grade_since).days >= GRADE_DAYS and (p.pending or {}).get('kind') != 'draft'):
+            and (today - p.grade_since).days >= grade_days(p.league) and (p.pending or {}).get('kind') != 'draft'):
         return False
-    turn = p.grade_since + timedelta(days=GRADE_DAYS)
+    turn = p.grade_since + timedelta(days=grade_days(p.league))
     return L.games_done(turn - timedelta(days=1))      # 전날 경기를 치른 뒤에만 — 마지막 학교 경기가 옛 학교 기록으로
 
 
 def _next_grade(p, rng):
     from . import rookie as R
-    day = p.grade_since + timedelta(days=GRADE_DAYS)       # 학년이 바뀐 날(밀렸으면 그날 기준으로 차례로)
+    day = p.grade_since + timedelta(days=grade_days(p.league))   # 학년이 바뀐 날(밀렸으면 그날 기준으로 차례로)
     code = p.league
     if p.grade < W.last_grade(code):
         p.grade += 1
@@ -474,7 +564,7 @@ def _next_grade(p, rng):
 
 
 FIELDS = ['league', 'club', 'grade', 'grade_since', 'age', 'age_season', 'pending', 'career', 'lineup', 'slot',
-          'role_since', 'traits_seen', 'retired_at', 'updated_at']
+          'role_since', 'traits_seen', 'retired_at', 'league_since', 'tp', 'tp_earned', 'updated_at']
 
 
 def progress(p, today: date | None = None, rng=None) -> bool:
@@ -580,9 +670,9 @@ def career_view(p, today: date | None = None) -> dict:
     v = {'amateur': am, 'steps': _steps(p), 'age': p.age, 'grade_label': W.grade_label(code, p.grade) if am else '',
          'system_name': W.SYSTEM_NAME[W.system_of(code)], 'retired': bool(p.retired_at)}
     if am and p.grade_since and pend.get('kind') != 'draft':
-        day_in = (today - p.grade_since).days
-        v['grade_left'] = max(0, GRADE_DAYS - day_in)
-        v['grade_pct'] = round(min(100.0, max(0.0, day_in / GRADE_DAYS * 100)), 1)
+        day_in, span = (today - p.grade_since).days, grade_days(code)
+        v['grade_left'] = max(0, span - day_in)
+        v['grade_pct'] = round(min(100.0, max(0.0, day_in / span * 100)), 1)
         final = W.is_final_grade(code, p.grade)
         v['next_label'] = ({'little': '중학교 진학', 'ms': '고교 진학'}.get(code, '신인 드래프트') if final
                            else f'{p.grade + 1}학년 진급')
@@ -608,7 +698,7 @@ def career_view(p, today: date | None = None) -> dict:
         abroad = []
         for s in ABROAD:
             team = (pend.get('abroad') or {}).get(s, '')
-            first = first_pro_league(s, p.ovr)
+            first = first_pro_league(s, p.ovr, college=pend.get('from') == 'univ')
             abroad.append({'system': s, 'name': W.SYSTEM_NAME[s], 'team': W.PRO_TEAM.get(team, {}), 'code': team,
                            'league': W.league(first)['name'], 'level': W.level(first), 'need': ABROAD_AT[s],
                            'hard': p.ovr < W.level(first) - 6})
@@ -622,14 +712,16 @@ def career_view(p, today: date | None = None) -> dict:
                                  'schools': [{'name': s, 'hard': W.powerhouse('univ', s),
                                               'chance': chance_label(accept_chance(p, 'univ', s, perf))} for s in names]})
             univ.sort(key=lambda r: not r['home'])
-        sign_league = first_pro_league('kbo', p.ovr)
+        sign_league = first_pro_league('kbo', p.ovr, college=pend.get('from') == 'univ')
         v['draft'] = {'season': pend.get('season'), 'from': pend.get('from'), 'score': pend.get('score'),
                       'offer': offer, 'team': W.PRO_TEAM.get((offer or {}).get('team', ''), {}),
                       'want': bool(offer and offer['team'] == p.team), 'want_team': W.PRO_TEAM.get(p.team, {}),
                       'sign_league': W.short(sign_league), 'abroad': abroad, 'univ': univ,
+                      'bonus': sign_bonus((offer or {}).get('round')), 'abroad_bonus': SIGN_BONUS[1][1],
                       'left': max(0, left), 'deadline': _deadline(pend, today)}
     stars = scout_stars(p)
     v['scout'] = {'stars': stars, 'note': STAR_NOTE[stars], 'range': range(5)} if stars else None
+    v['grade_days'] = grade_days(code)
     cap = age_cap(p)
     v['age_cap'] = cap if cap < min(CAP, float(p.potential or CAP)) else None
     v['traits'] = [dict(TRAITS[c], code=c) for c in (p.traits_seen or []) if c in TRAITS]

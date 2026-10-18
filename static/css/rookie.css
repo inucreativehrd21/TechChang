@@ -618,3 +618,11 @@ a.rk-rank-main:hover b { color: var(--rk-accent); }
 @media (max-width: 720px) {
     .rk-paths, .rk-abroad { grid-template-columns: minmax(0, 1fr); }
 }
+
+/* 승격 심사 조건(OVR·최소 체류·최근 성적 과제) */
+.rk-gate { display: flex; flex-direction: column; gap: 4px; margin: 10px 0 0; padding: 0; list-style: none; font-size: 0.78rem; color: var(--rk-ink-3); }
+.rk-gate li { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 6px; padding-left: 20px; position: relative; }
+.rk-gate li::before { content: ""; position: absolute; left: 2px; top: 4px; width: 11px; height: 11px; border: 1.5px solid var(--rk-line); border-radius: 50%; }
+.rk-gate li.is-ok { color: var(--rk-ink); }
+.rk-gate li.is-ok::before { border-color: var(--rk-accent); background: var(--rk-accent); box-shadow: inset 0 0 0 2px #fff; }
+.rk-gate small { color: var(--rk-ink-4); }
