@@ -21,7 +21,7 @@
             {% include 'community/games/_rookie_staff.html' with who='lead' big=True %}
             <div class="rl-bubble">
                 <p class="rl-who"><b>은혜</b> 감독</p>
-                <p>어서 와요! 고1 신입으로 우리 야구부에 들어오는 거예요. 한 시즌에 1분 남짓, 은퇴까지 30분쯤이면 한 선수의 일생이 끝나요. 어떤 선수가 될지 세 가지만 정해 주세요.</p>
+                <p>어서 와요! 고1 신입으로 우리 야구부에 들어오는 거예요. 한 시즌에 1분 남짓, 은퇴까지 30분쯤이면 한 선수의 일생이 끝나요. 어떤 선수가 될지 네 가지만 정해 주세요.</p>
             </div>
         </div>
         {% if not user.is_authenticated %}<p class="rl-guest-note">로그인하지 않아도 바로 할 수 있어요. 기록을 명예의 전당에 올리려면 <a rel="nofollow" href="{% url 'common:login' %}?next={{ request.get_full_path|urlencode }}">로그인</a>해 주세요.</p>{% endif %}
@@ -57,15 +57,33 @@
             {% endfor %}
         </section>
         <section class="rk-panel">
-            <h2 class="rl-step"><span>2</span>고향과 희망 구단을 골라 주세요</h2>
-            <p class="rk-hint">고향 고등학교 야구부에서 시작해요. 드래프트 때 잘할수록 희망 구단에 뽑힐 확률이 올라가요.</p>
-            <div class="rk-chips">{% for r in regions %}<label class="rk-chip"><input type="radio" name="region" value="{{ r }}" {% if forloop.first %}checked{% endif %} required><span>{{ r }}</span></label>{% endfor %}</div>
-            <div class="rk-teams rk-mt">
+            <h2 class="rl-step"><span>2</span>어느 고등학교에 들어갈까요?</h2>
+            <p class="rk-hint">먼저 고향을 고르고, 그 지역 고등학교 가운데 한 곳을 골라 주세요.</p>
+            <fieldset class="rl-pick">
+                <legend>고향</legend>
+                <div class="rk-chips">{% for r in regions %}<label class="rk-chip"><input type="radio" name="region" value="{{ r }}" {% if forloop.first %}checked{% endif %} required><span>{{ r }}</span></label>{% endfor %}</div>
+            </fieldset>
+            <fieldset class="rl-pick">
+                <legend>고등학교 <small><b class="rl-hard">강호</b>는 우승 기회가 많고 주전이면 스카우트 눈에 잘 띄어요. 대신 주전 경쟁이 세서, 벤치에 머물면 오히려 묻혀요</small></legend>
+                <div class="rl-school-groups">{# legend 바로 다음 칸 — 부트스트랩 legend float 를 여기서 끊는다 #}
+                {% for g in school_groups %}
+                <div class="rk-chips rl-schools" data-rl-schools="{{ g.region }}">
+                    {% if g.near %}<p class="rl-school-note">{{ g.region }}에는 고교 야구부가 없어서 가까운 {{ g.near }} 학교를 보여 드려요.</p>{% endif %}
+                    {% for s in g.schools %}<label class="rk-chip"><input type="radio" name="school" value="{{ s.name }}" {% if forloop.first and forloop.parentloop.first %}checked{% endif %} required><span>{{ s.name }}{% if s.hard %}<b class="rl-hard">강호</b>{% endif %}</span></label>{% endfor %}
+                </div>
+                {% endfor %}
+                </div>
+            </fieldset>
+        </section>
+        <section class="rk-panel">
+            <h2 class="rl-step"><span>3</span>가고 싶은 프로 구단을 골라 주세요</h2>
+            <p class="rk-hint">드래프트 때 잘할수록 희망 구단에 뽑힐 확률이 올라가요.</p>
+            <div class="rk-teams">
                 {% for t in teams %}<label class="rk-teamopt" style="--team: {{ t.color }}"><input type="radio" name="team" value="{{ t.code }}" required><span><i class="rk-dot" aria-hidden="true"></i>{{ t.name }}</span></label>{% endfor %}
             </div>
         </section>
         <section class="rk-panel">
-            <h2 class="rl-step"><span>3</span>이름과 등번호를 정해 주세요</h2>
+            <h2 class="rl-step"><span>4</span>이름과 등번호를 정해 주세요</h2>
             <div class="rk-fields">
                 <label class="rk-field"><span>이름</span><input type="text" name="name" value="{{ default_name }}" maxlength="12" placeholder="12자까지" required></label>
                 <label class="rk-field is-num"><span>등번호</span><input type="number" name="number" value="0" min="0" max="99" inputmode="numeric"></label>
@@ -284,6 +302,17 @@
         var sync = function () {
             var role = (form.querySelector('input[name=role]:checked') || {}).value;
             form.querySelectorAll('.rk-focus').forEach(function (fs) { fs.hidden = fs.dataset.role !== role; });
+            // 고향을 고르면 그 지역 고교만 — 보이는 묶음에 고른 학교가 없으면 첫 학교를 고른다
+            var region = (form.querySelector('input[name=region]:checked') || {}).value;
+            var shown = null;
+            form.querySelectorAll('[data-rl-schools]').forEach(function (g) {
+                g.hidden = g.dataset.rlSchools !== region;
+                if (!g.hidden) shown = g;
+            });
+            if (shown && !shown.querySelector('input[name=school]:checked')) {
+                var first = shown.querySelector('input[name=school]');
+                if (first) first.checked = true;
+            }
         };
         form.addEventListener('change', sync);
         sync();

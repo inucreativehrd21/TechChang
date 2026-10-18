@@ -33,6 +33,7 @@ from . import rookie_world as W
 
 START_AGE, RETIRE_FROM, RETIRE_AT = 16, 34, 42
 POT_MEAN, POT_SD, POT_RANGE = 65, 7, (50, 92)
+HS_COMPETE = 3.0          # 강호 고교는 주전 경쟁이 세다 — 보직을 정할 때 리그 수준을 이만큼 높게 본다(학교를 고르게 되며 강호만 고르지 않게)
 CURVE = {16: .55, 17: .61, 18: .67, 19: .72, 20: .77, 21: .81, 22: .85, 23: .88, 24: .91, 25: .93, 26: .95,
          27: .96, 28: .96, 29: .95, 30: .94, 31: .92, 32: .89, 33: .86, 34: .82, 35: .78, 36: .73, 37: .68,
          38: .63, 39: .58, 40: .53, 41: .48, 42: .43, 43: .40}
@@ -157,8 +158,24 @@ def roll_traits(rng) -> list:
     return got
 
 
-def create(user, *, name, role, position, style, region, team, number=0, rng=None, guest=''):
-    """고향 고교 1학년으로 시작. user 가 없으면 손님 판(guest = 세션 표식) — 로그인하면 계정으로 옮긴다(claim_guest)."""
+def school_choices(region: str) -> list:
+    """고향에서 입학할 수 있는 고교 [(지역, 학교)] — 고교 야구부가 없는 지역(울산·세종)은 가장 가까운 겹의 지역 학교."""
+    for layer in W.region_layers(region):
+        pool = [(r, s) for r, s in W.schools('hs') if r in layer]
+        if pool:
+            return pool
+    return W.schools('hs')
+
+
+def duty_level(c) -> float:
+    """보직을 정할 때 보는 리그 수준 — 강호 고교는 주전 경쟁이 세서 HS_COMPETE 만큼 높다."""
+    lvl = W.level(c.league)
+    return lvl + (HS_COMPETE if c.league == 'hs' and W.powerhouse('hs', c.club) else 0.0)
+
+
+def create(user, *, name, role, position, style, region, team, number=0, rng=None, guest='', school=''):
+    """고향 고교 1학년으로 시작 — school 을 고르면 그 학교(고향 지역 학교여야 한다), 안 고르면 지역 학교 가운데 하나.
+    user 가 없으면 손님 판(guest = 세션 표식) — 로그인하면 계정으로 옮긴다(claim_guest)."""
     from django.contrib.auth.models import User
     from .models import LiteCareer
     rng = rng or random.SystemRandom()
@@ -171,6 +188,9 @@ def create(user, *, name, role, position, style, region, team, number=0, rng=Non
         raise LiteError('포지션을 다시 골라 주세요.')
     if region not in W.REGIONS or team not in R.TEAM:
         raise LiteError('지역과 희망 구단을 골라 주세요.')
+    pool = [s for _r, s in school_choices(region)]
+    if school and school not in pool:
+        raise LiteError('고향 지역 고등학교 가운데에서 골라 주세요.')
     name = (name or '').strip()[:12] or (user.username[:12] if user else '새내기')
     with transaction.atomic():
         if user is not None:
@@ -180,9 +200,8 @@ def create(user, *, name, role, position, style, region, team, number=0, rng=Non
             mine = LiteCareer.objects.filter(user__isnull=True, guest=guest)
         if mine.filter(retired_at__isnull=True).exists():
             raise LiteError('진행 중인 커리어가 있어요. 은퇴한 뒤에 새로 시작할 수 있어요.')
-        hs = [s for r, s in W.schools('hs') if r == region] or [s for _r, s in W.schools('hs')]
         c = LiteCareer(user=user, guest='' if user else guest, name=name, number=max(0, min(99, int(number or 0))), role=role, position=position,
-                       style=style, region=region, team=team, age=START_AGE, league='hs', club=rng.choice(hs), grade=1,
+                       style=style, region=region, team=team, age=START_AGE, league='hs', club=school or rng.choice(pool), grade=1,
                        potential=int(_clamp(round(rng.gauss(POT_MEAN, POT_SD)), *POT_RANGE)), traits=roll_traits(rng))
         c.stats = {k: round(max(25.0, stat_pot(c, k) * frac(c, k, START_AGE) + rng.gauss(0, 2)), 1)
                    for k in R.stat_keys(role)}
@@ -469,7 +488,7 @@ def play(c, programs, intensity, event_choice, rng) -> 'LiteSeason':
     ovr_start = c.ovr
     code, lvl, G = c.league, W.level(c.league), GAMES.get(c.league, 120)
     pro = W.is_pro(code)
-    role, slot, duty = duty_for(c, lvl)
+    role, slot, duty = duty_for(c, duty_level(c))
     s = _game_stats(c)
     # 부상 — 강도·나이·특성·이번 비시즌 선택
     p_inj = INTENSITY[intensity][2] + max(0, c.age - 29) * 0.01 + mods['injury'] \
@@ -792,6 +811,18 @@ def next_step(c, rng) -> dict:
     return plan_step(c, rng)
 
 
+BURIED = {'bench', 'mop', 'chase'}          # 이 보직으로 졸업 학년을 보내면 강호에서는 스카우트 눈에 묻힌다
+
+
+def showcase(c, src: str) -> float:
+    """강호의 스카우트 노출 — 고교 강호는 주전이면 +0.3, 벤치·패전조·추격조면 묻혀서 −0.5. 대학 강호는 +0.3."""
+    if not W.powerhouse(src, c.club):
+        return 0.0
+    if src != 'hs':
+        return 0.3
+    return -0.5 if duty_for(c, duty_level(c))[0] in BURIED else 0.3
+
+
 def draft_offer(c, src: str, rng) -> dict:
     mean, sd = DRAFT_CLASS[src]
     scout = c.potential + rng.gauss(0, 4 if src == 'hs' else 3)
@@ -803,7 +834,7 @@ def draft_offer(c, src: str, rng) -> dict:
                       else (L.batting(t)['ops'] - .800) / .15, -1.5, 1.5)
     w_pot = 0.35 if src == 'hs' else 0.25
     z = w_pot * (scout - POT_MEAN) / POT_SD + (1 - w_pot) * (c.ovr - mean) / sd + 0.25 * perf \
-        + (0.3 if W.powerhouse(src, c.club) else 0.0)
+        + showcase(c, src)
     score = round(50 + 10 * z, 1)
     from .rookie_career import DRAFT_ROUNDS, draft_round
     rnd = draft_round(score)

@@ -99,6 +99,17 @@ def _season_rows(c) -> list:
     return rows
 
 
+def _school_groups() -> list:
+    """지역마다 입학할 수 있는 고교 — 만들기 화면에서 고른 지역의 묶음만 보인다."""
+    out = []
+    for region in W.REGIONS:
+        pool = X.school_choices(region)
+        near = sorted({r for r, _s in pool if r != region}, key=W.REGIONS.index)
+        out.append({'region': region, 'near': '·'.join(near),
+                    'schools': [{'name': s, 'hard': W.powerhouse('hs', s)} for _r, s in pool]})
+    return out
+
+
 def _base(request, section: str) -> dict:
     return {'section': section, 'regions': W.REGIONS, 'teams': [R.TEAM[c] for c, _n, _c in R.TEAMS],
             'styles': X.STYLES, 'bat_positions': L.POSITIONS, 'pit_positions': X.PIT_POSITIONS,
@@ -118,12 +129,12 @@ def lite_home(request):
         ctx.update(mode='create', last=_identity(last) if last else None,
                    last_line=X.career_line(last) if last else None,
                    mine=list(mine.filter(retired_at__isnull=False)[:10]), default_name=name,
-                   hall=X.hall(limit=5))
+                   hall=X.hall(limit=5), school_groups=_school_groups())
         return render(request, 'community/rookie_lite.html', ctx)
     pend = c.pending or {}
     ctx.update(mode=pend.get('kind', 'plan'), **_identity(c), seasons=_season_rows(c))
     if pend.get('kind') == 'plan':
-        ctx['duty'] = X.duty_for(c, W.level(c.league))[2]
+        ctx['duty'] = X.duty_for(c, X.duty_level(c))[2]
         ctx.update(programs=[{'code': code, 'label': lab, 'hint': hint} for code, lab, hint, _e in X.PROGRAMS[c.role]],
                    intensity=[{'code': k, 'label': v[0], 'risk': int(round(v[2] * 100))} for k, v in X.INTENSITY.items()],
                    event=X.event_view(c, pend.get('event')))
@@ -148,7 +159,8 @@ def lite_new(request):
         X.create(request.user if request.user.is_authenticated else None, name=request.POST.get('name', ''), role=role,
                  position=request.POST.get(f'position_{role}', ''), style=request.POST.get(f'style_{role}', ''),
                  region=request.POST.get('region', ''), team=request.POST.get('team', ''), number=number, rng=_rng(),
-                 guest='' if request.user.is_authenticated else _guest(request, make=True))
+                 guest='' if request.user.is_authenticated else _guest(request, make=True),
+                 school=request.POST.get('school', ''))
     except X.LiteError as ex:
         messages.warning(request, str(ex))
     return redirect('community:lite_home')

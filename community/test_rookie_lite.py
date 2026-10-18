@@ -72,6 +72,38 @@ class EngineTests(TestCase):
         with self.assertRaises(X.LiteError):
             X.create(member('잘못'), name='x', role='pitcher', position='SS', style='fire', region='서울', team='lg')
 
+    def test_pick_home_high_school(self):
+        c = X.create(member('학교고름'), name='학교', role='batter', position='SS', style='contact', region='부산',
+                     team='lotte', school='경남고', rng=random.Random(2))
+        self.assertEqual((c.league, c.club), ('hs', '경남고'))
+        with self.assertRaises(X.LiteError):                                   # 고향 밖 학교는 못 고른다
+            X.create(member('남의동네'), name='남', role='batter', position='SS', style='contact', region='부산',
+                     team='lotte', school='덕수고', rng=random.Random(2))
+        # 고교 야구부가 없는 울산은 맞닿은 지역(경북·경남·부산) 학교에서
+        near = {r for r, _s in X.school_choices('울산')}
+        self.assertTrue(near and near <= {'경북', '경남', '부산'})
+        u = X.create(member('울산'), name='울산', role='batter', position='SS', style='contact', region='울산',
+                     team='lotte', rng=random.Random(3))
+        self.assertIn(u.club, [s for _r, s in X.school_choices('울산')])
+
+    def test_powerhouse_is_harder_to_start(self):
+        c = new('강호', seed=4)
+        c.club = '덕수고'
+        self.assertEqual(X.duty_level(c), W.level('hs') + X.HS_COMPETE)       # 강호는 주전 경쟁이 세다
+        c.club = '경기고'
+        self.assertEqual(X.duty_level(c), W.level('hs'))
+        c.league = 'kbo1'
+        c.club = 'lg'
+        self.assertEqual(X.duty_level(c), W.level('kbo1'))
+        # 스카우트 노출: 강호 주전은 +, 강호 벤치는 묻혀서 −, 일반 고교는 0
+        c.league, c.club = 'hs', '덕수고'
+        c.stats, c.ovr = {k: 80.0 for k in c.stats}, 80.0
+        self.assertGreater(X.showcase(c, 'hs'), 0)
+        c.stats, c.ovr = {k: 30.0 for k in c.stats}, 30.0
+        self.assertLess(X.showcase(c, 'hs'), 0)
+        c.club = '경기고'
+        self.assertEqual(X.showcase(c, 'hs'), 0.0)
+
     def test_full_career_ends_in_about_twenty_five_seasons(self):
         for seed, role, pos in ((3, 'batter', 'SS'), (4, 'pitcher', 'SP'), (5, 'pitcher', 'RP')):
             c = new(f'끝까지{seed}', role, pos, seed=seed)
@@ -233,10 +265,15 @@ class ViewTests(TestCase):
         c.force_login(u)
         for ua in (PC, MOBILE):
             self.assertContains(c.get('/rookie/lite/', HTTP_USER_AGENT=ua), '고1 신입으로 야구부에 들어가기')
+        r = c.get('/rookie/lite/', HTTP_USER_AGENT=PC)
+        self.assertContains(r, 'data-rl-schools="부산"')                            # 지역마다 고교 묶음
+        self.assertContains(r, 'value="경남고"')
+        self.assertContains(r, 'rl-hard')
         c.post('/rookie/lite/new/', {'role': 'pitcher', 'position_pitcher': 'SP', 'style_pitcher': 'fire',
-                                     'region': '부산', 'team': 'lotte', 'name': '갈매기', 'number': '11'})
+                                     'region': '부산', 'school': '부산고', 'team': 'lotte', 'name': '갈매기', 'number': '11'})
         career = LiteCareer.objects.get(user=u)
-        self.assertEqual((career.role, career.position, career.style, career.team), ('pitcher', 'SP', 'fire', 'lotte'))
+        self.assertEqual((career.role, career.position, career.style, career.team, career.club),
+                         ('pitcher', 'SP', 'fire', 'lotte', '부산고'))
         for ua in (PC, MOBILE):
             r = c.get('/rookie/lite/', HTTP_USER_AGENT=ua)
             self.assertContains(r, '훈련 프로그램을 <em>두 개</em> 골라 주세요')
