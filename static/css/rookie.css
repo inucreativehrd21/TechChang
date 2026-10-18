@@ -952,36 +952,7 @@ a.rk-rank-main:hover b { color: var(--rk-accent); }
 .rl-cardpage-actions .gm-btn { display: inline-flex; align-items: center; gap: 6px; }
 .rl-cardpage-actions svg { width: 16px; height: 16px; }
 .rl-share-done { margin: 0; font-size: 0.82rem; font-weight: 700; color: var(--rk-accent); }
-.rl-rcard { --frame: #2b3066; width: min(100%, 400px); padding: 5px; border-radius: 24px; background: var(--frame); box-shadow: 0 30px 60px -30px rgba(14, 17, 48, .7); }
-.rl-rcard.is-pro { --frame: var(--team); }
-.rl-rcard.is-star { background: linear-gradient(135deg, #c7d2fe, var(--rk-accent) 45%, #312e81); }
-.rl-rcard.is-legend { background: conic-gradient(from var(--rl-a), #a5b4fc, var(--rk-accent), var(--team), #e0e7ff, #6366f1, #a5b4fc); animation: rl-holo 6s linear infinite; }
 @keyframes rl-holo { to { --rl-a: 360deg; } }
-.rl-rcard-in { position: relative; overflow: hidden; padding: 18px 20px 14px; border-radius: 20px; color: var(--rk-board-ink); background-color: var(--rl-night); background-image: linear-gradient(160deg, color-mix(in srgb, var(--team) 38%, transparent) 0, transparent 46%), radial-gradient(rgba(255, 255, 255, .05) 1px, transparent 1.3px); background-size: auto, 6px 6px; }
-.rl-rcard-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-.rl-rcard-tier { padding: 3px 11px; border-radius: 99px; font-size: 0.74rem; font-weight: 900; color: var(--rl-night); background: var(--rk-led); }
-.rl-rcard.is-legend .rl-rcard-tier { color: #fff; background: linear-gradient(90deg, var(--rk-accent), #818cf8); }
-.rl-rcard-years { font-size: 0.76rem; font-weight: 700; color: var(--rk-board-dim); font-variant-numeric: tabular-nums; }
-.rl-rcard-hero { position: relative; min-height: 132px; padding: 18px 0 10px; }
-.rl-rcard-no { position: absolute; top: -6px; right: -6px; font-size: 8.5rem; font-weight: 900; line-height: 1; letter-spacing: -0.06em; color: transparent; -webkit-text-stroke: 2px color-mix(in srgb, var(--team) 70%, #fff); opacity: .55; font-variant-numeric: tabular-nums; }
-.rl-rcard-ep { position: relative; margin: 0; font-size: 0.8rem; font-weight: 800; color: var(--rk-led); }
-.rk .rl-rcard-name { position: relative; margin: 2px 0 4px; font-size: 2.1rem; font-weight: 900; letter-spacing: -0.04em; line-height: 1.1; color: #fff; }
-.rl-rcard-pos { position: relative; margin: 0; font-size: 0.8rem; color: var(--rk-board-dim); }
-.rl-rcard-line { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); margin: 6px 0 0; padding: 12px 0; border-top: 1px solid rgba(255, 255, 255, .1); border-bottom: 1px solid rgba(255, 255, 255, .1); }
-.rl-rcard-line div { text-align: center; }
-.rl-rcard-line dt { font-size: 0.66rem; font-weight: 700; color: var(--rk-board-dim); }
-.rl-rcard-line dd { margin: 2px 0 0; font-size: 1.15rem; font-weight: 900; color: #fff; font-variant-numeric: tabular-nums; }
-.rl-rcard-key { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; margin: 12px 0 0; }
-.rl-rcard-key div { padding: 8px 6px; border-radius: 10px; text-align: center; background: rgba(255, 255, 255, .06); }
-.rl-rcard-key span { display: block; font-size: 0.66rem; font-weight: 700; color: var(--rk-board-dim); }
-.rl-rcard-key b { font-size: 0.98rem; font-weight: 900; color: var(--rk-led); font-variant-numeric: tabular-nums; }
-.rl-rcard-badges { display: flex; flex-wrap: wrap; gap: 5px; margin: 12px 0 0; padding: 0; list-style: none; }
-.rl-rcard-badges li { display: inline-flex; align-items: center; gap: 5px; padding: 3px 9px 3px 4px; border-radius: 99px; font-size: 0.74rem; font-weight: 800; color: #fff; background: rgba(79, 70, 229, .55); }
-.rl-rcard-badges li b { display: grid; place-items: center; min-width: 20px; height: 20px; padding: 0 5px; border-radius: 99px; font-size: 0.72rem; color: var(--rl-night); background: var(--rk-led); }
-.rl-rcard-best, .rl-rcard-clubs { margin: 10px 0 0; font-size: 0.76rem; line-height: 1.5; color: var(--rk-board-ink); }
-.rl-rcard-best span { margin-right: 6px; font-weight: 800; color: var(--rk-led); }
-.rl-rcard-clubs { color: var(--rk-board-dim); }
-.rl-rcard-foot { display: flex; justify-content: space-between; margin-top: 14px; padding-top: 10px; border-top: 1px dashed rgba(255, 255, 255, .14); font-size: 0.68rem; font-weight: 700; color: var(--rk-board-dim); }
 .rl-cardpage.is-fresh .rl-rcard { animation: rl-reveal 1s cubic-bezier(.2, .8, .2, 1) both; }
 .rl-cardpage.is-fresh .rl-rcard.is-legend { animation: rl-reveal 1s cubic-bezier(.2, .8, .2, 1) both, rl-holo 6s linear 1s infinite; }
 @keyframes rl-reveal { from { opacity: 0; transform: perspective(900px) rotateY(-70deg) scale(.92); } to { opacity: 1; transform: none; } }
@@ -1034,9 +1005,6 @@ a.rk-rank-main:hover b { color: var(--rk-accent); }
     .rl-dialog-text { font-size: 0.95rem; }
     .rl-replies { padding: 12px 8px; }
     .rl-lead h3 { font-size: 1.15rem; }
-    .rk .rl-rcard-name { font-size: 1.8rem; }
-    .rl-rcard-no { font-size: 7rem; }
-    .rl-rcard-line dd { font-size: 1rem; }
     .rl-minis { grid-template-columns: minmax(0, 1fr); }
 }
 @media (prefers-reduced-motion: reduce) {
@@ -1332,9 +1300,6 @@ a.rk-rank-main:hover b { color: var(--rk-accent); }
 .rl-hall-who { display: block; margin-top: 1px; font-size: 0.7rem; font-weight: 600; color: var(--rk-ink-3); }
 
 /* 은퇴 카드 통산 줄 — 3칸 두 줄, 숫자는 한 줄로 */
-.rl-rcard-line { grid-template-columns: repeat(3, minmax(0, 1fr)); row-gap: 10px; }
-.rl-rcard-line dd { white-space: nowrap; }
-.rl-rcard-key b { white-space: nowrap; }
 
 /* 감독실 — 경쟁자 스캔들 꼬리표 · 복귀 제안의 희망 구단 표시 */
 .rl-rival-tag { align-self: flex-start; margin-bottom: 3px; padding: 1px 8px; border-radius: 99px; font-style: normal; font-size: 0.68rem; font-weight: 900; color: var(--rl-night); background: var(--rk-led); }
@@ -1354,7 +1319,6 @@ a.rk-rank-main:hover b { color: var(--rk-accent); }
     .rl-shop-items.is-three .rl-item .rl-price { grid-column: 2; grid-row: 1; justify-self: end; margin: 0; }
     .rl-shop-items.is-three .rl-item .gm-btn { grid-column: 2; grid-row: 2; width: auto; min-width: 112px; margin: 0; }
     .rl-item { padding: 10px; }
-    .rl-rcard-line dd { font-size: 1.05rem; }
 }
 
 /* ══ 글자 배치 정돈(2026-10-18 사용자 요청: 줄바꿈·정렬) ═══════════════════════════════════════════════
@@ -1362,7 +1326,7 @@ a.rk-rank-main:hover b { color: var(--rk-accent); }
  * 너무 긴 덩어리만 넘칠 때 끊는다. 제목은 줄 길이를 고르게(balance), 문단은 마지막 줄에 한 글자만 남지 않게(pretty). */
 .rk { word-break: keep-all; overflow-wrap: break-word; }
 .rk h1, .rk h2, .rk h3, .rk .rl-scene-title, .rk .rl-cardpage-head, .rk .rl-heads b, .rk .rl-lead h3,
-.rk .rl-room-title, .rk .rl-moment-title, .rk .rl-rcard-best { text-wrap-style: balance; }
+.rk .rl-room-title, .rk .rl-moment-title { text-wrap-style: balance; }
 .rk p, .rk li, .rk small, .rk .rl-bubble p { text-wrap-style: pretty; }   /* 줄임말(text-wrap)은 nowrap 을 풀어 버려서 longhand 로 */
 .rk-nowrap { white-space: nowrap; }
 .rk .gm-btn, .rl-tone, .rl-tag { white-space: nowrap; }
@@ -1412,9 +1376,6 @@ a.rk-rank-main:hover b { color: var(--rk-accent); }
     .rl-shop-items.is-one .rl-item b, .rl-shop-items.is-one .rl-item small { grid-column: 1; }
     .rl-shop-items.is-one .rl-item .rl-price { grid-column: 2; grid-row: 1; justify-self: end; margin: 0; }
     .rl-shop-items.is-one .rl-item .gm-btn { grid-column: 2; grid-row: 2; width: auto; min-width: 104px; margin: 0; }
-    .rl-cardpage-actions { width: 100%; }
-    .rl-cardpage-actions > * { flex: 1 1 0; min-width: 0; justify-content: center; padding-left: 8px; padding-right: 8px; }
-    .rl-cardpage-actions > .is-primary { flex-basis: 100%; }
 }
 
 /* 연표 — 그 시즌 상은 바로 아래 한 줄(칸이 길게 늘어나지 않게) */
@@ -1432,4 +1393,90 @@ a.rk-rank-main:hover b { color: var(--rk-accent); }
     .rl-skill-card b { grid-column: 2; padding-right: 18px; line-height: 1.25; }
     .rl-skill-card small, .rl-skill-card .rl-cap, .rl-skill-card .rl-lock { grid-column: 1 / -1; }
     .rl-skill-card .rl-cap, .rl-skill-card .rl-lock { margin-top: 0; }
+}
+
+/* ══ 은퇴 카드 — SNS 에 올리는 4:5 한 장(2026-10-18 개편: "공유하고 싶을 만큼 가지런하고 예쁘게") ════════════════
+ * 카드가 크기 기준(container) — 안쪽 크기는 모두 --u(= 카드 폭/400)의 배수라 폰·PC·이미지(card.png)에서 같은 모양이다.
+ * 위에서부터 팀·등급 / 이름·유니폼 번호 / 통산 3×2 / 핵심 셋 / 수상 다섯 칸 / 커리어 하이·거쳐 간 팀 / 바닥글.
+ * 칸은 모두 왼쪽 정렬, 통산·핵심 줄은 같은 세 칸 선 위에 선다. 칸 사이 선은 같은 굵기·같은 색. */
+.rl-rcard { --frame: #2b3066; position: relative; container-type: inline-size; width: min(100%, 400px); aspect-ratio: 4 / 5; border-radius: 24px; background: var(--frame); box-shadow: 0 30px 60px -30px rgba(14, 17, 48, .7); }
+.rl-rcard.is-pro { --frame: var(--team); }
+.rl-rcard.is-star { background: linear-gradient(135deg, #c7d2fe, var(--rk-accent) 45%, #312e81); }
+.rl-rcard.is-legend { background: conic-gradient(from var(--rl-a), #a5b4fc, var(--rk-accent), var(--team), #e0e7ff, #6366f1, #a5b4fc); animation: rl-holo 6s linear infinite; }
+.rl-rcard-in { --u: 0.25cqi; --rule: rgba(255, 255, 255, .12); position: absolute; inset: calc(5 * var(--u)); display: flex; flex-direction: column; overflow: hidden; padding: calc(16 * var(--u)) calc(22 * var(--u)) calc(13 * var(--u)); border-radius: calc(19 * var(--u)); color: var(--rk-board-ink); background-color: var(--rl-night);
+    background-image: radial-gradient(120% 62% at 0% 0%, color-mix(in srgb, var(--team) 46%, transparent) 0, transparent 62%),
+                      radial-gradient(80% 50% at 100% 100%, rgba(79, 70, 229, .3) 0, transparent 72%),
+                      radial-gradient(rgba(255, 255, 255, .05) 1px, transparent 1.3px);
+    background-size: auto, auto, calc(6 * var(--u)) calc(6 * var(--u)); font-variant-numeric: tabular-nums; line-height: 1.25; letter-spacing: -0.01em; }   /* 줄 간격을 페이지에서 물려받지 않게(폰·PC·이미지 같은 높이) */
+
+.rl-rcard-top { display: flex; align-items: center; justify-content: space-between; gap: calc(10 * var(--u)); min-height: calc(22 * var(--u)); }
+.rl-rcard-team { display: inline-flex; align-items: center; gap: calc(7 * var(--u)); min-width: 0; font-size: calc(12.5 * var(--u)); font-weight: 800; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rl-rcard-team i { flex: none; width: calc(9 * var(--u)); height: calc(9 * var(--u)); border-radius: 50%; background: var(--team); box-shadow: 0 0 0 calc(1.5 * var(--u)) rgba(255, 255, 255, .9); }
+.rl-rcard-tier { flex: none; padding: calc(3 * var(--u)) calc(11 * var(--u)); border-radius: 99px; font-size: calc(11 * var(--u)); font-weight: 900; color: var(--rl-night); background: var(--rk-led); }
+.rl-rcard.is-legend .rl-rcard-tier, .rl-rcard.is-star .rl-rcard-tier { color: #fff; background: linear-gradient(90deg, var(--rk-accent), #818cf8); }
+
+.rl-rcard-hero { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: end; gap: calc(14 * var(--u)); margin-top: calc(12 * var(--u)); }
+.rl-rcard-who { min-width: 0; }
+.rl-rcard-ep { margin: 0; font-size: calc(12 * var(--u)); font-weight: 800; color: var(--rk-led); white-space: nowrap; }
+.rk .rl-rcard-name { margin: calc(3 * var(--u)) 0 calc(6 * var(--u)); font-size: calc(33 * var(--u)); font-weight: 900; line-height: 1.08; letter-spacing: -0.035em; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rk .rl-rcard-name.is-mid { font-size: calc(28 * var(--u)); }
+.rk .rl-rcard-name.is-long { font-size: calc(22 * var(--u)); }
+.rl-rcard-pos { margin: 0; font-size: calc(12.5 * var(--u)); font-weight: 700; color: #c7cdf7; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rl-rcard-era { margin: calc(3 * var(--u)) 0 0; font-size: calc(11 * var(--u)); font-weight: 600; color: var(--rk-board-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rl-rcard-no { display: flex; flex-direction: column; align-items: center; justify-content: center; width: calc(76 * var(--u)); height: calc(88 * var(--u)); border-radius: calc(14 * var(--u)); font-size: calc(44 * var(--u)); font-weight: 900; line-height: 1; letter-spacing: -0.04em; color: #fff;
+    background: linear-gradient(165deg, color-mix(in srgb, var(--team) 80%, #fff) 0, var(--team) 48%, color-mix(in srgb, var(--team) 72%, #000) 100%);
+    box-shadow: inset 0 0 0 calc(1.5 * var(--u)) rgba(255, 255, 255, .32), 0 calc(10 * var(--u)) calc(22 * var(--u)) calc(-10 * var(--u)) rgba(0, 0, 0, .65); text-shadow: 0 calc(2 * var(--u)) 0 rgba(0, 0, 0, .2); }
+.rl-rcard-no small { margin-bottom: calc(3 * var(--u)); font-size: calc(10 * var(--u)); font-weight: 800; letter-spacing: 0; opacity: .85; text-shadow: none; }
+
+.rl-rcard-line, .rl-rcard-key { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); column-gap: calc(10 * var(--u)); }
+.rl-rcard-line { row-gap: calc(8 * var(--u)); margin: calc(13 * var(--u)) 0 0; padding: calc(11 * var(--u)) 0; border-top: 1px solid var(--rule); border-bottom: 1px solid var(--rule); }
+.rl-rcard-key { margin: 0; padding: calc(10 * var(--u)) 0; border-bottom: 1px solid var(--rule); }
+.rl-rcard-line div, .rl-rcard-key div { display: flex; flex-direction: column; gap: calc(2 * var(--u)); min-width: 0; }
+.rl-rcard-line dt, .rl-rcard-key dt { font-size: calc(10.5 * var(--u)); font-weight: 700; color: var(--rk-board-dim); white-space: nowrap; }
+.rl-rcard-line dd, .rl-rcard-key dd { margin: 0; font-weight: 900; letter-spacing: -0.02em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rl-rcard-line dd { font-size: calc(22 * var(--u)); line-height: 1.1; color: #fff; }
+.rl-rcard-key dd { font-size: calc(17 * var(--u)); line-height: 1.15; color: var(--rk-led); }
+
+.rl-rcard-honors { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: calc(5 * var(--u)); margin: calc(10 * var(--u)) 0 0; padding: 0; list-style: none; }
+.rl-rcard-honors li { display: flex; flex-direction: column; gap: calc(1 * var(--u)); min-width: 0; padding: calc(6 * var(--u)) calc(7 * var(--u)) calc(5 * var(--u)); border-radius: calc(9 * var(--u)); background: rgba(255, 255, 255, .07); }
+.rl-rcard-honors small { font-size: calc(9.5 * var(--u)); font-weight: 700; color: var(--rk-board-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rl-rcard-honors b { font-size: calc(17 * var(--u)); font-weight: 900; line-height: 1.15; color: #fff; }
+.rl-rcard-honors li:first-child:not(.is-zero) { background: rgba(79, 70, 229, .55); }
+.rl-rcard-honors li:first-child:not(.is-zero) small { color: #e0e7ff; }
+.rl-rcard-honors li.is-zero b { color: rgba(255, 255, 255, .26); }
+
+.rl-rcard-notes { display: flex; flex-direction: column; gap: calc(4 * var(--u)); margin: calc(10 * var(--u)) 0 calc(8 * var(--u)); }
+.rl-rcard-best, .rl-rcard-clubs { display: grid; grid-template-columns: calc(58 * var(--u)) minmax(0, 1fr); column-gap: calc(8 * var(--u)); margin: 0; font-size: calc(11.5 * var(--u)); line-height: 1.45; }
+.rl-rcard-best span, .rl-rcard-clubs span { grid-row: 1; font-weight: 800; color: var(--rk-led); white-space: nowrap; }
+.rl-rcard-best b { grid-column: 2; font-weight: 800; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rl-rcard-best em, .rl-rcard-clubs em { grid-column: 2; font-style: normal; color: var(--rk-board-ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rl-rcard-clubs em { grid-row: 1; color: #c7cdf7; }
+
+.rl-rcard-foot { display: flex; justify-content: space-between; gap: calc(10 * var(--u)); margin-top: auto; padding-top: calc(9 * var(--u)); border-top: 1px dashed rgba(255, 255, 255, .16); font-size: calc(10.5 * var(--u)); font-weight: 700; color: var(--rk-board-dim); white-space: nowrap; }
+.rl-cardpage .rl-rcard { width: min(100%, 420px); }
+
+/* 카드 페이지 — 이미지 저장·링크 공유 두 버튼, 나머지는 글자 링크 */
+.rl-cardpage-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; width: min(100%, 420px); }
+.rl-cardpage-actions .gm-btn { justify-content: center; }
+.rl-cardpage-actions .gm-btn[aria-busy="true"] { opacity: .75; pointer-events: none; }
+.rl-cardpage-note { max-width: 420px; margin: 0; font-size: 0.78rem; line-height: 1.55; text-align: center; color: var(--rk-ink-3); }
+.rl-cardpage-links { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px 20px; margin: 2px 0 0; font-size: 0.86rem; }
+.rl-cardpage-links a { font-weight: 700; color: var(--rk-ink-3); text-decoration: none; }
+.rl-cardpage-links a:hover, .rl-cardpage-links a.is-strong { color: var(--rk-accent); }
+
+/* 명예의 전당 — 드롭다운 거르기 바(2026-10-18 사용자 요청: 투수·타자 드롭다운) */
+.rl-filter { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 10px 12px; margin: 0 0 12px; padding: 12px 14px; border: 1px solid var(--rk-line); border-radius: 14px; background: #fff; }
+.rl-select { display: flex; flex-direction: column; gap: 4px; margin: 0; }
+.rl-select > span { font-size: 0.72rem; font-weight: 700; color: var(--rk-ink-3); }
+.rl-select select { min-width: 148px; height: 40px; padding: 0 38px 0 14px; border: 1px solid var(--rk-line); border-radius: 10px; font: inherit; font-size: 0.9rem; font-weight: 800; color: var(--rk-ink); cursor: pointer; -webkit-appearance: none; appearance: none;
+    background: #fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M4 6l4 4 4-4' fill='none' stroke='%234f46e5' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") right 12px center / 14px no-repeat; }
+.rl-select select:hover { border-color: var(--rk-accent-line); }
+.rl-select select:focus-visible { outline: 2px solid var(--rk-accent); outline-offset: 1px; border-color: var(--rk-accent); }
+.rl-filter-go { height: 40px; }
+.rl-filter-count { margin: 0 0 10px auto; font-size: 0.8rem; font-weight: 700; color: var(--rk-ink-3); }
+@media (max-width: 575.98px) {
+    .rl-filter { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); padding: 10px 12px; }
+    .rl-select select { width: 100%; min-width: 0; }
+    .rl-filter-go, .rl-filter-count { grid-column: 1 / -1; }
+    .rl-filter-count { margin: 0; }
 }

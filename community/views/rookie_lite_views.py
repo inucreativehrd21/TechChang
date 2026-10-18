@@ -12,13 +12,17 @@
 명예의 전당에는 계정에 붙은 판만 오른다.
 """
 import logging
+import os
 import random
 import secrets
+import threading
 
 from django.contrib import messages
 from django.db import transaction
-from django.http import Http404
+from django.conf import settings
+from django.http import FileResponse, Http404, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.template.loader import render_to_string
 from django.urls import reverse
 from django.views.decorators.http import require_POST
 
@@ -32,7 +36,7 @@ from ..models import LiteCareer
 
 logger = logging.getLogger(__name__)
 HALL_TABS = [('', '전체'), ('kbo', 'KBO'), ('mlb', '미국'), ('npb', '일본'), ('cpbl', '대만')]
-HALL_ROLES = [('', '모두'), ('pitcher', '투수'), ('batter', '야수')]
+HALL_ROLES = [('', '전체'), ('pitcher', '투수'), ('batter', '타자')]
 SESSION_KEY = 'lite_guest'
 
 
@@ -308,7 +312,13 @@ def _card(c) -> dict:
     total = line['pro'] or (L.line_view(c.role, X._sum_totals(played)) if played else None)
     kinds = [a for s in seasons for a in s.awards]
     gg = sum(1 for a in kinds if a['kind'] == 'gg')
-    titles = sum(1 for a in kinds if a['kind'] == 'title')
+    titles = sum(1 for a in kinds if a['kind'] in ('title', 'ace'))
+    gg_by = {}
+    for s in seasons:
+        for a in s.awards:
+            if a['kind'] == 'gg':
+                gg_by[s.league] = gg_by.get(s.league, 0) + 1
+    gg_label = L.AWARD_STYLE.get(max(gg_by, key=gg_by.get), {}).get('gg', '골든글러브') if gg_by else '골든글러브'
     golds = sum(1 for a in kinds if a['kind'] == 'national' and ('금메달' in a['label'] or a['label'].endswith('우승')))
     clubs = []
     for s in pro:
@@ -325,16 +335,27 @@ def _card(c) -> dict:
         tier, tier_label = 'pro', '프로'
     else:
         tier, tier_label = 'rookie', '루키'
-    badges = [(c.mvp, 'MVP'), (gg, '골든글러브'), (titles, '타이틀'), (c.rings, '우승'), (golds, '국가대표 금')]
+    badges = [(c.mvp, 'MVP'), (gg, gg_label), (titles, '타이틀'), (c.rings, '우승'), (golds, '국가대표 금')]
+    t = total or {}
+
+    def n(k):
+        return f"{int(t.get(k) or 0):,}"
+    if c.role == 'pitcher':
+        stats = [('경기', n('g')), ('승', n('w')), ('패', n('l')), ('세이브', n('sv')), ('평균자책점', t.get('era_text') or '-'),
+                 ('탈삼진', n('so'))]
+    else:
+        stats = [('경기', n('g')), ('타율', t.get('avg_text') or '-'), ('안타', n('h')), ('홈런', n('hr')), ('타점', n('rbi')),
+                 ('OPS', t.get('ops_text') or '-')]
     first, last = X.cal_year(c, 1), X.cal_year(c, max(1, c.year - 1))
     eok, rest = divmod(int(c.earnings or 0), 10000)
     money = f'{eok:,}억' if eok else X.man(c.earnings)
     return {'tier': tier, 'tier_label': tier_label, 'line': total, 'war': round(sum(s.war for s in pro), 1), 'money': money,
             'best_ovr': round(best_ovr, 1), 'years': f'{first}–{last}', 'seasons': len(played),
             'clubs': clubs[:5], 'more_clubs': max(0, len(clubs) - 5),
-            'badges': [{'n': n, 'label': lab} for n, lab in badges if n],
+            'badges': [{'n': k, 'label': lab} for k, lab in badges if k],
+            'honors': [{'n': k, 'label': lab} for k, lab in badges], 'stats': stats,
             'best': best,
-            'peak': W.league(c.peak or 'hs')['name'], 'epithet': X.EPITHET.get(c.style, ''),
+            'peak': W.league(c.peak or 'hs')['name'], 'peak_short': W.short(c.peak or 'hs'), 'epithet': X.EPITHET.get(c.style, ''),
             'headline': X.retire_headline(c, len(played))}
 
 
@@ -347,6 +368,70 @@ def lite_card(request, pk: int):
     return render(request, 'community/rookie_lite_card.html',
                   dict(_base(request, 'cards'), **_identity(c), card=_card(c), is_me=_is_mine(request, c),
                        fresh=request.GET.get('new') == '1' and _is_mine(request, c)))
+
+
+# ───────────────────────────── 은퇴 카드 이미지(SNS 에 올리는 PNG · 링크 미리보기)
+# 서버의 headless Chromium(playwright — 연구실 위클리 카드뉴스와 같은 것)으로 카드 화면을 찍어 media/lite_cards 에 둔다.
+# 은퇴 카드는 바뀌지 않으니 한 번 찍으면 계속 쓴다 — 디자인을 바꾸면 CARD_V 를 올린다.
+CARD_V = 1
+SHOTS = {'card': (432, 540, 2.5), 'og': (1200, 630, 1)}       # 1080×1350(인스타 세로) · 링크 미리보기 1200×630
+_shot_lock = threading.Lock()
+
+
+def _shot_path(pk: int, kind: str) -> str:
+    return os.path.join(settings.MEDIA_ROOT, 'lite_cards', f'{pk}-{kind}-v{CARD_V}.png')
+
+
+def render_png(html: str, size: tuple, out: str):
+    """HTML 한 장을 PNG 로 — 정적 파일(/static/…)은 디스크에서 바로 넣어 준다(서버가 자기 자신을 부르지 않게)."""
+    from django.contrib.staticfiles import finders
+    from playwright.sync_api import sync_playwright
+    w, h, scale = size
+
+    def serve(route):
+        path = route.request.url.split('://', 1)[-1].split('/', 1)[-1].split('?', 1)[0]
+        found = finders.find(path[len('static/'):]) if path.startswith('static/') else None
+        if not found and path.startswith('static/'):
+            found = os.path.join(settings.STATIC_ROOT, path[len('static/'):])
+        if found and os.path.exists(found):
+            route.fulfill(path=found)
+        else:
+            route.fulfill(status=404, body='')
+    with sync_playwright() as p:
+        browser = p.chromium.launch()
+        try:
+            page = browser.new_page(viewport={'width': w, 'height': h}, device_scale_factor=scale)
+            page.route('http://shot.local/**', serve)
+            page.set_content(html, wait_until='load')
+            page.evaluate('document.fonts.ready.then(() => true)')
+            os.makedirs(os.path.dirname(out), exist_ok=True)
+            tmp = out + '.tmp.png'
+            page.screenshot(path=tmp, clip={'x': 0, 'y': 0, 'width': w, 'height': h})
+            os.replace(tmp, out)
+        finally:
+            browser.close()
+
+
+def lite_card_png(request, pk: int, kind: str = 'card'):
+    """은퇴 카드 PNG — kind 'card'(1080×1350, 저장·SNS 올리기) · 'og'(1200×630, 링크 미리보기)."""
+    c = get_object_or_404(LiteCareer.objects.select_related('user'), pk=pk)
+    if (is_hidden(c.user) and c.user_id != request.user.id) or not c.retired_at or kind not in SHOTS:
+        raise Http404
+    out = _shot_path(c.pk, kind)
+    if not os.path.exists(out):
+        with _shot_lock:
+            if not os.path.exists(out):
+                ctx = dict(_identity(c), card=_card(c), kind=kind)
+                try:
+                    render_png(render_to_string('community/games/lite_card_shot.html', ctx), SHOTS[kind], out)
+                except Exception:
+                    logger.exception('라이트 은퇴 카드 이미지를 만들지 못함 pk=%s kind=%s', c.pk, kind)
+                    return HttpResponse('카드 이미지를 만들지 못했어요. 잠시 뒤 다시 시도해 주세요.', status=503,
+                                        content_type='text/plain; charset=utf-8')
+    resp = FileResponse(open(out, 'rb'), content_type='image/png', as_attachment=request.GET.get('download') == '1',
+                        filename=f'{c.name}-은퇴카드.png')
+    resp['Cache-Control'] = 'public, max-age=86400'
+    return resp
 
 
 def lite_cards(request):

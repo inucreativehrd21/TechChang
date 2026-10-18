@@ -1,0 +1,39 @@
+{% load static %}<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<base href="http://shot.local/">
+{% comment %}은퇴 카드 이미지 한 장(서버 headless Chromium 이 찍는다 — rookie_lite_views.render_png). /static/… 은 디스크에서 바로 넣는다.
+kind: card(432×540 → 1080×1350, 카드만) · og(1200×630, 카드 + 머리기사 — 링크 미리보기){% endcomment %}
+<link rel="stylesheet" href="/static/css/rookie.css">
+<style>
+@font-face { font-family: 'Pretendard Variable'; font-weight: 45 920; font-style: normal; src: url('/static/fonts/PretendardVariable.woff2') format('woff2'); }
+html, body { margin: 0; }
+body { font-family: 'Pretendard Variable', Pretendard, -apple-system, sans-serif; -webkit-font-smoothing: antialiased; }
+.shot { box-sizing: border-box; display: flex; align-items: center; justify-content: center; overflow: hidden;
+        background: radial-gradient(70% 55% at 50% 0%, #2a2f7a 0, transparent 70%), radial-gradient(60% 50% at 50% 100%, rgba(79, 70, 229, .35) 0, transparent 70%), #0b0e29; }
+.shot.is-card { width: 432px; height: 540px; }
+.shot.is-card .rl-rcard { width: 400px; box-shadow: 0 24px 48px -24px rgba(0, 0, 0, .8); }
+.shot.is-og { width: 1200px; height: 630px; justify-content: flex-start; gap: 64px; padding: 0 80px 0 96px; }
+.shot.is-og .rl-rcard { flex: none; width: 456px; box-shadow: 0 30px 60px -30px rgba(0, 0, 0, .85); }
+.shot-copy { display: flex; flex-direction: column; gap: 18px; min-width: 0; color: #fff; }
+.shot-copy em { align-self: flex-start; padding: 6px 14px; border-radius: 99px; font-style: normal; font-size: 22px; font-weight: 900; color: #0b0e29; background: #a5b4fc; }
+.shot-copy h1 { margin: 0; font-size: 46px; font-weight: 900; line-height: 1.25; letter-spacing: -0.03em; word-break: keep-all; text-wrap: balance; }
+.shot-copy p { margin: 0; font-size: 24px; font-weight: 700; color: #a5acdf; }
+.shot-copy p b { color: #fff; }
+.rl-rcard.is-legend { animation: none; }
+</style>
+</head>
+<body>
+<div class="rk rl shot is-{{ kind }}">
+    {% include 'community/games/_lite_retire.html' %}
+    {% if kind == 'og' %}
+    <div class="shot-copy">
+        <em>{{ card.tier_label }} 은퇴 카드</em>
+        <h1>{{ card.headline.title }}</h1>
+        <p><b>테크창 야구선수 키우기</b> · techchang.com</p>
+    </div>
+    {% endif %}
+</div>
+</body>
+</html>

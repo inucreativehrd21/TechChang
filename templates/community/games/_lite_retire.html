@@ -1,43 +1,36 @@
-{% load rookie_tags %}{# 라이트 은퇴 카드 한 장(캡처해서 자랑하는 크기). 맥락: c, card(rookie_lite_views._card), team, pos_label, style_label, earnings #}
+{% load rookie_tags %}{% comment %}라이트 은퇴 카드 한 장 — SNS 에 올리는 4:5 카드(2026-10-18 사용자 요청: 공유하고 싶을 만큼 가지런하게).
+크기는 모두 카드 폭 기준(cqi)이라 폰·PC·이미지(card.png)에서 똑같이 보인다. 수상 칸은 0이어도 다섯 칸 그대로(줄이 맞게).
+맥락: c, card(rookie_lite_views._card), team, pos_label, style_label{% endcomment %}
 <article class="rl-rcard is-{{ card.tier }}" style="--team: {{ team.color|default:'#4f46e5' }}" aria-label="{{ c.name }} 은퇴 카드">
     <div class="rl-rcard-in">
         <header class="rl-rcard-top">
+            <span class="rl-rcard-team"><i aria-hidden="true"></i>{{ team.name }}</span>
             <span class="rl-rcard-tier">{{ card.tier_label }}</span>
-            <span class="rl-rcard-years">{{ card.years }} · {{ card.seasons }}시즌</span>
         </header>
         <div class="rl-rcard-hero">
-            <span class="rl-rcard-no" aria-hidden="true">{{ c.number }}</span>
-            {% if card.epithet %}<p class="rl-rcard-ep">‘{{ card.epithet }}’</p>{% endif %}
-            <h2 class="rl-rcard-name">{{ c.name }}</h2>
-            <p class="rl-rcard-pos">{{ pos_label }} · {{ style_label }} · 최고 무대 {{ card.peak }}</p>
+            <div class="rl-rcard-who">
+                {% if card.epithet %}<p class="rl-rcard-ep">‘{{ card.epithet }}’</p>{% endif %}
+                <h2 class="rl-rcard-name{% if c.name|length > 7 %} is-long{% elif c.name|length > 5 %} is-mid{% endif %}">{{ c.name }}</h2>
+                <p class="rl-rcard-pos">{{ pos_label }} · {{ style_label }}</p>
+                <p class="rl-rcard-era">{{ card.years }} · {{ card.seasons }}시즌 · 최고 무대 {{ card.peak_short }}</p>
+            </div>
+            <span class="rl-rcard-no" aria-label="등번호 {{ c.number }}"><small>No.</small>{{ c.number }}</span>
         </div>
-        {% if card.line %}
         <dl class="rl-rcard-line">
-            {% if c.role == 'pitcher' %}
-            <div><dt>경기</dt><dd>{{ card.line.g|default:0|comma }}</dd></div>
-            <div><dt>승</dt><dd>{{ card.line.w|default:0|comma }}</dd></div>
-            <div><dt>패</dt><dd>{{ card.line.l|default:0|comma }}</dd></div>
-            <div><dt>세이브</dt><dd>{{ card.line.sv|default:0|comma }}</dd></div>
-            <div><dt>평균자책점</dt><dd>{{ card.line.era_text }}</dd></div>
-            <div><dt>탈삼진</dt><dd>{{ card.line.so|default:0|comma }}</dd></div>
-            {% else %}
-            <div><dt>경기</dt><dd>{{ card.line.g|default:0|comma }}</dd></div>
-            <div><dt>타율</dt><dd>{{ card.line.avg_text }}</dd></div>
-            <div><dt>안타</dt><dd>{{ card.line.h|default:0|comma }}</dd></div>
-            <div><dt>홈런</dt><dd>{{ card.line.hr|default:0|comma }}</dd></div>
-            <div><dt>타점</dt><dd>{{ card.line.rbi|default:0|comma }}</dd></div>
-            <div><dt>OPS</dt><dd>{{ card.line.ops_text }}</dd></div>
-            {% endif %}
+            {% for s in card.stats %}<div><dt>{{ s.0 }}</dt><dd>{{ s.1 }}</dd></div>{% endfor %}
         </dl>
-        {% endif %}
-        <div class="rl-rcard-key">
-            <div><span>프로 WAR</span><b>{{ card.war }}</b></div>
-            <div><span>최고 OVR</span><b>{{ card.best_ovr }}</b></div>
-            <div><span>통산 수입</span><b>{{ card.money }}</b></div>
+        <dl class="rl-rcard-key">
+            <div><dt>프로 WAR</dt><dd>{{ card.war }}</dd></div>
+            <div><dt>최고 OVR</dt><dd>{{ card.best_ovr }}</dd></div>
+            <div><dt>통산 수입</dt><dd>{{ card.money }}</dd></div>
+        </dl>
+        <ul class="rl-rcard-honors" aria-label="수상">
+            {% for h in card.honors %}<li class="{% if not h.n %}is-zero{% endif %}"><small>{{ h.label }}</small><b>{{ h.n }}</b></li>{% endfor %}
+        </ul>
+        <div class="rl-rcard-notes">
+            {% if card.best %}<p class="rl-rcard-best"><span>커리어 하이</span><b>{{ card.best.year }} {{ card.best.league }} · {{ card.best.age }}세</b><em>{{ card.best.line }} · WAR {{ card.best.war }}</em></p>{% endif %}
+            {% if card.clubs %}<p class="rl-rcard-clubs"><span>거쳐 간 팀</span><em>{{ card.clubs|join:' → ' }}{% if card.more_clubs %} 외 {{ card.more_clubs }}팀{% endif %}</em></p>{% endif %}
         </div>
-        {% if card.badges %}<ul class="rl-rcard-badges" aria-label="수상">{% for b in card.badges %}<li><b>{{ b.n }}</b>{{ b.label }}</li>{% endfor %}</ul>{% endif %}
-        {% if card.best %}<p class="rl-rcard-best"><span>커리어 하이</span>{{ card.best.year }} {{ card.best.league }} · {{ card.best.line }} · WAR {{ card.best.war }}</p>{% endif %}
-        {% if card.clubs %}<p class="rl-rcard-clubs">{{ card.clubs|join:' → ' }}{% if card.more_clubs %} 외 {{ card.more_clubs }}팀{% endif %}</p>{% endif %}
         <footer class="rl-rcard-foot"><span>테크창 야구선수 키우기</span><span>techchang.com</span></footer>
     </div>
 </article>

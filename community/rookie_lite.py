@@ -8,7 +8,8 @@
   비시즌(plan)   — 훈련 프로그램 두 개 + 강도(가볍게·보통·강하게) + 가끔 이벤트 하나를 고른다
   시즌(review)   — 월별 전광판이 넘어가고, 성적·시상·팀 순위·성장·승격이 나온다
   결정(decision) — 드래프트·병역·포스팅·FA·KBO 복귀·은퇴 같은 갈림길(때가 되면)
-고1(16세)에서 시작해 34세부터 은퇴를 고를 수 있고 42세면 끝난다 — 보통 22~26시즌, 시즌당 1분 남짓.
+고1(16세)에서 시작해 34세부터 은퇴를 고를 수 있고 42세면 끝난다. 34세부터 1군 수준에서 크게 밀리면 방출될 수 있다
+(VET_CUT) — 보통 18~24시즌, 시즌당 1분 남짓.
 
 성장(grow): 해마다 '능력별 잠재력 × 나이 곡선(CURVE)'의 차이만큼 자라고, 고른 훈련·강도·출전 시간이 그 위에 더한다.
 잠재력(숨김, 스카우트 별점으로 짐작)이 끝이다. 강하게 훈련하면 더 크지만 다칠 확률이 오른다. 서른 넘으면 몸
@@ -42,10 +43,17 @@ START_AGE, RETIRE_FROM, RETIRE_AT = 16, 34, 42
 BASE_YEAR = 2026                 # 예전 커리어(flags.start 없음)의 고1 시즌 달력 연도
 POT_MEAN, POT_SD, POT_RANGE = 65, 7, (50, 92)
 HS_COMPETE = 3.0          # 강호 고교는 주전 경쟁이 세다 — 보직을 정할 때 리그 수준을 이만큼 높게 본다(학교를 고르게 되며 강호만 고르지 않게)
+# 나이별 잠재력 몫 — 27·28세가 꼭짓점. 서른 넘어 해마다 더 빨리 빠진다(2026-10-18 노쇠 조정: 예전엔 잠재력 80 선수가
+# 마흔까지 1군 수준을 지켜 통산 400승·4,000안타가 나왔다. 지금은 잠재력 70이 33세, 80이 36세 무렵까지)
 CURVE = {16: .55, 17: .61, 18: .67, 19: .72, 20: .77, 21: .81, 22: .85, 23: .88, 24: .91, 25: .93, 26: .95,
-         27: .96, 28: .96, 29: .95, 30: .94, 31: .92, 32: .89, 33: .86, 34: .82, 35: .78, 36: .73, 37: .68,
-         38: .63, 39: .58, 40: .53, 41: .48, 42: .43, 43: .40}
+         27: .96, 28: .96, 29: .95, 30: .93, 31: .90, 32: .86, 33: .82, 34: .77, 35: .72, 36: .66, 37: .60,
+         38: .54, 39: .48, 40: .43, 41: .38, 42: .34, 43: .30}
 PHYS = ('velocity', 'stamina', 'power', 'speed')
+# 서른 넘어 빠지는 몫 — 곡선이 빠지는 만큼에 곱한다(기술은 천천히, 몸은 빨리, 강철 체력은 몸도 천천히)
+SKILL_KEEP, PHYS_KEEP, IRON_KEEP = 0.85, 1.2, 0.9
+# 나이별 훈련 효과 — (이 나이까지, 배율). 나이 들수록 훈련으로 노쇠를 메우기 어렵다(예전엔 서른 넘어도 0.6 이라 빠진 만큼 도로 채웠다)
+AGE_TRAIN = ((22, 1.2), (27, 1.0), (30, 0.75), (33, 0.5), (36, 0.3), (99, 0.15))
+VET_CUT = 34                # 이 나이부터 1군 수준에서 크게 밀린 베테랑은 시즌 뒤 방출될 수 있다(2군에서 마흔둘까지 버티며 기록만 쌓지 않게)
 PLUS, MINUS = 5.0, 6.0                     # 스타일 강점 능력 잠재력 +5, 약점 −6
 GAMES = {'hs': 30, 'univ': 40, 'kbo3': 60, 'kbo2': 100, 'kbo1': 144, 'mlb_a': 120, 'mlb_aa': 130, 'mlb_aaa': 140,
          'mlb': 162, 'npb2': 100, 'npb1': 143, 'cpbl': 120}
@@ -156,7 +164,7 @@ def frac(c, k: str, age: int) -> float:
     a = int(_clamp(a, min(CURVE), max(CURVE)))
     f = CURVE[a]
     if a > 30:
-        keep = 0.6 if k not in PHYS else (0.7 if has(c, 'iron') else 1.0)    # 기술은 천천히, 몸은 빨리
+        keep = SKILL_KEEP if k not in PHYS else (IRON_KEEP if has(c, 'iron') else PHYS_KEEP)    # 기술은 천천히, 몸은 빨리
         f = CURVE[30] - (CURVE[30] - f) * keep
     return f
 
@@ -456,7 +464,7 @@ def grow(c, programs, intensity: str, pt: float, war: float, rng, train_mult: fl
     for code in programs:
         for k, v in dict((p[0], p[3]) for p in PROGRAMS[c.role])[code].items():
             plus[k] = plus.get(k, 0.0) + v
-    age_train = 1.2 if c.age <= 22 else 1.0 if c.age <= 28 else 0.8 if c.age <= 32 else 0.6
+    age_train = next(v for at, v in AGE_TRAIN if c.age <= at)
     deltas, why = {}, {}
     for k in list(c.stats):
         s, pot = float(c.stats[k]), stat_pot(c, k)
@@ -1840,6 +1848,10 @@ def next_step(c, rng, skip_meeting: bool = False) -> dict:
         flags = c.flags or {}
     if W.is_pro(code) and c.age >= 32 and c.ovr < W.level(code) - 10 and W.prev_league(code) is None:
         return {'kind': 'decision', 'what': 'released'}
+    if W.is_pro(code) and c.age >= VET_CUT and not flags.get('army'):
+        gap = W.level(W.SYSTEMS[W.system_of(code)][-1]) - c.ovr        # 그 나라 1군 수준까지 모자란 몫
+        if gap >= 8 and rng.random() < min(0.9, 0.35 + 0.15 * (c.age - VET_CUT) + 0.04 * (gap - 8)):
+            return {'kind': 'decision', 'what': 'released'}
     if W.system_of(code) == 'kbo' and not flags.get('served') and not flags.get('exempt') and c.age >= 23 \
             and not flags.get('army'):
         if c.age >= 28 or rng.random() < 0.5:
@@ -2286,7 +2298,32 @@ SERIES_NAME = {'kbo1': '한국시리즈', 'mlb': '월드시리즈', 'npb1': '일
 WIN_IF, WIN_ELSE = 0.85, 0.15
 POST_ROUND = {'kbo1': '플레이오프', 'npb1': '클라이맥스 시리즈', 'mlb': '포스트시즌', 'cpbl': '플레이오프'}
 OUT_PITCHES = ('슬라이더', '포크', '커브', '체인지업', '커터', '스플리터')
-INTL_RIVALS = (('일본', 'npb'), ('미국', 'mlb'), ('대만', 'cpbl'), ('쿠바', 'mlb'), ('도미니카', 'mlb'), ('멕시코', 'mlb'))
+# 국제대회 결승 상대 — 대회마다 실제로 나오는 나라만(2026-10-18 사용자 지적: 아시안게임 결승에 쿠바가 나왔다).
+# (나라, 무게, 이름 묶음) — 이름 묶음은 INTL_NAMES
+INTL_FIELD = {
+    'asian': (('일본', 6, 'jp'), ('대만', 5, 'tw'), ('중국', 1, 'cn')),
+    'olympics': (('일본', 5, 'jp'), ('미국', 4, 'us'), ('도미니카', 3, 'latin'), ('멕시코', 2, 'latin'), ('이스라엘', 1, 'us')),
+    'wbc': (('일본', 5, 'jp'), ('미국', 5, 'us'), ('도미니카', 4, 'latin'), ('베네수엘라', 3, 'latin'), ('푸에르토리코', 3, 'latin'),
+            ('쿠바', 2, 'latin'), ('멕시코', 2, 'latin'), ('대만', 1, 'tw')),
+    'premier12': (('일본', 5, 'jp'), ('대만', 4, 'tw'), ('미국', 3, 'us'), ('멕시코', 2, 'latin'), ('베네수엘라', 2, 'latin'),
+                  ('도미니카', 1, 'latin')),
+}
+INTL_NAMES = {
+    'jp': ABROAD_NAMES['npb'], 'tw': ABROAD_NAMES['cpbl'],
+    'cn': (('왕', '리', '장', '류', '천', '양', '자오'), ('웨이', '하오', '레이', '펑', '양', '친', '밍'), ''),
+    'us': (('제이크', '타일러', '라이언', '브랜든', '카일', '저스틴', '오스틴', '네이선', '코디', '트래비스'),
+           ('존슨', '밀러', '윌리엄스', '브라운', '데이비스', '앤더슨', '테일러', '무어', '클라크', '해리스'), ' '),
+    'latin': (('호세', '루이스', '카를로스', '라파엘', '미겔', '후안', '페드로', '라몬', '엔리케', '프란시스코'),
+              ('로드리게스', '마르티네스', '곤살레스', '페레스', '에르난데스', '라미레스', '디아스', '산체스', '토레스', '레예스'), ' '),
+}
+
+
+def intl_rival(key: str, rng) -> str:
+    """'일본 다카하시 쇼타' — 그 대회에 나오는 나라와 그 나라 이름으로."""
+    field = INTL_FIELD.get(key) or INTL_FIELD['premier12']
+    country, _w, pool = rng.choices(field, [x[1] for x in field])[0]
+    a, b, sep = INTL_NAMES[pool]
+    return f'{country} {rng.choice(a)}{sep}{rng.choice(b)}'
 HITTER_TYPES = {'fast': ('직구에 강하고 떨어지는 공에 약해요', {'fast': -8, 'break': 10, 'edge': 0}),
                 'break': ('변화구를 잘 받아치고 빠른 공에 늦어요', {'fast': 10, 'break': -8, 'edge': 0}),
                 'patient': ('공을 끝까지 보는 타자예요 — 볼넷을 잘 골라요', {'fast': 6, 'break': -6, 'edge': -6})}
@@ -2433,9 +2470,8 @@ def moments_for(c, code: str, rank: int, team_n: int, state: dict, rng) -> list:
     out = []
     for res in state['intl']:
         if res.get('final'):
-            country, sysname = rng.choice(INTL_RIVALS)
             out.append(make_moment(c, 'intl', f"{res['name']} 결승", INTL[res['key']]['month'], rng, key=res['key'],
-                                   opp_name=f"{country} {rival_name({'npb': 'npb1', 'mlb': 'mlb', 'cpbl': 'cpbl'}[sysname], rng)}"))
+                                   opp_name=intl_rival(res['key'], rng)))
     odds = POSTSEASON.get(code, ())
     if team_n and rank <= len(odds):
         reach = 1.0 if (code == 'kbo1' and rank == 1) else min(1.0, 2 * odds[rank - 1])   # KBO 1위는 한국시리즈 직행

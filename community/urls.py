@@ -122,6 +122,8 @@ urlpatterns = [
     path('rookie/lite/hall/', rookie_lite_views.lite_hall, name='lite_hall'),
     path('rookie/lite/c/<int:pk>/', rookie_lite_views.lite_career, name='lite_career'),
     path('rookie/lite/c/<int:pk>/card/', rookie_lite_views.lite_card, name='lite_card'),
+    path('rookie/lite/c/<int:pk>/card.png', rookie_lite_views.lite_card_png, name='lite_card_png'),        # 저장·SNS(1080×1350)
+    path('rookie/lite/c/<int:pk>/og.png', rookie_lite_views.lite_card_png, {'kind': 'og'}, name='lite_card_og'),   # 링크 미리보기
     path('rookie/lite/cards/', rookie_lite_views.lite_cards, name='lite_cards'),
 
     # portfolio_views.py - 포트폴리오

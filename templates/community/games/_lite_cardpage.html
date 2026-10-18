@@ -7,12 +7,12 @@
         {% if fresh %}<p class="rl-cardpage-lead">수고 많았어요! {{ c.name }} 선수의 커리어를 카드 한 장에 담았어요. 화면을 캡처해서 자랑해 보세요.</p>{% endif %}
         {% include 'community/games/_lite_retire.html' %}
         <div class="rl-cardpage-actions">
-            {% if fresh %}<a class="gm-btn is-primary" href="{% url 'community:lite_home' %}">새 선수 시작하기</a>{% endif %}
+            <a class="gm-btn is-primary" href="{% url 'community:lite_card_png' c.pk %}?download=1" data-rl-img data-src="{% url 'community:lite_card_png' c.pk %}" data-name="{{ c.name }}-은퇴카드.png">{% include 'community/games/_lite_icon.html' with name='save' %}<span data-rl-img-label>이미지 저장</span></a>
             <button type="button" class="gm-btn" data-rl-share data-url="{{ request.scheme }}://{{ request.get_host }}{{ request.path }}" data-title="{{ c.name }} 은퇴 카드 — 테크창 야구선수 키우기">{% include 'community/games/_lite_icon.html' with name='share' %}<span>링크 공유</span></button>
-            <a class="gm-btn" href="{% url 'community:lite_career' c.pk %}">커리어 자세히</a>
-            {% if user.is_authenticated and is_me %}<a class="gm-btn" href="{% url 'community:lite_cards' %}">카드 보관함</a>{% endif %}
         </div>
-        <p class="rl-share-done" data-rl-share-done hidden>링크를 복사했어요.</p>
+        <p class="rl-cardpage-note">이미지는 1080×1350 — 인스타그램 세로 피드에 그대로 올라가요. 링크를 공유하면 미리보기에 카드가 떠요.</p>
+        <p class="rl-share-done" data-rl-share-done role="status" hidden></p>
+        <p class="rl-cardpage-links">{% if fresh %}<a class="is-strong" href="{% url 'community:lite_home' %}">새 선수 시작하기</a>{% endif %}<a href="{% url 'community:lite_career' c.pk %}">커리어 자세히</a>{% if user.is_authenticated and is_me %}<a href="{% url 'community:lite_cards' %}">카드 보관함</a>{% endif %}</p>
         {% if is_me and not user.is_authenticated %}<p class="rl-guest-note">로그인하면 이 카드를 보관함에 남겨 언제든 다시 볼 수 있어요. <a rel="nofollow" href="{% url 'common:login' %}?next={{ request.path|urlencode }}">로그인</a></p>{% endif %}
     </div>
     {% include 'community/games/_rookie_rights.html' %}
@@ -20,17 +20,50 @@
 </div>
 <script nonce="{{ csp_nonce }}">
 (function () {
+    var done = document.querySelector('[data-rl-share-done]');
+    var say = function (t) { if (done) { done.textContent = t; done.hidden = false; } };
+    // 링크 공유 — 폰은 공유 창, PC 는 링크 복사
     var b = document.querySelector('[data-rl-share]');
-    if (!b) return;
-    b.addEventListener('click', function () {
-        var url = b.dataset.url, done = document.querySelector('[data-rl-share-done]');
+    if (b) b.addEventListener('click', function () {
+        var url = b.dataset.url;
         if (navigator.share) {
             navigator.share({ title: b.dataset.title, url: url }).catch(function () {});
             return;
         }
-        if (navigator.clipboard) {
-            navigator.clipboard.writeText(url).then(function () { done.hidden = false; });
-        }
+        if (navigator.clipboard) navigator.clipboard.writeText(url).then(function () { say('링크를 복사했어요.'); });
+    });
+    // 이미지 — 파일 공유가 되는 폰이면 공유 창(인스타그램·카카오톡 등)으로, 아니면 내려받기(자바스크립트가 없으면 링크가 내려받는다)
+    var img = document.querySelector('[data-rl-img]');
+    if (!img) return;
+    var label = img.querySelector('[data-rl-img-label]');
+    var touch = window.matchMedia && window.matchMedia('(pointer: coarse)').matches;   // PC 는 내려받기가 자연스럽다
+    var canFiles = touch && !!(navigator.canShare && window.File && navigator.canShare({ files: [new File([''], 'a.png', { type: 'image/png' })] }));
+    if (canFiles) label.textContent = '이미지로 공유';
+    img.addEventListener('click', function (e) {
+        e.preventDefault();
+        if (img.getAttribute('aria-busy') === 'true') return;
+        img.setAttribute('aria-busy', 'true');
+        var old = label.textContent;
+        label.textContent = '카드 그리는 중…';
+        fetch(img.dataset.src).then(function (r) {
+            if (!r.ok) throw new Error('png ' + r.status);
+            return r.blob();
+        }).then(function (blob) {
+            var file = new File([blob], img.dataset.name, { type: 'image/png' });
+            if (canFiles && navigator.canShare({ files: [file] })) return navigator.share({ files: [file] }).catch(function () {});
+            var a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = img.dataset.name;
+            document.body.appendChild(a);
+            a.click();
+            setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+            say('이미지를 저장했어요.');
+        }).catch(function () {
+            say('이미지를 만들지 못했어요. 잠시 뒤 다시 눌러 주세요.');
+        }).then(function () {
+            label.textContent = old;
+            img.removeAttribute('aria-busy');
+        });
     });
 })();
 </script>

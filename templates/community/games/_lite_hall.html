@@ -3,14 +3,14 @@
 <div class="gm rk rl">
 <div class="gm-wrap is-wide">
     {% include 'community/games/_lite_top.html' with h1='명예의 전당' %}
-    <div class="rk-controls rl-hall-controls">
-        <nav class="rk-seg" aria-label="리그">
-            {% for code, label in tabs %}<a href="?lg={{ code }}{% if role %}&amp;role={{ role }}{% endif %}" {% if tab == code %}aria-current="page"{% endif %}>{{ label }}</a>{% endfor %}
-        </nav>
-        <nav class="rk-seg" aria-label="투수·야수">
-            {% for code, label in role_tabs %}<a href="?{% if tab %}lg={{ tab }}&amp;{% endif %}role={{ code }}" {% if role == code %}aria-current="page"{% endif %}>{{ label }}</a>{% endfor %}
-        </nav>
-    </div>
+    <form class="rl-filter" method="get" action="" data-rl-filter aria-label="명예의 전당 거르기">
+        <label class="rl-select"><span>투수·타자</span>
+            <select name="role">{% for code, label in role_tabs %}<option value="{{ code }}"{% if role == code %} selected{% endif %}>{{ label }}</option>{% endfor %}</select></label>
+        <label class="rl-select"><span>리그</span>
+            <select name="lg">{% for code, label in tabs %}<option value="{{ code }}"{% if tab == code %} selected{% endif %}>{{ label }}</option>{% endfor %}</select></label>
+        <button type="submit" class="gm-btn rl-filter-go" data-rl-filter-go>보기</button>
+        <p class="rl-filter-count" aria-live="polite">{% if role == 'pitcher' %}투수{% elif role == 'batter' %}타자{% else %}선수{% endif %} {{ rows|length }}명</p>
+    </form>
     <p class="rk-note">은퇴한 커리어를 MVP → 최고 OVR → 수상 → 프로 WAR 순으로 세웠어요.{% if not tab %} 전체 순위에선 MVP에 리그 수준만큼 무게를 줘요(메이저리그 3, 일본 1.5, KBO 1.2, 대만 0.6).{% else %} {{ tab_name }} 리그에서 뛴 시즌만 세요.{% endif %} 로그인한 커리어만 올라요.</p>
     {% if rows %}
     <div class="rk-table-wrap">
@@ -23,7 +23,7 @@
             <tbody>
                 {% for r in rows %}
                 <tr class="{% if r.c.user_id == user.id %}is-first{% endif %}">
-                    <th scope="row" class="rl-hall-name"><span class="rl-hall-no">{{ forloop.counter }}</span><a href="{% url 'community:lite_career' r.c.pk %}">{{ r.c.name }}</a><small class="rl-hall-who">{% if r.c.role == 'pitcher' %}투수{% else %}야수{% endif %} · {{ r.c.age }}세 은퇴</small></th>
+                    <th scope="row" class="rl-hall-name"><span class="rl-hall-no">{{ forloop.counter }}</span><a href="{% url 'community:lite_career' r.c.pk %}">{{ r.c.name }}</a><small class="rl-hall-who">{% if r.c.role == 'pitcher' %}투수{% else %}타자{% endif %} · {{ r.c.age }}세 은퇴</small></th>
                     <td class="is-text">{{ r.peak }}</td><td>{{ r.mvp }}</td><td>{{ r.best|floatformat:1 }}</td>
                     {% if role == 'pitcher' %}<td>{{ r.line.w|default:0 }}</td><td>{{ r.line.l|default:0 }}</td><td>{{ r.line.sv|default:0 }}</td><td>{{ r.line.era_text|default:'-' }}</td><td>{{ r.line.so|default:0|comma }}</td>
                     {% elif role == 'batter' %}<td>{{ r.line.avg_text|default:'-' }}</td><td>{{ r.line.h|default:0|comma }}</td><td>{{ r.line.hr|default:0|comma }}</td><td>{{ r.line.rbi|default:0|comma }}</td><td>{{ r.line.ops_text|default:'-' }}</td>
@@ -35,9 +35,23 @@
         </table>
     </div>
     {% else %}
-    <section class="rk-panel"><p class="rk-empty">{% if role %}아직 은퇴한 {% if role == 'pitcher' %}투수{% else %}야수{% endif %}가 없어요.{% else %}아직 은퇴한 커리어가 없어요.{% endif %} 첫 번째 전설이 되어 보세요.</p></section>
+    <section class="rk-panel"><p class="rk-empty">{% if role %}아직 은퇴한 {% if role == 'pitcher' %}투수{% else %}타자{% endif %}가 없어요.{% else %}아직 은퇴한 커리어가 없어요.{% endif %} 첫 번째 전설이 되어 보세요.</p></section>
     {% endif %}
     <div class="gm-actions"><a class="gm-btn is-primary" href="{% url 'community:lite_home' %}">내 커리어 보기</a></div>
     {% include 'community/games/_rookie_rights.html' %}
 </div>
 </div>
+<script nonce="{{ csp_nonce }}">
+(function () {
+    // 고르면 바로 거른다(자바스크립트가 없으면 '보기' 버튼으로). 빈 값은 주소에서 뺀다
+    var f = document.querySelector('[data-rl-filter]');
+    if (!f) return;
+    var go = f.querySelector('[data-rl-filter-go]');
+    if (go) go.hidden = true;
+    f.addEventListener('change', function () {
+        var q = [];
+        f.querySelectorAll('select').forEach(function (s) { if (s.value) q.push(s.name + '=' + encodeURIComponent(s.value)); });
+        location.search = q.join('&');
+    });
+})();
+</script>

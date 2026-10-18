@@ -122,7 +122,7 @@ class EngineTests(TestCase):
             seasons, seen = autoplay(c, random.Random(seed))
             c.refresh_from_db()
             self.assertIsNotNone(c.retired_at)
-            self.assertTrue(18 <= seasons <= 28, seasons)                       # 한 판 30분 남짓
+            self.assertTrue(15 <= seasons <= 28, seasons)                       # 한 판 30분 남짓(약하면 34세 무렵 방출로 일찍 끝난다)
             self.assertIn('draft', seen)
             self.assertEqual(LiteSeason.objects.filter(career=c).count(), c.year - 1)
             self.assertTrue(c.peak)
@@ -615,6 +615,112 @@ class FourthBatchTests(TestCase):
         self.assertEqual(S.staff('kbo1', 'lg', 'charter'), ('재원', '에이전트'))     # 팀 밖 사람은 그대로
         c = pro('코치', seed=49)
         self.assertEqual(X.who_is(c, 'lead'), kbo)
+
+
+class AgingAndIntlTests(TestCase):
+    """2026-10-18 5차 — 노쇠 곡선(서른 넘어 더 빨리, 훈련으로 못 메움)·베테랑 방출·국제대회 결승 상대."""
+
+    def test_decline_is_steeper_after_thirty(self):
+        c = pro('노쇠', seed=50, ovr=80.0, age=27)
+        c.potential, c.traits = 80, []
+        skill = {a: X.frac(c, 'contact', a) for a in (28, 33, 36, 39)}
+        body = {a: X.frac(c, 'power', a) for a in (28, 33, 36, 39)}
+        self.assertLess(skill[36], 0.80)                                     # 기술도 서른여섯이면 꽤 빠진다
+        self.assertLess(body[36], skill[36])                                 # 몸이 먼저
+        self.assertGreater((skill[33] - skill[36]) / 3, (skill[28] - skill[33]) / 5)   # 해마다 더 빨리 빠진다
+        young = next(v for at, v in X.AGE_TRAIN if 25 <= at)
+        old = next(v for at, v in X.AGE_TRAIN if 37 <= at)
+        self.assertLess(old, young / 4)                                      # 나이 들면 훈련으로 노쇠를 못 메운다
+
+    def test_veteran_far_below_the_top_league_gets_released(self):
+        rng = random.Random(51)
+        c = pro('베테랑', seed=51, league='kbo2', ovr=50.0, age=38)
+        c.flags = dict(c.flags, served=True)
+        whats = [X.next_step(c, rng, skip_meeting=True).get('what') for _ in range(20)]
+        self.assertGreater(whats.count('released'), 10)                       # 38세·1군보다 14 낮으면 대부분 방출
+        young = pro('젊은2군', seed=52, league='kbo2', ovr=50.0, age=26)
+        young.flags = dict(young.flags, served=True)
+        self.assertNotIn('released', [X.next_step(young, rng, skip_meeting=True).get('what') for _ in range(10)])
+
+    def test_asian_games_final_is_asian(self):
+        rng = random.Random(53)
+        names = {X.intl_rival('asian', rng).split(' ')[0] for _ in range(200)}
+        self.assertLessEqual(names, {'일본', '대만', '중국'})
+        wbc = {X.intl_rival('wbc', rng).split(' ')[0] for _ in range(400)}
+        self.assertIn('도미니카', wbc)
+        self.assertTrue(any(X.intl_rival('wbc', rng).split(' ')[1] in X.INTL_NAMES['latin'][0] for _ in range(200)))  # 중남미는 스페인어 이름
+
+
+class CardImageAndHallFilterTests(TestCase):
+    """2026-10-18 5차 — 은퇴 카드 이미지(PNG·링크 미리보기), 카드 칸 고정, 명예의 전당 드롭다운."""
+
+    def setUp(self):
+        import tempfile
+        self.media = tempfile.mkdtemp()
+        cache.clear()
+
+    def _retired(self, name='카드주인', role='pitcher', pos='SP'):
+        c = new(name, role=role, position=pos)
+        LiteSeason.objects.create(career=c, year=1, age=24, league='kbo1', club='lg', games=144, war=5.0,
+                                  totals={'outs': 540, 'w': 120, 'l': 101, 'er': 60, 'so': 1500, 'g': 30, 'gs': 30}
+                                  if role == 'pitcher' else {'pa': 600, 'ab': 540, 'h': 1600, 'hr': 20},
+                                  awards=[{'kind': 'gg', 'label': '골든글러브 투수'}])
+        c.retired_at = timezone.now()
+        c.pending = {'kind': 'retired', 'why': ''}
+        c.save()
+        return c
+
+    def test_card_has_fixed_cells_and_image_links(self):
+        c = self._retired()
+        r = self.client.get(f'/rookie/lite/c/{c.pk}/card/', HTTP_USER_AGENT=PC)
+        self.assertContains(r, 'rl-rcard-honors')
+        self.assertContains(r, 'is-zero')                                     # 0인 칸도 그대로(줄이 맞게)
+        self.assertContains(r, '1,500')                                       # 천 단위 쉼표
+        self.assertContains(r, f'/rookie/lite/c/{c.pk}/card.png')
+        self.assertContains(r, f'/rookie/lite/c/{c.pk}/og.png')               # 링크 미리보기
+
+    def test_png_is_rendered_once_and_cached(self):
+        from django.test import override_settings
+        from community.views import rookie_lite_views as LV
+        c = self._retired('이미지')
+        calls = []
+
+        def fake(html, size, out):
+            calls.append((size, 'rl-rcard' in html))
+            import os
+            os.makedirs(os.path.dirname(out), exist_ok=True)
+            open(out, 'wb').write(b'PNG-fake')
+        with override_settings(MEDIA_ROOT=self.media), mock.patch.object(LV, 'render_png', fake):
+            for _ in range(2):
+                r = self.client.get(f'/rookie/lite/c/{c.pk}/card.png', HTTP_USER_AGENT=PC)
+                self.assertEqual(r.status_code, 200)
+                self.assertEqual(r['Content-Type'], 'image/png')
+            r = self.client.get(f'/rookie/lite/c/{c.pk}/og.png', HTTP_USER_AGENT=PC)
+            self.assertEqual(r.status_code, 200)
+            r = self.client.get(f'/rookie/lite/c/{c.pk}/card.png?download=1', HTTP_USER_AGENT=PC)
+            self.assertIn('attachment', r['Content-Disposition'])
+        self.assertEqual(calls, [((432, 540, 2.5), True), ((1200, 630, 1), True)])   # 한 번 찍으면 다시 안 찍는다
+
+    def test_png_needs_a_retired_career_and_survives_render_failure(self):
+        from django.test import override_settings
+        from community.views import rookie_lite_views as LV
+        live = new('현역')
+        self.assertEqual(self.client.get(f'/rookie/lite/c/{live.pk}/card.png').status_code, 404)
+        c = self._retired('실패')
+
+        def boom(*a):
+            raise RuntimeError('no chromium')
+        with override_settings(MEDIA_ROOT=self.media), mock.patch.object(LV, 'render_png', boom):
+            self.assertEqual(self.client.get(f'/rookie/lite/c/{c.pk}/card.png').status_code, 503)
+
+    def test_hall_has_dropdown_filter(self):
+        self._retired('투수카드')
+        self._retired('타자카드', role='batter', pos='SS')
+        r = self.client.get('/rookie/lite/hall/?role=batter', HTTP_USER_AGENT=MOBILE)
+        self.assertContains(r, '<select name="role">', html=False)
+        self.assertContains(r, '<option value="batter" selected>타자</option>', html=False)
+        self.assertContains(r, '타자카드')
+        self.assertNotContains(r, '투수카드')
 
 
 def _pitcher(name):
