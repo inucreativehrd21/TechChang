@@ -1,4 +1,4 @@
-{# 라이트 은퇴 카드 한 장(캡처해서 자랑하는 크기). 맥락: c, card(rookie_lite_views._card), team, pos_label, style_label, earnings #}
+{% load rookie_tags %}{# 라이트 은퇴 카드 한 장(캡처해서 자랑하는 크기). 맥락: c, card(rookie_lite_views._card), team, pos_label, style_label, earnings #}
 <article class="rl-rcard is-{{ card.tier }}" style="--team: {{ team.color|default:'#4f46e5' }}" aria-label="{{ c.name }} 은퇴 카드">
     <div class="rl-rcard-in">
         <header class="rl-rcard-top">
@@ -14,16 +14,18 @@
         {% if card.line %}
         <dl class="rl-rcard-line">
             {% if c.role == 'pitcher' %}
-            <div><dt>경기</dt><dd>{{ card.line.g|default:0 }}</dd></div>
-            <div><dt>승패</dt><dd>{{ card.line.w|default:0 }}-{{ card.line.l|default:0 }}</dd></div>
-            <div><dt>세이브</dt><dd>{{ card.line.sv|default:0 }}</dd></div>
+            <div><dt>경기</dt><dd>{{ card.line.g|default:0|comma }}</dd></div>
+            <div><dt>승</dt><dd>{{ card.line.w|default:0|comma }}</dd></div>
+            <div><dt>패</dt><dd>{{ card.line.l|default:0|comma }}</dd></div>
+            <div><dt>세이브</dt><dd>{{ card.line.sv|default:0|comma }}</dd></div>
             <div><dt>평균자책점</dt><dd>{{ card.line.era_text }}</dd></div>
-            <div><dt>탈삼진</dt><dd>{{ card.line.so|default:0 }}</dd></div>
+            <div><dt>탈삼진</dt><dd>{{ card.line.so|default:0|comma }}</dd></div>
             {% else %}
-            <div><dt>경기</dt><dd>{{ card.line.g|default:0 }}</dd></div>
+            <div><dt>경기</dt><dd>{{ card.line.g|default:0|comma }}</dd></div>
             <div><dt>타율</dt><dd>{{ card.line.avg_text }}</dd></div>
-            <div><dt>홈런</dt><dd>{{ card.line.hr|default:0 }}</dd></div>
-            <div><dt>타점</dt><dd>{{ card.line.rbi|default:0 }}</dd></div>
+            <div><dt>안타</dt><dd>{{ card.line.h|default:0|comma }}</dd></div>
+            <div><dt>홈런</dt><dd>{{ card.line.hr|default:0|comma }}</dd></div>
+            <div><dt>타점</dt><dd>{{ card.line.rbi|default:0|comma }}</dd></div>
             <div><dt>OPS</dt><dd>{{ card.line.ops_text }}</dd></div>
             {% endif %}
         </dl>

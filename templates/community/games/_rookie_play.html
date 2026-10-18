@@ -15,7 +15,7 @@
             <h2>훈련</h2>
             <span class="rk-tp"><b>{{ p.tp }}</b> TP{% if tp_full %} <em>보유 한도</em>{% endif %}</span>
         </div>
-        {% if not trained and p.tp >= cost %}<div class="rl-say is-small">{% include 'community/games/_rookie_staff.html' with who='coding' %}<div class="rl-bubble"><p class="rl-who"><b>윤성</b> 코치</p><p>오늘은 아직 훈련 전이에요. 키우고 싶은 능력 옆 <b>‘훈련 1회’</b>를 눌러 보세요. 한 번에 {{ cost }} TP를 써요.</p></div></div>{% endif %}
+        {% if not trained and p.tp >= cost %}<div class="rl-say is-small">{% include 'community/games/_rookie_staff.html' with who='coding' %}<div class="rl-bubble"><p class="rl-who"><b>{{ coach.0 }}</b> {{ coach.1 }}</p><p>오늘은 아직 훈련 전이에요. 키우고 싶은 능력 옆 <b>‘훈련 1회’</b>를 눌러 보세요. 한 번에 {{ cost }} TP를 써요.</p></div></div>{% endif %}
         <p class="rk-hint">1회 {{ cost }} TP. 오늘 {{ trained }}/{{ fatigue_at }}회{% if tired %} — <strong>피로가 쌓여 지금부터 효율이 절반이에요</strong>{% else %}, 넘으면 효율이 절반{% endif %}.{% if career.age_cap %} 막대의 눈금은 {{ p.age }}세 몸으로 오를 수 있는 끝이에요.{% endif %}{% if tp_full %} TP는 {{ tp_max }}까지만 쌓여요.{% endif %}</p>
         <ul class="rk-stats">
             {% for s in stats %}

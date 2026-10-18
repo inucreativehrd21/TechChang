@@ -10,7 +10,7 @@
             <b class="rk-name">{{ c.name }}</b>
             <span class="rk-meta">{{ pos_label }} · {{ style_label }}</span>
             <span class="rk-meta">{% if grade_label %}{{ grade_label }} · {% endif %}{{ c.age }}세{% if not c.retired_at %} · {{ c.year }}번째 시즌 앞{% endif %}</span>
-            <span class="rk-meta">스카우트 <span class="rk-stars" role="img" aria-label="별 {{ stars }}개">{% for i in star_range %}<i class="{% if i < stars %}is-on{% endif %}" aria-hidden="true"></i>{% endfor %}</span> {{ star_note }}</span>
+            <span class="rk-meta">스카우트 <span class="rk-stars" role="img" aria-label="별 {{ stars }}개">{% for i in star_range %}<i class="{% if i < stars %}is-on{% endif %}" aria-hidden="true"></i>{% endfor %}</span> <span class="rk-nowrap">{{ star_note }}</span></span>
         </div>
         <div class="rk-ovr"><small>OVR</small><b>{{ c.ovr|floatformat:1 }}</b></div>
     </div>
@@ -25,6 +25,8 @@
     <dl class="rk-facts">
         <div><dt>연봉</dt><dd>{{ salary }}</dd></div>
         <div><dt>통산 수입</dt><dd>{{ earnings }}</dd></div>
+        <div><dt>보유 현금</dt><dd>{{ cash }}</dd></div>
+        <div><dt>인기</dt><dd>{{ fame }} · {{ fame_label }}</dd></div>
         <div><dt>MVP · 수상 · 우승</dt><dd>{{ c.mvp }} · {{ c.awards }} · {{ c.rings }}</dd></div>
         <div><dt>프로 통산 WAR</dt><dd>{{ c.war }}</dd></div>
     </dl>

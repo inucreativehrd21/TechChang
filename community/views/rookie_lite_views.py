@@ -25,12 +25,14 @@ from django.views.decorators.http import require_POST
 from .. import rookie as R
 from .. import rookie_league as L
 from .. import rookie_lite as X
+from .. import rookie_staff as S
 from .. import rookie_world as W
 from ..game_visibility import is_hidden
 from ..models import LiteCareer
 
 logger = logging.getLogger(__name__)
 HALL_TABS = [('', '전체'), ('kbo', 'KBO'), ('mlb', '미국'), ('npb', '일본'), ('cpbl', '대만')]
+HALL_ROLES = [('', '모두'), ('pitcher', '투수'), ('batter', '야수')]
 SESSION_KEY = 'lite_guest'
 
 
@@ -107,11 +109,17 @@ def _identity(c) -> dict:
                            'bar': round(float(c.stats.get(k, 25)) / 99 * 100, 1)} for k, lab, _w in R.ROLES[c.role]['stats']],
             'salary': X.man(c.salary), 'earnings': X.man(c.earnings), 'want': R.TEAM.get(c.team, {}),
             'cal_year': X.cal_year(c), 'trust': X.trust(c) if W.is_pro(c.league) else None, 'ladder': _ladder(c),
-            'epithet': X.EPITHET.get(c.style, '')}
+            'epithet': X.EPITHET.get(c.style, ''), 'cash': X.man(X.cash(c)), 'fame': X.fame(c),
+            'fame_label': X.fame_label(X.fame(c))}
 
 
 PROGRAM_ICON = {'contact': 'bat', 'power': 'weight', 'eye': 'eye', 'speed': 'run', 'defense': 'glove', 'balance': 'balance',
                 'velocity': 'gauge', 'control': 'target', 'breaking': 'curve', 'stamina': 'heart', 'mental': 'mind'}
+
+
+def _glue(text: str) -> str:
+    """'삼진↑' 의 화살표가 다음 줄로 떨어지지 않게 낱말에 붙인다(WORD JOINER)."""
+    return text.replace('↑', '⁠↑').replace('↓', '⁠↓')
 
 
 def _season_rows(c) -> list:
@@ -158,10 +166,11 @@ def lite_home(request):
     ctx.update(mode=pend.get('kind', 'plan'), **_identity(c), seasons=_season_rows(c))
     if pend.get('kind') == 'plan':
         ctx['duty'] = X._duty_now(c)[2]
+        ctx.update(shop=X.shop_view(c), coach=X.who_is(c, 'coding'), natl=S.national(X.cal_year(c)))
         rules = X.train_rules(c)
         labels = {p[0]: p[1] for p in X.PROGRAMS[c.role]}
         room = {k: X.room_of(c, k) for k in c.stats}
-        ctx.update(programs=[{'code': code, 'label': lab, 'hint': hint, 'icon': PROGRAM_ICON.get(code, 'balance'),
+        ctx.update(programs=[{'code': code, 'label': lab, 'hint': _glue(hint), 'icon': PROGRAM_ICON.get(code, 'balance'),
                               'locked': code in rules['locked'], 'room': room.get(code)} for code, lab, hint, _e in X.PROGRAMS[c.role]],
                    banned=rules['banned'], banned_text=' + '.join(labels[p] for p in rules['banned']),
                    intensity=[{'code': k, 'label': v[0], 'risk': int(round(v[2] * 100))} for k, v in X.INTENSITY.items()],
@@ -236,6 +245,10 @@ def lite_act(request):
                     messages.info(request, text)
                 if c.retired_at:
                     return redirect(f"{reverse('community:lite_card', args=[c.pk])}?new=1")
+            elif action == 'buy':
+                messages.info(request, X.buy(c, request.POST.get('item', ''), request.POST.get('code', '')))
+                c.save()
+                return redirect(reverse('community:lite_home') + '#rl-shop')
             elif action == 'quit':
                 if request.POST.get('confirm') != 'yes':
                     raise X.LiteError('은퇴하려면 확인 칸에 체크해 주세요.')
@@ -252,20 +265,37 @@ def lite_act(request):
 def lite_hall(request):
     tab = request.GET.get('lg', '')
     tab = tab if tab in dict(HALL_TABS) else ''
-    rows = X.hall(tab)
+    role = request.GET.get('role', '')
+    role = role if role in dict(HALL_ROLES) else ''
+    rows = X.hall(tab, role=role)
     return render(request, 'community/rookie_lite_hall.html',
-                  dict(_base(request, 'hall'), tab=tab, tabs=HALL_TABS, rows=rows,
-                       tab_name=dict(HALL_TABS)[tab]))
+                  dict(_base(request, 'hall'), tab=tab, tabs=HALL_TABS, rows=rows, tab_name=dict(HALL_TABS)[tab],
+                       role=role, role_tabs=HALL_ROLES))
 
 
 def lite_career(request, pk: int):
     c = get_object_or_404(LiteCareer.objects.select_related('user'), pk=pk)
     if is_hidden(c.user) and c.user_id != request.user.id:
         raise Http404
-    awards = [dict(a, year=s.year, age=s.age, league=W.short(s.league)) for s in c.seasons.all() for a in s.awards]
+    awards = _award_sum(c)
     return render(request, 'community/rookie_lite_career.html',
                   dict(_base(request, 'hall'), **_identity(c), seasons=_season_rows(c), line=X.career_line(c),
-                       awards=awards, is_me=_is_mine(request, c), peak=W.league(c.peak or 'hs')['name']))
+                       awards=awards, is_me=_is_mine(request, c), peak=W.league(c.peak or 'hs')['name'],
+                       high=X.career_high(c)))
+
+
+AWARD_ORDER = {'mvp': 0, 'ace': 1, 'gg': 2, 'title': 3, 'rookie': 4, 'ring': 5, 'national': 6, 'minor': 7, 'allstar': 8}
+
+
+def _award_sum(c) -> list:
+    """수상을 종류별로 묶어 센다 — 'KBO 1군 MVP 17회'. 시즌마다 받은 상은 연표에 있다(긴 목록이 화면을 덮지 않게)."""
+    groups = {}
+    for s in c.seasons.all():
+        for a in s.awards:
+            label = a['label'] if a['kind'] in ('national',) else f"{W.short(s.league)} {a['label']}"
+            g = groups.setdefault((a['kind'], label), {'kind': a['kind'], 'label': label, 'n': 0, 'first': s.age})
+            g['n'] += 1
+    return sorted(groups.values(), key=lambda g: (AWARD_ORDER.get(g['kind'], 9), -g['n'], g['first']))
 
 
 # ───────────────────────────── 은퇴 카드(2026-10-18 사용자 요청: 캡처해서 자랑, 회원은 보관함에서 다시 보기)
@@ -285,7 +315,7 @@ def _card(c) -> dict:
         name = W.club_short(s.league, s.club)
         if not clubs or clubs[-1] != name:
             clubs.append(name)
-    best = max(pro, key=lambda s: s.war, default=None)
+    best = X.career_high(c, seasons)                       # 가장 높은 무대에서 제대로 뛴 시즌 가운데
     best_ovr = max([s.ovr_end for s in seasons] or [c.best_ovr])
     if c.mvp >= 2 or best_ovr >= 80 or (c.mvp and golds):
         tier, tier_label = 'legend', '레전드'
@@ -303,8 +333,7 @@ def _card(c) -> dict:
             'best_ovr': round(best_ovr, 1), 'years': f'{first}–{last}', 'seasons': len(played),
             'clubs': clubs[:5], 'more_clubs': max(0, len(clubs) - 5),
             'badges': [{'n': n, 'label': lab} for n, lab in badges if n],
-            'best': ({'year': X.cal_year(c, best.year), 'league': W.short(best.league), 'line': X._short(c.role, best.totals),
-                      'war': best.war} if best else None),
+            'best': best,
             'peak': W.league(c.peak or 'hs')['name'], 'epithet': X.EPITHET.get(c.style, ''),
             'headline': X.retire_headline(c, len(played))}
 

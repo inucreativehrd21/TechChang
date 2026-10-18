@@ -30,7 +30,7 @@
             {% if heir %}<p class="rk-hint">짧게 뛰고 방금 은퇴했으니, 새 선수는 지난 선수의 타고난 자질(잠재력·숨은 특성)을 그대로 이어받아요.</p>{% endif %}
         </section>
         {% endif %}
-        <div class="rl-welcome">{% include 'community/games/_lite_say.html' with who='lead' name='은혜' role='감독' text='반가워요! 열두 살 리틀야구단부터 시작해서 프로까지 함께 가 봐요. 아래 네 가지만 정하면 바로 입단할 수 있어요.' %}</div>
+        <div class="rl-welcome">{% include 'community/games/_lite_say.html' with who='data' name='수정' role='스카우트' text='반가워요! 열두 살 리틀야구단부터 시작해서 프로까지 함께 가 봐요. 아래 네 가지만 정하면 바로 입단할 수 있어요.' %}</div>
         <form class="rk-create" method="post" action="{% url 'community:rookie_create' %}">
             {% csrf_token %}
             <section class="rk-panel">
@@ -104,7 +104,7 @@
     {% else %}
         <section class="rk-panel rk-intro">
             <h2>리틀야구에서 메이저리그까지</h2>
-            {% include 'community/games/_lite_say.html' with who='lead' name='은혜' role='감독' text='정식 판은 테크창 활동으로 매일 조금씩 키우는 게임이에요. 로그인하면 바로 시작할 수 있어요.' %}
+            {% include 'community/games/_lite_say.html' with who='data' name='수정' role='스카우트' text='정식 판은 테크창 활동으로 매일 조금씩 키우는 게임이에요. 로그인하면 바로 시작할 수 있어요.' %}
             <p>투수나 타자를 골라 동네 리틀야구단에서 시작해요. 중학교·고교 야구부를 거쳐 신인 드래프트에서 희망 구단의 지명을 노리고, 대학이나 미국·일본·대만으로 갈 수도 있어요. 칼럼 읽기와 댓글, 출석 체크로 번 훈련 포인트로 능력치를 올리고, 매일 밤 경기를 치러요. 쉬면 감각이 떨어지고 경기에도 못 나가요.</p>
             <div class="gm-actions">
                 <a rel="nofollow" class="gm-btn is-primary" href="{% url 'common:login' %}?next={{ request.get_full_path|urlencode }}">로그인하고 시작</a>

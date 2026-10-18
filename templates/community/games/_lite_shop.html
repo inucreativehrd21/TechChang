@@ -1,0 +1,46 @@
+{# 라이트 비시즌 상점 — 번 돈으로 장비(이번 시즌)·집·한정품(2026-10-18 사용자 요청). 맥락: shop = rookie_lite.shop_view #}
+<details class="rk-panel rl-shop" id="rl-shop"{% if shop.stock %} open{% endif %}>
+    <summary class="rl-shop-sum">
+        <span class="rl-shop-title"><b>장비·생활</b><small>{% if shop.pro %}보유 현금 <strong>{{ shop.cash }}</strong>{% else %}프로가 되면 연봉으로 살 수 있어요{% endif %}</small></span>
+        <span class="rl-shop-chips">{% for g in shop.gear %}<em class="{% if g.mine %}is-on{% endif %}">{{ g.name }} {% if g.mine %}{{ g.mine }}{% else %}없음{% endif %}</em>{% endfor %}<em class="is-on">{{ shop.house }}</em>{% if shop.stock %}<em class="is-new">한정품 입고</em>{% endif %}</span>
+    </summary>
+    <div class="rl-shop-body">
+        <p class="rk-hint">{{ shop.gear.0.name }}·보호대는 이번 시즌만 써요(시즌마다 다시 사요). 집은 월세면 시즌마다 돈이 나가고, 사면 평생이에요. 지금 인기 <b>{{ shop.fame }}</b>({{ shop.fame_label }}) — 인기가 높으면 광고 수입이 들어오고 올스타 팬 투표에 유리해요.</p>
+        {% for g in shop.gear %}
+        <div class="rl-shop-row">
+            <p class="rl-shop-name"><b>{{ g.name }}</b><span>소모품 · 이번 시즌만</span></p>
+            <div class="rl-shop-items">
+                {% for t in g.tiers %}
+                <form method="post" action="{% url 'community:lite_act' %}" class="rl-item{% if t.own %} is-own{% endif %}">{% csrf_token %}<input type="hidden" name="action" value="buy"><input type="hidden" name="item" value="{{ g.key }}"><input type="hidden" name="code" value="{{ t.code }}">
+                    <b>{{ t.label }}</b><small>{{ t.effect }}</small><span class="rl-price">{{ t.price }}</span>
+                    <button type="submit" class="gm-btn{% if t.can %} is-primary{% endif %}"{% if not t.can %} disabled{% endif %}>{% if t.why == 'own' %}구매 완료{% elif t.why == 'lower' %}상위 제품 있음{% elif t.why == 'poor' %}현금 부족{% else %}사기{% endif %}</button>
+                </form>
+                {% endfor %}
+            </div>
+        </div>
+        {% endfor %}
+        <div class="rl-shop-row">
+            <p class="rl-shop-name"><b>집</b><span>지금 {{ shop.house }}</span></p>
+            <div class="rl-shop-items is-three">
+                {% for h in shop.houses %}
+                <form method="post" action="{% url 'community:lite_act' %}" class="rl-item{% if h.own %} is-own{% endif %}">{% csrf_token %}<input type="hidden" name="action" value="buy"><input type="hidden" name="item" value="house"><input type="hidden" name="code" value="{{ h.code }}">
+                    <b>{{ h.label }}</b><small>{{ h.effect }}</small><span class="rl-price">{{ h.price }}</span>
+                    <button type="submit" class="gm-btn{% if h.can %} is-primary{% endif %}"{% if not h.can %} disabled{% endif %}>{% if h.why == 'now' %}지금 사는 곳{% elif h.why == 'owned' %}내 집 있음{% elif h.why == 'poor' %}현금 부족{% elif h.code == 'own' %}사기{% elif h.code == 'rent' %}월세 들어가기{% else %}숙소로 가기{% endif %}</button>
+                </form>
+                {% endfor %}
+            </div>
+        </div>
+        <div class="rl-shop-row">
+            <p class="rl-shop-name"><b>액세서리</b><span>한 번 사면 평생 · 가끔만 들어와요</span></p>
+            {% if shop.stock %}
+            <div class="rl-shop-items is-one">
+                <form method="post" action="{% url 'community:lite_act' %}" class="rl-item is-rare">{% csrf_token %}<input type="hidden" name="action" value="buy"><input type="hidden" name="item" value="acc"><input type="hidden" name="code" value="{{ shop.stock.code }}">
+                    <b>{{ shop.stock.name }}</b><small>인기 +{{ shop.stock.plus }}(평생) · 이번 비시즌에만 매장에 있어요</small><span class="rl-price">{{ shop.stock.price }}</span>
+                    <button type="submit" class="gm-btn{% if shop.stock.can %} is-primary{% endif %}"{% if not shop.stock.can %} disabled{% endif %}>{% if shop.stock.can %}사기{% else %}현금 부족{% endif %}</button>
+                </form>
+            </div>
+            {% else %}<p class="rl-shop-empty">이번 비시즌엔 들어온 한정품이 없어요.</p>{% endif %}
+            {% if shop.owned %}<p class="rl-shop-empty">가진 것: {{ shop.owned|join:', ' }}</p>{% endif %}
+        </div>
+    </div>
+</details>

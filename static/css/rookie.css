@@ -1294,3 +1294,142 @@ a.rk-rank-main:hover b { color: var(--rk-accent); }
     .rl-moment-res h3 { font-size: 1.12rem; }
     .rl-why-list li { padding: 7px 9px; font-size: 0.78rem; }
 }
+
+/* ══ 4차(2026-10-18) — 상점·명예의 전당 투수/야수·은퇴 카드 통산 줄·스캔들·커리어 하이 ═════════════════════════
+ * 상점은 비시즌 화면의 접히는 칸 하나: 요약 줄(현금·장비·집)만 보이고, 펼치면 물건마다 [이름·효과·값·버튼]. */
+.rl-shop { padding: 0; overflow: hidden; }
+.rl-shop-sum { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 12px; padding: 14px 18px; cursor: pointer; list-style: none; }
+.rl-shop-sum::-webkit-details-marker { display: none; }
+.rl-shop-sum::after { content: "펼치기"; flex: none; font-size: 0.74rem; font-weight: 700; color: var(--rk-ink-3); }
+.rl-shop[open] .rl-shop-sum::after { content: "접기"; }
+.rl-shop-title { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.rl-shop-title b { font-size: 1rem; font-weight: 900; color: var(--rk-ink); }
+.rl-shop-title small { font-size: 0.8rem; color: var(--rk-ink-3); }
+.rl-shop-title strong { color: var(--rk-accent); font-variant-numeric: tabular-nums; }
+.rl-shop-chips { display: flex; flex-wrap: wrap; gap: 4px; flex: 1; justify-content: flex-end; }
+.rl-shop-chips em { padding: 2px 9px; border-radius: 99px; font-style: normal; font-size: 0.72rem; font-weight: 700; white-space: nowrap; color: var(--rk-ink-3); background: var(--rk-paper); }
+.rl-shop-chips em.is-on { color: var(--rk-accent); background: var(--rk-accent-wash); }
+.rl-shop-chips em.is-new { color: #fff; background: var(--rk-accent); }
+.rl-shop-body { display: flex; flex-direction: column; gap: 14px; padding: 0 18px 18px; border-top: 1px solid var(--rk-line-soft); }
+.rl-shop-body > .rk-hint { margin: 12px 0 0; }
+.rl-shop-name { display: flex; align-items: baseline; gap: 8px; margin: 0 0 6px; }
+.rl-shop-name b { font-size: 0.9rem; font-weight: 900; }
+.rl-shop-name span { font-size: 0.74rem; color: var(--rk-ink-3); }
+.rl-shop-items { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.rl-shop-items.is-three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.rl-item { display: grid; grid-template-rows: auto 1fr auto auto; gap: 3px; padding: 11px 12px; border: 1px solid var(--rk-line); border-radius: 12px; background: #fff; }
+.rl-item b { font-size: 0.88rem; font-weight: 800; color: var(--rk-ink); }
+.rl-item small { font-size: 0.74rem; line-height: 1.45; color: var(--rk-ink-3); }
+.rl-price { margin-top: 2px; font-size: 0.86rem; font-weight: 900; color: var(--rk-ink); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.rl-item .gm-btn { width: 100%; min-height: 34px; margin-top: 4px; font-size: 0.8rem; }
+.rl-item.is-own { border-color: var(--rk-accent-line); background: var(--rk-accent-wash); }
+.rl-item.is-rare { border-color: var(--rk-accent); box-shadow: 0 0 0 3px var(--rk-accent-wash); }
+.rl-shop-empty { margin: 0; font-size: 0.8rem; color: var(--rk-ink-3); }
+
+/* 명예의 전당 — 리그 줄과 투수·야수 줄 */
+.rl-hall-controls { gap: 8px 10px; }
+.rl-hall th[scope="row"] a { font-weight: 800; }
+.rl-hall-who { display: block; margin-top: 1px; font-size: 0.7rem; font-weight: 600; color: var(--rk-ink-3); }
+
+/* 은퇴 카드 통산 줄 — 3칸 두 줄, 숫자는 한 줄로 */
+.rl-rcard-line { grid-template-columns: repeat(3, minmax(0, 1fr)); row-gap: 10px; }
+.rl-rcard-line dd { white-space: nowrap; }
+.rl-rcard-key b { white-space: nowrap; }
+
+/* 감독실 — 경쟁자 스캔들 꼬리표 · 복귀 제안의 희망 구단 표시 */
+.rl-rival-tag { align-self: flex-start; margin-bottom: 3px; padding: 1px 8px; border-radius: 99px; font-style: normal; font-size: 0.68rem; font-weight: 900; color: var(--rl-night); background: var(--rk-led); }
+.rl-want { margin-left: 6px; padding: 1px 8px; border-radius: 99px; font-style: normal; font-size: 0.7rem; font-weight: 800; color: #fff; background: var(--rk-accent); }
+
+/* 커리어 페이지 — 커리어 하이 */
+.rl-high { margin: 12px 0 0; padding: 10px 12px; border-radius: 10px; font-size: 0.82rem; line-height: 1.55; color: var(--rk-ink-2); background: var(--rk-paper); }
+.rl-high span { margin-right: 8px; font-weight: 900; color: var(--rk-accent); }
+
+@media (max-width: 575.98px) {
+    .rl-shop-sum { padding: 12px 14px; }
+    .rl-shop-chips { justify-content: flex-start; }
+    .rl-shop-body { padding: 0 14px 14px; }
+    .rl-shop-items.is-three { grid-template-columns: 1fr; }
+    .rl-shop-items.is-three .rl-item { grid-template-columns: minmax(0, 1fr) auto; grid-template-rows: auto auto; column-gap: 10px; }
+    .rl-shop-items.is-three .rl-item b, .rl-shop-items.is-three .rl-item small { grid-column: 1; }
+    .rl-shop-items.is-three .rl-item .rl-price { grid-column: 2; grid-row: 1; justify-self: end; margin: 0; }
+    .rl-shop-items.is-three .rl-item .gm-btn { grid-column: 2; grid-row: 2; width: auto; min-width: 112px; margin: 0; }
+    .rl-item { padding: 10px; }
+    .rl-rcard-line dd { font-size: 1.05rem; }
+}
+
+/* ══ 글자 배치 정돈(2026-10-18 사용자 요청: 줄바꿈·정렬) ═══════════════════════════════════════════════
+ * 한국어는 기본값이면 낱말 한가운데서도 줄이 바뀐다('갈 / 길이 멀다', '평생이에 / 요') — 띄어쓰기에서만 끊고,
+ * 너무 긴 덩어리만 넘칠 때 끊는다. 제목은 줄 길이를 고르게(balance), 문단은 마지막 줄에 한 글자만 남지 않게(pretty). */
+.rk { word-break: keep-all; overflow-wrap: break-word; }
+.rk h1, .rk h2, .rk h3, .rk .rl-scene-title, .rk .rl-cardpage-head, .rk .rl-heads b, .rk .rl-lead h3,
+.rk .rl-room-title, .rk .rl-moment-title, .rk .rl-rcard-best { text-wrap-style: balance; }
+.rk p, .rk li, .rk small, .rk .rl-bubble p { text-wrap-style: pretty; }   /* 줄임말(text-wrap)은 nowrap 을 풀어 버려서 longhand 로 */
+.rk-nowrap { white-space: nowrap; }
+.rk .gm-btn, .rl-tone, .rl-tag { white-space: nowrap; }
+
+/* 홀수 개 선택지 — 마지막 하나가 반쪽 칸에 홀로 남지 않게 한 줄 전체로 */
+.rl-programs.is-two > :last-child:nth-child(odd):not(:first-child) { grid-column: 1 / -1; }
+
+/* 계약 조건 — 줄마다 한 가지 */
+.rl-terms { display: flex; flex-direction: column; gap: 1px; }
+.rl-terms b { color: var(--rk-ink); font-weight: 800; }
+.rl-terms small { color: var(--rk-ink-3); }
+
+/* 연표 — 칸 안에서 줄이 바뀌지 않게(넓으면 옆으로 밀어 본다), 수상 칸만 여러 줄 */
+.rl-years td.is-text, .rl-years th { white-space: nowrap; min-width: 0; }
+.rl-years td.is-text:nth-of-type(6) { min-width: 0; }
+.rl-years td.is-text:last-child { white-space: normal; min-width: 10em; }
+
+/* 명예의 전당 — 순위는 이름 칸 안에, 이름 칸은 옆으로 밀어도 붙어 있다 */
+.rl-hall .rl-hall-name { position: sticky; left: 0; z-index: 1; min-width: 8.5em; background: #fff; box-shadow: 1px 0 0 var(--rk-line-soft); }
+.rl-hall thead .rl-hall-name { background: #fafbfd; }
+.rl-hall tr.is-first .rl-hall-name { background: #fff; }
+.rl-hall-no { display: inline-block; min-width: 1.7em; font-weight: 800; color: var(--rk-ink-3); font-variant-numeric: tabular-nums; }
+.rl-hall-who { padding-left: 1.7em; white-space: nowrap; }
+
+/* 커리어 페이지 수상 묶음 */
+.rl-award-sum { margin-top: 0; }
+.rl-award-sum .rl-award b { margin-left: 4px; font-weight: 900; color: var(--rk-ink); }
+.rl-award-sum .rl-award.is-ring b { color: #fff; }
+
+/* 상점 요약 줄 — 제목·접기 한 줄, 칩은 그 아래 한 줄 */
+.rl-shop-sum { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; }
+.rl-shop-sum::after { grid-column: 2; grid-row: 1; }
+.rl-shop-title { grid-column: 1; grid-row: 1; }
+.rl-shop-chips { grid-column: 1 / -1; grid-row: 2; justify-content: flex-start; }
+.rl-shop-items.is-one { grid-template-columns: minmax(0, 1fr); }
+.rl-shop-items.is-one .rl-item, .rl-shop-items.is-three .rl-item { align-content: start; }
+.rl-item .gm-btn { white-space: nowrap; }
+
+@media (min-width: 576px) {
+    .rl-shop-items.is-one .rl-item { grid-template-columns: minmax(0, 1fr) auto; grid-template-rows: auto auto; column-gap: 14px; }
+    .rl-shop-items.is-one .rl-item b, .rl-shop-items.is-one .rl-item small { grid-column: 1; }
+    .rl-shop-items.is-one .rl-item .rl-price { grid-column: 2; grid-row: 1; justify-self: end; margin: 0; }
+    .rl-shop-items.is-one .rl-item .gm-btn { grid-column: 2; grid-row: 2; width: auto; min-width: 140px; margin: 0; }
+}
+@media (max-width: 575.98px) {
+    .rl-shop-items.is-one .rl-item { grid-template-columns: minmax(0, 1fr) auto; grid-template-rows: auto auto; column-gap: 10px; }
+    .rl-shop-items.is-one .rl-item b, .rl-shop-items.is-one .rl-item small { grid-column: 1; }
+    .rl-shop-items.is-one .rl-item .rl-price { grid-column: 2; grid-row: 1; justify-self: end; margin: 0; }
+    .rl-shop-items.is-one .rl-item .gm-btn { grid-column: 2; grid-row: 2; width: auto; min-width: 104px; margin: 0; }
+    .rl-cardpage-actions { width: 100%; }
+    .rl-cardpage-actions > * { flex: 1 1 0; min-width: 0; justify-content: center; padding-left: 8px; padding-right: 8px; }
+    .rl-cardpage-actions > .is-primary { flex-basis: 100%; }
+}
+
+/* 연표 — 그 시즌 상은 바로 아래 한 줄(칸이 길게 늘어나지 않게) */
+.rl-years th, .rl-years td { padding-left: 9px; padding-right: 9px; }
+.rl-years tr.has-awards th, .rl-years tr.has-awards td { border-bottom: 0; padding-bottom: 4px; }
+.rl-years tr.rl-years-awards td { padding-top: 0; text-align: left; white-space: normal; }
+.rl-years-awards-in { display: flex; flex-wrap: wrap; gap: 4px; padding-left: 2.6em; }
+.rl-years-awards-in .rl-award { margin: 0; font-size: 0.7rem; }
+
+/* 모바일 훈련 카드 — 아이콘·이름은 첫 줄, 설명은 카드 폭 전체(좁은 칸에 끼어 '삼진 / ↑'처럼 끊기지 않게) */
+@media (max-width: 575.98px) {
+    .rl-skill-card { grid-template-columns: 26px minmax(0, 1fr); align-items: center; row-gap: 5px; padding: 10px; }
+    .rl-skill-card .rl-icon { grid-row: 1; width: 26px; height: 26px; border-radius: 8px; }
+    .rl-skill-card .rl-icon svg { width: 16px; height: 16px; }
+    .rl-skill-card b { grid-column: 2; padding-right: 18px; line-height: 1.25; }
+    .rl-skill-card small, .rl-skill-card .rl-cap, .rl-skill-card .rl-lock { grid-column: 1 / -1; }
+    .rl-skill-card .rl-cap, .rl-skill-card .rl-lock { margin-top: 0; }
+}

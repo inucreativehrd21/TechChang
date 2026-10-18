@@ -7,6 +7,15 @@ register = template.Library()
 
 
 @register.filter
+def comma(n):
+    """4980 → '4,980' — 숫자가 아니면 그대로."""
+    try:
+        return f'{int(n):,}'
+    except (TypeError, ValueError):
+        return n
+
+
+@register.filter
 def team_color(code):
     return W.team_color(code)
 

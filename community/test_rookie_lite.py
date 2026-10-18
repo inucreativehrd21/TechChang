@@ -12,6 +12,7 @@ from unittest import mock
 
 from common.models import Profile
 from community import rookie_lite as X
+from community import rookie_staff as S
 from community import rookie_world as W
 from community.models import LiteCareer, LiteSeason
 
@@ -63,7 +64,8 @@ def autoplay(c, rng, max_steps=200):
                 continue
             opts = {'draft': (['sign'] if pend.get('offer') else ['develop']) + list(pend.get('abroad') or {}),
                     'military': ['sangmu', 'active'], 'posting': ['mlb', 'npb', 'stay'],
-                    'fa': [o['key'] for o in pend.get('offers') or []], 'return': ['kbo', 'stay'],
+                    'fa': [o['key'] for o in pend.get('offers') or []],
+                    'return': [o['key'] for o in pend.get('offers') or []] + ['stay'],
                     'retire': ['continue'] if c.age < 37 else ['retire']}.get(what, ['retire'])
             X.decide(c, what, rng.choice(opts), rng)
             c.save()
@@ -451,6 +453,168 @@ class CapLedgerTests(TestCase):
         self.assertLessEqual(why['잠재력 한계'], -why['훈련'])                         # 끝에 닿아 그만큼 깎였다
         for k in c.stats:                                                            # 이유를 더하면 변화와 맞는다
             self.assertAlmostEqual(sum(v for _l, v in d['_why'][k]), d[k], delta=0.35)
+
+
+class FourthBatchTests(TestCase):
+    """2026-10-18 4차 — 해외 복귀 제안·커리어 하이·상점·인기·스캔들·억까·명예의 전당 투수/야수·코치 이름."""
+
+    def test_abroad_gets_return_offer_every_season_and_can_leave(self):
+        rng = random.Random(3)
+        c = pro('해외파', seed=40, league='mlb_aa', ovr=55.0, age=24)
+        c.club = 'nyy' if 'nyy' in W.PRO_TEAM else W.MLB_TEAMS[0][0]
+        c.flags = dict(c.flags, contract={'years': 2, 'annual': 30000})
+        c.save()
+        for _ in range(2):                                                   # 시즌마다 다시 묻는다
+            pend = X.next_step(c, rng, skip_meeting=True)
+            self.assertEqual(pend['what'], 'return')
+            c.pending = pend
+            X.decide(c, 'return', 'stay', rng)
+            self.assertEqual(c.league, 'mlb_aa')
+        c.pending = X.next_step(c, rng, skip_meeting=True)
+        self.assertEqual([o['key'] for o in c.pending['offers']], ['self'])     # 1군감이 아니면 스스로 유턴만
+        text = X.decide(c, 'return', 'self', rng)
+        self.assertEqual((c.league, c.club), ('kbo2', c.team))
+        self.assertNotIn('contract', c.flags)                                 # 남은 해외 계약은 포기
+        self.assertIn('포기', text)
+        star = pro('유턴스타', seed=41, league='mlb', ovr=74.0, age=30)
+        star.club = W.MLB_TEAMS[0][0]
+        star.save()
+        offers = X.return_offers(star, rng)
+        self.assertEqual([o['key'] for o in offers], ['kbo', 'rich'])
+        self.assertGreater(offers[1]['annual'], offers[0]['annual'])
+        star.pending = {'kind': 'decision', 'what': 'return', 'offers': offers}
+        X.decide(star, 'return', 'kbo', rng)
+        self.assertEqual((star.league, star.club), ('kbo1', star.team))
+        self.assertEqual(star.flags['contract']['annual'], offers[0]['annual'])
+        old = pro('노장해외', seed=42, league='npb1', ovr=60.0, age=35)          # 남아도 은퇴는 물어본다
+        old.club = W.NPB_TEAMS[0][0]
+        old.pending = {'kind': 'decision', 'what': 'return', 'offers': X.return_offers(old, rng)}
+        X.decide(old, 'return', 'stay', rng)
+        self.assertEqual(old.pending['what'], 'retire')
+
+    def test_career_high_prefers_the_highest_stage(self):
+        c = pro('하이', seed=43)
+        big = {'pa': 600, 'ab': 520, 'h': 180, 'hr': 40, 'bb': 70, 'so': 90, 'rbi': 120}
+        LiteSeason.objects.create(career=c, year=5, age=26, league='kbo1', club='lg', games=144, totals=big, war=9.0)
+        LiteSeason.objects.create(career=c, year=6, age=27, league='mlb', club=W.MLB_TEAMS[0][0], games=162,
+                                  totals=dict(big, hr=22), war=3.1)
+        LiteSeason.objects.create(career=c, year=7, age=28, league='mlb', club=W.MLB_TEAMS[0][0], games=162,
+                                  totals={'pa': 40, 'ab': 36, 'h': 14, 'hr': 4}, war=1.4)      # 잠깐 뛴 몫은 빼고
+        high = X.career_high(c)
+        self.assertEqual((high['league'], high['war']), ('MLB', 3.1))
+
+    def test_shop_gear_house_and_accessory(self):
+        rng = random.Random(4)
+        c = pro('쇼핑', seed=44, ovr=68.0)
+        c.earnings = 400000                                                  # 40억
+        c.pending = X.plan_step(c, rng)
+        c.pending.update(event=None, intl=[], shop='chain')
+        c.save()
+        X.buy(c, 'bat', 'craft')
+        with self.assertRaises(X.LiteError):
+            X.buy(c, 'bat', 'pro')                                           # 더 좋은 걸 이미 샀다
+        X.buy(c, 'guard', 'fit')
+        X.buy(c, 'house', 'own')
+        with self.assertRaises(X.LiteError):
+            X.buy(c, 'house', 'rent')                                        # 내 집이 있다
+        X.buy(c, 'acc', 'chain')
+        self.assertEqual(X.cash(c), 400000 - 2000 - 1200 - 300000 - 20000)
+        self.assertEqual(X.fame(c), 4)
+        with self.assertRaises(X.LiteError):
+            X.buy(c, 'acc', 'watch')                                         # 들어오지 않은 물건
+        with self.assertRaises(X.LiteError):
+            X.buy(c, 'acc', 'chain')                                         # 이미 샀다(한 번이면 평생)
+        poor = pro('가난', seed=45)
+        poor.pending = {'kind': 'plan', 'event': None, 'intl': []}
+        with self.assertRaises(X.LiteError):
+            X.buy(poor, 'house', 'own')
+        # 장비는 이번 시즌 경기에만 — 시즌을 시작하면 배트 보정이 붙는다
+        state = X.start_season(c, X.pick_programs(c, rng), 'normal', '', {}, rng)
+        self.assertEqual(c.flags['gear_on']['boost'], {'contact': 2.0, 'power': 2.0})
+        self.assertEqual(X._game_stats(c)['contact'], float(c.stats['contact']) + 2.0)
+        self.assertNotIn('gear', c.flags)
+        self.assertTrue(state)
+
+    def test_rent_is_charged_each_season_or_you_move_out(self):
+        rng = random.Random(5)
+        c = pro('월세', seed=46)
+        c.flags = dict(c.flags, cash=5000, house='rent')
+        c.pending = {'kind': 'plan', 'event': None, 'intl': []}
+        state = X.start_season(c, X.pick_programs(c, rng), 'normal', '', {}, rng)
+        self.assertEqual(X.cash(c), 2000)
+        self.assertIn('월세 3,000만원을 냈어요', state['news'])
+        c.flags['train_log'] = []
+        state = X.start_season(c, X.pick_programs(c, rng), 'normal', '', {}, rng)
+        self.assertEqual(c.flags['house'], 'dorm')                           # 못 내면 숙소로
+        self.assertTrue(any('숙소' in n for n in state['news']))
+
+    def test_fame_brings_ads_and_fades(self):
+        flags = {'fame': 70.0}
+        s = LiteSeason(league='kbo1', war=6.0, awards=[{'kind': 'mvp', 'label': 'MVP'}, {'kind': 'gg', 'label': 'GG'}])
+        self.assertGreater(X.fame_after(flags, s), 75.0)                     # MVP·골든글러브면 크게 오른다
+        quiet = LiteSeason(league='kbo1', war=0.0, awards=[])
+        self.assertLess(X.fame_after(flags, quiet), 70.0)                    # 쉬면 잊힌다
+        self.assertGreater(X.ad_income({'fame': 80}, 'mlb'), X.ad_income({'fame': 80}, 'kbo1'))
+        self.assertEqual(X.ad_income({'fame': 10}, 'kbo1'), 0)
+        self.assertEqual(X.ad_income({'fame': 90}, 'hs'), 0)
+
+    def test_rival_scandal_opens_a_door(self):
+        rng = random.Random(6)
+        c = pro('기회', seed=47, league='kbo2', ovr=60.0)
+        c.pending = {'kind': 'plan', 'event': None, 'intl': []}
+        with mock.patch.object(X, 'SCANDAL_P', 1.0):
+            state = X.start_season(c, X.pick_programs(c, rng), 'normal', '', {}, rng)
+            m = X.break_meeting(c, state, rng)
+        self.assertIsNotNone(m)
+        self.assertEqual((m['about'], m['to']), ('promote', 'kbo1'))
+        self.assertIn('scandal', m)
+        self.assertTrue(any(m['rival']['name'] in p['title'] for p in state['press']))
+        v = X.meeting_view(c, m)
+        self.assertIn('긴급', v['title'])
+        self.assertTrue(v['scandal'])
+
+    def test_bad_luck_injury_has_a_silly_reason(self):
+        rng = random.Random(7)
+        c = pro('억까', seed=48)
+        c.traits = ['iron']
+        c.pending = {'kind': 'plan', 'event': None, 'intl': []}
+        with mock.patch.object(X, 'BAD_LUCK_P', 1.0), mock.patch.dict(X.INTENSITY, {'light': ('가볍게', 0.6, -1.0)}):
+            state = X.start_season(c, X.pick_programs(c, rng), 'light', '', {}, rng)
+        self.assertTrue(any(n.startswith('억까') for n in state['news']))
+        self.assertTrue(any(p['tag'] == '[황당]' for p in state['press']))
+        self.assertGreater(state['out'][1], state['out'][0])
+
+    def test_hall_splits_pitchers_and_batters(self):
+        for name, role, pos in (('투수명전', 'pitcher', 'SP'), ('야수명전', 'batter', 'SS')):
+            c = new(name, role=role, position=pos)
+            LiteSeason.objects.create(career=c, year=1, age=24, league='kbo1', club='lg', games=144, war=3.0,
+                                      totals={'outs': 540, 'w': 120, 'l': 101, 'er': 60, 'so': 150, 'g': 30, 'gs': 30}
+                                      if role == 'pitcher' else {'pa': 600, 'ab': 540, 'h': 160, 'hr': 20})
+            c.retired_at = timezone.now()
+            c.save()
+        self.assertEqual([r['c'].name for r in X.hall(role='pitcher')], ['투수명전'])
+        self.assertEqual([r['c'].name for r in X.hall(role='batter')], ['야수명전'])
+        self.assertEqual(X.hall(role='pitcher')[0]['line']['w'], 120)
+        r = self.client.get('/rookie/lite/hall/?role=pitcher', HTTP_USER_AGENT=PC)
+        self.assertContains(r, '평균자책점')
+        self.assertContains(r, '<td>120</td><td>101</td>', html=False)
+        self.assertNotContains(r, '야수명전')
+
+    def test_coaches_differ_by_school_country_and_club(self):
+        hs = S.staff('hs', '덕수고', 'lead')
+        kbo = S.staff('kbo1', 'lg', 'lead')
+        mlb = S.staff('mlb', W.MLB_TEAMS[0][0], 'lead')
+        npb = S.staff('npb1', W.NPB_TEAMS[0][0], 'lead')
+        self.assertEqual(hs[1], '야구부 감독')
+        self.assertEqual(kbo[1], '감독')
+        self.assertEqual(len({hs[0], kbo[0], mlb[0], npb[0]}), 4)
+        self.assertIn(' ', mlb[0])                                           # 미국 이름
+        self.assertEqual(S.staff('kbo1', 'lg', 'lead'), kbo)                 # 같은 팀이면 늘 같은 사람
+        self.assertNotEqual(S.staff('kbo1', 'doosan', 'lead')[0], kbo[0])
+        self.assertEqual(S.staff('kbo2', 'lg', 'coding', 'pitcher')[1], '투수 코치')
+        self.assertEqual(S.staff('kbo1', 'lg', 'charter'), ('재원', '에이전트'))     # 팀 밖 사람은 그대로
+        c = pro('코치', seed=49)
+        self.assertEqual(X.who_is(c, 'lead'), kbo)
 
 
 def _pitcher(name):

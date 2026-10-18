@@ -41,6 +41,7 @@ from datetime import date, timedelta
 from django.db import transaction
 from django.utils import timezone
 
+from . import rookie_staff as S
 from . import rookie_world as W
 
 logger = logging.getLogger(__name__)
@@ -642,5 +643,6 @@ def dashboard(p) -> dict:
         'demote_at': W.demote_below(p.league), 'rank': rank, 'career': C.career_view(p),
         'trained': done, 'fatigue_at': fat, 'tired': done >= fat, 'tp_max': TP_MAX, 'tp_full': p.tp >= TP_MAX,
         'logs': list(p.logs.all()[:12]), 'cost': TRAIN_COST, 'cost5': TRAIN_COST * 5, 'daily_max': DAILY_MAX,
+        'coach': S.staff(p.league, p.club, 'coding', p.role),       # 지금 소속의 코치(학교·나라·구단마다 다른 사람)
         **player_board(p),
     }
