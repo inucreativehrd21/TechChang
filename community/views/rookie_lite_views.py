@@ -160,8 +160,9 @@ def lite_home(request):
         ctx['duty'] = X._duty_now(c)[2]
         rules = X.train_rules(c)
         labels = {p[0]: p[1] for p in X.PROGRAMS[c.role]}
+        room = {k: X.room_of(c, k) for k in c.stats}
         ctx.update(programs=[{'code': code, 'label': lab, 'hint': hint, 'icon': PROGRAM_ICON.get(code, 'balance'),
-                              'locked': code in rules['locked']} for code, lab, hint, _e in X.PROGRAMS[c.role]],
+                              'locked': code in rules['locked'], 'room': room.get(code)} for code, lab, hint, _e in X.PROGRAMS[c.role]],
                    banned=rules['banned'], banned_text=' + '.join(labels[p] for p in rules['banned']),
                    intensity=[{'code': k, 'label': v[0], 'risk': int(round(v[2] * 100))} for k, v in X.INTENSITY.items()],
                    event=X.event_view(c, pend.get('event')), intl=X.intl_view(c, pend.get('intl') or []),

@@ -831,6 +831,7 @@ a.rk-rank-main:hover b { color: var(--rk-accent); }
 .rl-lock { display: inline-flex; align-items: center; gap: 4px; margin-top: 6px; font-style: normal; font-size: 0.72rem; font-weight: 800; color: var(--rk-ink-2); }
 .rl-lock i { display: inline-flex; width: 14px; height: 14px; }
 .rl-lock svg { width: 14px; height: 14px; }
+.rl-cap { display: inline-flex; margin-top: 6px; font-style: normal; font-size: 0.72rem; font-weight: 800; color: var(--rk-fail); }
 .rl-warn { margin: 10px 0 0; padding: 9px 12px; border-radius: 10px; font-size: 0.84rem; font-weight: 700; color: var(--rk-fail); background: #fff1f2; }
 .rl-warn[hidden] { display: none; }
 
@@ -1141,7 +1142,7 @@ a.rk-rank-main:hover b { color: var(--rk-accent); }
     .rl-skill-card small { font-size: 0.68rem; line-height: 1.35; }
     .rl-skill-card::after { top: 8px; right: 8px; width: 16px; height: 16px; }
     .rl-skill input:checked + .rl-skill-card::after { background-size: 10px; }
-    .rl-lock { grid-column: 1 / -1; margin-top: 5px; font-size: 0.66rem; }
+    .rl-lock, .rl-cap { grid-column: 1 / -1; margin-top: 5px; font-size: 0.66rem; }
 
     /* 강도 */
     .rl-gauge-opt > span { padding: 8px 9px 9px; }

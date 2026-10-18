@@ -171,7 +171,9 @@
                         <span class="rl-skill-card">
                             <i class="rl-icon" aria-hidden="true">{% include 'community/games/_lite_icon.html' with name=p.icon %}</i>
                             <b>{{ p.label }}</b><small>{{ p.hint }}</small>
-                            {% if p.locked %}<em class="rl-lock"><i aria-hidden="true">{% include 'community/games/_lite_icon.html' with name='lock' %}</i>두 비시즌 연속 — 이번엔 쉬어요</em>{% endif %}
+                            {% if p.locked %}<em class="rl-lock"><i aria-hidden="true">{% include 'community/games/_lite_icon.html' with name='lock' %}</i>두 비시즌 연속 — 이번엔 쉬어요</em>
+                            {% elif p.room == 0 %}<em class="rl-cap">잠재력 끝 — 훈련해도 더 안 올라요</em>
+                            {% elif p.room is not None and p.room < 0.5 %}<em class="rl-cap">잠재력 가까이 — 효과가 절반 아래예요</em>{% endif %}
                         </span>
                     </label>
                     {% endfor %}

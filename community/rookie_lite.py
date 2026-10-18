@@ -139,6 +139,11 @@ def stat_pot(c, k: str) -> float:
     return _clamp(p, 40.0, 99.0)
 
 
+def room_of(c, k: str) -> float:
+    """잠재력까지 남은 자리(0~1). 1 이면 오를 몫을 다 받고, 0 이면 그 능력은 훈련해도 더 오르지 않는다."""
+    return _clamp((stat_pot(c, k) - float(c.stats[k])) / 5.0, 0.0, 1.0)
+
+
 def frac(c, k: str, age: int) -> float:
     a = age
     if has(c, 'early'):
@@ -444,21 +449,24 @@ def grow(c, programs, intensity: str, pt: float, war: float, rng, train_mult: fl
     deltas, why = {}, {}
     for k in list(c.stats):
         s, pot = float(c.stats[k]), stat_pot(c, k)
-        room = _clamp((pot - s) / 5.0, 0.0, 1.0)
+        room = room_of(c, k)
         nat = pot * (frac(c, k, c.age + 1) - frac(c, k, c.age))
         tr = plus.get(k, 0.0) * mult * age_train * train_mult * (1.25 if has(c, 'grinder') else 1.0)
         exp = (0.8 if c.age <= 27 else 0.3) * pt * (2.0 if has(c, 'learner') else 1.0)
         perf = 0.8 if war >= 4 and k in ('eye', 'mental') else 0.0
         noise = rng.gauss(0, 0.8)
-        parts = [('성장', max(0.0, nat) * room), ('훈련', max(0.0, tr) * room), ('출전 경험', exp * room),
-                 ('활약 보너스', perf * room), ('나이(노쇠)', min(0.0, nat)), ('훈련 부작용', min(0.0, tr)),
-                 ('컨디션 기복', noise)]
-        raw = s + sum(v for _l, v in parts)
+        gains = [('성장', max(0.0, nat)), ('훈련', max(0.0, tr)), ('출전 경험', exp), ('활약 보너스', perf)]
+        parts = gains + [('나이(노쇠)', min(0.0, nat)), ('훈련 부작용', min(0.0, tr)), ('컨디션 기복', noise)]
+        # 잠재력에 가까울수록 오를 몫이 깎인다 — 훈련한 능력이 왜 안 올랐는지 장부에 그대로 남긴다
+        cut = sum(v for _l, v in gains) * (1.0 - room)
+        raw = s + sum(v for _l, v in parts) - cut
         new = _clamp(raw, 25.0, pot)
         if raw > pot:
-            parts.append(('잠재력 한계', pot - raw))           # 타고난 끝에 닿아 더 못 오른 몫
+            cut += raw - pot
         elif raw < 25.0:
             parts.append(('바닥', 25.0 - raw))
+        if cut:
+            parts.append(('잠재력 한계', -cut))              # 타고난 끝에 닿아 더 못 오른 몫
         deltas[k] = round(new - s, 1)
         why[k] = [(lab, v) for lab, v in parts if abs(v) >= 0.05]
         c.stats[k] = round(new, 1)

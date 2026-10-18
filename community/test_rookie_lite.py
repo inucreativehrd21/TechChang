@@ -439,6 +439,20 @@ class MomentAndWhyTests(TestCase):
             self.assertAlmostEqual(sum(v for _l, v in why[k]), s.deltas[k], delta=0.35)
 
 
+class CapLedgerTests(TestCase):
+    def test_capped_training_shows_in_ledger_and_plan(self):
+        c = pro('천장', seed=31, ovr=70.0, age=29)
+        c.stats['contact'] = X.stat_pot(c, 'contact')                                # 정확도는 잠재력 끝
+        c.save()
+        self.assertEqual(X.room_of(c, 'contact'), 0.0)
+        d = X.grow(c, ['contact', 'eye'], 'normal', 1.0, 2.0, random.Random(3))
+        why = dict(d['_why']['contact'])
+        self.assertGreater(why['훈련'], 0)                                            # 훈련은 했고
+        self.assertLessEqual(why['잠재력 한계'], -why['훈련'])                         # 끝에 닿아 그만큼 깎였다
+        for k in c.stats:                                                            # 이유를 더하면 변화와 맞는다
+            self.assertAlmostEqual(sum(v for _l, v in d['_why'][k]), d[k], delta=0.35)
+
+
 def _pitcher(name):
     c = X.create(member(name), name=name, role='pitcher', position='RP', style='fire', region='서울', team='lg',
                  rng=random.Random(9))
