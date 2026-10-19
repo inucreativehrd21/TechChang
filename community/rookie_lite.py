@@ -849,7 +849,7 @@ def shop_view(c) -> dict:
         mine = gear.get(key)
         rows.append({'key': key, 'name': g['name'][c.role], 'mine': dict((t[0], t[1]) for t in g['tiers']).get(mine, ''),
                      'tiers': [{'code': code, 'label': f"{lab} {g['name'][c.role]}" if key == 'bat' else f'{lab} 보호대',
-                                'price': man(price_of(c, price)), 'effect': _effect(c, key, v), 'own': code == mine,
+                                'price': man(price_of(c, price)), 'cost': price_of(c, price), 'effect': _effect(c, key, v), 'own': code == mine,
                                 'can': price_of(c, price) <= have and (not mine or order.index(code) > order.index(mine)),
                                 'why': ('own' if code == mine else 'lower' if mine and order.index(code) < order.index(mine)
                                         else 'poor' if price_of(c, price) > have else '')}
@@ -874,7 +874,7 @@ def shop_view(c) -> dict:
 
     def row(item_, code, label, base, effect, done):
         p = price_of(c, base)
-        return {'item': item_, 'code': code, 'label': label, 'price': man(p), 'effect': effect,
+        return {'item': item_, 'code': code, 'label': label, 'price': man(p), 'cost': p, 'effect': effect,
                 'can': not done and p <= have, 'why': 'done' if done else 'poor' if p > have else ''}
     care_now = _care_now(c)
     care = [row('care', k, lab, base, eff, bool(care_now.get(k))) for k, (lab, base, eff) in CARE.items()]
@@ -890,7 +890,7 @@ def shop_view(c) -> dict:
     return {'cash': man(have), 'pro': W.is_pro(c.league), 'gear': rows, 'house': HOUSE.get(house, HOUSE['dorm'])[0],
             'houses': houses, 'stock': item, 'owned': owned, 'fame': v, 'fame_label': fame_label(v),
             'price_x': f"{PRICE_LEAGUE.get(c.league, 1.0):g}", 'cut_max': int(GEAR_CUT_MAX * 100),
-            'plan': plan_state(c), 'plan_cost': man(plan_state(c)['spend']), 'care': care, 'camp': camp, 'fan': fan, 'gives': gives, 'invest': invest,
+            'plan': plan_state(c), 'plan_cost': man(plan_state(c)['spend']), 'cash_raw': have, 'care': care, 'camp': camp, 'fan': fan, 'gives': gives, 'invest': invest,
             'given': [GIVE[g][0] for g in f.get('give') or [] if g in GIVE]}
 
 

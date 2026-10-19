@@ -13,21 +13,21 @@
             <fieldset class="rl-plan-group"><legend>{{ g.name }} <small>이번 시즌만</small></legend>
                 <label class="rl-plan-opt"><input type="radio" name="{{ g.key }}" value=""{% if g.key == 'bat' and not shop.plan.bat or g.key == 'guard' and not shop.plan.guard %} checked{% endif %}><span><b>안 사요</b></span></label>
                 {% for t in g.tiers %}
-                <label class="rl-plan-opt{% if t.why == 'own' or t.why == 'lower' %} is-done{% endif %}"><input type="radio" name="{{ g.key }}" value="{{ t.code }}"{% if t.why == 'own' or t.why == 'lower' %} disabled{% endif %}{% if g.key == 'bat' and shop.plan.bat == t.code or g.key == 'guard' and shop.plan.guard == t.code %} checked{% endif %} data-price="{{ t.price }}"><span><b>{{ t.label }}</b><small>{{ t.effect }}</small><em>{% if t.why == 'own' %}구매 완료{% elif t.why == 'lower' %}상위 제품 있음{% else %}{{ t.price }}{% endif %}</em></span></label>
+                <label class="rl-plan-opt{% if t.why == 'own' or t.why == 'lower' %} is-done{% endif %}"><input type="radio" name="{{ g.key }}" value="{{ t.code }}"{% if t.why == 'own' or t.why == 'lower' %} disabled{% endif %}{% if g.key == 'bat' and shop.plan.bat == t.code or g.key == 'guard' and shop.plan.guard == t.code %} checked{% endif %} data-cost="{{ t.cost }}"><span><b>{{ t.label }}</b><small>{{ t.effect }}</small><em>{% if t.why == 'own' %}구매 완료{% elif t.why == 'lower' %}상위 제품 있음{% else %}{{ t.price }}{% endif %}</em></span></label>
                 {% endfor %}
             </fieldset>
             {% endfor %}
             <fieldset class="rl-plan-group"><legend>관리팀 <small>이번 시즌만</small></legend>
                 {% for t in shop.care %}
-                <label class="rl-plan-opt{% if t.why == 'done' %} is-done{% endif %}"><input type="checkbox" name="care" value="{{ t.code }}"{% if t.why == 'done' %} disabled{% endif %}{% if t.code in shop.plan.care %} checked{% endif %}><span><b>{{ t.label }}</b><small>{{ t.effect }}</small><em>{% if t.why == 'done' %}계약 완료{% else %}{{ t.price }}{% endif %}</em></span></label>
+                <label class="rl-plan-opt{% if t.why == 'done' %} is-done{% endif %}"><input type="checkbox" name="care" data-cost="{{ t.cost }}" value="{{ t.code }}"{% if t.why == 'done' %} disabled{% endif %}{% if t.code in shop.plan.care %} checked{% endif %}><span><b>{{ t.label }}</b><small>{{ t.effect }}</small><em>{% if t.why == 'done' %}계약 완료{% else %}{{ t.price }}{% endif %}</em></span></label>
                 {% endfor %}
             </fieldset>
             <fieldset class="rl-plan-group"><legend>비시즌 일정 <small>한 번씩</small></legend>
-                <label class="rl-plan-opt{% if shop.fan.why == 'done' %} is-done{% endif %}"><input type="checkbox" name="fan" value="1"{% if shop.fan.why == 'done' %} disabled{% endif %}{% if shop.plan.fan %} checked{% endif %}><span><b>{{ shop.fan.label }}</b><small>{{ shop.fan.effect }}</small><em>{% if shop.fan.why == 'done' %}열었어요{% else %}{{ shop.fan.price }}{% endif %}</em></span></label>
-                <label class="rl-plan-opt{% if shop.camp.why == 'done' %} is-done{% endif %}"><input type="checkbox" name="camp_on" value="1"{% if shop.camp.why == 'done' %} disabled{% endif %}{% if shop.plan.camp %} checked{% endif %}><span><b>{{ shop.camp.label }}</b><small>{{ shop.camp.effect }}</small><em>{% if shop.camp.why == 'done' %}다녀왔어요{% else %}{{ shop.camp.price }}{% endif %}</em></span></label>
+                <label class="rl-plan-opt{% if shop.fan.why == 'done' %} is-done{% endif %}"><input type="checkbox" name="fan" data-cost="{{ shop.fan.cost }}" value="1"{% if shop.fan.why == 'done' %} disabled{% endif %}{% if shop.plan.fan %} checked{% endif %}><span><b>{{ shop.fan.label }}</b><small>{{ shop.fan.effect }}</small><em>{% if shop.fan.why == 'done' %}열었어요{% else %}{{ shop.fan.price }}{% endif %}</em></span></label>
+                <label class="rl-plan-opt{% if shop.camp.why == 'done' %} is-done{% endif %}"><input type="checkbox" name="camp_on" data-cost="{{ shop.camp.cost }}" value="1"{% if shop.camp.why == 'done' %} disabled{% endif %}{% if shop.plan.camp %} checked{% endif %}><span><b>{{ shop.camp.label }}</b><small>{{ shop.camp.effect }}</small><em>{% if shop.camp.why == 'done' %}다녀왔어요{% else %}{{ shop.camp.price }}{% endif %}</em></span></label>
                 <label class="rl-item-pick"><span class="visually-hidden">키울 능력</span><select name="camp">{% for st in shop.camp.stats %}<option value="{{ st.key }}"{% if shop.plan.camp == st.key %} selected{% endif %}>{{ st.label }}{% if st.room <= 0 %} (잠재력 끝){% else %} (여유 {{ st.room|floatformat:1 }}){% endif %}</option>{% endfor %}</select></label>
             </fieldset>
-            <p class="rk-hint">체크한 것의 합계 <b>{{ shop.plan_cost }}</b> · 보유 현금 {{ shop.cash }}</p>
+            <p class="rk-hint" data-plan-sum data-cash="{{ shop.cash_raw }}">체크한 것의 합계 <b data-plan-total>{{ shop.plan_cost }}</b> · 보유 현금 {{ shop.cash }} <span data-plan-warn hidden>— 현금이 모자라요. 모자란 칸은 건너뛰어요</span></p>
             <button type="submit" class="gm-btn is-primary is-block">체크한 것 한 번에 사기</button>
         </form>
         {% endif %}
@@ -81,3 +81,24 @@
         {% endif %}
     </div>
 </details>
+<script nonce="{{ csp_nonce }}">
+(function () {
+    // 체크할 때마다 합계를 다시 센다(만원 단위 → 'n억 m만원')
+    var f = document.querySelector('[data-rl-plan]');
+    if (!f) return;
+    var out = f.querySelector('[data-plan-total]'), warn = f.querySelector('[data-plan-warn]'), box = f.querySelector('[data-plan-sum]');
+    var fmt = function (n) {
+        if (!n) return '0원';
+        var eok = Math.floor(n / 10000), man = n % 10000;
+        return (eok ? eok + '억' + (man ? ' ' : '') : '') + (man ? man.toLocaleString('ko-KR') + '만원' : (eok ? '원' : ''));
+    };
+    var sum = function () {
+        var t = 0;
+        f.querySelectorAll('input[data-cost]:checked').forEach(function (i) { if (!i.disabled) t += parseInt(i.dataset.cost, 10) || 0; });
+        out.textContent = fmt(t);
+        warn.hidden = t <= (parseInt(box.dataset.cash, 10) || 0);
+    };
+    f.addEventListener('change', sum);
+    sum();
+})();
+</script>
