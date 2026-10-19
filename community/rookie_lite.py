@@ -2649,7 +2649,7 @@ def moment_outcome(m: dict, r: dict, rng) -> tuple:
 
 
 # 결정적 순간 결과 연출(2026-10-19 사용자 요청: 각성처럼 고른 결과를 장면으로) — flags['moment_fx'] 를 다음 화면이 한 번 보여 주고 지운다.
-# 장면: 중견수 쪽 중계 화면에서 그 한 구 → 타구 길(path) → 전광판 한 줄(head) → 점수판이 넘어가고 → 우승·메달.
+# 장면(이펙트만 — 상황 그림은 빼 달라는 사용자 의견): 공·메달이 박히는 순간 이펙트 → 한 줄(head) → 점수판 → 우승·메달. path 는 홈런 흔들림에만.
 KOREA_COLORS = ('#CD2E3A', '#0047A0')
 BALL_PATH = {'HR': 'hr', '3B': 'hit', '2B': 'hit', '1B': 'hit', 'SO': 'so', 'BB': 'ball', 'HBP': 'ball'}
 
@@ -2696,21 +2696,19 @@ def moment_fx(c, m: dict, r: dict, d: dict, more: bool) -> dict:
     o, need = r['outcome'], m['sit']['need']
     path = BALL_PATH.get(o) or ('fly' if (need in ('hit', 'out') or (need == 'run') == r['ok']) else 'ground')
     if m['kind'] == 'intl':
-        colors, ink = KOREA_COLORS, KOREA_COLORS[1]
+        colors = KOREA_COLORS
     else:
         from .rookie_card import _palette
         pal = _palette(c.league, c.club)
-        colors, ink = (pal['primary'], pal['secondary']), pal['ink']      # ink = 흰 유니폼 위 등번호 색
+        colors = (pal['primary'], pal['secondary'])
     before, after = moment_score(m, r)
     sit = m['sit']
     return {'stage': m['stage'], 'when': m['when'], 'side': m['side'], 'path': path,
-            'dir': 'l' if sum(map(ord, m['opp']['name'])) % 2 else 'r',
             'sit': f"{sit['inning']} {sit['outs']}사 {_bases_text(sit['bases'])}", 'before': before, 'after': after,
             'head': moment_head(m, r), 'line': r['line'], 'play': r['text'],
             'after_text': '' if r.get('final') else AFTER[(m['side'], r['ok'], d['won'])],
             'ok': r['ok'], 'won': d['won'], 'result': d['result'],
-            'medal': {'금메달': 'gold', '은메달': 'silver'}.get(d['result'], ''), 'colors': list(colors),
-            'ink': ink, 'number': c.number, 'more': more}
+            'medal': {'금메달': 'gold', '은메달': 'silver'}.get(d['result'], ''), 'colors': list(colors), 'more': more}
 
 
 def moments_for(c, code: str, rank: int, team_n: int, state: dict, rng) -> list:

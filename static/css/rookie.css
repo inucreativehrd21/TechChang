@@ -1647,22 +1647,89 @@ a.rl-spot.is-bench:hover { transform: none; box-shadow: inset 0 0 0 1px var(--rk
 @keyframes rk-next { 0%, 100% { opacity: .6; transform: scale(.92); } 50% { opacity: 1; transform: scale(1.12); } }
 @media (prefers-reduced-motion: reduce) { .rk-stars i.is-next { animation: none; opacity: .7; } }
 
-/* 결정적 순간 결과 연출(2026-10-19) — 중견수 쪽 중계 화면의 한 구 → 전광판 한 줄 → 점수판 → 우승·메달.
-   기본 모양 = 마지막 장면, 애니메이션이 처음부터 끌고 온다(fill both). 시각: --tp 투구, --tc 타격, --th 전광판, --ts 점수, --tr 결과 */
-.rl-mfx { position: fixed; inset: 0; z-index: 10000; display: flex; overflow-y: auto; padding: 24px 16px 28px; word-break: keep-all; color: #e2e8f0;
-    background: radial-gradient(90% 60% at 50% 0, #1d2a66 0, #0a1030 55%, #050818 100%);
-    --tp: .7s; --tc: 1.2s; --th: 1.75s; --ts: 2.15s; --tr: 2.6s; animation: rl-fx-in .3s ease both; }
-.rl-mfx.has-after { --tr: 3.25s; }
+/* 결정적 순간 결과 연출(2026-10-19) — 각성처럼 이펙트만: 공(메달)이 날아와 박히는 순간 섬광·충격파·불꽃·빛줄기 → 제목 → 점수판 → 우승/준우승.
+   기본 모양 = 마지막 장면, 애니메이션이 처음부터 끌고 온다(fill both). 시각: --ti 박힘, --th 제목, --ts 점수, --tr 결과, --tw 빛줄기
+   끝없이 도는 것(빛줄기 회전·공 빛)은 .rl-mfx-spin — 건너뛰기에서 빼야 미친 듯이 돌지 않는다 */
+.rl-mfx { position: fixed; inset: 0; z-index: 10000; display: grid; place-items: center; overflow: hidden; padding: 20px 16px; word-break: keep-all; color: #fff;
+    background: radial-gradient(60% 50% at 50% 38%, #312e81 0, #0f1240 55%, #04051a 100%);
+    --ti: .65s; --th: .8s; --ts: 1.45s; --tr: 1.8s; --tw: var(--ti); animation: rl-fx-in .3s ease both; }
+.rl-mfx.has-after { --tr: 2.35s; --tw: var(--tr); }
+.rl-mfx.is-bad { --ti: .85s; --th: 1s; --ts: 1.6s; --tr: 2s; }
+.rl-mfx.is-bad.has-after { --tr: 2.55s; }
+.rl-mfx.is-lost { background: radial-gradient(60% 50% at 50% 38%, #2a2d45 0, #15172a 60%, #07080f 100%); }
 .rl-mfx.is-leaving { animation: rl-fx-out .3s ease both; }
-.rl-mfx-in { position: relative; z-index: 1; display: flex; flex-direction: column; align-items: center; gap: 10px; width: min(100%, 520px); margin: auto; text-align: center; }
 .rl-mfx-skip { position: fixed; top: 14px; right: 14px; z-index: 3; padding: 6px 14px; border: 1px solid rgba(199, 210, 254, .35); border-radius: 99px; font-size: 0.8rem; font-weight: 700;
-    color: #e0e7ff; background: rgba(255, 255, 255, .08); opacity: 0; visibility: hidden; animation: rl-mfx-gone .2s ease calc(var(--tr) + .4s) both; }
+    color: #e0e7ff; background: rgba(255, 255, 255, .08); opacity: 0; visibility: hidden; animation: rl-mfx-gone .2s ease calc(var(--tr) + .3s) both; }
 .rl-mfx-skip:hover, .rl-mfx-skip:focus-visible { background: rgba(255, 255, 255, .16); outline: 2px solid #a5b4fc; outline-offset: 2px; }
-.rk .rl-mfx-stage, .rl-mfx-stage { margin: 0; font-size: 0.86rem; font-weight: 800; color: #a5b4fc; animation: rl-mfx-rise .35s ease .15s both; }
-.rl-mfx-bug { display: inline-flex; align-items: stretch; overflow: hidden; border-radius: 8px; background: #070b22; box-shadow: inset 0 0 0 1px rgba(165, 180, 252, .25);
-    font-variant-numeric: tabular-nums; animation: rl-mfx-rise .35s ease .2s both; }
-.rl-mfx-sit { display: flex; align-items: center; padding: 6px 12px; font-size: 0.82rem; font-weight: 700; color: #cbd5e1; background: rgba(79, 70, 229, .28); }
-.rl-mfx-score { display: flex; align-items: center; gap: 6px; padding: 4px 12px; font-size: 1.3rem; font-weight: 900; color: #fff; }
+.rl-mfx-in { position: relative; z-index: 1; display: flex; flex-direction: column; align-items: center; gap: 8px; width: min(100%, 440px); text-align: center; }
+.rl-mfx.is-good .rl-mfx-in { animation: rl-shake .5s ease var(--ti) both; }
+.rk .rl-mfx-kicker, .rl-mfx-kicker { margin: 0; padding: 3px 12px; border-radius: 99px; font-size: 0.8rem; font-weight: 900; color: #0f1240; background: #c7d2fe; animation: rl-mfx-rise .4s ease .1s both; }
+.rl-mfx.is-lost .rl-mfx-kicker { color: #cbd5e1; background: rgba(148, 163, 184, .22); }
+
+/* 무대 — 공(메달)과 그 뒤 이펙트. 이펙트는 무대 가운데를 기준으로 퍼진다(바깥은 화면이 자른다) */
+.rl-mfx-stage { position: relative; display: grid; place-items: center; width: 132px; height: 132px; margin: 4px 0 2px; }
+.rl-mfx-stage > span:not(.rl-mfx-glow):not(.rl-mfx-medal) { position: absolute; left: 50%; top: 50%; z-index: -1; pointer-events: none; }
+.rl-mfx-rays { width: 160vmax; height: 160vmax; margin: -80vmax 0 0 -80vmax; animation: rl-mfx-fade 1.1s ease var(--tw) both; }
+.rl-mfx-rays i { position: absolute; inset: 0;
+    background: repeating-conic-gradient(from 9deg, color-mix(in srgb, var(--mfx-c1) 22%, transparent) 0 3deg, transparent 3deg 18deg),
+        repeating-conic-gradient(from 0deg, rgba(199, 210, 254, .13) 0 6deg, transparent 6deg 18deg);
+    -webkit-mask: radial-gradient(circle, #000 0, transparent 40%); mask: radial-gradient(circle, #000 0, transparent 40%); animation: rl-rays 22s linear infinite; }
+.rl-mfx.is-lost .rl-mfx-rays { display: none; }
+.rl-mfx-burst { width: 230px; height: 230px; margin: -115px 0 0 -115px; border-radius: 50%; opacity: 0;
+    background: radial-gradient(circle, #fff 0, rgba(224, 231, 255, .92) 18%, rgba(99, 102, 241, .6) 42%, transparent 70%); }
+.rl-mfx.is-good .rl-mfx-burst { animation: rl-burst 1s cubic-bezier(.2, .8, .2, 1) var(--ti) both; }
+.rl-mfx-ring { width: 124px; height: 124px; margin: -62px 0 0 -62px; border: 3px solid rgba(199, 210, 254, .9); border-radius: 50%; opacity: 0; }
+.rl-mfx.is-good .rl-mfx-ring { animation: rl-mfx-ring .8s cubic-bezier(.2, .7, .3, 1) var(--ti) both; }
+.rl-mfx.is-good .rl-mfx-ring.is-late { border-color: color-mix(in srgb, var(--mfx-c1) 70%, #fff); animation-delay: calc(var(--ti) + .14s); }
+@keyframes rl-mfx-ring { 0% { opacity: 0; transform: scale(.6); } 10% { opacity: 1; } 100% { opacity: 0; transform: scale(3.4); } }
+.rl-mfx-sparks i { position: absolute; width: 6px; height: 6px; margin: -3px; border-radius: 50%; background: #fff; box-shadow: 0 0 10px 2px rgba(199, 210, 254, .9); opacity: 0; }
+.rl-mfx-sparks i:nth-child(3n+2) { background: #a5b4fc; }
+.rl-mfx-sparks i:nth-child(3n) { background: var(--mfx-c1); box-shadow: 0 0 10px 2px color-mix(in srgb, var(--mfx-c1) 70%, #fff); }
+.rl-mfx.is-good .rl-mfx-sparks i { animation: rl-mfx-spark 1.2s cubic-bezier(.15, .7, .3, 1) calc(var(--ti) + .03s) both; }
+@keyframes rl-mfx-spark { 0% { opacity: 0; transform: rotate(calc(var(--k) * 22.5deg)) translateY(0) scale(.4); } 15% { opacity: 1; }
+    100% { opacity: 0; transform: rotate(calc(var(--k) * 22.5deg)) translateY(-44vmin) scale(1); } }
+
+/* 공 — 멀리서 회전하며 날아와 박힌다(안 좋은 결과는 잿빛으로 툭 떨어지고, 지면 금이 간다) */
+.rl-mfx-glow { display: block; filter: drop-shadow(0 0 18px rgba(129, 140, 248, .75)); }
+.rl-mfx-glow.rl-mfx-spin { animation: rl-mfx-pulse 2.4s ease-in-out 1.6s infinite; }
+@keyframes rl-mfx-pulse { 0%, 100% { filter: drop-shadow(0 0 16px rgba(129, 140, 248, .7)); } 50% { filter: drop-shadow(0 0 34px rgba(199, 210, 254, 1)); } }
+.rl-mfx.is-bad .rl-mfx-glow { filter: drop-shadow(0 10px 22px rgba(0, 0, 0, .55)); }
+.rl-mfx-ball { display: block; width: 120px; height: 120px; animation: rl-mfx-fly .7s cubic-bezier(.45, 0, .35, 1.25) .05s both; }
+.rl-mfx.is-bad .rl-mfx-ball { filter: grayscale(.75) brightness(.78); animation: rl-mfx-thud .9s cubic-bezier(.5, 0, .5, 1) .05s both; }
+@keyframes rl-mfx-fly { 0% { opacity: 0; transform: translate(34vw, -36vh) scale(.22) rotate(-720deg); }
+    85% { opacity: 1; transform: translate(0, 0) scale(1.16) rotate(14deg); } 100% { transform: none; } }
+@keyframes rl-mfx-thud { 0% { opacity: 0; transform: translateY(-38vh) rotate(-160deg) scale(.7); } 70% { opacity: 1; transform: translateY(6px) rotate(6deg) scale(1.02, .96); }
+    85% { transform: translateY(-5px) rotate(2deg); } 100% { transform: none; } }
+.rl-mfx-crack { stroke-dasharray: 1; stroke-dashoffset: 0; animation: rl-mfx-draw .35s ease-out calc(var(--ti) + .05s) both; }
+@keyframes rl-mfx-draw { from { stroke-dashoffset: 1; } }
+.rl-mfx.is-bad.is-lost .rl-mfx-in { animation: rl-shake .4s ease calc(var(--ti) + .05s) both; }     /* 금이 가는 순간 — 흔들리고 부스러기가 떨어진다 */
+.rl-mfx.is-bad.is-lost .rl-mfx-sparks i { width: 5px; height: 5px; border-radius: 1px; background: #8b93b5; box-shadow: none;
+    transform: rotate(calc(var(--k) * 22.5deg)) translateY(-50px); animation: rl-mfx-debris 1s cubic-bezier(.5, 0, .9, .6) calc(var(--ti) + .05s) both; }
+@keyframes rl-mfx-debris { 0% { opacity: 0; translate: 0 0; } 12% { opacity: .9; } 100% { opacity: 0; translate: calc((var(--k) - 8.5) * 7px) calc(14vh + var(--k) * 1.3vh); } }
+
+/* 메달(국가대표 결승) — 뒤집히며 날아와 박히고 빛이 한 번 훑는다 */
+.rl-mfx-medal { position: relative; display: block; width: 104px; height: 104px; margin-top: 22px; border-radius: 50%; overflow: visible;
+    animation: rl-mfx-coin .8s cubic-bezier(.4, 0, .3, 1.2) .05s both; }
+.rl-mfx-medal::before { content: ''; position: absolute; left: 50%; bottom: 100%; width: 34px; height: 24px; margin-left: -17px;
+    background: linear-gradient(90deg, #CD2E3A 0 50%, #0047A0 50% 100%); clip-path: polygon(0 0, 100% 0, 70% 100%, 30% 100%); }
+.rl-mfx-medal::after { content: ''; position: absolute; inset: 11px; border-radius: 50%; box-shadow: inset 0 0 0 2px rgba(255, 255, 255, .45), 0 0 0 2px rgba(0, 0, 0, .12); }
+.rl-mfx-medal.is-gold { background: radial-gradient(circle at 35% 30%, #fef3c7, #facc15 45%, #a16207); box-shadow: 0 0 34px rgba(250, 204, 21, .5), inset 0 0 0 4px rgba(161, 98, 7, .4); }
+.rl-mfx-medal.is-silver { background: radial-gradient(circle at 35% 30%, #fff, #cbd5e1 50%, #64748b); box-shadow: 0 0 26px rgba(203, 213, 225, .35), inset 0 0 0 4px rgba(71, 85, 105, .4); }
+.rl-mfx-shine { position: absolute; inset: 0; border-radius: 50%; overflow: hidden; opacity: 0;
+    background: linear-gradient(110deg, transparent 30%, rgba(255, 255, 255, .85) 48%, transparent 62%) 0 0 / 260% 100% no-repeat;
+    animation: rl-mfx-shine .9s ease-out calc(var(--ti) + .15s) both; }
+@keyframes rl-mfx-shine { 0% { opacity: 1; background-position: 120% 0; } 100% { opacity: 1; background-position: -60% 0; } }
+@keyframes rl-mfx-coin { 0% { opacity: 0; transform: perspective(500px) translateY(-34vh) rotateY(1080deg) scale(.4); }
+    80% { opacity: 1; transform: perspective(500px) translateY(4px) rotateY(-14deg) scale(1.12); } 100% { transform: none; } }
+
+/* 글자 — 제목이 박히고, 점수판이 넘어가고, 결과가 찍힌다 */
+.rk .rl-mfx-head, .rl-mfx-head { margin: 2px 0 0; font-size: 3.2rem; font-weight: 900; letter-spacing: -0.04em; line-height: 1.08; color: #fff; text-wrap-style: balance;
+    text-shadow: 0 0 26px rgba(99, 102, 241, .95), 0 0 3px #fff; animation: rl-title-in .55s cubic-bezier(.2, .9, .2, 1.2) var(--th) both; }
+.rk .rl-mfx.is-bad .rl-mfx-head, .rl-mfx.is-bad .rl-mfx-head { font-size: 2.3rem; color: #cbd5e1; text-shadow: none; animation-name: rl-mfx-rise; }
+.rl-mfx-bug { display: inline-flex; align-items: stretch; overflow: hidden; border-radius: 8px; background: rgba(4, 6, 24, .7); box-shadow: inset 0 0 0 1px rgba(165, 180, 252, .25);
+    font-variant-numeric: tabular-nums; animation: rl-mfx-rise .4s ease calc(var(--th) + .35s) both; }
+.rl-mfx-sit { display: flex; align-items: center; padding: 5px 11px; font-size: 0.8rem; font-weight: 700; color: #cbd5e1; background: rgba(79, 70, 229, .3); }
+.rl-mfx-score { display: flex; align-items: center; gap: 6px; padding: 3px 11px; font-size: 1.2rem; font-weight: 900; color: #fff; }
 .rl-mfx-score small { font-size: 0.7rem; font-weight: 700; color: #94a3b8; }
 .rl-mfx-colon { color: #64748b; }
 .rl-mfx-num { display: inline-grid; overflow: hidden; }
@@ -1671,115 +1738,20 @@ a.rl-spot.is-bench:hover { transform: none; box-shadow: inset 0 0 0 1px var(--rk
 .rl-mfx-num .is-flip { color: #c7d2fe; animation: rl-mfx-num-in .35s ease var(--ts) both; }
 @keyframes rl-mfx-num-out { from { opacity: 1; transform: none; } to { opacity: 0; transform: translateY(-70%); } }
 @keyframes rl-mfx-num-in { from { opacity: 0; transform: translateY(70%); } }
+.rk .rl-mfx-line, .rl-mfx-line { margin: 0; font-size: 0.8rem; color: #94a3b8; animation: rl-mfx-rise .4s ease calc(var(--th) + .4s) both; }
+.rk .rl-mfx-after, .rl-mfx-after { margin: 2px 0 0; font-size: 0.95rem; font-weight: 700; color: #e0e7ff; animation: rl-mfx-rise .4s ease calc(var(--tr) - .5s) both; }
+.rk .rl-mfx-result, .rl-mfx-result { margin: 4px 0 0; font-size: 2.1rem; font-weight: 900; letter-spacing: -0.03em; line-height: 1.1; color: #fff;
+    text-shadow: 0 0 20px rgba(129, 140, 248, .8); animation: rl-mfx-stamp .45s cubic-bezier(.2, .9, .2, 1.25) var(--tr) both; }
+.rk .rl-mfx.is-lost .rl-mfx-result, .rl-mfx.is-lost .rl-mfx-result { font-size: 1.7rem; color: #94a3b8; text-shadow: none; animation-name: rl-mfx-rise; }
+.rl-mfx-ribbon { width: 110px; height: 6px; border-radius: 3px; background: linear-gradient(90deg, var(--mfx-c1) 0 50%, var(--mfx-c2) 50% 100%);
+    box-shadow: 0 0 0 1px rgba(255, 255, 255, .3); animation: rl-mfx-grow .45s ease calc(var(--tr) + .2s) both; }
+.rk .rl-mfx-play, .rl-mfx-play { max-width: 32ch; margin: 2px 0 0; font-size: 0.95rem; line-height: 1.6; color: #cbd5e1; text-wrap-style: pretty; animation: rl-mfx-rise .4s ease calc(var(--tr) + .35s) both; }
+.rl-mfx .rl-mfx-go { min-width: 180px; margin-top: 8px; color: #fff; background: linear-gradient(135deg, #6366f1, var(--rk-accent, #4f46e5)); border-color: transparent;
+    animation: rl-mfx-rise .4s ease calc(var(--tr) + .5s) both; }
+.rl-mfx.is-lost .rl-mfx-go { color: #15172a; background: #fff; }
 
-/* 중계 화면 — 공은 한 애니메이션(투구 0~36% → 타구)으로, 길마다 키프레임이 다르다 */
-.rl-mfx-field { position: relative; width: min(100%, max(300px, calc((100dvh - 440px) * 1.6))); aspect-ratio: 16 / 10; overflow: hidden; border-radius: 14px; cursor: pointer;
-    box-shadow: 0 18px 50px rgba(2, 6, 23, .6), inset 0 0 0 1px rgba(165, 180, 252, .18); animation: rl-mfx-rise .4s ease .3s both; }
-.rl-mfx-svg { display: block; width: 100%; height: 100%; }
-.rl-mfx-field::after { content: ''; position: absolute; inset: 0; background: rgba(4, 7, 20, .5); opacity: 0; pointer-events: none; }
-.rl-mfx.is-lost .rl-mfx-field::after { opacity: 1; animation: rl-mfx-fade .9s ease var(--tr) both; }
-.rl-mfx.is-lost .rl-mfx-lamps { opacity: .2; animation: rl-mfx-lamp-off .45s steps(2, end) var(--tr) both; }
-.rl-mfx.is-hr .rl-mfx-field { animation: rl-mfx-rise .4s ease .3s both, rl-mfx-shake .45s ease var(--tc) both; }
-.rl-mfx .mfx-shirt, .rl-mfx .mfx-pants { fill: #64748b; }
-.rl-mfx .mfx-helmet, .rl-mfx .mfx-cap { fill: #1e293b; }
-.rl-mfx .mfx-jersey { fill: #334155; stroke: rgba(148, 163, 184, .4); stroke-width: 1; }
-.rl-mfx .is-me .mfx-shirt, .rl-mfx .is-me .mfx-pants, .rl-mfx .is-me .mfx-jersey { fill: #f1f5f9; }
-.rl-mfx .is-me .mfx-helmet, .rl-mfx .is-me .mfx-cap { fill: var(--mfx-c1); stroke: #c7d2fe; stroke-width: .8; }
-.rl-mfx .is-me { filter: drop-shadow(0 0 3px rgba(165, 180, 252, .65)); }
-.rl-mfx .mfx-number { font-size: 26px; font-weight: 900; fill: var(--mfx-ink); }
-.rl-mfx-bat { transform-box: fill-box; transform-origin: 0 100%; transform: rotate(115deg); animation: rl-mfx-swing .2s ease-in calc(var(--tc) - .1s) both; }
-.rl-mfx.is-ball .rl-mfx-bat { transform: none; animation: none; }
-@keyframes rl-mfx-swing { from { transform: rotate(0); } }
-.rl-mfx-ball { position: absolute; left: 50%; top: 33%; width: 3.4%; aspect-ratio: 1; margin: -1.7% 0 0 -1.7%; border-radius: 50%; opacity: 0; pointer-events: none;
-    background: radial-gradient(circle at 35% 30%, #fff 0, #f1f5f9 45%, #cbd5e1 100%); box-shadow: 0 0 10px rgba(255, 255, 255, .75);
-    animation: 1.4s linear var(--tp) both; }
-.rl-mfx.is-hr .rl-mfx-ball { animation-name: rl-mfx-hr; }
-.rl-mfx.is-hit.is-to-l .rl-mfx-ball { animation-name: rl-mfx-hit-l; }
-.rl-mfx.is-hit.is-to-r .rl-mfx-ball { animation-name: rl-mfx-hit-r; }
-.rl-mfx.is-fly .rl-mfx-ball { animation-name: rl-mfx-fly; }
-.rl-mfx.is-ground .rl-mfx-ball { animation-name: rl-mfx-ground; }
-.rl-mfx.is-so .rl-mfx-ball { animation-name: rl-mfx-so; }
-.rl-mfx.is-ball .rl-mfx-ball { animation-name: rl-mfx-wide; }
-@keyframes rl-mfx-hr {
-    0% { left: 53.5%; top: 63%; transform: scale(1.5); opacity: 1; animation-timing-function: cubic-bezier(.45, 0, .9, .6); }
-    36% { left: 50%; top: 30.5%; transform: scale(.6); opacity: 1; animation-timing-function: cubic-bezier(.1, .6, .3, 1); }
-    62% { left: 60%; top: 10%; transform: scale(1.5); opacity: 1; }
-    100% { left: 82%; top: -30%; transform: scale(3.4); opacity: 0; } }
-@keyframes rl-mfx-hit-l {
-    0% { left: 53.5%; top: 63%; transform: scale(1.5); opacity: 1; animation-timing-function: cubic-bezier(.45, 0, .9, .6); }
-    36% { left: 50%; top: 30.5%; transform: scale(.6); opacity: 1; animation-timing-function: cubic-bezier(.15, .6, .35, 1); }
-    85% { opacity: 1; }
-    100% { left: 4%; top: 98%; transform: scale(2.4); opacity: 0; } }
-@keyframes rl-mfx-hit-r {
-    0% { left: 53.5%; top: 63%; transform: scale(1.5); opacity: 1; animation-timing-function: cubic-bezier(.45, 0, .9, .6); }
-    36% { left: 50%; top: 30.5%; transform: scale(.6); opacity: 1; animation-timing-function: cubic-bezier(.15, .6, .35, 1); }
-    85% { opacity: 1; }
-    100% { left: 96%; top: 98%; transform: scale(2.4); opacity: 0; } }
-@keyframes rl-mfx-fly {
-    0% { left: 53.5%; top: 63%; transform: scale(1.5); opacity: 1; animation-timing-function: cubic-bezier(.45, 0, .9, .6); }
-    36% { left: 50%; top: 30.5%; transform: scale(.6); opacity: 1; animation-timing-function: cubic-bezier(.2, .7, .4, 1); }
-    66% { left: 53%; top: 3%; transform: scale(1.1); opacity: 1; animation-timing-function: cubic-bezier(.5, 0, .9, .5); }
-    100% { left: 55%; top: 28%; transform: scale(1.8); opacity: 0; } }
-@keyframes rl-mfx-ground {
-    0% { left: 53.5%; top: 63%; transform: scale(1.5); opacity: 1; animation-timing-function: cubic-bezier(.45, 0, .9, .6); }
-    36% { left: 50%; top: 30.5%; transform: scale(.6); opacity: 1; }
-    52% { left: 47%; top: 47%; transform: scale(.8); }
-    60% { left: 46.2%; top: 43%; transform: scale(.82); }
-    74% { left: 44.6%; top: 57%; transform: scale(.95); }
-    81% { left: 44%; top: 54.5%; transform: scale(.97); opacity: 1; }
-    100% { left: 42.5%; top: 70%; transform: scale(1.1); opacity: 0; } }
-@keyframes rl-mfx-so {
-    0% { left: 53.5%; top: 63%; transform: scale(1.5); opacity: 1; animation-timing-function: cubic-bezier(.45, 0, .9, .6); }
-    36% { left: 49%; top: 30.5%; transform: scale(.6); opacity: 1; }
-    40% { left: 48.4%; top: 31.8%; transform: scale(.5); opacity: 1; }
-    44%, 100% { left: 48.4%; top: 31.8%; transform: scale(.5); opacity: 0; } }
-@keyframes rl-mfx-wide {
-    0% { left: 53.5%; top: 63%; transform: scale(1.5); opacity: 1; animation-timing-function: cubic-bezier(.45, 0, .9, .6); }
-    36% { left: 55.5%; top: 28.5%; transform: scale(.6); opacity: 1; }
-    44% { left: 55.8%; top: 29.5%; transform: scale(.52); opacity: 1; }
-    52%, 100% { left: 55.8%; top: 29.5%; transform: scale(.52); opacity: 0; } }
-.rl-mfx-pop { position: absolute; left: 48.4%; top: 31.8%; width: 9%; aspect-ratio: 1; margin: -4.5% 0 0 -4.5%; border: 3px solid #e0e7ff; border-radius: 50%; opacity: 0; pointer-events: none;
-    background: radial-gradient(circle, rgba(224, 231, 255, .55) 0, rgba(224, 231, 255, 0) 60%); }
-.rl-mfx.is-so .rl-mfx-pop { animation: rl-mfx-pop .65s ease-out calc(var(--tp) + .5s) both; }
-@keyframes rl-mfx-pop { 0% { opacity: 0; transform: scale(.3); } 10% { opacity: 1; } 100% { opacity: 0; transform: scale(1.7); } }
-.rl-mfx-flash { position: absolute; inset: 0; background: #fff; opacity: 0; pointer-events: none; }
-.rl-mfx.is-hr .rl-mfx-flash, .rl-mfx.is-hit .rl-mfx-flash, .rl-mfx.is-fly .rl-mfx-flash, .rl-mfx.is-ground .rl-mfx-flash { animation: rl-mfx-flash .4s ease-out var(--tc) both; }
-@keyframes rl-mfx-flash { 0% { opacity: 0; } 12% { opacity: .55; } 100% { opacity: 0; } }
-@keyframes rl-mfx-shake { 0%, 100% { transform: none; } 20% { transform: translate(-6px, 3px); } 40% { transform: translate(5px, -4px); } 60% { transform: translate(-3px, 2px); } 80% { transform: translate(2px, -1px); } }
-@keyframes rl-mfx-lamp-off { from { opacity: 1; } }
-@keyframes rl-mfx-fade { from { opacity: 0; } }
-
-/* 전광판 한 줄 — 글자를 점으로 찍어(LED) 왼쪽부터 켠다 */
-.rl-mfx-line { margin: 0; font-size: 0.82rem; color: #94a3b8; animation: rl-mfx-rise .4s ease var(--tc) both; }
-.rl-mfx-board { width: 100%; margin: 2px 0 0; padding: 12px 10px 10px; border-radius: 10px;
-    background: #060a1d radial-gradient(circle, rgba(148, 163, 184, .13) 0 1.1px, transparent 1.5px) 0 0 / 7px 7px;
-    box-shadow: inset 0 0 0 1px rgba(148, 163, 184, .18), inset 0 10px 30px rgba(0, 0, 0, .5); animation: rl-mfx-rise .3s ease calc(var(--th) - .25s) both; }
-.rl-mfx-glow { display: inline-block; filter: drop-shadow(0 0 5px rgba(129, 140, 248, .95)) drop-shadow(0 0 16px rgba(79, 70, 229, .7)); }
-.rl-mfx-board.is-bad .rl-mfx-glow { filter: drop-shadow(0 0 5px rgba(148, 163, 184, .5)); }
-.rl-mfx-led { display: inline-block; font-size: clamp(2.3rem, 10.5vw, 4.2rem); font-weight: 900; line-height: 1.15; letter-spacing: 0; color: #f8fafc; text-wrap-style: balance;
-    -webkit-mask: radial-gradient(circle, #000 0 44%, transparent 52%) 0 0 / 0.1em 0.1em; mask: radial-gradient(circle, #000 0 44%, transparent 52%) 0 0 / 0.1em 0.1em;
-    animation: rl-mfx-scan .5s steps(8, end) var(--th) both; }
-.rl-mfx-board.is-long .rl-mfx-led { font-size: clamp(1.9rem, 8.4vw, 3.1rem); }
-.rl-mfx-board.is-bad .rl-mfx-led { color: #cbd5e1; }
-@keyframes rl-mfx-scan { from { clip-path: inset(0 100% 0 0); } to { clip-path: inset(0 0 0 0); } }
-.rk .rl-mfx-after, .rl-mfx-after { margin: 0; font-size: 0.95rem; font-weight: 700; color: #e0e7ff; animation: rl-mfx-rise .4s ease calc(var(--tr) - .6s) both; }
-
-/* 결과 — 이기면 구단 색 띠(국가대표는 메달), 지면 조용히 */
-.rl-mfx-result { display: flex; flex-direction: column; align-items: center; gap: 8px; margin-top: 4px; }
-.rk .rl-mfx-title, .rl-mfx-title { margin: 0; font-size: clamp(2.5rem, 9vw, 3.4rem); font-weight: 900; letter-spacing: -0.04em; line-height: 1.05; color: #fff;
-    animation: rl-mfx-stamp .5s cubic-bezier(.2, .9, .2, 1.25) var(--tr) both; }
-.rk .rl-mfx.is-lost .rl-mfx-title, .rl-mfx.is-lost .rl-mfx-title { font-size: clamp(2rem, 7vw, 2.5rem); color: #94a3b8; animation-name: rl-mfx-rise; }
-.rl-mfx-ribbon { width: 96px; height: 6px; border-radius: 3px; background: linear-gradient(90deg, var(--mfx-c1) 0 50%, var(--mfx-c2) 50% 100%);
-    box-shadow: 0 0 0 1px rgba(255, 255, 255, .3); animation: rl-mfx-grow .45s ease calc(var(--tr) + .25s) both; }
-.rl-mfx-medal { position: relative; width: 64px; height: 64px; margin-top: 22px; border-radius: 50%; animation: rl-mfx-stamp .5s cubic-bezier(.2, .9, .2, 1.25) var(--tr) both; }
-.rl-mfx-medal::before { content: ''; position: absolute; left: 50%; bottom: 100%; width: 30px; height: 22px; margin-left: -15px;
-    background: linear-gradient(90deg, #CD2E3A 0 50%, #0047A0 50% 100%); clip-path: polygon(0 0, 100% 0, 70% 100%, 30% 100%); }
-.rl-mfx-medal.is-gold { background: radial-gradient(circle at 35% 30%, #fef3c7, #facc15 45%, #a16207); box-shadow: 0 0 26px rgba(250, 204, 21, .4), inset 0 0 0 4px rgba(161, 98, 7, .35); }
-.rl-mfx-medal.is-silver { background: radial-gradient(circle at 35% 30%, #fff, #cbd5e1 50%, #64748b); box-shadow: inset 0 0 0 4px rgba(71, 85, 105, .35); }
-.rk .rl-mfx-play, .rl-mfx-play { max-width: 34ch; margin: 0; font-size: 0.95rem; line-height: 1.6; color: #cbd5e1; text-wrap-style: pretty; animation: rl-mfx-rise .4s ease calc(var(--tr) + .45s) both; }
-.rl-mfx .rl-mfx-go { min-width: 180px; margin-top: 6px; color: #fff; background: var(--rk-accent, #4f46e5); border-color: transparent; animation: rl-mfx-rise .4s ease calc(var(--tr) + .6s) both; }
-.rl-mfx.is-lost .rl-mfx-go { color: #0a1030; background: #fff; }
-.rl-mfx-confetti { position: fixed; inset: 0; z-index: 2; overflow: hidden; pointer-events: none; }
+/* 꽃가루 — 이겼을 때만, 구단 주·보조색과 흰색 */
+.rl-mfx-confetti { position: absolute; inset: 0; z-index: 2; overflow: hidden; pointer-events: none; }
 .rl-mfx-confetti i { position: absolute; top: -4vh; left: calc(var(--k) * 4.1% - 3%); width: 8px; height: 13px; border-radius: 2px; background: var(--mfx-c1); opacity: 0;
     animation: rl-mfx-fall 2.8s cubic-bezier(.25, .6, .4, 1) calc(var(--tr) + var(--k) * 28ms) both; }
 .rl-mfx-confetti i:nth-child(3n+2) { width: 6px; height: 10px; background: var(--mfx-c2); animation-duration: 3.3s; --dx: -36px; }
@@ -1787,18 +1759,23 @@ a.rl-spot.is-bench:hover { transform: none; box-shadow: inset 0 0 0 1px var(--rk
 .rl-mfx-confetti i:nth-child(4n) { --dx: -60px; }
 @keyframes rl-mfx-fall { 0% { opacity: 1; transform: translate(0, 0) rotate(0); } 85% { opacity: 1; } 100% { opacity: 0; transform: translate(var(--dx, 40px), 108vh) rotate(560deg); } }
 @keyframes rl-mfx-rise { from { opacity: 0; transform: translateY(8px); } }
-@keyframes rl-mfx-stamp { from { opacity: 0; transform: scale(1.6); } }
+@keyframes rl-mfx-stamp { from { opacity: 0; transform: scale(1.7); } }
 @keyframes rl-mfx-grow { from { transform: scaleX(0); } }
+@keyframes rl-mfx-fade { from { opacity: 0; } }
 @keyframes rl-mfx-gone { from { opacity: 1; visibility: visible; } to { opacity: 0; visibility: hidden; } }
-.rl-mfx.is-skip *, .rl-mfx.is-skip *::before, .rl-mfx.is-skip *::after { animation-delay: 0s !important; animation-duration: .01s !important; }
-@media (max-height: 760px) {                                   /* 노트북처럼 낮은 화면 — 결과까지 한 화면에 */
-    .rl-mfx-in { gap: 8px; }
-    .rl-mfx-board { padding: 8px 10px 6px; }
-    .rl-mfx-led { font-size: clamp(2.1rem, 9vw, 3.2rem); }
-    .rl-mfx-board.is-long .rl-mfx-led { font-size: clamp(1.8rem, 7.6vw, 2.6rem); }
-    .rk .rl-mfx-title, .rl-mfx-title { font-size: 2.4rem; }
-    .rl-mfx-medal { width: 48px; height: 48px; margin-top: 18px; }
+@media (max-width: 575.98px) {
+    .rk .rl-mfx-head, .rl-mfx-head { font-size: 2.6rem; }
+    .rk .rl-mfx.is-bad .rl-mfx-head, .rl-mfx.is-bad .rl-mfx-head { font-size: 2rem; }
 }
+@media (max-height: 640px) {                                   /* 낮은 화면 — 결과까지 한 화면에 */
+    .rl-mfx-in { gap: 6px; }
+    .rl-mfx-stage { width: 96px; height: 96px; }
+    .rl-mfx-ball { width: 88px; height: 88px; }
+    .rl-mfx-medal { width: 76px; height: 76px; margin-top: 18px; }
+    .rk .rl-mfx-head, .rl-mfx-head { font-size: 2.3rem; }
+    .rk .rl-mfx-result, .rl-mfx-result { font-size: 1.7rem; }
+}
+.rl-mfx.is-skip *:not(.rl-mfx-spin), .rl-mfx.is-skip *::before, .rl-mfx.is-skip *::after { animation-delay: 0s !important; animation-duration: .01s !important; }
 @media (prefers-reduced-motion: reduce) {
     .rl-mfx, .rl-mfx *, .rl-mfx *::before, .rl-mfx *::after { animation: none !important; }
 }
