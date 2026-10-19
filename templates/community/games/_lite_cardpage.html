@@ -7,10 +7,11 @@
         {% if fresh %}<p class="rl-cardpage-lead">수고 많았어요! {{ c.name }} 선수의 커리어를 카드 한 장에 담았어요. 화면을 캡처해서 자랑해 보세요.</p>{% endif %}
         {% include 'community/games/_lite_retire.html' %}
         <div class="rl-cardpage-actions">
-            <a class="gm-btn is-primary" href="{% url 'community:lite_card_png' c.pk %}?download=1" data-rl-img data-src="{% url 'community:lite_card_png' c.pk %}" data-name="{{ c.name }}-은퇴카드.png">{% include 'community/games/_lite_icon.html' with name='save' %}<span data-rl-img-label>이미지 저장</span></a>
+            <a class="gm-btn is-primary" href="{% url 'community:lite_card_png' c.pk %}?download=1" data-rl-img data-src="{% url 'community:lite_card_png' c.pk %}" data-name="{{ c.name }}-은퇴카드.png" data-share-label="피드로 공유">{% include 'community/games/_lite_icon.html' with name='save' %}<span data-rl-img-label>이미지 저장</span></a>
+            <a class="gm-btn is-story" href="{% url 'community:lite_card_story' c.pk %}?download=1" data-rl-img data-src="{% url 'community:lite_card_story' c.pk %}" data-name="{{ c.name }}-스토리.png" data-share-label="스토리로 공유">{% include 'community/games/_lite_icon.html' with name='story' %}<span data-rl-img-label>스토리 이미지</span></a>
             <button type="button" class="gm-btn" data-rl-share data-url="{{ request.scheme }}://{{ request.get_host }}{{ request.path }}" data-title="{{ c.name }} 은퇴 카드 — 테크창 야구선수 키우기">{% include 'community/games/_lite_icon.html' with name='share' %}<span>링크 공유</span></button>
         </div>
-        <p class="rl-cardpage-note">이미지는 1080×1350 — 인스타그램 세로 피드에 그대로 올라가요. 링크를 공유하면 미리보기에 카드가 떠요.</p>
+        <p class="rl-cardpage-note">피드용은 1080×1350, 스토리용은 1080×1920이에요. 폰에서 '스토리로 공유'를 누르고 인스타그램을 고르면 바로 스토리로 올라가요(링크 스티커에 카드 주소를 붙이면 친구가 눌러 볼 수 있어요).</p>
         <p class="rl-share-done" data-rl-share-done role="status" hidden></p>
         <p class="rl-cardpage-links">{% if fresh %}<a class="is-strong" href="{% url 'community:lite_home' %}">새 선수 시작하기</a>{% endif %}<a href="{% url 'community:lite_career' c.pk %}">커리어 자세히</a>{% if user.is_authenticated and is_me %}<a href="{% url 'community:lite_cards' %}">카드 보관함</a>{% endif %}</p>
         {% if is_me and not user.is_authenticated %}<p class="rl-guest-note">로그인하면 이 카드를 보관함에 남겨 언제든 다시 볼 수 있어요. <a rel="nofollow" href="{% url 'common:login' %}?next={{ request.path|urlencode }}">로그인</a></p>{% endif %}

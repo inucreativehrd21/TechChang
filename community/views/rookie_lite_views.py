@@ -165,7 +165,8 @@ def lite_home(request):
             name = (getattr(getattr(request.user, 'profile', None), 'nickname', '') or request.user.username)[:12]
         ctx.update(mode='create', last=_identity(last) if last else None,
                    last_line=X.career_line(last) if last else None,
-                   mine=list(mine.filter(retired_at__isnull=False)[:10]), default_name=name,
+                   mine=list(mine.filter(retired_at__isnull=False)[:10]), default_name=name, quit_wait=X.quit_wait(mine),
+                   quit_wait_text=X.wait_text(X.quit_wait(mine)),
                    hall=X.hall('kbo', limit=5), school_groups=_school_groups())
         return render(request, 'community/rookie_lite.html', ctx)
     pend = c.pending or {}
@@ -175,7 +176,7 @@ def lite_home(request):
         c.flags = {k: v for k, v in c.flags.items() if k not in ('awaken_fx', 'moment_fx', 'award_fx')}
         c.save(update_fields=['flags'])
     ctx.update(mode=pend.get('kind', 'plan'), **_identity(c), seasons=_season_rows(c), awaken_fx=fx, moment_fx=mfx,
-               award_fx=afx)
+               award_fx=afx, played=c.seasons.count(), quit_min=X.QUIT_MIN_SEASONS)
     if pend.get('kind') == 'plan':
         ctx['duty'] = X._duty_now(c)[2]
         ctx.update(shop=X.shop_view(c), coach=X.who_is(c, 'coding'), natl=S.national(X.cal_year(c)))
@@ -275,6 +276,7 @@ def lite_act(request):
                 c.save()
                 return redirect(reverse('community:lite_home') + '#rl-shop')
             elif action == 'quit':
+                X.check_quit(c)                                       # 만든 뒤 5시즌 전에는 못 그만둔다
                 if request.POST.get('confirm') != 'yes':
                     raise X.LiteError('은퇴하려면 확인 칸에 체크해 주세요.')
                 messages.info(request, X.retire(c, '스스로'))
@@ -413,7 +415,7 @@ def lite_card(request, pk: int):
 
 
 def lite_card_png(request, pk: int, kind: str = 'card'):
-    """은퇴 카드 PNG — kind 'card'(1080×1350, 저장·SNS 올리기) · 'og'(1200×630, 링크 미리보기)."""
+    """은퇴 카드 PNG — kind 'card'(1080×1350, 저장·SNS 올리기) · 'og'(1200×630, 링크 미리보기) · 'story'(1080×1920, 인스타 스토리)."""
     c = get_object_or_404(LiteCareer.objects.select_related('user'), pk=pk)
     if (is_hidden(c.user) and c.user_id != request.user.id) or not c.retired_at or kind not in K.SHOTS:
         raise Http404

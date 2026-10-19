@@ -263,6 +263,9 @@ def create(user, *, name, role, position, style, region, team, number=0, rng=Non
             mine = LiteCareer.objects.filter(user__isnull=True, guest=guest)
         if mine.filter(retired_at__isnull=True).exists():
             raise LiteError('진행 중인 커리어가 있어요. 은퇴한 뒤에 새로 시작할 수 있어요.')
+        wait = quit_wait(mine)
+        if wait:
+            raise LiteError(f'스스로 은퇴하면 5분 동안은 새 선수를 만들 수 없어요. {wait_text(wait)} 뒤에 다시 시작해 주세요.')
         c = LiteCareer(user=user, guest='' if user else guest, name=name, number=max(0, min(99, int(number or 0))), role=role, position=position,
                        style=style, region=region, team=team, age=START_AGE, league='hs', club=school or rng.choice(pool), grade=1,
                        potential=int(_clamp(round(rng.gauss(POT_MEAN, POT_SD)), *POT_RANGE)), traits=roll_traits(rng))
@@ -2459,6 +2462,31 @@ def army_after_season(c):
         return f"상무에서 전역했어요 — {W.club_label(c.league, c.club)}로 복귀"
     c.league = 'kbo2'
     return ''
+
+
+# 스스로 은퇴 제한(2026-10-19 사용자 요청) — 만든 뒤 5시즌 전에는 '여기서 은퇴하기'를 못 하고(능력치를 보고 갈아엎는 판 막기),
+# 스스로 은퇴하면 5분 동안 새 선수를 못 만든다. 게임이 권하는 은퇴(retire 결정)·방출·나이 은퇴는 그대로다.
+QUIT_MIN_SEASONS = 5
+QUIT_WAIT = 300             # 초
+
+
+def check_quit(c):
+    n = c.seasons.count()
+    if n < QUIT_MIN_SEASONS:
+        raise LiteError(f'선수를 만든 뒤 {QUIT_MIN_SEASONS}시즌은 뛰어야 스스로 은퇴할 수 있어요. 지금 {n}시즌을 뛰었어요.')
+
+
+def quit_wait(mine) -> int:
+    """스스로 은퇴한 뒤 새 선수를 만들기까지 남은 시간(초) — 0이면 바로."""
+    last = mine.filter(retired_at__isnull=False).order_by('-retired_at').first()
+    if not last or (last.pending or {}).get('why') != '스스로':
+        return 0
+    return max(0, int(math.ceil(QUIT_WAIT - (timezone.now() - last.retired_at).total_seconds())))
+
+
+def wait_text(sec: int) -> str:
+    m, s = divmod(sec, 60)
+    return f'{m}분 {s}초' if m and s else f'{m}분' if m else f'{s}초'
 
 
 def retire(c, why: str = '') -> str:

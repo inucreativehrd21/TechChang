@@ -1798,3 +1798,12 @@ a.rl-spot.is-bench:hover { transform: none; box-shadow: inset 0 0 0 1px var(--rk
 @media (prefers-reduced-motion: reduce) {
     .rl-mfx, .rl-mfx *, .rl-mfx *::before, .rl-mfx *::after { animation: none !important; }
 }
+
+/* 스스로 은퇴 뒤 기다림(2026-10-19) · 카드 페이지 스토리 버튼 */
+.rl-quitwait { margin: 0 0 12px; padding: 10px 12px; border-radius: 10px; font-size: 0.85rem; line-height: 1.5; color: var(--rk-ink-2); background: var(--rk-accent-wash); }
+.rl-quitwait b { color: var(--rk-accent); font-variant-numeric: tabular-nums; }
+@media (max-width: 575.98px) {                                     /* 카드 페이지 버튼 셋 — 피드·스토리 두 칸, 링크는 한 줄 전체 */
+    .rl-cardpage-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .rl-cardpage-actions .gm-btn { justify-content: center; }
+    .rl-cardpage-actions .gm-btn:nth-child(3) { grid-column: 1 / -1; }
+}

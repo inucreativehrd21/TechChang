@@ -119,6 +119,7 @@ urlpatterns = [
     path('rookie/p/<int:pk>/card/', rookie_views.rookie_card, name='rookie_card'),                        # 은퇴 카드
     path('rookie/p/<int:pk>/card.png', rookie_views.rookie_card_png, name='rookie_card_png'),
     path('rookie/p/<int:pk>/og.png', rookie_views.rookie_card_png, {'kind': 'og'}, name='rookie_card_og'),
+    path('rookie/p/<int:pk>/story.png', rookie_views.rookie_card_png, {'kind': 'story'}, name='rookie_card_story'),
     # rookie_lite_views.py - 야구선수 키우기 라이트(한 판 30분 커리어 시뮬레이터, 규칙 community/rookie_lite.py)
     path('rookie/lite/', rookie_lite_views.lite_home, name='lite_home'),
     path('rookie/lite/new/', rookie_lite_views.lite_new, name='lite_new'),
@@ -129,6 +130,7 @@ urlpatterns = [
     path('rookie/lite/c/<int:pk>/card/', rookie_lite_views.lite_card, name='lite_card'),
     path('rookie/lite/c/<int:pk>/card.png', rookie_lite_views.lite_card_png, name='lite_card_png'),        # 저장·SNS(1080×1350)
     path('rookie/lite/c/<int:pk>/og.png', rookie_lite_views.lite_card_png, {'kind': 'og'}, name='lite_card_og'),   # 링크 미리보기
+    path('rookie/lite/c/<int:pk>/story.png', rookie_lite_views.lite_card_png, {'kind': 'story'}, name='lite_card_story'),   # 인스타 스토리
     path('rookie/lite/cards/', rookie_lite_views.lite_cards, name='lite_cards'),
 
     # portfolio_views.py - 포트폴리오

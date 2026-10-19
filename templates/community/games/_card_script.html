@@ -33,36 +33,36 @@
         if (navigator.clipboard) navigator.clipboard.writeText(url).then(function () { say('링크를 복사했어요.'); });
     });
     // 이미지 — 파일 공유가 되는 폰이면 공유 창(인스타그램·카카오톡 등)으로, 아니면 내려받기(자바스크립트가 없으면 링크가 내려받는다)
-    var img = document.querySelector('[data-rl-img]');
-    if (!img) return;
-    var label = img.querySelector('[data-rl-img-label]');
     var touch = window.matchMedia && window.matchMedia('(pointer: coarse)').matches;   // PC 는 내려받기가 자연스럽다
     var canFiles = touch && !!(navigator.canShare && window.File && navigator.canShare({ files: [new File([''], 'a.png', { type: 'image/png' })] }));
-    if (canFiles) label.textContent = '이미지로 공유';
-    img.addEventListener('click', function (e) {
-        e.preventDefault();
-        if (img.getAttribute('aria-busy') === 'true') return;
-        img.setAttribute('aria-busy', 'true');
-        var old = label.textContent;
-        label.textContent = '카드 그리는 중…';
-        fetch(img.dataset.src).then(function (r) {
-            if (!r.ok) throw new Error('png ' + r.status);
-            return r.blob();
-        }).then(function (blob) {
-            var file = new File([blob], img.dataset.name, { type: 'image/png' });
-            if (canFiles && navigator.canShare({ files: [file] })) return navigator.share({ files: [file] }).catch(function () {});
-            var a = document.createElement('a');
-            a.href = URL.createObjectURL(blob);
-            a.download = img.dataset.name;
-            document.body.appendChild(a);
-            a.click();
-            setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
-            say('이미지를 저장했어요.');
-        }).catch(function () {
-            say('이미지를 만들지 못했어요. 잠시 뒤 다시 눌러 주세요.');
-        }).then(function () {
-            label.textContent = old;
-            img.removeAttribute('aria-busy');
+    document.querySelectorAll('[data-rl-img]').forEach(function (img) {
+        var label = img.querySelector('[data-rl-img-label]');
+        if (canFiles && img.dataset.shareLabel) label.textContent = img.dataset.shareLabel;   // 피드로 공유 · 스토리로 공유
+        img.addEventListener('click', function (e) {
+            e.preventDefault();
+            if (img.getAttribute('aria-busy') === 'true') return;
+            img.setAttribute('aria-busy', 'true');
+            var old = label.textContent;
+            label.textContent = '카드 그리는 중…';
+            fetch(img.dataset.src).then(function (r) {
+                if (!r.ok) throw new Error('png ' + r.status);
+                return r.blob();
+            }).then(function (blob) {
+                var file = new File([blob], img.dataset.name, { type: 'image/png' });
+                if (canFiles && navigator.canShare({ files: [file] })) return navigator.share({ files: [file] }).catch(function () {});
+                var a = document.createElement('a');
+                a.href = URL.createObjectURL(blob);
+                a.download = img.dataset.name;
+                document.body.appendChild(a);
+                a.click();
+                setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+                say('이미지를 저장했어요.');
+            }).catch(function () {
+                say('이미지를 만들지 못했어요. 잠시 뒤 다시 눌러 주세요.');
+            }).then(function () {
+                label.textContent = old;
+                img.removeAttribute('aria-busy');
+            });
         });
     });
 })();

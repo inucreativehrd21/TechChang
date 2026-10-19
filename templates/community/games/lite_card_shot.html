@@ -4,7 +4,8 @@
 <meta charset="utf-8">
 <base href="http://shot.local/">
 {% comment %}은퇴 카드 이미지 한 장(서버 headless Chromium 이 찍는다 — rookie_lite_views.render_png). /static/… 은 디스크에서 바로 넣는다.
-kind: card(432×540 → 1080×1350, 카드만) · og(1200×630, 카드 + 머리기사 — 링크 미리보기){% endcomment %}
+kind: card(432×540 → 1080×1350, 카드만) · og(1200×630, 카드 + 머리기사 — 링크 미리보기)
+· story(432×768 → 1080×1920, 인스타그램 스토리 — 위 14%·아래 18%는 인스타 화면이 덮어서 글자를 두지 않는다){% endcomment %}
 <link rel="stylesheet" href="/static/css/rookie.css">
 <style>
 @font-face { font-family: 'Pretendard Variable'; font-weight: 45 920; font-style: normal; src: url('/static/fonts/PretendardVariable.woff2') format('woff2'); }
@@ -21,12 +22,26 @@ body { font-family: 'Pretendard Variable', Pretendard, -apple-system, sans-serif
 .shot-copy h1 { margin: 0; font-size: 46px; font-weight: 900; line-height: 1.25; letter-spacing: -0.03em; word-break: keep-all; text-wrap: balance; }
 .shot-copy p { margin: 0; font-size: 24px; font-weight: 700; color: #a5acdf; }
 .shot-copy p b { color: #fff; }
+.shot.is-story { width: 432px; height: 768px; flex-direction: column; justify-content: flex-start; gap: 22px; padding: 104px 36px 0;
+                  background: radial-gradient(80% 40% at 50% 0%, #2f3590 0, transparent 70%), radial-gradient(70% 35% at 50% 100%, rgba(79, 70, 229, .4) 0, transparent 70%), #0b0e29; }
+.shot.is-story .rl-rcard { flex: none; width: 340px; box-shadow: 0 30px 60px -28px rgba(0, 0, 0, .85); }
+.story-head { display: flex; flex-direction: column; align-items: center; gap: 10px; text-align: center; color: #fff; }
+.story-brand { margin: 0; font-size: 13px; font-weight: 800; color: #a5acdf; }
+.story-head em { padding: 4px 12px; border-radius: 99px; font-style: normal; font-size: 13px; font-weight: 900; color: #0b0e29; background: #a5b4fc; }
+.story-head h1 { max-width: 350px; margin: 0; font-size: 21px; font-weight: 900; line-height: 1.32; letter-spacing: -0.02em; word-break: keep-all; text-wrap: balance; }
 .rl-rcard, .rl-rcard.is-legend { animation: none; transform: none; }
 .rl-rc-foil, .rl-rcard.is-legend .rl-rc-foil, .rl-rcard.is-star .rl-rc-foil { animation: none; background-position: 38% 38%; }
 </style>
 </head>
 <body>
 <div class="rk rl shot is-{{ kind }}">
+    {% if kind == 'story' %}
+    <div class="story-head">
+        <p class="story-brand">테크창 야구선수 키우기 · techchang.com</p>
+        <em>{{ card.tier_label }} 은퇴 카드</em>
+        <h1>{{ card.headline.title }}</h1>
+    </div>
+    {% endif %}
     {% include 'community/games/_lite_retire.html' %}
     {% if kind == 'og' %}
     <div class="shot-copy">

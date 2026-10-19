@@ -680,6 +680,8 @@ class CardImageAndHallFilterTests(TestCase):
         self.assertContains(r, '1,500')                                       # 천 단위 쉼표
         self.assertContains(r, f'/rookie/lite/c/{c.pk}/card.png')
         self.assertContains(r, f'/rookie/lite/c/{c.pk}/og.png')               # 링크 미리보기
+        self.assertContains(r, f'/rookie/lite/c/{c.pk}/story.png')            # 인스타그램 스토리
+        self.assertContains(r, 'data-share-label="스토리로 공유"')
 
     def test_png_is_rendered_once_and_cached(self):
         from django.test import override_settings
@@ -699,9 +701,12 @@ class CardImageAndHallFilterTests(TestCase):
                 self.assertEqual(r['Content-Type'], 'image/png')
             r = self.client.get(f'/rookie/lite/c/{c.pk}/og.png', HTTP_USER_AGENT=PC)
             self.assertEqual(r.status_code, 200)
+            r = self.client.get(f'/rookie/lite/c/{c.pk}/story.png', HTTP_USER_AGENT=PC)
+            self.assertEqual(r.status_code, 200)
             r = self.client.get(f'/rookie/lite/c/{c.pk}/card.png?download=1', HTTP_USER_AGENT=PC)
             self.assertIn('attachment', r['Content-Disposition'])
-        self.assertEqual(calls, [((432, 540, 2.5), True), ((1200, 630, 1), True)])   # 한 번 찍으면 다시 안 찍는다
+        self.assertEqual(calls, [((432, 540, 2.5), True), ((1200, 630, 1), True),
+                                 ((432, 768, 2.5), True)])                    # 한 번 찍으면 다시 안 찍는다 · 스토리 1080×1920
 
     def test_png_needs_a_retired_career_and_survives_render_failure(self):
         from django.test import override_settings
@@ -1085,6 +1090,57 @@ class MoneyBalanceTests(TestCase):
             X.buy(c, 'care', 'trainer')
 
 
+class QuitRuleTests(TestCase):
+    """2026-10-19 — 만든 뒤 5시즌 전에는 스스로 은퇴 못 함, 스스로 은퇴하면 5분 동안 새 선수 못 만듦."""
+
+    def _played(self, c, n):
+        for y in range(1, n + 1):
+            LiteSeason.objects.create(career=c, year=y, age=15 + y, league='hs', club=c.club, games=30, awards=[], months=[])
+        c.pending = {'kind': 'plan', 'event': None, 'intl': []}
+        c.save()
+
+    def test_cannot_quit_before_five_seasons(self):
+        c = new('일찍그만', seed=111)
+        self._played(c, 4)
+        self.client.force_login(c.user)
+        self.assertContains(self.client.get('/rookie/lite/', HTTP_USER_AGENT=PC), '5시즌은 뛰어야')
+        self.client.post('/rookie/lite/act/', {'action': 'quit', 'confirm': 'yes'}, HTTP_USER_AGENT=PC)
+        c.refresh_from_db()
+        self.assertIsNone(c.retired_at)
+        LiteSeason.objects.create(career=c, year=5, age=20, league='hs', club=c.club, games=30, awards=[], months=[])
+        self.client.post('/rookie/lite/act/', {'action': 'quit', 'confirm': 'yes'}, HTTP_USER_AGENT=PC)
+        c.refresh_from_db()
+        self.assertIsNotNone(c.retired_at)                                    # 다섯 시즌을 뛰면 그만둘 수 있다
+
+    def test_quitting_blocks_a_new_player_for_five_minutes(self):
+        c = new('스스로은퇴', seed=112)
+        self._played(c, 5)
+        X.retire(c, '스스로')
+        c.save()
+        self.assertGreater(X.quit_wait(LiteCareer.objects.filter(user=c.user)), 280)
+        with self.assertRaises(X.LiteError):
+            X.create(c.user, name='바로또', role='batter', position='SS', style='contact', region='서울', team='lg',
+                     rng=random.Random(1))
+        self.client.force_login(c.user)
+        self.assertContains(self.client.get('/rookie/lite/', HTTP_USER_AGENT=PC), 'data-rl-wait=')
+        LiteCareer.objects.filter(pk=c.pk).update(retired_at=timezone.now() - timedelta(minutes=6))
+        ok = X.create(c.user, name='오분뒤', role='batter', position='SS', style='contact', region='서울', team='lg',
+                      rng=random.Random(1))
+        self.assertEqual(ok.name, '오분뒤')
+
+    def test_game_endings_do_not_start_the_wait(self):
+        c = new('방출선수', seed=113)
+        X.retire(c, '방출')
+        c.save()
+        self.assertEqual(X.quit_wait(LiteCareer.objects.filter(user=c.user)), 0)
+
+
+def _five(c):
+    """스스로 은퇴할 수 있게 고교 시즌 다섯을 채운다(2026-10-19 규칙: 만든 뒤 5시즌 전에는 못 그만둔다)."""
+    for y in range(101, 106):
+        LiteSeason.objects.create(career=c, year=y, age=16, league='hs', club=c.club, games=30, awards=[], months=[])
+
+
 def _pitcher(name):
     c = X.create(member(name), name=name, role='pitcher', position='RP', style='fire', region='서울', team='lg',
                  rng=random.Random(9))
@@ -1138,6 +1194,7 @@ class ViewTests(TestCase):
                                      'region': '부산', 'team': 'lotte', 'name': '두번째', 'number': '7'})
         self.assertFalse(LiteCareer.objects.filter(name='두번째').exists())
         # 은퇴한 손님 판은 명예의 전당에 오르지 않는다
+        _five(career)                                                              # 스스로 은퇴는 다섯 시즌 뒤부터
         c.post('/rookie/lite/act/', {'action': 'quit', 'confirm': 'yes'})
         career.refresh_from_db()
         self.assertIsNotNone(career.retired_at)
@@ -1206,6 +1263,7 @@ class ViewTests(TestCase):
         career.refresh_from_db()
         self.assertEqual(career.pending['kind'], 'plan')
         self.assertEqual(c.get(f'/rookie/lite/c/{career.pk}/', HTTP_USER_AGENT=PC).status_code, 200)
+        _five(career)
         c.post('/rookie/lite/act/', {'action': 'quit'})
         career.refresh_from_db()
         self.assertIsNone(career.retired_at)                                       # 확인 없이 은퇴하지 않는다
@@ -1228,6 +1286,7 @@ class ViewTests(TestCase):
         career.save()
         self.assertRedirects(c.get(f'/rookie/lite/c/{career.pk}/card/'), f'/rookie/lite/c/{career.pk}/',
                              fetch_redirect_response=False)                  # 현역은 카드가 아직 없다
+        _five(career)
         r = c.post('/rookie/lite/act/', {'action': 'quit', 'confirm': 'yes'})
         self.assertRedirects(r, f'/rookie/lite/c/{career.pk}/card/?new=1', fetch_redirect_response=False)
         for ua in (PC, MOBILE):

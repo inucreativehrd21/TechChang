@@ -6,6 +6,7 @@
     {% include 'community/games/_lite_top.html' %}
 
     {% if mode == 'create' %}
+    {% if quit_wait %}<p class="rl-quitwait" data-rl-wait-note>스스로 은퇴하면 5분 동안은 새 선수를 만들 수 없어요. <b data-rl-wait-left>{{ quit_wait_text }}</b> 뒤에 새로 시작할 수 있어요 — 그동안 지난 커리어 카드를 구경해 보세요.</p>{% endif %}
     {% if last and last.c.retired_at %}
     <section class="rk-panel rl-farewell" style="--team: {{ last.team.color }}">
         <p class="rk-fine">지난 커리어</p>
@@ -89,7 +90,7 @@
                 <label class="rk-field is-num"><span>등번호</span><input type="number" name="number" value="0" min="0" max="99" inputmode="numeric"></label>
             </div>
         </section>
-        <div class="rl-cta"><button type="submit" class="gm-btn is-primary is-block">고1 신입으로 야구부에 들어가기</button></div>
+        <div class="rl-cta"><button type="submit" class="gm-btn is-primary is-block"{% if quit_wait %} disabled data-rl-wait="{{ quit_wait }}" data-ready="고1 신입으로 야구부에 들어가기"{% endif %}>{% if quit_wait %}{{ quit_wait_text }} 뒤에 시작할 수 있어요{% else %}고1 신입으로 야구부에 들어가기{% endif %}</button></div>
     </form>
     {% if mine %}
     <h2 class="rk-h2">내 지난 커리어</h2>
@@ -393,9 +394,13 @@
         {% endif %}
         <details class="rk-retire">
             <summary>여기서 은퇴하기</summary>
+            {% if played < quit_min %}
+            <p class="rk-hint">선수를 만든 뒤 {{ quit_min }}시즌은 뛰어야 스스로 은퇴할 수 있어요 — 지금 {{ played }}시즌을 뛰었어요. 게임이 은퇴를 권하거나 방출·나이로 끝나는 건 언제든 그대로예요.</p>
+            {% else %}
             <form method="post" action="{% url 'community:lite_act' %}">{% csrf_token %}<input type="hidden" name="action" value="quit">
-                <label><input type="checkbox" name="confirm" value="yes" required> 커리어를 여기서 마칠게요(되돌릴 수 없어요). 기록은 그대로 남아요.</label>
+                <label><input type="checkbox" name="confirm" value="yes" required> 커리어를 여기서 마칠게요(되돌릴 수 없어요). 기록은 그대로 남아요. 스스로 은퇴하면 5분 동안 새 선수를 만들 수 없어요.</label>
                 <button type="submit" class="gm-btn">은퇴하기</button></form>
+            {% endif %}
         </details>
         </div>
     </div>
@@ -409,6 +414,26 @@
 </div>
 
 <script nonce="{{ csp_nonce }}">
+(function () {
+    // 스스로 은퇴한 뒤 5분 — 남은 시간을 세다가 0이 되면 시작 버튼을 연다
+    var wb = document.querySelector('[data-rl-wait]');
+    if (wb) {
+        var left = parseInt(wb.dataset.rlWait, 10) || 0;
+        var out = document.querySelector('[data-rl-wait-left]');
+        var note = document.querySelector('[data-rl-wait-note]');
+        var show = function () {
+            var mmss = Math.floor(left / 60) + ':' + ('0' + left % 60).slice(-2);
+            if (out) out.textContent = mmss;
+            wb.textContent = mmss + ' 뒤에 시작할 수 있어요';
+        };
+        show();
+        var t = setInterval(function () {
+            left -= 1;
+            if (left <= 0) { clearInterval(t); wb.disabled = false; wb.textContent = wb.dataset.ready; if (note) note.hidden = true; return; }
+            show();
+        }, 1000);
+    }
+})();
 (function () {
     // 새 선수: 고른 투타의 항목만 보이게(자바스크립트가 없으면 모두 보인다)
     var form = document.querySelector('.rk-create');
