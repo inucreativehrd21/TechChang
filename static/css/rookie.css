@@ -1807,3 +1807,14 @@ a.rl-spot.is-bench:hover { transform: none; box-shadow: inset 0 0 0 1px var(--rk
     .rl-cardpage-actions .gm-btn { justify-content: center; }
     .rl-cardpage-actions .gm-btn:nth-child(3) { grid-column: 1 / -1; }
 }
+
+/* 해외 제안 — 나라마다 구단 셋 가운데 고른다(2026-10-19) */
+.rl-abroad-teams { display: flex; flex-direction: column; gap: 6px; margin: 4px 0 2px; }
+.rl-abroad-team { display: block; cursor: pointer; }
+.rl-abroad-team input { position: absolute; opacity: 0; pointer-events: none; }
+.rl-abroad-team span { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border: 1px solid var(--rk-line); border-radius: 10px; font-size: 0.85rem; font-weight: 700; color: var(--rk-ink); background: #fff; }
+.rl-abroad-team .rk-dot { background: var(--team); }
+.rl-abroad-team input:checked + span { border-color: var(--rk-accent); box-shadow: 0 0 0 2px var(--rk-accent-wash); color: var(--rk-accent); }
+.rl-abroad-team input:focus-visible + span { outline: 2px solid var(--rk-accent); outline-offset: 2px; }
+.rl-programs.is-one { grid-template-columns: minmax(0, 1fr); }
+@media (max-width: 900px) and (min-width: 576px) { .rl-programs.is-three > :last-child:nth-child(3) { grid-column: 1 / -1; } }   /* 두 칸이 되면 셋째는 한 줄 전체 */

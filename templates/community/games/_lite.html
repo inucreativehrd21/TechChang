@@ -296,10 +296,9 @@
             </div>
             {% if d.abroad_list %}
             <h3 class="rk-h3">해외에서도 제안이 왔어요</h3>
-            <div class="rl-programs is-two">
+            <div class="rl-programs{% if d.abroad_list|length == 1 %} is-one{% elif d.abroad_list|length == 2 %} is-two{% else %} is-three{% endif %}">
                 {% for x in d.abroad_list %}
-                <form method="post" action="{% url 'community:lite_act' %}" class="rl-pathcard" style="--team: {{ x.team.color }}">{% csrf_token %}<input type="hidden" name="action" value="decide"><input type="hidden" name="what" value="draft"><input type="hidden" name="choice" value="{{ x.system }}">
-                    <b><i class="rk-dot" aria-hidden="true"></i>{{ x.team.name }}</b><span>{{ x.name }} 무대로 가요. 마이너·2군부터 시작해요.</span><button class="gm-btn is-block">{{ x.team.name }}와 계약하기</button></form>
+                {% include 'community/games/_lite_abroad.html' with what='draft' hint='마이너·2군부터 시작해요. 가고 싶은 구단을 골라 주세요.' %}
                 {% endfor %}
             </div>
             {% endif %}
@@ -316,11 +315,21 @@
             {% elif d.what == 'posting' %}
             <div class="rk-head"><h2>포스팅</h2><span class="rk-fine">KBO 7시즌을 채웠어요</span></div>
             {% include 'community/games/_lite_say.html' with who=d.who name=d.who_name role=d.who_role text='해외 구단들이 관심을 보이고 있어요. 포스팅을 신청해 볼까요?' %}
+            {% if d.posting_list %}
+            <div class="rl-programs is-three">
+                {% for x in d.posting_list %}
+                {% if x.system == 'mlb' %}{% include 'community/games/_lite_abroad.html' with what='posting' hint='OVR이 모자라면 트리플A부터 시작해요. 구단을 골라 주세요.' main=True %}
+                {% else %}{% include 'community/games/_lite_abroad.html' with what='posting' hint='NPB 1군에서 시작해요. 구단을 골라 주세요.' %}{% endif %}
+                {% endfor %}
+                {% include 'community/games/_lite_choice.html' with what='posting' choice='stay' label='KBO에 남을게요' hint='FA를 기다려요' %}
+            </div>
+            {% else %}
             <div class="rl-programs is-two">
                 {% include 'community/games/_lite_choice.html' with what='posting' choice='mlb' label='메이저리그에 도전할게요' hint='OVR이 모자라면 트리플A부터 시작해요' main=True %}
                 {% include 'community/games/_lite_choice.html' with what='posting' choice='npb' label='일본으로 갈게요' hint='NPB 1군에서 시작해요' %}
                 {% include 'community/games/_lite_choice.html' with what='posting' choice='stay' label='KBO에 남을게요' hint='FA를 기다려요' %}
             </div>
+            {% endif %}
 
             {% elif d.what == 'fa' %}
             <div class="rk-head"><h2>FA</h2><span class="rk-fine">자유계약선수가 됐어요</span></div>

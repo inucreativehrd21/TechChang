@@ -255,8 +255,8 @@ class DraftTests(TestCase):
         d = p.pending
         self.assertEqual(d['kind'], 'draft')
         self.assertEqual((d['offer']['team'], d['offer']['round']), ('kia', 1))
-        self.assertTrue(d['abroad']['mlb'] and d['abroad']['npb'])     # 상위권 — 가장 높은 곳 + 가끔 한 곳 더
-        self.assertFalse(d['abroad']['cpbl'])
+        self.assertTrue(d['abroad']['mlb'] and d['abroad']['npb'])     # 상위권 — 자격이 되는 나라 모두(2026-10-19)
+        self.assertEqual(len(d['abroad']['mlb']), 3)                     # 나라마다 구단 셋 가운데 고른다
         self.assertTrue(p.logs.filter(kind='career', text__contains='1라운드').exists())
         text = C.decide(p.user, 'sign')
         p.refresh_from_db()

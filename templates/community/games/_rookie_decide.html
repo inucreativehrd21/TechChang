@@ -85,11 +85,13 @@
         <li class="{% if not x.code %}is-none{% endif %}"{% if x.code %} style="--team: {{ x.team.color }}"{% endif %}>
             <span class="rk-abroad-country">{{ x.name }}</span>
             {% if x.code %}
-            <b><i class="rk-dot" aria-hidden="true"></i>{{ x.team.name }}</b>
             <span>{{ x.league }}부터 · 리그 수준 {{ x.level|floatformat:0 }} · 계약 보너스 +{{ d.abroad_bonus }} TP{% if x.hard %} · <strong>지금 OVR로는 버거워요</strong>{% endif %}</span>
             <form method="post" action="{% url 'community:rookie_decide' %}">
-                {% csrf_token %}<input type="hidden" name="choice" value="{{ x.system }}">
-                <button type="submit" class="gm-btn is-block">{% if d.offer %}지명 거절하고 {% endif %}{{ x.team.name }}와 계약</button>
+                {% csrf_token %}
+                <div class="rl-abroad-teams" role="radiogroup" aria-label="{{ x.name }} 구단">
+                    {% for t in x.teams %}<label class="rl-abroad-team" style="--team: {{ t.color }}"><input type="radio" name="choice" value="{{ x.system }}:{{ t.code }}"{% if forloop.first %} checked{% endif %}><span><i class="rk-dot" aria-hidden="true"></i>{{ t.name }}</span></label>{% endfor %}
+                </div>
+                <button type="submit" class="gm-btn is-block">{% if d.offer %}지명 거절하고 {% endif %}{{ x.name }} 구단과 계약</button>
             </form>
             {% else %}
             <span>제안 없음 — 드래프트 평가 {{ x.need }} 이상이면 스카우트가 와요.</span>

@@ -474,8 +474,9 @@ def run_draft(p, day: date, rng) -> str:
         k = rng.randint(1, 10)
         offer = {'team': team, 'round': rnd, 'in_round': k, 'pick': (rnd - 1) * 10 + k}
     ok = [s for s in ABROAD if score >= ABROAD_AT[s] and scout >= ABROAD_POT[s]]
-    picked = ok[:1] + ([ok[1]] if len(ok) > 1 and rng.random() < 0.25 else [])     # 보통 한 나라, 가끔 한 곳 더
-    abroad = {s: (rng.choice(W.SYSTEM_TEAMS[s])[0] if s in picked else '') for s in ABROAD}
+    # 자격이 되는 나라는 모두, 나라마다 구단 셋 가운데 고른다(2026-10-19 사용자 피드백: 해외 진출 때 뜨는 팀만 뜬다)
+    from .rookie_lite import abroad_teams
+    abroad = {s: (abroad_teams(s, rng) if s in ok else []) for s in ABROAD}
     season = L.season_no(day) or 1
     p.pending = {'kind': 'draft', 'from': src, 'season': season, 'score': round(score, 1), 'offer': offer,
                  'abroad': abroad, 'deadline': (day + timedelta(days=DECIDE_DAYS)).isoformat()}
@@ -537,10 +538,13 @@ def decide_now(p, choice: str, day: date, rng, school: str = '') -> str:
             raise R.GameError('지명을 받았으니 정식 계약을 할 수 있어요.')
         name = W.PRO_TEAM[p.team]['name']
         join_pro(p, 'kbo3', p.team, day, f'{name} 육성선수 계약 — 육성군에서 정식 선수 등록을 노려요')
-    elif choice in ABROAD:
-        team = abroad.get(choice)
-        if not team:
+    elif choice.partition(':')[0] in ABROAD:
+        choice, _sep, pick = choice.partition(':')
+        got = abroad.get(choice)
+        teams = ([got] if got else []) if isinstance(got, str) else list(got or [])   # 예전 제안은 구단 하나(문자열)
+        if not teams:
             raise R.GameError(f'{W.SYSTEM_NAME[choice]} 구단의 제안이 없어요.')
+        team = pick if pick in teams else teams[0]
         league = first_pro_league(choice, p.ovr, college=pend.get('from') == 'univ')
         join_pro(p, league, team, day, f"{W.SYSTEM_NAME[choice]} 진출 — {W.PRO_TEAM[team]['name']}와 계약, {W.short(league)}부터",
                  bonus=SIGN_BONUS[1][1])
@@ -760,9 +764,12 @@ def career_view(p, today: date | None = None) -> dict:
         left = (_deadline(pend, today) - today).days
         abroad = []
         for s in ABROAD:
-            team = (pend.get('abroad') or {}).get(s, '')
+            got = (pend.get('abroad') or {}).get(s) or []
+            teams = [got] if isinstance(got, str) else list(got)           # 예전 제안은 구단 하나(문자열)
+            team = teams[0] if teams else ''
             first = first_pro_league(s, p.ovr, college=pend.get('from') == 'univ')
             abroad.append({'system': s, 'name': W.SYSTEM_NAME[s], 'team': W.PRO_TEAM.get(team, {}), 'code': team,
+                           'teams': [W.PRO_TEAM[t] for t in teams],
                            'league': W.league(first)['name'], 'level': W.level(first), 'need': ABROAD_AT[s],
                            'hard': p.ovr < W.level(first) - 6})
         univ = []

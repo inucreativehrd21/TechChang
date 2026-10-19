@@ -2098,7 +2098,7 @@ def next_step(c, rng, skip_meeting: bool = False) -> dict:
         return {'kind': 'decision', 'what': 'return', 'offers': return_offers(c, rng), 'system': W.system_of(code)}
     if W.system_of(code) == 'kbo' and flags.get('kbo_years', 0) >= 7 and not flags.get('posted') \
             and c.ovr >= W.level('mlb') - 3:
-        return {'kind': 'decision', 'what': 'posting'}
+        return {'kind': 'decision', 'what': 'posting', 'teams': {s: abroad_teams(s, rng) for s in ('mlb', 'npb')}}
     if W.system_of(code) == 'kbo' and flags.get('kbo_years', 0) >= 9 and not flags.get('fa') and code == 'kbo1':
         return {'kind': 'decision', 'what': 'fa', 'offers': fa_offers(c, rng)}
     if awaken_ready(c):
@@ -2200,12 +2200,8 @@ def draft_offer(c, src: str, rng) -> dict:
         team = c.team if rng.random() < want else rng.choice([t for t, _n, _col in W.KBO_TEAMS if t != c.team])
         k = rng.randint(1, 10)
         offer = {'team': team, 'round': rnd, 'in_round': k, 'pick': (rnd - 1) * 10 + k}
-    abroad = {}
-    for sysname, at in (('mlb', 68), ('npb', 65), ('cpbl', 60)):
-        if score >= at and (sysname != 'mlb' or scout >= 80):
-            abroad[sysname] = rng.choice(W.SYSTEM_TEAMS[sysname])[0]
-            if len(abroad) >= (2 if rng.random() < 0.25 else 1):
-                break
+    abroad = {sysname: abroad_teams(sysname, rng) for sysname, at in (('mlb', 68), ('npb', 65), ('cpbl', 60))
+              if score >= at and (sysname != 'mlb' or scout >= 80)}
     univs = []
     if src == 'hs':
         names = [s for _r, s in W.schools('univ')]
@@ -2217,6 +2213,27 @@ def draft_offer(c, src: str, rng) -> dict:
 
 
 ABROAD = ('mlb', 'npb', 'cpbl')
+# 해외 제안은 나라마다 구단 셋 가운데 고른다(2026-10-19 사용자 피드백: 포스팅·해외 진출 때 뜨는 팀만 뜬다 —
+# 운영 데이터는 고르게 섞였지만 나라마다 한 구단만 보여 주고 포스팅은 구단을 보여 주지도 않았다). 자격이 되는 나라는 모두 보여 준다.
+ABROAD_PICKS = 3
+
+
+def abroad_teams(sysname: str, rng, n: int = ABROAD_PICKS) -> list:
+    pool, picks = [t for t, _n, _col in W.SYSTEM_TEAMS[sysname]], []
+    while pool and len(picks) < n:                                      # random() 만 쓴다(테스트의 가짜 rng 도 되게)
+        picks.append(pool.pop(int(rng.random() * len(pool)) % len(pool)))
+    return picks
+
+
+def _teams_of(v) -> list:
+    """예전 결정 화면은 나라마다 구단 하나(문자열) — 목록으로 맞춘다."""
+    return [v] if isinstance(v, str) else list(v or [])
+
+
+def _split_pick(choice: str) -> tuple:
+    """'mlb:nyy' → ('mlb', 'nyy'), 'mlb' → ('mlb', '')."""
+    sysname, _sep, team = (choice or '').partition(':')
+    return sysname, team
 
 
 def return_offers(c, rng) -> list:
@@ -2244,10 +2261,14 @@ def fa_offers(c, rng) -> list:
     rich = {'key': 'move', 'team': rng.choice([t for t, _n, _col in W.KBO_TEAMS if t != c.club]), 'years': 4,
             'annual': int(base * 1.2)}
     out = [stay, rich]
+    mlb_pay, npb_pay = 120000 + int(c.ovr - 65) * 30000, 20000 + int(c.ovr - 60) * 4000
     if c.ovr >= W.level('mlb') - 2:
-        out.append({'key': 'mlb', 'team': rng.choice(W.MLB_TEAMS)[0], 'years': 2, 'annual': 120000 + int(c.ovr - 65) * 30000})
+        for i, t in enumerate(abroad_teams('mlb', rng, 2)):
+            out.append({'key': 'mlb' if not i else f'mlb{i + 1}', 'team': t, 'years': 2 + i, 'annual': int(mlb_pay * (1 - 0.1 * i))})
+        out.append({'key': 'npb', 'team': abroad_teams('npb', rng, 1)[0], 'years': 2, 'annual': npb_pay})
     elif c.ovr >= W.level('npb1') - 1:
-        out.append({'key': 'npb', 'team': rng.choice(W.NPB_TEAMS)[0], 'years': 2, 'annual': 20000 + int(c.ovr - 60) * 4000})
+        for i, t in enumerate(abroad_teams('npb', rng, 2)):
+            out.append({'key': 'npb' if not i else f'npb{i + 1}', 'team': t, 'years': 2 + i, 'annual': int(npb_pay * (1 - 0.1 * i))})
     return out
 
 
@@ -2315,10 +2336,12 @@ def decide(c, what: str, choice: str, rng, school: str = '') -> str:
             c.league, c.club = 'kbo3', c.team
             text = f"{W.PRO_TEAM[c.team]['name']}와 육성선수 계약을 맺었어요"
             news.append(press('', f"드래프트 미지명 {nm}, {W.PRO_TEAM[c.team]['short']} 육성선수로 재도전"))
-        elif choice in abroad:
+        elif _split_pick(choice)[0] in abroad:
+            choice, pick = _split_pick(choice)
+            teams = _teams_of(abroad[choice])
             ladder = W.SYSTEMS[choice]
             c.league = ladder[1] if college and choice == 'mlb' else ladder[0]
-            c.club = abroad[choice]
+            c.club = pick if pick in teams else teams[0]
             text = f"{W.SYSTEM_NAME[choice]}{josa(W.SYSTEM_NAME[choice], '으로/로')} 진출했어요 — {W.PRO_TEAM[c.club]['name']}"
             news.append(press('[오피셜]', f"{W.club_short(pend.get('from') or 'hs', old_club)} {nm}, {W.PRO_TEAM[c.club]['name']} 계약…{W.SYSTEM_NAME[choice]} 직행"))
         elif choice == 'univ' and not college and school in (pend.get('univs') or []):
@@ -2346,13 +2369,16 @@ def decide(c, what: str, choice: str, rng, school: str = '') -> str:
             raise LiteError('그 길은 지금 고를 수 없어요.')
     elif what == 'posting':
         flags['posted'] = True
+        choice, pick = _split_pick(choice)
+        teams = _teams_of((pend.get('teams') or {}).get(choice)) or (abroad_teams(choice, rng) if choice in ('mlb', 'npb') else [])
+        pick = pick if pick in teams else (teams[0] if teams else '')
         if choice == 'mlb':
             c.league = 'mlb' if c.ovr >= W.level('mlb') - 1 else 'mlb_aaa'
-            c.club = rng.choice(W.MLB_TEAMS)[0]
+            c.club = pick
             text = f"포스팅으로 {W.PRO_TEAM[c.club]['name']}에 입단했어요!"
             news.append(press('[속보]', f"{nm}, 포스팅으로 {W.PRO_TEAM[c.club]['name']} 입단…‘꿈의 무대로’"))
         elif choice == 'npb':
-            c.league, c.club = 'npb1', rng.choice(W.NPB_TEAMS)[0]
+            c.league, c.club = 'npb1', pick
             text = f"포스팅으로 {W.PRO_TEAM[c.club]['name']}에 입단했어요!"
             news.append(press('[속보]', f"{nm}, 포스팅으로 {W.PRO_TEAM[c.club]['name']} 입단…‘일본 무대 도전’"))
         elif choice == 'stay':
@@ -2364,9 +2390,9 @@ def decide(c, what: str, choice: str, rng, school: str = '') -> str:
         deal = next((o for o in pend.get('offers') or [] if o['key'] == choice), None)
         if not deal:
             raise LiteError('계약 조건을 다시 골라 주세요.')
-        if deal['key'] == 'mlb':
+        if deal['key'].startswith('mlb'):
             c.league = 'mlb' if c.ovr >= W.level('mlb') - 1 else 'mlb_aaa'
-        elif deal['key'] == 'npb':
+        elif deal['key'].startswith('npb'):
             c.league = 'npb1'
         c.club = deal['team']
         flags['contract'] = {'years': deal['years'], 'annual': deal['annual']}
@@ -2511,7 +2537,11 @@ def decision_view(c) -> dict | None:
     v['who_name'], v['who_role'] = who_is(c, v['who'])
     if pend.get('what') == 'draft':
         v['team'] = W.PRO_TEAM.get((pend.get('offer') or {}).get('team', ''), {})
-        v['abroad_list'] = [{'system': k, 'name': W.SYSTEM_NAME[k], 'team': W.PRO_TEAM[t]} for k, t in (pend.get('abroad') or {}).items()]
+        v['abroad_list'] = [{'system': k, 'name': W.SYSTEM_NAME[k], 'teams': [W.PRO_TEAM[t] for t in _teams_of(ts)]}
+                            for k, ts in (pend.get('abroad') or {}).items()]
+    if pend.get('what') == 'posting':
+        v['posting_list'] = [{'system': k, 'name': W.SYSTEM_NAME[k], 'teams': [W.PRO_TEAM[t] for t in _teams_of(ts)]}
+                             for k, ts in (pend.get('teams') or {}).items()]
     if pend.get('what') == 'fa':
         v['offer_list'] = [dict(o, team_name=W.PRO_TEAM[o['team']]['name'], money=man(o['annual']),
                                 total=man(o['annual'] * o['years'])) for o in pend.get('offers') or []]

@@ -1134,6 +1134,61 @@ class QuitRuleTests(TestCase):
         self.assertEqual(X.quit_wait(LiteCareer.objects.filter(user=c.user)), 0)
 
 
+class AbroadChoiceTests(TestCase):
+    """2026-10-19 사용자 피드백(포스팅·해외 진출 때 뜨는 팀만 뜬다) — 나라마다 구단 셋 가운데 고른다."""
+
+    def test_draft_offers_every_eligible_country_with_three_teams(self):
+        c = new('해외유망', seed=120)
+        c.potential, c.ovr = 92, 75.0
+        c.stats = {k: 75.0 for k in c.stats}
+        c.grade = 4
+        c.save()
+        pend = X.draft_offer(c, 'hs', random.Random(3))
+        self.assertTrue(pend['abroad'])
+        for sysname, teams in pend['abroad'].items():
+            self.assertEqual(len(set(teams)), min(3, len(W.SYSTEM_TEAMS[sysname])))
+        sysname = list(pend['abroad'])[0]
+        pick = pend['abroad'][sysname][2]
+        c.pending = pend
+        X.decide(c, 'draft', f'{sysname}:{pick}', random.Random(1))
+        self.assertEqual(c.club, pick)                                        # 고른 구단으로
+
+    def test_old_single_team_offer_still_works(self):
+        c = new('예전제안', seed=121)
+        c.pending = {'kind': 'decision', 'what': 'draft', 'from': 'hs', 'score': 70, 'offer': None, 'abroad': {'npb': 'hanshin'}}
+        X.decide(c, 'draft', 'npb', random.Random(1))
+        self.assertEqual((c.league, c.club), ('npb2', 'hanshin'))
+
+    def test_posting_lets_you_pick_the_team(self):
+        c = pro('포스팅선택', seed=122, ovr=80.0)
+        c.flags = dict(c.flags, kbo_years=8)
+        c.pending = {'kind': 'decision', 'what': 'posting', 'teams': {'mlb': ['nyy', 'lad', 'sf'], 'npb': ['hanshin', 'yomiuri', 'seibu']}}
+        X.decide(c, 'posting', 'npb:seibu', random.Random(1))
+        self.assertEqual((c.league, c.club), ('npb1', 'seibu'))
+        old = pro('예전포스팅', seed=123, ovr=80.0)
+        old.pending = {'kind': 'decision', 'what': 'posting'}                 # 구단 목록이 없던 때 — 그 나라에서 아무 구단
+        X.decide(old, 'posting', 'mlb', random.Random(1))
+        self.assertIn(old.club, [t for t, _n, _c in W.MLB_TEAMS])
+        self.client.force_login(c.user)
+        c.pending = {'kind': 'decision', 'what': 'posting', 'teams': {'mlb': ['nyy', 'lad', 'sf'], 'npb': ['hanshin', 'yomiuri', 'seibu']}}
+        c.save()
+        r = self.client.get('/rookie/lite/', HTTP_USER_AGENT=PC)
+        self.assertContains(r, 'value="mlb:lad"')
+        self.assertContains(r, '한신 타이거스')
+
+    def test_fa_brings_two_teams_from_the_top_market(self):
+        c = pro('FA두곳', seed=124, ovr=90.0)
+        LiteSeason.objects.create(career=c, year=1, age=28, league='kbo1', club='lg', games=144, war=6.0)
+        offers = X.fa_offers(c, random.Random(2))
+        mlb = [o for o in offers if o['key'].startswith('mlb')]
+        self.assertEqual(len(mlb), 2)
+        self.assertNotEqual(mlb[0]['team'], mlb[1]['team'])
+        c.pending = {'kind': 'decision', 'what': 'fa', 'offers': offers}
+        X.decide(c, 'fa', 'mlb2', random.Random(1))
+        self.assertEqual(c.club, mlb[1]['team'])
+        self.assertIn(c.league, ('mlb', 'mlb_aaa'))
+
+
 def _five(c):
     """스스로 은퇴할 수 있게 고교 시즌 다섯을 채운다(2026-10-19 규칙: 만든 뒤 5시즌 전에는 못 그만둔다)."""
     for y in range(101, 106):
