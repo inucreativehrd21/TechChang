@@ -134,7 +134,7 @@ class CapTests(TestCase):
         p.age = 35
         self.assertLess(kid_eff, peak)                                       # 몸이 덜 자란 학생은 효율이 낮다
         self.assertGreater(peak, C.age_mult(p))
-        self.assertEqual(C.decline_start(p), 31)
+        self.assertEqual(C.decline_start(p), 33)                             # 2026-10-19 노쇠 2년 늦춤
         self.assertEqual(C.decay_for(p, R.BASE_DECAY, 'contact'), R.BASE_DECAY)
         self.assertGreater(C.decay_for(p, R.BASE_DECAY, 'power'), R.BASE_DECAY)   # 몸 능력은 노쇠
         p.traits = ['iron']

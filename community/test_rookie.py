@@ -462,12 +462,13 @@ class MainFromLiteTests(TestCase):
         young = adult(R.create(member('어린이', '어린이'), name='어린이', role='batter', team='lg', region='서울'), age=20, potential=70)
         young.stats = {k: C.stat_cap(young, k) for k in young.stats}
         self.assertFalse(C.awaken_ready(young))                        # 나이 한계가 아직 오르는 중
-        cap = C.stat_cap(p, 'power')
+        cap, gain = C.stat_cap(p, 'power'), C.awaken_gain(p)
         lucky = type('Lucky', (), {'random': lambda self: 0.0})()
         r = R.awaken(u, 'try', rng=lucky)
         p.refresh_from_db()
         self.assertEqual(C.awakened(p), 1)
-        self.assertEqual(C.stat_cap(p, 'power'), cap + C.AWAKEN_PLUS)     # 보라색 별 = 한계 +4
+        self.assertEqual(C.stat_cap(p, 'power'), cap + gain)              # 보라색 별 = 한 칸 위 별의 잠재력까지
+        self.assertEqual(C.base_stars(p) + C.awakened(p), 2)                  # 별 하나짜리(잠재력 70)가 둘로
         self.assertEqual(p.tp, 400 - C.AWAKEN_COST)
         self.assertTrue(p.career['awaken_fx']['ok'])
         self.assertIn('각성에 성공', r['text'])
@@ -533,3 +534,68 @@ class MainFromLiteTests(TestCase):
         r = self.client.get('/rookie/records/?view=hof&lg=kbo1', HTTP_USER_AGENT=PC)
         self.assertContains(r, '역대 베스트 라인업')
         self.assertContains(r, '라인업정식')
+
+
+class AwakenRedesignTests(TestCase):
+    """2026-10-19 각성 개편 — 별 다섯 칸 고정(보라색이 빈 칸을 채운다), 성적이 좋으면 한계 전에도 기회."""
+
+    def _p(self, name, potential, age=26, tp=2000):
+        from community import rookie_career as C
+        u = member(name, name)
+        p = adult(R.create(u, name=name, role='batter', team='lg', region='서울', focus='contact'), age=age,
+                  potential=potential, league='kbo1', club='lg', tp=tp)
+        p.stats = {k: C.stat_cap(p, k) for k in p.stats}
+        p.save()
+        return u, p
+
+    def test_one_star_can_climb_to_five_and_stops_there(self):
+        from community import rookie_career as C
+        u, p = self._p('한별', 70)
+        lucky = type('Lucky', (), {'random': lambda self: 0.0})()
+        seen = []
+        for _ in range(6):
+            p.refresh_from_db()
+            p.career = {k: v for k, v in (p.career or {}).items() if k != 'awaken_next'}   # 기다리는 날은 건너뛴다
+            p.stats = {k: C.stat_cap(p, k) for k in p.stats}
+            p.save()
+            if not C.awaken_ready(p):
+                break
+            R.awaken(u, 'try', rng=lucky)
+            p.refresh_from_db()
+            seen.append(C.base_stars(p) + C.awakened(p))
+        self.assertEqual(seen, [2, 3, 4, 5])                                 # 다섯 칸에서 멈춘다
+        self.assertEqual(C.pot_eff(p), C.STAR_FLOOR[5])
+        five = self._p('다섯별', 95)[1]
+        self.assertFalse(C.awaken_ready(five))                                # 처음부터 다섯이면 기회 없음
+
+    def test_hard_work_and_form_open_the_door_before_the_wall(self):
+        from community import rookie_career as C
+        u, p = self._p('열일', 80, age=19)
+        p.stats = {k: C.stat_cap(p, k) - 2.0 for k in p.stats}                # 한계 가까이(평균 2 모자람)
+        p.save()
+        with mock.patch.object(C, 'performance', return_value=1.2):
+            self.assertTrue(C.awaken_ready(p))
+        with mock.patch.object(C, 'performance', return_value=0.1):
+            self.assertFalse(C.awaken_ready(p))                               # 성적이 받쳐 줘야
+        p.stats = {k: C.stat_cap(p, k) - 8.0 for k in p.stats}
+        with mock.patch.object(C, 'performance', return_value=2.0):
+            self.assertFalse(C.awaken_ready(p))                               # 덜 키웠으면 안 된다
+
+    def test_little_league_pitcher_throws_like_a_kid(self):
+        from community import rookie_sim as M
+        self.assertLess(M.top_speed(33, 12), 100)
+        self.assertGreater(M.top_speed(33, 12), 80)
+        self.assertEqual(M.top_speed(60, 25), M.top_speed(60))
+        self.assertLess(M.top_speed(55, 17), 140)
+
+
+class NameRuleTests(TestCase):
+    def test_main_game_refuses_politician_names(self):
+        with self.assertRaises(R.GameError):
+            R.create(member('정치이름', '정치이름'), name='문재인', role='batter', team='lg', region='서울')
+        r = self.client
+        u = member('폼정치', '폼정치')
+        r.force_login(u)
+        r.post('/rookie/create/', {'name': '전두환', 'role': 'batter', 'team': 'lg', 'region': '서울', 'number': '1',
+                                   'focus': 'contact', 'position': 'SS'})
+        self.assertFalse(RookiePlayer.objects.filter(user=u).exists())

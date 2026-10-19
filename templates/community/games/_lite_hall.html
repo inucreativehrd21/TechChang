@@ -12,7 +12,7 @@
         <p class="rl-filter-count" aria-live="polite">{% if role == 'pitcher' %}투수{% elif role == 'batter' %}타자{% else %}선수{% endif %} {{ rows|length }}명</p>
     </form>
     {% if lineup and lineup.filled %}{% include 'community/games/_lite_lineup.html' %}{% endif %}
-    <p class="rk-note">{{ tab_name }} 리그에서 뛴 시즌만 세서, MVP → 최고 OVR → 수상 → 프로 WAR 순으로 세웠어요. 로그인한 커리어만 올라요.</p>
+    <p class="rk-note">{{ tab_name }} 리그에서 뛴 시즌만 세서, MVP → 최고 OVR → 수상 → 프로 WAR 순으로 세웠어요. 로그인한 커리어만 올라요. 1.0 출시(2026년 10월 19일) 뒤에 시작한 커리어부터 새로 세요 — 그 전 커리어의 은퇴 카드는 카드 보관함에 그대로 있어요.</p>
     {% if rows %}
     <div class="rk-table-wrap">
         <table class="rk-table rk-career-table rl-hall">

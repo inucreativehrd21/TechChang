@@ -630,7 +630,7 @@ class AgingAndIntlTests(TestCase):
         self.assertLess(body[36], skill[36])                                 # 몸이 먼저
         self.assertGreater((skill[33] - skill[36]) / 3, (skill[28] - skill[33]) / 5)   # 해마다 더 빨리 빠진다
         young = next(v for at, v in X.AGE_TRAIN if 25 <= at)
-        old = next(v for at, v in X.AGE_TRAIN if 37 <= at)
+        old = next(v for at, v in X.AGE_TRAIN if 39 <= at)                 # 노쇠 2년 늦춤(2026-10-19) 뒤 기준
         self.assertLess(old, young / 4)                                      # 나이 들면 훈련으로 노쇠를 못 메운다
 
     def test_veteran_far_below_the_top_league_gets_released(self):
@@ -766,11 +766,11 @@ class SixthBatchTests(TestCase):
         c.flags = dict(c.flags, served=True)
         pend = X.next_step(c, rng, skip_meeting=True)
         self.assertEqual(pend['what'], 'awaken')
-        before = X.stat_pot(c, 'contact')
+        before, gain = X.stat_pot(c, 'contact'), X.awaken_gain(c)
         c.pending = dict(pend, odds=1.0)
         X.decide(c, 'awaken', 'try', rng)
         self.assertEqual(X.awakened(c), 1)
-        self.assertEqual(X.stat_pot(c, 'contact'), before + X.AWAKEN_PLUS)    # 한계가 올라갔다(별은 그대로)
+        self.assertEqual(X.stat_pot(c, 'contact'), before + gain)             # 한 칸 위 별의 잠재력까지
         self.assertTrue(c.flags['awaken_fx']['ok'])
         self.assertEqual(c.pending['kind'], 'plan')
         self.assertFalse(X.awaken_ready(c))                                   # 두 시즌 쉬었다가
@@ -825,6 +825,68 @@ class SixthBatchTests(TestCase):
         r = self.client.get('/games/', HTTP_USER_AGENT=PC)
         self.assertContains(r, 'data-game-window')
         self.assertContains(r, "window.name === 'tc-game'")
+
+
+class AwakenRedesignLiteTests(TestCase):
+    """2026-10-19 각성 개편(라이트) — 별 다섯 칸, 성적이 좋으면 한계 전에도, 노쇠 2년 늦춤."""
+
+    def test_stars_fill_empty_slots_up_to_five(self):
+        rng = random.Random(70)
+        c = pro('한칸씩', seed=70, ovr=60.0, age=24)
+        c.potential = 55
+        c.flags = dict(c.flags, served=True)
+        totals = []
+        for _ in range(6):
+            c.flags.pop('awaken_next', None)
+            c.stats = {k: X.stat_pot(c, k) for k in c.stats}
+            if not X.awaken_ready(c):
+                break
+            c.pending = {'kind': 'decision', 'what': 'awaken', 'odds': 1.0}
+            X.decide(c, 'awaken', 'try', rng)
+            totals.append(X.base_stars(c) + X.awakened(c))
+        self.assertEqual(totals, [2, 3, 4, 5])
+        self.assertEqual(X.pot_eff(c), X.STAR_FLOOR[5])
+
+    def test_form_opens_awakening_before_every_stat_is_capped(self):
+        c = pro('폼좋음', seed=71, ovr=60.0, age=25)
+        c.potential = 66
+        c.flags = dict(c.flags, served=True)
+        c.stats = {k: X.stat_pot(c, k) - 3.0 for k in c.stats}
+        c.save()
+        LiteSeason.objects.create(career=c, year=c.year - 1 if c.year > 1 else 1, age=24, league='kbo1', club='lg', games=144,
+                                  totals={'pa': 600, 'ab': 520, 'h': 180, 'hr': 30, 'bb': 70, '2b': 35})
+        self.assertTrue(X.awaken_ready(c))
+        LiteSeason.objects.filter(career=c).update(totals={'pa': 600, 'ab': 560, 'h': 120, 'hr': 5, 'bb': 20})
+        self.assertFalse(X.awaken_ready(c))                                  # 성적이 안 받쳐 주면 아직
+
+    def test_decline_starts_two_years_later(self):
+        c = pro('노쇠늦게', seed=72, ovr=80.0, age=27)
+        c.traits = []
+        self.assertEqual(X.frac(c, 'power', 30), X.frac(c, 'power', 28))       # 서른까지 꼭짓점
+        self.assertGreater(X.frac(c, 'power', 31) - X.frac(c, 'power', 33), 0.04)   # 서른둘부터 본격적으로
+
+
+class LaunchTests(TestCase):
+    """1.0 출시 — 정치인·대통령 이름 금지, 명예의 전당은 출시 뒤 커리어부터."""
+
+    def test_politician_names_are_refused(self):
+        for bad in ('윤석열', '이재명 ', '박정희짱', 'Trump'):
+            with self.assertRaises(X.LiteError):
+                X.create(member(f'금지{len(bad)}{bad[:1]}'), name=bad, role='batter', position='SS', style='contact',
+                         region='서울', team='lg', rng=random.Random(1))
+        ok = X.create(member('보통이름'), name='김민석', role='batter', position='SS', style='contact', region='서울',
+                      team='lg', rng=random.Random(1))
+        self.assertEqual(ok.name, '김민석')
+
+    def test_hall_counts_only_careers_after_launch(self):
+        old = new('출시전')
+        LiteSeason.objects.create(career=old, year=1, age=24, league='kbo1', club='lg', games=144, war=5.0)
+        old.retired_at = timezone.now()
+        old.save()
+        self.assertEqual([r['c'].name for r in X.hall()], ['출시전'])         # 출시 뒤 커리어는 오른다
+        LiteCareer.objects.filter(pk=old.pk).update(created_at=X.HALL_SINCE - timedelta(days=1))
+        self.assertEqual([r['c'].name for r in X.hall()], [])
+        self.assertEqual(self.client.get(f'/rookie/lite/c/{old.pk}/card/', HTTP_USER_AGENT=PC).status_code, 200)  # 카드는 남는다
 
 
 def _pitcher(name):

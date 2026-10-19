@@ -29,12 +29,14 @@ from __future__ import annotations
 
 import math
 import random
+from datetime import datetime
 
 from django.db import transaction
 from django.utils import timezone
 
 from . import rookie as R
 from . import rookie_league as L
+from . import rookie_names as N
 from . import rookie_sim as M
 from . import rookie_staff as S
 from . import rookie_world as W
@@ -43,17 +45,18 @@ START_AGE, RETIRE_FROM, RETIRE_AT = 16, 34, 42
 BASE_YEAR = 2026                 # 예전 커리어(flags.start 없음)의 고1 시즌 달력 연도
 POT_MEAN, POT_SD, POT_RANGE = 65, 7, (50, 92)
 HS_COMPETE = 3.0          # 강호 고교는 주전 경쟁이 세다 — 보직을 정할 때 리그 수준을 이만큼 높게 본다(학교를 고르게 되며 강호만 고르지 않게)
-# 나이별 잠재력 몫 — 27·28세가 꼭짓점. 서른 넘어 해마다 더 빨리 빠진다(2026-10-18 노쇠 조정: 예전엔 잠재력 80 선수가
-# 마흔까지 1군 수준을 지켜 통산 400승·4,000안타가 나왔다. 지금은 잠재력 70이 33세, 80이 36세 무렵까지)
+# 나이별 잠재력 몫 — 27~30세가 꼭짓점, 서른둘부터 해마다 더 빨리 빠진다(2026-10-18 노쇠 조정, 2026-10-19 사용자 요청으로
+# 노쇠 시작을 2년 늦춤: 예전엔 잠재력 80 선수가 마흔까지 1군 수준을 지켜 통산 400승이 나왔다)
 CURVE = {16: .55, 17: .61, 18: .67, 19: .72, 20: .77, 21: .81, 22: .85, 23: .88, 24: .91, 25: .93, 26: .95,
-         27: .96, 28: .96, 29: .95, 30: .93, 31: .90, 32: .86, 33: .82, 34: .77, 35: .72, 36: .66, 37: .60,
-         38: .54, 39: .48, 40: .43, 41: .38, 42: .34, 43: .30}
+         27: .96, 28: .96, 29: .96, 30: .96, 31: .95, 32: .93, 33: .90, 34: .86, 35: .82, 36: .77, 37: .72,
+         38: .66, 39: .60, 40: .54, 41: .48, 42: .43, 43: .38}
+DECLINE_FROM = 32           # 이 나이부터 곡선이 빠지는 만큼 능력에 반영(기술은 SKILL_KEEP, 몸은 PHYS_KEEP 배)
 PHYS = ('velocity', 'stamina', 'power', 'speed')
 # 서른 넘어 빠지는 몫 — 곡선이 빠지는 만큼에 곱한다(기술은 천천히, 몸은 빨리, 강철 체력은 몸도 천천히)
 SKILL_KEEP, PHYS_KEEP, IRON_KEEP = 0.85, 1.2, 0.9
 # 나이별 훈련 효과 — (이 나이까지, 배율). 나이 들수록 훈련으로 노쇠를 메우기 어렵다(예전엔 서른 넘어도 0.6 이라 빠진 만큼 도로 채웠다)
-AGE_TRAIN = ((22, 1.2), (27, 1.0), (30, 0.75), (33, 0.5), (36, 0.3), (99, 0.15))
-VET_CUT = 34                # 이 나이부터 1군 수준에서 크게 밀린 베테랑은 시즌 뒤 방출될 수 있다(2군에서 마흔둘까지 버티며 기록만 쌓지 않게)
+AGE_TRAIN = ((22, 1.2), (29, 1.0), (32, 0.75), (35, 0.5), (38, 0.3), (99, 0.15))
+VET_CUT = 35                # 이 나이부터 1군 수준에서 크게 밀린 베테랑은 시즌 뒤 방출될 수 있다(2군에서 마흔둘까지 버티며 기록만 쌓지 않게)
 PLUS, MINUS = 5.0, 6.0                     # 스타일 강점 능력 잠재력 +5, 약점 −6
 GAMES = {'hs': 30, 'univ': 40, 'kbo3': 60, 'kbo2': 100, 'kbo1': 144, 'mlb_a': 120, 'mlb_aa': 130, 'mlb_aaa': 140,
          'mlb': 162, 'npb2': 100, 'npb1': 143, 'cpbl': 120}
@@ -140,18 +143,38 @@ def man(n: int) -> str:
 
 
 # ───────────────────────────── 선수 만들기
-# 각성(2026-10-19 사용자 요청: 잠재력이 낮아 다섯 능력이 모두 한계에 막히면 각성 이벤트, 성공하면 보라색 별로 한계를 넘는다)
-# 스카우트 별(잠재력)은 그대로 두고, 각성 한 번마다 모든 능력의 한계가 AWAKEN_PLUS 만큼 올라간다(보라색 별 하나).
-AWAKEN_PLUS, AWAKEN_MAX, AWAKEN_AGE, AWAKEN_WAIT = 6.0, 2, 33, 2
+# 각성(2026-10-19 사용자 요청, 같은 날 개편) — 별은 다섯 칸으로 고정이고, 스카우트 별(잠재력) 다음 빈 칸을 보라색 별로 채운다.
+# 한 번 각성하면 잠재력이 한 칸 위 별의 문턱(STAR_FLOOR)까지 오른다 — 별 하나짜리도 다섯 개까지 도전할 수 있다.
+# 기회: 다섯 능력이 모두 한계일 때, 또는 잠재력 가까이(평균 AWAKEN_NEAR 안쪽)까지 열심히 키우고 지난 시즌 성적이 좋을 때.
+STAR_FLOOR = {2: 61, 3: 68, 4: 77, 5: 84}             # scout_stars 의 문턱과 같다
+AWAKEN_AGE, AWAKEN_WAIT, AWAKEN_NEAR, AWAKEN_FORM = 35, 3, 3.0, 1.0
 
 
 def awakened(c) -> int:
     return int((c.flags or {}).get('awaken', 0))
 
 
+def base_stars(c) -> int:
+    """잠재력 그대로의 별(오차 없이) — 각성은 여기서부터 다섯 칸까지."""
+    p = c.potential
+    return 5 if p >= 84 else 4 if p >= 77 else 3 if p >= 68 else 2 if p >= 61 else 1
+
+
+def pot_eff(c) -> float:
+    """각성을 넣은 잠재력 — 보라색 별 n개면 (별 + n)칸의 문턱까지."""
+    n = awakened(c)
+    return float(c.potential) if not n else float(max(c.potential, STAR_FLOOR[min(5, base_stars(c) + n)]))
+
+
+def awaken_gain(c) -> float:
+    """다음 각성으로 오를 잠재력."""
+    nxt = min(5, base_stars(c) + awakened(c) + 1)
+    return max(1.0, STAR_FLOOR.get(nxt, 0) - pot_eff(c))
+
+
 def stat_pot(c, k: str) -> float:
     st = STYLES[c.role][c.style]
-    p = float(c.potential) + AWAKEN_PLUS * awakened(c)
+    p = pot_eff(c)
     if k in st['plus']:
         p += PLUS + (6.0 if has(c, 'natural') else 0.0)
     elif k == st['minus']:
@@ -172,9 +195,10 @@ def frac(c, k: str, age: int) -> float:
         a = a - 1 if a <= 26 else a - 2
     a = int(_clamp(a, min(CURVE), max(CURVE)))
     f = CURVE[a]
-    if a > 30:
+    if a > DECLINE_FROM - 1:
         keep = SKILL_KEEP if k not in PHYS else (IRON_KEEP if has(c, 'iron') else PHYS_KEEP)    # 기술은 천천히, 몸은 빨리
-        f = CURVE[30] - (CURVE[30] - f) * keep
+        top = CURVE[DECLINE_FROM - 1]
+        f = top - (top - f) * keep
     return f
 
 
@@ -229,6 +253,8 @@ def create(user, *, name, role, position, style, region, team, number=0, rng=Non
     if school and school not in pool:
         raise LiteError('고향 지역 고등학교 가운데에서 골라 주세요.')
     name = (name or '').strip()[:12] or (user.username[:12] if user else '새내기')
+    if N.blocked(name):
+        raise LiteError(N.MESSAGE)
     with transaction.atomic():
         if user is not None:
             User.objects.select_for_update().filter(pk=user.pk).first()
@@ -746,7 +772,7 @@ def gear_cut(c, gear=None, house=None) -> float:
 def injury_odds(c, intensity: str, extra: float = 0.0, cut: float | None = None, known_only: bool = False) -> float:
     """이번 시즌 부상 확률 — 강도·나이·특성·장비·집. known_only 면 드러나지 않은 특성은 빼고(화면에 숨은 특성이 새지 않게)."""
     traits = (c.traits_seen or []) if known_only else (c.traits or [])
-    p = INTENSITY[intensity][2] + max(0, c.age - 29) * 0.01 + extra
+    p = INTENSITY[intensity][2] + max(0, c.age - (DECLINE_FROM - 1)) * 0.01 + extra
     p *= 0.5 if 'iron' in traits else 1.8 if 'glass' in traits else 1.0
     p *= gear_cut(c) if cut is None else cut
     return max(INJURY_FLOOR, p)
@@ -1900,19 +1926,30 @@ def next_step(c, rng, skip_meeting: bool = False) -> dict:
 
 
 def awaken_ready(c) -> bool:
-    """다섯 능력이 모두 한계에 닿았나(1 안쪽) — 그리고 아직 각성할 수 있는 나이·횟수·차례인가."""
+    """각성 기회 — 별이 다섯 개가 안 되고, 나이·차례가 되고, (다섯 능력이 모두 한계) 또는
+    (잠재력 가까이까지 키웠고 지난 시즌 성적이 평균보다 AWAKEN_FORM 표준 이상)."""
     f = c.flags or {}
-    if awakened(c) >= AWAKEN_MAX or c.age > AWAKEN_AGE or c.year < int(f.get('awaken_next', 0)) or f.get('army'):
+    if base_stars(c) + awakened(c) >= 5 or c.age > AWAKEN_AGE or c.year < int(f.get('awaken_next', 0)) or f.get('army'):
         return False
-    return all(room_of(c, k) < 0.2 for k in c.stats)
+    if all(room_of(c, k) < 0.2 for k in c.stats):
+        return True
+    gaps = [stat_pot(c, k) - float(c.stats[k]) for k in c.stats]
+    if sum(gaps) / len(gaps) > AWAKEN_NEAR:
+        return False
+    last = c.seasons.filter(games__gt=0).order_by('-year').first() if c.pk else None
+    z = perf_z(c.role, last.totals, last.games) if last and last.totals else None
+    return z is not None and z >= AWAKEN_FORM
+
+
+AWAKEN_TIER = {2: 0.6, 3: 0.45, 4: 0.3, 5: 0.15}      # 목표 별 칸마다 기본 성공 확률 — 높은 별일수록 어렵다
 
 
 def awaken_odds(c) -> float:
-    """각성 성공 확률 — 어릴수록·연습벌레·큰 경기 체질이면 높고, 두 번째는 더 어렵다."""
-    p = 0.5 + (0.1 if has(c, 'grinder') else 0) + (0.05 if has(c, 'clutch') else 0)
-    p += 0.1 if c.age <= 24 else -0.1 if c.age >= 30 else 0
-    p -= 0.12 * awakened(c)
-    return round(_clamp(p, 0.25, 0.75), 2)
+    """각성 성공 확률 — 목표 별이 높을수록 어렵고, 어릴수록·연습벌레·큰 경기 체질이면 조금 높다."""
+    p = AWAKEN_TIER[min(5, base_stars(c) + awakened(c) + 1)]
+    p += (0.08 if has(c, 'grinder') else 0) + (0.04 if has(c, 'clutch') else 0)
+    p += 0.05 if c.age <= 24 else -0.08 if c.age >= 31 else 0
+    return round(_clamp(p, 0.08, 0.7), 2)
 
 
 def awaken(c, choice: str, rng) -> str:
@@ -1926,6 +1963,7 @@ def awaken(c, choice: str, rng) -> str:
     nm = c.name
     odds = (c.pending or {}).get('odds')                   # 화면에 보여 준 확률 그대로(0 도 0 으로)
     if rng.random() < (awaken_odds(c) if odds is None else float(odds)):
+        gain = awaken_gain(c)
         f['awaken'] = awakened(c) + 1
         ups = []
         for k in STYLES[c.role][c.style]['plus']:
@@ -1934,9 +1972,9 @@ def awaken(c, choice: str, rng) -> str:
             ups.append([dict((x, lab) for x, lab, _w in R.ROLES[c.role]['stats'])[k], 2.0])
         c.ovr = R.overall(c.role, c.stats)
         c.best_ovr = max(c.best_ovr, c.ovr)
-        f['awaken_fx'] = {'ok': True, 'n': f['awaken'], 'plus': AWAKEN_PLUS, 'ups': ups}
+        f['awaken_fx'] = {'ok': True, 'n': f['awaken'], 'plus': gain, 'ups': ups, 'stars': min(5, base_stars(c) + f['awaken'])}
         f['press'] = list(f.get('press') or []) + [press('[각성]', f"{nm}, 한계를 부쉈다…‘보라색 별’ {f['awaken']}개째")]
-        return f"각성에 성공했어요! 보라색 별 {f['awaken']}개 — 모든 능력의 한계가 {AWAKEN_PLUS:g} 올라갔어요"
+        return f"각성에 성공했어요! 별이 {min(5, base_stars(c) + f['awaken'])}개가 됐어요 — 모든 능력의 한계가 {gain:g} 올라갔어요"
     k = 'mental' if c.role == 'pitcher' else 'eye'
     c.stats[k] = round(max(25.0, float(c.stats[k]) - 1.0), 1)
     c.ovr = R.overall(c.role, c.stats)
@@ -2269,7 +2307,7 @@ def decision_view(c) -> dict | None:
     if pend.get('what') == 'awaken':
         v['odds_pct'] = int(round((awaken_odds(c) if pend.get('odds') is None else float(pend['odds'])) * 100))
         v['next_n'] = awakened(c) + 1
-        v['plus'] = f'{AWAKEN_PLUS:g}'
+        v['plus'] = f'{awaken_gain(c):g}'
     if pend.get('what') == 'return':
         v['abroad_name'] = W.SYSTEM_NAME.get(pend.get('system') or W.system_of(c.league), '해외')
         v['offer_list'] = [dict(o, team_name=W.PRO_TEAM[o['team']]['name'], team_color=W.PRO_TEAM[o['team']]['color'],
@@ -2296,6 +2334,9 @@ def career_line(c) -> dict:
 
 
 HALL_SYSTEMS = ('kbo', 'mlb', 'npb', 'cpbl')
+# 1.0 출시(2026-10-19 21:00) — 명예의 전당은 이때부터 시작한 커리어만(사용자 요청: 카드는 남기고 랭킹은 비운다).
+# 그 전 커리어도 커리어 페이지·은퇴 카드·카드 보관함에는 그대로 남는다.
+HALL_SINCE = timezone.make_aware(datetime(2026, 10, 19, 21, 0))
 
 
 def hall(system: str = 'kbo', limit: int = 50, role: str = '') -> list:
@@ -2305,7 +2346,7 @@ def hall(system: str = 'kbo', limit: int = 50, role: str = '') -> list:
     system = system if system in HALL_SYSTEMS else 'kbo'
     from .game_visibility import visible
     from .models import LiteCareer
-    qs = visible(LiteCareer.objects.filter(retired_at__isnull=False, user__isnull=False), 'user') \
+    qs = visible(LiteCareer.objects.filter(retired_at__isnull=False, user__isnull=False, created_at__gte=HALL_SINCE), 'user') \
         .prefetch_related('seasons')                                       # 손님 판은 로그인해 계정으로 옮겨야 오른다
     if role in ('pitcher', 'batter'):
         qs = qs.filter(role=role)

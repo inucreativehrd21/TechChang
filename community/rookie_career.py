@@ -50,7 +50,7 @@ AGE_RATIO = {12: .50, 13: .55, 14: .60, 15: .64, 16: .68, 17: .72, 18: .75, 19: 
 # 훈련 효율(나이 배율) — 12~21세는 이 표, 22~27세 1.0, 그 뒤로 줄어든다(age_mult)
 AGE_EFF = {12: .40, 13: .45, 14: .50, 15: .55, 16: .60, 17: .65, 18: .70, 19: .80, 20: .88, 21: .94}
 PHYSICAL = ('velocity', 'stamina', 'power', 'speed')
-DECLINE_AT, AGING_DECAY = 31, 0.003           # 서른하나부터 몸 능력 하루 감쇠 +0.3%p × (나이 − 30)
+DECLINE_AT, AGING_DECAY = 33, 0.003           # 서른셋부터 몸 능력 하루 감쇠 +0.3%p × (나이 − 32) — 2026-10-19 사용자 요청으로 2년 늦춤
 # 같은 나이 가상 동기 집단의 OVR(평균, 표준편차) — scratchpad 하네스(활동량 섞임 × 잠재력 분포)로 뽑은 값.
 # 드래프트 평가·진학 합격·학생 '유망주' 표시·학생 리그 수준의 기준(회원 수가 적어 회원끼리 백분위를 매길 수 없다)
 CLASS = {12: (36.0, 2.7), 13: (39.9, 3.9), 14: (43.3, 4.6), 15: (46.2, 5.2), 16: (48.9, 5.7), 17: (51.4, 6.2),
@@ -132,43 +132,69 @@ def age_ratio(p) -> float:
 
 
 def age_cap(p) -> float:
-    """지금 나이로 오를 수 있는 끝 = 잠재력 × 나이 비율 + 각성(보라색 별 하나마다 AWAKEN_PLUS)."""
-    return min(CAP, float(p.potential or POTENTIAL_MEAN) * age_ratio(p) + AWAKEN_PLUS * awakened(p))
+    """지금 나이로 오를 수 있는 끝 = (각성을 넣은) 잠재력 × 나이 비율."""
+    return min(CAP, pot_eff(p) * age_ratio(p))
 
 
-# 각성(2026-10-19 사용자 요청: 라이트 판의 각성을 정식 판에도) — 다 자란 몸(나이 비율 1)으로 다섯 능력이 모두 한계에 닿으면
-# TP 를 들여 도전한다. 성공하면 보라색 별 하나 — 모든 능력의 한계가 AWAKEN_PLUS 오른다(스카우트 별은 그대로).
-# 실패하거나 미루면 AWAKEN_WAIT 일 뒤에 다시 기회가 온다.
-AWAKEN_PLUS, AWAKEN_MAX, AWAKEN_COST, AWAKEN_WAIT = 4.0, 2, 150, 14
+# 각성(2026-10-19 사용자 요청: 라이트 판의 각성을 정식 판에도, 같은 날 개편) — 별은 다섯 칸으로 고정이고, 스카우트 별 다음 빈 칸을
+# 보라색 별로 채운다. 한 번 성공하면 잠재력이 한 칸 위 별의 문턱(STAR_FLOOR)까지 — 별 하나짜리도 다섯 개까지 도전할 수 있다.
+# 기회: 다 자란 몸으로 다섯 능력이 모두 한계일 때, 또는 (고교 나이부터) 지금 한계 가까이(평균 AWAKEN_NEAR 안쪽)까지
+# 열심히 키우고 지금 리그 성적이 좋을 때(performance ≥ AWAKEN_FORM). TP 를 들여 도전하고, 실패·보류 뒤 AWAKEN_WAIT 일.
+STAR_FLOOR = {2: 75, 3: 81, 4: 87, 5: 92}             # scout_stars 의 문턱과 같다
+AWAKEN_COST, AWAKEN_WAIT, AWAKEN_NEAR, AWAKEN_FORM = 150, 21, 3.0, 1.0
 
 
 def awakened(p) -> int:
     return int((p.career or {}).get('awaken', 0))
 
 
+def base_stars(p) -> int:
+    pot = p.potential or POTENTIAL_MEAN
+    return 5 if pot >= 92 else 4 if pot >= 87 else 3 if pot >= 81 else 2 if pot >= 75 else 1
+
+
+def pot_eff(p) -> float:
+    """각성을 넣은 잠재력 — 보라색 별 n개면 (별 + n)칸의 문턱까지."""
+    pot, n = float(p.potential or POTENTIAL_MEAN), awakened(p)
+    return pot if not n else float(max(pot, STAR_FLOOR[min(5, base_stars(p) + n)]))
+
+
+def awaken_gain(p) -> float:
+    nxt = min(5, base_stars(p) + awakened(p) + 1)
+    return max(1.0, STAR_FLOOR.get(nxt, 0) - pot_eff(p))
+
+
 def awaken_ready(p, today: date | None = None) -> bool:
     today = today or timezone.localdate()
-    if p.retired_at or awakened(p) >= AWAKEN_MAX or age_ratio(p) < 1.0 or (p.pending or {}).get('kind'):
+    if p.retired_at or base_stars(p) + awakened(p) >= 5 or p.age < 16 or (p.pending or {}).get('kind'):
         return False
     nxt = (p.career or {}).get('awaken_next')
     if nxt and today < date.fromisoformat(nxt):
         return False
-    return all(float(p.stats.get(k, 0)) >= stat_cap(p, k) - 0.5 for k in p.stats)
+    gaps = [stat_cap(p, k) - float(p.stats.get(k, 0)) for k in p.stats]
+    if age_ratio(p) >= 1.0 and all(g <= 0.5 for g in gaps):
+        return True
+    return sum(gaps) / len(gaps) <= AWAKEN_NEAR and performance(p, p.league) >= AWAKEN_FORM
+
+
+AWAKEN_TIER = {2: 0.6, 3: 0.45, 4: 0.3, 5: 0.15}      # 목표 별 칸마다 기본 성공 확률 — 높은 별일수록 어렵다
 
 
 def awaken_odds(p) -> float:
-    """성공 확률 — 연습벌레·큰 경기 체질이면 높고, 서른 넘거나 두 번째면 어렵다."""
+    """성공 확률 — 목표 별이 높을수록 어렵고, 연습벌레·큰 경기 체질이면 조금 높고, 서른셋 넘으면 낮다."""
     t = p.traits_seen or []
-    q = 0.5 + (0.1 if 'grinder' in t else 0) + (0.05 if 'clutch' in t else 0)
-    q += 0.05 if p.age <= 27 else -0.1 if p.age >= 32 else 0
-    return round(_clamp(q - 0.12 * awakened(p), 0.25, 0.75), 2)
+    q = AWAKEN_TIER[min(5, base_stars(p) + awakened(p) + 1)]
+    q += (0.08 if 'grinder' in t else 0) + (0.04 if 'clutch' in t else 0)
+    q += 0.05 if p.age <= 27 else -0.08 if p.age >= 33 else 0
+    return round(_clamp(q, 0.08, 0.7), 2)
 
 
 def awaken_view(p, today: date | None = None) -> dict | None:
     if not awaken_ready(p, today):
         return None
     return {'odds_pct': int(round(awaken_odds(p) * 100)), 'cost': AWAKEN_COST, 'next_n': awakened(p) + 1,
-            'plus': f'{AWAKEN_PLUS:g}', 'can_pay': p.tp >= AWAKEN_COST, 'wait': AWAKEN_WAIT}
+            'plus': f'{awaken_gain(p):g}', 'can_pay': p.tp >= AWAKEN_COST, 'wait': AWAKEN_WAIT,
+            'stars_total': min(5, base_stars(p) + awakened(p))}
 
 
 def stat_cap(p, stat: str) -> float:
@@ -191,8 +217,8 @@ def room(s: float, cap: float) -> float:
 
 def age_mult(p) -> float:
     a = p.age
-    m = (AGE_EFF.get(a, AGE_EFF[min(AGE_EFF)]) if a < 22 else 1.0 if a <= 27 else 0.95 if a <= 30
-         else 0.85 if a <= 33 else 0.7 if a <= 36 else 0.55)
+    m = (AGE_EFF.get(a, AGE_EFF[min(AGE_EFF)]) if a < 22 else 1.0 if a <= 29 else 0.95 if a <= 32
+         else 0.85 if a <= 35 else 0.7 if a <= 38 else 0.55)                 # 2026-10-19 노쇠 2년 늦춤
     if has(p, 'late'):
         m *= 0.9 if a <= 22 else 1.15 if a >= 26 else 1.0
     if has(p, 'early') and a <= 18:
@@ -259,8 +285,8 @@ def cap_message(p, stat: str, label: str) -> str:
     cap = stat_cap(p, stat)
     if age_ratio(p) < 1.0:
         return f'{label}은(는) {p.age}세 몸으로 오를 수 있는 끝({cap:.0f})에 닿았어요. 한 살 더 먹으면 다시 열려요.'
-    if awakened(p) < AWAKEN_MAX:
-        return f'{label}은(는) 타고난 한계({cap:.0f})에 닿았어요. 다섯 능력이 모두 한계에 닿으면 각성에 도전할 수 있어요.'
+    if base_stars(p) + awakened(p) < 5:
+        return f'{label}은(는) 타고난 한계({cap:.0f})에 닿았어요. 다섯 능력을 한계 가까이 키우고 성적을 내면 각성에 도전할 수 있어요.'
     return f'{label}은(는) 타고난 한계({cap:.0f})에 닿았어요. 다른 능력을 키워 보세요.'
 
 
@@ -757,7 +783,8 @@ def career_view(p, today: date | None = None) -> dict:
                       'bonus': sign_bonus((offer or {}).get('round')), 'abroad_bonus': SIGN_BONUS[1][1],
                       'left': max(0, left), 'deadline': _deadline(pend, today)}
     stars = scout_stars(p)
-    v['scout'] = {'stars': stars, 'note': STAR_NOTE[stars], 'range': range(5), 'awaken': range(awakened(p))} if stars else None
+    v['scout'] = ({'stars': stars, 'note': STAR_NOTE[stars], 'range': range(5), 'total': min(5, stars + awakened(p)),
+                   'awakened': awakened(p)} if stars else None)
     v['grade_days'] = grade_days(code)
     cap = age_cap(p)
     v['age_cap'] = cap if cap < min(CAP, float(p.potential or CAP)) else None

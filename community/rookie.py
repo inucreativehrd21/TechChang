@@ -231,6 +231,9 @@ def create(user, *, name: str, role: str, team: str, number: int = 0, focus: str
     position = PITCHER_POS if role == 'pitcher' else (position if position in POS_LABEL and position != PITCHER_POS
                                                       else 'OF')
     name = (name or '').strip()[:12] or user.username[:12]
+    from . import rookie_names as N
+    if N.blocked(name):
+        raise GameError(N.MESSAGE)
     today = timezone.localdate()
     stats = {k: FLOOR for k in stat_keys(role)}
     with transaction.atomic():
@@ -475,6 +478,7 @@ def awaken(user, choice: str, rng=None) -> dict:
         p.tp -= C.AWAKEN_COST
         labels = dict((k, lab) for k, lab, _w in ROLES[p.role]['stats'])
         if rng.random() < odds:
+            gain = C.awaken_gain(p)
             n = C.awakened(p) + 1
             career['awaken'] = n
             p.career = career
@@ -483,9 +487,10 @@ def awaken(user, choice: str, rng=None) -> dict:
                 if k in p.stats and labels[k] not in [u[0] for u in ups]:
                     p.stats = dict(p.stats, **{k: round(min(C.stat_cap(p, k), float(p.stats[k]) + 1.5), 3)})
                     ups.append([labels[k], 1.5])
-            career['awaken_fx'] = {'ok': True, 'n': n, 'plus': C.AWAKEN_PLUS, 'ups': ups}
-            text = f'각성에 성공했어요! 보라색 별 {n}개 — 모든 능력의 한계가 {C.AWAKEN_PLUS:g} 올라갔어요'
-            _log(p, 'mile', f'각성 — 보라색 별 {n}개째, 모든 능력 한계 +{C.AWAKEN_PLUS:g}', tp=-C.AWAKEN_COST, day=today)
+            total = min(5, C.base_stars(p) + n)
+            career['awaken_fx'] = {'ok': True, 'n': n, 'plus': gain, 'ups': ups, 'stars': total}
+            text = f'각성에 성공했어요! 별이 {total}개가 됐어요 — 잠재력 +{gain:g}'
+            _log(p, 'mile', f'각성 — 별 {total}개(보라색 {n}), 잠재력 +{gain:g}', tp=-C.AWAKEN_COST, day=today)
         else:
             k = 'mental' if p.role == 'pitcher' else 'eye'
             p.stats = dict(p.stats, **{k: round(max(FLOOR, float(p.stats[k]) - 1.0), 3)})

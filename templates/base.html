@@ -88,6 +88,9 @@
     .tc-game-close { display: inline-flex; align-items: center; height: 30px; padding: 0 12px; border: 1px solid #e3e5ee; border-radius: 99px;
         font: inherit; font-size: 0.78rem; font-weight: 700; color: #3d4160; background: #fff; cursor: pointer; }
     .tc-game-close:hover, .tc-game-close:focus-visible { color: #4f46e5; border-color: #c7d2fe; outline: none; }
+    .tc-game-tools { display: inline-flex; align-items: center; gap: 6px; }
+    .tc-game-close[disabled] { opacity: .45; cursor: default; }
+    a.tc-game-close { text-decoration: none; }
     </style>
     
     <title>{% block title %}테크창{% endblock %}</title>
@@ -145,22 +148,52 @@
             var w = Math.max(900, Math.min(1320, sw - 60)), h = Math.max(640, Math.min(940, sh - 60));
             var left = Math.max(0, Math.round((sw - w) / 2 + (screen.availLeft || 0)));
             var top = Math.max(0, Math.round((sh - h) / 2 + (screen.availTop || 0)));
-            var win = window.open(a.href, 'tc-game', 'popup=yes,width=' + w + ',height=' + h + ',left=' + left + ',top=' + top);
+            var url = a.href + (a.href.indexOf('?') < 0 ? '?' : '&') + 'gw=1';
+            var win = window.open(url, 'tc-game', 'popup=yes,width=' + w + ',height=' + h + ',left=' + left + ',top=' + top);
             if (!win) return;
             e.preventDefault();
             win.focus();
         });
         if (document.documentElement.classList.contains('is-game-window')) {
             // 게임 창 위 막대 — 무슨 창인지와 닫기(창 크기를 바꿔도 게임 화면은 그 폭에 맞춰 다시 짜인다)
+            // 이전 화면·게임으로(2026-10-19 사용자 요청: 포인트 얻으러 칼럼에 갔다가 돌아올 길이 없었다). 창에서 처음 연 주소가 게임 첫 화면
+            var home = '';
+            try {
+                var u = new URL(location.href);
+                if (u.searchParams.get('gw') === '1') {           // 게임 시작 버튼으로 연 첫 화면 — 여기가 '게임으로'의 자리
+                    u.searchParams.delete('gw');
+                    history.replaceState(history.state, '', u.toString());
+                    sessionStorage.setItem('tc-game-home', u.toString());
+                }
+                home = sessionStorage.getItem('tc-game-home') || '';
+                if (!home) { home = location.href; sessionStorage.setItem('tc-game-home', home); }
+            } catch (err) { home = ''; }
             var bar = document.createElement('div');
             bar.className = 'tc-game-bar';
             bar.innerHTML = '<span>테크창 게임</span>';
+            var tools = document.createElement('div');
+            tools.className = 'tc-game-tools';
+            var back = document.createElement('button');
+            back.type = 'button';
+            back.className = 'tc-game-close';
+            back.textContent = '← 이전 화면';
+            if (history.length <= 1) back.disabled = true;
+            back.addEventListener('click', function () { history.back(); });
+            tools.appendChild(back);
+            if (home && home.split('#')[0] !== location.href.split('#')[0]) {
+                var go = document.createElement('a');
+                go.className = 'tc-game-close';
+                go.href = home;
+                go.textContent = '게임으로';
+                tools.appendChild(go);
+            }
             var b = document.createElement('button');
             b.type = 'button';
             b.className = 'tc-game-close';
             b.textContent = '창 닫기';
             b.addEventListener('click', function () { window.close(); });
-            bar.appendChild(b);
+            tools.appendChild(b);
+            bar.appendChild(tools);
             document.body.insertBefore(bar, document.body.firstChild);
         }
     })();

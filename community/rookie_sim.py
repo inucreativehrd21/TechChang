@@ -296,11 +296,21 @@ PITCH_MENU = ((30, '슬라이더'), (45, '커브'), (55, '체인지업'), (65, '
 STYLE = {'velocity': '파이어볼러', 'control': '제구형', 'breaking': '변화구형', 'stamina': '이닝이터', 'mental': '강심장'}
 
 
-def pitch_profile(s: dict) -> dict:
-    """구종과 스타일 — 화면 표시용. 최고 구속은 구속 능력에서, 구종 수는 변화구 능력에서."""
+# 몸이 덜 자란 나이의 최고 구속 배율(2026-10-19 사용자 지적: 첫 경기도 전인 리틀야구 투수가 138km/h) —
+# 어른 구속(128 + 구속 능력 × 0.3)에 곱한다. 열두 살 90km/h 안팎, 중학 100~120, 고교 125~145, 스물하나부터 어른과 같다.
+SPEED_AGE = {12: .66, 13: .71, 14: .76, 15: .81, 16: .86, 17: .90, 18: .93, 19: .95, 20: .97}
+
+
+def top_speed(vel: float, age: int | None = None) -> int:
+    m = 1.0 if age is None else SPEED_AGE.get(age, 1.0 if age > max(SPEED_AGE) else SPEED_AGE[min(SPEED_AGE)])
+    return round((128 + vel * 0.3) * m)
+
+
+def pitch_profile(s: dict, age: int | None = None) -> dict:
+    """구종과 스타일 — 화면 표시용. 최고 구속은 구속 능력과 나이에서, 구종 수는 변화구 능력에서."""
     vel, brk = float(s.get('velocity', 25)), float(s.get('breaking', 25))
     best = max(PIT, key=lambda k: float(s.get(k, 25)))
-    return {'style': STYLE[best], 'top_speed': round(128 + vel * 0.3),
+    return {'style': STYLE[best], 'top_speed': top_speed(vel, age),
             'pitches': ['직구'] + [name for need, name in PITCH_MENU if brk >= need]}
 
 
@@ -592,7 +602,7 @@ def relief_game(s: dict, lvl: float, rng, role: str) -> dict:
 
 
 # ───────────────────────────── 계단 안내(화면)
-def role_ladder(role: str, lineup: str, slot: int, s: dict, ovr: float, lvl: float) -> dict:
+def role_ladder(role: str, lineup: str, slot: int, s: dict, ovr: float, lvl: float, age: int | None = None) -> dict:
     """지금 계단·다음 계단 조건 — 내 선수 화면의 '타순·보직' 칸."""
     L = round(lvl)
     if role == 'batter':
@@ -613,7 +623,7 @@ def role_ladder(role: str, lineup: str, slot: int, s: dict, ovr: float, lvl: flo
                           for i, (_k, lab) in enumerate(steps)], 'label': label, 'hint': hint,
                 'style': bat_style(s)}
     st = round(stuff_of(s))
-    prof = pitch_profile(s)
+    prof = pitch_profile(s, age)
     if lineup == 'sp':
         hint = f'선발 자리 지키기: 체력·구위 {L - 6} 이상, 최근 15이닝 평균자책점 6.50 미만. 구위 {L + 10}이면 1선발'
         steps = [{'label': '롱릴리프', 'state': 'done'}, {'label': f'{slot}선발', 'state': 'cur'}]

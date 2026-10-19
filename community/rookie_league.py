@@ -803,7 +803,7 @@ def player_board(p, today: date | None = None) -> dict:
 
 def ladder_of(p) -> dict:
     from .rookie_sim import role_ladder
-    return role_ladder(p.role, p.lineup, p.slot, p.stats, p.ovr, W.level(p.league))
+    return role_ladder(p.role, p.lineup, p.slot, p.stats, p.ovr, W.level(p.league), p.age)
 
 
 def highlights(stat) -> list:

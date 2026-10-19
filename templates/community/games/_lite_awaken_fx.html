@@ -7,7 +7,7 @@
     <div class="rl-fx-card">
         {% if fx.ok %}
         <span class="rl-fx-star" aria-hidden="true"></span>
-        <p class="rl-fx-kicker">보라색 별 {{ fx.n }}개째</p>
+        <p class="rl-fx-kicker">{% if fx.stars %}별 {{ fx.stars }}개 · {% endif %}보라색 별 {{ fx.n }}개째</p>
         <h2 class="rl-fx-title" id="rl-fx-title">각성!</h2>
         <p class="rl-fx-text">타고난 벽을 부쉈어요. 모든 능력의 한계가 {{ fx.plus|floatformat:0 }} 올라갔어요.</p>
         {% if fx.ups %}<ul class="rl-fx-ups">{% for u in fx.ups %}<li>{{ u.0 }} <b>+{{ u.1|floatformat:'-1' }}</b></li>{% endfor %}</ul>{% endif %}

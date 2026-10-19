@@ -109,7 +109,7 @@ def _identity(c) -> dict:
             'league_kind': R.league_kind(c.league), 'style_label': X.STYLES[c.role][c.style]['label'],
             'pos_label': L.POS_LABEL.get(c.position, dict(X.PIT_POSITIONS).get(c.position, '')),
             'grade_label': _grade(c),
-            'stars': stars, 'star_note': X.STAR_NOTE[stars], 'star_range': range(5), 'awaken_range': range(X.awakened(c)),
+            'stars': stars, 'star_note': X.STAR_NOTE[stars], 'star_range': range(5), 'stars_total': min(5, stars + X.awakened(c)), 'awakened': X.awakened(c),
             'traits': [{'name': X.TRAITS[t][0], 'desc': X.TRAITS[t][1]} for t in (c.traits_seen or []) if t in X.TRAITS],
             'stat_rows': [{'key': k, 'label': lab, 'value': float(c.stats.get(k, 25)), 'shown': int(float(c.stats.get(k, 25))),
                            'bar': round(float(c.stats.get(k, 25)) / 99 * 100, 1)} for k, lab, _w in R.ROLES[c.role]['stats']],
