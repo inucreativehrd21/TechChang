@@ -1293,6 +1293,7 @@ a.rk-rank-main:hover b { color: var(--rk-accent); }
 .rl-item.is-own { border-color: var(--rk-accent-line); background: var(--rk-accent-wash); }
 .rl-item.is-rare { border-color: var(--rk-accent); box-shadow: 0 0 0 3px var(--rk-accent-wash); }
 .rl-shop-empty { margin: 0; font-size: 0.8rem; color: var(--rk-ink-3); }
+.rl-item-pick select { width: 100%; min-height: 32px; margin-top: 4px; padding: 4px 8px; border: 1px solid var(--rk-line); border-radius: 8px; font-size: 0.78rem; color: var(--rk-ink); background: #fff; }
 
 /* 명예의 전당 — 리그 줄과 투수·야수 줄 */
 .rl-hall-controls { gap: 8px 10px; }

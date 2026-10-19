@@ -492,8 +492,8 @@ def apply_event(c, code: str, choice: str, rng, mods: dict) -> str:
 
 
 # ───────────────────────────── 성장
-def grow(c, programs, intensity: str, pt: float, war: float, rng, train_mult: float = 1.0) -> dict:
-    """한 해 성장 — 나이 곡선 + 훈련 + 출전 경험 + 활약. {능력: 변화}"""
+def grow(c, programs, intensity: str, pt: float, war: float, rng, train_mult: float = 1.0, age_keep: float = 1.0) -> dict:
+    """한 해 성장 — 나이 곡선 + 훈련 + 출전 경험 + 활약. {능력: 변화}. age_keep: 노쇠 관리팀이면 나이로 빠지는 몫을 덜어 낸다."""
     _lab, mult, _inj = INTENSITY[intensity]
     plus = {}
     for code in programs:
@@ -505,6 +505,8 @@ def grow(c, programs, intensity: str, pt: float, war: float, rng, train_mult: fl
         s, pot = float(c.stats[k]), stat_pot(c, k)
         room = room_of(c, k)
         nat = pot * (frac(c, k, c.age + 1) - frac(c, k, c.age))
+        if nat < 0:
+            nat *= age_keep
         tr = plus.get(k, 0.0) * mult * age_train * train_mult * (1.25 if has(c, 'grinder') else 1.0)
         exp = (0.8 if c.age <= 27 else 0.3) * pt * (2.0 if has(c, 'learner') else 1.0)
         perf = 0.8 if war >= 4 and k in ('eye', 'mental') else 0.0
@@ -698,16 +700,59 @@ GEAR = {   # 소모품 — 이번 시즌만 쓴다(시즌마다 다시 산다). 
             'tiers': (('pro', '프로 모델', 500, 1.0), ('craft', '장인 수제', 2000, 2.0)),
             'stats': {'batter': ('contact', 'power'), 'pitcher': ('control', 'breaking')}},
     'guard': {'name': {'batter': '보호대', 'pitcher': '보호대'},
-              'tiers': (('basic', '기본', 300, 0.08), ('fit', '맞춤', 1200, 0.15))},
+              'tiers': (('basic', '기본', 300, 0.04), ('fit', '맞춤', 1200, 0.08))},
 }
-HOUSE = {'dorm': ('구단 숙소', 0, 0, 0.0), 'rent': ('구단 근처 아파트 월세', 0, 3000, 0.08),
-         'own': ('내 집 마련(매매)', 300000, 0, 0.12)}            # (이름, 매매가, 시즌마다 월세, 부상 위험을 줄이는 몫)
+HOUSE = {'dorm': ('구단 숙소', 0, 0, 0.0), 'rent': ('구단 근처 아파트 월세', 0, 3000, 0.03),
+         'own': ('내 집 마련(매매)', 100000, 0, 0.05)}            # (이름, 매매가, 시즌마다 월세, 부상 위험을 줄이는 몫) — 값은 리그 물가를 곱한다
 # 2026-10-19 밸런스(사용자 지적: 장비를 다 사면 절대 안 다친다) — 예전엔 보호대 25%·집 25%를 곱해 44%까지 줄었고,
-# 강철 체력·가볍게와 겹치면 1%대였다. 이제 장비·집은 더해서 최대 25%까지만, 어떤 경우에도 2%는 남는다.
-GEAR_CUT_MAX = 0.25
+# 강철 체력·가볍게와 겹치면 1%대였다. 장비·집은 더해서 최대치까지만, 어떤 경우에도 2%는 남는다.
+# 2차(같은 날, 사용자: 아직도 사기 — 의존도를 낮추고, 리그가 오를수록 값이 부담스럽게, 돈 쓸 곳을 훨씬 많이):
+# 보호대·집 몫을 절반으로, 최대 25% → 12%. 값은 리그 물가(PRICE_LEAGUE)를 곱한다 — 측정(40판): 예전엔 퓨처스 선수도 85%가
+# 장비를 다 샀고 1군·해외는 100%, 은퇴 때 현금 중앙값 38억·상위 10% 1,402억이 그대로 남았다.
+GEAR_CUT_MAX = 0.12
 INJURY_FLOOR = 0.02
+PRICE_LEAGUE = {'kbo3': 1.0, 'kbo2': 1.2, 'mlb_a': 1.0, 'mlb_aa': 1.2, 'mlb_aaa': 1.5, 'npb2': 1.5, 'cpbl': 2.5,
+                'kbo1': 4.0, 'npb1': 15.0, 'mlb': 40.0}            # 리그 물가 — 같은 물건도 큰 무대일수록 비싸다(연봉 차이만큼)
 ACCESSORY = {'chain': ('금목걸이', 20000, 4), 'earring': ('다이아 귀걸이', 80000, 7),
-             'watch': ('한정판 명품 시계', 250000, 12)}              # (이름, 값, 인기 +) — 한 번 사면 평생
+             'watch': ('한정판 명품 시계', 250000, 12)}              # (이름, 값, 인기 +) — 한 번 사면 평생. 값은 리그 물가의 1/4을 곱한다
+# 돈 쓸 곳(2026-10-19 사용자 요청) — 값은 모두 리그 물가를 곱한다(만원).
+CARE = {   # 관리팀 — 비시즌에 계약하면 다음 시즌 하나만(시즌마다 다시)
+    'trainer': ('개인 트레이너', 1500, '이번 비시즌 훈련 효과 +10%'),
+    'physio': ('전담 물리치료사', 1000, '다치면 결장 기간이 절반, 큰 부상도 가볍게'),
+    'aging': ('노쇠 관리팀', 2500, '이번 시즌 나이로 빠지는 능력 −30%(영양사·필라테스)'),
+}
+CARE_TRAIN, CARE_AGE = 1.10, 0.70
+CAMP = ('해외 전지훈련', 4000, 1.0)     # 비시즌에 한 번 — 고른 능력 +1(잠재력 한계까지)
+FAN = ('팬 감사 이벤트', 2000, 3)        # 비시즌에 한 번 — 인기 +3(시간이 지나면 잊힌다)
+GIVE = {   # 나눔 — 평생 한 번씩, 인기(평생)와 기사
+    'school': ('모교에 장학금 기부', 5000, 3, '[미담]', '{nm}, 모교 후배들에게 장학금…‘받은 만큼 돌려주고 싶었다’'),
+    'parents': ('부모님께 집 선물', 25000, 2, '[미담]', '효자 {nm}, 부모님께 집 선물…‘이제 제가 모실게요’'),
+    'foundation': ('유소년 야구 재단 설립', 60000, 8, '[단독]', '{nm}, 사재 털어 유소년 야구 재단 설립…‘제2의 {nm} 키운다’'),
+}
+INVEST_SHARE, INVEST_MIN = 0.2, 5000    # 지인 사업 투자 — 보유 현금의 20%(5,000만원 이상 있을 때)
+INVEST_OUT = ((2.0, .25, '대박'), (1.0, .30, '본전'), (0.5, .25, '반토막'), (0.0, .20, '쪽박'))   # 기대값 0.925 — 평균 7.5% 잃는다
+TAX = ((1400, .06), (5000, .15), (8800, .24), (15000, .35), (30000, .38), (50000, .40), (100000, .42), (None, .45))   # 종합소득세(만원)
+
+
+def price_of(c, base: int, league: str | None = None) -> int:
+    """리그 물가를 곱한 값(만원, 100만원 단위)."""
+    return int(round(base * PRICE_LEAGUE.get(league or c.league, 1.0) / 100.0)) * 100
+
+
+def acc_price(c, base: int) -> int:
+    return int(round(base * max(1.0, PRICE_LEAGUE.get(c.league, 1.0) / 4) / 100.0)) * 100
+
+
+def income_tax(income: int) -> int:
+    """연봉·광고 수입에 붙는 세금(만원) — 구간마다 세율이 오른다."""
+    tax, low = 0.0, 0
+    for top, rate in TAX:
+        if top is None or income <= top:
+            tax += max(0, income - low) * rate
+            break
+        tax += (top - low) * rate
+        low = top
+    return int(tax // 10 * 10)
 ACC_STOCK = 0.25            # 비시즌마다 한정품이 매장에 들어올 확률(프로만)
 FAME_LEAGUE = {'mlb': 1.5, 'npb1': 1.1, 'kbo1': 1.0, 'cpbl': 0.7}
 FAME_AWARD = {'mvp': 10, 'rookie': 4, 'gg': 4, 'ace': 5, 'title': 3, 'allstar': 2, 'ring': 3, 'national': 2, 'minor': 1}
@@ -731,6 +776,7 @@ def _spend(c, amount: int, what: str):
 
 def _fame_of(flags: dict) -> int:
     bonus = sum(ACCESSORY[a][2] for a in flags.get('acc') or [] if a in ACCESSORY)
+    bonus += sum(GIVE[g][2] for g in flags.get('give') or [] if g in GIVE)
     return int(round(_clamp(float(flags.get('fame', 0)) + bonus, 0, 100)))
 
 
@@ -800,28 +846,54 @@ def shop_view(c) -> dict:
         mine = gear.get(key)
         rows.append({'key': key, 'name': g['name'][c.role], 'mine': dict((t[0], t[1]) for t in g['tiers']).get(mine, ''),
                      'tiers': [{'code': code, 'label': f"{lab} {g['name'][c.role]}" if key == 'bat' else f'{lab} 보호대',
-                                'price': man(price), 'effect': _effect(c, key, v), 'own': code == mine,
-                                'can': price <= have and (not mine or order.index(code) > order.index(mine)),
+                                'price': man(price_of(c, price)), 'effect': _effect(c, key, v), 'own': code == mine,
+                                'can': price_of(c, price) <= have and (not mine or order.index(code) > order.index(mine)),
                                 'why': ('own' if code == mine else 'lower' if mine and order.index(code) < order.index(mine)
-                                        else 'poor' if price > have else '')}
+                                        else 'poor' if price_of(c, price) > have else '')}
                                for code, lab, price, v in g['tiers']]})
     house = f.get('house', 'dorm')
-    houses = [{'code': code, 'label': lab, 'own': code == house,
-               'price': man(buy) if buy else (f'시즌마다 {man(rent)}' if rent else '무료'),
-               'effect': f'부상 위험 −{int(cut * 100)}%' + ('(평생)' if code == 'own' else '') if cut else '부상 위험 그대로',
-               'can': code != house and house != 'own' and (buy <= have) and (code != 'rent' or rent <= have),
-               'why': ('now' if code == house else 'owned' if house == 'own'
-                       else 'poor' if buy > have or (code == 'rent' and rent > have) else '')}
-              for code, (lab, buy, rent, cut) in HOUSE.items()]
+    houses = []
+    for code, (lab, buy_, rent_, cut) in HOUSE.items():
+        buy_p, rent_p = price_of(c, buy_), price_of(c, rent_)
+        houses.append({'code': code, 'label': lab, 'own': code == house,
+                       'price': man(buy_p) if buy_p else (f'시즌마다 {man(rent_p)}' if rent_p else '무료'),
+                       'effect': f'부상 위험 −{int(cut * 100)}%' + ('(평생)' if code == 'own' else '') if cut else '부상 위험 그대로',
+                       'can': code != house and house != 'own' and (buy_p <= have) and (code != 'rent' or rent_p <= have),
+                       'why': ('now' if code == house else 'owned' if house == 'own'
+                               else 'poor' if buy_p > have or (code == 'rent' and rent_p > have) else '')})
     stock = (c.pending or {}).get('shop')
     item = None
     if stock in ACCESSORY and stock not in (f.get('acc') or []):
         name, price, plus = ACCESSORY[stock]
-        item = {'code': stock, 'name': name, 'price': man(price), 'plus': plus, 'can': price <= have}
+        item = {'code': stock, 'name': name, 'price': man(acc_price(c, price)), 'plus': plus, 'can': acc_price(c, price) <= have}
     owned = [ACCESSORY[a][0] for a in f.get('acc') or [] if a in ACCESSORY]
     v = fame(c)
+
+    def row(item_, code, label, base, effect, done):
+        p = price_of(c, base)
+        return {'item': item_, 'code': code, 'label': label, 'price': man(p), 'effect': effect,
+                'can': not done and p <= have, 'why': 'done' if done else 'poor' if p > have else ''}
+    care_now = _care_now(c)
+    care = [row('care', k, lab, base, eff, bool(care_now.get(k))) for k, (lab, base, eff) in CARE.items()]
+    labels = dict((k, lab) for k, lab, _w in R.ROLES[c.role]['stats'])
+    camp = dict(row('camp', '', CAMP[0], CAMP[1], f'고른 능력 +{CAMP[2]:g}(잠재력 한계까지)', f.get('camp') == c.year),
+                stats=[{'key': k, 'label': labels[k], 'room': round(stat_pot(c, k) - float(c.stats[k]), 1)} for k in labels])
+    fan = row('fan', '', FAN[0], FAN[1], f'인기 +{FAN[2]}(시간이 지나면 잊혀요)', f.get('fan') == c.year)
+    gives = [row('give', k, lab, base, f'인기 +{plus}(평생) · 기사', k in (f.get('give') or []))
+             for k, (lab, base, plus, _t, _h) in GIVE.items()]
+    inv = f.get('invest')
+    invest = {'amount': man(int(have * INVEST_SHARE)), 'can': have >= INVEST_MIN and not inv,
+              'open': man(inv['amount']) if inv else '', 'why': 'open' if inv else 'poor' if have < INVEST_MIN else ''}
     return {'cash': man(have), 'pro': W.is_pro(c.league), 'gear': rows, 'house': HOUSE.get(house, HOUSE['dorm'])[0],
-            'houses': houses, 'stock': item, 'owned': owned, 'fame': v, 'fame_label': fame_label(v)}
+            'houses': houses, 'stock': item, 'owned': owned, 'fame': v, 'fame_label': fame_label(v),
+            'price_x': f"{PRICE_LEAGUE.get(c.league, 1.0):g}", 'cut_max': int(GEAR_CUT_MAX * 100),
+            'care': care, 'camp': camp, 'fan': fan, 'gives': gives, 'invest': invest,
+            'given': [GIVE[g][0] for g in f.get('give') or [] if g in GIVE]}
+
+
+def _care_now(c) -> dict:
+    g = (c.flags or {}).get('care') or {}
+    return g if g.get('year') == c.year else {}
 
 
 def buy(c, item: str, code: str) -> str:
@@ -840,7 +912,7 @@ def buy(c, item: str, code: str) -> str:
             raise LiteError('이번 시즌에 쓸 것은 이미 샀어요.')
         _code, lab, price, v = tiers[code]
         name = f"{lab} {g['name'][c.role]}" if item == 'bat' else f'{lab} 보호대'
-        _spend(c, price, name)
+        _spend(c, price_of(c, price), name)
         gear[item] = code
         c.flags['gear'] = gear
         return f"{name}{josa(name, '을/를')} 샀어요 — {_effect(c, item, v)}"
@@ -851,6 +923,7 @@ def buy(c, item: str, code: str) -> str:
         if now == 'own':
             raise LiteError('이미 내 집이 있어요.')
         lab, price, rent, _cut = HOUSE[code]
+        price, rent = price_of(c, price), price_of(c, rent)
         if code == 'own':
             _spend(c, price, '집')
             c.flags['house'] = 'own'
@@ -865,10 +938,62 @@ def buy(c, item: str, code: str) -> str:
         if code != stock or code not in ACCESSORY or code in (f.get('acc') or []):
             raise LiteError('지금 매장에 없는 물건이에요.')
         name, price, plus = ACCESSORY[code]
-        _spend(c, price, name)
+        _spend(c, acc_price(c, price), name)
         c.flags['acc'] = list(f.get('acc') or []) + [code]
         c.pending = dict(c.pending, shop=None)
         return f"{name}{josa(name, '을/를')} 샀어요 — 인기 +{plus}(평생)"
+    if not W.is_pro(c.league):
+        raise LiteError('프로가 되면 연봉으로 쓸 수 있어요.')
+    if item == 'care':
+        if code not in CARE:
+            raise LiteError('계약할 사람을 다시 골라 주세요.')
+        now = dict(_care_now(c)) or {'year': c.year}
+        if now.get(code):
+            raise LiteError('이번 시즌엔 이미 계약했어요.')
+        lab, base, eff = CARE[code]
+        _spend(c, price_of(c, base), lab)
+        now[code] = True
+        c.flags['care'] = now
+        return f"{lab}{josa(lab, '와/과')} 계약했어요 — {eff}"
+    if item == 'camp':
+        labels = dict((k, lab) for k, lab, _w in R.ROLES[c.role]['stats'])
+        if code not in labels:
+            raise LiteError('전지훈련에서 키울 능력을 골라 주세요.')
+        if f.get('camp') == c.year:
+            raise LiteError('이번 비시즌엔 이미 다녀왔어요.')
+        _spend(c, price_of(c, CAMP[1]), CAMP[0])
+        old = float(c.stats[code])
+        c.stats[code] = round(max(old, min(stat_pot(c, code), old + CAMP[2])), 1)
+        c.ovr = R.overall(c.role, c.stats)
+        c.flags['camp'] = c.year
+        up = round(c.stats[code] - old, 1)
+        return (f"해외 전지훈련을 다녀왔어요 — {labels[code]} +{up:g}" if up > 0
+                else f"해외 전지훈련을 다녀왔지만 {labels[code]}{josa(labels[code], '은/는')} 이미 잠재력 끝이에요")
+    if item == 'fan':
+        if f.get('fan') == c.year:
+            raise LiteError('팬 감사 이벤트는 비시즌에 한 번이에요.')
+        _spend(c, price_of(c, FAN[1]), FAN[0])
+        c.flags['fan'] = c.year
+        c.flags['fame'] = round(_clamp(float(f.get('fame', 0)) + FAN[2], 0, 100), 1)
+        return f'팬 감사 이벤트를 열었어요 — 인기 +{FAN[2]}'
+    if item == 'give':
+        if code not in GIVE or code in (f.get('give') or []):
+            raise LiteError('이미 했거나 없는 나눔이에요.')
+        lab, base, plus, tag, head = GIVE[code]
+        _spend(c, price_of(c, base), lab)
+        c.flags['give'] = list(f.get('give') or []) + [code]
+        c.flags['press'] = list(f.get('press') or []) + [press(tag, head.format(nm=c.name))]
+        return f'{lab} — {man(price_of(c, base))}, 인기 +{plus}(평생)'
+    if item == 'invest':
+        if f.get('invest'):
+            raise LiteError('맡긴 돈의 결과가 아직 안 나왔어요. 시즌이 끝나면 알려 줄게요.')
+        have = cash(c)
+        if have < INVEST_MIN:
+            raise LiteError(f'투자하려면 현금이 {man(INVEST_MIN)} 이상 있어야 해요.')
+        amount = int(have * INVEST_SHARE)
+        _spend(c, amount, '투자')
+        c.flags['invest'] = {'year': c.year, 'amount': amount}
+        return f'지인 사업에 {man(amount)}을 맡겼어요 — 결과는 시즌이 끝나면 나와요'
     raise LiteError('살 물건을 다시 골라 주세요.')
 
 
@@ -1479,7 +1604,7 @@ def start_season(c, programs, intensity, event_choice, intl_choices, rng) -> dic
     # 집·장비(상점) — 월세는 시즌마다 나가고, 장비는 이번 시즌만 쓴다. cut 은 부상 위험에 곱한다(gear_cut)
     house = flags.get('house', 'dorm')
     if house == 'rent':
-        rent = HOUSE['rent'][2]
+        rent = price_of(c, HOUSE['rent'][2])
         if cash(c) >= rent:
             flags['cash'] = cash(c) - rent
             state['news'].append(f'월세 {man(rent)}을 냈어요')
@@ -1491,6 +1616,13 @@ def start_season(c, programs, intensity, event_choice, intl_choices, rng) -> dic
     if gear.get('year') != c.year:
         gear = {}
     cut = gear_cut(c, gear=gear, house=house)
+    care = flags.pop('care', None) or {}                               # 관리팀 — 이번 시즌 하나
+    if care.get('year') == c.year:
+        if care.get('trainer'):
+            mods['train'] *= CARE_TRAIN
+        if care.get('aging'):
+            mods['age'] = CARE_AGE
+        state['physio'] = bool(care.get('physio'))
     if gear:
         if gear.get('bat'):
             v = dict((t[0], t[3]) for t in GEAR['bat']['tiers'])[gear['bat']]
@@ -1512,6 +1644,8 @@ def start_season(c, programs, intensity, event_choice, intl_choices, rng) -> dic
     state['out'] = [0.0, 0.0]
     if rng.random() < max(0.0, p_inj):
         size = rng.choices((0.12, 0.3, 0.6), (0.55, 0.3, 0.15))[0]
+        if state.get('physio'):                                        # 전담 물리치료사 — 빨리 돌아오고 큰 부상도 가볍게
+            size *= 0.5
         a = rng.random()
         state['out'] = [a, min(1.0, a + size)]
         n = max(1, int(G * (state['out'][1] - a)))
@@ -1738,7 +1872,7 @@ def finish_season(c, state, rng):
             pt += share * min(1.0, (t.get('outs', 0) / 3) / (r['G'] * (1.2 if r['role'] == 'sp' else 0.45)))
         else:
             pt += share * min(1.0, t.get('pa', 0) / (r['G'] * 4.0))
-    grown = grow(c, state['programs'], state['intensity'], min(1.0, pt), war, rng, mods['train'])
+    grown = grow(c, state['programs'], state['intensity'], min(1.0, pt), war, rng, mods['train'], mods.get('age', 1.0))
     season.deltas = season_deltas(c, state.get('start'), (c.flags or {}).pop('ledger', []), grown.pop('_why', {}), grown)
     season.ovr_end = c.ovr
     # 다음 시즌 이동 — 바로 옮기지 않고 면담(next_step)에서 정한다
@@ -1874,7 +2008,20 @@ def wrap_season(c, season, rng):
     if ad:
         season.news.append(f'광고 수입 {man(ad)}이 들어왔어요(인기 {_fame_of(flags)})')
         season.save(update_fields=['news'])
-    flags['cash'] = money + season.salary + ad
+    tax = income_tax(season.salary + ad)                              # 연봉·광고 수입의 세금(종합소득세 구간)
+    if tax:
+        season.news.append(f'세금 {man(tax)}을 냈어요(연봉·광고 수입의 {round(100 * tax / (season.salary + ad))}%)')
+        season.save(update_fields=['news'])
+    flags['cash'] = money + season.salary + ad - tax
+    inv = flags.pop('invest', None)                                    # 지인 사업 투자 — 시즌이 끝나면 결과
+    if inv:
+        mult, _w, label = rng.choices(INVEST_OUT, [x[1] for x in INVEST_OUT])[0]
+        back = int(inv['amount'] * mult)
+        flags['cash'] += back
+        season.news.append(f"지인 사업 투자 {label} — {man(inv['amount'])}이 {man(back)}{josa(man(back), '이/가')} 됐어요")
+        if label in ('대박', '쪽박'):
+            season.press.append(press('', f"{c.name}, 지인 사업 투자 {'대박…‘운이 좋았다’' if label == '대박' else '쪽박…수억 날렸다'}"))
+        season.save(update_fields=['news', 'press'])
     c.earnings += season.salary + ad
     c.salary = season.salary
     if c.age + 1 >= 19 and c.traits and not c.traits_seen:          # 고교를 마칠 때 스카우트 리포트로 드러난다

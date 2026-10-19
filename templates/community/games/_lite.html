@@ -184,7 +184,7 @@
                 <div class="rl-gauge" role="radiogroup" aria-label="훈련 강도">
                     {% for i in intensity %}<label class="rl-gauge-opt is-{{ i.code }}"><input type="radio" name="intensity" value="{{ i.code }}" {% if i.code == 'normal' %}checked{% endif %}><span><b>{{ i.label }}</b><small>부상 확률 {{ i.risk }}%</small><i class="rl-gauge-bar" aria-hidden="true"></i></span></label>{% endfor %}
                 </div>
-                <p class="rk-hint">강하게 할수록 더 크게 자라지만 다칠 확률이 올라가요(나이가 들수록 더). 부상 확률은 나이·드러난 특성·장비·집을 모두 넣은 값이에요{% if gear_cut %}(지금 장비·집으로 −{{ gear_cut }}%){% endif %}. 장비와 집을 다 갖춰도 최대 25%까지만 줄어요. 잠재력에 가까워지면 훈련 효과가 줄어요.</p>
+                <p class="rk-hint">강하게 할수록 더 크게 자라지만 다칠 확률이 올라가요(나이가 들수록 더). 부상 확률은 나이·드러난 특성·장비·집을 모두 넣은 값이에요{% if gear_cut %}(지금 장비·집으로 −{{ gear_cut }}%){% endif %}. 장비와 집을 다 갖춰도 최대 {{ shop.cut_max }}%까지만 줄어요. 잠재력에 가까워지면 훈련 효과가 줄어요.</p>
             </section>
             <div class="rl-cta"><button type="submit" class="gm-btn is-primary is-block rl-go" data-rl-go data-ready="시즌 시작하기">시즌 시작하기</button></div>
         </form>

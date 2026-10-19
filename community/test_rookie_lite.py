@@ -507,7 +507,7 @@ class FourthBatchTests(TestCase):
     def test_shop_gear_house_and_accessory(self):
         rng = random.Random(4)
         c = pro('쇼핑', seed=44, ovr=68.0)
-        c.earnings = 400000                                                  # 40억
+        c.earnings = 600000                                                  # 60억 — 1군 물가(×4)
         c.pending = X.plan_step(c, rng)
         c.pending.update(event=None, intl=[], shop='chain')
         c.save()
@@ -519,7 +519,7 @@ class FourthBatchTests(TestCase):
         with self.assertRaises(X.LiteError):
             X.buy(c, 'house', 'rent')                                        # 내 집이 있다
         X.buy(c, 'acc', 'chain')
-        self.assertEqual(X.cash(c), 400000 - 2000 - 1200 - 300000 - 20000)
+        self.assertEqual(X.cash(c), 600000 - 2000 * 4 - 1200 * 4 - 100000 * 4 - 20000)   # 값은 리그 물가를 곱한다
         self.assertEqual(X.fame(c), 4)
         with self.assertRaises(X.LiteError):
             X.buy(c, 'acc', 'watch')                                         # 들어오지 않은 물건
@@ -539,11 +539,11 @@ class FourthBatchTests(TestCase):
     def test_rent_is_charged_each_season_or_you_move_out(self):
         rng = random.Random(5)
         c = pro('월세', seed=46)
-        c.flags = dict(c.flags, cash=5000, house='rent')
+        c.flags = dict(c.flags, cash=20000, house='rent')
         c.pending = {'kind': 'plan', 'event': None, 'intl': []}
         state = X.start_season(c, X.pick_programs(c, rng), 'normal', '', {}, rng)
-        self.assertEqual(X.cash(c), 2000)
-        self.assertIn('월세 3,000만원을 냈어요', state['news'])
+        self.assertEqual(X.cash(c), 8000)                                    # 1군 월세 = 3,000만원 × 물가 4
+        self.assertIn('월세 1억 2,000만원을 냈어요', state['news'])
         c.flags['train_log'] = []
         state = X.start_season(c, X.pick_programs(c, rng), 'normal', '', {}, rng)
         self.assertEqual(c.flags['house'], 'dorm')                           # 못 내면 숙소로
@@ -794,10 +794,10 @@ class SixthBatchTests(TestCase):
         c = pro('완전무장', seed=63, ovr=70.0, age=24)
         c.traits = []
         c.flags = dict(c.flags, house='own', gear={'year': c.year, 'guard': 'fit', 'bat': 'craft'})
-        self.assertAlmostEqual(X.gear_cut(c), 1 - X.GEAR_CUT_MAX)                 # 보호대·집을 다 갖춰도 25%까지만
+        self.assertAlmostEqual(X.gear_cut(c), 1 - X.GEAR_CUT_MAX)                 # 보호대·집을 다 갖춰도 12%까지만
         bare = pro('맨몸', seed=64, ovr=70.0, age=24)
         bare.traits = []
-        self.assertAlmostEqual(X.injury_odds(c, 'normal'), X.injury_odds(bare, 'normal') * 0.75)
+        self.assertAlmostEqual(X.injury_odds(c, 'normal'), X.injury_odds(bare, 'normal') * (1 - X.GEAR_CUT_MAX))
         c.traits = ['iron']
         self.assertGreaterEqual(X.injury_odds(c, 'light'), X.INJURY_FLOOR)          # 어떤 경우에도 2%는 남는다
 
@@ -998,6 +998,91 @@ class FeedbackBatch11Tests(TestCase):
         self.client.force_login(c.user)
         self.assertContains(self.client.get('/rookie/lite/', HTTP_USER_AGENT=PC), 'rl-mfx is-award')
         self.assertNotContains(self.client.get('/rookie/lite/', HTTP_USER_AGENT=PC), 'rl-mfx is-award')
+
+
+class MoneyBalanceTests(TestCase):
+    """2026-10-19 밸런스 2 — 장비 의존도 낮춤, 리그 물가, 세금, 돈 쓸 곳(관리팀·전지훈련·팬 이벤트·나눔·투자)."""
+
+    def _shopper(self, name, seed, league='kbo1', cash=2000000):
+        c = pro(name, seed=seed, league=league, ovr=60.0)
+        c.flags = dict(c.flags, cash=cash)
+        c.pending = {'kind': 'plan', 'event': None, 'intl': []}
+        c.save()
+        return c
+
+    def test_prices_follow_the_league(self):
+        futures, majors = self._shopper('퓨처스물가', 101, 'kbo2'), self._shopper('빅리그물가', 102, 'mlb')
+        X.buy(futures, 'bat', 'craft')
+        X.buy(majors, 'bat', 'craft')
+        self.assertEqual(2000000 - X.cash(futures), round(2000 * 1.2))
+        self.assertEqual(2000000 - X.cash(majors), 2000 * 40)                 # 메이저리그 장인 배트 8억
+        self.assertLessEqual(X.GEAR_CUT_MAX, 0.12)
+
+    def test_taxes_come_out_of_salary(self):
+        self.assertEqual(X.income_tax(0), 0)
+        self.assertAlmostEqual(X.income_tax(30000) / 30000, 0.31, places=2)     # 3억 — 실효세율 31%쯤
+        self.assertGreater(X.income_tax(1000000) / 1000000, 0.43)              # 100억 — 45% 구간
+        c = pro('세금', seed=103)
+        s = LiteSeason.objects.create(career=c, year=c.year, age=c.age, league='kbo1', club='lg', games=144, war=3.0,
+                                      salary=30000, totals={'pa': 600}, awards=[])
+        before = X.cash(c)
+        X.wrap_season(c, s, random.Random(1))
+        s.refresh_from_db()
+        self.assertTrue(any(n.startswith('세금 ') for n in s.news))
+        self.assertLess(X.cash(c) - before, 30000)
+
+    def test_care_staff_change_the_season(self):
+        rng = random.Random(7)
+        c = self._shopper('관리팀', 104)
+        for code in X.CARE:
+            X.buy(c, 'care', code)
+        with self.assertRaises(X.LiteError):
+            X.buy(c, 'care', 'trainer')                                       # 시즌에 한 번
+        state = X.start_season(c, X.pick_programs(c, rng), 'normal', '', {}, rng)
+        self.assertAlmostEqual(state['mods']['train'], X.CARE_TRAIN)
+        self.assertEqual(state['mods']['age'], X.CARE_AGE)
+        self.assertTrue(state['physio'])
+        old = self._shopper('노쇠', 105)
+        old.age = 36
+        keep, plain = dict(old.stats), None
+        X.grow(old, [], 'normal', 0.0, 0.0, random.Random(3), 1.0, X.CARE_AGE)
+        cared = sum(old.stats.values()) - sum(keep.values())
+        old.stats = dict(keep)
+        X.grow(old, [], 'normal', 0.0, 0.0, random.Random(3), 1.0, 1.0)
+        plain = sum(old.stats.values()) - sum(keep.values())
+        self.assertGreater(cared, plain)                                      # 노쇠 관리팀 — 덜 빠진다
+
+    def test_camp_fan_give_and_invest(self):
+        c = self._shopper('돈쓰기', 106)
+        k = 'contact'
+        before = float(c.stats[k])
+        X.buy(c, 'camp', k)
+        self.assertAlmostEqual(float(c.stats[k]), min(X.stat_pot(c, k), before + X.CAMP[2]))
+        with self.assertRaises(X.LiteError):
+            X.buy(c, 'camp', 'power')                                         # 비시즌에 한 번
+        fame0 = X.fame(c)
+        X.buy(c, 'fan', '')
+        X.buy(c, 'give', 'foundation')
+        self.assertEqual(X.fame(c), fame0 + X.FAN[2] + X.GIVE['foundation'][2])
+        self.assertTrue(any('재단' in p['title'] for p in c.flags['press']))   # 다음 시즌 기사
+        with self.assertRaises(X.LiteError):
+            X.buy(c, 'give', 'foundation')                                    # 평생 한 번
+        have = X.cash(c)
+        X.buy(c, 'invest', '')
+        self.assertEqual(X.cash(c), have - int(have * X.INVEST_SHARE))
+        s = LiteSeason.objects.create(career=c, year=c.year, age=c.age, league='kbo1', club='lg', games=144, war=2.0,
+                                      totals={'pa': 600}, awards=[])
+        X.wrap_season(c, s, random.Random(1))
+        s.refresh_from_db()
+        self.assertNotIn('invest', c.flags)
+        self.assertTrue(any(n.startswith('지인 사업 투자') for n in s.news))
+
+    def test_amateurs_cannot_use_the_new_services(self):
+        c = new('고교생돈', seed=107)
+        c.flags = dict(c.flags, cash=100000)
+        c.pending = {'kind': 'plan', 'event': None, 'intl': []}
+        with self.assertRaises(X.LiteError):
+            X.buy(c, 'care', 'trainer')
 
 
 def _pitcher(name):
