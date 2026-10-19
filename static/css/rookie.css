@@ -797,7 +797,7 @@ a.rk-rank-main:hover b { color: var(--rk-accent); }
 .rl-card .rk-team { color: #fff; }
 .rl-card .rk-team .rk-dot { background: #fff; }
 .rl-card .rk-tier { color: var(--rl-night); background: #fff; }
-.rl-card .rk-number { font-size: 3.4rem; color: transparent; -webkit-text-stroke: 2px var(--team); }
+.rl-card .rk-number { font-size: 3.4rem; color: var(--team); }
 .rl-card .rk-bar { height: 9px; border-radius: 3px; }
 .rl-card .rk-bar::after { content: ""; position: absolute; inset: 0; background: repeating-linear-gradient(90deg, transparent 0 calc(10% - 2px), #fff calc(10% - 2px) 10%); pointer-events: none; }
 .rl-card .rk-bar i { border-radius: 0; background: linear-gradient(90deg, #818cf8, var(--rk-accent)); }
@@ -967,7 +967,7 @@ a.rk-rank-main:hover b { color: var(--rk-accent); }
 .rl-mini:focus-visible { outline: 2px solid var(--rk-accent); outline-offset: 3px; }
 .rl-mini-top { display: flex; justify-content: space-between; font-size: 0.72rem; font-weight: 700; color: var(--rk-board-dim); }
 .rl-mini-top em { font-style: normal; font-weight: 900; color: var(--rk-led); }
-.rl-mini-no { position: absolute; right: 8px; bottom: -14px; font-size: 5.5rem; font-weight: 900; line-height: 1; color: transparent; -webkit-text-stroke: 1.5px color-mix(in srgb, var(--team) 70%, #fff); opacity: .4; }
+.rl-mini-no { position: absolute; right: 8px; bottom: -14px; font-size: 5.5rem; font-weight: 900; line-height: 1; color: color-mix(in srgb, var(--team) 70%, #fff); opacity: .22; }
 .rl-mini-name { position: relative; margin-top: 18px; font-size: 1.35rem; font-weight: 900; letter-spacing: -0.03em; color: #fff; }
 .rl-mini-pos { position: relative; font-size: 0.78rem; color: var(--rk-board-dim); }
 .rl-mini-key { position: relative; display: flex; gap: 10px; margin-top: auto; padding-top: 10px; font-size: 0.76rem; font-weight: 800; color: var(--rk-led); }
@@ -1028,7 +1028,7 @@ a.rk-rank-main:hover b { color: var(--rk-accent); }
 .rl-mcard > summary::-webkit-details-marker { display: none; }
 .rl-mcard > summary:focus-visible { outline: 2px solid var(--rk-accent); outline-offset: -2px; }
 .rl-mcard-head { display: flex; align-items: center; gap: 10px; }
-.rl-mcard-no { flex: none; min-width: 34px; font-size: 1.6rem; font-weight: 900; line-height: 1; text-align: center; color: transparent; -webkit-text-stroke: 1.5px var(--team); font-variant-numeric: tabular-nums; }
+.rl-mcard-no { flex: none; min-width: 34px; font-size: 1.6rem; font-weight: 900; line-height: 1; text-align: center; color: var(--team); font-variant-numeric: tabular-nums; }
 .rl-mcard-who { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 .rl-mcard-who b { overflow: hidden; font-size: 1rem; font-weight: 900; white-space: nowrap; text-overflow: ellipsis; color: var(--rk-ink); }
 .rl-mcard-who small { overflow: hidden; font-size: 0.72rem; white-space: nowrap; text-overflow: ellipsis; color: var(--rk-ink-3); }
