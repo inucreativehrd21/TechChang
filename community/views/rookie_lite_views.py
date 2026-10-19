@@ -431,7 +431,7 @@ def lite_card(request, pk: int):
 # ───────────────────────────── 은퇴 카드 이미지(SNS 에 올리는 PNG · 링크 미리보기)
 # 서버의 headless Chromium(playwright — 연구실 위클리 카드뉴스와 같은 것)으로 카드 화면을 찍어 media/lite_cards 에 둔다.
 # 은퇴 카드는 바뀌지 않으니 한 번 찍으면 계속 쓴다 — 디자인을 바꾸면 CARD_V 를 올린다.
-CARD_V = 3                  # 2026-10-19 유니폼 등판 카드로 개편(3: 숫자 폭)
+CARD_V = 4                  # 2026-10-19 유니폼 등판 카드로 개편(3: 숫자 폭, 4: 글꼴 힌팅 끔)
 SHOTS = {'card': (432, 540, 2.5), 'og': (1200, 630, 1)}       # 1080×1350(인스타 세로) · 링크 미리보기 1200×630
 _shot_lock = threading.Lock()
 
@@ -456,7 +456,7 @@ def render_png(html: str, size: tuple, out: str):
         else:
             route.fulfill(status=404, body='')
     with sync_playwright() as p:
-        browser = p.chromium.launch()
+        browser = p.chromium.launch(args=['--font-render-hinting=none'])   # 리눅스 힌팅이 작은 글씨를 'M VP'처럼 벌려서
         try:
             page = browser.new_page(viewport={'width': w, 'height': h}, device_scale_factor=scale)
             page.route('http://shot.local/**', serve)
