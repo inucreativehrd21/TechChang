@@ -599,3 +599,24 @@ class NameRuleTests(TestCase):
         r.post('/rookie/create/', {'name': '전두환', 'role': 'batter', 'team': 'lg', 'region': '서울', 'number': '1',
                                    'focus': 'contact', 'position': 'SS'})
         self.assertFalse(RookiePlayer.objects.filter(user=u).exists())
+
+
+class AwardCelebrationTests(TestCase):
+    """2026-10-19 수상 축하 — 새로 받은 상을 내 선수 화면에서 한 번."""
+
+    def test_new_award_is_celebrated_once(self):
+        from community import rookie_league as L
+        from community.models import RookieAward
+        u = member('정식수상', '정식수상')
+        p = adult(R.create(u, name='정식수상', role='batter', team='lg', region='서울', focus='contact'), league='kbo1', club='lg')
+        s = L.get_season(1)
+        RookieAward.objects.create(season=s, user=u, player=p, league='kbo1', kind='gg', label='골든글러브 유격수', name=p.name,
+                                   team='lg', role='batter', value='WAR 5.1')
+        RookieAward.objects.create(season=s, user=u, player=p, league='kbo1', kind='mvp', label='MVP', name=p.name,
+                                   team='lg', role='batter', value='WAR 7.2 · .341/.420/.612')
+        self.client.force_login(u)
+        r = self.client.get('/rookie/', HTTP_USER_AGENT=PC)
+        self.assertContains(r, 'rl-mfx is-award')
+        self.assertContains(r, 'WAR 7.2')                                      # MVP 가 앞에, 골든글러브는 곁에
+        self.assertContains(r, '골든글러브 유격수')
+        self.assertNotContains(self.client.get('/rookie/', HTTP_USER_AGENT=PC), 'rl-mfx is-award')

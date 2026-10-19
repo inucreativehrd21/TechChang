@@ -403,6 +403,8 @@
     {% include 'community/games/_rookie_rights.html' %}
     {% if awaken_fx %}{% include 'community/games/_lite_awaken_fx.html' with fx=awaken_fx %}{% endif %}
     {% if moment_fx %}{% include 'community/games/_lite_moment_fx.html' with fx=moment_fx %}{% endif %}
+    {% if award_fx %}{% include 'community/games/_lite_award_fx.html' with fx=award_fx go='시즌 결산 보기' %}{% endif %}
+    {% if moment_fx or award_fx %}{% include 'community/games/_lite_fx_script.html' %}{% endif %}
 </div>
 </div>
 

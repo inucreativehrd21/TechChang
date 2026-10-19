@@ -47,33 +47,3 @@
     </div>
     {% if fx.won %}<span class="rl-mfx-confetti" aria-hidden="true">{% for i in '123456789012345678901234' %}<i style="--k: {{ forloop.counter }}"></i>{% endfor %}</span>{% endif %}
 </div>
-<script nonce="{{ csp_nonce }}">
-(function () {
-    var fx = document.querySelector('[data-rl-mfx]');
-    if (!fx) return;
-    var go = fx.querySelector('[data-rl-mfx-close]');
-    var skip = fx.querySelector('[data-rl-mfx-skip]');
-    var ended = false;
-    document.documentElement.classList.add('rl-fx-open');
-    var end = function () {                                   // 건너뛰기 — 마지막 장면으로
-        if (ended) return;
-        ended = true;
-        fx.classList.add('is-skip');
-        go.focus();
-    };
-    var close = function () {
-        fx.classList.add('is-leaving');
-        document.documentElement.classList.remove('rl-fx-open');
-        setTimeout(function () { fx.remove(); }, 300);
-    };
-    skip.addEventListener('click', end);
-    fx.querySelector('[data-rl-mfx-card]').addEventListener('click', function (e) { if (!e.target.closest('button')) end(); });
-    go.addEventListener('click', close);
-    document.addEventListener('keydown', function (e) {
-        if (e.key === 'Escape' && document.body.contains(fx)) { if (ended) { close(); } else { end(); } }
-    });
-    var total = parseFloat(getComputedStyle(fx).getPropertyValue('--tr')) * 1000 + 700;
-    setTimeout(function () { if (!ended) { ended = true; go.focus(); } }, total || 2800);
-    setTimeout(function () { if (!ended) skip.focus({ preventScroll: true }); }, 50);
-})();
-</script>

@@ -169,11 +169,13 @@ def lite_home(request):
                    hall=X.hall('kbo', limit=5), school_groups=_school_groups())
         return render(request, 'community/rookie_lite.html', ctx)
     pend = c.pending or {}
-    fx, mfx = (c.flags or {}).get('awaken_fx'), (c.flags or {}).get('moment_fx')
-    if fx or mfx:                                              # 각성·결정적 순간 연출 — 한 번 보여 주고 지운다
-        c.flags = {k: v for k, v in c.flags.items() if k not in ('awaken_fx', 'moment_fx')}
+    fl = c.flags or {}
+    fx, mfx, afx = fl.get('awaken_fx'), fl.get('moment_fx'), fl.get('award_fx')
+    if fx or mfx or afx:                                       # 각성·결정적 순간·수상 연출 — 한 번 보여 주고 지운다
+        c.flags = {k: v for k, v in c.flags.items() if k not in ('awaken_fx', 'moment_fx', 'award_fx')}
         c.save(update_fields=['flags'])
-    ctx.update(mode=pend.get('kind', 'plan'), **_identity(c), seasons=_season_rows(c), awaken_fx=fx, moment_fx=mfx)
+    ctx.update(mode=pend.get('kind', 'plan'), **_identity(c), seasons=_season_rows(c), awaken_fx=fx, moment_fx=mfx,
+               award_fx=afx)
     if pend.get('kind') == 'plan':
         ctx['duty'] = X._duty_now(c)[2]
         ctx.update(shop=X.shop_view(c), coach=X.who_is(c, 'coding'), natl=S.national(X.cal_year(c)))
@@ -215,7 +217,8 @@ def _board_ctx(c, s) -> dict:
     if not s:
         return {'season': None}
     return {'season': s, 'season_league': W.league(s.league)['name'], 'season_club': W.club_label(s.league, s.club),
-            'season_year': X.cal_year(c, s.year)}
+            'season_year': X.cal_year(c, s.year),
+            'season_rings': [a['label'] for a in (s.awards or []) if a.get('kind') == 'ring']}   # 어느 대회 우승인지
 
 
 @require_POST
@@ -294,6 +297,21 @@ def lite_hall(request):
     return render(request, 'community/rookie_lite_hall.html',
                   dict(_base(request, 'hall'), tab=tab, tabs=HALL_TABS, rows=rows, tab_name=dict(HALL_TABS)[tab],
                        role=role, role_tabs=HALL_ROLES, lineup=None if role else X.best_lineup(every)))   # 라인업은 투수·타자 '전체'일 때
+
+
+def lite_today(request):
+    """일일 랭킹(2026-10-19 사용자 요청) — 그날 은퇴한 커리어를 명예의 전당과 같은 순서로. 어제 것도 볼 수 있다."""
+    tab = request.GET.get('lg', '')
+    tab = tab if tab in dict(HALL_TABS) else 'kbo'
+    role = request.GET.get('role', '')
+    role = role if role in dict(HALL_ROLES) else ''
+    ago = 1 if request.GET.get('d') == '1' else 0
+    start, end = X.day_bounds(ago)
+    rows = X.hall(tab, role=role, since=start, until=end)
+    return render(request, 'community/rookie_lite_today.html',
+                  dict(_base(request, 'today'), tab=tab, tabs=HALL_TABS, rows=rows, tab_name=dict(HALL_TABS)[tab],
+                       role=role, role_tabs=HALL_ROLES, daily=True, ago=ago, day=start,
+                       day_tabs=[('', '오늘'), ('1', '어제')]))
 
 
 def lite_career(request, pk: int):

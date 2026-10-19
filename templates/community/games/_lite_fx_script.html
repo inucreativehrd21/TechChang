@@ -1,0 +1,41 @@
+{# 결정적 순간·수상 연출(.rl-mfx) 공용 — 화면에 있는 연출을 차례로 하나씩 연다(결정적 순간 → 수상). 한 번만 넣는다. #}
+<script nonce="{{ csp_nonce }}">
+(function () {
+    if (window.rlFxChain) return;
+    window.rlFxChain = true;
+    var all = Array.prototype.slice.call(document.querySelectorAll('[data-rl-mfx]'));
+    var cur = null;
+    var play = function (i) {
+        var fx = all[i];
+        if (!fx) { cur = null; document.documentElement.classList.remove('rl-fx-open'); return; }
+        var go = fx.querySelector('[data-rl-mfx-close]');
+        var skip = fx.querySelector('[data-rl-mfx-skip]');
+        var st = { fx: fx, ended: false };
+        st.end = function () {                                // 건너뛰기 — 마지막 장면으로
+            if (st.ended) return;
+            st.ended = true;
+            fx.classList.add('is-skip');
+            go.focus();
+        };
+        st.close = function () {
+            if (st.closing) return;
+            st.closing = true;
+            fx.classList.add('is-leaving');
+            setTimeout(function () { fx.remove(); play(i + 1); }, 300);
+        };
+        cur = st;
+        fx.hidden = false;
+        document.documentElement.classList.add('rl-fx-open');
+        skip.addEventListener('click', st.end);
+        fx.querySelector('[data-rl-mfx-card]').addEventListener('click', function (e) { if (!e.target.closest('button')) st.end(); });
+        go.addEventListener('click', st.close);
+        var total = parseFloat(getComputedStyle(fx).getPropertyValue('--tr')) * 1000 + 700;
+        setTimeout(function () { if (!st.ended) { st.ended = true; go.focus(); } }, total || 2800);
+        setTimeout(function () { if (!st.ended) skip.focus({ preventScroll: true }); }, 50);
+    };
+    document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape' && cur) { if (cur.ended) { cur.close(); } else { cur.end(); } }
+    });
+    play(0);
+})();
+</script>

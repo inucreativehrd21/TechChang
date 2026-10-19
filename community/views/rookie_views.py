@@ -130,6 +130,10 @@ def rookie_home(request):
         p.career = {k: v for k, v in p.career.items() if k != 'awaken_fx'}
         p.save(update_fields=['career'])
         ctx['awaken_fx'] = fx
+    afx = R.award_fx(p)                                        # 새로 받은 상 — 한 번 축하
+    if afx:
+        p.save(update_fields=['career'])
+        ctx['award_fx'] = afx
     return render(request, 'community/rookie.html', ctx)
 
 

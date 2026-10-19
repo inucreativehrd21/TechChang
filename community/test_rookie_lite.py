@@ -924,13 +924,80 @@ class MomentFxTests(TestCase):
                                                                  'line': '직구 — 노림수 적중, 안타', 'outcome': '1B'}):
             X.decide(c, 'moment', 'fast', random.Random(1))
         c.save()
-        self.assertEqual(c.flags['moment_fx']['result'], '우승!')
+        self.assertEqual(c.flags['moment_fx']['result'], '한국시리즈 우승!')            # 어느 대회인지
         self.client.force_login(c.user)
         r = self.client.get('/rookie/lite/', HTTP_USER_AGENT=PC)
         self.assertContains(r, 'data-rl-mfx')
         self.assertContains(r, '시즌 결산 보기')
         self.assertNotIn('moment_fx', LiteCareer.objects.get(pk=c.pk).flags)
         self.assertNotContains(self.client.get('/rookie/lite/', HTTP_USER_AGENT=PC), 'data-rl-mfx')   # 한 번만
+
+
+class FeedbackBatch11Tests(TestCase):
+    """2026-10-19 사용자 요청 — 우승한 대회 이름, 타자 폼 교정 문구, 오늘의 랭킹, 수상 축하."""
+
+    def test_result_names_the_tournament(self):
+        self.assertEqual(X.moment_result_text({'kind': 'amateur', 'key': '봉황대기', 'stage': '봉황대기 결승', 'won': True}),
+                         '봉황대기 우승!')
+        self.assertEqual(X.moment_result_text({'kind': 'series', 'key': '', 'stage': '일본시리즈 7차전', 'won': False}),
+                         '일본시리즈 준우승')
+        self.assertEqual(X.moment_result_text({'kind': 'intl', 'key': 'asian', 'stage': '아시안게임 결승', 'won': True}),
+                         '아시안게임 금메달')
+        c = new('대회이름', seed=90)
+        s = LiteSeason.objects.create(career=c, year=1, age=16, league='hs', club=c.club, games=30, champion=True,
+                                      awards=[{'kind': 'ring', 'label': '청룡기 우승'}], months=[])
+        c.pending = {'kind': 'review', 'year': 1}
+        c.save()
+        self.client.force_login(c.user)
+        self.assertContains(self.client.get('/rookie/lite/', HTTP_USER_AGENT=PC), '청룡기 우승!')   # 전광판도
+
+    def test_batter_form_change_talks_about_the_swing(self):
+        hit = type('Hit', (), {'random': lambda self: 0.0})()
+        self.assertIn('타구가', X.apply_event(pro('폼타자', seed=91), 'form', 'accept', hit, {}))
+        self.assertIn('공이', X.apply_event(_pitcher('폼투수'), 'form', 'accept', hit, {}))
+
+    def _retired(self, name, seed, when):
+        c = pro(name, seed=seed)
+        LiteSeason.objects.create(career=c, year=1, age=24, league='kbo1', club='lg', games=144, war=4.0,
+                                  awards=[{'kind': 'mvp', 'label': 'MVP'}])
+        c.retired_at = when
+        c.save()
+        return c
+
+    def test_today_ranking_counts_only_todays_retirements(self):
+        start, _end = X.day_bounds()
+        self._retired('오늘은퇴', 92, start + timedelta(minutes=5))
+        self._retired('어제은퇴', 93, start - timedelta(hours=2))
+        r = self.client.get('/rookie/lite/today/', HTTP_USER_AGENT=PC)
+        self.assertContains(r, '오늘의 랭킹')
+        self.assertContains(r, '오늘은퇴')
+        self.assertNotContains(r, '어제은퇴')
+        r = self.client.get('/rookie/lite/today/?d=1', HTTP_USER_AGENT=PC)
+        self.assertContains(r, '어제은퇴')
+        self.assertNotContains(r, '오늘은퇴')
+        self.assertContains(self.client.get('/rookie/lite/hall/', HTTP_USER_AGENT=PC), '오늘은퇴')   # 명예의 전당은 그대로
+
+    def test_award_celebration_once_and_first_time_only_for_minor_awards(self):
+        c = pro('수상축하', seed=94)
+        s1 = LiteSeason.objects.create(career=c, year=1, age=24, league='kbo1', club='lg', games=144, war=6.0,
+                                       totals={'pa': 600, 'ab': 520, 'h': 180, 'hr': 30},
+                                       awards=[{'kind': 'mvp', 'label': 'MVP'}, {'kind': 'gg', 'label': '골든글러브 유격수'}])
+        X.wrap_season(c, s1, random.Random(1))
+        fx = c.flags['award_fx']
+        self.assertEqual((fx['hero'], fx['count'], fx['others']), ('MVP', '첫 수상', ['골든글러브 유격수']))
+        c.flags.pop('award_fx')
+        s2 = LiteSeason.objects.create(career=c, year=2, age=25, league='kbo1', club='lg', games=144, war=4.0,
+                                       totals={'pa': 600}, awards=[{'kind': 'gg', 'label': '골든글러브 유격수'}])
+        X.wrap_season(c, s2, random.Random(1))
+        self.assertNotIn('award_fx', c.flags)                                  # 두 번째 골든글러브는 조용히
+        s3 = LiteSeason.objects.create(career=c, year=3, age=26, league='kbo1', club='lg', games=144, war=7.0,
+                                       totals={'pa': 600}, awards=[{'kind': 'mvp', 'label': 'MVP'}])
+        X.wrap_season(c, s3, random.Random(1))
+        self.assertEqual(c.flags['award_fx']['count'], '통산 2번째')            # MVP 는 받을 때마다
+        c.save()
+        self.client.force_login(c.user)
+        self.assertContains(self.client.get('/rookie/lite/', HTTP_USER_AGENT=PC), 'rl-mfx is-award')
+        self.assertNotContains(self.client.get('/rookie/lite/', HTTP_USER_AGENT=PC), 'rl-mfx is-award')
 
 
 def _pitcher(name):

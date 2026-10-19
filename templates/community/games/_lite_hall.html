@@ -1,9 +1,11 @@
-{# 라이트 명예의 전당 — 리그(전체·나라) × 투수·야수. 맥락: rookie_lite_views.lite_hall #}
+{# 라이트 명예의 전당·오늘의 랭킹(daily) — 리그(나라) × 투수·야수. 맥락: rookie_lite_views.lite_hall / lite_today #}
 {% load rookie_tags %}
 <div class="gm rk rl">
 <div class="gm-wrap is-wide">
-    {% include 'community/games/_lite_top.html' with h1='명예의 전당' %}
-    <form class="rl-filter" method="get" action="" data-rl-filter aria-label="명예의 전당 거르기">
+    {% if daily %}{% include 'community/games/_lite_top.html' with h1='오늘의 랭킹' %}{% else %}{% include 'community/games/_lite_top.html' with h1='명예의 전당' %}{% endif %}
+    <form class="rl-filter" method="get" action="" data-rl-filter aria-label="{% if daily %}오늘의 랭킹{% else %}명예의 전당{% endif %} 거르기">
+        {% if daily %}<label class="rl-select"><span>날짜</span>
+            <select name="d">{% for code, label in day_tabs %}<option value="{{ code }}"{% if ago|stringformat:'s' == code or not code and not ago %} selected{% endif %}>{{ label }}</option>{% endfor %}</select></label>{% endif %}
         <label class="rl-select"><span>투수·타자</span>
             <select name="role">{% for code, label in role_tabs %}<option value="{{ code }}"{% if role == code %} selected{% endif %}>{{ label }}</option>{% endfor %}</select></label>
         <label class="rl-select"><span>리그</span>
@@ -12,7 +14,11 @@
         <p class="rl-filter-count" aria-live="polite">{% if role == 'pitcher' %}투수{% elif role == 'batter' %}타자{% else %}선수{% endif %} {{ rows|length }}명</p>
     </form>
     {% if lineup and lineup.filled %}{% include 'community/games/_lite_lineup.html' %}{% endif %}
+    {% if daily %}
+    <p class="rk-note">{{ day|date:'n월 j일' }} 하루 동안 은퇴한 커리어만, {{ tab_name }} 리그에서 뛴 시즌으로 명예의 전당과 같은 순서(MVP → 최고 OVR → 수상 → 프로 WAR)로 세웠어요. 매일 0시에 새로 시작해요.</p>
+    {% else %}
     <p class="rk-note">{{ tab_name }} 리그에서 뛴 시즌만 세서, MVP → 최고 OVR → 수상 → 프로 WAR 순으로 세웠어요. 로그인한 커리어만 올라요. 1.0 출시(2026년 10월 19일) 뒤에 시작한 커리어부터 새로 세요 — 그 전 커리어의 은퇴 카드는 카드 보관함에 그대로 있어요.</p>
+    {% endif %}
     {% if rows %}
     <div class="rk-table-wrap">
         <table class="rk-table rk-career-table rl-hall">
@@ -36,7 +42,11 @@
         </table>
     </div>
     {% else %}
+    {% if daily %}
+    <section class="rk-panel"><p class="rk-empty">{% if ago %}어제{% else %}오늘{% endif %} {{ tab_name }} 리그를 거쳐 은퇴한 {% if role == 'pitcher' %}투수{% elif role == 'batter' %}타자{% else %}커리어{% endif %}가 없어요.{% if not ago %} 오늘의 1위에 도전해 보세요.{% endif %}</p></section>
+    {% else %}
     <section class="rk-panel"><p class="rk-empty">{% if role %}아직 은퇴한 {% if role == 'pitcher' %}투수{% else %}타자{% endif %}가 없어요.{% else %}아직 은퇴한 커리어가 없어요.{% endif %} 첫 번째 전설이 되어 보세요.</p></section>
+    {% endif %}
     {% endif %}
     <div class="gm-actions"><a class="gm-btn is-primary" href="{% url 'community:lite_home' %}">내 커리어 보기</a></div>
     {% include 'community/games/_rookie_rights.html' %}

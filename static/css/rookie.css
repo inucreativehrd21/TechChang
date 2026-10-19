@@ -1417,6 +1417,7 @@ a.rk-rank-main:hover b { color: var(--rk-accent); }
 .rl-filter-count { margin: 0 0 10px auto; font-size: 0.8rem; font-weight: 700; color: var(--rk-ink-3); }
 @media (max-width: 575.98px) {
     .rl-filter { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); padding: 10px 12px; }
+    .rl-filter:has(> .rl-select:nth-of-type(3)) { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px 8px; }   /* 오늘의 랭킹 — 날짜·투타·리그 한 줄 */
     .rl-select select { width: 100%; min-width: 0; }
     .rl-filter-go, .rl-filter-count { grid-column: 1 / -1; }
     .rl-filter-count { margin: 0; }
@@ -1650,7 +1651,7 @@ a.rl-spot.is-bench:hover { transform: none; box-shadow: inset 0 0 0 1px var(--rk
 /* 결정적 순간 결과 연출(2026-10-19) — 각성처럼 이펙트만: 공(메달)이 날아와 박히는 순간 섬광·충격파·불꽃·빛줄기 → 제목 → 점수판 → 우승/준우승.
    기본 모양 = 마지막 장면, 애니메이션이 처음부터 끌고 온다(fill both). 시각: --ti 박힘, --th 제목, --ts 점수, --tr 결과, --tw 빛줄기
    끝없이 도는 것(빛줄기 회전·공 빛)은 .rl-mfx-spin — 건너뛰기에서 빼야 미친 듯이 돌지 않는다 */
-.rl-mfx { position: fixed; inset: 0; z-index: 10000; display: grid; place-items: center; overflow: hidden; padding: 20px 16px; word-break: keep-all; color: #fff;
+.rl-mfx { position: fixed; inset: 0; z-index: 10000; display: grid; grid-template-columns: minmax(0, 1fr); place-items: center; overflow: hidden; padding: 20px 16px; word-break: keep-all; color: #fff;
     background: radial-gradient(60% 50% at 50% 38%, #312e81 0, #0f1240 55%, #04051a 100%);
     --ti: .65s; --th: .8s; --ts: 1.45s; --tr: 1.8s; --tw: var(--ti); animation: rl-fx-in .3s ease both; }
 .rl-mfx.has-after { --tr: 2.35s; --tw: var(--tr); }
@@ -1775,6 +1776,23 @@ a.rl-spot.is-bench:hover { transform: none; box-shadow: inset 0 0 0 1px var(--rk
     .rk .rl-mfx-head, .rl-mfx-head { font-size: 2.3rem; }
     .rk .rl-mfx-result, .rl-mfx-result { font-size: 1.7rem; }
 }
+/* 수상 축하(2026-10-19) — 결정적 순간 연출과 같은 이펙트에 트로피. 트로피의 금색은 재질 표시로만 */
+.rl-mfx[hidden] { display: none; }
+.rl-mfx.is-award { --ti: .75s; --th: .9s; --ts: 1.3s; --tr: 1.5s; }
+.rl-mfx-glow.is-gold { filter: drop-shadow(0 0 20px rgba(250, 204, 21, .55)); }
+.rl-mfx-glow.is-gold.rl-mfx-spin { animation: rl-mfx-pulse-gold 2.4s ease-in-out 1.6s infinite; }
+@keyframes rl-mfx-pulse-gold { 0%, 100% { filter: drop-shadow(0 0 16px rgba(250, 204, 21, .5)); } 50% { filter: drop-shadow(0 0 34px rgba(253, 230, 138, .95)); } }
+.rl-mfx-trophy { display: block; width: 124px; height: 124px; animation: rl-mfx-lift .85s cubic-bezier(.3, 0, .3, 1.25) .05s both; }
+@keyframes rl-mfx-lift { 0% { opacity: 0; transform: perspective(500px) translateY(38vh) rotateY(900deg) scale(.4); }
+    80% { opacity: 1; transform: perspective(500px) translateY(-6px) rotateY(-12deg) scale(1.12); } 100% { transform: none; } }
+.rk .rl-mfx-count, .rl-mfx-count { margin: 0; padding: 3px 12px; border-radius: 99px; font-size: 0.85rem; font-weight: 800; color: #fde68a; background: rgba(250, 204, 21, .14);
+    box-shadow: inset 0 0 0 1px rgba(250, 204, 21, .45); animation: rl-mfx-rise .4s ease calc(var(--th) + .3s) both; }
+.rl-mfx-others { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; margin: 4px 0 0; padding: 0; list-style: none; }
+.rl-mfx-others li { padding: 4px 11px; border-radius: 99px; font-size: 0.8rem; font-weight: 700; color: #e0e7ff; background: rgba(99, 102, 241, .25);
+    box-shadow: inset 0 0 0 1px rgba(165, 180, 252, .5); animation: rl-mfx-rise .35s ease calc(var(--tr) + var(--i, 0) * 80ms) both; }
+.rl-mfx-others li:nth-child(2) { --i: 1; } .rl-mfx-others li:nth-child(3) { --i: 2; } .rl-mfx-others li:nth-child(4) { --i: 3; }
+.rl-mfx-others li:nth-child(5) { --i: 4; } .rl-mfx-others li:nth-child(n+6) { --i: 5; }
+@media (max-height: 640px) { .rl-mfx-trophy { width: 92px; height: 92px; } }
 .rl-mfx.is-skip *:not(.rl-mfx-spin), .rl-mfx.is-skip *::before, .rl-mfx.is-skip *::after { animation-delay: 0s !important; animation-duration: .01s !important; }
 @media (prefers-reduced-motion: reduce) {
     .rl-mfx, .rl-mfx *, .rl-mfx *::before, .rl-mfx *::after { animation: none !important; }

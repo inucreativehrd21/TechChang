@@ -124,6 +124,7 @@ urlpatterns = [
     path('rookie/lite/new/', rookie_lite_views.lite_new, name='lite_new'),
     path('rookie/lite/act/', rookie_lite_views.lite_act, name='lite_act'),
     path('rookie/lite/hall/', rookie_lite_views.lite_hall, name='lite_hall'),
+    path('rookie/lite/today/', rookie_lite_views.lite_today, name='lite_today'),
     path('rookie/lite/c/<int:pk>/', rookie_lite_views.lite_career, name='lite_career'),
     path('rookie/lite/c/<int:pk>/card/', rookie_lite_views.lite_card, name='lite_card'),
     path('rookie/lite/c/<int:pk>/card.png', rookie_lite_views.lite_card_png, name='lite_card_png'),        # 저장·SNS(1080×1350)

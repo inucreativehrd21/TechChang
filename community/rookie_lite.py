@@ -29,7 +29,7 @@ from __future__ import annotations
 
 import math
 import random
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from django.db import transaction
 from django.utils import timezone
@@ -414,7 +414,7 @@ def apply_event(c, code: str, choice: str, rng, mods: dict) -> str:
         if choice == 'accept':
             if rng.random() < 0.55:
                 bump(core, 4, '폼 교정 성공')
-                return '폼 교정에 성공했어요 — 공이 달라졌어요'
+                return '폼 교정에 성공했어요 — ' + ('공이 달라졌어요' if c.role == 'pitcher' else '타구가 달라졌어요')
             bump(core, -2, '폼 교정 실패')
             return '폼 교정이 몸에 붙지 않아 애를 먹었어요'
         return '익숙한 폼을 지켰어요'
@@ -1858,6 +1858,9 @@ def wrap_season(c, season, rng):
     for lg in (code, c.league):
         if W.is_pro(lg) and (not W.is_pro(c.peak or 'hs') or W.level(lg) > W.level(c.peak)):
             c.peak = lg
+    afx = award_fx(c, season, flags)
+    if afx:
+        flags['award_fx'] = afx
     for a in season.awards:
         if a['kind'] == 'mvp':
             c.mvp += 1
@@ -1884,6 +1887,36 @@ def wrap_season(c, season, rng):
     if not W.is_pro(c.league):
         c.grade += 1
     c.pending = {'kind': 'review', 'year': season.year}
+
+
+# 수상 축하 연출(2026-10-19 사용자 요청: MVP·중요한 상은 모션그래픽으로) — flags['award_fx'] 를 다음 화면이 한 번 보여 주고 지운다.
+# MVP·투수 최고상·신인왕은 받을 때마다, 골든글러브·타이틀·하위 리그 MVP 는 그 리그에서 처음 받을 때만(매 시즌 뜨면 지겹다).
+AWARD_HERO = ('mvp', 'ace', 'rookie', 'gg', 'title', 'minor')
+AWARD_EVERY = ('mvp', 'ace', 'rookie')
+
+
+def award_fx(c, season, flags: dict) -> dict | None:
+    got = [a for a in season.awards if a['kind'] in AWARD_HERO]
+    if not got:
+        return None
+    seen = set(flags.get('award_seen') or [])
+    key = lambda a: f"{season.league}:{a['label']}"                       # noqa: E731
+    fresh = [a for a in got if key(a) not in seen]
+    flags['award_seen'] = sorted(seen | {key(a) for a in got})
+    cheer = [a for a in got if a['kind'] in AWARD_EVERY] or fresh
+    if not cheer:
+        return None
+    hero = min(cheer, key=lambda a: AWARD_HERO.index(a['kind']))
+    n = 1 + sum(1 for s in c.seasons.exclude(pk=season.pk) for a in s.awards
+                if s.league == season.league and a['label'] == hero['label'])
+    from .rookie_card import _palette
+    pal = _palette(season.league, season.club)
+    return {'hero': hero['label'], 'kind': hero['kind'], 'n': n,
+            'kicker': f"{cal_year(c, season.year)} 시즌 · {W.league(season.league)['name']}",
+            'count': f'통산 {n}번째' if n > 1 else '첫 수상',
+            'line': f"{_short(c.role, season.totals)} · WAR {season.war}",
+            'others': [a['label'] for a in season.awards if a is not hero and a['kind'] in AWARD_HERO + ('allstar',)],
+            'colors': [pal['primary'], pal['secondary']]}
 
 
 def next_step(c, rng, skip_meeting: bool = False) -> dict:
@@ -2087,7 +2120,7 @@ def decide(c, what: str, choice: str, rng, school: str = '') -> str:
         if i + 1 < len(ms):
             c.pending = dict(pend, i=i + 1, done=done)
             c.flags = dict(c.flags or {}, moment_fx=fx)
-            return f"{story} → {m['stage']} {d['result']}"
+            return f"{story} → {d['result']}"
         season = c.seasons.get(year=pend['year'])
         c.flags = dict(c.flags or {})
         resolve_moments(c, season, done, rng)
@@ -2095,7 +2128,7 @@ def decide(c, what: str, choice: str, rng, school: str = '') -> str:
         wrap_season(c, season, rng)
         c.pending['moments'] = done
         c.flags = dict(c.flags or {}, moment_fx=fx)
-        return f"{story} → {m['stage']} {d['result']}"
+        return f"{story} → {d['result']}"
     if what == 'awaken':
         text = awaken(c, choice, rng)
         c.pending = plan_step(c, rng)
@@ -2342,7 +2375,13 @@ HALL_SYSTEMS = ('kbo', 'mlb', 'npb', 'cpbl')
 HALL_SINCE = timezone.make_aware(datetime(2026, 10, 19, 21, 0))
 
 
-def hall(system: str = 'kbo', limit: int = 50, role: str = '') -> list:
+def day_bounds(days_ago: int = 0) -> tuple:
+    """그날(한국 시간 0시~다음 날 0시) — 일일 랭킹."""
+    start = timezone.localtime().replace(hour=0, minute=0, second=0, microsecond=0) - timedelta(days=days_ago)
+    return start, start + timedelta(days=1)
+
+
+def hall(system: str = 'kbo', limit: int = 50, role: str = '', since=None, until=None) -> list:
     """은퇴한 라이트 커리어 순위 — 나라 리그(system)별로만, 킥루 순서(MVP → 최고 OVR → 수상 → WAR).
     리그를 섞은 전체 순위는 없앴다(2026-10-19 사용자 요청: 리그별로 헷갈리고 가중치가 잘 맞지 않는다).
     role('pitcher'·'batter')을 주면 투수·타자만 — 통산 줄(line)도 붙인다."""
@@ -2353,6 +2392,10 @@ def hall(system: str = 'kbo', limit: int = 50, role: str = '') -> list:
         .prefetch_related('seasons')                                       # 손님 판은 로그인해 계정으로 옮겨야 오른다
     if role in ('pitcher', 'batter'):
         qs = qs.filter(role=role)
+    if since:                                                              # 일일 랭킹 — 그날 은퇴한 커리어만
+        qs = qs.filter(retired_at__gte=since)
+    if until:
+        qs = qs.filter(retired_at__lt=until)
     rows = []
     for c in qs[:2000]:
         seasons = [s for s in c.seasons.all() if s.games and W.system_of(s.league) == system]
@@ -2708,7 +2751,8 @@ def moment_fx(c, m: dict, r: dict, d: dict, more: bool) -> dict:
             'head': moment_head(m, r), 'line': r['line'], 'play': r['text'],
             'after_text': '' if r.get('final') else AFTER[(m['side'], r['ok'], d['won'])],
             'ok': r['ok'], 'won': d['won'], 'result': d['result'],
-            'medal': {'금메달': 'gold', '은메달': 'silver'}.get(d['result'], ''), 'colors': list(colors), 'more': more}
+            'medal': 'gold' if d['result'].endswith('금메달') else 'silver' if d['result'].endswith('은메달') else '',
+            'colors': list(colors), 'more': more}
 
 
 def moments_for(c, code: str, rank: int, team_n: int, state: dict, rng) -> list:
@@ -2743,10 +2787,12 @@ def _hero(nm: str, d: dict) -> str:
 
 
 def moment_result_text(d: dict) -> str:
+    """결과 한 줄 — 어느 대회인지 밝힌다(2026-10-19 사용자 요청: 고교 대회가 여럿이라 '우승!'만으로는 모른다)."""
     if d['kind'] == 'intl':
         t = INTL[d['key']]
-        return t['tiers'][0][1] if d['won'] else t['tiers'][1][1]
-    return '우승!' if d['won'] else '준우승'
+        return f"{t['name']} {t['tiers'][0][1] if d['won'] else t['tiers'][1][1]}"
+    name = d['key'] if d['kind'] == 'amateur' else d['stage'].replace(' 7차전', '')
+    return f'{name} 우승!' if d['won'] else f'{name} 준우승'
 
 
 def resolve_moments(c, season, done: list, rng) -> list:

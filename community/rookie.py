@@ -450,6 +450,29 @@ def train(user, stat: str, times: int = 1, rng=None) -> dict:
             'tired': tired, 'capped': after >= cap - 0.05}
 
 
+# 수상 축하 연출(2026-10-19 사용자 요청) — 새로 받은 상을 한 번 축하한다. 본 상은 career['award_seen'](상 pk)로.
+AWARD_HERO = ('mvp', 'ace', 'rookie', 'gg', 'title', 'minor')
+
+
+def award_fx(p) -> dict | None:
+    """새로 받은 상 — 가장 큰 상 하나를 앞에, 나머지는 곁에. p.career 를 고치니 부른 쪽이 저장한다."""
+    from .models import RookieAward
+    from .rookie_card import _palette
+    seen = int((p.career or {}).get('award_seen') or 0)
+    new = list(RookieAward.objects.filter(player=p, pk__gt=seen).select_related('season'))
+    if not new:
+        return None
+    p.career = dict(p.career or {}, award_seen=max(a.pk for a in new))
+    hero = min(new, key=lambda a: AWARD_HERO.index(a.kind) if a.kind in AWARD_HERO else 9)
+    n = RookieAward.objects.filter(player=p, league=hero.league, label=hero.label).count()
+    pal = _palette(p.league, p.club)
+    return {'hero': hero.label, 'kind': hero.kind, 'n': n,
+            'kicker': f"시즌 {hero.season.number} · {W.league(hero.league)['name']}",
+            'count': f'통산 {n}번째' if n > 1 else '첫 수상', 'line': hero.value,
+            'others': [f'{W.short(a.league)} {a.label}' if a.league != hero.league else a.label for a in new if a.pk != hero.pk],
+            'colors': [pal['primary'], pal['secondary']]}
+
+
 def awaken(user, choice: str, rng=None) -> dict:
     """각성 도전(rookie_career.awaken_ready 일 때) — 'try' 는 TP 를 쓰고 확률로, 'skip' 은 미룬다.
     결과 연출은 career['awaken_fx'] 에 남겨 다음 화면이 한 번 보여 준다."""
