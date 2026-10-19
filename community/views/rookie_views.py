@@ -16,15 +16,18 @@ from django.db.models import Count, Q, Sum
 from django.http import Http404, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.template.loader import render_to_string
+from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 
 from .. import rookie as R
+from .. import rookie_card as K
 from .. import rookie_career as C
 from .. import rookie_league as L
 from .. import rookie_legacy as G
 from .. import rookie_world as W
 from ..game_visibility import is_hidden, visible
+from ..rookie_card import render_png   # noqa: F401 — 테스트가 바꿔 끼운다
 from ..models import RookieAward, RookieGame, RookiePlayer, RookieSeason, RookieSeasonStat
 
 logger = logging.getLogger(__name__)
@@ -122,7 +125,24 @@ def rookie_home(request):
                                                              heir=bool(R.inherits_from(request.user))))
     ctx = _play_ctx(request, p)
     ctx['test'] = request.session.pop('rookie_test', None)
+    fx = (p.career or {}).get('awaken_fx')
+    if fx:                                                     # 각성 연출 — 한 번 보여 주고 지운다
+        p.career = {k: v for k, v in p.career.items() if k != 'awaken_fx'}
+        p.save(update_fields=['career'])
+        ctx['awaken_fx'] = fx
     return render(request, 'community/rookie.html', ctx)
+
+
+@login_required
+@require_POST
+def rookie_awaken(request):
+    """각성 도전·미루기 — 결과 연출은 다음 화면(rookie_home)이 보여 준다."""
+    try:
+        r = R.awaken(request.user, request.POST.get('choice', ''))
+        messages.info(request, r['text'])
+    except R.GameError as ex:
+        messages.warning(request, str(ex))
+    return redirect('community:rookie_home')
 
 
 @login_required
@@ -219,7 +239,42 @@ def rookie_retire(request):
     if R.retire(request.user):
         messages.info(request, '은퇴했어요. 선수 페이지와 기록·수상은 그대로 남고, 명예의 전당 후보가 돼요. '
                                '새 선수로 리틀야구부터 다시 시작할 수 있어요.')
+        last = RookiePlayer.objects.filter(user=request.user, retired_at__isnull=False).order_by('-retired_at').first()
+        if last:                                               # 은퇴 카드부터 보여 준다
+            return redirect(f"{reverse('community:rookie_card', args=[last.pk])}?new=1")
     return redirect('community:rookie_home')
+
+
+# ───────────────────────────── 은퇴 카드(2026-10-19 사용자 요청: 라이트 판의 카드를 정식 판에도 — 이미지 저장·SNS·링크 미리보기)
+def _card_player(request, pk: int):
+    p = get_object_or_404(RookiePlayer.objects.select_related('user'), pk=pk)
+    if is_hidden(p.user) and p.user_id != request.user.id:
+        raise Http404
+    return p
+
+
+def _card_ctx(p) -> dict:
+    card = K.main_card(p)
+    ident = card.pop('identity')
+    return {'c': p, 'card': card, 'team': ident['team'], 'pos_label': ident['pos_label'] or ident['role_label'],
+            'style_label': f"주특기 {ident['focus_label']}" if ident['focus_label'] else ident['role_label']}
+
+
+def rookie_card(request, pk: int):
+    p = _card_player(request, pk)
+    if not p.retired_at:
+        return redirect('community:rookie_player', pk=pk)
+    is_me = p.user_id == request.user.id
+    return render(request, 'community/rookie_card.html',
+                  dict(_base_ctx(request, 'records'), **_card_ctx(p), is_me=is_me, fresh=is_me and request.GET.get('new') == '1'))
+
+
+def rookie_card_png(request, pk: int, kind: str = 'card'):
+    p = _card_player(request, pk)
+    if not p.retired_at or kind not in K.SHOTS:
+        raise Http404
+    return K.png_response(f'm{p.pk}', kind, f'{p.name}-은퇴카드.png', request.GET.get('download') == '1', render_png,
+                          lambda: render_to_string('community/games/lite_card_shot.html', dict(_card_ctx(p), kind=kind)))
 
 
 # ───────────────────────────── 선수 페이지(공개)
@@ -379,4 +434,19 @@ def rookie_records(request):
             ctx['mine'] = next((i for i, h in enumerate(highs, 1) if h['s'].player_id == ctx['my_id']), None)
     else:
         ctx['rows'] = G.league_career(lg, retired_only=view == 'hof')
+        if view == 'hof':
+            ctx['lineup'] = _lineup(G.league_career(lg, retired_only=True, limit=2000), lg)
     return render(request, 'community/rookie_records.html', ctx)
+
+
+def _lineup(rows, lg: str) -> dict:
+    """명예의 전당 역대 베스트 라인업(라이트 판과 같은 그림) — 정식 판 투수는 자리가 하나(SP)라 마지막 보직으로 선발·마무리를 가른다."""
+    from types import SimpleNamespace
+
+    from .. import rookie_lite as X
+    BULLPEN = {'closer', 'setup', 'win', 'mop', 'chase'}
+    rows = [dict(r, c=SimpleNamespace(pk=r['p'].pk, name=r['p'].name, role=r['p'].role,
+                                      position=('RP' if r['p'].lineup in BULLPEN else 'SP') if r['p'].role == 'pitcher' else r['p'].position),
+                 url=reverse('community:rookie_player', args=[r['p'].pk]), color=W.club_color(lg, r['team']))
+            for r in rows]
+    return X.best_lineup(rows)

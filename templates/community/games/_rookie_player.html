@@ -4,6 +4,7 @@
 <div class="gm-wrap is-wide">
     {% include 'community/games/_rookie_top.html' with h1=p.name %}
 
+    {% if p.retired_at %}<p class="rk-cardlink"><a class="gm-btn is-primary" href="{% url 'community:rookie_card' p.pk %}">은퇴 카드 보기</a><span>유니폼 등판 카드 — 이미지로 저장해 공유할 수 있어요</span></p>{% endif %}
     <div class="rk-hero is-profile">
         {% include 'community/games/_rookie_card.html' %}
         <div class="rk-col">

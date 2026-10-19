@@ -1,7 +1,7 @@
 {% load rookie_tags %}{% comment %}라이트 은퇴 카드 — 4:5 한 장(2026-10-19 개편: "구단별 색, 화려하고 동적인 카드").
 주인공은 홈 유니폼 등판 — 어깨에 이름, 가운데 등번호(구단 주색 + 보조색 테두리), 핀스트라이프 구단은 줄무늬. 등급은 비스듬한 원형 인장.
 크기는 모두 카드 폭 기준(--u)이라 폰·PC·이미지(card.png)에서 같은 모양. 마우스를 따라 기울고 빛이 비친다(카드 페이지 스크립트).
-맥락: c, card(rookie_lite_views._card), pos_label, style_label{% endcomment %}
+맥락: c(라이트 커리어 또는 정식 판 선수), card(rookie_lite_views._card · rookie_card.main_card), pos_label, style_label{% endcomment %}
 {% with p=card.palette %}
 <article class="rl-rcard is-{{ card.tier }}" style="--team: {{ p.primary }}; --trim: {{ p.secondary }}; --ink: {{ p.ink }}; --bg: {{ p.bg }}" aria-label="{{ c.name }} 은퇴 카드" data-rl-rcard>
     <div class="rl-rcard-in">
@@ -42,9 +42,7 @@
         </div>
         <dl class="rl-rc-stats">
             {% for s in card.stats %}<div><dt>{{ s.0 }}</dt><dd>{{ s.1 }}</dd></div>{% endfor %}
-            <div class="is-key"><dt>프로 WAR</dt><dd>{{ card.war }}</dd></div>
-            <div class="is-key"><dt>최고 OVR</dt><dd>{{ card.best_ovr }}</dd></div>
-            <div class="is-key"><dt>통산 수입</dt><dd>{{ card.money }}</dd></div>
+            {% for k in card.keys %}<div class="is-key"><dt>{{ k.0 }}</dt><dd>{{ k.1 }}</dd></div>{% endfor %}
         </dl>
         <ul class="rl-rc-honors" aria-label="수상">
             {% for h in card.honors %}<li class="{% if not h.n %}is-zero{% endif %}"><b>{{ h.n }}</b><small>{{ h.label }}</small></li>{% endfor %}

@@ -106,6 +106,7 @@ urlpatterns = [
     path('rookie/', rookie_views.rookie_home, name='rookie_home'),
     path('rookie/create/', rookie_views.rookie_create, name='rookie_create'),
     path('rookie/train/', rookie_views.rookie_train, name='rookie_train'),
+    path('rookie/awaken/', rookie_views.rookie_awaken, name='rookie_awaken'),     # 각성(다섯 능력이 모두 한계일 때)
     path('rookie/test/', rookie_views.rookie_test, name='rookie_test'),
     path('rookie/apply/', rookie_views.rookie_apply, name='rookie_apply'),         # 진학 지원
     path('rookie/decide/', rookie_views.rookie_decide, name='rookie_decide'),      # 드래프트 뒤 진로
@@ -115,6 +116,9 @@ urlpatterns = [
     path('rookie/awards/', rookie_views.rookie_awards, name='rookie_awards'),
     path('rookie/records/', rookie_views.rookie_records, name='rookie_records'),
     path('rookie/p/<int:pk>/', rookie_views.rookie_player, name='rookie_player'),
+    path('rookie/p/<int:pk>/card/', rookie_views.rookie_card, name='rookie_card'),                        # 은퇴 카드
+    path('rookie/p/<int:pk>/card.png', rookie_views.rookie_card_png, name='rookie_card_png'),
+    path('rookie/p/<int:pk>/og.png', rookie_views.rookie_card_png, {'kind': 'og'}, name='rookie_card_og'),
     # rookie_lite_views.py - 야구선수 키우기 라이트(한 판 30분 커리어 시뮬레이터, 규칙 community/rookie_lite.py)
     path('rookie/lite/', rookie_lite_views.lite_home, name='lite_home'),
     path('rookie/lite/new/', rookie_lite_views.lite_new, name='lite_new'),

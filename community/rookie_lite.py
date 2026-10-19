@@ -2295,13 +2295,14 @@ def career_line(c) -> dict:
                          'v': L.line_view(c.role, _sum(x.totals for x in v))} for k, v in by.items()]}
 
 
-MVP_WEIGHT = {'mlb': 3.0, 'npb': 1.5, 'kbo': 1.2, 'cpbl': 0.6}     # 전체 순위에서 리그 수준만큼 무게
+HALL_SYSTEMS = ('kbo', 'mlb', 'npb', 'cpbl')
 
 
-def hall(system: str = '', limit: int = 50, role: str = '') -> list:
-    """은퇴한 라이트 커리어 순위 — 킥루 순서(MVP → 최고 OVR → 수상 → WAR). system 을 주면 그 나라 리그 시즌만,
-    전체 순위의 MVP 는 리그 수준만큼 무게를 준다(MVP_WEIGHT — 대만 MVP 와 메이저리그 MVP 를 같게 세지 않게).
-    role('pitcher'·'batter')을 주면 투수·야수만 — 통산 줄(line)도 붙인다(2026-10-18 사용자 요청)."""
+def hall(system: str = 'kbo', limit: int = 50, role: str = '') -> list:
+    """은퇴한 라이트 커리어 순위 — 나라 리그(system)별로만, 킥루 순서(MVP → 최고 OVR → 수상 → WAR).
+    리그를 섞은 전체 순위는 없앴다(2026-10-19 사용자 요청: 리그별로 헷갈리고 가중치가 잘 맞지 않는다).
+    role('pitcher'·'batter')을 주면 투수·타자만 — 통산 줄(line)도 붙인다."""
+    system = system if system in HALL_SYSTEMS else 'kbo'
     from .game_visibility import visible
     from .models import LiteCareer
     qs = visible(LiteCareer.objects.filter(retired_at__isnull=False, user__isnull=False), 'user') \
@@ -2310,22 +2311,22 @@ def hall(system: str = '', limit: int = 50, role: str = '') -> list:
         qs = qs.filter(role=role)
     rows = []
     for c in qs[:2000]:
-        seasons = [s for s in c.seasons.all() if s.games and (not system or W.system_of(s.league) == system)]
-        if system and not seasons:
+        seasons = [s for s in c.seasons.all() if s.games and W.system_of(s.league) == system]
+        if not seasons:
             continue
         mvp = sum(1 for s in seasons for a in s.awards if a['kind'] == 'mvp')
-        weighted = round(sum(MVP_WEIGHT.get(W.system_of(s.league), 1.0) for s in seasons for a in s.awards
-                             if a['kind'] == 'mvp'), 1) if not system else mvp
         awards = sum(1 for s in seasons for a in s.awards if a['kind'] in ('mvp', 'rookie', 'gg', 'ace', 'title', 'minor'))
         rings = sum(1 for s in seasons for a in s.awards if a['kind'] == 'ring')
         war = round(sum(s.war for s in seasons if W.is_pro(s.league)), 1)
         best = max([s.ovr_end for s in seasons] or [c.best_ovr])
         pro = [s for s in seasons if W.is_pro(s.league)]
-        rows.append({'c': c, 'mvp': mvp, 'mvp_score': weighted, 'awards': awards, 'rings': rings, 'war': war,
-                     'best': round(best, 1), 'seasons': len(seasons), 'peak': W.short(c.peak or 'hs'),
+        last = max(seasons, key=lambda s: s.year)
+        rows.append({'c': c, 'mvp': mvp, 'awards': awards, 'rings': rings, 'war': war,
+                     'best': round(best, 1), 'seasons': len(seasons),
+                     'peak': W.short(max((s.league for s in seasons), key=W.level)),       # 이 나라에서 가장 높이 오른 곳
                      'line': L.line_view(c.role, _sum_totals(pro)) if role and pro else None,
-                     'color': W.club_color(c.league, c.club)})
-    rows.sort(key=lambda r: (r['mvp_score'], r['best'], r['awards'], r['war']), reverse=True)
+                     'color': W.club_color(last.league, last.club)})
+    rows.sort(key=lambda r: (r['mvp'], r['best'], r['awards'], r['war']), reverse=True)
     return rows[:limit]
 
 

@@ -96,7 +96,7 @@
     <ul class="rk-rank">{% for m in mine %}<li><a class="rk-rank-main" href="{% url 'community:lite_card' m.pk %}"><b>{{ m.name }}</b><span>{{ m.peak|league_name }}까지 · MVP {{ m.mvp }} · 수상 {{ m.awards }} · WAR {{ m.war }}</span></a><b class="rk-rank-val">{{ m.best_ovr|floatformat:1 }}</b></li>{% endfor %}</ul>
     {% endif %}
     {% if hall %}
-    <h2 class="rk-h2">명예의 전당 상위</h2>
+    <h2 class="rk-h2">명예의 전당 상위 · KBO</h2>
     <ol class="rk-rank">
         {% for r in hall %}<li><span class="rk-rank-no">{{ forloop.counter }}</span><a class="rk-rank-main" href="{% url 'community:lite_career' r.c.pk %}"><b>{{ r.c.name }}</b><span>{{ r.peak }}까지 · MVP {{ r.mvp }} · WAR {{ r.war }}</span></a><b class="rk-rank-val">{{ r.best }}</b></li>{% endfor %}
     </ol>

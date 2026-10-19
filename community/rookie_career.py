@@ -132,8 +132,43 @@ def age_ratio(p) -> float:
 
 
 def age_cap(p) -> float:
-    """지금 나이로 오를 수 있는 끝 = 잠재력 × 나이 비율."""
-    return min(CAP, float(p.potential or POTENTIAL_MEAN) * age_ratio(p))
+    """지금 나이로 오를 수 있는 끝 = 잠재력 × 나이 비율 + 각성(보라색 별 하나마다 AWAKEN_PLUS)."""
+    return min(CAP, float(p.potential or POTENTIAL_MEAN) * age_ratio(p) + AWAKEN_PLUS * awakened(p))
+
+
+# 각성(2026-10-19 사용자 요청: 라이트 판의 각성을 정식 판에도) — 다 자란 몸(나이 비율 1)으로 다섯 능력이 모두 한계에 닿으면
+# TP 를 들여 도전한다. 성공하면 보라색 별 하나 — 모든 능력의 한계가 AWAKEN_PLUS 오른다(스카우트 별은 그대로).
+# 실패하거나 미루면 AWAKEN_WAIT 일 뒤에 다시 기회가 온다.
+AWAKEN_PLUS, AWAKEN_MAX, AWAKEN_COST, AWAKEN_WAIT = 4.0, 2, 150, 14
+
+
+def awakened(p) -> int:
+    return int((p.career or {}).get('awaken', 0))
+
+
+def awaken_ready(p, today: date | None = None) -> bool:
+    today = today or timezone.localdate()
+    if p.retired_at or awakened(p) >= AWAKEN_MAX or age_ratio(p) < 1.0 or (p.pending or {}).get('kind'):
+        return False
+    nxt = (p.career or {}).get('awaken_next')
+    if nxt and today < date.fromisoformat(nxt):
+        return False
+    return all(float(p.stats.get(k, 0)) >= stat_cap(p, k) - 0.5 for k in p.stats)
+
+
+def awaken_odds(p) -> float:
+    """성공 확률 — 연습벌레·큰 경기 체질이면 높고, 서른 넘거나 두 번째면 어렵다."""
+    t = p.traits_seen or []
+    q = 0.5 + (0.1 if 'grinder' in t else 0) + (0.05 if 'clutch' in t else 0)
+    q += 0.05 if p.age <= 27 else -0.1 if p.age >= 32 else 0
+    return round(_clamp(q - 0.12 * awakened(p), 0.25, 0.75), 2)
+
+
+def awaken_view(p, today: date | None = None) -> dict | None:
+    if not awaken_ready(p, today):
+        return None
+    return {'odds_pct': int(round(awaken_odds(p) * 100)), 'cost': AWAKEN_COST, 'next_n': awakened(p) + 1,
+            'plus': f'{AWAKEN_PLUS:g}', 'can_pay': p.tp >= AWAKEN_COST, 'wait': AWAKEN_WAIT}
 
 
 def stat_cap(p, stat: str) -> float:
@@ -224,6 +259,8 @@ def cap_message(p, stat: str, label: str) -> str:
     cap = stat_cap(p, stat)
     if age_ratio(p) < 1.0:
         return f'{label}은(는) {p.age}세 몸으로 오를 수 있는 끝({cap:.0f})에 닿았어요. 한 살 더 먹으면 다시 열려요.'
+    if awakened(p) < AWAKEN_MAX:
+        return f'{label}은(는) 타고난 한계({cap:.0f})에 닿았어요. 다섯 능력이 모두 한계에 닿으면 각성에 도전할 수 있어요.'
     return f'{label}은(는) 타고난 한계({cap:.0f})에 닿았어요. 다른 능력을 키워 보세요.'
 
 
@@ -720,7 +757,7 @@ def career_view(p, today: date | None = None) -> dict:
                       'bonus': sign_bonus((offer or {}).get('round')), 'abroad_bonus': SIGN_BONUS[1][1],
                       'left': max(0, left), 'deadline': _deadline(pend, today)}
     stars = scout_stars(p)
-    v['scout'] = {'stars': stars, 'note': STAR_NOTE[stars], 'range': range(5)} if stars else None
+    v['scout'] = {'stars': stars, 'note': STAR_NOTE[stars], 'range': range(5), 'awaken': range(awakened(p))} if stars else None
     v['grade_days'] = grade_days(code)
     cap = age_cap(p)
     v['age_cap'] = cap if cap < min(CAP, float(p.potential or CAP)) else None

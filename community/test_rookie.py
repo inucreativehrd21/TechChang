@@ -436,3 +436,100 @@ class NightlyIsolationTests(TestCase):
         base = '/' + getattr(settings, 'ADMIN_URL', 'secret-control-panel/').strip('/') + '/'
         r = self.client.get(f'{base}community/rookieplayer/{p.pk}/change/', HTTP_USER_AGENT=PC)
         self.assertIn(r.status_code, (200, 302))
+
+
+class MainFromLiteTests(TestCase):
+    """2026-10-19 — 라이트 판의 각성·은퇴 카드·베스트 라인업을 정식 판에도."""
+
+    def setUp(self):
+        import tempfile
+        cache.clear()
+        self.media = tempfile.mkdtemp()
+
+    def _capped(self, name='각성정식', age=26, potential=70, tp=400):
+        from community import rookie_career as C
+        u = member(name, name)
+        p = R.create(u, name=name, role='batter', team='lg', region='서울', focus='contact')
+        p = adult(p, age=age, potential=potential, league='kbo1', club='lg', tp=tp)
+        p.stats = {k: C.stat_cap(p, k) for k in p.stats}
+        p.save()
+        return u, p
+
+    def test_awakening_needs_a_grown_body_with_every_stat_capped(self):
+        from community import rookie_career as C
+        u, p = self._capped()
+        self.assertTrue(C.awaken_ready(p))
+        young = adult(R.create(member('어린이', '어린이'), name='어린이', role='batter', team='lg', region='서울'), age=20, potential=70)
+        young.stats = {k: C.stat_cap(young, k) for k in young.stats}
+        self.assertFalse(C.awaken_ready(young))                        # 나이 한계가 아직 오르는 중
+        cap = C.stat_cap(p, 'power')
+        lucky = type('Lucky', (), {'random': lambda self: 0.0})()
+        r = R.awaken(u, 'try', rng=lucky)
+        p.refresh_from_db()
+        self.assertEqual(C.awakened(p), 1)
+        self.assertEqual(C.stat_cap(p, 'power'), cap + C.AWAKEN_PLUS)     # 보라색 별 = 한계 +4
+        self.assertEqual(p.tp, 400 - C.AWAKEN_COST)
+        self.assertTrue(p.career['awaken_fx']['ok'])
+        self.assertIn('각성에 성공', r['text'])
+        self.assertFalse(C.awaken_ready(p))
+        # 연출은 한 번, 보라색 별은 진로 칸에
+        self.client.force_login(u)
+        self.assertContains(self.client.get('/rookie/', HTTP_USER_AGENT=PC), 'rl-fx is-ok')
+        r = self.client.get('/rookie/', HTTP_USER_AGENT=PC)
+        self.assertNotContains(r, 'rl-fx is-ok')
+        self.assertContains(r, 'is-awaken')
+
+    def test_awakening_panel_skip_and_short_tp(self):
+        from community import rookie_career as C
+        u, p = self._capped('보류정식', tp=40)
+        self.client.force_login(u)
+        r = self.client.get('/rookie/', HTTP_USER_AGENT=PC)
+        self.assertContains(r, '각성의 순간')
+        self.assertContains(r, 'TP를 더 모아 올게요')                     # 150 TP 가 없다
+        with self.assertRaises(R.GameError):
+            R.awaken(u, 'try')
+        self.client.post('/rookie/awaken/', {'choice': 'skip'})
+        p.refresh_from_db()
+        self.assertTrue(p.career.get('awaken_next'))
+        self.assertFalse(C.awaken_ready(p))
+        self.assertNotContains(self.client.get('/rookie/', HTTP_USER_AGENT=PC), '각성의 순간')
+
+    def test_retire_shows_the_jersey_card_and_image(self):
+        from django.test import override_settings
+        from community.views import rookie_views as RV
+        u, p = self._capped('카드정식', potential=88)
+        self.client.force_login(u)
+        self.assertRedirects(self.client.get(f'/rookie/p/{p.pk}/card/'), f'/rookie/p/{p.pk}/', fetch_redirect_response=False)
+        self.assertEqual(self.client.get(f'/rookie/p/{p.pk}/card.png').status_code, 404)   # 현역은 아직
+        r = self.client.post('/rookie/retire/', {'confirm': 'yes'})
+        self.assertRedirects(r, f'/rookie/p/{p.pk}/card/?new=1', fetch_redirect_response=False)
+        r = self.client.get(f'/rookie/p/{p.pk}/card/?new=1', HTTP_USER_AGENT=PC)
+        self.assertContains(r, 'rl-rc-jersey')
+        self.assertContains(r, '쌓은 TP')
+        self.assertContains(r, '새 선수 시작하기')
+        self.assertContains(r, f'/rookie/p/{p.pk}/og.png')
+        self.assertContains(self.client.get(f'/rookie/p/{p.pk}/', HTTP_USER_AGENT=MOBILE), '은퇴 카드 보기')
+        calls = []
+
+        def fake(html, size, out):
+            import os
+            calls.append(size)
+            os.makedirs(os.path.dirname(out), exist_ok=True)
+            open(out, 'wb').write(b'PNG-fake')
+        with override_settings(MEDIA_ROOT=self.media), mock.patch.object(RV, 'render_png', fake):
+            for _ in range(2):
+                self.assertEqual(self.client.get(f'/rookie/p/{p.pk}/card.png')['Content-Type'], 'image/png')
+        self.assertEqual(calls, [(432, 540, 2.5)])
+
+    def test_hall_of_fame_has_best_lineup(self):
+        from community import rookie_league as L
+        from community.models import RookieSeasonStat
+        u, p = self._capped('라인업정식')
+        RookieSeasonStat.objects.create(season=L.get_season(1), user=u, player=p, league='kbo1', name=p.name, team='lg',
+                                        role='batter', position=p.position, war=4.0, best_ovr=80, age=27,
+                                        totals={'g': 120, 'pa': 500, 'ab': 450, 'h': 140})
+        p.retired_at = timezone.now()
+        p.save()
+        r = self.client.get('/rookie/records/?view=hof&lg=kbo1', HTTP_USER_AGENT=PC)
+        self.assertContains(r, '역대 베스트 라인업')
+        self.assertContains(r, '라인업정식')

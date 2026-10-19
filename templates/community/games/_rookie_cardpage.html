@@ -1,0 +1,20 @@
+{# 정식 판 은퇴 카드 페이지(공개). 맥락: rookie_views.rookie_card — c(선수), card(rookie_card.main_card), fresh, is_me #}
+<div class="gm rk rl">
+<div class="gm-wrap is-wide">
+    {% include 'community/games/_rookie_top.html' with h1='은퇴 카드' %}
+    <div class="rl-cardpage{% if fresh %} is-fresh{% endif %}">
+        <p class="rl-cardpage-head">{% if card.headline.tag %}<em>{{ card.headline.tag }}</em>{% endif %}<b>{{ card.headline.title }}</b></p>
+        {% if fresh %}<p class="rl-cardpage-lead">수고 많았어요! 매일 쌓은 활동이 {{ c.name }} 선수의 커리어가 됐어요. 카드 한 장에 담았으니 캡처하거나 이미지로 저장해 자랑해 보세요.</p>{% endif %}
+        {% include 'community/games/_lite_retire.html' %}
+        <div class="rl-cardpage-actions">
+            <a class="gm-btn is-primary" href="{% url 'community:rookie_card_png' c.pk %}?download=1" data-rl-img data-src="{% url 'community:rookie_card_png' c.pk %}" data-name="{{ c.name }}-은퇴카드.png">{% include 'community/games/_lite_icon.html' with name='save' %}<span data-rl-img-label>이미지 저장</span></a>
+            <button type="button" class="gm-btn" data-rl-share data-url="{{ request.scheme }}://{{ request.get_host }}{{ request.path }}" data-title="{{ c.name }} 은퇴 카드 — 테크창 야구선수 키우기">{% include 'community/games/_lite_icon.html' with name='share' %}<span>링크 공유</span></button>
+        </div>
+        <p class="rl-cardpage-note">이미지는 1080×1350 — 인스타그램 세로 피드에 그대로 올라가요. 링크를 공유하면 미리보기에 카드가 떠요.</p>
+        <p class="rl-share-done" data-rl-share-done role="status" hidden></p>
+        <p class="rl-cardpage-links">{% if fresh %}<a class="is-strong" href="{% url 'community:rookie_home' %}">새 선수 시작하기</a>{% endif %}<a href="{% url 'community:rookie_player' c.pk %}">선수 페이지</a><a href="{% url 'community:rookie_records' %}?view=hof">명예의 전당</a></p>
+    </div>
+    {% include 'community/games/_rookie_rights.html' %}
+</div>
+</div>
+{% include 'community/games/_card_script.html' %}

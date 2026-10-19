@@ -76,12 +76,13 @@
     </ul>
 
     {% else %}
+    {% if view == 'hof' and lineup and lineup.filled %}{% include 'community/games/_lite_lineup.html' with tab_name=lg_name %}{% endif %}
     <h2 class="rk-h2">{% if view == 'hof' %}명예의 전당{% else %}통산 순위{% endif %} · {{ lg_name }}</h2>
     <p class="rk-note">{% if view == 'hof' %}은퇴한 선수 가운데 {{ lg_name }}에서 반 시즌 이상 뛰었거나 상을 받은 선수예요. {% endif %}순서는 MVP 수 → 이 리그에서의 최고 OVR → 수상 수 → 통산 WAR 순이에요.</p>
     {% if rows %}
     <div class="rk-table-wrap">
         <table class="rk-table rk-career-table">
-            <thead><tr><th scope="col">#</th><th scope="col">선수</th><th scope="col">소속</th><th>MVP</th><th>최고 OVR</th><th>수상</th><th>WAR</th><th>시즌</th><th scope="col" class="is-text">통산</th></tr></thead>
+            <thead><tr><th scope="col">#</th><th scope="col" class="is-text">선수</th><th scope="col" class="is-text">소속</th><th>MVP</th><th>최고 OVR</th><th>수상</th><th>WAR</th><th>시즌</th><th scope="col" class="is-text">통산</th></tr></thead>
             <tbody>
                 {% for r in rows %}
                 <tr class="{% if r.p.id == my_id %}is-first{% endif %}">
@@ -89,7 +90,7 @@
                     <th scope="row"><a href="{% url 'community:rookie_player' r.p.pk %}">{{ r.p.name }}</a>{% if r.p.retired_at and view != 'hof' %} <small class="rk-fine">은퇴</small>{% endif %}</th>
                     <td class="is-text"><i class="rk-dot" style="--team: {{ r.team|team_color }}" aria-hidden="true"></i> {{ r.team|team_short }}</td>
                     <td>{{ r.mvp }}</td><td>{{ r.best|floatformat:1 }}</td><td>{{ r.awards }}</td><td class="is-war">{{ r.war }}</td><td>{{ r.seasons }}</td>
-                    <td class="is-text">{% if r.p.role == 'pitcher' %}{{ r.v.g|default:0 }}경기 {{ r.v.w|default:0 }}승 {{ r.v.sv|default:0 }}세이브, 평균자책점 {{ r.v.era_text }}, {{ r.v.so|default:0 }}탈삼진{% else %}{{ r.v.g|default:0 }}경기 {{ r.v.avg_text }}, {{ r.v.h|default:0 }}안타 {{ r.v.hr|default:0 }}홈런 {{ r.v.rbi|default:0 }}타점{% endif %}</td>
+                    <td class="is-text">{% if r.p.role == 'pitcher' %}{{ r.v.g|default:0|comma }}경기 {{ r.v.w|default:0|comma }}승 {{ r.v.sv|default:0|comma }}세이브, 평균자책점 {{ r.v.era_text }}, {{ r.v.so|default:0|comma }}탈삼진{% else %}{{ r.v.g|default:0|comma }}경기 {{ r.v.avg_text }}, {{ r.v.h|default:0|comma }}안타 {{ r.v.hr|default:0|comma }}홈런 {{ r.v.rbi|default:0|comma }}타점{% endif %}</td>
                 </tr>
                 {% endfor %}
             </tbody>

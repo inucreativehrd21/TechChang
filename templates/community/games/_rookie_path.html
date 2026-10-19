@@ -6,7 +6,7 @@
     </ol>
     <dl class="rk-facts">
         {% if career.scout %}
-        <div><dt>스카우트 평가</dt><dd><span class="rk-stars" aria-label="별 {{ career.scout.stars }}개">{% for i in career.scout.range %}<i class="{% if i < career.scout.stars %}is-on{% endif %}" aria-hidden="true"></i>{% endfor %}</span> {{ career.scout.note }}</dd></div>
+        <div><dt>스카우트 평가</dt><dd><span class="rk-stars" aria-label="별 {{ career.scout.stars }}개">{% for i in career.scout.range %}<i class="{% if i < career.scout.stars %}is-on{% endif %}" aria-hidden="true"></i>{% endfor %}{% for i in career.scout.awaken %}<i class="is-awaken" aria-hidden="true"></i>{% endfor %}</span>{% if career.scout.awaken %} <small class="rk-fine">각성 {{ career.scout.awaken|length }}</small>{% endif %} {{ career.scout.note }}</dd></div>
         {% elif owner and career.amateur %}
         <div><dt>스카우트 평가</dt><dd>고교생이 되면 나와요</dd></div>
         {% endif %}

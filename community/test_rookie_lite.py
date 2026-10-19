@@ -883,6 +883,7 @@ class ViewTests(TestCase):
         c.post('/rookie/lite/act/', {'action': 'quit', 'confirm': 'yes'})
         career.refresh_from_db()
         self.assertIsNotNone(career.retired_at)
+        LiteSeason.objects.create(career=career, year=90, age=22, league='kbo1', club='lotte', games=144)   # 명예의 전당은 리그별 — KBO 시즌 하나
         self.assertNotIn('손님유격', [row['c'].name for row in X.hall()])
         # 로그인하면 계정으로 옮겨진다
         u = member('손님이었던')
@@ -955,7 +956,10 @@ class ViewTests(TestCase):
         self.assertIsNotNone(career.retired_at)
         r = c.get('/rookie/lite/', HTTP_USER_AGENT=PC)
         self.assertContains(r, '지난 커리어')
+        self.assertNotContains(c.get('/rookie/lite/hall/', HTTP_USER_AGENT=PC), '갈매기')   # 고교만 뛰었으면 리그 전당엔 없다
+        LiteSeason.objects.create(career=career, year=90, age=22, league='kbo1', club='lotte', games=144)
         self.assertContains(c.get('/rookie/lite/hall/', HTTP_USER_AGENT=PC), '갈매기')
+        self.assertNotContains(c.get('/rookie/lite/hall/?lg=mlb', HTTP_USER_AGENT=PC), '갈매기')
 
     def test_retire_card_and_archive(self):
         u = member('카드')

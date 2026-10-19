@@ -1,5 +1,6 @@
 {# 야구선수 키우기 플레이 영역 — 처음 그릴 때와 훈련(fetch) 뒤 갈아 끼울 때 같은 조각. 맥락: rookie.dashboard #}
 {% include 'community/games/_rookie_decide.html' %}
+{% if awaken %}{% include 'community/games/_rookie_awaken.html' %}{% endif %}
 <div class="rk-hero">
     {% include 'community/games/_rookie_card.html' with owner=True %}
     {% include 'community/games/_rookie_board.html' %}

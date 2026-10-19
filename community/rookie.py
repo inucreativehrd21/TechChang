@@ -447,6 +447,59 @@ def train(user, stat: str, times: int = 1, rng=None) -> dict:
             'tired': tired, 'capped': after >= cap - 0.05}
 
 
+def awaken(user, choice: str, rng=None) -> dict:
+    """각성 도전(rookie_career.awaken_ready 일 때) — 'try' 는 TP 를 쓰고 확률로, 'skip' 은 미룬다.
+    결과 연출은 career['awaken_fx'] 에 남겨 다음 화면이 한 번 보여 준다."""
+    from . import rookie_career as C
+    rng = rng or random.SystemRandom()
+    today = timezone.localdate()
+    settled(user, today)
+    with transaction.atomic():
+        p = locked(user)
+        if p is None:
+            raise GameError(gone(user))
+        settle(p, today)
+        if choice not in ('try', 'skip'):
+            raise GameError('도전할지 정해 주세요.')
+        if not C.awaken_ready(p, today):
+            raise GameError('지금은 각성할 때가 아니에요. 다 자란 몸으로 다섯 능력이 모두 한계에 닿아야 해요.')
+        career = dict(p.career or {})
+        career['awaken_next'] = (today + timedelta(days=C.AWAKEN_WAIT)).isoformat()
+        if choice == 'skip':
+            p.career = career
+            p.save(update_fields=['career', 'updated_at'])
+            return {'player': p, 'text': f'지금의 나를 다듬기로 했어요 — {C.AWAKEN_WAIT}일 뒤에 다시 기회가 와요'}
+        if p.tp < C.AWAKEN_COST:
+            raise GameError(f'각성 훈련엔 {C.AWAKEN_COST} TP가 필요해요(보유 {p.tp} TP).')
+        odds = C.awaken_odds(p)
+        p.tp -= C.AWAKEN_COST
+        labels = dict((k, lab) for k, lab, _w in ROLES[p.role]['stats'])
+        if rng.random() < odds:
+            n = C.awakened(p) + 1
+            career['awaken'] = n
+            p.career = career
+            ups = []
+            for k in [p.focus or min(p.stats, key=lambda x: float(p.stats[x])), min(p.stats, key=lambda x: float(p.stats[x]))]:
+                if k in p.stats and labels[k] not in [u[0] for u in ups]:
+                    p.stats = dict(p.stats, **{k: round(min(C.stat_cap(p, k), float(p.stats[k]) + 1.5), 3)})
+                    ups.append([labels[k], 1.5])
+            career['awaken_fx'] = {'ok': True, 'n': n, 'plus': C.AWAKEN_PLUS, 'ups': ups}
+            text = f'각성에 성공했어요! 보라색 별 {n}개 — 모든 능력의 한계가 {C.AWAKEN_PLUS:g} 올라갔어요'
+            _log(p, 'mile', f'각성 — 보라색 별 {n}개째, 모든 능력 한계 +{C.AWAKEN_PLUS:g}', tp=-C.AWAKEN_COST, day=today)
+        else:
+            k = 'mental' if p.role == 'pitcher' else 'eye'
+            p.stats = dict(p.stats, **{k: round(max(FLOOR, float(p.stats[k]) - 1.0), 3)})
+            career['awaken_fx'] = {'ok': False, 'fail_text': f'무리한 탓에 {labels[k]}이 1 빠졌어요. '
+                                                             f'{C.AWAKEN_WAIT}일 뒤에 다시 도전할 수 있어요.'}
+            text = f'벽은 아직 높았어요 — {labels[k]} −1, {C.AWAKEN_WAIT}일 뒤에 다시'
+            _log(p, 'train', f'각성 실패 — {labels[k]} −1', tp=-C.AWAKEN_COST, day=today)
+        p.career = career
+        p.ovr = overall(p.role, p.stats)
+        p.best_ovr = max(p.best_ovr, p.ovr)
+        p.save(update_fields=['career', 'tp', 'stats', 'ovr', 'best_ovr', 'updated_at'])
+    return {'player': p, 'text': text}
+
+
 BATTER_LINES = [(10, ['4타수 3안타 1홈런 3타점', '5타수 3안타 2타점 1도루']), (5, ['4타수 2안타 2타점', '4타수 2안타 1볼넷']),
                 (0, ['4타수 1안타 1타점', '3타수 1안타 1볼넷']), (-5, ['4타수 1안타', '4타수 무안타 1볼넷']),
                 (-99, ['4타수 무안타 2삼진', '4타수 무안타 병살 1개'])]
@@ -644,5 +697,6 @@ def dashboard(p) -> dict:
         'trained': done, 'fatigue_at': fat, 'tired': done >= fat, 'tp_max': TP_MAX, 'tp_full': p.tp >= TP_MAX,
         'logs': list(p.logs.all()[:12]), 'cost': TRAIN_COST, 'cost5': TRAIN_COST * 5, 'daily_max': DAILY_MAX,
         'coach': S.staff(p.league, p.club, 'coding', p.role),       # 지금 소속의 코치(학교·나라·구단마다 다른 사람)
+        'awaken': C.awaken_view(p), 'awaken_coach': S.staff(p.league, p.club, 'hrd', p.role),
         **player_board(p),
     }
