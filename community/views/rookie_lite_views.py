@@ -275,6 +275,12 @@ def lite_act(request):
                 messages.info(request, X.buy(c, request.POST.get('item', ''), request.POST.get('code', '')))
                 c.save()
                 return redirect(reverse('community:lite_home') + '#rl-shop')
+            elif action == 'buyplan':
+                messages.info(request, X.buy_plan(c, {'bat': request.POST.get('bat', ''), 'guard': request.POST.get('guard', ''),
+                                                      'care': request.POST.getlist('care'), 'fan': request.POST.get('fan'),
+                                                      'camp': request.POST.get('camp', ''), 'camp_on': request.POST.get('camp_on')}))
+                c.save()
+                return redirect(reverse('community:lite_home') + '#rl-shop')
             elif action == 'quit':
                 X.check_quit(c)                                       # 만든 뒤 5시즌 전에는 못 그만둔다
                 if request.POST.get('confirm') != 'yes':

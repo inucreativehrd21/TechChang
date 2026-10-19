@@ -890,8 +890,65 @@ def shop_view(c) -> dict:
     return {'cash': man(have), 'pro': W.is_pro(c.league), 'gear': rows, 'house': HOUSE.get(house, HOUSE['dorm'])[0],
             'houses': houses, 'stock': item, 'owned': owned, 'fame': v, 'fame_label': fame_label(v),
             'price_x': f"{PRICE_LEAGUE.get(c.league, 1.0):g}", 'cut_max': int(GEAR_CUT_MAX * 100),
-            'care': care, 'camp': camp, 'fan': fan, 'gives': gives, 'invest': invest,
+            'plan': plan_state(c), 'plan_cost': man(plan_state(c)['spend']), 'care': care, 'camp': camp, 'fan': fan, 'gives': gives, 'invest': invest,
             'given': [GIVE[g][0] for g in f.get('give') or [] if g in GIVE]}
+
+
+def plan_state(c) -> dict:
+    """한 번에 사기 화면의 체크 상태 — 저장해 둔 계획(flags['shop_plan'])을 이어받되, 이미 샀거나 돈이 모자라 못 사는 칸은 풀린다
+    (2026-10-19 사용자 요청: 매년 하나씩 누르기 번거롭다). 앞 칸부터 값을 더해 가며 현금 안에서만 체크가 남는다."""
+    f = c.flags or {}
+    plan = f.get('shop_plan') or {}
+    have = left = cash(c)
+    gear, care = _gear_now(c), _care_now(c)
+    out = {'bat': '', 'guard': '', 'care': [], 'fan': False, 'camp': ''}
+
+    def take(price: int) -> bool:
+        nonlocal left
+        if price <= left:
+            left -= price
+            return True
+        return False
+    for key in ('bat', 'guard'):
+        want = plan.get(key) or ''
+        tiers = {t[0]: t for t in GEAR[key]['tiers']}
+        order = [t[0] for t in GEAR[key]['tiers']]
+        mine = gear.get(key)
+        if want in tiers and not (mine and order.index(want) <= order.index(mine)) and take(price_of(c, tiers[want][2])):
+            out[key] = want
+    for k in CARE:
+        if k in (plan.get('care') or []) and not care.get(k) and take(price_of(c, CARE[k][1])):
+            out['care'].append(k)
+    if plan.get('fan') and f.get('fan') != c.year and take(price_of(c, FAN[1])):
+        out['fan'] = True
+    camp = plan.get('camp') or ''
+    if camp in c.stats and f.get('camp') != c.year and stat_pot(c, camp) - float(c.stats[camp]) > 0 and take(price_of(c, CAMP[1])):
+        out['camp'] = camp
+    out['spend'] = have - left
+    return out
+
+
+def buy_plan(c, form: dict) -> str:
+    """체크한 것을 한 번에 산다 — 계획은 저장해 다음 해에도 체크된 채로 열린다. 돈이 모자란 칸은 건너뛴다."""
+    if (c.pending or {}).get('kind') != 'plan':
+        raise LiteError('상점은 비시즌에만 열려요.')
+    if not W.is_pro(c.league):
+        raise LiteError('프로가 되면 연봉으로 쓸 수 있어요.')
+    want = {'bat': form.get('bat') or '', 'guard': form.get('guard') or '',
+            'care': [k for k in form.get('care') or [] if k in CARE], 'fan': bool(form.get('fan')),
+            'camp': form.get('camp') if form.get('camp_on') and form.get('camp') in c.stats else ''}
+    c.flags = dict(c.flags or {}, shop_plan=want)
+    jobs = ([('bat', want['bat'])] if want['bat'] else []) + ([('guard', want['guard'])] if want['guard'] else []) \
+        + [('care', k) for k in want['care']] + ([('fan', '')] if want['fan'] else []) + ([('camp', want['camp'])] if want['camp'] else [])
+    done, skipped = 0, 0
+    for item, code in jobs:
+        try:
+            buy(c, item, code)
+            done += 1
+        except LiteError as ex:
+            skipped += '모자라' in str(ex)
+    parts = ([f'{done}가지를 샀어요'] if done else []) + ([f'돈이 모자라 {skipped}가지는 건너뛰었어요'] if skipped else [])
+    return ' · '.join(parts) or '새로 살 것이 없어요'
 
 
 def _care_now(c) -> dict:

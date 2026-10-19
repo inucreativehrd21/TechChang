@@ -6,50 +6,30 @@
     </summary>
     <div class="rl-shop-body">
         <p class="rk-hint">값은 리그 물가를 곱해요 — 1군·해외 리그일수록 훨씬 비싸요(지금 ×{{ shop.price_x }}). 연봉·광고 수입에서는 세금이 먼저 빠져요. 보호대와 집을 다 갖춰도 부상 위험은 최대 {{ shop.cut_max }}%까지만 줄어요. 지금 인기 <b>{{ shop.fame }}</b>({{ shop.fame_label }}) — 인기가 높으면 광고 수입이 들어오고 올스타 팬 투표에 유리해요.</p>
-        {% for g in shop.gear %}
-        <div class="rl-shop-row">
-            <p class="rl-shop-name"><b>{{ g.name }}</b><span>소모품 · 이번 시즌만</span></p>
-            <div class="rl-shop-items">
-                {% for t in g.tiers %}
-                <form method="post" action="{% url 'community:lite_act' %}" class="rl-item{% if t.own %} is-own{% endif %}">{% csrf_token %}<input type="hidden" name="action" value="buy"><input type="hidden" name="item" value="{{ g.key }}"><input type="hidden" name="code" value="{{ t.code }}">
-                    <b>{{ t.label }}</b><small>{{ t.effect }}</small><span class="rl-price">{{ t.price }}</span>
-                    <button type="submit" class="gm-btn{% if t.can %} is-primary{% endif %}"{% if not t.can %} disabled{% endif %}>{% if t.why == 'own' %}구매 완료{% elif t.why == 'lower' %}상위 제품 있음{% elif t.why == 'poor' %}현금 부족{% else %}사기{% endif %}</button>
-                </form>
-                {% endfor %}
-            </div>
-        </div>
-        {% endfor %}
         {% if shop.pro %}
-        <div class="rl-shop-row">
-            <p class="rl-shop-name"><b>관리팀</b><span>이번 시즌만 · 시즌마다 다시 계약</span></p>
-            <div class="rl-shop-items is-three">
-                {% for t in shop.care %}
-                <form method="post" action="{% url 'community:lite_act' %}" class="rl-item{% if t.why == 'done' %} is-own{% endif %}">{% csrf_token %}<input type="hidden" name="action" value="buy"><input type="hidden" name="item" value="care"><input type="hidden" name="code" value="{{ t.code }}">
-                    <b>{{ t.label }}</b><small>{{ t.effect }}</small><span class="rl-price">{{ t.price }}</span>
-                    <button type="submit" class="gm-btn{% if t.can %} is-primary{% endif %}"{% if not t.can %} disabled{% endif %}>{% if t.why == 'done' %}계약 완료{% elif t.why == 'poor' %}현금 부족{% else %}계약하기{% endif %}</button>
-                </form>
+        <form method="post" action="{% url 'community:lite_act' %}" class="rl-planform" data-rl-plan>{% csrf_token %}<input type="hidden" name="action" value="buyplan">
+            <p class="rl-shop-name"><b>이번 비시즌 쇼핑</b><span>체크하고 한 번에 사요 · 체크는 저장돼서 다음 해에도 그대로 열려요 · 돈이 모자라면 체크가 풀려요</span></p>
+            {% for g in shop.gear %}
+            <fieldset class="rl-plan-group"><legend>{{ g.name }} <small>이번 시즌만</small></legend>
+                <label class="rl-plan-opt"><input type="radio" name="{{ g.key }}" value=""{% if g.key == 'bat' and not shop.plan.bat or g.key == 'guard' and not shop.plan.guard %} checked{% endif %}><span><b>안 사요</b></span></label>
+                {% for t in g.tiers %}
+                <label class="rl-plan-opt{% if t.why == 'own' or t.why == 'lower' %} is-done{% endif %}"><input type="radio" name="{{ g.key }}" value="{{ t.code }}"{% if t.why == 'own' or t.why == 'lower' %} disabled{% endif %}{% if g.key == 'bat' and shop.plan.bat == t.code or g.key == 'guard' and shop.plan.guard == t.code %} checked{% endif %} data-price="{{ t.price }}"><span><b>{{ t.label }}</b><small>{{ t.effect }}</small><em>{% if t.why == 'own' %}구매 완료{% elif t.why == 'lower' %}상위 제품 있음{% else %}{{ t.price }}{% endif %}</em></span></label>
                 {% endfor %}
-            </div>
-        </div>
-        <div class="rl-shop-row">
-            <p class="rl-shop-name"><b>비시즌 일정</b><span>비시즌에 한 번씩</span></p>
-            <div class="rl-shop-items">
-                {% with t=shop.camp %}
-                <form method="post" action="{% url 'community:lite_act' %}" class="rl-item{% if t.why == 'done' %} is-own{% endif %}">{% csrf_token %}<input type="hidden" name="action" value="buy"><input type="hidden" name="item" value="camp">
-                    <b>{{ t.label }}</b><small>{{ t.effect }}</small>
-                    <label class="rl-item-pick"><span class="visually-hidden">키울 능력</span><select name="code"{% if not t.can %} disabled{% endif %}>{% for s in t.stats %}<option value="{{ s.key }}">{{ s.label }}{% if s.room <= 0 %} (잠재력 끝){% else %} (여유 {{ s.room|floatformat:1 }}){% endif %}</option>{% endfor %}</select></label>
-                    <span class="rl-price">{{ t.price }}</span>
-                    <button type="submit" class="gm-btn{% if t.can %} is-primary{% endif %}"{% if not t.can %} disabled{% endif %}>{% if t.why == 'done' %}다녀왔어요{% elif t.why == 'poor' %}현금 부족{% else %}떠나기{% endif %}</button>
-                </form>
-                {% endwith %}
-                {% with t=shop.fan %}
-                <form method="post" action="{% url 'community:lite_act' %}" class="rl-item{% if t.why == 'done' %} is-own{% endif %}">{% csrf_token %}<input type="hidden" name="action" value="buy"><input type="hidden" name="item" value="fan"><input type="hidden" name="code" value="">
-                    <b>{{ t.label }}</b><small>{{ t.effect }}</small><span class="rl-price">{{ t.price }}</span>
-                    <button type="submit" class="gm-btn{% if t.can %} is-primary{% endif %}"{% if not t.can %} disabled{% endif %}>{% if t.why == 'done' %}열었어요{% elif t.why == 'poor' %}현금 부족{% else %}열기{% endif %}</button>
-                </form>
-                {% endwith %}
-            </div>
-        </div>
+            </fieldset>
+            {% endfor %}
+            <fieldset class="rl-plan-group"><legend>관리팀 <small>이번 시즌만</small></legend>
+                {% for t in shop.care %}
+                <label class="rl-plan-opt{% if t.why == 'done' %} is-done{% endif %}"><input type="checkbox" name="care" value="{{ t.code }}"{% if t.why == 'done' %} disabled{% endif %}{% if t.code in shop.plan.care %} checked{% endif %}><span><b>{{ t.label }}</b><small>{{ t.effect }}</small><em>{% if t.why == 'done' %}계약 완료{% else %}{{ t.price }}{% endif %}</em></span></label>
+                {% endfor %}
+            </fieldset>
+            <fieldset class="rl-plan-group"><legend>비시즌 일정 <small>한 번씩</small></legend>
+                <label class="rl-plan-opt{% if shop.fan.why == 'done' %} is-done{% endif %}"><input type="checkbox" name="fan" value="1"{% if shop.fan.why == 'done' %} disabled{% endif %}{% if shop.plan.fan %} checked{% endif %}><span><b>{{ shop.fan.label }}</b><small>{{ shop.fan.effect }}</small><em>{% if shop.fan.why == 'done' %}열었어요{% else %}{{ shop.fan.price }}{% endif %}</em></span></label>
+                <label class="rl-plan-opt{% if shop.camp.why == 'done' %} is-done{% endif %}"><input type="checkbox" name="camp_on" value="1"{% if shop.camp.why == 'done' %} disabled{% endif %}{% if shop.plan.camp %} checked{% endif %}><span><b>{{ shop.camp.label }}</b><small>{{ shop.camp.effect }}</small><em>{% if shop.camp.why == 'done' %}다녀왔어요{% else %}{{ shop.camp.price }}{% endif %}</em></span></label>
+                <label class="rl-item-pick"><span class="visually-hidden">키울 능력</span><select name="camp">{% for st in shop.camp.stats %}<option value="{{ st.key }}"{% if shop.plan.camp == st.key %} selected{% endif %}>{{ st.label }}{% if st.room <= 0 %} (잠재력 끝){% else %} (여유 {{ st.room|floatformat:1 }}){% endif %}</option>{% endfor %}</select></label>
+            </fieldset>
+            <p class="rk-hint">체크한 것의 합계 <b>{{ shop.plan_cost }}</b> · 보유 현금 {{ shop.cash }}</p>
+            <button type="submit" class="gm-btn is-primary is-block">체크한 것 한 번에 사기</button>
+        </form>
         {% endif %}
         <div class="rl-shop-row">
             <p class="rl-shop-name"><b>집</b><span>지금 {{ shop.house }}</span></p>

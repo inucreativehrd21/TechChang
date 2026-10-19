@@ -1081,6 +1081,43 @@ class MoneyBalanceTests(TestCase):
         self.assertNotIn('invest', c.flags)
         self.assertTrue(any(n.startswith('지인 사업 투자') for n in s.news))
 
+    def test_plan_buys_all_checked_and_carries_over(self):
+        c = self._shopper('계획쇼핑', 130, cash=2000000)
+        form = {'bat': 'craft', 'guard': 'fit', 'care': ['trainer', 'physio'], 'fan': True, 'camp': 'contact', 'camp_on': True}
+        msg = X.buy_plan(c, form)
+        self.assertIn('6가지를 샀어요', msg)
+        self.assertEqual(c.flags['shop_plan']['bat'], 'craft')
+        c.year += 1                                                          # 다음 해 — 장비·관리팀은 새로, 계획은 그대로
+        c.pending = {'kind': 'plan', 'event': None, 'intl': []}
+        st = X.plan_state(c)
+        self.assertEqual((st['bat'], st['guard'], st['care'], st['fan'], st['camp']), ('craft', 'fit', ['trainer', 'physio'], True, 'contact'))
+
+    def test_plan_form_renders_and_submits(self):
+        c = self._shopper('폼쇼핑', 132, cash=2000000)
+        c.flags['shop_plan'] = {'bat': 'pro', 'care': ['aging'], 'camp': ''}
+        c.save()
+        self.client.force_login(c.user)
+        for ua in (PC, MOBILE):
+            r = self.client.get('/rookie/lite/', HTTP_USER_AGENT=ua)
+            self.assertContains(r, 'data-rl-plan')
+            self.assertContains(r, 'value="buyplan"')
+        self.client.post('/rookie/lite/act/', {'action': 'buyplan', 'bat': 'craft', 'care': ['trainer'], 'fan': '1'})
+        c.refresh_from_db()
+        self.assertEqual(c.flags['gear']['bat'], 'craft')
+        self.assertTrue(c.flags['care']['trainer'])
+        self.assertEqual(c.flags['shop_plan']['bat'], 'craft')
+
+    def test_plan_unchecks_what_you_cannot_afford(self):
+        c = self._shopper('가난쇼핑', 131, cash=20000)                          # 1군 물가 — 장인 배트(8,000)·맞춤 보호대(4,800)까지만
+        c.flags['shop_plan'] = {'bat': 'craft', 'guard': 'fit', 'care': ['trainer', 'aging'], 'fan': True, 'camp': 'contact'}
+        st = X.plan_state(c)
+        self.assertEqual((st['bat'], st['guard']), ('craft', 'fit'))
+        self.assertEqual(st['care'], ['trainer'])                             # 3억이 모자라 나머지는 풀린다
+        self.assertFalse(st['fan'] or st['camp'])
+        msg = X.buy_plan(c, dict(c.flags['shop_plan'], camp_on=True))
+        self.assertIn('건너뛰었어요', msg)
+        self.assertGreaterEqual(X.cash(c), 0)
+
     def test_amateurs_cannot_use_the_new_services(self):
         c = new('고교생돈', seed=107)
         c.flags = dict(c.flags, cash=100000)
