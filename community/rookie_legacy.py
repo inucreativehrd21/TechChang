@@ -103,7 +103,7 @@ def game_score(t: dict) -> float:
 def best_nine(day: date, league: str, *, hidden: bool = True) -> list:
     """[{pos, label, slot, p, value, score, rivals}] — 위치마다 그날 가장 잘한 선수(외야 셋). 없으면 빈 칸.
     rivals = 그 자리를 두고 겨룬 선수 수(혼자였으면 기록에 남기지 않는다)."""
-    from .game_visibility import visible
+    from .game_visibility import rookie_visible as visible
     from .models import RookieGame
     from .rookie_league import add, bat_summary, pit_summary
     qs = RookieGame.objects.filter(day=day, league=league).select_related('player', 'player__user')
@@ -164,7 +164,7 @@ def after_day(season, day: date) -> int:
 # ───────────────────────────── 리그별 통산 순위·명예의 전당
 def league_career(league: str, *, retired_only: bool = False, limit: int = 30) -> list:
     """그 리그에서 쌓은 통산(선수별) — MVP 수 → 최고 OVR → 수상 수 → 통산 WAR 순."""
-    from .game_visibility import visible
+    from .game_visibility import rookie_visible as visible
     from .models import RookieAward, RookieSeasonStat
     from .rookie_league import line_view, season_games
     qs = visible(RookieSeasonStat.objects.filter(league=league, player__isnull=False), 'user') \
@@ -201,7 +201,7 @@ def league_career(league: str, *, retired_only: bool = False, limit: int = 30) -
 
 
 def recent_milestones(limit: int = 12) -> list:
-    from .game_visibility import visible
+    from .game_visibility import rookie_visible as visible
     from .models import RookieLog
     qs = visible(RookieLog.objects.filter(kind='mile').exclude(text__contains='베스트 9'), 'player__user')
     return list(qs.select_related('player')[:limit])

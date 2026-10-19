@@ -2561,7 +2561,7 @@ def hall(system: str = 'kbo', limit: int = 50, role: str = '', since=None, until
     리그를 섞은 전체 순위는 없앴다(2026-10-19 사용자 요청: 리그별로 헷갈리고 가중치가 잘 맞지 않는다).
     role('pitcher'·'batter')을 주면 투수·타자만 — 통산 줄(line)도 붙인다."""
     system = system if system in HALL_SYSTEMS else 'kbo'
-    from .game_visibility import visible
+    from .game_visibility import rookie_visible as visible
     from .models import LiteCareer
     qs = visible(LiteCareer.objects.filter(retired_at__isnull=False, user__isnull=False, created_at__gte=HALL_SINCE), 'user') \
         .prefetch_related('seasons')                                       # 손님 판은 로그인해 계정으로 옮겨야 오른다

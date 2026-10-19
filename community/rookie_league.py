@@ -483,7 +483,7 @@ def close_due(today: date | None = None) -> int:
 
 # ───────────────────────────── 기록 조회
 def stat_rows(season, league: str, role: str, *, hidden: bool = True):
-    from .game_visibility import visible
+    from .game_visibility import rookie_visible as visible
     from .models import RookieSeasonStat
     qs = RookieSeasonStat.objects.filter(season=season, league=league, role=role).select_related('user', 'player')
     return list(visible(qs, 'user') if hidden else qs)
@@ -529,7 +529,7 @@ def leaders(season, league: str, role: str, top: int = 5) -> list:
 
 def career_highs(role: str, league: str = 'kbo1', limit: int = 20) -> list:
     """그 리그 시즌 가운데 선수마다 가장 좋았던 시즌(WAR) 하나씩 — 커리어하이 비교판."""
-    from .game_visibility import visible
+    from .game_visibility import rookie_visible as visible
     from .models import RookieSeasonStat
     qs = visible(RookieSeasonStat.objects.filter(league=league, role=role), 'user').select_related('season')
     best = {}
@@ -555,7 +555,7 @@ RECORDS = [('batter', 'hr', '시즌 최다 홈런', False, 'hr'), ('batter', 'av
 
 def season_records(league: str = 'kbo1') -> list:
     """그 리그 단일 시즌 기록 — 끝난 시즌만(진행 중 시즌의 첫날 .500 이 기록이 되지 않게), 비율 기록은 규정을 채운 시즌만."""
-    from .game_visibility import visible
+    from .game_visibility import rookie_visible as visible
     from .models import RookieSeasonStat
     rows = list(visible(RookieSeasonStat.objects.filter(league=league, season__closed=True), 'user')
                 .select_related('season'))

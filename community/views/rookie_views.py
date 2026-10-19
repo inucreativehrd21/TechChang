@@ -26,7 +26,7 @@ from .. import rookie_career as C
 from .. import rookie_league as L
 from .. import rookie_legacy as G
 from .. import rookie_world as W
-from ..game_visibility import is_hidden, visible
+from ..game_visibility import rookie_hidden as is_hidden, rookie_visible as visible   # 야구는 운영자도 보인다
 from ..rookie_card import render_png   # noqa: F401 — 테스트가 바꿔 끼운다
 from ..models import RookieAward, RookieGame, RookiePlayer, RookieSeason, RookieSeasonStat
 

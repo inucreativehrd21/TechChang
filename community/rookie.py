@@ -695,10 +695,10 @@ def level_case():
 
 
 def ranked():
-    """순위표 대상 — 현역만, 운영자 제외, lv(리그 수준) 주석."""
-    from .game_visibility import visible
+    """순위표 대상 — 현역만(운영자 선수도 함께 — game_visibility.ROOKIE_HIDES_ADMIN), lv(리그 수준) 주석."""
+    from .game_visibility import rookie_visible
     from .models import RookiePlayer
-    return visible(RookiePlayer.objects.filter(retired_at__isnull=True), 'user').annotate(lv=level_case())
+    return rookie_visible(RookiePlayer.objects.filter(retired_at__isnull=True), 'user').annotate(lv=level_case())
 
 
 def dashboard(p) -> dict:

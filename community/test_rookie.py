@@ -313,16 +313,16 @@ class ViewTests(TestCase):
         self.assertNotContains(self.get(f'/{col.id}/'), '야구선수 훈련 포인트')
         self.assertEqual(RookiePlayer.objects.get(user=self.u).tp, R.WELCOME_TP + 10)
 
-    def test_ranking_hides_admin_and_shows_teams(self):
+    def test_ranking_includes_admin_and_shows_teams(self):
         admin = member('admin', '운영자')
         R.create(admin, name='운영선수', role='pitcher', team='lg', region='서울')
         R.create(self.u, name='회원투수', role='pitcher', team='lg', region='서울')
         r = self.get('/rookie/league/?tab=players')
         self.assertContains(r, '회원투수')
-        self.assertNotContains(r, '운영선수')
+        self.assertContains(r, '운영선수')                         # 2026-10-19 — 야구는 운영자도 함께 즐긴다
         r = self.get('/rookie/league/?tab=teams')
         self.assertContains(r, 'LG 트윈스')
-        self.assertContains(r, '지망 유망주 1명')                  # 운영자 선수는 세지 않는다
+        self.assertContains(r, '지망 유망주 2명')
         self.assertContains(r, '아직 선수 없음')
 
     def test_games_index_lists_rookie_and_retire_needs_confirm(self):

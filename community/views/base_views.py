@@ -136,7 +136,7 @@ def _ball_numbers():
     """야구선수 키우기 전광판 숫자 — 시즌 진행, 정식 판 현역, 라이트 판 커리어. 실패하면 숫자 줄만 숨긴다."""
     try:
         from ..models import LiteCareer, RookiePlayer
-        from ..game_visibility import visible
+        from ..game_visibility import rookie_visible as visible
         from .. import rookie_league as RL
         return {'season': RL.season_state(),
                 'players': visible(RookiePlayer.objects.filter(retired_at__isnull=True), 'user').count(),
@@ -584,12 +584,12 @@ def games_index(request):
     """게임 대시보드 - 모든 게임 목록"""
     from ..models import NumberBaseballGame, Game2048, GuestBook, MinesweeperGame, RookiePlayer
     from django.db.models import F
-    from ..game_visibility import visible
+    from ..game_visibility import rookie_visible, visible
     from ..rookie_world import LEAGUES, is_pro
     PRO_LEAGUES = [c for c in LEAGUES if is_pro(c)]
-    rookies = visible(RookiePlayer.objects.filter(retired_at__isnull=True), 'user')
+    rookies = rookie_visible(RookiePlayer.objects.filter(retired_at__isnull=True), 'user')   # 야구는 운영자도 센다
     from ..models import LiteCareer
-    lites = visible(LiteCareer.objects.all(), 'user')
+    lites = rookie_visible(LiteCareer.objects.all(), 'user')
     bb, g2, ms = (visible(NumberBaseballGame.objects.all()), visible(Game2048.objects.all()),
                   visible(MinesweeperGame.objects.all()))      # 운영자(admin) 판은 세지 않는다
 

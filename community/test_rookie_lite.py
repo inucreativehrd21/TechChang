@@ -194,7 +194,7 @@ class EngineTests(TestCase):
         self.assertTrue(c.flags['served'])
         self.assertEqual(LiteSeason.objects.filter(career=c, duty='현역 복무').count(), 2)
 
-    def test_hall_orders_and_hides_admin(self):
+    def test_hall_orders_and_includes_admin(self):
         a = new('전설', seed=1)
         b = new('평범', seed=2)
         boss = X.create(member('admin'), name='운영', role='batter', position='SS', style='power', region='서울',
@@ -205,8 +205,7 @@ class EngineTests(TestCase):
             X.retire(c)
             c.save()
         names = [r['c'].name for r in X.hall()]
-        self.assertEqual(names[:2], ['전설', '평범'])
-        self.assertNotIn('운영', names)
+        self.assertEqual(names[:3], ['운영', '전설', '평범'])               # 2026-10-19 — 운영자도 명예의 전당에
         self.assertEqual([r['c'].name for r in X.hall('mlb')], [])
 
 

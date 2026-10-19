@@ -202,7 +202,7 @@ class CloseSeasonTests(TestCase):
         self.stat(self.of, **ok)
         self.stat(self.ace, g=28, gs=28, w=18, l=4, qs=22, outs=600, h=150, r=55, er=50, bb=40, hbp=3, so=210, hr=12, bf=800)
         self.stat(self.fut, league='kbo2', **ok)
-        self.stat(self.boss, **dict(big, hr=60))                       # 운영자 — 시상에서 빠진다
+        self.stat(self.boss, **dict(ok, sb=0))                         # 운영자 — 2026-10-19부터 함께 겨룬다
 
     def test_awards(self):
         awards = L.close_season(self.season)
@@ -211,12 +211,11 @@ class CloseSeasonTests(TestCase):
         self.assertEqual(got['골든글러브 유격수'], '강타자')
         self.assertEqual(got['골든글러브 외야수'], '외야수')
         self.assertEqual(got['골든글러브 투수'], '에이스')
-        self.assertEqual(got['홈런왕'], '강타자')                         # admin(60홈런)은 후보가 아니다
+        self.assertEqual(got['홈런왕'], '강타자')
         self.assertEqual(sorted(a.name for a in awards if a.label == '도루왕'), ['둘째유격', '외야수'])   # 동률 → 공동 수상
         self.assertEqual(got['다승왕'], '에이스')
         self.assertEqual(got['퓨처스 MVP'], '퓨처스')
         self.assertIn('신인왕', got)
-        self.assertNotIn('admin', got.values())
         self.season.refresh_from_db()
         self.assertTrue(self.season.closed)
         self.assertEqual(L.close_season(self.season), [])               # 두 번 시상하지 않는다
@@ -226,7 +225,7 @@ class CloseSeasonTests(TestCase):
         L.close_season(self.season)
         highs = L.career_highs('batter')
         self.assertEqual(highs[0]['s'].name, '강타자')
-        self.assertNotIn('admin', [h['s'].name for h in highs])
+        self.assertIn('admin', [h['s'].name for h in highs])           # 운영자 선수도 기록에 오른다
         recs = {r['label']: r for r in L.season_records()}
         self.assertEqual(recs['시즌 최다 홈런']['value'], 38)
         self.assertEqual(recs['시즌 최다승']['s'].name, '에이스')
@@ -250,7 +249,7 @@ class CloseSeasonTests(TestCase):
         r = c.get(f'/rookie/p/{self.star.pk}/', HTTP_USER_AGENT=PC)
         self.assertContains(r, '통산 성적')
         self.assertContains(r, '골든글러브 유격수')
-        self.assertEqual(c.get(f'/rookie/p/{self.boss.pk}/').status_code, 404)    # 운영자 선수 페이지는 남에게 없다
+        self.assertEqual(c.get(f'/rookie/p/{self.boss.pk}/').status_code, 200)    # 2026-10-19 — 운영자 선수 페이지도 열린다
 
 
 class ScreenTests(TestCase):

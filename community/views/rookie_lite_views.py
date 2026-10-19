@@ -33,7 +33,7 @@ from .. import rookie_card as K
 from .. import rookie_staff as S
 from ..rookie_card import _palette, _jersey_name, render_png   # noqa: F401 — 테스트가 render_png 를 바꿔 끼운다
 from .. import rookie_world as W
-from ..game_visibility import is_hidden
+from ..game_visibility import rookie_hidden as is_hidden   # 야구는 운영자도 보인다
 from ..models import LiteCareer
 
 logger = logging.getLogger(__name__)

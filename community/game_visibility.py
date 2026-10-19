@@ -6,6 +6,10 @@
 (운영자 본인 화면에서는 자기 방이 보여야 하니까).
 
 숨길 계정은 settings.GAME_HIDDEN_USERNAMES 로 바꿀 수 있다(기본: admin).
+
+야구선수 키우기(정식·라이트)는 숨기지 않는다(2026-10-19 운영자 요청: '나도 좀 즐기게') — 운영자 선수도 순위·명예의 전당·
+오늘의 랭킹·시상·베스트 9·선수/카드 페이지·홈 집계에 그대로 오른다. 야구 코드는 rookie_visible·rookie_hidden 만 쓰고,
+다시 숨기려면 ROOKIE_HIDES_ADMIN = True 하나만 바꾸면 된다.
 """
 from __future__ import annotations
 
@@ -28,6 +32,19 @@ def visible(qs, *fields: str):
     for f in fields or ('player',):
         qs = qs.exclude(**{f'{f}__username__in': names})
     return qs
+
+
+ROOKIE_HIDES_ADMIN = False
+
+
+def rookie_visible(qs, *fields: str):
+    """야구선수 키우기용 visible — 지금은 운영자도 보인다(ROOKIE_HIDES_ADMIN)."""
+    return visible(qs, *fields) if ROOKIE_HIDES_ADMIN else qs
+
+
+def rookie_hidden(user) -> bool:
+    """야구선수 키우기용 is_hidden — 운영자 선수 페이지·카드도 남이 볼 수 있다."""
+    return ROOKIE_HIDES_ADMIN and is_hidden(user)
 
 
 def visible_for(request, qs, *fields: str):
