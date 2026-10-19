@@ -1835,4 +1835,4 @@ a.rl-spot.is-bench:hover { transform: none; box-shadow: inset 0 0 0 1px var(--rk
 .rl-plan-opt.is-done > span { opacity: .55; cursor: default; }
 
 /* 연표 — 기록 칸은 줄바꿈해서 WAR 칸이 잘리지 않게(2026-10-19) */
-.rl-years td.is-text:nth-of-type(6) { white-space: normal; min-width: 12em; }
+.rl-years td.is-text:nth-of-type(5) { white-space: normal; min-width: 11em; }
