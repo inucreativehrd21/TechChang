@@ -2083,8 +2083,10 @@ def decide(c, what: str, choice: str, rng, school: str = '') -> str:
              'text': story, 'line': r['line'], 'ok': r['ok'], 'won': won}
         d['result'] = moment_result_text(d)
         done = list(pend.get('done') or []) + [d]
+        fx = moment_fx(c, m, r, d, more=i + 1 < len(ms))
         if i + 1 < len(ms):
             c.pending = dict(pend, i=i + 1, done=done)
+            c.flags = dict(c.flags or {}, moment_fx=fx)
             return f"{story} → {m['stage']} {d['result']}"
         season = c.seasons.get(year=pend['year'])
         c.flags = dict(c.flags or {})
@@ -2092,6 +2094,7 @@ def decide(c, what: str, choice: str, rng, school: str = '') -> str:
         season.save()
         wrap_season(c, season, rng)
         c.pending['moments'] = done
+        c.flags = dict(c.flags or {}, moment_fx=fx)
         return f"{story} → {m['stage']} {d['result']}"
     if what == 'awaken':
         text = awaken(c, choice, rng)
@@ -2643,6 +2646,71 @@ def moment_outcome(m: dict, r: dict, rng) -> tuple:
         return r['ok'], r['text']
     won = rng.random() < (WIN_IF if r['ok'] else WIN_ELSE)
     return won, f"{r['text']} {AFTER[(m['side'], r['ok'], won)]}"
+
+
+# 결정적 순간 결과 연출(2026-10-19 사용자 요청: 각성처럼 고른 결과를 장면으로) — flags['moment_fx'] 를 다음 화면이 한 번 보여 주고 지운다.
+# 장면: 중견수 쪽 중계 화면에서 그 한 구 → 타구 길(path) → 전광판 한 줄(head) → 점수판이 넘어가고 → 우승·메달.
+KOREA_COLORS = ('#CD2E3A', '#0047A0')
+BALL_PATH = {'HR': 'hr', '3B': 'hit', '2B': 'hit', '1B': 'hit', 'SO': 'so', 'BB': 'ball', 'HBP': 'ball'}
+
+
+def moment_head(m: dict, r: dict) -> str:
+    """전광판에 뜨는 짧은 한 줄 — '끝내기 홈런', '헛스윙 삼진', '밀어내기 볼넷'."""
+    o, ok, need = r['outcome'], r['ok'], m['sit']['need']
+    if o == 'SO':
+        return '헛스윙 삼진'
+    if m['side'] == 'bat':
+        lead = '끝내기' if need == 'hit' else '결승'
+        if o in ('HR', '3B', '2B'):
+            return f'{lead} {OUTCOME_KO[o]}'
+        if o == '1B':
+            return '끝내기 안타' if need == 'hit' else '결승 적시타'
+        if o == 'OUT':
+            return '희생플라이' if ok else '잘 맞은 타구, 아웃' if need == 'hit' else '내야 땅볼'
+        return OUTCOME_KO.get(o, o)
+    if o == 'OUT':
+        return '뜬공, 경기 끝' if need == 'out' else '병살타' if ok else '희생플라이'
+    if need == 'out':
+        return {'HR': '만루 홈런', '1B': '끝내기 안타', '2B': '싹쓸이 2루타', '3B': '싹쓸이 3루타', 'BB': '밀어내기 볼넷',
+                'HBP': '밀어내기 사구'}.get(o, OUTCOME_KO.get(o, o))
+    return {'HR': '결승 스리런', '1B': '적시타', '2B': '적시 2루타', '3B': '적시 3루타'}.get(o, OUTCOME_KO.get(o, o))
+
+
+def moment_score(m: dict, r: dict) -> tuple:
+    """(이 타석 전, 뒤) 점수 [우리, 상대] — 장면의 점수판이 넘어간다."""
+    us, them = (int(x) for x in m['sit']['score'].split(':'))
+    o, ok, need = r['outcome'], r['ok'], m['sit']['need']
+    a, b = us, them
+    if need == 'hit' and ok:                                   # 9회말 2·3루 — 홈런이면 셋, 아니면 주자 둘
+        a += 3 if o == 'HR' else 2
+    elif need == 'run' and ok:                                 # 8회 3루 — 투런이면 둘, 아니면 하나
+        a += 2 if o == 'HR' else 1
+    elif need == 'out' and (o in ('BB', 'HBP') or not ok):     # 9회말 만루 — 밀어내기는 동점, 맞으면 주자만큼
+        b += 1 if o in ('BB', 'HBP') else {'HR': 4, '1B': 2}.get(o, 3)
+    elif need == 'hold' and not ok:                            # 7회 1·3루
+        b += {'HR': 3, '2B': 2, '3B': 2}.get(o, 1)
+    return [us, them], [a, b]
+
+
+def moment_fx(c, m: dict, r: dict, d: dict, more: bool) -> dict:
+    o, need = r['outcome'], m['sit']['need']
+    path = BALL_PATH.get(o) or ('fly' if (need in ('hit', 'out') or (need == 'run') == r['ok']) else 'ground')
+    if m['kind'] == 'intl':
+        colors, ink = KOREA_COLORS, KOREA_COLORS[1]
+    else:
+        from .rookie_card import _palette
+        pal = _palette(c.league, c.club)
+        colors, ink = (pal['primary'], pal['secondary']), pal['ink']      # ink = 흰 유니폼 위 등번호 색
+    before, after = moment_score(m, r)
+    sit = m['sit']
+    return {'stage': m['stage'], 'when': m['when'], 'side': m['side'], 'path': path,
+            'dir': 'l' if sum(map(ord, m['opp']['name'])) % 2 else 'r',
+            'sit': f"{sit['inning']} {sit['outs']}사 {_bases_text(sit['bases'])}", 'before': before, 'after': after,
+            'head': moment_head(m, r), 'line': r['line'], 'play': r['text'],
+            'after_text': '' if r.get('final') else AFTER[(m['side'], r['ok'], d['won'])],
+            'ok': r['ok'], 'won': d['won'], 'result': d['result'],
+            'medal': {'금메달': 'gold', '은메달': 'silver'}.get(d['result'], ''), 'colors': list(colors),
+            'ink': ink, 'number': c.number, 'more': more}
 
 
 def moments_for(c, code: str, rank: int, team_n: int, state: dict, rng) -> list:

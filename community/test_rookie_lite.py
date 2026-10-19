@@ -889,6 +889,50 @@ class LaunchTests(TestCase):
         self.assertEqual(self.client.get(f'/rookie/lite/c/{old.pk}/card/', HTTP_USER_AGENT=PC).status_code, 200)  # 카드는 남는다
 
 
+class MomentFxTests(TestCase):
+    """2026-10-19 결정적 순간 결과 연출 — 고른 뒤 한 번 보여 주는 장면(전광판 한 줄·점수·타구 길·우승/메달)."""
+
+    def test_scene_follows_the_play(self):
+        c = pro('연출', seed=80, ovr=70.0)
+        m = X.make_moment(c, 'series', '한국시리즈 7차전', '10월', random.Random(2))
+        m['sit'] = {'inning': '9회말', 'outs': 2, 'bases': [False, True, True], 'score': '3 : 4', 'need': 'hit'}
+        hr = {'ok': True, 'text': '끝내기 홈런!', 'line': '직구 — 노림수 적중, 홈런', 'outcome': 'HR', 'final': True}
+        fx = X.moment_fx(c, m, hr, {'won': True, 'result': '우승!'}, more=False)
+        self.assertEqual((fx['head'], fx['path'], fx['before'], fx['after']), ('끝내기 홈런', 'hr', [3, 4], [6, 4]))
+        self.assertEqual(fx['after_text'], '')                                 # 경기를 끝낸 승부 — 뒷이야기 없음
+        fx = X.moment_fx(c, m, dict(hr, ok=False, outcome='SO'), {'won': False, 'result': '준우승'}, more=False)
+        self.assertEqual((fx['head'], fx['path'], fx['after']), ('헛스윙 삼진', 'so', [3, 4]))
+        p = _pitcher('연출투수')
+        pm = X.make_moment(p, 'intl', '아시안게임 결승', '9월', random.Random(3), key='asian', opp_name='일본 다카하시 쇼타')
+        pm['sit'] = {'inning': '7회말', 'outs': 1, 'bases': [True, False, True], 'score': '2 : 2', 'need': 'hold'}
+        dp = {'ok': True, 'text': '병살타!', 'line': '슬라이더로 유인 — 범타', 'outcome': 'OUT', 'final': False}
+        fx = X.moment_fx(p, pm, dp, {'won': True, 'result': '금메달'}, more=True)
+        self.assertEqual((fx['head'], fx['path'], fx['medal']), ('병살타', 'ground', 'gold'))
+        self.assertEqual(fx['colors'], list(X.KOREA_COLORS))                  # 국가대표는 태극 색
+        self.assertEqual(fx['after_text'], X.AFTER[('pit', True, True)])       # 이어지는 승부 — 뒷이야기
+        hit = dict(dp, ok=False, outcome='HR')
+        self.assertEqual(X.moment_fx(p, pm, hit, {'won': False, 'result': '은메달'}, more=False)['after'], [2, 5])
+
+    def test_scene_shows_once_after_the_choice(self):
+        c = pro('연출화면', seed=81, ovr=70.0)
+        season = LiteSeason.objects.create(career=c, year=c.year, age=c.age, league='kbo1', club='lg', games=144,
+                                           awards=[], press=[], news=[])
+        c.pending = {'kind': 'decision', 'what': 'moment', 'year': season.year, 'i': 0, 'done': [],
+                     'moments': [X.make_moment(c, 'series', '한국시리즈 7차전', '10월', random.Random(4))]}
+        c.save()
+        with mock.patch.object(X, 'play_moment', return_value={'ok': True, 'text': '끝내기 안타!', 'final': True,
+                                                                 'line': '직구 — 노림수 적중, 안타', 'outcome': '1B'}):
+            X.decide(c, 'moment', 'fast', random.Random(1))
+        c.save()
+        self.assertEqual(c.flags['moment_fx']['result'], '우승!')
+        self.client.force_login(c.user)
+        r = self.client.get('/rookie/lite/', HTTP_USER_AGENT=PC)
+        self.assertContains(r, 'data-rl-mfx')
+        self.assertContains(r, '시즌 결산 보기')
+        self.assertNotIn('moment_fx', LiteCareer.objects.get(pk=c.pk).flags)
+        self.assertNotContains(self.client.get('/rookie/lite/', HTTP_USER_AGENT=PC), 'data-rl-mfx')   # 한 번만
+
+
 def _pitcher(name):
     c = X.create(member(name), name=name, role='pitcher', position='RP', style='fire', region='서울', team='lg',
                  rng=random.Random(9))

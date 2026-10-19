@@ -169,11 +169,11 @@ def lite_home(request):
                    hall=X.hall('kbo', limit=5), school_groups=_school_groups())
         return render(request, 'community/rookie_lite.html', ctx)
     pend = c.pending or {}
-    fx = (c.flags or {}).get('awaken_fx')
-    if fx:                                                     # 각성 연출 — 한 번 보여 주고 지운다
-        c.flags = {k: v for k, v in c.flags.items() if k != 'awaken_fx'}
+    fx, mfx = (c.flags or {}).get('awaken_fx'), (c.flags or {}).get('moment_fx')
+    if fx or mfx:                                              # 각성·결정적 순간 연출 — 한 번 보여 주고 지운다
+        c.flags = {k: v for k, v in c.flags.items() if k not in ('awaken_fx', 'moment_fx')}
         c.save(update_fields=['flags'])
-    ctx.update(mode=pend.get('kind', 'plan'), **_identity(c), seasons=_season_rows(c), awaken_fx=fx)
+    ctx.update(mode=pend.get('kind', 'plan'), **_identity(c), seasons=_season_rows(c), awaken_fx=fx, moment_fx=mfx)
     if pend.get('kind') == 'plan':
         ctx['duty'] = X._duty_now(c)[2]
         ctx.update(shop=X.shop_view(c), coach=X.who_is(c, 'coding'), natl=S.national(X.cal_year(c)))

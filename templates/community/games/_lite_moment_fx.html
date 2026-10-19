@@ -1,0 +1,106 @@
+{% comment %}라이트 결정적 순간 결과 연출(2026-10-19 사용자 요청: 각성처럼 고른 결과를 장면으로) — 그 한 구를 중견수 쪽 중계 화면으로 다시 보여 주고
+전광판 한 줄 → 점수판 → 우승·메달 순서로 연다. 기본 모양이 마지막 장면이고 애니메이션이 처음부터 끌고 온다(움직임 줄이기·건너뛰기면 마지막 장면 그대로).
+맥락: fx = rookie_lite.moment_fx (path: hr·hit·fly·ground·so·ball, dir: l·r, colors: 구단 주·보조색 / 국가대표는 태극 색){% endcomment %}
+<div class="rl-mfx is-{{ fx.side }} is-{{ fx.path }} is-to-{{ fx.dir }}{% if fx.won %} is-won{% else %} is-lost{% endif %}{% if fx.after_text %} has-after{% endif %}"
+     role="dialog" aria-modal="true" aria-labelledby="rl-mfx-stage rl-mfx-result" aria-describedby="rl-mfx-play" data-rl-mfx
+     style="--mfx-c1: {{ fx.colors.0 }}; --mfx-c2: {{ fx.colors.1 }}; --mfx-ink: {{ fx.ink|default:fx.colors.0 }}">
+    <button type="button" class="rl-mfx-skip" data-rl-mfx-skip>건너뛰기</button>
+    <div class="rl-mfx-in">
+        <p class="rl-mfx-stage" id="rl-mfx-stage">{% if fx.when %}{{ fx.when }} {% endif %}{{ fx.stage }}</p>
+        <div class="rl-mfx-bug">
+            <span class="rl-mfx-sit">{{ fx.sit }}</span>
+            <span class="rl-mfx-score" role="img" aria-label="점수 우리 {{ fx.after.0 }}, 상대 {{ fx.after.1 }}">
+                <small>우리</small>
+                <b class="rl-mfx-num">{% if fx.before.0 != fx.after.0 %}<i class="is-old">{{ fx.before.0 }}</i><i class="is-flip">{{ fx.after.0 }}</i>{% else %}<i>{{ fx.after.0 }}</i>{% endif %}</b>
+                <span class="rl-mfx-colon">:</span>
+                <b class="rl-mfx-num">{% if fx.before.1 != fx.after.1 %}<i class="is-old">{{ fx.before.1 }}</i><i class="is-flip">{{ fx.after.1 }}</i>{% else %}<i>{{ fx.after.1 }}</i>{% endif %}</b>
+                <small>상대</small>
+            </span>
+        </div>
+        <div class="rl-mfx-field" data-rl-mfx-field>
+            <svg class="rl-mfx-svg" viewBox="0 0 320 200" aria-hidden="true" focusable="false">
+                <defs>
+                    <linearGradient id="mfx-sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#0a1030"/><stop offset="1" stop-color="#18245a"/></linearGradient>
+                    <linearGradient id="mfx-grass" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#0d3326"/><stop offset=".55" stop-color="#145238"/><stop offset="1" stop-color="#1b6747"/></linearGradient>
+                    <pattern id="mfx-crowd" width="7" height="6" patternUnits="userSpaceOnUse"><circle cx="2" cy="2" r="1.15" fill="#2c3870"/><circle cx="5.5" cy="5" r="1.15" fill="#222c5c"/></pattern>
+                    <radialGradient id="mfx-lamp"><stop offset="0" stop-color="#e0e7ff" stop-opacity=".6"/><stop offset="1" stop-color="#e0e7ff" stop-opacity="0"/></radialGradient>
+                </defs>
+                <rect width="320" height="200" fill="url(#mfx-sky)"/>
+                <rect y="22" width="320" height="33" fill="url(#mfx-crowd)"/>
+                <g class="rl-mfx-lamps">
+                    <circle cx="30" cy="12" r="30" fill="url(#mfx-lamp)"/><circle cx="290" cy="12" r="30" fill="url(#mfx-lamp)"/>
+                    <g fill="#f8fafc"><circle cx="23" cy="9" r="1.7"/><circle cx="30" cy="9" r="1.7"/><circle cx="37" cy="9" r="1.7"/><circle cx="23" cy="15" r="1.7"/><circle cx="30" cy="15" r="1.7"/><circle cx="37" cy="15" r="1.7"/>
+                        <circle cx="283" cy="9" r="1.7"/><circle cx="290" cy="9" r="1.7"/><circle cx="297" cy="9" r="1.7"/><circle cx="283" cy="15" r="1.7"/><circle cx="290" cy="15" r="1.7"/><circle cx="297" cy="15" r="1.7"/></g>
+                </g>
+                <rect y="54" width="320" height="7" fill="#0b1029"/>
+                <rect y="54" width="320" height="1.2" fill="#a5b4fc" opacity=".4"/>
+                <path d="M0 61H320V200H0Z" fill="url(#mfx-grass)"/>
+                <g fill="#fff" opacity=".035"><path d="M160 78 34 200H92Z"/><path d="M160 78 138 200H182Z"/><path d="M160 78 228 200H286Z"/></g>
+                <ellipse cx="160" cy="80" rx="84" ry="19" fill="#5a3a26"/>
+                <path d="M160 79-6 168M160 79 326 168" stroke="#e2e8f0" stroke-opacity=".55" stroke-width="1.1"/>
+                <g transform="translate(160 77) scale(1.5) translate(-160 -77)">
+                <path d="M140 71h13v12h-13zM167 71h13v12h-13z" fill="none" stroke="#f1f5f9" stroke-opacity=".4" stroke-width=".8"/>
+                <path d="M156 76h8v2.2l-4 2.4-4-2.4z" fill="#f8fafc"/>
+                <path d="M146 72c1-10 6-15 14-15s13 5 14 15z" fill="#0d132f"/><circle cx="160" cy="53" r="5" fill="#0d132f"/>
+                <path d="M150 77c0-7 4-11 10-11s10 4 10 11z" fill="#26325f"/><circle cx="160" cy="63" r="4.2" fill="#1c2650"/><circle cx="156.5" cy="68" r="2.6" fill="#7c4a24"/>
+                <g class="rl-mfx-batter{% if fx.side == 'bat' %} is-me{% endif %}">
+                    <path class="mfx-pants" d="M141 83l2-14h8l2 14z"/>
+                    <rect class="mfx-shirt" x="140.5" y="56" width="12" height="15" rx="4"/>
+                    <circle class="mfx-helmet" cx="146.5" cy="51" r="4.6"/>
+                    <path class="rl-mfx-bat" d="M151 55 163 39" stroke="#d6b07a" stroke-width="2.4" stroke-linecap="round"/>
+                </g>
+                </g>
+                <ellipse cx="160" cy="170" rx="50" ry="12" fill="#5a3a26"/>
+                <g class="rl-mfx-pitcher{% if fx.side == 'pit' %} is-me{% endif %}">
+                    <path class="mfx-jersey" d="M134 200c0-34 9-54 26-56 17 2 26 22 26 56z"/>
+                    <circle class="mfx-cap" cx="160" cy="135" r="11"/>
+                    {% if fx.side == 'pit' and fx.number %}<text class="mfx-number" x="160" y="186" text-anchor="middle">{{ fx.number }}</text>{% endif %}
+                </g>
+            </svg>
+            <span class="rl-mfx-ball" aria-hidden="true"></span>
+            <span class="rl-mfx-pop" aria-hidden="true"></span>
+            <span class="rl-mfx-flash" aria-hidden="true"></span>
+        </div>
+        <p class="rl-mfx-line">{{ fx.line }}</p>
+        <p class="rl-mfx-board{% if fx.ok %} is-good{% else %} is-bad{% endif %}{% if fx.head|length > 6 %} is-long{% endif %}"><span class="rl-mfx-glow"><span class="rl-mfx-led">{{ fx.head }}</span></span></p>
+        {% if fx.after_text %}<p class="rl-mfx-after">{{ fx.after_text }}</p>{% endif %}
+        <div class="rl-mfx-result">
+            {% if fx.medal %}<span class="rl-mfx-medal is-{{ fx.medal }}" aria-hidden="true"></span>{% endif %}
+            <h2 class="rl-mfx-title" id="rl-mfx-result">{{ fx.result }}</h2>
+            {% if fx.won and not fx.medal %}<span class="rl-mfx-ribbon" aria-hidden="true"></span>{% endif %}
+        </div>
+        <p class="rl-mfx-play" id="rl-mfx-play">{{ fx.play }}</p>
+        <button type="button" class="gm-btn is-primary rl-mfx-go" data-rl-mfx-close>{% if fx.more %}다음 승부로{% else %}시즌 결산 보기{% endif %}</button>
+    </div>
+    {% if fx.won %}<span class="rl-mfx-confetti" aria-hidden="true">{% for i in '123456789012345678901234' %}<i style="--k: {{ forloop.counter }}"></i>{% endfor %}</span>{% endif %}
+</div>
+<script nonce="{{ csp_nonce }}">
+(function () {
+    var fx = document.querySelector('[data-rl-mfx]');
+    if (!fx) return;
+    var go = fx.querySelector('[data-rl-mfx-close]');
+    var skip = fx.querySelector('[data-rl-mfx-skip]');
+    var ended = false;
+    document.documentElement.classList.add('rl-fx-open');
+    var end = function () {                                   // 건너뛰기 — 마지막 장면으로
+        if (ended) return;
+        ended = true;
+        fx.classList.add('is-skip');
+        go.focus();                                           // 낮은 화면이면 결과·버튼까지 내려 준다
+    };
+    var close = function () {
+        fx.classList.add('is-leaving');
+        document.documentElement.classList.remove('rl-fx-open');
+        setTimeout(function () { fx.remove(); }, 300);
+    };
+    skip.addEventListener('click', end);
+    fx.querySelector('[data-rl-mfx-field]').addEventListener('click', end);
+    go.addEventListener('click', close);
+    document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape' && document.body.contains(fx)) { if (ended) { close(); } else { end(); } }
+    });
+    var total = parseFloat(getComputedStyle(fx).getPropertyValue('--tr')) * 1000 + 900;
+    setTimeout(function () { if (!ended) { ended = true; go.focus(); } }, total || 3600);
+    setTimeout(function () { if (!ended) skip.focus({ preventScroll: true }); }, 50);
+})();
+</script>
