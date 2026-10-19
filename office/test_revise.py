@@ -33,6 +33,7 @@ class ReviewOnlyTests(TestCase):
                 mock.patch('office.pipeline.step_visual') as visual, \
                 mock.patch('office.pipeline.step_critique', return_value={'verdict': 'recommend', 'issues': []}), \
                 mock.patch('office.pipeline.step_review', return_value=qa) as review, \
+                mock.patch('office.pipeline.step_headline', side_effect=lambda subject, *a, **k: (subject, '')), \
                 mock.patch('office.pipeline.publish_draft') as publish:
             call_command('office_revise', draft=self.draft.id, review_only=True,
                          content_file=str(self.file), subject='새 제목', stdout=mock.MagicMock(), **extra)
