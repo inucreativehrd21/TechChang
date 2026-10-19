@@ -1,0 +1,31 @@
+{% comment %}라이트 명예의 전당 — 역대 베스트 라인업(자리마다 프로 WAR 1위, 외야는 셋). 그라운드 위에 자리대로 선다.
+맥락: lineup = rookie_lite.best_lineup, tab_name{% endcomment %}
+<section class="rl-lineup" aria-labelledby="rl-lineup-title">
+    <div class="rl-lineup-head">
+        <h2 class="rl-lineup-title" id="rl-lineup-title">역대 베스트 라인업</h2>
+        <p>{{ tab_name }} · 자리마다 프로 WAR 1위</p>
+    </div>
+    <div class="rl-field">
+        <svg class="rl-field-art" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true" focusable="false">
+            <path class="rl-field-grass" d="M50 97 L2 49 A68 68 0 0 1 98 49 Z"/>
+            <path class="rl-field-track" d="M50 97 L2 49 A68 68 0 0 1 98 49 Z" fill="none"/>
+            <path class="rl-field-dirt" d="M50 95 L23 68 L50 41 L77 68 Z"/>
+            <path class="rl-field-infield" d="M50 89 L30 69 L50 49 L70 69 Z"/>
+            <circle class="rl-field-mound" cx="50" cy="69" r="3.2"/>
+            <path class="rl-field-line" d="M50 95 L3 48 M50 95 L97 48"/>
+            <rect class="rl-field-base" x="48.6" y="47.6" width="2.8" height="2.8" transform="rotate(45 50 49)"/>
+            <rect class="rl-field-base" x="28.6" y="67.6" width="2.8" height="2.8" transform="rotate(45 30 69)"/>
+            <rect class="rl-field-base" x="68.6" y="67.6" width="2.8" height="2.8" transform="rotate(45 70 69)"/>
+        </svg>
+        {% for s in lineup.field %}
+        {% if s.r %}<a class="rl-spot" href="{% url 'community:lite_career' s.r.c.pk %}" style="--x: {{ s.x }}%; --y: {{ s.y }}%; --team: {{ s.r.color|default:'#4f46e5' }}"><small>{{ s.label }}</small><b>{{ s.r.c.name }}</b><em>WAR {{ s.r.war }}</em></a>
+        {% else %}<span class="rl-spot is-empty" style="--x: {{ s.x }}%; --y: {{ s.y }}%"><small>{{ s.label }}</small><b>비어 있어요</b></span>{% endif %}
+        {% endfor %}
+    </div>
+    <ul class="rl-bench" aria-label="지명타자·마무리">
+        {% for s in lineup.bench %}
+        <li>{% if s.r %}<a class="rl-spot is-bench" href="{% url 'community:lite_career' s.r.c.pk %}" style="--team: {{ s.r.color|default:'#4f46e5' }}"><small>{{ s.label }}</small><b>{{ s.r.c.name }}</b><em>WAR {{ s.r.war }}</em></a>
+        {% else %}<span class="rl-spot is-bench is-empty"><small>{{ s.label }}</small><b>비어 있어요</b></span>{% endif %}</li>
+        {% endfor %}
+    </ul>
+</section>

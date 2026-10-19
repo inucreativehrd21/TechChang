@@ -1,36 +1,58 @@
-{% load rookie_tags %}{% comment %}라이트 은퇴 카드 한 장 — SNS 에 올리는 4:5 카드(2026-10-18 사용자 요청: 공유하고 싶을 만큼 가지런하게).
-크기는 모두 카드 폭 기준(cqi)이라 폰·PC·이미지(card.png)에서 똑같이 보인다. 수상 칸은 0이어도 다섯 칸 그대로(줄이 맞게).
-맥락: c, card(rookie_lite_views._card), team, pos_label, style_label{% endcomment %}
-<article class="rl-rcard is-{{ card.tier }}" style="--team: {{ team.color|default:'#4f46e5' }}" aria-label="{{ c.name }} 은퇴 카드">
+{% load rookie_tags %}{% comment %}라이트 은퇴 카드 — 4:5 한 장(2026-10-19 개편: "구단별 색, 화려하고 동적인 카드").
+주인공은 홈 유니폼 등판 — 어깨에 이름, 가운데 등번호(구단 주색 + 보조색 테두리), 핀스트라이프 구단은 줄무늬. 등급은 비스듬한 원형 인장.
+크기는 모두 카드 폭 기준(--u)이라 폰·PC·이미지(card.png)에서 같은 모양. 마우스를 따라 기울고 빛이 비친다(카드 페이지 스크립트).
+맥락: c, card(rookie_lite_views._card), pos_label, style_label{% endcomment %}
+{% with p=card.palette %}
+<article class="rl-rcard is-{{ card.tier }}" style="--team: {{ p.primary }}; --trim: {{ p.secondary }}; --ink: {{ p.ink }}; --bg: {{ p.bg }}" aria-label="{{ c.name }} 은퇴 카드" data-rl-rcard>
     <div class="rl-rcard-in">
-        <header class="rl-rcard-top">
-            <span class="rl-rcard-team"><i aria-hidden="true"></i>{{ team.name }}</span>
-            <span class="rl-rcard-tier">{{ card.tier_label }}</span>
+        <span class="rl-rc-edge" aria-hidden="true">테크창 야구선수 키우기 · 은퇴 카드 {{ card.serial }}</span>
+        <header class="rl-rc-top">
+            <p class="rl-rc-team">{% if card.team_prefix %}<span>{{ card.team_prefix }}</span>{% endif %}<b>{{ card.team_nick }}</b></p>
+            <p class="rl-rc-years">{{ card.years }}<small>{{ card.seasons }}시즌</small></p>
         </header>
-        <div class="rl-rcard-hero">
-            <div class="rl-rcard-who">
-                {% if card.epithet %}<p class="rl-rcard-ep">‘{{ card.epithet }}’</p>{% endif %}
-                <h2 class="rl-rcard-name{% if c.name|length > 7 %} is-long{% elif c.name|length > 5 %} is-mid{% endif %}">{{ c.name }}</h2>
-                <p class="rl-rcard-pos">{{ pos_label }} · {{ style_label }}</p>
-                <p class="rl-rcard-era">{{ card.years }} · {{ card.seasons }}시즌 · 최고 무대 {{ card.peak_short }}</p>
-            </div>
-            <span class="rl-rcard-no" aria-label="등번호 {{ c.number }}"><small>No.</small>{{ c.number }}</span>
+        <div class="rl-rc-hero">
+            <svg class="rl-rc-jersey" viewBox="0 0 320 236" role="img" aria-label="등번호 {{ c.number }}번 {{ c.name }} 유니폼">
+                <defs>
+                    <linearGradient id="rl-cloth-{{ c.pk }}" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ffffff"/><stop offset=".55" stop-color="#f1f2f5"/><stop offset="1" stop-color="#d9dce4"/></linearGradient>
+                    <pattern id="rl-pin-{{ c.pk }}" width="11" height="11" patternUnits="userSpaceOnUse"><rect width="1.4" height="11" fill="{{ p.primary }}" opacity=".32"/></pattern>
+                    <clipPath id="rl-body-{{ c.pk }}"><path d="M70 24 C112 9 208 9 250 24 L302 64 L274 122 L242 104 L242 236 L78 236 L78 104 L46 122 L18 64 Z"/></clipPath>
+                    <path id="rl-arc-{{ c.pk }}" d="M86 74 Q160 44 234 74"/>
+                </defs>
+                <path class="rl-rc-shadow" d="M70 30 C112 15 208 15 250 30 L306 72 L278 130 L246 112 L246 242 L74 242 L74 112 L42 130 L14 72 Z"/>
+                <g clip-path="url(#rl-body-{{ c.pk }})">
+                    <rect width="320" height="236" fill="url(#rl-cloth-{{ c.pk }})"/>
+                    {% if p.pin %}<rect width="320" height="236" fill="url(#rl-pin-{{ c.pk }})"/>{% endif %}
+                    <path d="M18 64 L46 122 L54 117 L27 60 Z M302 64 L274 122 L266 117 L293 60 Z" fill="{{ p.secondary }}" opacity=".9"/>
+                    <path d="M33 72 L58 116 M287 72 L262 116" stroke="{{ p.primary }}" stroke-width="5" opacity=".85"/>
+                    <path d="M78 104 L78 236 M242 104 L242 236" stroke="#000" stroke-opacity=".08" stroke-width="10"/>
+                </g>
+                <path d="M128 15 C146 27 174 27 192 15" fill="none" stroke="{{ p.primary }}" stroke-width="6" stroke-linecap="round"/>
+                <text class="rl-rc-jname" font-size="{{ card.jersey.size }}" letter-spacing="{{ card.jersey.spacing }}em" fill="{{ p.ink }}"><textPath href="#rl-arc-{{ c.pk }}" startOffset="50%" text-anchor="middle">{{ c.name }}</textPath></text>
+                <g class="rl-rc-num" font-size="{% if c.number > 9 %}108{% else %}122{% endif %}">
+                    <text x="160" y="196" text-anchor="middle" fill="{{ p.trim }}" stroke="{{ p.trim }}" stroke-width="16" stroke-linejoin="round">{{ c.number }}</text>
+                    <text x="160" y="196" text-anchor="middle" fill="#ffffff" stroke="#ffffff" stroke-width="7" stroke-linejoin="round">{{ c.number }}</text>
+                    <text x="160" y="196" text-anchor="middle" fill="{{ p.ink }}">{{ c.number }}</text>
+                </g>
+            </svg>
+            <span class="rl-rc-seal" aria-label="등급 {{ card.tier_label }}"><b>{{ card.tier_label }}</b><small>은퇴</small></span>
         </div>
-        <dl class="rl-rcard-line">
+        <div class="rl-rc-who">
+            <h2 class="rl-rc-name">{% if card.epithet %}<em>‘{{ card.epithet }}’</em>{% endif %}{{ c.name }}</h2>
+            <p class="rl-rc-pos">{{ pos_label }} · {{ style_label }} · 최고 무대 {{ card.peak_short }}</p>
+        </div>
+        <dl class="rl-rc-stats">
             {% for s in card.stats %}<div><dt>{{ s.0 }}</dt><dd>{{ s.1 }}</dd></div>{% endfor %}
+            <div class="is-key"><dt>프로 WAR</dt><dd>{{ card.war }}</dd></div>
+            <div class="is-key"><dt>최고 OVR</dt><dd>{{ card.best_ovr }}</dd></div>
+            <div class="is-key"><dt>통산 수입</dt><dd>{{ card.money }}</dd></div>
         </dl>
-        <dl class="rl-rcard-key">
-            <div><dt>프로 WAR</dt><dd>{{ card.war }}</dd></div>
-            <div><dt>최고 OVR</dt><dd>{{ card.best_ovr }}</dd></div>
-            <div><dt>통산 수입</dt><dd>{{ card.money }}</dd></div>
-        </dl>
-        <ul class="rl-rcard-honors" aria-label="수상">
-            {% for h in card.honors %}<li class="{% if not h.n %}is-zero{% endif %}"><small>{{ h.label }}</small><b>{{ h.n }}</b></li>{% endfor %}
+        <ul class="rl-rc-honors" aria-label="수상">
+            {% for h in card.honors %}<li class="{% if not h.n %}is-zero{% endif %}"><b>{{ h.n }}</b><small>{{ h.label }}</small></li>{% endfor %}
         </ul>
-        <div class="rl-rcard-notes">
-            {% if card.best %}<p class="rl-rcard-best"><span>커리어 하이</span><b>{{ card.best.year }} {{ card.best.league }} · {{ card.best.age }}세</b><em>{{ card.best.line }} · WAR {{ card.best.war }}</em></p>{% endif %}
-            {% if card.clubs %}<p class="rl-rcard-clubs"><span>거쳐 간 팀</span><em>{{ card.clubs|join:' → ' }}{% if card.more_clubs %} 외 {{ card.more_clubs }}팀{% endif %}</em></p>{% endif %}
-        </div>
-        <footer class="rl-rcard-foot"><span>테크창 야구선수 키우기</span><span>techchang.com</span></footer>
+        {% if card.best %}<p class="rl-rc-best"><span>커리어 하이 {{ card.best.year }} · {{ card.best.league }} · {{ card.best.age }}세</span><em>{{ card.best.line }} · WAR {{ card.best.war }}</em></p>{% endif %}
+        <footer class="rl-rc-foot"><span>{% if card.clubs %}{{ card.clubs|join:' → ' }}{% if card.more_clubs %} 외 {{ card.more_clubs }}팀{% endif %}{% endif %}</span><span>techchang.com</span></footer>
+        <span class="rl-rc-foil" aria-hidden="true"></span>
+        <span class="rl-rc-glare" aria-hidden="true"></span>
     </div>
 </article>
+{% endwith %}

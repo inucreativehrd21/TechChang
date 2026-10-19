@@ -11,6 +11,7 @@
         <button type="submit" class="gm-btn rl-filter-go" data-rl-filter-go>보기</button>
         <p class="rl-filter-count" aria-live="polite">{% if role == 'pitcher' %}투수{% elif role == 'batter' %}타자{% else %}선수{% endif %} {{ rows|length }}명</p>
     </form>
+    {% if lineup and lineup.filled %}{% include 'community/games/_lite_lineup.html' %}{% endif %}
     <p class="rk-note">은퇴한 커리어를 MVP → 최고 OVR → 수상 → 프로 WAR 순으로 세웠어요.{% if not tab %} 전체 순위에선 MVP에 리그 수준만큼 무게를 줘요(메이저리그 3, 일본 1.5, KBO 1.2, 대만 0.6).{% else %} {{ tab_name }} 리그에서 뛴 시즌만 세요.{% endif %} 로그인한 커리어만 올라요.</p>
     {% if rows %}
     <div class="rk-table-wrap">

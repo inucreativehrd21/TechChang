@@ -107,7 +107,7 @@ def _identity(c) -> dict:
             'league_kind': R.league_kind(c.league), 'style_label': X.STYLES[c.role][c.style]['label'],
             'pos_label': L.POS_LABEL.get(c.position, dict(X.PIT_POSITIONS).get(c.position, '')),
             'grade_label': _grade(c),
-            'stars': stars, 'star_note': X.STAR_NOTE[stars], 'star_range': range(5),
+            'stars': stars, 'star_note': X.STAR_NOTE[stars], 'star_range': range(5), 'awaken_range': range(X.awakened(c)),
             'traits': [{'name': X.TRAITS[t][0], 'desc': X.TRAITS[t][1]} for t in (c.traits_seen or []) if t in X.TRAITS],
             'stat_rows': [{'key': k, 'label': lab, 'value': float(c.stats.get(k, 25)), 'shown': int(float(c.stats.get(k, 25))),
                            'bar': round(float(c.stats.get(k, 25)) / 99 * 100, 1)} for k, lab, _w in R.ROLES[c.role]['stats']],
@@ -167,7 +167,11 @@ def lite_home(request):
                    hall=X.hall(limit=5), school_groups=_school_groups())
         return render(request, 'community/rookie_lite.html', ctx)
     pend = c.pending or {}
-    ctx.update(mode=pend.get('kind', 'plan'), **_identity(c), seasons=_season_rows(c))
+    fx = (c.flags or {}).get('awaken_fx')
+    if fx:                                                     # 각성 연출 — 한 번 보여 주고 지운다
+        c.flags = {k: v for k, v in c.flags.items() if k != 'awaken_fx'}
+        c.save(update_fields=['flags'])
+    ctx.update(mode=pend.get('kind', 'plan'), **_identity(c), seasons=_season_rows(c), awaken_fx=fx)
     if pend.get('kind') == 'plan':
         ctx['duty'] = X._duty_now(c)[2]
         ctx.update(shop=X.shop_view(c), coach=X.who_is(c, 'coding'), natl=S.national(X.cal_year(c)))
@@ -177,27 +181,39 @@ def lite_home(request):
         ctx.update(programs=[{'code': code, 'label': lab, 'hint': _glue(hint), 'icon': PROGRAM_ICON.get(code, 'balance'),
                               'locked': code in rules['locked'], 'room': room.get(code)} for code, lab, hint, _e in X.PROGRAMS[c.role]],
                    banned=rules['banned'], banned_text=' + '.join(labels[p] for p in rules['banned']),
-                   intensity=[{'code': k, 'label': v[0], 'risk': int(round(v[2] * 100))} for k, v in X.INTENSITY.items()],
+                   intensity=[{'code': k, 'label': v[0],
+                                'risk': round(X.injury_odds(c, k, ((c.flags or {}).get('tired') or {}).get('injury', 0.0), known_only=True) * 100)}
+                               for k, v in X.INTENSITY.items()],
+                   gear_cut=round((1 - X.gear_cut(c)) * 100),
                    event=X.event_view(c, pend.get('event')), intl=X.intl_view(c, pend.get('intl') or []),
                    offseason=(c.flags or {}).get('press') or [])
         step = 1 + bool(ctx['intl']) + bool(ctx['event'])
         ctx['steps'] = {'intl': 1, 'event': 1 + bool(ctx['intl']), 'train': step, 'power': step + 1}
     elif pend.get('kind') == 'review':
         s = c.seasons.filter(year=pend.get('year')).first()
-        ctx.update(season=s, season_line=L.line_view(c.role, s.totals) if s and s.totals else None,
+        ctx.update(_board_ctx(c, s))
+        ctx.update(season_line=L.line_view(c.role, s.totals) if s and s.totals else None,
                    deltas=[{'label': lab, 'value': (s.deltas or {}).get(k, 0), 'why': ((s.deltas or {}).get('_why') or {}).get(k, [])}
                            for k, lab, _w in R.ROLES[c.role]['stats']] if s else [],
                    moments=pend.get('moments') or [],
-                   drops=[],
-                   season_league=W.league(s.league)['name'] if s else '', season_club=W.club_label(s.league, s.club) if s else '',
-                   season_year=X.cal_year(c, s.year) if s else '', press=(s.press or []) if s else [],
+                   drops=[], press=(s.press or []) if s else [],
                    splits=[dict(x, lg=W.league(x['league'])['name'], club_name=W.club_short(x['league'], x['club']))
                            for x in (s.splits or [])] if s and len(s.splits or []) > 1 else [],
                    meet_next=bool((c.flags or {}).get('move')))
         ctx['drops'] = [d for d in ctx.get('deltas') or [] if d['value'] < 0]
     elif pend.get('kind') == 'decision':
         ctx['decision'] = X.decision_view(c)
+        if pend.get('what') == 'moment':                     # 정규시즌 전광판을 먼저 다 보고 승부처로
+            ctx.update(_board_ctx(c, c.seasons.filter(year=pend.get('year')).first()))
     return render(request, 'community/rookie_lite.html', ctx)
+
+
+def _board_ctx(c, s) -> dict:
+    """시즌 전광판(_lite_board.html) 맥락."""
+    if not s:
+        return {'season': None}
+    return {'season': s, 'season_league': W.league(s.league)['name'], 'season_club': W.club_label(s.league, s.club),
+            'season_year': X.cal_year(c, s.year)}
 
 
 @require_POST
@@ -271,10 +287,11 @@ def lite_hall(request):
     tab = tab if tab in dict(HALL_TABS) else ''
     role = request.GET.get('role', '')
     role = role if role in dict(HALL_ROLES) else ''
-    rows = X.hall(tab, role=role)
+    every = X.hall(tab, limit=2000)                          # 라인업은 투수·타자 모두에서 자리마다
+    rows = X.hall(tab, role=role) if role else every[:50]
     return render(request, 'community/rookie_lite_hall.html',
                   dict(_base(request, 'hall'), tab=tab, tabs=HALL_TABS, rows=rows, tab_name=dict(HALL_TABS)[tab],
-                       role=role, role_tabs=HALL_ROLES))
+                       role=role, role_tabs=HALL_ROLES, lineup=None if role else X.best_lineup(every)))   # 라인업은 투수·타자 '전체'일 때
 
 
 def lite_career(request, pk: int):
@@ -303,6 +320,43 @@ def _award_sum(c) -> list:
 
 
 # ───────────────────────────── 은퇴 카드(2026-10-18 사용자 요청: 캡처해서 자랑, 회원은 보관함에서 다시 보기)
+# 은퇴 카드 구단색(2026-10-19 사용자 요청: 구단별로 예쁘게) — (주색, 보조색, 핀스트라이프). KBO 는 구단마다 골라 두고,
+# 나머지는 주색에서 만든다. 유니폼은 흰 홈 유니폼, 글씨는 주색(밝은 주색이면 보조색) + 보조색 테두리.
+KBO_TRIM = {'kia': ('#EA0029', '#06141F', False), 'kt': ('#231F20', '#EB1C24', False), 'lg': ('#C30452', '#231F20', True),
+            'nc': ('#315288', '#C7A079', False), 'ssg': ('#CE0E2D', '#FFB81C', False), 'doosan': ('#131230', '#ED1C24', True),
+            'lotte': ('#041E42', '#D00F31', False), 'samsung': ('#074CA1', '#B6BCC4', False),
+            'kiwoom': ('#820024', '#B07F4A', False), 'hanwha': ('#FF6600', '#07111F', False)}
+PINSTRIPES = {'nyy', 'phi', 'chc'}
+
+
+def _lum(hex_color: str) -> float:
+    h = hex_color.lstrip('#')
+    r, g, b = (int(h[i:i + 2], 16) / 255 for i in (0, 2, 4))
+    f = lambda v: v / 12.92 if v <= 0.03928 else ((v + 0.055) / 1.055) ** 2.4   # noqa: E731
+    return 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b)
+
+
+def _palette(league: str, club: str) -> dict:
+    """카드 색 — primary(배경·글씨), secondary(테두리·장식), ink(흰 유니폼 위 글씨), pin(핀스트라이프)."""
+    if club in KBO_TRIM:
+        primary, secondary, pin = KBO_TRIM[club]
+    else:
+        primary = W.club_color(league, club) or '#4f46e5'
+        secondary = '#C8CDD6' if _lum(primary) < 0.25 else '#0E1130'
+        pin = club in PINSTRIPES
+    ink = primary if _lum(primary) < 0.4 else (secondary if _lum(secondary) < 0.4 else '#0E1130')
+    trim = secondary if abs(_lum(secondary) - _lum(ink)) > 0.08 else '#ffffff'
+    bg = primary if _lum(primary) < 0.45 else secondary            # 노랑처럼 밝은 주색은 바탕을 보조색으로(탁한 올리브가 되지 않게)
+    return {'primary': primary, 'secondary': secondary, 'ink': ink, 'trim': trim, 'pin': pin, 'bg': bg}
+
+
+def _jersey_name(name: str) -> dict:
+    """유니폼 어깨 이름 — 짧을수록 크게·넓게(유니폼 글씨처럼)."""
+    n = len(name)
+    size, spacing = ((30, 0.3) if n <= 3 else (26, 0.16) if n <= 5 else (21, 0.06) if n <= 7 else (16, 0.02) if n <= 10 else (13, 0))
+    return {'size': size, 'spacing': spacing}
+
+
 def _card(c) -> dict:
     """은퇴 카드 한 장 — 통산 줄·수상 묶음·거쳐 간 팀·등급(레전드·스타·프로·루키)."""
     seasons = list(c.seasons.all())
@@ -349,7 +403,11 @@ def _card(c) -> dict:
     first, last = X.cal_year(c, 1), X.cal_year(c, max(1, c.year - 1))
     eok, rest = divmod(int(c.earnings or 0), 10000)
     money = f'{eok:,}억' if eok else X.man(c.earnings)
-    return {'tier': tier, 'tier_label': tier_label, 'line': total, 'war': round(sum(s.war for s in pro), 1), 'money': money,
+    team_name = W.club_label(c.league, c.club)
+    prefix, _sp, nick = team_name.rpartition(' ')
+    return {'palette': _palette(c.league, c.club), 'team_prefix': prefix, 'team_nick': nick or team_name,
+            'jersey': _jersey_name(c.name), 'serial': f'{c.pk:04d}',
+            'tier': tier, 'tier_label': tier_label, 'line': total, 'war': round(sum(s.war for s in pro), 1), 'money': money,
             'best_ovr': round(best_ovr, 1), 'years': f'{first}–{last}', 'seasons': len(played),
             'clubs': clubs[:5], 'more_clubs': max(0, len(clubs) - 5),
             'badges': [{'n': k, 'label': lab} for k, lab in badges if k],
@@ -373,7 +431,7 @@ def lite_card(request, pk: int):
 # ───────────────────────────── 은퇴 카드 이미지(SNS 에 올리는 PNG · 링크 미리보기)
 # 서버의 headless Chromium(playwright — 연구실 위클리 카드뉴스와 같은 것)으로 카드 화면을 찍어 media/lite_cards 에 둔다.
 # 은퇴 카드는 바뀌지 않으니 한 번 찍으면 계속 쓴다 — 디자인을 바꾸면 CARD_V 를 올린다.
-CARD_V = 1
+CARD_V = 2                  # 2026-10-19 유니폼 등판 카드로 개편
 SHOTS = {'card': (432, 540, 2.5), 'og': (1200, 630, 1)}       # 1080×1350(인스타 세로) · 링크 미리보기 1200×630
 _shot_lock = threading.Lock()
 

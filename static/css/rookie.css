@@ -1395,65 +1395,6 @@ a.rk-rank-main:hover b { color: var(--rk-accent); }
     .rl-skill-card .rl-cap, .rl-skill-card .rl-lock { margin-top: 0; }
 }
 
-/* ══ 은퇴 카드 — SNS 에 올리는 4:5 한 장(2026-10-18 개편: "공유하고 싶을 만큼 가지런하고 예쁘게") ════════════════
- * 카드가 크기 기준(container) — 안쪽 크기는 모두 --u(= 카드 폭/400)의 배수라 폰·PC·이미지(card.png)에서 같은 모양이다.
- * 위에서부터 팀·등급 / 이름·유니폼 번호 / 통산 3×2 / 핵심 셋 / 수상 다섯 칸 / 커리어 하이·거쳐 간 팀 / 바닥글.
- * 칸은 모두 왼쪽 정렬, 통산·핵심 줄은 같은 세 칸 선 위에 선다. 칸 사이 선은 같은 굵기·같은 색. */
-.rl-rcard { --frame: #2b3066; position: relative; container-type: inline-size; width: min(100%, 400px); aspect-ratio: 4 / 5; border-radius: 24px; background: var(--frame); box-shadow: 0 30px 60px -30px rgba(14, 17, 48, .7); }
-.rl-rcard.is-pro { --frame: var(--team); }
-.rl-rcard.is-star { background: linear-gradient(135deg, #c7d2fe, var(--rk-accent) 45%, #312e81); }
-.rl-rcard.is-legend { background: conic-gradient(from var(--rl-a), #a5b4fc, var(--rk-accent), var(--team), #e0e7ff, #6366f1, #a5b4fc); animation: rl-holo 6s linear infinite; }
-.rl-rcard-in { --u: 0.25cqi; --rule: rgba(255, 255, 255, .12); position: absolute; inset: calc(5 * var(--u)); display: flex; flex-direction: column; overflow: hidden; padding: calc(16 * var(--u)) calc(22 * var(--u)) calc(13 * var(--u)); border-radius: calc(19 * var(--u)); color: var(--rk-board-ink); background-color: var(--rl-night);
-    background-image: radial-gradient(120% 62% at 0% 0%, color-mix(in srgb, var(--team) 46%, transparent) 0, transparent 62%),
-                      radial-gradient(80% 50% at 100% 100%, rgba(79, 70, 229, .3) 0, transparent 72%),
-                      radial-gradient(rgba(255, 255, 255, .05) 1px, transparent 1.3px);
-    background-size: auto, auto, calc(6 * var(--u)) calc(6 * var(--u)); font-variant-numeric: tabular-nums; line-height: 1.25; letter-spacing: -0.01em; }   /* 줄 간격을 페이지에서 물려받지 않게(폰·PC·이미지 같은 높이) */
-
-.rl-rcard-top { display: flex; align-items: center; justify-content: space-between; gap: calc(10 * var(--u)); min-height: calc(22 * var(--u)); }
-.rl-rcard-team { display: inline-flex; align-items: center; gap: calc(7 * var(--u)); min-width: 0; font-size: calc(12.5 * var(--u)); font-weight: 800; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.rl-rcard-team i { flex: none; width: calc(9 * var(--u)); height: calc(9 * var(--u)); border-radius: 50%; background: var(--team); box-shadow: 0 0 0 calc(1.5 * var(--u)) rgba(255, 255, 255, .9); }
-.rl-rcard-tier { flex: none; padding: calc(3 * var(--u)) calc(11 * var(--u)); border-radius: 99px; font-size: calc(11 * var(--u)); font-weight: 900; color: var(--rl-night); background: var(--rk-led); }
-.rl-rcard.is-legend .rl-rcard-tier, .rl-rcard.is-star .rl-rcard-tier { color: #fff; background: linear-gradient(90deg, var(--rk-accent), #818cf8); }
-
-.rl-rcard-hero { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: end; gap: calc(14 * var(--u)); margin-top: calc(12 * var(--u)); }
-.rl-rcard-who { min-width: 0; }
-.rl-rcard-ep { margin: 0; font-size: calc(12 * var(--u)); font-weight: 800; color: var(--rk-led); white-space: nowrap; }
-.rk .rl-rcard-name { margin: calc(3 * var(--u)) 0 calc(6 * var(--u)); font-size: calc(33 * var(--u)); font-weight: 900; line-height: 1.08; letter-spacing: -0.035em; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.rk .rl-rcard-name.is-mid { font-size: calc(28 * var(--u)); }
-.rk .rl-rcard-name.is-long { font-size: calc(22 * var(--u)); }
-.rl-rcard-pos { margin: 0; font-size: calc(12.5 * var(--u)); font-weight: 700; color: #c7cdf7; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.rl-rcard-era { margin: calc(3 * var(--u)) 0 0; font-size: calc(11 * var(--u)); font-weight: 600; color: var(--rk-board-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.rl-rcard-no { display: flex; flex-direction: column; align-items: center; justify-content: center; width: calc(76 * var(--u)); height: calc(88 * var(--u)); border-radius: calc(14 * var(--u)); font-size: calc(44 * var(--u)); font-weight: 900; line-height: 1; letter-spacing: -0.04em; color: #fff;
-    background: linear-gradient(165deg, color-mix(in srgb, var(--team) 80%, #fff) 0, var(--team) 48%, color-mix(in srgb, var(--team) 72%, #000) 100%);
-    box-shadow: inset 0 0 0 calc(1.5 * var(--u)) rgba(255, 255, 255, .32), 0 calc(10 * var(--u)) calc(22 * var(--u)) calc(-10 * var(--u)) rgba(0, 0, 0, .65); text-shadow: 0 calc(2 * var(--u)) 0 rgba(0, 0, 0, .2); }
-.rl-rcard-no small { margin-bottom: calc(3 * var(--u)); font-size: calc(10 * var(--u)); font-weight: 800; letter-spacing: 0; opacity: .85; text-shadow: none; }
-
-.rl-rcard-line, .rl-rcard-key { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); column-gap: calc(10 * var(--u)); }
-.rl-rcard-line { row-gap: calc(8 * var(--u)); margin: calc(13 * var(--u)) 0 0; padding: calc(11 * var(--u)) 0; border-top: 1px solid var(--rule); border-bottom: 1px solid var(--rule); }
-.rl-rcard-key { margin: 0; padding: calc(10 * var(--u)) 0; border-bottom: 1px solid var(--rule); }
-.rl-rcard-line div, .rl-rcard-key div { display: flex; flex-direction: column; gap: calc(2 * var(--u)); min-width: 0; }
-.rl-rcard-line dt, .rl-rcard-key dt { font-size: calc(10.5 * var(--u)); font-weight: 700; color: var(--rk-board-dim); white-space: nowrap; }
-.rl-rcard-line dd, .rl-rcard-key dd { margin: 0; font-weight: 900; letter-spacing: -0.02em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.rl-rcard-line dd { font-size: calc(22 * var(--u)); line-height: 1.1; color: #fff; }
-.rl-rcard-key dd { font-size: calc(17 * var(--u)); line-height: 1.15; color: var(--rk-led); }
-
-.rl-rcard-honors { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: calc(5 * var(--u)); margin: calc(10 * var(--u)) 0 0; padding: 0; list-style: none; }
-.rl-rcard-honors li { display: flex; flex-direction: column; gap: calc(1 * var(--u)); min-width: 0; padding: calc(6 * var(--u)) calc(7 * var(--u)) calc(5 * var(--u)); border-radius: calc(9 * var(--u)); background: rgba(255, 255, 255, .07); }
-.rl-rcard-honors small { font-size: calc(9.5 * var(--u)); font-weight: 700; color: var(--rk-board-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.rl-rcard-honors b { font-size: calc(17 * var(--u)); font-weight: 900; line-height: 1.15; color: #fff; }
-.rl-rcard-honors li:first-child:not(.is-zero) { background: rgba(79, 70, 229, .55); }
-.rl-rcard-honors li:first-child:not(.is-zero) small { color: #e0e7ff; }
-.rl-rcard-honors li.is-zero b { color: rgba(255, 255, 255, .26); }
-
-.rl-rcard-notes { display: flex; flex-direction: column; gap: calc(4 * var(--u)); margin: calc(10 * var(--u)) 0 calc(8 * var(--u)); }
-.rl-rcard-best, .rl-rcard-clubs { display: grid; grid-template-columns: calc(58 * var(--u)) minmax(0, 1fr); column-gap: calc(8 * var(--u)); margin: 0; font-size: calc(11.5 * var(--u)); line-height: 1.45; }
-.rl-rcard-best span, .rl-rcard-clubs span { grid-row: 1; font-weight: 800; color: var(--rk-led); white-space: nowrap; }
-.rl-rcard-best b { grid-column: 2; font-weight: 800; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.rl-rcard-best em, .rl-rcard-clubs em { grid-column: 2; font-style: normal; color: var(--rk-board-ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.rl-rcard-clubs em { grid-row: 1; color: #c7cdf7; }
-
-.rl-rcard-foot { display: flex; justify-content: space-between; gap: calc(10 * var(--u)); margin-top: auto; padding-top: calc(9 * var(--u)); border-top: 1px dashed rgba(255, 255, 255, .16); font-size: calc(10.5 * var(--u)); font-weight: 700; color: var(--rk-board-dim); white-space: nowrap; }
-.rl-cardpage .rl-rcard { width: min(100%, 420px); }
 
 /* 카드 페이지 — 이미지 저장·링크 공유 두 버튼, 나머지는 글자 링크 */
 .rl-cardpage-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; width: min(100%, 420px); }
@@ -1479,4 +1420,221 @@ a.rk-rank-main:hover b { color: var(--rk-accent); }
     .rl-select select { width: 100%; min-width: 0; }
     .rl-filter-go, .rl-filter-count { grid-column: 1 / -1; }
     .rl-filter-count { margin: 0; }
+}
+
+/* ══ 각성(2026-10-19) — 다섯 능력이 모두 한계에 닿으면. 보라색은 사용자가 지정한 '각성 별' 색이라 이 장면에서만 쓴다 ══════════════
+ * 고르는 장면: 밤 무대에 보라 기운이 숨 쉬고, 다섯 막대가 모두 '한계'에 걸려 있다. 결과는 화면 전체를 덮는 한 장면. */
+.rl { --rl-purple: #8b5cf6; --rl-purple-hi: #c4b5fd; --rl-purple-deep: #4c1d95; }
+.rk-stars i.is-awaken, .rl-mcard-stars i.is-awaken { background: linear-gradient(160deg, #e9d5ff, #8b5cf6 55%, #4c1d95); filter: drop-shadow(0 0 3px rgba(139, 92, 246, .8)); }
+.rl-awaken { overflow: hidden; border-radius: 18px; background: #fff; box-shadow: 0 0 0 1px var(--rk-line), 0 22px 44px -26px rgba(30, 10, 70, .6); }
+.rl-awaken-stage { position: relative; display: flex; flex-direction: column; align-items: center; gap: 10px; overflow: hidden; padding: 26px 20px 22px; text-align: center; color: #fff;
+    background: radial-gradient(80% 70% at 50% 30%, #3b1d7a 0, #160b36 60%, #0b0620 100%); }
+.rl-awaken-aura { position: absolute; left: 50%; top: 42%; width: 420px; height: 420px; margin: -210px 0 0 -210px; border-radius: 50%; pointer-events: none;
+    background: radial-gradient(circle, rgba(196, 181, 253, .35) 0, rgba(139, 92, 246, .18) 35%, transparent 65%); animation: rl-breathe-aura 3.2s ease-in-out infinite; }
+@keyframes rl-breathe-aura { 0%, 100% { transform: scale(.88); opacity: .7; } 50% { transform: scale(1.08); opacity: 1; } }
+.rl-awaken-tag { position: relative; margin: 0; padding: 3px 12px; border-radius: 99px; font-size: 0.76rem; font-weight: 800; color: #160b36; background: var(--rl-purple-hi); }
+.rk .rl-awaken-title { position: relative; margin: 2px 0 4px; font-size: 2.2rem; font-weight: 900; letter-spacing: -0.03em; color: #fff; text-shadow: 0 0 18px rgba(139, 92, 246, .9), 0 0 2px #fff; }
+.rl-awaken-wall { position: relative; display: grid; gap: 6px; width: min(100%, 360px); margin: 4px 0 0; padding: 0; list-style: none; }
+.rl-awaken-wall li { display: grid; grid-template-columns: 3.4em minmax(0, 1fr) 2em auto; align-items: center; gap: 8px; font-size: 0.8rem; }
+.rl-awaken-wall span { font-weight: 700; color: var(--rl-purple-hi); text-align: left; }
+.rl-awaken-wall i { position: relative; height: 8px; border-radius: 99px; background: rgba(255, 255, 255, .12); overflow: hidden; }
+.rl-awaken-wall i::before { content: ""; position: absolute; inset: 0 auto 0 0; width: var(--w); border-radius: inherit; background: linear-gradient(90deg, #7c3aed, #c4b5fd); box-shadow: 0 0 10px rgba(196, 181, 253, .8); }
+.rl-awaken-wall b { font-weight: 900; text-align: right; font-variant-numeric: tabular-nums; }
+.rl-awaken-wall em { padding: 1px 6px; border-radius: 5px; font-style: normal; font-size: 0.66rem; font-weight: 900; color: #160b36; background: #fff; }
+.rl-awaken-stars { position: relative; display: flex; align-items: center; gap: 8px; margin: 6px 0 0; font-size: 0.78rem; color: var(--rl-purple-hi); }
+.rl-awaken-stars .rk-stars i:not(.is-on):not(.is-awaken) { background: rgba(255, 255, 255, .25); }
+.rl-awaken-slot { width: 16px; height: 16px; clip-path: polygon(50% 0, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%); background: var(--rl-purple); animation: rl-slot 1.4s ease-in-out infinite; }
+@keyframes rl-slot { 0%, 100% { opacity: .35; transform: scale(.85); } 50% { opacity: 1; transform: scale(1.15); } }
+.rl-awaken-stars small { color: rgba(255, 255, 255, .6); }
+.rl-reply.is-awaken { border-color: var(--rl-purple); background: linear-gradient(90deg, #f5f3ff, #fff 70%); }
+.rl-reply.is-awaken .rl-tone { color: #fff; background: linear-gradient(135deg, #7c3aed, #a78bfa); }
+.rl-reply.is-awaken:hover { box-shadow: 0 8px 22px -12px rgba(124, 58, 237, .7); }
+
+/* 결과 — 화면 전체 */
+html.rl-fx-open { overflow: hidden; }
+.rl-fx { position: fixed; inset: 0; z-index: 10000; word-break: keep-all; display: grid; place-items: center; padding: 20px; overflow: hidden;
+    background: radial-gradient(60% 50% at 50% 45%, #2e1065 0, #12072b 55%, #05020d 100%); animation: rl-fx-in .35s ease both; }
+.rl-fx.is-fail { background: radial-gradient(60% 50% at 50% 45%, #2a2d45 0, #15172a 60%, #07080f 100%); }
+.rl-fx.is-leaving { animation: rl-fx-out .3s ease both; }
+@keyframes rl-fx-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes rl-fx-out { to { opacity: 0; } }
+.rl-fx-rays { position: absolute; left: 50%; top: 45%; width: 160vmax; height: 160vmax; margin: -80vmax 0 0 -80vmax; pointer-events: none;
+    background: repeating-conic-gradient(from 0deg, rgba(196, 181, 253, .16) 0 6deg, transparent 6deg 18deg);
+    -webkit-mask: radial-gradient(circle, #000 0, transparent 55%); mask: radial-gradient(circle, #000 0, transparent 55%);
+    animation: rl-rays 18s linear infinite, rl-fx-in 1.2s ease .4s both; }
+@keyframes rl-rays { to { transform: rotate(360deg); } }
+.rl-fx-burst { position: absolute; left: 50%; top: 45%; width: 240px; height: 240px; margin: -120px 0 0 -120px; border-radius: 50%; pointer-events: none;
+    background: radial-gradient(circle, #fff 0, rgba(233, 213, 255, .9) 18%, rgba(139, 92, 246, .55) 40%, transparent 70%); animation: rl-burst 1.1s cubic-bezier(.2, .8, .2, 1) .55s both; }
+@keyframes rl-burst { 0% { transform: scale(0); opacity: 1; } 60% { opacity: 1; } 100% { transform: scale(4.5); opacity: 0; } }
+.rl-fx-sparks { position: absolute; left: 50%; top: 45%; pointer-events: none; }
+.rl-fx-sparks i { position: absolute; width: 6px; height: 6px; margin: -3px; border-radius: 50%; background: #e9d5ff; box-shadow: 0 0 10px 2px rgba(196, 181, 253, .9);
+    transform: rotate(calc(var(--k) * 30deg)) translateY(0); animation: rl-spark 1.3s cubic-bezier(.15, .7, .3, 1) .6s both; }
+@keyframes rl-spark { 0% { opacity: 0; transform: rotate(calc(var(--k) * 30deg)) translateY(0) scale(.4); } 15% { opacity: 1; }
+    100% { opacity: 0; transform: rotate(calc(var(--k) * 30deg)) translateY(-46vmin) scale(1); } }
+.rl-fx-card { position: relative; z-index: 1; display: flex; flex-direction: column; align-items: center; gap: 8px; width: min(100%, 420px); text-align: center; color: #fff; animation: rl-shake .5s ease .55s both; }
+@keyframes rl-shake { 0%, 100% { transform: none; } 20% { transform: translate(-6px, 3px); } 40% { transform: translate(5px, -4px); } 60% { transform: translate(-3px, 2px); } 80% { transform: translate(2px, -1px); } }
+.rl-fx-star { width: 132px; height: 132px; margin-bottom: 6px; clip-path: polygon(50% 0, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%);
+    background: linear-gradient(160deg, #faf5ff 0, #c4b5fd 30%, #8b5cf6 60%, #4c1d95 100%); filter: drop-shadow(0 0 24px rgba(167, 139, 250, .95));
+    animation: rl-star-drop .7s cubic-bezier(.5, -0.2, .4, 1.4) .1s both, rl-star-glow 2.4s ease-in-out 1.2s infinite; }
+@keyframes rl-star-drop { 0% { opacity: 0; transform: translateY(-60vh) rotate(-200deg) scale(.4); } 70% { opacity: 1; transform: translateY(8px) rotate(8deg) scale(1.1); } 100% { transform: none; } }
+@keyframes rl-star-glow { 0%, 100% { filter: drop-shadow(0 0 18px rgba(167, 139, 250, .8)); } 50% { filter: drop-shadow(0 0 36px rgba(196, 181, 253, 1)); } }
+.rl-fx-kicker { margin: 0; padding: 3px 12px; border-radius: 99px; font-size: 0.8rem; font-weight: 900; color: #12072b; background: #c4b5fd; animation: rl-rise .5s ease .9s both; }
+.rk .rl-fx-title, .rl-fx-title { margin: 4px 0 2px; font-size: 3.4rem; font-weight: 900; letter-spacing: -0.04em; line-height: 1.05; color: #fff; text-shadow: 0 0 28px rgba(139, 92, 246, .95), 0 0 3px #fff; animation: rl-title-in .6s cubic-bezier(.2, .9, .2, 1.2) .75s both; }
+.rl-fx.is-fail .rl-fx-title { font-size: 2.2rem; text-shadow: none; }
+@keyframes rl-title-in { from { opacity: 0; transform: scale(1.8); letter-spacing: .3em; } to { opacity: 1; transform: none; } }
+@keyframes rl-rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+.rl-fx-text { margin: 0; max-width: 32ch; font-size: 0.98rem; line-height: 1.6; color: #ddd6fe; animation: rl-rise .5s ease 1.05s both; }
+.rl-fx.is-fail .rl-fx-text { color: #c4c7dc; }
+.rl-fx-ups { display: flex; gap: 8px; margin: 4px 0 0; padding: 0; list-style: none; animation: rl-rise .5s ease 1.2s both; }
+.rl-fx-ups li { padding: 4px 12px; border-radius: 99px; font-size: 0.85rem; font-weight: 700; color: #fff; background: rgba(139, 92, 246, .35); box-shadow: inset 0 0 0 1px rgba(196, 181, 253, .6); }
+.rl-fx-ups b { color: #e9d5ff; }
+.rl-fx-go { min-width: 160px; margin-top: 12px; animation: rl-rise .5s ease 1.35s both; }
+.rl-fx .rl-fx-go { color: #fff; }
+.rl-fx.is-ok .rl-fx-go { background: linear-gradient(135deg, #7c3aed, var(--rk-accent)); border-color: transparent; }
+.rl-fx.is-fail .rl-fx-go { color: #15172a; background: #fff; border-color: transparent; }
+.rl-fx-crack { width: 112px; height: 112px; margin-bottom: 4px; filter: drop-shadow(0 10px 22px rgba(0, 0, 0, .6)); animation: rl-shake .45s ease .2s both; }
+.rl-fx.is-fail .rl-fx-rays, .rl-fx.is-fail .rl-fx-burst, .rl-fx.is-fail .rl-fx-sparks { display: none; }
+@media (max-width: 575.98px) {
+    .rk .rl-awaken-title { font-size: 1.8rem; }
+    .rl-fx-star { width: 104px; height: 104px; }
+    .rk .rl-fx-title, .rl-fx-title { font-size: 2.6rem; }
+}
+@media (prefers-reduced-motion: reduce) {
+    .rl-awaken-aura, .rl-awaken-slot, .rl-fx, .rl-fx-rays, .rl-fx-burst, .rl-fx-sparks i, .rl-fx-card, .rl-fx-star, .rl-fx-kicker, .rl-fx-title, .rl-fx-text, .rl-fx-ups, .rl-fx-go, .rl-fx-crack { animation: none; }
+    .rl-fx-burst, .rl-fx-sparks { display: none; }
+}
+
+/* ══ 명예의 전당 — 역대 베스트 라인업(2026-10-19) ══════════════════════════════════════════════════════
+ * 야간 경기장 그라운드(전광판과 같은 밤색) 위에 자리마다 이름표. 지명타자·마무리는 그라운드 밖 벤치 줄. */
+.rl-lineup { margin: 0 0 16px; padding: 16px; border-radius: 18px; color: #fff; background: radial-gradient(90% 60% at 50% 0, #232968 0, var(--rl-night) 70%); box-shadow: 0 18px 36px -24px rgba(14, 17, 48, .8); }
+.rl-lineup-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 4px 12px; margin: 0 0 8px; }
+.rk .rl-lineup-title { margin: 0; font-size: 1.15rem; font-weight: 900; color: #fff; }
+.rl-lineup-head p { margin: 0; font-size: 0.78rem; color: var(--rk-board-dim); }
+.rl-field { position: relative; width: min(100%, 620px); aspect-ratio: 100 / 80; margin: 0 auto; }
+html.rl-fx-open #mobile-version-fab { display: none !important; }
+.rl-field-art { position: absolute; inset: 0; width: 100%; height: 100%; }
+.rl-field-grass { fill: #1d4a31; }
+.rl-field-track { stroke: #8a6a45; stroke-width: 2.4; opacity: .55; }
+.rl-field-dirt { fill: #7a5c3c; opacity: .9; }
+.rl-field-infield { fill: #1f5132; }
+.rl-field-mound { fill: #8a6a45; }
+.rl-field-line { stroke: rgba(255, 255, 255, .55); stroke-width: .5; fill: none; }
+.rl-field-base { fill: #fff; }
+.rl-spot { position: absolute; left: var(--x); top: var(--y); z-index: 1; display: flex; flex-direction: column; align-items: center; gap: 0; min-width: 6.6em; max-width: 9em; padding: 5px 9px 6px; border-radius: 10px; transform: translate(-50%, -50%);
+    text-decoration: none; text-align: center; color: #fff; background: rgba(14, 17, 48, .88); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .14), inset 0 3px 0 var(--team, #4f46e5), 0 8px 18px -10px rgba(0, 0, 0, .7); transition: transform .15s ease; }
+a.rl-spot:hover { transform: translate(-50%, -54%); }
+a.rl-spot:focus-visible { outline: 2px solid var(--rk-led); outline-offset: 2px; }
+.rl-spot small { font-size: 0.64rem; font-weight: 700; color: var(--rk-board-dim); white-space: nowrap; }
+.rl-spot b { max-width: 100%; overflow: hidden; font-size: 0.86rem; font-weight: 900; white-space: nowrap; text-overflow: ellipsis; }
+.rl-spot em { font-style: normal; font-size: 0.68rem; font-weight: 800; color: var(--rk-led); font-variant-numeric: tabular-nums; }
+.rl-spot.is-empty { background: rgba(14, 17, 48, .55); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .1); }
+.rl-spot.is-empty b { font-size: 0.72rem; font-weight: 700; color: var(--rk-board-dim); }
+.rl-bench { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; width: min(100%, 620px); margin: 10px auto 0; padding: 0; list-style: none; }
+.rl-spot.is-bench { position: static; transform: none; flex-direction: row; justify-content: center; gap: 8px; max-width: none; min-height: 40px; padding: 6px 12px; }
+a.rl-spot.is-bench:hover { transform: none; box-shadow: inset 0 0 0 1px var(--rk-led), inset 0 3px 0 var(--team, #4f46e5); }
+@media (max-width: 575.98px) {
+    .rl-lineup { padding: 12px 10px; }
+    .rl-field { aspect-ratio: 100 / 100; }
+    .rl-spot { min-width: 5.4em; max-width: 6.6em; padding: 4px 6px 5px; border-radius: 8px; }
+    .rl-spot b { font-size: 0.74rem; }
+    .rl-spot small, .rl-spot em { font-size: 0.58rem; }
+    .rl-spot.is-bench { flex-wrap: wrap; gap: 2px 6px; }
+}
+
+/* ══ 은퇴 카드 — 유니폼 등판 트레이딩 카드(2026-10-19 개편: "구단별 색, 화려하고 동적인 카드") ══════════════════════
+ * 주인공은 흰 홈 유니폼 등판(SVG): 어깨에 이름, 가운데 등번호(구단 주색 + 보조색 두 겹 테두리). 바탕은 구단 주색을 어둡게 눌러
+ * 경기장 조명이 유니폼 뒤를 비추는 장면. 등급은 비스듬한 원형 인장, 왼쪽 가장자리엔 카드 인쇄 문구. 크기는 모두 --u(카드 폭/400).
+ * 움직임: 레전드·스타는 포일 광택이 천천히 흐르고, 마우스를 따라 카드가 기울며 빛이 비친다(카드 페이지 스크립트). 이미지(PNG)는 멈춘 장면. */
+.rl-rcard { --frame: #2b3066; --team: #4f46e5; --trim: #c7d2fe; --ink: #312e81; position: relative; container-type: inline-size; width: min(100%, 400px); aspect-ratio: 4 / 5;
+    border-radius: 22px; background: var(--frame); box-shadow: 0 30px 60px -30px rgba(10, 12, 30, .75);
+    transform: perspective(900px) rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg)); transition: transform .4s cubic-bezier(.2, .8, .2, 1); }
+.rl-rcard.is-tilting { transition: transform .08s linear; }
+.rl-rcard.is-pro { background: linear-gradient(135deg, var(--trim), var(--team) 60%, color-mix(in srgb, var(--team) 60%, #000)); }
+.rl-rcard.is-star { background: linear-gradient(135deg, #f8fafc 0, #cbd5e1 30%, #f1f5f9 50%, #94a3b8 75%, #e2e8f0 100%); }
+.rl-rcard.is-legend { background: conic-gradient(from var(--rl-a), #ffd1f5, #a5f3fc, #fde68a, #c4b5fd, var(--team), #ffd1f5); animation: rl-holo 6s linear infinite; }
+.rl-rcard-in { --u: 0.25cqi; position: absolute; inset: calc(5 * var(--u)); display: flex; flex-direction: column; overflow: hidden;
+    padding: calc(14 * var(--u)) calc(16 * var(--u)) calc(11 * var(--u)) calc(27 * var(--u)); border-radius: calc(18 * var(--u));
+    color: #fff; background-color: color-mix(in srgb, var(--bg, var(--team)) 36%, #070914);
+    background-image: radial-gradient(62% 40% at 54% 34%, color-mix(in srgb, var(--team) 62%, transparent) 0, transparent 72%),
+                      radial-gradient(40% 26% at 54% 30%, rgba(255, 255, 255, .16) 0, transparent 70%),
+                      repeating-linear-gradient(135deg, rgba(255, 255, 255, .035) 0 calc(2 * var(--u)), transparent calc(2 * var(--u)) calc(14 * var(--u))),
+                      linear-gradient(180deg, transparent 45%, rgba(0, 0, 0, .5));
+    font-variant-numeric: tabular-nums; line-height: 1.25; letter-spacing: -0.01em; }
+
+.rl-rc-edge { position: absolute; left: calc(5 * var(--u)); top: calc(16 * var(--u)); bottom: calc(16 * var(--u)); width: calc(13 * var(--u)); overflow: hidden; display: flex; align-items: center; justify-content: center; line-height: 1;
+    writing-mode: vertical-rl; text-orientation: sideways; transform: rotate(180deg); font-size: calc(8 * var(--u)); font-weight: 700; letter-spacing: .16em; color: rgba(255, 255, 255, .42); white-space: nowrap; }
+.rl-rc-top { display: flex; align-items: flex-end; justify-content: space-between; gap: calc(10 * var(--u)); }
+.rl-rc-team { display: flex; flex-direction: column; gap: calc(2 * var(--u)); min-width: 0; margin: 0; }
+.rl-rc-team span { align-self: flex-start; padding-bottom: calc(1 * var(--u)); border-bottom: calc(2 * var(--u)) solid var(--trim); font-size: calc(10.5 * var(--u)); font-weight: 900; letter-spacing: .04em; color: rgba(255, 255, 255, .9); }
+.rl-rc-team b { overflow: hidden; font-size: calc(25 * var(--u)); font-weight: 900; line-height: 1; letter-spacing: -0.04em; color: #fff; white-space: nowrap; text-overflow: ellipsis; text-shadow: 0 calc(2 * var(--u)) 0 rgba(0, 0, 0, .25); }
+.rl-rc-years { display: flex; flex-direction: column; align-items: flex-end; gap: calc(1 * var(--u)); margin: 0; font-size: calc(11 * var(--u)); font-weight: 800; color: rgba(255, 255, 255, .85); white-space: nowrap; }
+.rl-rc-years small { font-size: calc(9.5 * var(--u)); font-weight: 700; color: rgba(255, 255, 255, .55); }
+
+.rl-rc-hero { position: relative; display: flex; justify-content: center; height: calc(148 * var(--u)); margin-top: calc(2 * var(--u)); }
+.rl-rc-jersey { height: 100%; width: auto; overflow: visible; filter: drop-shadow(0 calc(10 * var(--u)) calc(14 * var(--u)) rgba(0, 0, 0, .45)); }
+.rl-rc-shadow { fill: rgba(0, 0, 0, .25); }
+.rl-rc-jname { font-weight: 900; }
+.rl-rc-num text { font-weight: 900; letter-spacing: -0.04em; }
+.rl-rc-seal { position: absolute; right: 0; top: calc(4 * var(--u)); display: flex; flex-direction: column; align-items: center; justify-content: center; width: calc(64 * var(--u)); height: calc(64 * var(--u));
+    border-radius: 50%; transform: rotate(-14deg); color: var(--team); background: #fff; box-shadow: inset 0 0 0 calc(3 * var(--u)) var(--trim), 0 calc(6 * var(--u)) calc(14 * var(--u)) rgba(0, 0, 0, .45); }
+.rl-rc-seal::before { content: ""; position: absolute; inset: calc(6 * var(--u)); border: calc(1.2 * var(--u)) dashed currentColor; border-radius: 50%; opacity: .45; }
+.rl-rc-seal b { font-size: calc(14 * var(--u)); font-weight: 900; line-height: 1.05; }
+.rl-rc-seal small { font-size: calc(8.5 * var(--u)); font-weight: 800; opacity: .8; }
+.rl-rcard.is-legend .rl-rc-seal { color: #2a1450; background: conic-gradient(from 30deg, #ffd1f5, #a5f3fc, #fde68a, #c4b5fd, #ffd1f5); box-shadow: inset 0 0 0 calc(2 * var(--u)) rgba(255, 255, 255, .7), 0 0 calc(18 * var(--u)) rgba(196, 181, 253, .7); }
+.rl-rcard.is-star .rl-rc-seal { color: #0f172a; background: linear-gradient(135deg, #f8fafc, #cbd5e1 45%, #f1f5f9 55%, #94a3b8); box-shadow: inset 0 0 0 calc(2 * var(--u)) rgba(255, 255, 255, .8), 0 calc(6 * var(--u)) calc(14 * var(--u)) rgba(0, 0, 0, .45); }
+.rl-rcard.is-rookie .rl-rc-seal { color: #fff; background: rgba(255, 255, 255, .14); box-shadow: inset 0 0 0 calc(1.5 * var(--u)) rgba(255, 255, 255, .5); }
+
+.rl-rc-who { margin-top: calc(4 * var(--u)); min-width: 0; }
+.rk .rl-rc-name { display: flex; align-items: baseline; gap: calc(7 * var(--u)); margin: 0; overflow: hidden; font-size: calc(21 * var(--u)); font-weight: 900; line-height: 1.15; letter-spacing: -0.035em; color: #fff; white-space: nowrap; }
+.rl-rc-name em { flex: none; font-style: normal; font-size: calc(12 * var(--u)); font-weight: 800; letter-spacing: 0; color: color-mix(in srgb, var(--trim) 45%, #fff); }
+.rl-rc-pos { margin: calc(3 * var(--u)) 0 0; overflow: hidden; font-size: calc(11 * var(--u)); font-weight: 600; color: rgba(255, 255, 255, .72); white-space: nowrap; text-overflow: ellipsis; }
+
+.rl-rc-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: calc(5 * var(--u)) calc(10 * var(--u)); margin: calc(8 * var(--u)) 0 0; padding: calc(7 * var(--u)) calc(11 * var(--u)) calc(8 * var(--u));
+    border-radius: calc(10 * var(--u)); background: rgba(0, 0, 0, .3); box-shadow: inset 0 calc(2.5 * var(--u)) 0 color-mix(in srgb, var(--team) 55%, #fff), inset 0 0 0 1px rgba(255, 255, 255, .08); }
+.rl-rc-stats div { display: flex; flex-direction: column; gap: calc(1 * var(--u)); min-width: 0; }
+.rl-rc-stats dt { font-size: calc(9 * var(--u)); font-weight: 700; color: rgba(255, 255, 255, .6); white-space: nowrap; }
+.rl-rc-stats dd { margin: 0; overflow: hidden; font-size: calc(16 * var(--u)); font-weight: 900; line-height: 1.1; letter-spacing: -0.02em; color: #fff; white-space: nowrap; text-overflow: ellipsis; }
+.rl-rc-stats .is-key { padding-top: calc(4 * var(--u)); border-top: 1px solid rgba(255, 255, 255, .14); }
+.rl-rc-stats .is-key dd { font-size: calc(14 * var(--u)); color: color-mix(in srgb, var(--team) 30%, #fff); }
+
+.rl-rc-honors { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: calc(4 * var(--u)); margin: calc(7 * var(--u)) 0 0; padding: 0; list-style: none; }
+.rl-rc-honors li { display: flex; flex-direction: column; align-items: center; gap: calc(2 * var(--u)); min-width: 0; }
+.rl-rc-honors b { display: grid; place-items: center; width: calc(24 * var(--u)); height: calc(24 * var(--u)); border-radius: 50%; font-size: calc(12.5 * var(--u)); font-weight: 900; color: var(--ink); background: #fff;
+    box-shadow: 0 0 0 calc(2 * var(--u)) color-mix(in srgb, var(--trim) 70%, #fff), 0 calc(3 * var(--u)) calc(8 * var(--u)) rgba(0, 0, 0, .35); }
+.rl-rc-honors small { max-width: 100%; overflow: hidden; font-size: calc(8.5 * var(--u)); font-weight: 700; color: rgba(255, 255, 255, .78); white-space: nowrap; text-overflow: ellipsis; }
+.rl-rc-honors li.is-zero b { color: rgba(255, 255, 255, .38); background: transparent; box-shadow: inset 0 0 0 calc(1.5 * var(--u)) rgba(255, 255, 255, .26); }
+.rl-rc-honors li.is-zero small { color: rgba(255, 255, 255, .45); }
+
+.rl-rc-best { display: flex; flex-direction: column; gap: calc(1 * var(--u)); margin: calc(6 * var(--u)) 0 calc(4 * var(--u)); font-size: calc(10.5 * var(--u)); }
+.rl-rc-best span { font-weight: 800; color: color-mix(in srgb, var(--trim) 45%, #fff); white-space: nowrap; }
+.rl-rc-best em { overflow: hidden; font-style: normal; font-weight: 600; color: rgba(255, 255, 255, .88); white-space: nowrap; text-overflow: ellipsis; }
+.rl-rc-foot { display: flex; justify-content: space-between; gap: calc(10 * var(--u)); margin-top: auto; padding-top: calc(7 * var(--u)); border-top: 1px dashed rgba(255, 255, 255, .2);
+    font-size: calc(9.5 * var(--u)); font-weight: 700; color: rgba(255, 255, 255, .6); white-space: nowrap; }
+.rl-rc-foot span:first-child { overflow: hidden; text-overflow: ellipsis; }
+
+/* 포일·빛 — 레전드는 무지갯빛, 스타는 은빛, 프로는 은은하게. 마우스를 따라 빛이 움직인다 */
+.rl-rc-foil, .rl-rc-glare { position: absolute; inset: 0; z-index: 2; border-radius: inherit; pointer-events: none; }
+.rl-rc-foil { opacity: 0; background-size: 260% 260%; background-position: 20% 20%; mix-blend-mode: color-dodge; }
+.rl-rcard.is-legend .rl-rc-foil { opacity: .5; background-image: linear-gradient(115deg, transparent 22%, rgba(255, 120, 220, .35) 36%, rgba(120, 220, 255, .35) 50%, rgba(255, 230, 120, .35) 64%, transparent 78%); animation: rl-foil 7s ease-in-out infinite alternate; }
+.rl-rcard.is-star .rl-rc-foil { opacity: .4; background-image: linear-gradient(115deg, transparent 30%, rgba(255, 255, 255, .45) 46%, rgba(255, 255, 255, .1) 54%, transparent 70%); animation: rl-foil 8s ease-in-out infinite alternate; }
+.rl-rcard.is-pro .rl-rc-foil { opacity: .22; background-image: linear-gradient(115deg, transparent 35%, rgba(255, 255, 255, .45) 50%, transparent 65%); }
+@keyframes rl-foil { from { background-position: 10% 10%; } to { background-position: 90% 90%; } }
+.rl-rc-glare { opacity: 0; background: radial-gradient(circle at var(--gx, 30%) var(--gy, 20%), rgba(255, 255, 255, .32) 0, transparent 46%); mix-blend-mode: soft-light; transition: opacity .3s ease; }
+.rl-rcard.is-tilting .rl-rc-glare { opacity: 1; }
+.rl-rcard.is-tilting .rl-rc-foil { animation: none; background-position: var(--gx, 50%) var(--gy, 50%); }
+.rl-cardpage .rl-rcard { width: min(100%, 420px); }
+.rl-cardpage.is-fresh .rl-rcard { animation: rl-reveal 1s cubic-bezier(.2, .8, .2, 1) backwards; }
+.rl-cardpage.is-fresh .rl-rcard.is-legend { animation: rl-reveal 1s cubic-bezier(.2, .8, .2, 1) backwards, rl-holo 6s linear 1s infinite; }
+@media (prefers-reduced-motion: reduce) {
+    .rl-rcard, .rl-rcard.is-tilting { transform: none; transition: none; }
+    .rl-rcard .rl-rc-foil, .rl-rcard.is-legend .rl-rc-foil, .rl-rcard.is-star .rl-rc-foil { animation: none; }
+}
+
+/* 시즌 결산 줄 — 여섯 칸이 좁아도 '1.034'가 두 줄로 쪼개지지 않게 */
+.rl-result .rk-line-main > div { padding: 0 10px; }
+.rl-result .rk-line-main > div:first-child { padding-left: 0; }
+.rl-result .rk-line-main dd { font-size: 1.5rem; white-space: nowrap; }
+@media (max-width: 575.98px) {
+    .rl-result .rk-line-main > div:nth-child(4) { padding-left: 0; border-left: 0; }
+    .rl-result .rk-line-main dd { font-size: 1.3rem; }
 }

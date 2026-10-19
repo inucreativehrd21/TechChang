@@ -20,6 +20,25 @@
 </div>
 <script nonce="{{ csp_nonce }}">
 (function () {
+    // 카드 — 마우스를 따라 기울고 빛이 비친다(마우스가 있는 화면에서만, 움직임을 줄이는 설정이면 하지 않는다)
+    var card = document.querySelector('[data-rl-rcard]');
+    var still = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (card && !still && window.matchMedia && window.matchMedia('(hover: hover) and (pointer: fine)').matches) {
+        card.addEventListener('pointermove', function (e) {
+            var r = card.getBoundingClientRect();
+            var x = (e.clientX - r.left) / r.width, y = (e.clientY - r.top) / r.height;
+            card.style.setProperty('--ry', ((x - 0.5) * 16).toFixed(2) + 'deg');
+            card.style.setProperty('--rx', ((0.5 - y) * 14).toFixed(2) + 'deg');
+            card.style.setProperty('--gx', (x * 100).toFixed(1) + '%');
+            card.style.setProperty('--gy', (y * 100).toFixed(1) + '%');
+            card.classList.add('is-tilting');
+        });
+        card.addEventListener('pointerleave', function () {
+            card.classList.remove('is-tilting');
+            card.style.setProperty('--rx', '0deg');
+            card.style.setProperty('--ry', '0deg');
+        });
+    }
     var done = document.querySelector('[data-rl-share-done]');
     var say = function (t) { if (done) { done.textContent = t; done.hidden = false; } };
     // 링크 공유 — 폰은 공유 창, PC 는 링크 복사

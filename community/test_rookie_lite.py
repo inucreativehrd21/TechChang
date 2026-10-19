@@ -66,6 +66,7 @@ def autoplay(c, rng, max_steps=200):
                     'military': ['sangmu', 'active'], 'posting': ['mlb', 'npb', 'stay'],
                     'fa': [o['key'] for o in pend.get('offers') or []],
                     'return': [o['key'] for o in pend.get('offers') or []] + ['stay'],
+                    'awaken': ['try', 'skip'],
                     'retire': ['continue'] if c.age < 37 else ['retire']}.get(what, ['retire'])
             X.decide(c, what, rng.choice(opts), rng)
             c.save()
@@ -364,7 +365,7 @@ class GameRulesTests(TestCase):
                 pend = c.pending
                 ch = X.MEET_CHOICES[pend['about']](c)[0][0] if pend['what'] == 'meeting' else \
                     pend['moments'][pend.get('i', 0)]['choices'][0][0] if pend['what'] == 'moment' else \
-                    {'military': 'sangmu', 'retire': 'continue'}.get(pend['what'], 'stay')
+                    {'military': 'sangmu', 'retire': 'continue', 'awaken': 'skip'}.get(pend['what'], 'stay')
                 X.decide(c, pend['what'], ch, random.Random(5))
                 c.save()
 
@@ -673,7 +674,8 @@ class CardImageAndHallFilterTests(TestCase):
     def test_card_has_fixed_cells_and_image_links(self):
         c = self._retired()
         r = self.client.get(f'/rookie/lite/c/{c.pk}/card/', HTTP_USER_AGENT=PC)
-        self.assertContains(r, 'rl-rcard-honors')
+        self.assertContains(r, 'rl-rc-honors')
+        self.assertContains(r, 'rl-rc-jersey')                                # 유니폼 등판
         self.assertContains(r, 'is-zero')                                     # 0인 칸도 그대로(줄이 맞게)
         self.assertContains(r, '1,500')                                       # 천 단위 쉼표
         self.assertContains(r, f'/rookie/lite/c/{c.pk}/card.png')
@@ -721,6 +723,108 @@ class CardImageAndHallFilterTests(TestCase):
         self.assertContains(r, '<option value="batter" selected>타자</option>', html=False)
         self.assertContains(r, '타자카드')
         self.assertNotContains(r, '투수카드')
+
+
+class SixthBatchTests(TestCase):
+    """2026-10-19 6차 — 결정적 순간 문구·흐름, 각성, 장비 부상 상한, 베스트 라인업, 게임 창."""
+
+    def test_walkoff_hit_always_wins_and_middle_innings_explain_the_rest(self):
+        m_bat = {'side': 'bat'}
+        for ok in (True, False):                                            # 9회말 2사 — 내 결과가 곧 승패
+            won, text = X.moment_outcome(m_bat, {'ok': ok, 'final': True, 'text': '끝내기 안타!' if ok else '헛스윙 삼진…'},
+                                         random.Random(1))
+            self.assertEqual(won, ok)
+        seen = set()
+        for seed in range(60):                                              # 8회 결승점 — 이어지는 경기는 뒷이야기로 맞춘다
+            won, text = X.moment_outcome(m_bat, {'ok': True, 'final': False, 'text': '결승 적시타!'}, random.Random(seed))
+            seen.add(won)
+            self.assertIn(X.AFTER[('bat', True, won)], text)
+        self.assertEqual(seen, {True, False})
+
+    def test_moment_screen_plays_the_season_first(self):
+        u = member('승부처')
+        self.client.force_login(u)
+        c = new('승부처선수', seed=60)
+        c.user = u
+        c.league, c.club, c.grade, c.age = 'kbo1', 'kia', 0, 27
+        s = LiteSeason.objects.create(career=c, year=c.year, age=27, league='kbo1', club='kia', games=144, team_w=90, team_l=54,
+                                      team_rank=1, team_of=10, months=[{'label': '4월', 'line': '-', 'w': 15, 'l': 9}])
+        c.pending = {'kind': 'decision', 'what': 'moment', 'year': s.year, 'i': 0, 'done': [],
+                     'moments': [X.make_moment(c, 'series', '한국시리즈 7차전', '10월', random.Random(2))]}
+        c.save()
+        r = self.client.get('/rookie/lite/', HTTP_USER_AGENT=PC)
+        html = r.content.decode()
+        self.assertIn('data-rl-ticker', html)                                  # 정규시즌 전광판이 먼저
+        self.assertLess(html.index('data-rl-ticker'), html.index('rl-moment-scene'))
+        self.assertIn('바로 승부처로', html)
+
+    def test_awakening_when_every_stat_is_capped(self):
+        rng = random.Random(61)
+        c = pro('각성', seed=61, ovr=60.0, age=24)
+        c.potential = 58
+        c.stats = {k: X.stat_pot(c, k) for k in c.stats}
+        c.flags = dict(c.flags, served=True)
+        pend = X.next_step(c, rng, skip_meeting=True)
+        self.assertEqual(pend['what'], 'awaken')
+        before = X.stat_pot(c, 'contact')
+        c.pending = dict(pend, odds=1.0)
+        X.decide(c, 'awaken', 'try', rng)
+        self.assertEqual(X.awakened(c), 1)
+        self.assertEqual(X.stat_pot(c, 'contact'), before + X.AWAKEN_PLUS)    # 한계가 올라갔다(별은 그대로)
+        self.assertTrue(c.flags['awaken_fx']['ok'])
+        self.assertEqual(c.pending['kind'], 'plan')
+        self.assertFalse(X.awaken_ready(c))                                   # 두 시즌 쉬었다가
+        u = member('각성화면')
+        c.user = u
+        c.save()
+        self.client.force_login(u)
+        r = self.client.get('/rookie/lite/', HTTP_USER_AGENT=PC)
+        self.assertContains(r, 'rl-fx is-ok')                                 # 연출은 한 번
+        self.assertContains(r, 'is-awaken')                                   # 보라색 별
+        r = self.client.get('/rookie/lite/', HTTP_USER_AGENT=PC)
+        self.assertNotContains(r, 'rl-fx is-ok')
+        fail = pro('각성실패', seed=62, ovr=60.0, age=31)
+        fail.pending = {'kind': 'decision', 'what': 'awaken', 'odds': 0.0}
+        X.decide(fail, 'awaken', 'try', rng)
+        self.assertEqual(X.awakened(fail), 0)
+        self.assertFalse(fail.flags['awaken_fx']['ok'])
+        self.assertGreater(fail.flags['tired']['injury'], 0)
+
+    def test_full_gear_never_makes_you_injury_proof(self):
+        c = pro('완전무장', seed=63, ovr=70.0, age=24)
+        c.traits = []
+        c.flags = dict(c.flags, house='own', gear={'year': c.year, 'guard': 'fit', 'bat': 'craft'})
+        self.assertAlmostEqual(X.gear_cut(c), 1 - X.GEAR_CUT_MAX)                 # 보호대·집을 다 갖춰도 25%까지만
+        bare = pro('맨몸', seed=64, ovr=70.0, age=24)
+        bare.traits = []
+        self.assertAlmostEqual(X.injury_odds(c, 'normal'), X.injury_odds(bare, 'normal') * 0.75)
+        c.traits = ['iron']
+        self.assertGreaterEqual(X.injury_odds(c, 'light'), X.INJURY_FLOOR)          # 어떤 경우에도 2%는 남는다
+
+    def test_best_lineup_fills_positions_once(self):
+        def ret(name, role, pos, war):
+            c = new(name, role=role, position=pos)
+            LiteSeason.objects.create(career=c, year=1, age=24, league='kbo1', club='lg', games=144, war=war,
+                                      totals={'pa': 600, 'ab': 540, 'h': 160} if role == 'batter' else {'outs': 540, 'w': 12})
+            c.retired_at = timezone.now()
+            c.save()
+        ret('에이스', 'pitcher', 'SP', 9.0)
+        ret('마무리', 'pitcher', 'RP', 3.0)
+        ret('외야1', 'batter', 'OF', 8.0)
+        ret('외야2', 'batter', 'OF', 7.0)
+        ret('유격', 'batter', 'SS', 6.0)
+        lineup = X.best_lineup(X.hall(limit=2000))
+        spots = {s['slot']: (s['r']['c'].name if s['r'] else None) for s in lineup['field'] + lineup['bench']}
+        self.assertEqual((spots['SP'], spots['RP'], spots['SS'], spots['CF'], spots['LF']), ('에이스', '마무리', '유격', '외야1', '외야2'))
+        self.assertIsNone(spots['C'])
+        r = self.client.get('/rookie/lite/hall/', HTTP_USER_AGENT=PC)
+        self.assertContains(r, '역대 베스트 라인업')
+        self.assertNotContains(self.client.get('/rookie/lite/hall/?role=pitcher', HTTP_USER_AGENT=PC), '역대 베스트 라인업')
+
+    def test_game_links_open_in_a_game_window_on_pc(self):
+        r = self.client.get('/games/', HTTP_USER_AGENT=PC)
+        self.assertContains(r, 'data-game-window')
+        self.assertContains(r, "window.name === 'tc-game'")
 
 
 def _pitcher(name):

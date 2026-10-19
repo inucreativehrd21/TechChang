@@ -23,13 +23,13 @@
             </ul>
         </div>
         <div class="gm-ball-modes">
-            <a class="gm-ball-mode is-lite" href="{% url 'community:lite_home' %}">
+            <a class="gm-ball-mode is-lite" href="{% url 'community:lite_home' %}" data-game-window>
                 <span class="gm-ball-tag">로그인 없이 바로</span>
                 <b>라이트 판 <small>한 판 30분</small></b>
                 <span class="gm-ball-desc">시즌마다 훈련 두 개와 진로를 골라 고1부터 은퇴까지 가요. 드래프트·병역·포스팅·FA를 지나 명예의 전당을 노려요.</span>
                 <span class="gm-ball-meta">은퇴한 커리어 {{ ball.retired }}편 · 진행 중 {{ ball.running }}편</span>
             </a>
-            <a class="gm-ball-mode" href="{% url 'community:rookie_home' %}">
+            <a class="gm-ball-mode" href="{% url 'community:rookie_home' %}" data-game-window>
                 <span class="gm-ball-tag">로그인하고 매일</span>
                 <b>정식 판 <small>매일 조금씩</small></b>
                 <span class="gm-ball-desc">칼럼 읽기·댓글·출석으로 모은 훈련 포인트로 키워요. 경기는 매일 밤 열리고, KBO·메이저리그·일본·대만까지 갈 수 있어요.</span>
@@ -41,7 +41,7 @@
     <h2 class="gm-h2 gm-list-title">퍼즐 게임</h2>
     <div class="gm-options">
         {% for game in games_info %}
-        <a class="gm-option" href="{% url game.url %}">
+        <a class="gm-option" href="{% url game.url %}" data-game-window>
             <span class="gm-game-icon" aria-hidden="true">{{ game.icon }}</span>
             <div class="gm-option-main">
                 <div class="gm-option-name">{{ game.name }}{% if game.is_new %} <span class="gm-pill gm-new">NEW</span>{% endif %}</div>

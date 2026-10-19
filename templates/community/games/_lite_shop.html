@@ -5,7 +5,7 @@
         <span class="rl-shop-chips">{% for g in shop.gear %}<em class="{% if g.mine %}is-on{% endif %}">{{ g.name }} {% if g.mine %}{{ g.mine }}{% else %}없음{% endif %}</em>{% endfor %}<em class="is-on">{{ shop.house }}</em>{% if shop.stock %}<em class="is-new">한정품 입고</em>{% endif %}</span>
     </summary>
     <div class="rl-shop-body">
-        <p class="rk-hint">{{ shop.gear.0.name }}·보호대는 이번 시즌만 써요(시즌마다 다시 사요). 집은 월세면 시즌마다 돈이 나가고, 사면 평생이에요. 지금 인기 <b>{{ shop.fame }}</b>({{ shop.fame_label }}) — 인기가 높으면 광고 수입이 들어오고 올스타 팬 투표에 유리해요.</p>
+        <p class="rk-hint">{{ shop.gear.0.name }}·보호대는 이번 시즌만 써요(시즌마다 다시 사요). 집은 월세면 시즌마다 돈이 나가고, 사면 평생이에요. 보호대와 집을 다 갖춰도 부상 위험은 최대 25%까지만 줄어요. 지금 인기 <b>{{ shop.fame }}</b>({{ shop.fame_label }}) — 인기가 높으면 광고 수입이 들어오고 올스타 팬 투표에 유리해요.</p>
         {% for g in shop.gear %}
         <div class="rl-shop-row">
             <p class="rl-shop-name"><b>{{ g.name }}</b><span>소모품 · 이번 시즌만</span></p>

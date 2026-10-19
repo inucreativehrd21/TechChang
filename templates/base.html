@@ -73,6 +73,22 @@
     <link href="{% static 'css/premium.css' %}?v={{ STATIC_VERSION }}" rel="stylesheet">
     
     {% block extra_css %}{% endblock %}
+    <script nonce="{{ csp_nonce }}">
+    // 게임 창(2026-10-19 사용자 요청) — PC 에서 게임을 새 창(이름 tc-game)으로 띄우면 사이트 머리·꼬리를 숨기고 게임만 채운다.
+    // 창 이름은 그 창 안에서 옮겨 다녀도 남아서, 게임 안 이동도 그대로 창 모드다
+    if (window.name === 'tc-game') document.documentElement.classList.add('is-game-window');
+    </script>
+    <style>
+    html.is-game-window .premium-nav, html.is-game-window .tc-footer, html.is-game-window #mobile-version-fab, html.is-game-window .gm-back { display: none !important; }
+    html.is-game-window body { min-height: 100vh; padding-top: 44px !important; }
+    .tc-game-bar { position: fixed; top: 0; left: 0; right: 0; z-index: 9999; display: flex; align-items: center; justify-content: space-between; gap: 12px; height: 44px; padding: 0 12px 0 18px;
+        border-bottom: 1px solid #e3e5ee; background: rgba(255, 255, 255, .92); backdrop-filter: blur(8px); font-size: 0.85rem; font-weight: 800; color: #171a33; }
+    .tc-game-bar span { display: inline-flex; align-items: center; gap: 8px; }
+    .tc-game-bar span::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: #4f46e5; }
+    .tc-game-close { display: inline-flex; align-items: center; height: 30px; padding: 0 12px; border: 1px solid #e3e5ee; border-radius: 99px;
+        font: inherit; font-size: 0.78rem; font-weight: 700; color: #3d4160; background: #fff; cursor: pointer; }
+    .tc-game-close:hover, .tc-game-close:focus-visible { color: #4f46e5; border-color: #c7d2fe; outline: none; }
+    </style>
     
     <title>{% block title %}테크창{% endblock %}</title>
 </head>
@@ -116,6 +132,38 @@
         var fab = document.getElementById('mobile-version-fab');
         if (fab) fab.style.opacity = '1';
     }, 1500);
+    </script>
+    <script nonce="{{ csp_nonce }}">
+    (function () {
+        // PC(넓은 화면·마우스)에서 data-game-window 링크는 게임 창으로 띄운다 — 화면 크기에 맞춰 열고, 막히면 원래대로 이동
+        document.addEventListener('click', function (e) {
+            var a = e.target.closest && e.target.closest('a[data-game-window]');
+            if (!a || e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+            if (!(window.matchMedia && window.matchMedia('(min-width: 900px) and (pointer: fine)').matches)) return;
+            if (document.documentElement.classList.contains('is-game-window')) return;
+            var sw = screen.availWidth, sh = screen.availHeight;
+            var w = Math.max(900, Math.min(1320, sw - 60)), h = Math.max(640, Math.min(940, sh - 60));
+            var left = Math.max(0, Math.round((sw - w) / 2 + (screen.availLeft || 0)));
+            var top = Math.max(0, Math.round((sh - h) / 2 + (screen.availTop || 0)));
+            var win = window.open(a.href, 'tc-game', 'popup=yes,width=' + w + ',height=' + h + ',left=' + left + ',top=' + top);
+            if (!win) return;
+            e.preventDefault();
+            win.focus();
+        });
+        if (document.documentElement.classList.contains('is-game-window')) {
+            // 게임 창 위 막대 — 무슨 창인지와 닫기(창 크기를 바꿔도 게임 화면은 그 폭에 맞춰 다시 짜인다)
+            var bar = document.createElement('div');
+            bar.className = 'tc-game-bar';
+            bar.innerHTML = '<span>테크창 게임</span>';
+            var b = document.createElement('button');
+            b.type = 'button';
+            b.className = 'tc-game-close';
+            b.textContent = '창 닫기';
+            b.addEventListener('click', function () { window.close(); });
+            bar.appendChild(b);
+            document.body.insertBefore(bar, document.body.firstChild);
+        }
+    })();
     </script>
 </body>
 </html>
