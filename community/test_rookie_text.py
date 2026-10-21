@@ -85,9 +85,11 @@ class BaseballTextTests(SimpleTestCase):
     def test_mentor_hints_match_the_batter_and_pitcher_stats(self):
         bat = X.event_view(player(), 'mentor')['choices']
         pit = X.event_view(player('pitcher'), 'mentor')['choices']
-        self.assertEqual(bat[0]['hint'], '선구안 +2 · 컨택 +1')
-        self.assertEqual(bat[1]['hint'], '주루 +1')
-        self.assertEqual(pit[0]['hint'], '멘탈 +2 · 제구 +1')
+        self.assertIn('선구안과 컨택', bat[0]['hint'])
+        self.assertIn('훈련 리듬', bat[0]['hint'])
+        self.assertIn('주루', bat[1]['hint'])
+        self.assertIn('신뢰', bat[1]['hint'])
+        self.assertIn('멘탈과 제구', pit[0]['hint'])
 
     def test_series_result_uses_competition_name_without_scene_suffix(self):
         self.assertEqual(X.moment_result_text(dict(kind='series', stage='한국시리즈 최종 승부', won=True)), '한국시리즈 우승!')

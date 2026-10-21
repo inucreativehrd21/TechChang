@@ -139,8 +139,8 @@
                         <div class="rl-tags"><span class="rl-tag is-risk">부상 위험 +{{ t.risk }}%</span>{% if t.when == 'post' %}<span class="rl-tag is-risk">다음 시즌 훈련 효과 −10%</span>{% endif %}{% if t.exempt %}<span class="rl-tag is-good">금메달이면 병역 특례</span>{% endif %}</div>
                         <p class="rs-story-help">{{ t.reward }}</p>
                         <div class="rl-seg" role="radiogroup" aria-label="{{ t.name }} 참가">
-                            <label><input type="radio" name="intl_{{ t.key }}" value="go" required><span>태극마크 달기</span></label>
-                            <label><input type="radio" name="intl_{{ t.key }}" value="skip"><span>사양하기</span></label>
+                            <label><input type="radio" name="intl_{{ t.key }}" value="go" required><span>몸의 부담을 안고 대표팀에 갈게요</span></label>
+                            <label><input type="radio" name="intl_{{ t.key }}" value="skip"><span>대표팀 평판과 신뢰를 양보하고 쉴게요</span></label>
                         </div>
                     </li>
                     {% endfor %}

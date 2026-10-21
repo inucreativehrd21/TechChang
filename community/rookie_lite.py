@@ -426,14 +426,36 @@ def event_view(c, code: str | None) -> dict | None:
 
 
 def _event_hint(c, code, choice, fallback):
-    """투타에 따라 실제로 바뀌는 능력만 안내한다. 기존 선택 키와 효과는 유지한다."""
+    """정답 대신 선택의 방향과 감수할 점을 함께 알려 준다."""
     pit = c.role == 'pitcher'
-    if code == 'mentor':
-        return ('멘탈 +2 · 제구 +1' if pit else '선구안 +2 · 컨택 +1') if choice == 'accept' else ('체력 +1' if pit else '주루 +1')
-    if code == 'slump' and choice == 'decline':
-        return ('멘탈 +1 · ' if pit else '') + '부상 위험 −3%p'
-    if code == 'trade' and choice == 'decline' and not pit:
-        return '소속 구단에서 주전 경쟁을 이어가요'
+    learn = '멘탈과 제구' if pit else '선구안과 컨택'
+    solo = '체력' if pit else '주루'
+    hints = {
+        'form': ('새 폼으로 강점을 끌어낼 수 있어요. 몸에 붙지 않으면 익숙했던 감각도 잃어요',
+                 '지금의 감각을 지켜요. 교정 기회를 보내며 자신감은 조금 흔들려요'),
+        'mentor': (f'{learn}를 배워요. 남의 루틴에 맞추느라 내 훈련 리듬은 흐트러져요',
+                   f'{solo}를 내 방식대로 다져요. 초대를 거절한 만큼 코치진의 신뢰는 조금 내줘요'),
+        'camp': ('새 환경에서 강점을 밀어 올려요. 빡빡한 일정만큼 부상 부담도 커져요',
+                 '회복에 시간을 써요. 해외 노출과 새 환경에 도전할 자신감은 양보해요'),
+        'position': ('타격에 쓸 여유를 얻어요. 낯선 수비 위치에서 자신감이 흔들려요',
+                     '익숙한 수비를 더 다져요. 구단의 구상과 달라 감독 신뢰는 조금 내줘요'),
+        'pitch': ('승부할 공을 늘릴 기회예요. 완성되지 않으면 기존 제구도 흔들릴 수 있어요',
+                  '제구에 시간을 써요. 구종을 늘릴 기회를 보내며 자신감은 조금 낮아져요'),
+        'national': ('큰 무대 경험과 성과를 노려요. 소속팀 밖 일정이 몸에 부담을 더해요',
+                     '소속팀 준비에 집중해요. 대표팀 평판과 감독 신뢰는 조금 양보해요'),
+        'slump': ('강점을 다시 끌어올려요. 훈련량이 늘면 부상 위험도 따라와요',
+                  '머리와 몸을 쉬게 해요. 관심이 줄고 반등을 증명할 자신감도 잠시 식어요'),
+        'trade': ('새 팀에서 기회를 찾아요. 익숙한 환경을 떠나며 자신감은 낮아져요',
+                  '남아서 버티는 힘을 길러요. 같은 경쟁을 이어가며 자신감은 조금 깎여요'),
+        'media': ('팬과 수입을 늘려요. 촬영 일정에 쓰는 만큼 훈련 시간이 줄어요',
+                  '야구에 쓸 시간을 늘려요. 화제성과 스포트라이트 앞의 자신감은 내줘요'),
+        'approach': ('상대의 공략에 대응해요. 약점을 메우는 만큼 원래 강점은 덜 살려요',
+                     '원래 강점으로 밀어붙여요. 읽힌 패턴을 고수하며 자신감은 조금 깎여요'),
+        'recovery': ('누적 부담을 덜어 내요. 회복에 쓴 시간만큼 이번 훈련량은 줄어요',
+                     '훈련 일정을 지켜요. 누적 피로가 실전과 부상 위험에 남아요'),
+    }
+    if code in hints:
+        return hints[code][0 if choice == 'accept' else 1]
     return fallback
 
 
@@ -450,6 +472,24 @@ def _note(c, k: str, delta: float, why: str):
 
 
 def apply_event(c, code: str, choice: str, rng, mods: dict) -> str:
+    if code not in EVENTS or choice not in {key for key, _label, _hint in EVENTS[code]['choices']}:
+        raise LiteError('현재 이벤트의 선택지를 골라 주세요.')
+    text = _apply_event(c, code, choice, rng, mods)
+    # 성장·경기 공식은 유지하고, 무조건 이득이던 답에는 관계·심리·노출의 대가를 둔다.
+    costs = {
+        ('form', 'decline'): dict(confidence=-2),
+        ('mentor', 'accept'): dict(discipline=-3), ('mentor', 'decline'): dict(trust=-3),
+        ('camp', 'decline'): dict(fame=-2, confidence=-2),
+        ('position', 'accept'): dict(confidence=-3), ('position', 'decline'): dict(trust=-3),
+        ('pitch', 'decline'): dict(confidence=-2), ('national', 'decline'): dict(intl_rep=-3, trust=-2),
+        ('slump', 'decline'): dict(fame=-2, confidence=-2),
+        ('trade', 'accept'): dict(confidence=-4), ('trade', 'decline'): dict(confidence=-2),
+        ('media', 'decline'): dict(fame=-4, confidence=-2), ('approach', 'decline'): dict(confidence=-2),
+    }
+    return Story.change(c, text, **costs[(code, choice)]) if (code, choice) in costs else text
+
+
+def _apply_event(c, code: str, choice: str, rng, mods: dict) -> str:
     """이벤트 선택의 효과 — 능력치·플래그를 고치고 소식 문장을 돌려준다. mods: 이번 시즌 부상·훈련·연봉 보정."""
     s, core = c.stats, _core(c)
     if code in ('approach', 'recovery'):
@@ -1411,15 +1451,15 @@ def _want(c) -> str:
 STUBBORN_HINT = '성적이 받쳐 주면 통하지만, 아니면 역효과가 나요'
 MEET_CHOICES = {
     **{kind: (lambda c, kind=kind: Story.choices(c, kind)) for kind in ('highlight', 'manager', 'interview', 'conduct', 'rival')},
-    'promote': lambda c: [('accept', '맡겨 주시는 자리에서 뭐든 할게요', '수용', '감독 신뢰 ↑'),
-                          ('demand', f'{_want(c)} 자리가 아니면 안 올라갈래요', '고집', STUBBORN_HINT)],
-    'demote': lambda c: [('accept', '받아들일게요. 내려가서 감을 찾아올게요', '수용', '감독 신뢰 ↑'),
-                         ('argue', '여기서 이겨 내고 싶어요. 한 번만 더 기회를 주세요', '고집', STUBBORN_HINT),
-                         ('trade', '차라리 트레이드해 주세요', '강수', '받아 주는 팀이 있으면 이적, 없으면 불화')],
-    'role_down': lambda c: [('accept', '팀을 위해서라면 할게요', '수용', '감독 신뢰 ↑'),
-                            ('argue', '제 자리를 지키고 싶어요', '고집', STUBBORN_HINT)],
-    'role_up': lambda c: [('accept', '기대에 꼭 보답할게요', '다짐', '감독 신뢰 ↑'),
-                          ('modest', '아직 부족해요. 지금 자리에서 더 배울게요', '신중', '지금 보직을 지켜요')],
+    'promote': lambda c: [('accept', '맡겨 주시는 자리에서 뭐든 할게요', '승격', '높은 무대에 올라가요. 원하는 보직이 아닐 수 있고 경쟁도 거세져요'),
+                          ('demand', f'{_want(c)} 자리가 아니면 안 올라갈래요', '조건', '원하는 역할까지 노려요. 설득에 실패하면 콜업과 감독의 믿음을 잃어요')],
+    'demote': lambda c: [('accept', '받아들일게요. 내려가서 감을 찾아올게요', '재정비', '신뢰를 지키며 다시 준비해요. 당장 뛰는 무대는 낮아져요'),
+                         ('argue', '여기서 이겨 내고 싶어요. 한 번만 더 기회를 주세요', '잔류', '현재 무대에 남을 기회를 걸어요. 거절되면 강등에 불화까지 남아요'),
+                         ('trade', '차라리 트레이드해 주세요', '새 팀', '환경을 바꿔 보지만, 받아 줄 팀이 없으면 관계만 틀어져요')],
+    'role_down': lambda c: [('accept', '팀을 위해서라면 할게요', '적응', '감독의 믿음은 지켜요. 중요한 상황에서 뛸 기회는 줄어들어요'),
+                            ('argue', '제 자리를 지키고 싶어요', '고수', '익숙한 보직을 지킬 수 있어요. 설득에 실패하면 출전과 신뢰를 함께 잃어요')],
+    'role_up': lambda c: [('accept', '기대에 꼭 보답할게요', '책임', '더 중요한 승부를 맡아요. 상대와 부담도 그만큼 무거워져요'),
+                          ('modest', '아직 부족해요. 지금 자리에서 더 배울게요', '유지', '익숙한 보직에서 배우지만, 도약할 기회와 자신감은 한발 내줘요')],
 }
 
 
@@ -1444,7 +1484,7 @@ def _meeting(c, about: str, phase: str, t: dict, G: float, rng, to=None, new_rol
 
 def meeting_view(c, m) -> dict:
     if m.get('pitch_event'):
-        return dict(m['pitch_event'], about='pitch_role', who_name=who_is(c, 'lead')[0],
+        return dict(Pitching.event_view(m['pitch_event']), about='pitch_role', who_name=who_is(c, 'lead')[0],
                     who_role=who_is(c, 'lead')[1], contract_scene=True, mid=m.get('phase') == 'mid')
     if m.get('market_event'):
         return dict(m['market_event'], about='career_market', contract_scene=True,
@@ -1453,7 +1493,7 @@ def meeting_view(c, m) -> dict:
         return dict(Contracts.assignment_view(c, f'{c.pk}:{c.year}:assignment:{m.get("phase")}'),
                     about='demote', contract_scene=True, mid=m.get('phase') == 'mid')
     if m.get('encounter'):
-        e = m['encounter']
+        e = Story.encounter_view(c, m['encounter'])
         name, role = who_is(c, 'critic' if e['kind'] == 'highlight' else 'charter' if e['kind'] == 'interview' else 'lead')
         return dict(e, about=m['about'], mid=True, who_name=name, who_role=role, trust=trust(c))
     about, mid = m['about'], m.get('phase') == 'mid'
@@ -1554,7 +1594,7 @@ def _resolve_meeting(c, m: dict, choice: str, rng) -> tuple:
         return text, [press('[선택]', f'{c.name} — {m["encounter"]["title"]}', text)]
     if choice not in [k for k, *_ in MEET_CHOICES[about](c)]:
         raise LiteError('면담에서 어떻게 답할지 골라 주세요.')
-    Story.change(c, '감독 면담에 답했어요', confidence=6 if choice == 'accept' else 9 if choice in ('argue', 'demand') else 2,
+    Story.change(c, '감독 면담에 답했어요', confidence=6 if choice == 'accept' else 9 if choice in ('argue', 'demand') else -2 if choice == 'modest' else 2,
                  discipline=5 if choice in ('accept', 'modest') else -5)
     c.flags = dict(c.flags or {})
     nm, out = c.name, []
@@ -1843,6 +1883,8 @@ def start_season(c, programs, intensity, event_choice, intl_choices, rng) -> dic
         state['press'].extend(mods.pop('press', []))
     for k in offered:
         if k not in state['go']:
+            state['news'].append(Story.change(c, f"{INTL[k]['name']} 소집을 사양하고 소속팀 준비를 택했어요",
+                                               intl_rep=-3, trust=-2))
             state['press'].append(press('', f"{nm}, {INTL[k]['name']} 대표팀 고사…‘소속팀에 집중’"))
     for k in state['go']:
         if INTL[k]['when'] == 'pre':
@@ -3115,9 +3157,9 @@ def intl_rival(key: str, rng) -> str:
     country, _w, pool = rng.choices(field, [x[1] for x in field])[0]
     a, b, sep = INTL_NAMES[pool]
     return f'{country} {rng.choice(a)}{sep}{rng.choice(b)}'
-HITTER_TYPES = {'fast': ('직구에 강하고 떨어지는 공에 약해요', {'fast': -8, 'break': 10, 'edge': 0}),
-                'break': ('변화구를 잘 받아치고 빠른 공에 늦어요', {'fast': 10, 'break': -8, 'edge': 0}),
-                'patient': ('공을 끝까지 보는 타자예요 — 볼넷을 잘 골라요', {'fast': 6, 'break': -6, 'edge': -6})}
+HITTER_TYPES = {'fast': ('빠른 공을 앞에서 당겨 쳐요. 낮게 떨어지는 공에도 스윙을 이어 가는 편이에요.', {'fast': -8, 'break': 10, 'edge': 0}),
+                'break': ('낮은 공에 배트를 오래 남겨 둬요. 빠른 공에 늦기도 하지만 몰린 공은 놓치지 않아요.', {'fast': 10, 'break': -8, 'edge': 0}),
+                'patient': ('존 끝의 공을 오래 지켜봐요. 카운트가 몰리면 한가운데 공에 스윙을 걸어요.', {'fast': 6, 'break': -6, 'edge': -6})}
 OUTCOME_KO = {'HR': '홈런', '3B': '3루타', '2B': '2루타', '1B': '안타', 'BB': '볼넷', 'HBP': '몸에 맞는 공', 'SO': '삼진', 'OUT': '범타'}
 
 
@@ -3166,9 +3208,25 @@ def make_moment(c, kind: str, stage: str, when: str, rng, key: str = '', opp_nam
 def moment_view(c, m: dict) -> dict:
     name, role = who_is(c, 'critic')
     sit = m['sit']
-    return dict(m, who='critic', who_name=name, who_role=role, bases=sit['bases'],
+    opp = dict(m['opp'])
+    pitch = opp.get('pitch', '변화구')
+    if m['side'] == 'bat':
+        fast = opp.get('fast', 50)
+        opp['scout'] = (f'최근엔 직구로 카운트를 잡았어요. {pitch}도 갖고 있어 같은 패턴을 장담하긴 어려워요.' if fast >= 65 else
+                        f'최근엔 {pitch}를 자주 보여 줬어요. 직구를 섞어 타이밍을 바꾸기도 해요.' if fast <= 35 else
+                        f'직구와 {pitch}를 번갈아 써요. 눈에 익은 패턴도 이 승부에선 달라질 수 있어요.')
+        options = [('fast', '직구 노려 치기', '강공', '빠른 공에 힘을 싣지만, 다른 공이 오면 크게 헛돌 수 있어요'),
+                   ('break', f'{pitch} 노려 치기', '기다림', '낙차를 읽어 장타를 노려요. 직구가 들어오면 타이밍을 빼앗겨요'),
+                   ('short', '짧게 끊어 치기', '컨택', '맞힐 여지를 늘리지만, 짧은 타구에 주자가 묶일 수도 있어요')]
+    else:
+        opp['scout'] = HITTER_TYPES.get(opp.get('type'), HITTER_TYPES['patient'])[0]
+        options = [('fast', '직구로 정면 승부', '구위', '존 안에서 빠르게 승부해요. 타이밍을 읽히면 장타로 이어질 수 있어요'),
+                   ('break', f'{pitch}로 유인', '낙차', '헛스윙을 끌어내요. 배트가 안 나오면 볼카운트가 불리해져요'),
+                   ('edge', '스트라이크존 구석 공략', '제구', '정타를 피할 코스를 찾아요. 조금만 벗어나도 볼넷 부담이 커져요')]
+    allowed = {x[0] for x in m['choices']}
+    return dict(m, opp=opp, who='critic', who_name=name, who_role=role, bases=sit['bases'],
                 outs=[i < sit['outs'] for i in range(3)],
-                choices=[{'key': k, 'label': lab, 'tone': tone, 'hint': h} for k, lab, tone, h in m['choices']])
+                choices=[{'key': k, 'label': lab, 'tone': tone, 'hint': h} for k, lab, tone, h in options if k in allowed])
 
 
 # 고른 수가 결과 확률을 얼마나 바꾸나 — 능력치로 낸 확률에 곱한다(남는 몫은 범타). 스카우팅 리포트를 읽으면 이득.

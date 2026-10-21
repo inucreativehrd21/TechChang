@@ -30,6 +30,15 @@ def ready(p):
 
 
 def choice(key, label, hint):
+    hints = {
+        'course': '불펜을 뛰며 선발 준비를 병행해요. 루틴은 쌓지만 당장 자신을 증명할 자신감은 낮아져요',
+        'stay': '현재 불펜 역할을 지켜요. 선발 기회를 미루며 자신감은 조금 내줘요',
+        'trial': '바로 평가받아 선발 기회를 노려요. 준비가 부족하면 실패 기록과 자신감 저하가 남아요',
+        'test': '수업에서 준비한 긴 이닝을 시험해요. 평가에 못 미치면 불펜으로 돌아가요',
+        'appeal': '마지막 평가로 선발 자리를 지켜 봐요. 실패하면 불펜 전환에 자신감도 잃어요',
+        'accept': '불펜에서 다시 기회를 찾아요. 선발 로테이션의 자리는 내려놔야 해요',
+    }
+    hint = hints.get(key, hint)
     return dict(key=key, label=label, hint=hint)
 
 
@@ -39,6 +48,10 @@ def relief_notice(token):
                 text='최근 선발 등판의 실점과 이닝 유지가 아쉬워요. 불펜에서 구위를 회복해요. 평가 등판으로 선발 복귀를 요청할 수도 있어요.',
                 choices=[choice('accept', '불펜에서 다시 증명할게요', '불펜 전환 후 현재 구위에 맞는 역할로 등판해요'),
                          choice('appeal', '마지막 시험 등판을 부탁드릴게요', '한 차례 5이닝 평가에서 실점을 억제하면 선발 기회를 유지해요')])
+
+
+def event_view(event):
+    return dict(event, choices=[choice(ch['key'], ch['label'], ch.get('hint', '')) for ch in event.get('choices') or []])
 
 
 def offer(p, totals, token, today=None):
@@ -110,12 +123,12 @@ def resolve(p, event, selected, rng):
         data['starter_course'] = dict(token=token, day=event.get('day', ''), stamina=p.stats['stamina'])
         data['pitch_cooldown_until'] = token
         B.put(p, data)
-        return S.change(p, '선발 수업을 시작했어요. 불펜 등판을 이어가며 다음 평가를 준비해요.', discipline=3)
+        return S.change(p, '선발 수업을 시작했어요. 불펜 등판을 이어가며 다음 평가를 준비해요.', discipline=3, confidence=-2)
     if selected == 'stay':
         data.pop('starter_course', None)
         data['pitch_cooldown_until'] = token + (1 if hasattr(p, 'flags') else 30)
         B.put(p, data)
-        return '불펜에서 현재 역할에 집중하기로 했어요.'
+        return S.change(p, '불펜에서 현재 역할에 집중하기로 했어요. 선발 기회는 잠시 미뤘어요.', confidence=-2)
     if selected == 'accept':
         text = '불펜으로 전환했어요. 현재 구위에 맞는 등판 기회에서 다시 증명해요.'
         set_track(p, 'RP', token, text)

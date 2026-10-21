@@ -96,30 +96,50 @@ def view(p):
 
 
 CHOICES = {
-    'manager': [('team_work', '맡은 역할에서 증명할게요', '신뢰 쌓기', '감독 신뢰 +12 · 자신감 +5 · 자기 관리 +5'),
-                ('request_role', '더 중요한 역할을 맡겨 주세요', '기회 요청', '실력·자신감에 따라 수락해요. 성공하면 신뢰와 자신감, 실패하면 둘 다 떨어져요'),
-                ('extra_work', '추가 훈련 계획을 세울게요', '훈련 약속', '자기 관리 +15 · 신뢰 +5 · 자신감 −2')],
-    'interview': [('team', '동료와 코치 덕분이에요', '팀 중심', '신뢰 +10 · 자신감 +3 · 인기 +3'),
-                  ('ambition', '다음에는 제가 증명할게요', '공개 약속', '자신감 +10 · 인기 +8, 다음 성적 평가에서 약속을 확인해요'),
-                  ('blame', '더 많은 기회를 받아야 해요', '공개 압박', '자신감 +5 · 인기 +6 · 신뢰 −18 · 자기 관리 −8')],
-    'conduct': [('rest', '회복과 훈련 일정을 지킬게요', '자기 관리', '자기 관리 +12 · 신뢰 +6 · 자신감 +3'),
-                ('fans', '팬 행사에 다녀올게요', '팬과 함께', '인기 +10 · 자신감 +5 · 자기 관리 −8'),
-                ('night', '원정에서도 밤늦게 놀래요', '일탈', '인기 +14 · 자신감 +8 · 자기 관리 −18 · 신뢰 −15')],
-    'rival': [('together', '같이 훈련하며 서로 도울게요', '동료로 경쟁', '관계 +8 · 자기 관리 +10 · 신뢰 +3 · 자신감 +3'),
-              ('challenge', '훈련에서 정면으로 겨뤄 볼게요', '실력으로 승부', '실력·자신감에 따라 자신감과 신뢰가 오르거나 내려요'),
-              ('blame_rival', '경쟁자의 약점을 공개할게요', '언론 플레이', '인기 +6 · 신뢰 −14 · 관계 −7 · 자신감 +3')],
-    'highlight_bat': [('fast', '직구를 노릴게요', '노림수', '리포트의 직구 비율이 높으면 유리해요'),
-                      ('break', '변화구를 기다릴게요', '노림수', '변화구 비율이 높으면 유리해요'),
-                      ('short', '짧게 끊어 칠게요', '안정', '장타를 줄이고 삼진을 피하려 해요')],
-    'highlight_pit': [('fast', '직구로 승부할게요', '정면 승부', '직구에 약한 타자에게 유리해요'),
-                      ('break', '변화구로 유인할게요', '유인', '큰 스윙을 하는 타자에게 유리해요'),
-                      ('edge', '낮은 코너를 공략할게요', '제구', '볼넷 위험을 감수하고 장타를 피해요')],
+    'manager': [('team_work', '맡은 역할에서 증명할게요', '신뢰', '팀의 믿음을 얻지만, 더 큰 역할을 요구할 자신감은 한발 접어요'),
+                ('request_role', '더 중요한 역할을 맡겨 주세요', '도전', '기회를 앞당길 수 있지만, 준비가 부족하면 신뢰까지 잃어요'),
+                ('extra_work', '추가 훈련 계획을 세울게요', '준비', '훈련 루틴을 다지는 대신, 당장 실력을 증명할 자신감은 낮아져요')],
+    'interview': [('team', '동료와 코치 덕분이에요', '동료', '팀의 신뢰를 얻는 대신, 내 존재감과 자신감은 한발 접어요'),
+                  ('ambition', '다음에는 제가 증명할게요', '선언', '관심을 내 쪽으로 모아요. 다음 성적이 약속을 못 받치면 여론도 돌아서요'),
+                  ('blame', '더 많은 기회를 받아야 해요', '압박', '주목받고 내 입장을 드러내지만, 감독과의 관계와 훈련 리듬을 내줘요')],
+    'conduct': [('rest', '회복과 훈련 일정을 지킬게요', '루틴', '생활 리듬을 챙기지만, 관심이 줄고 실전에 대한 자신감도 잠시 식어요'),
+                ('fans', '팬 행사에 다녀올게요', '교감', '응원과 활력을 얻는 대신, 준비하던 훈련 일정이 밀려요'),
+                ('night', '원정 뒤풀이에 참여할게요', '해방감', '화제와 기분 전환은 크지만, 생활 리듬과 감독의 믿음을 걸어야 해요')],
+    'rival': [('together', '같이 훈련하며 서로 도울게요', '공조', '관계와 훈련은 좋아져요. 경쟁자를 가까이 보며 자신감이 흔들릴 수 있어요'),
+              ('challenge', '훈련에서 정면으로 겨뤄 볼게요', '승부', '앞서면 자신을 증명하지만, 지면 감독의 평가와 자신감도 내려가요'),
+              ('blame_rival', '경쟁자의 약점을 공개할게요', '견제', '여론을 움직여 내 존재감을 키우지만, 동료와 감독의 신뢰를 잃어요')],
+    'highlight_bat': [('fast', '직구를 노릴게요', '타이밍', '빠른 공에 스윙을 맞춰요. 구종이 바뀌면 크게 헛돌 수 있어요'),
+                      ('break', '변화구를 기다릴게요', '기다림', '떨어지는 공을 끝까지 봐요. 빠른 공이 들어오면 배트가 늦어요'),
+                      ('short', '짧게 끊어 칠게요', '컨택', '배트에 맞힐 여지를 늘려요. 타구가 짧아 주자를 묶어 둘 수도 있어요')],
+    'highlight_pit': [('fast', '직구로 승부할게요', '구위', '존 안에서 빠르게 승부해요. 타이밍을 읽히면 장타를 맞을 수 있어요'),
+                      ('break', '변화구로 유인할게요', '낙차', '배트가 따라 나오기를 기다려요. 참아 버리면 볼카운트가 어려워져요'),
+                      ('edge', '낮은 코너를 공략할게요', '제구', '정타를 피할 코스로 승부해요. 조금만 벗어나도 볼넷으로 이어질 수 있어요')],
 }
 
 
 def choices(p, kind):
     key = 'highlight_' + ('bat' if p.role == 'batter' else 'pit') if kind == 'highlight' else kind
     return CHOICES[key]
+
+
+def highlight_report(p, read):
+    if p.role == 'batter':
+        return ('최근엔 직구로 카운트를 잡았어요. 결정구까지 같은 패턴일지는 몰라요.' if read == 'fast' else
+                '최근엔 변화구를 먼저 보여 줬어요. 빠른 공을 숨기고 있을 수도 있어요.')
+    return ('변화구에 타이밍을 맞춰 뒀어요. 빠른 공도 가운데 몰리면 길게 보낼 수 있어요.' if read == 'fast' else
+            '빠른 공에 스윙이 크게 나와요. 낮은 공을 쫓지만 실투는 놓치지 않아요.')
+
+
+def encounter_view(p, event):
+    """이전 저장 장면도 선택 키·결과를 보존한 채 최신 설명으로 보여 준다."""
+    kind = event.get('kind')
+    if kind not in ('manager', 'interview', 'conduct', 'rival', 'highlight'):
+        return event
+    view = dict(event, choices=[dict(key=k, label=l, tone=t, hint=h) for k, l, t, h in choices(p, kind)])
+    if kind == 'highlight':
+        sit = '동점, 2사 2루예요.' if p.role == 'batter' else '한 점 앞선 8회, 2사 2루예요.'
+        view['text'] = sit + ' 한 번의 승부가 흐름을 바꿀 수 있어요. ' + highlight_report(p, event.get('read'))
+    return view
 
 
 def encounter(p, kind, rng):
@@ -131,8 +151,7 @@ def encounter(p, kind, rng):
             f'{opponent["line"]}. 같은 자리의 경쟁자예요. 지난 대화를 기억하고 있어요. 어떻게 경쟁할까요?', 'manager-office', '')
     elif kind == 'highlight':
         read = 'fast' if rng.random() < .5 else 'break'
-        scout = ('직구 비율 70%예요.' if read == 'fast' else '변화구 비율 70%예요.') if p.role == 'batter' else \
-                ('직구에 약하지만 변화구는 잘 받아쳐요.' if read == 'fast' else '큰 스윙으로 변화구를 자주 쫓아요.')
+        scout = highlight_report(p, read)
         title = '8회, 균형을 깰 기회' if p.role == 'batter' else '8회, 한 점 차 리드를 지켜야 해요'
         situation = '동점, 2사 2루예요.' if p.role == 'batter' else '한 점 앞선 8회, 2사 2루예요.'
         text = situation + ' 이번 승부가 경기의 흐름을 바꿀 수 있어요. ' + scout
@@ -157,7 +176,7 @@ def resolve(p, event, choice, rng):
     if kind == 'rival':
         rival = event['rival']
         if choice == 'together':
-            text = change(p, f'{rival["name"]} 선수와 함께 훈련했어요', discipline=10, trust=3, confidence=3)
+            text = change(p, f'{rival["name"]} 선수와 함께 훈련했어요. 경쟁자의 준비를 보며 자신도 돌아봤어요', discipline=10, trust=3, confidence=-3)
         elif choice == 'challenge':
             chance = clamp(.5 + (p.ovr - W.level(p.league) - rival['z'] * 7) / 24 + bonus(p) * .015, .15, .85)
             ok = rng.random() < chance
@@ -192,10 +211,10 @@ def resolve(p, event, choice, rng):
             result = '삼진으로 위기를 넘겼어요!' if outcome == 'SO' else '범타로 한 점 차 리드를 지켰어요!' if ok else '출루를 허용했어요. 위기가 이어져요.'
         return change(p, result, confidence=10 if ok else -8, trust=3 if ok else -2, fame=2 if ok else 0)
     effects = {
-        'team_work': dict(trust=12, confidence=5, discipline=5), 'extra_work': dict(discipline=15, trust=5, confidence=-2),
-        'team': dict(trust=10, confidence=3, fame=3), 'ambition': dict(confidence=10, fame=8),
+        'team_work': dict(trust=12, confidence=-3, discipline=5), 'extra_work': dict(discipline=15, trust=5, confidence=-2),
+        'team': dict(trust=10, confidence=-2, fame=-3), 'ambition': dict(confidence=10, fame=8),
         'blame': dict(confidence=5, fame=6, trust=-18, discipline=-8),
-        'rest': dict(discipline=12, trust=6, confidence=3), 'fans': dict(fame=10, confidence=5, discipline=-8),
+        'rest': dict(discipline=12, trust=6, confidence=-2, fame=-3), 'fans': dict(fame=10, confidence=5, discipline=-8),
         'night': dict(fame=14, confidence=8, discipline=-18, trust=-15),
     }
     if choice == 'request_role':
@@ -207,7 +226,7 @@ def resolve(p, event, choice, rng):
         data = state(p)
         data.setdefault('story_promise', {'target': .5, 'label': '평균보다 좋은 성적으로 증명하기'})
         put(p, data)
-    label = next(ch['label'] for ch in event['choices'] if ch['key'] == choice)
+    label = next(label for key, label, _tone, _hint in choices(p, kind) if key == choice)
     delta = dict(effects[choice])
     style = Universe.coach(p)['kind']
     if style == 'team' and choice in ('blame', 'night'):
@@ -377,7 +396,10 @@ def daily_view(p):
     if event['kind'] == 'posting':
         return dict(event, background='negotiation-room', title='해외 구단 세 곳에서 관심을 보였어요',
                     offers=[dict(o, team_name=W.PRO_TEAM[o['team']]['name']) for o in event['offers']])
-    return event
+    if event['kind'] == 'pitch_role':
+        from . import rookie_pitching as Pitching
+        return Pitching.event_view(event)
+    return encounter_view(p, event)
 
 
 def daily_reply(p, event_id, choice, rng, today):

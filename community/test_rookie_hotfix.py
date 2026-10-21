@@ -1,6 +1,7 @@
 """마이너 패치: 재정비의 시즌 보장, 중간 중계와 결과, 기사·팬 반응 회귀 검사."""
 import copy
 import random
+from collections import Counter
 from unittest import mock
 
 from django.core.cache import cache
@@ -13,6 +14,63 @@ from .test_rookie_lite import MOBILE, PC, new
 
 
 class LiteHotfixTests(TestCase):
+    def test_reaction_style_is_three_to_seven_over_ten_seasons(self):
+        c = new('반응비율')
+        s = LiteSeason(career=c, year=1, age=18, league='hs', club=c.club, duty='주전', games=30,
+                       totals=dict(pa=100, ab=90, h=30, hr=4, bb=10, so=15, sb=2), awards=[], months=[])
+        counts = Counter()
+        for year in range(1, 11):
+            s.year = year
+            reactions = X.season_reactions(c, s)
+            counts.update(r['style'] for r in reactions)
+            self.assertEqual(reactions, X.season_reactions(c, s))
+        self.assertEqual(counts, {'standard': 9, 'community': 21})
+
+    def test_every_social_choice_has_a_cost_or_an_unfulfilled_promise(self):
+        n = 0
+        for kind in ('manager', 'interview', 'conduct', 'rival'):
+            signatures = set()
+            for key, _label, _tone, _hint in Story.CHOICES[kind]:
+                n += 1
+                c = new(f'대가{n}')
+                c.league, c.club, c.age = 'kbo1', 'lg', 26
+                c.flags.update(confidence=50, trust=50, discipline=50, fame=50)
+                stats = dict(c.stats)
+                event = Story.encounter(c, kind, random.Random(1))
+                before = {k: Story.value(c, k) for k in ('confidence', 'trust', 'discipline', 'fame')}
+                rng = random.Random(1)
+                with mock.patch.object(rng, 'random', return_value=.999):
+                    Story.resolve(c, event, key, rng)
+                delta = tuple(Story.value(c, k) - before[k] for k in before)
+                self.assertTrue(any(v < 0 for v in delta) or c.flags.get('story_promise'), (kind, key, delta))
+                signatures.add(delta)
+                self.assertEqual(c.stats, stats)
+            self.assertEqual(len(signatures), len(Story.CHOICES[kind]), kind)
+
+    def test_saved_scene_gets_new_hints_without_changing_the_scouting_odds(self):
+        c = new('저장힌트')
+        m = X.make_moment(c, 'series', '한국시리즈 최종 승부', '10월', random.Random(2))
+        original = copy.deepcopy(m)
+        view = X.moment_view(c, m)
+        self.assertEqual(m, original)
+        self.assertEqual(view['opp']['fast'], m['opp']['fast'])
+        self.assertNotIn('%', view['opp']['scout'])
+        self.assertEqual([ch['key'] for ch in view['choices']], [ch[0] for ch in m['choices']])
+        e = Story.encounter(c, 'highlight', random.Random(1))
+        e['choices'][0]['hint'] = '이걸 고르면 유리해요'
+        refreshed = Story.encounter_view(c, e)
+        self.assertNotIn('유리해요', refreshed['choices'][0]['hint'])
+        self.assertEqual(e['read'], refreshed['read'])
+        self.assertEqual(e['id'], refreshed['id'])
+
+    def test_mentor_has_learning_and_a_real_routine_cost(self):
+        c = new('멘토대가')
+        before = dict(c.stats)
+        text = X.apply_event(c, 'mentor', 'accept', random.Random(1), {'injury': 0, 'train': 1, 'salary': 1})
+        self.assertGreater(c.stats['eye'], before['eye'])
+        self.assertEqual(Story.value(c, 'discipline'), 47)
+        self.assertIn('자기 관리 -3', text)
+
     def test_rebuild_goes_to_training_without_second_release_review(self):
         for i, (role, pos, league) in enumerate([('batter', 'SS', 'kbo3'), ('pitcher', 'SP', 'kbo1'),
                                                 ('pitcher', 'RP', 'mlb_aaa')]):

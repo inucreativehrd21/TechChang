@@ -87,5 +87,67 @@ def season_reactions(c, s):
     else:
         outlook = rng.choice(['겨울 준비가 궁금하네요. 다음 시즌에는 어떤 모습을 보여 줄까요?',
                               '좋은 날만 있는 건 아니죠. 다음 시즌에는 꾸준히 기회를 잡았으면 해요.'])
-    return [dict(name='직관하는 팬', text=fan), dict(name='기록 보는 팬', text=record),
-            dict(name='다음 시즌도', text=outlook)]
+    # 10개 표시 슬롯마다 해요체 3 : 커뮤니티 말투 7. 게임 진행 난수와는 별개다.
+    if s.champion:
+        fan_memes = [f'{team} 우승ㅋㅋㅋ 오늘부터 이 시즌 무한복습 간다',
+                     f'{c.name} 우승반지 실화냐 이 맛에 야구 본다',
+                     f'{team} 팬들 지금 잠이 오겠냐고ㅋㅋ', '야구 끊는다던 사람들 전원 복귀한 날']
+    elif s.team_of and s.team_rank == s.team_of:
+        fan_memes = ['내일부터 야구 안 봄. 근데 개막전 언제냐',
+                     f'{team} 순위표는 접어두고 개인 기록부터 보자…',
+                     '올해도 내가 야구에 진심이었던 걸로ㅋㅋ', '순위표 봤다가 조용히 창 닫음']
+    else:
+        fan_memes = [f'{team} 야구를 또 끝까지 봤네 내년에도 속아준다ㅋㅋ',
+                     f'{c.name} 다음 시즌 떡상각이냐 설레발 금지냐',
+                     '시즌 끝나니까 심심하네 볼 때는 그렇게 화났는데ㅋㅋ',
+                     '내년 야구 안 본다 특: 벌써 새 시즌 라인업 짜는 중']
+    if c.role == 'pitcher' and t.get('outs'):
+        era = L.pitching(t)['era']
+        if era <= 3:
+            record_memes = [f"ERA {era:.2f}에 {t.get('so', 0)}K면 일단 박수부터 쳐야지ㅋㅋ",
+                            f"{t.get('so', 0)}탈삼진 뭐냐 타자들 배트에 선풍기 달았네"]
+        elif era >= 5:
+            record_memes = [f'ERA {era:.2f}…다음 시즌에는 진짜 제발',
+                            f"{t.get('so', 0)}K는 좋은데 ERA {era:.2f} 보고 다시 앉음"]
+        else:
+            record_memes = [f"{t.get('so', 0)}K {t.get('bb', 0)}볼넷. 승수만 보고 싸우지 말자ㅋㅋ",
+                            f'ERA {era:.2f}면 못 쓸 정도는 아닌데 기대한 맛이 또 있잖아']
+    elif c.role == 'batter' and t.get('pa'):
+        ops = L.batting(t)['ops']
+        if ops >= .850:
+            record_memes = [f'OPS {ops:.3f}인데 더 치라고 하는 팬들 양심 어디ㅋㅋ',
+                            f'OPS {ops:.3f}면 타석 들어올 때 휴대폰 내려놔야지']
+        elif ops < .650:
+            record_memes = [f'OPS {ops:.3f}…눈 감았다 뜨면 올라가 있겠지?',
+                            f'OPS {ops:.3f} 보고 겨울 훈련 영상 기다리는 중. 이번엔 안 속는다']
+        else:
+            record_memes = [f'OPS {ops:.3f}. 애매해서 더 미련 남는 그 성적ㅋㅋ',
+                            f'OPS {ops:.3f}면 라인업에서 빼자니 아쉽고 믿자니 고민됨']
+    else:
+        record_memes = ['기록 보고 판단하라는데 일단 좀 나와야 기록이 생기지ㅋㅋ',
+                        '벤치 화면에서만 보다가 시즌 끝났네 다음엔 경기장에서 보자']
+    if len(s.splits or []) > 1:
+        outlook_memes = ['전반기랑 후반기 역할 다른데 합계로만 싸우면 어떡하냐ㅋㅋ',
+                         '시즌 중 이사까지 했네 다음엔 자리부터 잡아보자']
+    elif s.age >= 34:
+        outlook_memes = ['나이는 내가 대신 먹을 테니까 한 시즌만 더 해보자',
+                         '낭만으로 재계약하자는 마음이랑 기록표 보는 눈이랑 싸우는 중']
+    elif not W.is_pro(s.league):
+        outlook_memes = ['일단 이름 메모함. 나중에 잘되면 내가 먼저 봤다고 해야지ㅋㅋ',
+                         '벌써 완성형 취급하지 말자 아직 교복 입는다']
+    else:
+        outlook_memes = ['겨울 훈련 기사 뜨면 또 기대할 예정ㅋㅋ 사람 안 변함',
+                         '내년 예상 라인업에 일단 넣어봄. 반박은 성적으로 받는다',
+                         '이쯤 되면 선수가 내년을 준비하는 건지 내가 준비하는 건지ㅋㅋ']
+    polite = [dict(name='직관하는 팬', text=fan), dict(name='기록 보는 팬', text=record),
+              dict(name='다음 시즌도', text=outlook)]
+    pools = [fan_memes, record_memes, outlook_memes]
+    pattern = ('standard', 'community', 'community', 'standard', 'community',
+               'community', 'standard', 'community', 'community', 'community')
+    comments = []
+    for i in range(3):
+        style = pattern[((s.year - 1) * 3 + i) % 10]
+        item = polite[i] if style == 'standard' else dict(
+            name=rng.choice(['ㅇㅇ', '야구보는중', '내일도직관', '라인업고민중', '기록표켜라']), text=rng.choice(pools[i]))
+        comments.append(dict(item, style=style))
+    return comments
