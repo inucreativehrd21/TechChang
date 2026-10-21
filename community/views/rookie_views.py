@@ -26,6 +26,7 @@ from .. import rookie_card as K
 from .. import rookie_career as C
 from .. import rookie_league as L
 from .. import rookie_legacy as G
+from .. import rookie_versions as Versions
 from .. import rookie_world as W
 from ..game_visibility import rookie_hidden as is_hidden, rookie_visible as visible   # 야구는 운영자도 보인다
 from ..rookie_card import render_png   # noqa: F401 — 테스트가 바꿔 끼운다
@@ -450,6 +451,7 @@ def rookie_awards(request):
 def rookie_records(request):
     _catch_up(request)
     view = request.GET.get('view') if request.GET.get('view') in ('highs', 'career', 'hof') else 'highs'
+    version = Versions.selected(request.GET.get('version'))
     role = 'pitcher' if request.GET.get('role') == 'pitcher' else 'batter'
     if view == 'hof':
         choices = _choices(W.TOP_LEAGUES)
@@ -457,7 +459,8 @@ def rookie_records(request):
         choices = _choices(set(RookieSeasonStat.objects.values_list('league', flat=True).distinct()) | {'kbo1'})
     lg = _pick_league(request, choices)
     ctx = dict(_base_ctx(request, 'records'), view=view, role=role, lg=lg, lg_name=W.league(lg)['name'],
-               lg_short=W.short(lg), lg_choices=choices, miles=G.recent_milestones())
+               lg_short=W.short(lg), lg_choices=choices, miles=G.recent_milestones(),
+               hall_version=version, version_tabs=Versions.CHOICES)
     if view == 'highs':
         highs = L.career_highs(role, lg)
         ctx.update(highs=highs, top=highs[0] if highs else None, rest=highs[1:],
@@ -465,9 +468,9 @@ def rookie_records(request):
         if ctx['my_id']:
             ctx['mine'] = next((i for i, h in enumerate(highs, 1) if h['s'].player_id == ctx['my_id']), None)
     else:
-        ctx['rows'] = G.league_career(lg, retired_only=view == 'hof')
+        ctx['rows'] = G.league_career(lg, retired_only=view == 'hof', version=version if view == 'hof' else None)
         if view == 'hof':
-            ctx['lineup'] = _lineup(G.league_career(lg, retired_only=True, limit=2000), lg)
+            ctx['lineup'] = _lineup(G.league_career(lg, retired_only=True, limit=2000, version=version), lg)
     return render(request, 'community/rookie_records.html', ctx)
 
 

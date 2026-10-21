@@ -8,11 +8,16 @@
         <nav class="rk-seg" aria-label="기록실 화면">
             <a href="?view=highs&amp;lg={{ lg }}" {% if view == 'highs' %}aria-current="page"{% endif %}>커리어하이</a>
             <a href="?view=career&amp;lg={{ lg }}" {% if view == 'career' %}aria-current="page"{% endif %}>통산 순위</a>
-            <a href="?view=hof" {% if view == 'hof' %}aria-current="page"{% endif %}>명예의 전당</a>
+            <a href="?view=hof&amp;version={{ hall_version }}" {% if view == 'hof' %}aria-current="page"{% endif %}>명예의 전당</a>
         </nav>
         {% if lg_choices|length > 1 %}
         <nav class="rk-seg is-quiet" aria-label="리그">
-            {% for c in lg_choices %}<a href="?view={{ view }}&amp;lg={{ c.code }}{% if view == 'highs' %}&amp;role={{ role }}{% endif %}" {% if lg == c.code %}aria-current="page"{% endif %} title="{{ c.name }}">{{ c.short }}</a>{% endfor %}
+            {% for c in lg_choices %}<a href="?view={{ view }}&amp;lg={{ c.code }}{% if view == 'highs' %}&amp;role={{ role }}{% elif view == 'hof' %}&amp;version={{ hall_version }}{% endif %}" {% if lg == c.code %}aria-current="page"{% endif %} title="{{ c.name }}">{{ c.short }}</a>{% endfor %}
+        </nav>
+        {% endif %}
+        {% if view == 'hof' %}
+        <nav class="rk-seg is-quiet" aria-label="명예의 전당 버전">
+            {% for code, label in version_tabs %}<a href="?view=hof&amp;lg={{ lg }}&amp;version={{ code }}" {% if hall_version == code %}aria-current="page"{% endif %}>{{ label }}</a>{% endfor %}
         </nav>
         {% endif %}
         {% if view == 'highs' %}
@@ -76,8 +81,9 @@
     </ul>
 
     {% else %}
+    {% if view == 'hof' %}<p class="rk-note">{{ hall_version }} 버전에서 시작한 커리어의 기록이에요. 1.1 업데이트 전에 시작한 커리어는 끝까지 1.0에 남아요.</p>{% endif %}
     {% if view == 'hof' and lineup and lineup.filled %}{% include 'community/games/_lite_lineup.html' with tab_name=lg_name %}{% endif %}
-    <h2 class="rk-h2">{% if view == 'hof' %}명예의 전당{% else %}통산 순위{% endif %} · {{ lg_name }}</h2>
+    <h2 class="rk-h2">{% if view == 'hof' %}명예의 전당 · {{ hall_version }}{% else %}통산 순위{% endif %} · {{ lg_name }}</h2>
     <p class="rk-note">{% if view == 'hof' %}은퇴한 선수 가운데 {{ lg_name }}에서 반 시즌 이상 뛰었거나 상을 받은 선수예요. {% endif %}순서는 MVP 수 → 이 리그에서의 최고 OVR → 수상 수 → 통산 WAR 순이에요.</p>
     {% if rows %}
     <div class="rk-table-wrap">

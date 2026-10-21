@@ -162,7 +162,7 @@ def after_day(season, day: date) -> int:
 
 
 # ───────────────────────────── 리그별 통산 순위·명예의 전당
-def league_career(league: str, *, retired_only: bool = False, limit: int = 30) -> list:
+def league_career(league: str, *, retired_only: bool = False, limit: int = 30, version=None) -> list:
     """그 리그에서 쌓은 통산(선수별) — MVP 수 → 최고 OVR → 수상 수 → 통산 WAR 순."""
     from .game_visibility import rookie_visible as visible
     from .models import RookieAward, RookieSeasonStat
@@ -171,6 +171,9 @@ def league_career(league: str, *, retired_only: bool = False, limit: int = 30) -
         .select_related('player')
     if retired_only:
         qs = qs.filter(player__retired_at__isnull=False)
+    if version is not None:
+        from .rookie_versions import filter_by_version
+        qs = filter_by_version(qs, version, 'player__career')
     acc = {}
     for r in qs:
         a = acc.setdefault(r.player_id, {'p': r.player, 'rows': [], 'war': 0.0, 'best': 0.0, 'seasons': set()})

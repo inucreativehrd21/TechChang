@@ -247,6 +247,7 @@ def create(user, *, name, role, position, style, region, team, number=0, rng=Non
     user 가 없으면 손님 판(guest = 세션 표식) — 로그인하면 계정으로 옮긴다(claim_guest)."""
     from django.contrib.auth.models import User
     from .models import LiteCareer
+    from .rookie_versions import CURRENT
     rng = rng or random.SystemRandom()
     if user is None and not guest:
         raise LiteError('잠시 뒤 다시 시도해 주세요.')
@@ -280,7 +281,7 @@ def create(user, *, name, role, position, style, region, team, number=0, rng=Non
         c.stats = {k: round(max(25.0, stat_pot(c, k) * frac(c, k, START_AGE) + rng.gauss(0, 2)), 1)
                    for k in R.stat_keys(role)}
         c.ovr = c.best_ovr = R.overall(role, c.stats)
-        c.flags = {'kbo_years': 0, 'pro_years': 0, 'leagues': [], 'served': False, 'exempt': False,
+        c.flags = {'game_version': CURRENT, 'kbo_years': 0, 'pro_years': 0, 'leagues': [], 'served': False, 'exempt': False,
                    'start': timezone.localdate().year, 'trust': TRUST_START}
         c.peak = 'hs'
         c.pending = plan_step(c, rng)
@@ -2942,15 +2943,17 @@ def day_bounds(days_ago: int = 0) -> tuple:
     return start, start + timedelta(days=1)
 
 
-def hall(system: str = 'kbo', limit: int = 50, role: str = '', since=None, until=None) -> list:
+def hall(system: str = 'kbo', limit: int = 50, role: str = '', since=None, until=None, version=None) -> list:
     """은퇴한 라이트 커리어 순위 — 나라 리그(system)별로만, 킥루 순서(MVP → 최고 OVR → 수상 → WAR).
     리그를 섞은 전체 순위는 없앴다(2026-10-19 사용자 요청: 리그별로 헷갈리고 가중치가 잘 맞지 않는다).
     role('pitcher'·'batter')을 주면 투수·타자만 — 통산 줄(line)도 붙인다."""
     system = system if system in HALL_SYSTEMS else 'kbo'
     from .game_visibility import rookie_visible as visible
     from .models import LiteCareer
+    from .rookie_versions import filter_by_version
     qs = visible(LiteCareer.objects.filter(retired_at__isnull=False, user__isnull=False, created_at__gte=HALL_SINCE), 'user') \
         .prefetch_related('seasons')                                       # 손님 판은 로그인해 계정으로 옮겨야 오른다
+    qs = filter_by_version(qs, version, 'flags')
     if role in ('pitcher', 'batter'):
         qs = qs.filter(role=role)
     if since:                                                              # 일일 랭킹 — 그날 은퇴한 커리어만

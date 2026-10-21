@@ -221,6 +221,7 @@ def create(user, *, name: str, role: str, team: str, number: int = 0, focus: str
     from .models import RookiePlayer
     from . import rookie_career as C
     from .rookie_league import PITCHER_POS, POS_LABEL
+    from .rookie_versions import CURRENT
     rng = rng or random.SystemRandom()
     if role not in ROLES or team not in TEAM:
         raise GameError('포지션·희망 구단을 다시 골라 주세요.')
@@ -251,7 +252,8 @@ def create(user, *, name: str, role: str, team: str, number: int = 0, focus: str
             potential=heir.potential if heir else C.roll_potential(rng),
             traits=list(heir.traits or []) if heir else C.roll_traits(rng),
             traits_seen=list(heir.traits_seen or []) if heir else [],
-            career={'path': [{'league': 'little', 'club': club, 'age': 12, 'season': 0, 'day': today.isoformat()}]})
+            career={'game_version': CURRENT,
+                    'path': [{'league': 'little', 'club': club, 'age': 12, 'season': 0, 'day': today.isoformat()}]})
         C.open_apply(p)
         p.save(update_fields=['pending'])
         _log(p, 'start', f'{club} 입단 — 초등학교 6학년, 12세. 입단 보너스 +{WELCOME_TP} TP', tp=WELCOME_TP)

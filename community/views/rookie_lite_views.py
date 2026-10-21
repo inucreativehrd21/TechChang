@@ -34,6 +34,7 @@ from .. import rookie_staff as S
 from ..rookie_card import _palette, _jersey_name, render_png   # noqa: F401 — 테스트가 render_png 를 바꿔 끼운다
 from .. import rookie_world as W
 from .. import rookie_story as Story
+from .. import rookie_versions as Versions
 from ..game_visibility import rookie_hidden as is_hidden   # 야구는 운영자도 보인다
 from ..models import LiteCareer
 
@@ -150,7 +151,8 @@ def _school_groups() -> list:
 
 
 def _base(request, section: str) -> dict:
-    return {'section': section, 'regions': W.REGIONS, 'teams': [R.TEAM[c] for c, _n, _c in R.TEAMS],
+    return {'section': section, 'current_game_version': Versions.CURRENT,
+            'regions': W.REGIONS, 'teams': [R.TEAM[c] for c, _n, _c in R.TEAMS],
             'styles': X.STYLES, 'bat_positions': L.POSITIONS, 'pit_positions': X.PIT_POSITIONS,
             'roles': R.ROLES}
 
@@ -302,29 +304,33 @@ def lite_act(request):
 
 
 def lite_hall(request):
+    version = Versions.selected(request.GET.get('version'))
     tab = request.GET.get('lg', '')
     tab = tab if tab in dict(HALL_TABS) else 'kbo'
     role = request.GET.get('role', '')
     role = role if role in dict(HALL_ROLES) else ''
-    every = [dict(r, url=reverse('community:lite_career', args=[r['c'].pk])) for r in X.hall(tab, limit=2000)]   # 라인업은 투수·타자 모두에서
-    rows = X.hall(tab, role=role) if role else every[:50]
+    every = [dict(r, url=reverse('community:lite_career', args=[r['c'].pk])) for r in X.hall(tab, limit=2000, version=version)]
+    rows = X.hall(tab, role=role, version=version) if role else every[:50]
     return render(request, 'community/rookie_lite_hall.html',
                   dict(_base(request, 'hall'), tab=tab, tabs=HALL_TABS, rows=rows, tab_name=dict(HALL_TABS)[tab],
-                       role=role, role_tabs=HALL_ROLES, lineup=None if role else X.best_lineup(every)))   # 라인업은 투수·타자 '전체'일 때
+                       role=role, role_tabs=HALL_ROLES, hall_version=version, version_tabs=Versions.CHOICES,
+                       lineup=None if role else X.best_lineup(every)))   # 라인업은 투수·타자 '전체'일 때
 
 
 def lite_today(request):
     """일일 랭킹(2026-10-19 사용자 요청) — 그날 은퇴한 커리어를 명예의 전당과 같은 순서로. 어제 것도 볼 수 있다."""
+    version = Versions.selected(request.GET.get('version'))
     tab = request.GET.get('lg', '')
     tab = tab if tab in dict(HALL_TABS) else 'kbo'
     role = request.GET.get('role', '')
     role = role if role in dict(HALL_ROLES) else ''
     ago = 1 if request.GET.get('d') == '1' else 0
     start, end = X.day_bounds(ago)
-    rows = X.hall(tab, role=role, since=start, until=end)
+    rows = X.hall(tab, role=role, since=start, until=end, version=version)
     return render(request, 'community/rookie_lite_today.html',
                   dict(_base(request, 'today'), tab=tab, tabs=HALL_TABS, rows=rows, tab_name=dict(HALL_TABS)[tab],
                        role=role, role_tabs=HALL_ROLES, daily=True, ago=ago, day=start,
+                       hall_version=version, version_tabs=Versions.CHOICES,
                        day_tabs=[('', '오늘'), ('1', '어제')]))
 
 

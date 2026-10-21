@@ -4,6 +4,8 @@
 <div class="gm-wrap is-wide">
     {% if daily %}{% include 'community/games/_lite_top.html' with h1='오늘의 랭킹' %}{% else %}{% include 'community/games/_lite_top.html' with h1='명예의 전당' %}{% endif %}
     <form class="rl-filter" method="get" action="" data-rl-filter aria-label="{% if daily %}오늘의 랭킹{% else %}명예의 전당{% endif %} 거르기">
+        <label class="rl-select"><span>버전</span>
+            <select name="version">{% for code, label in version_tabs %}<option value="{{ code }}"{% if hall_version == code %} selected{% endif %}>{{ label }}</option>{% endfor %}</select></label>
         {% if daily %}<label class="rl-select"><span>날짜</span>
             <select name="d">{% for code, label in day_tabs %}<option value="{{ code }}"{% if ago|stringformat:'s' == code or not code and not ago %} selected{% endif %}>{{ label|baseball_text }}</option>{% endfor %}</select></label>{% endif %}
         <label class="rl-select"><span>투수·타자</span>
@@ -13,6 +15,8 @@
         <button type="submit" class="gm-btn rl-filter-go" data-rl-filter-go>보기</button>
         <p class="rl-filter-count" aria-live="polite">{% if role == 'pitcher' %}투수{% elif role == 'batter' %}타자{% else %}선수{% endif %} {{ rows|length }}명</p>
     </form>
+    <h2 class="rk-h2">{{ hall_version }} · {{ tab_name }}{% if daily %} · {{ day|date:'n월 j일' }}{% endif %}</h2>
+    <p class="rk-note">커리어를 시작한 버전으로 기록을 나눠요. 1.1 업데이트 전에 시작한 커리어는 끝까지 1.0에 남아요.</p>
     {% if lineup and lineup.filled %}{% include 'community/games/_lite_lineup.html' %}{% endif %}
     {% if daily %}
     <p class="rk-note">{{ day|date:'n월 j일' }} 하루 동안 은퇴한 커리어만, {{ tab_name }} 리그에서 뛴 시즌으로 명예의 전당과 같은 순서(MVP → 최고 OVR → 수상 → 프로 WAR)로 세웠어요. 매일 0시에 새로 시작해요.</p>

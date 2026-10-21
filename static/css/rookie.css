@@ -38,9 +38,12 @@
 .rk a.rk-fine:hover { color: var(--rk-accent); }
 .rk .rk-center { text-align: center; margin-top: 18px; }
 .rk h2, .rk h3 { color: var(--rk-ink); }
+/* 구장 전용 스타일이 늦게 적용돼도 원본 이미지가 페이지 폭을 밀지 않게 해요. */
+.rk .rs-stadium-art { max-width: 100%; height: auto; }
 
 /* ── 머리: 제목·시즌·메뉴 ─────────────────────────────── */
 .rk-top { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
+.rk-top-main { flex: 1; min-width: 0; }
 .rk-top .gm-back { margin-bottom: 6px; }
 .rk-title { margin: 0; font-size: 1.75rem; font-weight: 900; letter-spacing: -0.02em; line-height: 1.15; }
 .rk-season { flex: none; display: grid; grid-template-columns: auto auto; column-gap: 8px; row-gap: 6px; align-items: baseline; margin: 0; }
@@ -107,7 +110,7 @@
 .rk-card-main { display: flex; align-items: center; gap: 14px; margin-top: 16px; }
 .rk-number { flex: none; width: 66px; font-size: 3.1rem; font-weight: 900; line-height: 1; letter-spacing: -0.05em; text-align: center; color: var(--team); font-variant-numeric: tabular-nums; }
 .rk-who { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
-.rk-name { font-size: 1.4rem; font-weight: 900; letter-spacing: -0.02em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rk-name { font-size: 1.4rem; font-weight: 900; letter-spacing: -0.02em; line-height: 1.4; white-space: normal; }
 .rk-meta { font-size: 0.8rem; color: var(--rk-ink-3); }
 .rk-ovr { flex: none; text-align: right; }
 .rk-ovr small { display: block; font-size: 0.7rem; font-weight: 700; color: var(--rk-ink-4); }
@@ -521,8 +524,13 @@ a.rk-rank-main:hover b { color: var(--rk-accent); }
     .rk-season-bar { width: 110px; }
     .rk-card { padding: 20px 16px 16px; }
     .rk-number { width: 50px; font-size: 2.4rem; }
+    /* 번호·OVR는 왼쪽, 선수 소개는 오른쪽에 두어 긴 이름도 읽을 수 있게 해요. */
+    .rk-card-main { display: grid; grid-template-columns: 64px minmax(0, 1fr); align-items: start; gap: 10px 12px; }
+    .rk .rk-card-main .rk-number { grid-column: 1; grid-row: 1; width: 100%; min-width: 0; }
+    .rk-card-main .rk-who { grid-column: 2; grid-row: 1 / span 2; }
     .rk-name { font-size: 1.2rem; }
-    .rk-ovr b { font-size: 1.8rem; }
+    .rk-card-main .rk-ovr { grid-column: 1; grid-row: 2; text-align: center; white-space: nowrap; }
+    .rk-ovr b { font-size: 1.35rem; }
     .rk-board { padding: 14px 16px 16px; }
     .rk-board-rows li { grid-template-columns: 2.2em 9.4em minmax(0, 1fr); row-gap: 4px; }
     .rk-board-rows li .rk-wl { justify-self: end; }
@@ -1056,6 +1064,14 @@ a.rk-rank-main:hover b { color: var(--rk-accent); }
 .rl-yearsbox .rk-table-wrap { margin: 0; border-width: 1px 0 0; border-radius: 0 0 12px 12px; }
 
 @media (max-width: 575.98px) {
+    /* 이름과 소개는 넓게, 별점과 펼치기는 그 아래 한 줄에 표시해요. */
+    .rl-mcard-head { display: grid; grid-template-columns: 44px minmax(0, 1fr) auto; gap: 4px 10px; }
+    .rl-mcard-no { grid-row: 1 / span 2; white-space: nowrap; }
+    .rl-mcard-who { grid-column: 2 / -1; }
+    .rl-mcard-who b { line-height: 1.4; white-space: normal; overflow: visible; }
+    .rl-mcard-who small { white-space: normal; overflow: visible; }
+    .rl-mcard-stars { grid-column: 2; }
+    .rl-mcard-more { grid-column: 3; justify-self: end; }
     /* 머리 — 제목 한 줄, 탭은 촘촘히 */
     .rl .rk-top { align-items: center; margin-bottom: 8px; }
     .rl .rk-top .gm-back { margin-bottom: 2px; font-size: 0.76rem; }
@@ -1418,7 +1434,8 @@ a.rk-rank-main:hover b { color: var(--rk-accent); }
 .rl-filter-count { margin: 0 0 10px auto; font-size: 0.8rem; font-weight: 700; color: var(--rk-ink-3); }
 @media (max-width: 575.98px) {
     .rl-filter { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); padding: 10px 12px; }
-    .rl-filter:has(> .rl-select:nth-of-type(3)) { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px 8px; }   /* 오늘의 랭킹 — 날짜·투타·리그 한 줄 */
+    .rl-filter:has(> .rl-select:nth-of-type(3)) { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px 8px; }
+    .rl-filter:has(> .rl-select:nth-of-type(4)) { grid-template-columns: repeat(2, minmax(0, 1fr)); }   /* 버전·날짜·투타·리그는 두 줄 */
     .rl-select select { width: 100%; min-width: 0; }
     .rl-filter-go, .rl-filter-count { grid-column: 1 / -1; }
     .rl-filter-count { margin: 0; }

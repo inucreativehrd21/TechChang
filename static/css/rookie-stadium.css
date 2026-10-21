@@ -94,7 +94,7 @@
 .rk .rs-mind { margin: 0 0 18px; padding: 16px 20px; background: #fff; border: 1px solid var(--rs-line); border-radius: 12px; }
 .rk .rs-mind dl { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 12px; margin: 0; }
 .rk .rs-mind dt { color: #535a78; font-size: .74rem; font-weight: 650; }
-.rk .rs-mind dd { margin: 3px 0 0; color: #171a33; font-size: 1.5rem; font-weight: 850; font-variant-numeric: tabular-nums; }
+.rk .rs-mind dd { margin: 3px 0 0; color: #171a33; font-size: 1.5rem; font-weight: 850; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .rk .rs-mind dd small { margin-left: 3px; font-size: .7rem; color: #535a78; }
 .rk .rs-mind p, .rk .rs-mind summary, .rk .rs-mind li { font-size: .76rem; line-height: 1.7; color: #535a78; }
 .rk .rs-mind p { margin: 8px 0 0; }
@@ -151,6 +151,9 @@
     .rk .rl-room-scene { height: 290px; }
     .rk .rl-room-title { font-size: 1.35rem; max-width: 85%; }
     .rk .rl-moment-scene { height: 320px; }
+}
+@media (max-width: 380px) {
+    .rk .rs-mind dl { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 .rk .rs-preview-head { display: flex; justify-content: space-between; align-items: center; gap: 16px; margin: 0 0 20px; }
 .rk .rs-preview-head p { color: var(--rs-muted); font-size: .86rem; margin: 8px 0 0; }
