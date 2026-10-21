@@ -8,13 +8,13 @@
             <section class="rk-panel">
                 <div class="rk-head"><h2>커리어</h2><span class="rk-fine">{% if c.retired_at %}{{ c.age }}세 은퇴{% else %}진행 중{% endif %}</span></div>
                 <dl class="rk-facts">
-                    <div><dt>가장 높이 오른 곳</dt><dd>{{ peak }}</dd></div>
+                    <div><dt>가장 높이 오른 곳</dt><dd>{{ peak|baseball_text }}</dd></div>
                     <div><dt>MVP · 수상 · 우승</dt><dd>{{ c.mvp }} · {{ c.awards }} · {{ c.rings }}</dd></div>
-                    <div><dt>프로 통산 WAR</dt><dd>{{ c.war }}</dd></div>
+                    <div><dt>최상위 리그 WAR</dt><dd>{{ top_war }}</dd></div>
                     <div><dt>최고 OVR</dt><dd>{{ c.best_ovr|floatformat:1 }}</dd></div>
                     <div><dt>통산 수입</dt><dd>{{ earnings }}</dd></div>
                 </dl>
-                {% if high %}<p class="rl-high"><span>커리어 하이</span>{{ high.year }}({{ high.age }}세) {{ high.league }} · {{ high.line }} · WAR {{ high.war }}</p>{% endif %}
+                {% if high %}<p class="rl-high"><span>커리어 하이</span>{{ high.year }}({{ high.age }}세) {{ high.league|baseball_text }} · {{ high.line|baseball_text }} · WAR {{ high.war }}</p>{% endif %}
                 {% if line.systems %}
                 <ul class="rl-news">
                     {% for x in line.systems %}<li><b>{{ x.name }}</b> {{ x.seasons }}시즌 · WAR {{ x.war }} · {% if c.role == 'pitcher' %}{{ x.v.w|default:0|comma }}승 {{ x.v.sv|default:0|comma }}세이브, 평균자책점 {{ x.v.era_text }}{% else %}{{ x.v.avg_text }}, {{ x.v.hr|default:0|comma }}홈런 {{ x.v.rbi|default:0|comma }}타점, OPS {{ x.v.ops_text }}{% endif %}</li>{% endfor %}
@@ -23,7 +23,7 @@
             </section>
             {% if awards %}
             <h2 class="rk-h2">수상</h2>
-            <ul class="rl-awards rl-award-sum">{% for a in awards %}<li class="rl-award is-{{ a.kind }}">{% if a.kind != 'ring' and a.kind != 'national' and a.kind != 'allstar' %}{% include 'community/games/_rookie_glove.html' %}{% endif %}{{ a.label }}{% if a.n > 1 %}<b>{{ a.n }}회</b>{% endif %}</li>{% endfor %}</ul>
+            <ul class="rl-awards rl-award-sum">{% for a in awards %}<li class="rl-award is-{{ a.kind }}">{% if a.kind != 'ring' and a.kind != 'national' and a.kind != 'allstar' %}{% include 'community/games/_rookie_glove.html' %}{% endif %}{{ a.label|baseball_text }}{% if a.n > 1 %}<b>{{ a.n }}회</b>{% endif %}</li>{% endfor %}</ul>
             <p class="rk-hint">시즌마다 받은 상은 아래 연표에 있어요.</p>
             {% endif %}
             <h2 class="rk-h2">연표</h2>

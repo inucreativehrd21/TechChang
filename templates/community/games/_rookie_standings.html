@@ -1,0 +1,10 @@
+{% load rookie_tags %}
+{% if table %}<section class="rs-career-world" aria-label="커리어 리그 순위">
+    <details><summary>{{ table.label|baseball_text }} · 구단들이 함께 치르는 시즌</summary>
+        <p>내 커리어의 같은 대진표에서 기록한 순위예요. 개인 출전 경기의 점수도 팀 승패에 반영돼요.</p>
+        <div class="rs-table-scroll" tabindex="0" role="region" aria-label="구단 순위표, 좌우로 스크롤할 수 있어요"><table><caption>시즌 {{ table.year }} · {{ table.played }}/{{ table.rounds }}일차</caption>
+            <thead><tr><th scope="col">순위</th><th scope="col">구단</th><th scope="col">경기</th><th scope="col">승</th><th scope="col">패</th><th scope="col">무</th><th scope="col">승률</th><th scope="col">득점:실점</th></tr></thead>
+            <tbody>{% for t in table.rows %}<tr{% if t.mine %} class="is-mine"{% endif %}><td>{{ t.rank }}</td><th scope="row">{{ t.name }}</th><td>{{ t.g }}</td><td>{{ t.w }}</td><td>{{ t.l }}</td><td>{{ t.d }}</td><td>{{ t.pct_text }}</td><td>{{ t.rf }}:{{ t.ra }}</td></tr>{% endfor %}</tbody>
+        </table></div>
+    </details>
+</section>{% endif %}

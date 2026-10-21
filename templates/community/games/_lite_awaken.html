@@ -1,22 +1,23 @@
+{% load rookie_tags %}
 {% comment %}라이트 각성의 순간 — 다섯 능력이 모두 한계에 닿았을 때(2026-10-19 사용자 요청). 성공하면 보라색 별(모든 능력 한계 +6).
 맥락: d = decision_view(what='awaken', odds_pct, next_n, plus, who…), stat_rows, stars, star_range, stars_total{% endcomment %}
 <section class="rl-awaken" aria-labelledby="rl-awaken-title">
     <div class="rl-awaken-stage">
         <span class="rl-awaken-aura" aria-hidden="true"></span>
-        <p class="rl-awaken-tag">잠재력 끝까지 키워 낸 선수에게 오는 기회</p>
+        <p class="rl-awaken-tag">잠재력에 가까워진 선수에게 오는 기회</p>
         <h2 class="rl-awaken-title" id="rl-awaken-title">각성의 순간</h2>
-        <ul class="rl-awaken-wall" aria-label="지금 능력치 — 모두 한계">
-            {% for s in stat_rows %}<li><span>{{ s.label }}</span><i style="--w: {{ s.bar }}%" aria-hidden="true"></i><b>{{ s.shown }}</b><em>한계</em></li>{% endfor %}
+        <ul class="rl-awaken-wall" aria-label="현재 능력치와 잠재력 한계">
+            {% for s in stat_rows %}<li><span>{{ s.label|baseball_text }}</span><i style="--w: {{ s.bar }}%" aria-hidden="true"></i><b>{{ s.shown }}</b><em>한계</em></li>{% endfor %}
         </ul>
         <p class="rl-awaken-stars"><span>스카우트</span><span class="rk-stars" role="img" aria-label="별 {{ stars_total }}개 — 다음 칸이 보라색으로 빛나요">{% for i in star_range %}<i class="{% if i < stars %}is-on{% elif i < stars_total %}is-awaken{% elif i == stars_total %}is-next{% endif %}" aria-hidden="true"></i>{% endfor %}</span><small>{{ stars_total|add:1 }}번째 별 자리 · 잠재력 +{{ d.plus }}</small></p>
     </div>
     <div class="rl-dialog">
         <p class="rl-dialog-name"><b>{{ d.who_name }}</b> {{ d.who_role }}</p>
-        <p class="rl-dialog-text">잠재력 끝까지 몸을 만들었고, 성적으로도 증명했어요. 이제 타고난 벽에 닿은 거예요. 이번 비시즌에 몸과 머리를 통째로 뜯어고쳐 보면 벽을 부술 수도 있어요. 대신 실패하면 꽤 지칠 거예요.</p>
+        <p class="rl-dialog-text">꾸준한 훈련과 실전 경험으로 잠재력에 가까워졌어요. 이제 타고난 한계에 도전해 봐요. 이번 비시즌에 몸과 머리를 통째로 뜯어고쳐 보면 벽을 부술 수도 있어요. 대신 실패하면 꽤 지칠 거예요.</p>
     </div>
     <div class="rl-replies" role="group" aria-label="각성에 도전할까요">
         <form method="post" action="{% url 'community:lite_act' %}">{% csrf_token %}<input type="hidden" name="action" value="decide"><input type="hidden" name="what" value="awaken"><input type="hidden" name="choice" value="try">
-            <button type="submit" class="rl-reply is-awaken"><em class="rl-tone">도전</em><b>벽을 부숴 볼게요</b><small>성공 확률 {{ d.odds_pct }}% · 성공하면 보라색 별, 잠재력 +{{ d.plus }} · 실패하면 다음 시즌 부상 위험↑, 멘탈 −1</small></button></form>
+            <button type="submit" class="rl-reply is-awaken"><em class="rl-tone">도전</em><b>벽을 부숴 볼게요</b><small>성공 확률 {{ d.odds_pct }}% · 성공하면 보라색 별, 잠재력 +{{ d.plus }} · 실패하면 다음 시즌 부상 위험↑{% if c.role == 'pitcher' %}, 멘탈 −1{% endif %}</small></button></form>
         <form method="post" action="{% url 'community:lite_act' %}">{% csrf_token %}<input type="hidden" name="action" value="decide"><input type="hidden" name="what" value="awaken"><input type="hidden" name="choice" value="skip">
             <button type="submit" class="rl-reply is-modest"><em class="rl-tone">보류</em><b>지금의 나를 다듬을게요</b><small>변화 없음 · 두 시즌 뒤에 다시 기회가 와요</small></button></form>
     </div>

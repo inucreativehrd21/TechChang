@@ -1,7 +1,8 @@
+{% load rookie_tags %}
 {# 시즌 기록 한 줄(내 선수·선수 페이지). 맥락: x = rookie_league.season_lines 의 항목, role, season_no #}
 <section class="rk-line" aria-label="시즌 기록">
     <div class="rk-line-head">
-        <h2>시즌 {{ x.s.season.number }} {{ x.league }} 기록</h2>
+        <h2>시즌 {{ x.s.season.number }} {{ x.league|baseball_text }} 기록</h2>
         <p class="rk-qual{% if x.qualified %} is-ok{% endif %}">
             <span>{% if role == 'pitcher' %}규정이닝{% else %}규정타석{% endif %} {{ x.qual_have }}/{{ x.qual_need }}</span>
             <i aria-hidden="true"><i style="width: {{ x.qual_pct }}%"></i></i>
@@ -17,7 +18,7 @@
         <div><dt>이닝</dt><dd>{{ v.ip_text }}</dd></div>
         <div class="is-war"><dt>WAR</dt><dd>{{ x.s.war }}</dd></div>
     </dl>
-    <p class="rk-line-sub">승패 {{ v.w|default:0 }}-{{ v.l|default:0 }} · 블론세이브 {{ v.bs|default:0 }} · WHIP {{ v.whip_text }} · 탈삼진 {{ v.so|default:0 }} · 볼넷 {{ v.bb|default:0 }} · 피홈런 {{ v.hr|default:0 }} · 9이닝당 탈삼진 {{ v.k9|floatformat:1 }}</p>
+    <p class="rk-line-sub">승패 {{ v.w|default:0 }}-{{ v.l|default:0 }} · 블론 세이브 {{ v.bs|default:0 }} · WHIP {{ v.whip_text }} · 탈삼진 {{ v.so|default:0 }} · 볼넷 {{ v.bb|default:0 }} · 피홈런 {{ v.hr|default:0 }} · 9이닝당 탈삼진 {{ v.k9|floatformat:1 }}</p>
     {% elif role == 'pitcher' %}
     <dl class="rk-line-main">
         <div><dt>경기</dt><dd>{{ v.g|default:0 }}</dd></div>
@@ -55,7 +56,7 @@
             <tbody>
                 {% for r in x.splits %}
                 <tr class="is-{{ r.code }}">
-                    <th scope="row"><span class="rk-grade is-{{ r.code }}">{{ r.label }}</span>{% if r.note %}<small class="rk-grade-note">{{ r.note }}</small>{% endif %}</th>
+                    <th scope="row"><span class="rk-grade is-{{ r.code }}">{{ r.label|baseball_text }}</span>{% if r.note %}<small class="rk-grade-note">{{ r.note|baseball_text }}</small>{% endif %}</th>
                     <td>{{ r.level }}</td><td>{{ r.pa }}</td><td class="is-key">{{ r.avg_text }}</td><td>{{ r.obp_text }}</td>
                     <td>{{ r.hr }}</td><td>{{ r.bb }}</td><td>{{ r.so }}</td>
                 </tr>
@@ -63,7 +64,7 @@
             </tbody>
         </table>
         </div>
-        <p class="rk-split-note">{% if role == 'pitcher' %}상위타선(1·2번)은 선구안·주루, 중심타선(3·4·5번)은 클러치에 컨택·파워를 갖췄고, 하위타선(6~9번)은 밋밋해요. 상대 라인업은 경기마다 강타선·정상·백업 위주로 바뀌어요. 상대 능력은 구간 대표값이에요.{% else %}선발은 에이스 20%, 주전 55%, 백업 25% 확률로 나와요. 선발과 3타석(백업 선발은 2타석)을 치른 뒤 불펜(필승조·마무리 또는 추격·패전조)과 붙어요. 상대 능력은 구위(구속·변화구·제구 평균)예요.{% endif %}</p>
+        <p class="rk-split-note">{% if role == 'pitcher' %}상위 타선(1·2번)은 선구안·주루, 중심 타선(3·4·5번)은 클러치에 컨택·파워를 갖췄고, 하위 타선(6~9번)은 상대적으로 공격력이 약해요. 상대 라인업은 경기마다 강타선·정상·백업 위주로 바뀌어요. 상대 능력은 구간 대표값이에요.{% else %}선발은 에이스 20%, 일반 선발 55%, 대체 선발 25% 확률로 나와요. 선발과 3타석(대체 선발은 2타석)을 치른 뒤 불펜(필승조·마무리 또는 추격·패전조)과 붙어요. 상대 능력은 구위(구속·변화구·제구 평균)예요.{% endif %}</p>
     </div>
     {% endif %}
 </section>

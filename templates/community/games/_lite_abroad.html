@@ -1,6 +1,7 @@
+{% load rookie_tags %}
 {# 라이트 해외 제안 한 나라 — 구단 셋 가운데 골라 계약(2026-10-19). 맥락: x = {system, name, teams}, what(draft·posting), hint, main #}
 <form method="post" action="{% url 'community:lite_act' %}" class="rl-pathcard rl-abroad{% if main %} is-main{% endif %}">{% csrf_token %}<input type="hidden" name="action" value="decide"><input type="hidden" name="what" value="{{ what }}">
-    <b>{{ x.name }}</b><span>{{ hint }}</span>
+    <b>{{ x.name }}</b><span>{{ hint|baseball_text }}</span>
     <div class="rl-abroad-teams" role="radiogroup" aria-label="{{ x.name }} 구단">
         {% for t in x.teams %}<label class="rl-abroad-team" style="--team: {{ t.color }}"><input type="radio" name="choice" value="{{ x.system }}:{{ t.code }}"{% if forloop.first %} checked{% endif %}><span><i class="rk-dot" aria-hidden="true"></i>{{ t.name }}</span></label>{% endfor %}
     </div>

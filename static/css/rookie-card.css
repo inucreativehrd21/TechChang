@@ -1,0 +1,43 @@
+/* KBO 수집 카드. 정보의 위치와 4:5 비율은 유지하고 인쇄 재질·유니폼만 바꾼다. */
+.rl-rcard.has-premium-uniform { background: linear-gradient(130deg,#d4d7df,#5a606b 32%,#c8ccd4 56%,#444b58 80%,#cbd0d8); }
+.rl-rcard.has-premium-uniform.is-pro { background: linear-gradient(130deg,#e2e4e8,#5b6370 38%,var(--team) 70%,#d5d9e0); }
+.rl-rcard.has-premium-uniform.is-star { background: linear-gradient(130deg,#f8fafc,#aab1bd 25%,#f1f4f8 48%,#7c8697 74%,#e2e8f0); }
+.rl-rcard.has-premium-uniform.is-legend { background: linear-gradient(130deg,#f6e6be,#8f754a 24%,#e8d5a7 45%,#f9edd1 59%,#9c8255 80%,#e7d3a7); animation: none; }
+.rl-cardpage.is-fresh .rl-rcard.has-premium-uniform.is-legend { animation: rl-reveal 1s cubic-bezier(.2,.8,.2,1) backwards; }
+.has-premium-uniform .rl-rcard-in { background-color: #14161c; background-image: radial-gradient(80% 36% at 50% 24%,color-mix(in srgb,var(--team) 35%,transparent),transparent 75%),linear-gradient(180deg,#10121718,#101217ad 47%,#101217ed 72%),url('../img/rookie/uniforms/card-stock.webp'); background-size: auto,auto,cover; background-position: center; box-shadow: inset 0 0 0 calc(.8 * var(--u)) #ffffff40; }
+.has-premium-uniform .rl-rcard-in::before { content: ''; pointer-events: none; position: absolute; inset: calc(7 * var(--u)); z-index: 3; border: calc(.6 * var(--u)) solid #ffffff21; border-radius: calc(12 * var(--u)); }
+.has-premium-uniform .rl-rc-jersey { filter: drop-shadow(0 calc(7 * var(--u)) calc(8 * var(--u)) #0008); }
+.has-premium-uniform .rl-rc-jname { paint-order: stroke fill; stroke: #ffffffb3; stroke-width: .65; stroke-linejoin: round; filter: drop-shadow(0 .6px .35px #0005); }
+.has-premium-uniform .rl-rc-num { filter: drop-shadow(0 .9px .45px #0005); }
+.has-premium-uniform .rl-rc-num text:first-child { stroke-width: 5; }
+.has-premium-uniform .rl-rc-num text:nth-child(2) { stroke-width: 2; }
+.has-premium-uniform .rl-rc-num text:last-child { paint-order: stroke fill; stroke: #ffffff45; stroke-width: .45; }
+.has-premium-uniform .rl-rc-team span { color: #e8e9ee; border-bottom-color: color-mix(in srgb,var(--trim) 75%,#fff); }
+.has-premium-uniform .rl-rc-team b { text-shadow: 0 calc(1 * var(--u)) calc(3 * var(--u)) #0008; }
+.has-premium-uniform .rl-rc-seal { color: #31343e; background: linear-gradient(135deg,#f1f2f5,#a0a7b3 45%,#e3e7ed 60%,#8d96a3); box-shadow: inset 0 0 0 calc(2 * var(--u)) #e0e3ea,0 calc(4 * var(--u)) calc(9 * var(--u)) #0007; }
+.has-premium-uniform .rl-rc-seal::before { border-style: solid; opacity: .35; }
+.rl-rcard.has-premium-uniform.is-legend .rl-rc-seal { color: #594829; background: linear-gradient(130deg,#fff5d8,#b69a61 40%,#f1dfae 57%,#b59a69 80%,#f4e3b9); box-shadow: inset 0 0 0 calc(2 * var(--u)) #ead9ad,0 calc(4 * var(--u)) calc(9 * var(--u)) #0007; }
+.has-premium-uniform .rl-rc-stats { border-top-color: #ffffff30; border-bottom-color: #ffffff30; }
+.has-premium-uniform .rl-rc-stats dt, .has-premium-uniform .rl-rc-honors small { color: #c0c4ce; }
+.has-premium-uniform .rl-rc-stats .is-key dd { color: #e4d4ad; }
+.has-premium-uniform .rl-rc-foil, .rl-rcard.has-premium-uniform.is-legend .rl-rc-foil, .rl-rcard.has-premium-uniform.is-star .rl-rc-foil { opacity: .17; mix-blend-mode: screen; background: linear-gradient(118deg,transparent 24%,#ffffff0a 34%,#ffffff6b 48%,#ffffff08 62%,transparent 74%); background-size: 220% 220%; animation: none; background-position: 38% 38%; }
+.has-premium-uniform.is-tilting .rl-rc-foil { background-position: var(--gx,50%) var(--gy,50%); }
+/* 로컬 전용 팀 갤러리 */
+.rk .rs-card-preview { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); gap: 28px; align-items: start; margin: 0 0 30px; }
+.rk .rs-card-preview > .rl-rcard { justify-self: center; }
+.rk .rs-card-options { padding: 24px; border: 1px solid #dfe3ed; border-radius: 14px; background: #fff; }
+.rk .rs-card-options h2 { margin: 0 0 12px; font-size: 1.3rem; }
+.rk .rs-card-options p { color: #535a78; line-height: 1.7; font-size: .86rem; }
+.rk .rs-card-team-list { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 8px; }
+.rk .rs-card-team-list a { display: flex; align-items: center; gap: 7px; padding: 10px 12px; border: 1px solid #dfe3ed; border-radius: 7px; color: #414968; font-size: .82rem; font-weight: 750; text-decoration: none; }
+.rk .rs-card-team-list a[aria-current] { border-color: #4f46e5; background: #eef0ff; }
+.rk .rs-card-team-list i { flex: 0 0 8px; height: 8px; background: var(--team); border-radius: 50%; }
+.rk .rs-card-gallery { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 28px; }
+.rk .rs-card-gallery .rl-rcard { justify-self: center; }
+.rk #rs-uniforms, .rk #rs-uniform-gallery { scroll-margin-top: 84px; }
+.rk .rs-card-personalize { display: grid; grid-template-columns: minmax(0,1fr) 90px; gap: 12px; margin-top: 20px; }
+.rk .rs-card-personalize label { display: flex; flex-direction: column; gap: 5px; font-size: .78rem; color: #535a78; }
+.rk .rs-card-personalize input, .rk .rs-card-personalize select { width: 100%; min-width: 0; padding: 9px; border: 1px solid #d4dae8; border-radius: 6px; background: #fff; color: #171a33; }
+.rk .rs-card-personalize button { grid-column: 1 / -1; justify-self: start; }
+@media (max-width:767.98px) { .rk .rs-card-preview, .rk .rs-card-gallery { grid-template-columns: minmax(0,1fr); } .rk .rs-card-options { padding: 18px; } }
+@media (prefers-reduced-motion:reduce) { .rl-rcard.has-premium-uniform { animation: none; transition: none; transform: none; } }

@@ -23,15 +23,15 @@ LEAGUES = {
     'ms':      {'name': '중학야구', 'short': '중학', 'country': 'KR', 'system': 'amateur', 'step': 1, 'level': 41.0},
     'hs':      {'name': '고교야구', 'short': '고교', 'country': 'KR', 'system': 'amateur', 'step': 2, 'level': 49.0},
     'univ':    {'name': '대학야구', 'short': '대학', 'country': 'KR', 'system': 'amateur', 'step': 3, 'level': 54.0},
-    'kbo3':    {'name': 'KBO 육성군', 'short': '육성군', 'country': 'KR', 'system': 'kbo', 'step': 0, 'level': 42.0},
+    'kbo3':    {'name': '육성군(구단 훈련)', 'short': '육성군', 'country': 'KR', 'system': 'kbo', 'step': 0, 'level': 42.0},
     'kbo2':    {'name': 'KBO 퓨처스리그', 'short': '퓨처스', 'country': 'KR', 'system': 'kbo', 'step': 1, 'level': 50.0},
-    'kbo1':    {'name': 'KBO리그', 'short': 'KBO 1군', 'country': 'KR', 'system': 'kbo', 'step': 2, 'level': 64.0},
-    'mlb_a':   {'name': 'MLB 싱글A', 'short': '싱글A', 'country': 'US', 'system': 'mlb', 'step': 0, 'level': 50.0},
-    'mlb_aa':  {'name': 'MLB 더블A', 'short': '더블A', 'country': 'US', 'system': 'mlb', 'step': 1, 'level': 57.0},
-    'mlb_aaa': {'name': 'MLB 트리플A', 'short': '트리플A', 'country': 'US', 'system': 'mlb', 'step': 2, 'level': 63.0},
+    'kbo1':    {'name': 'KBO 리그', 'short': 'KBO', 'country': 'KR', 'system': 'kbo', 'step': 2, 'level': 64.0},
+    'mlb_a':   {'name': '마이너리그 싱글A', 'short': '싱글A', 'country': 'US', 'system': 'mlb', 'step': 0, 'level': 50.0},
+    'mlb_aa':  {'name': '마이너리그 더블A', 'short': '더블A', 'country': 'US', 'system': 'mlb', 'step': 1, 'level': 57.0},
+    'mlb_aaa': {'name': '마이너리그 트리플A', 'short': '트리플A', 'country': 'US', 'system': 'mlb', 'step': 2, 'level': 63.0},
     'mlb':     {'name': '메이저리그', 'short': 'MLB', 'country': 'US', 'system': 'mlb', 'step': 3, 'level': 72.0},
     'npb2':    {'name': 'NPB 2군', 'short': 'NPB 2군', 'country': 'JP', 'system': 'npb', 'step': 0, 'level': 55.0},
-    'npb1':    {'name': '일본프로야구(NPB)', 'short': 'NPB 1군', 'country': 'JP', 'system': 'npb', 'step': 1, 'level': 67.0},
+    'npb1':    {'name': '일본프로야구(NPB)', 'short': 'NPB', 'country': 'JP', 'system': 'npb', 'step': 1, 'level': 67.0},
     'cpbl':    {'name': '대만프로야구(CPBL)', 'short': 'CPBL', 'country': 'TW', 'system': 'cpbl', 'step': 0, 'level': 58.0},
 }
 SYSTEMS = {
@@ -91,7 +91,7 @@ def prev_league(code: str) -> str | None:
 
 
 def promote_at(code: str) -> float | None:
-    """이 리그에서 위로 올라가는 승격 심사를 받을 수 있는 OVR(위 리그 수준 − 1)."""
+    """이 리그에서 위로 올라가는 콜업 테스트를 받을 수 있는 OVR(위 리그 수준 − 1)."""
     up = next_league(code)
     return level(up) - 1 if up else None
 

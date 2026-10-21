@@ -2,7 +2,7 @@
 <section class="rk-card" style="--team: {{ team.color|default:'#4f46e5' }}" aria-label="선수 카드">
     <div class="rk-card-top">
         <span class="rk-team"><i class="rk-dot" aria-hidden="true"></i>{{ team.name }}</span>
-        {% if p.retired_at %}<span class="rk-tier is-retired">은퇴</span>{% else %}<span class="rk-tier is-{{ league_kind }}">{{ league_short }}{% if title %} {{ title }}{% endif %}</span>{% endif %}
+        {% if p.retired_at %}<span class="rk-tier is-retired">은퇴</span>{% else %}<span class="rk-tier is-{{ league_kind }}">{{ league_short|baseball_text }}{% if title %} {{ title|baseball_text }}{% endif %}</span>{% endif %}
     </div>
     <div class="rk-card-main">
         <span class="rk-number" aria-hidden="true">{{ p.number }}</span>
@@ -11,17 +11,17 @@
             <span class="rk-meta">{{ pos_label|default:role_label }}{% if p.focus %}, 주특기 {{ focus_label }}{% endif %}</span>
             <span class="rk-meta">{% if grade_label and not p.retired_at %}{{ grade_label }} · {% endif %}{{ p.age }}세</span>
             {% if league_kind == 'am' and want.name and not p.retired_at %}<span class="rk-meta">희망 구단 <i class="rk-dot is-sm" style="--team: {{ want.color }}" aria-hidden="true"></i>{{ want.name }}</span>{% endif %}
-            {% if ladder %}<span class="rk-role-line"><b>{{ ladder.label }}</b>{% if ladder.style %} · {{ ladder.style }}{% endif %}</span>
+            {% if ladder %}<span class="rk-role-line"><b>{{ ladder.label|baseball_text }}</b>{% if ladder.style %} · {{ ladder.style }}{% endif %}</span>
             {% if ladder.top_speed %}<span class="rk-meta">최고 {{ ladder.top_speed }}km/h · {{ ladder.pitches|join:'·' }}</span>{% endif %}{% endif %}
-            {% if rank %}<span class="rk-meta">{{ league_short }} OVR {{ rank }}위</span>{% endif %}
+            {% if rank %}<span class="rk-meta">{{ league_short|baseball_text }} OVR {{ rank }}위</span>{% endif %}
         </div>
         <div class="rk-ovr"><small>OVR</small><b>{{ p.ovr|floatformat:1 }}</b></div>
     </div>
     {% if trophies %}
     <ul class="rk-trophies" aria-label="수상">
         {% for a in trophies|slice:':6' %}
-        <li class="is-{{ a.kind }}" title="시즌 {{ a.season.number }} {{ a.league|league_short }} {{ a.label }}">
-            {% include 'community/games/_rookie_glove.html' %}<span>S{{ a.season.number }} {{ a.label }}</span>
+        <li class="is-{{ a.kind }}" title="시즌 {{ a.season.number }} {{ a.league|league_short|baseball_text }} {{ a.label|baseball_text }}">
+            {% include 'community/games/_rookie_glove.html' %}<span>S{{ a.season.number }} {{ a.label|baseball_text }}</span>
         </li>
         {% endfor %}
     </ul>
@@ -29,12 +29,12 @@
     {% if owner %}
         {% if next %}
         <div class="rk-next">
-            <div class="rk-next-label"><span>{{ next.name }} 승격 심사까지</span><b>{% if next.ready %}도전 가능{% elif next.ovr_ok %}조건 남음{% else %}OVR {{ next.left|floatformat:1 }} 남음{% endif %}</b></div>
+            <div class="rk-next-label"><span>{{ next.name }} 콜업 테스트까지</span><b>{% if next.ready %}도전 가능{% elif next.ovr_ok %}조건 남음{% else %}OVR {{ next.left|floatformat:1 }} 남음{% endif %}</b></div>
             <div class="rk-bar is-next"><i style="width: {{ next.pct }}%"></i></div>
-            <ul class="rk-gate" aria-label="승격 심사 조건">
+            <ul class="rk-gate" aria-label="콜업 테스트 조건">
                 <li class="{% if next.ovr_ok %}is-ok{% endif %}">OVR {{ next.at|floatformat:0 }}</li>
                 <li class="{% if not next.gate.stay_left %}is-ok{% endif %}">이 리그 {{ next.gate.stay_need }}일{% if next.gate.stay_left %} ({{ next.gate.stay_left }}일 남음){% endif %}</li>
-                <li class="{% if next.gate.mission.ok %}is-ok{% endif %}">{{ next.gate.mission.text }} <small>지금 {{ next.gate.mission.now }}</small></li>
+                <li class="{% if next.gate.mission.ok %}is-ok{% endif %}">{{ next.gate.mission.text|baseball_text }} <small>지금 {{ next.gate.mission.now }}</small></li>
             </ul>
             {% if next.ready %}
                 {% if next.tried_today %}
@@ -42,7 +42,7 @@
                 {% else %}
                 <form method="post" action="{% url 'community:rookie_test' %}">
                     {% csrf_token %}
-                    <button type="submit" class="gm-btn is-primary is-block rk-mt">{{ next.name }} 승격 심사 받기</button>
+                    <button type="submit" class="gm-btn is-primary is-block rk-mt">{{ next.name }} 콜업 테스트 받기</button>
                 </form>
                 {% endif %}
             {% endif %}

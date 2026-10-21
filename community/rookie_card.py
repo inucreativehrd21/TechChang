@@ -6,6 +6,7 @@
 import logging
 import os
 import threading
+import colorsys
 
 from django.conf import settings
 from django.http import FileResponse, HttpResponse
@@ -22,6 +23,26 @@ KBO_TRIM = {'kia': ('#EA0029', '#06141F', False), 'kt': ('#231F20', '#EB1C24', F
             'lotte': ('#041E42', '#D00F31', False), 'samsung': ('#074CA1', '#B6BCC4', False),
             'kiwoom': ('#820024', '#B07F4A', False), 'hanwha': ('#FF6600', '#07111F', False)}
 PINSTRIPES = {'nyy', 'phi', 'chc'}
+
+
+def uniform_club(club, color):
+    """새 이미지가 없는 구단은 색이 가까운 KBO 원단을 사용한다. 녹색·노랑은 중립 원단."""
+    if club in KBO_TRIM:
+        return club
+    if club in PINSTRIPES:
+        return 'doosan'
+    rgb = tuple(int(color.lstrip('#')[i:i + 2], 16) / 255 for i in (0, 2, 4))
+    h, s, v = colorsys.rgb_to_hsv(*rgb)
+    if s < .35 or v < .22:
+        return 'kt'
+    if .15 < h < .48:  # 생성하지 않은 녹색·노랑 유니폼 대신 검정/흰 원단을 공유한다.
+        return 'kt'
+    def distance(code):
+        c = KBO_TRIM[code][0].lstrip('#')
+        ch, cs, cv = colorsys.rgb_to_hsv(*(int(c[i:i + 2], 16) / 255 for i in (0, 2, 4)))
+        dh = min(abs(h - ch), 1 - abs(h - ch))
+        return dh * 4 + abs(s - cs) * .2 + abs(v - cv) * .6
+    return min(KBO_TRIM, key=distance)
 
 
 def _lum(hex_color: str) -> float:
@@ -42,20 +63,22 @@ def _palette(league: str, club: str) -> dict:
     ink = primary if _lum(primary) < 0.4 else (secondary if _lum(secondary) < 0.4 else '#0E1130')
     trim = secondary if abs(_lum(secondary) - _lum(ink)) > 0.08 else '#ffffff'
     bg = primary if _lum(primary) < 0.45 else secondary            # 노랑처럼 밝은 주색은 바탕을 보조색으로(탁한 올리브가 되지 않게)
-    return {'primary': primary, 'secondary': secondary, 'ink': ink, 'trim': trim, 'pin': pin, 'bg': bg}
+    source = uniform_club(club, primary) if club in W.PRO_TEAM else ''
+    return {'primary': primary, 'secondary': secondary, 'ink': ink, 'trim': trim, 'pin': pin, 'bg': bg,
+            'jersey_source': source, 'jersey_asset': f'img/rookie/uniforms/{source}.webp' if source else ''}
 
 
 def _jersey_name(name: str) -> dict:
     """유니폼 어깨 이름 — 짧을수록 크게·넓게(유니폼 글씨처럼)."""
     n = len(name)
-    size, spacing = ((30, 0.3) if n <= 3 else (26, 0.16) if n <= 5 else (21, 0.06) if n <= 7 else (16, 0.02) if n <= 10 else (13, 0))
+    size, spacing = ((23, 0.22) if n <= 3 else (20, 0.09) if n <= 5 else (16, 0.04) if n <= 7 else (12, 0.01) if n <= 10 else (10, 0))
     return {'size': size, 'spacing': spacing}
 
 
 # ───────────────────────────── 은퇴 카드 이미지(SNS 에 올리는 PNG · 링크 미리보기)
 # 서버의 headless Chromium(playwright — 연구실 위클리 카드뉴스와 같은 것)으로 카드 화면을 찍어 media/lite_cards 에 둔다.
 # 은퇴 카드는 바뀌지 않으니 한 번 찍으면 계속 쓴다 — 디자인을 바꾸면 CARD_V 를 올린다.
-CARD_V = 5                  # 2026-10-19 유니폼 등판 카드로 개편(3: 숫자 폭, 4: 글꼴 힌팅 끔, 5: 별 다섯 칸 고정·보라색이 빈 칸)
+CARD_V = 9                  # 최상위 리그 WAR와 하위 리그 평가를 구분한 카드
 SHOTS = {'card': (432, 540, 2.5), 'og': (1200, 630, 1),       # 1080×1350(인스타 세로 피드) · 링크 미리보기 1200×630
          'story': (432, 768, 2.5)}                                  # 1080×1920 인스타그램 스토리(2026-10-19 사용자 요청)
 _shot_lock = threading.Lock()
@@ -187,7 +210,7 @@ def main_card(p) -> dict:
     return {'palette': _palette(league, club), 'team_prefix': prefix, 'team_nick': nick or team_name,
             'jersey': _jersey_name(p.name), 'serial': f'{p.pk:04d}', 'tier': tier, 'tier_label': tier_label,
             'years': f'{_ym(timezone.localtime(p.created_at))}–{_ym(end)}', 'seasons': seasons, 'stats': stats,
-            'keys': [('프로 WAR', round(sum(r.war for r in pro), 1)), ('최고 OVR', best_ovr), ('쌓은 TP', f'{p.tp_earned:,}')],
+            'keys': [('최상위 WAR', round(sum(r.war for r in pro if r.league in W.TOP_LEAGUES), 1)), ('최고 OVR', best_ovr), ('쌓은 TP', f'{p.tp_earned:,}')],
             'honors': [{'n': mvp, 'label': 'MVP'}, {'n': gg, 'label': gg_label}, {'n': titles, 'label': '타이틀'},
                        {'n': best9, 'label': '베스트 9'}, {'n': miles, 'label': '이정표'}],
             'best': best, 'clubs': clubs[:5], 'more_clubs': max(0, len(clubs) - 5), 'peak_short': W.short(peak),

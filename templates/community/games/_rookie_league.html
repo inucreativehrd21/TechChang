@@ -1,3 +1,4 @@
+{% load rookie_tags %}
 {# 리그 — 기록 리더 / 오늘의 베스트 9 / 선수 OVR 순위 / 구단 전력. 맥락: rookie_views.rookie_league #}
 <div class="gm rk">
 <div class="gm-wrap is-wide">
@@ -24,7 +25,7 @@
         {% elif tab == 'players' %}
         <nav class="rk-seg is-quiet" aria-label="포지션">
             <a href="?tab=players" {% if not role %}aria-current="page"{% endif %}>전체</a>
-            {% for key, r in roles.items %}<a href="?tab=players&amp;role={{ key }}" {% if role == key %}aria-current="page"{% endif %}>{{ r.label }}</a>{% endfor %}
+            {% for key, r in roles.items %}<a href="?tab=players&amp;role={{ key }}" {% if role == key %}aria-current="page"{% endif %}>{{ r.label|baseball_text }}</a>{% endfor %}
         </nav>
         {% endif %}
     </div>
@@ -54,7 +55,7 @@
 
     {% elif tab == 'best9' %}
         {% if nine_day %}
-        <p class="rk-note">{{ nine_day|date:'n월 j일' }} {{ lg_name }} — 위치마다 그날 가장 잘한 선수예요. 타자는 루타·볼넷·도루·타점·득점, 투수는 게임 스코어로 견줘요.</p>
+        <p class="rk-note">{{ nine_day|date:'n월 j일' }} {{ lg_name }} — 포지션마다 그날 가장 잘한 선수예요. 타자는 루타·볼넷·도루·타점·득점, 투수는 게임 스코어로 견줘요.</p>
         <section class="rk-diamond" aria-label="오늘의 베스트 9">
             <svg class="rk-park" viewBox="0 0 1000 760" aria-hidden="true" focusable="false">
                 <path d="M500 735 L60 300 A620 620 0 0 1 940 300 Z" class="rk-park-grass"/>
@@ -71,7 +72,7 @@
         {% else %}
         <section class="rk-board rk-empty-board">
             <header class="rk-board-head"><span>오늘의 베스트 9 · {{ lg_name }}</span><span>경기 전</span></header>
-            <div class="rk-board-empty"><b>{% if season_now.phase == 'pre' %}D-{{ season_now.dday }}{% else %}대기{% endif %}</b><span>이 리그의 경기가 끝나면 다음 날 아침 위치마다 그날의 주인공을 뽑아요.</span></div>
+            <div class="rk-board-empty"><b>{% if season_now.phase == 'pre' %}D-{{ season_now.dday }}{% else %}대기{% endif %}</b><span>이 리그의 경기가 끝나면 다음 날 아침 포지션마다 그날의 주인공을 뽑아요.</span></div>
         </section>
         {% endif %}
 
@@ -88,7 +89,7 @@
                     <b>{{ r.p.name }} <small>{{ r.p.number }}</small></b>
                     <span>{{ r.team.name }}, {{ r.pos_label|default:r.role_label }}, {{ r.p.age }}세</span>
                 </a>
-                <span class="rk-tier is-{{ r.league_kind }}">{{ r.league_short }}{% if r.title %} {{ r.title }}{% endif %}</span>
+                <span class="rk-tier is-{{ r.league_kind }}">{{ r.league_short|baseball_text }}{% if r.title %} {{ r.title|baseball_text }}{% endif %}</span>
                 <b class="rk-rank-val">{{ r.p.ovr|floatformat:1 }}</b>
             </li>
             {% endfor %}

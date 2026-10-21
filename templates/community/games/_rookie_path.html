@@ -1,12 +1,13 @@
+{% load rookie_tags %}
 {# 진로 칸 — 지나온 길·스카우트 평가·성장 한계·드러난 특성. 맥락: career(rookie_career.career_view), p, (owner) #}
 <section class="rk-panel rk-career" aria-label="진로">
     <div class="rk-head"><h2>진로</h2><span class="rk-fine">{{ career.system_name }} · {{ career.age }}세</span></div>
     <ol class="rk-steps is-path">
-        {% for st in career.steps %}<li class="is-{{ st.state }}">{{ st.label }}</li>{% endfor %}
+        {% for st in career.steps %}<li class="is-{{ st.state }}">{{ st.label|baseball_text }}</li>{% endfor %}
     </ol>
     <dl class="rk-facts">
         {% if career.scout %}
-        <div><dt>스카우트 평가</dt><dd><span class="rk-stars" aria-label="별 {{ career.scout.stars }}개">{% for i in career.scout.range %}<i class="{% if i < career.scout.stars %}is-on{% elif i < career.scout.total %}is-awaken{% endif %}" aria-hidden="true"></i>{% endfor %}</span>{% if career.scout.awakened %} <small class="rk-fine">각성 {{ career.scout.awakened }}</small>{% endif %} {{ career.scout.note }}</dd></div>
+        <div><dt>스카우트 평가</dt><dd><span class="rk-stars" aria-label="별 {{ career.scout.stars }}개">{% for i in career.scout.range %}<i class="{% if i < career.scout.stars %}is-on{% elif i < career.scout.total %}is-awaken{% endif %}" aria-hidden="true"></i>{% endfor %}</span>{% if career.scout.awakened %} <small class="rk-fine">각성 {{ career.scout.awakened }}</small>{% endif %} {{ career.scout.note|baseball_text }}</dd></div>
         {% elif owner and career.amateur %}
         <div><dt>스카우트 평가</dt><dd>고교생이 되면 나와요</dd></div>
         {% endif %}
@@ -26,7 +27,7 @@
     {% endif %}
     {% if career.path|length > 1 %}
     <ol class="rk-pathlist" aria-label="지나온 길">
-        {% for x in career.path %}<li><span>{{ x.league_short }}</span><b>{{ x.club_name }}</b><small>{{ x.age }}세</small></li>{% endfor %}
+        {% for x in career.path %}<li><span>{{ x.league_short|baseball_text }}</span><b>{{ x.club_name }}</b><small>{{ x.age }}세</small></li>{% endfor %}
     </ol>
     {% endif %}
     {% if owner and career.retire_hint %}<p class="rk-hint">마흔다섯이 되는 시즌 개막에 은퇴해요. 그 전에 스스로 유니폼을 벗을 수도 있어요.</p>{% endif %}

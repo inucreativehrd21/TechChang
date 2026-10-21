@@ -1,3 +1,4 @@
+{% load rookie_tags %}
 {% comment %}라이트 명예의 전당 — 역대 베스트 라인업(자리마다 프로 WAR 1위, 외야는 셋). 그라운드 위에 자리대로 선다.
 라이트·정식 판이 같이 쓴다 — 행마다 url(선수 페이지)·color(구단 색)·war·c(선수). 맥락: lineup = rookie_lite.best_lineup, tab_name{% endcomment %}
 <section class="rl-lineup" aria-labelledby="rl-lineup-title">
@@ -18,14 +19,14 @@
             <rect class="rl-field-base" x="68.6" y="67.6" width="2.8" height="2.8" transform="rotate(45 70 69)"/>
         </svg>
         {% for s in lineup.field %}
-        {% if s.r %}<a class="rl-spot" href="{{ s.r.url }}" style="--x: {{ s.x }}%; --y: {{ s.y }}%; --team: {{ s.r.color|default:'#4f46e5' }}"><small>{{ s.label }}</small><b>{{ s.r.c.name }}</b><em>WAR {{ s.r.war }}</em></a>
-        {% else %}<span class="rl-spot is-empty" style="--x: {{ s.x }}%; --y: {{ s.y }}%"><small>{{ s.label }}</small><b>비어 있어요</b></span>{% endif %}
+        {% if s.r %}<a class="rl-spot" href="{{ s.r.url }}" style="--x: {{ s.x }}%; --y: {{ s.y }}%; --team: {{ s.r.color|default:'#4f46e5' }}"><small>{{ s.label|baseball_text }}</small><b>{{ s.r.c.name }}</b><em>WAR {{ s.r.war }}</em></a>
+        {% else %}<span class="rl-spot is-empty" style="--x: {{ s.x }}%; --y: {{ s.y }}%"><small>{{ s.label|baseball_text }}</small><b>비어 있어요</b></span>{% endif %}
         {% endfor %}
     </div>
     <ul class="rl-bench" aria-label="지명타자·마무리">
         {% for s in lineup.bench %}
-        <li>{% if s.r %}<a class="rl-spot is-bench" href="{{ s.r.url }}" style="--team: {{ s.r.color|default:'#4f46e5' }}"><small>{{ s.label }}</small><b>{{ s.r.c.name }}</b><em>WAR {{ s.r.war }}</em></a>
-        {% else %}<span class="rl-spot is-bench is-empty"><small>{{ s.label }}</small><b>비어 있어요</b></span>{% endif %}</li>
+        <li>{% if s.r %}<a class="rl-spot is-bench" href="{{ s.r.url }}" style="--team: {{ s.r.color|default:'#4f46e5' }}"><small>{{ s.label|baseball_text }}</small><b>{{ s.r.c.name }}</b><em>WAR {{ s.r.war }}</em></a>
+        {% else %}<span class="rl-spot is-bench is-empty"><small>{{ s.label|baseball_text }}</small><b>비어 있어요</b></span>{% endif %}</li>
         {% endfor %}
     </ul>
 </section>

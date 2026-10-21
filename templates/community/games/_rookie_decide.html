@@ -1,3 +1,4 @@
+{% load rookie_tags %}
 {# 진로 결정 — 졸업 학년의 진학 지원, 드래프트 뒤 진로(계약·육성선수·대학·해외). 맥락: career(rookie_career.career_view), p #}
 {% if career.apply %}{% with a=career.apply %}
 <section class="rk-panel rk-decide" aria-label="진학 지원">
@@ -48,7 +49,7 @@
         <form class="rk-path-opt is-main" method="post" action="{% url 'community:rookie_decide' %}">
             {% csrf_token %}<input type="hidden" name="choice" value="sign">
             <b>{{ d.team.name }}와 계약</b>
-            <span>{{ d.sign_league }}에서 시작해 승격 심사로 1군을 노려요.{% if d.bonus %} 계약 보너스 +{{ d.bonus }} TP.{% endif %}</span>
+            <span>{{ d.sign_league }}에서 시작해 콜업 테스트로 1군을 노려요.{% if d.bonus %} 계약 보너스 +{{ d.bonus }} TP.{% endif %}</span>
             <button type="submit" class="gm-btn is-primary is-block">{{ d.team.name }}와 계약</button>
         </form>
         {% else %}
@@ -63,7 +64,7 @@
         <form class="rk-path-opt" method="post" action="{% url 'community:rookie_decide' %}">
             {% csrf_token %}<input type="hidden" name="choice" value="univ">
             <b>대학 진학</b>
-            <span>대학 1년은 30일이에요(프로 한 시즌과 같은 속도). 4년 뒤 다시 드래프트에 나서고, 대졸은 퓨처스·더블A부터 시작해 승격 체류가 짧아요.</span>
+            <span>대학 1년은 30일이에요(프로 한 시즌과 같은 속도). 4년 뒤 다시 드래프트에 나서고, 대졸은 퓨처스·더블A부터 시작해 상위 리그 진입에 필요한 최소 체류 기간이 짧아요.</span>
             <label class="rk-select"><span class="visually-hidden">진학할 대학</span>
                 <select name="school" required>
                     <option value="">대학 고르기</option>
@@ -85,7 +86,7 @@
         <li class="{% if not x.code %}is-none{% endif %}"{% if x.code %} style="--team: {{ x.team.color }}"{% endif %}>
             <span class="rk-abroad-country">{{ x.name }}</span>
             {% if x.code %}
-            <span>{{ x.league }}부터 · 리그 수준 {{ x.level|floatformat:0 }} · 계약 보너스 +{{ d.abroad_bonus }} TP{% if x.hard %} · <strong>지금 OVR로는 버거워요</strong>{% endif %}</span>
+            <span>{{ x.league|baseball_text }}부터 · 리그 수준 {{ x.level|floatformat:0 }} · 계약 보너스 +{{ d.abroad_bonus }} TP{% if x.hard %} · <strong>지금 OVR로는 버거워요</strong>{% endif %}</span>
             <form method="post" action="{% url 'community:rookie_decide' %}">
                 {% csrf_token %}
                 <div class="rl-abroad-teams" role="radiogroup" aria-label="{{ x.name }} 구단">
@@ -94,7 +95,7 @@
                 <button type="submit" class="gm-btn is-block">{% if d.offer %}지명 거절하고 {% endif %}{{ x.name }} 구단과 계약</button>
             </form>
             {% else %}
-            <span>제안 없음 — 드래프트 평가 {{ x.need }} 이상이면 스카우트가 와요.</span>
+            <span>현재 제안이 없어요. 스카우트 평가·잠재력·졸업 성적을 함께 봐요.</span>
             {% endif %}
         </li>
         {% endfor %}

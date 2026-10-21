@@ -13,7 +13,7 @@
   출석만 ≈ 63(2군 상위) · 출석+칼럼 1편 ≈ 68(1군) · +칼럼 2편+댓글 1개 ≈ 75(주전) · 매일 한도 ≈ 79.5(에이스).
   에이스가 일주일 쉬면 60(1군 강등 문턱), 2주 쉬면 39(육성군)까지 떨어진다.
   (수렴점은 나이 한계·잠재력이 없는 성인 기준 — 실제 선수는 rookie_career 의 한계·나이 배율이 더 붙는다.)
-- 승격(프로): OVR 이 위 리그 수준 − 1 을 넘으면 승격 심사(청백전 3경기 중 2경기 합격, 하루 한 번).
+- 승격(프로): OVR 이 위 리그 수준 − 1 을 넘으면 콜업 테스트(청백전 3경기 중 2경기 합격, 하루 한 번).
   강등: 지금 리그 수준보다 6 아래로 떨어지면 정산 때 한 단계 내려간다. 학생은 학년이 오르며 진학한다.
 - TP 보유 한도 500 — 성장 한계에 막혀 쌓아만 둔 TP 를 프로가 된 날 한꺼번에 쏟지 않게.
 
@@ -228,7 +228,7 @@ def create(user, *, name: str, role: str, team: str, number: int = 0, focus: str
         raise GameError('리틀야구단 지역을 골라 주세요.')
     if focus not in stat_keys(role):
         focus = stat_keys(role)[0]
-    position = PITCHER_POS if role == 'pitcher' else (position if position in POS_LABEL and position != PITCHER_POS
+    position = (position if position in ('SP', 'RP') else PITCHER_POS) if role == 'pitcher' else (position if position in POS_LABEL and position not in ('SP', 'RP')
                                                       else 'OF')
     name = (name or '').strip()[:12] or user.username[:12]
     from . import rookie_names as N
@@ -297,9 +297,19 @@ def _decay(p, today: date) -> dict:
                                           'by': {k: {why: round(v, 2) for why, v in d.items() if v >= 0.005}
                                                  for k, d in lost.items()}})
     demoted = []
+    from . import rookie_contracts as Contracts
+    import secrets
+    from . import rookie_league as League
+    Contracts.roll_full(p, League.season_no(today))
     while True:
         below = W.demote_below(p.league)
         if below is None or p.ovr >= below:
+            break
+        if p.league == 'mlb' and Contracts.veto(p):
+            data = dict(p.career or {})
+            if data.get('mlb_bench_season') != League.season_no(today):
+                data.setdefault('assignment_pending', Contracts.assignment_view(p, secrets.token_hex(8)))
+            p.career = data
             break
         p.league = W.prev_league(p.league)
         p.league_since = today
@@ -311,7 +321,7 @@ def _decay(p, today: date) -> dict:
         if idle >= 4 and C.reveal(p, 'iron', today):
             p.save(update_fields=['traits_seen'])
     for name in demoted:
-        _log(p, 'demote', f'OVR {p.ovr:.1f} — {name}(으)로 내려갔어요', day=today)
+        _log(p, 'demote', f'OVR {p.ovr:.1f} — {name}에서 다시 준비해요', day=today)
     return {'days': days, 'before': before, 'after': p.ovr, 'demoted': demoted}
 
 
@@ -426,7 +436,9 @@ def train(user, stat: str, times: int = 1, rng=None) -> dict:
             raise GameError(f'훈련 포인트가 모자라요(필요 {cost} TP, 보유 {p.tp} TP).')
         done = trained_today(p, today)
         fat = C.fatigue_at(p)
-        m = mult(stat, p.focus, C.focus_bonus(p)) * C.age_mult(p)
+        from . import rookie_story as Story
+        from . import rookie_development as Development
+        m = mult(stat, p.focus, C.focus_bonus(p)) * C.age_mult(p) * Story.training_mult(p) * Development.multiplier(p)
         great = tired = 0
         for i in range(times):
             eff = FATIGUE_EFF if done + i >= fat else 1.0
@@ -488,7 +500,7 @@ def awaken(user, choice: str, rng=None) -> dict:
         if choice not in ('try', 'skip'):
             raise GameError('도전할지 정해 주세요.')
         if not C.awaken_ready(p, today):
-            raise GameError('지금은 각성할 때가 아니에요. 다 자란 몸으로 다섯 능력이 모두 한계에 닿아야 해요.')
+            raise GameError('지금은 각성 조건을 채우지 못했어요. 능력치·시즌 성적·재도전 대기 기간을 확인해 주세요.')
         career = dict(p.career or {})
         career['awaken_next'] = (today + timedelta(days=C.AWAKEN_WAIT)).isoformat()
         if choice == 'skip':
@@ -556,22 +568,22 @@ def promotion_test(user, rng=None) -> dict:
             raise GameError(gone(user))
         settle(p, today)
         if not W.is_pro(p.league):
-            raise GameError('학생 선수는 학년이 오르면서 진학해요. 승격 심사는 프로에서 받을 수 있어요.')
+            raise GameError('학생 선수는 학년이 오르면서 진학해요. 콜업 테스트는 프로에서 받을 수 있어요.')
         nxt = W.next_league(p.league)
         if nxt is None:
             raise GameError(f"이미 {W.league(p.league)['name']} 선수예요.")
         at = W.promote_at(p.league)
         name = W.league(nxt)['name']
         if p.ovr < at:
-            raise GameError(f'{name} 승격 심사는 OVR {at:g}부터 받을 수 있어요.')
+            raise GameError(f'{name} 콜업 테스트는 OVR {at:g}부터 받을 수 있어요.')
         gate = C.promotion_gate(p, today)
         if gate['stay_left']:
-            raise GameError(f"{name} 승격 심사는 지금 리그에서 {gate['stay_need']}일을 뛴 뒤에 받을 수 있어요"
+            raise GameError(f"{name} 콜업 테스트는 지금 리그에서 {gate['stay_need']}일을 뛴 뒤에 받을 수 있어요"
                             f"({gate['stay_left']}일 남음).")
         if not gate['mission']['ok']:
-            raise GameError(f"승격 심사 조건: {gate['mission']['text']}(지금 {gate['mission']['now']}).")
+            raise GameError(f"콜업 테스트 조건: {gate['mission']['text']}(지금 {gate['mission']['now']}).")
         if p.test_on == today:
-            raise GameError('승격 심사는 하루 한 번이에요. 내일 다시 도전해 주세요.')
+            raise GameError('콜업 테스트는 하루 한 번이에요. 내일 다시 도전해 주세요.')
         games = []
         for i in range(TEST_GAMES):
             margin = p.ovr + rng.gauss(0, TEST_SPREAD) - at
@@ -586,7 +598,7 @@ def promotion_test(user, rng=None) -> dict:
         won = sum(g['ok'] for g in games)
         _log(p, 'promote' if passed else 'test',
              f"{name} 승격! {'패전조' if p.role == 'pitcher' else '백업'}부터 다시 자리를 따내야 해요" if passed
-             else f'{name} 승격 심사 {won}/{TEST_GAMES} — 탈락', day=today)
+             else f'{name} 콜업 테스트 {won}/{TEST_GAMES} — 탈락', day=today)
     return {'passed': passed, 'league_name': name, 'games': games, 'won': won, 'player': p}
 
 
@@ -633,7 +645,7 @@ def today_earned(p, today: date | None = None) -> list:
              'done': counts.get(s, 0) >= r['cap']} for s, r in EARN.items()]
 
 
-DECAY_WHY = {'upkeep': '유지비', 'rest': '쉰 날 감각 저하', 'aging': '나이(노쇠)'}
+DECAY_WHY = {'upkeep': '기본 감각 저하', 'rest': '쉰 날 감각 저하', 'aging': '나이(노쇠)'}
 
 
 def stat_drop(p, k: str, today: date | None = None) -> dict | None:
@@ -676,11 +688,11 @@ def condition(p, today: date | None = None) -> dict:
     idle = (today - p.last_active).days
     rate = decay_rate(idle + 1)          # 오늘도 아무것도 안 하면 오늘 밤 빠질 비율
     if idle == 0:
-        state, note = 'good', '오늘 활동 완료 — 오늘 밤엔 유지비만 빠져요.'
+        state, note = 'good', '오늘 활동 완료 — 활동 공백에 따른 추가 감각 저하를 막았어요.'
     elif idle == 1:
         state, note = 'ok', f'어제 마지막 활동 — 오늘 활동하지 않으면 오늘 밤 {rate * 100:g}%가 빠져요.'
     else:
-        state, note = 'bad', f'{idle}일째 활동 없음 — 하루 {rate * 100:g}%씩 빠지는 중. 출석 체크 한 번이면 멈춰요.'
+        state, note = 'bad', f'{idle}일째 활동 없음 — 하루 {rate * 100:g}%씩 빠지는 중. 오늘 활동하면 공백에 따른 추가 하락을 막을 수 있어요.'
     aging = p.age >= C.decline_start(p)
     upkeep, over = upkeep_of(p)
     return {'state': state, 'idle': idle, 'rate': rate, 'note': note, 'aging': aging, 'upkeep': upkeep,
@@ -703,6 +715,7 @@ def ranked():
 
 def dashboard(p) -> dict:
     from . import rookie_career as C
+    from . import rookie_story as Story
     from .rookie_league import player_board
     nxt = W.next_league(p.league)
     progress = None
@@ -720,6 +733,7 @@ def dashboard(p) -> dict:
     fat = C.fatigue_at(p)
     return {
         'p': p, **identity(p),
+        'mind': Story.view(p), 'story': Story.daily_view(p),
         'stats': stat_rows(p, done), 'earned': today_earned(p), 'cond': condition(p), 'next': progress,
         'demote_at': W.demote_below(p.league), 'rank': rank, 'career': C.career_view(p),
         'trained': done, 'fatigue_at': fat, 'tired': done >= fat, 'tp_max': TP_MAX, 'tp_full': p.tp >= TP_MAX,

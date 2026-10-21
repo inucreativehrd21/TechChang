@@ -5,11 +5,11 @@
     {% if daily %}{% include 'community/games/_lite_top.html' with h1='오늘의 랭킹' %}{% else %}{% include 'community/games/_lite_top.html' with h1='명예의 전당' %}{% endif %}
     <form class="rl-filter" method="get" action="" data-rl-filter aria-label="{% if daily %}오늘의 랭킹{% else %}명예의 전당{% endif %} 거르기">
         {% if daily %}<label class="rl-select"><span>날짜</span>
-            <select name="d">{% for code, label in day_tabs %}<option value="{{ code }}"{% if ago|stringformat:'s' == code or not code and not ago %} selected{% endif %}>{{ label }}</option>{% endfor %}</select></label>{% endif %}
+            <select name="d">{% for code, label in day_tabs %}<option value="{{ code }}"{% if ago|stringformat:'s' == code or not code and not ago %} selected{% endif %}>{{ label|baseball_text }}</option>{% endfor %}</select></label>{% endif %}
         <label class="rl-select"><span>투수·타자</span>
-            <select name="role">{% for code, label in role_tabs %}<option value="{{ code }}"{% if role == code %} selected{% endif %}>{{ label }}</option>{% endfor %}</select></label>
+            <select name="role">{% for code, label in role_tabs %}<option value="{{ code }}"{% if role == code %} selected{% endif %}>{{ label|baseball_text }}</option>{% endfor %}</select></label>
         <label class="rl-select"><span>리그</span>
-            <select name="lg">{% for code, label in tabs %}<option value="{{ code }}"{% if tab == code %} selected{% endif %}>{{ label }}</option>{% endfor %}</select></label>
+            <select name="lg">{% for code, label in tabs %}<option value="{{ code }}"{% if tab == code %} selected{% endif %}>{{ label|baseball_text }}</option>{% endfor %}</select></label>
         <button type="submit" class="gm-btn rl-filter-go" data-rl-filter-go>보기</button>
         <p class="rl-filter-count" aria-live="polite">{% if role == 'pitcher' %}투수{% elif role == 'batter' %}타자{% else %}선수{% endif %} {{ rows|length }}명</p>
     </form>
@@ -31,7 +31,7 @@
                 {% for r in rows %}
                 <tr class="{% if r.c.user_id == user.id %}is-first{% endif %}">
                     <th scope="row" class="rl-hall-name"><span class="rl-hall-no">{{ forloop.counter }}</span><a href="{% url 'community:lite_career' r.c.pk %}">{{ r.c.name }}</a><small class="rl-hall-who">{% if r.c.role == 'pitcher' %}투수{% else %}타자{% endif %} · {{ r.c.age }}세 은퇴</small></th>
-                    <td class="is-text">{{ r.peak }}</td><td>{{ r.mvp }}</td><td>{{ r.best|floatformat:1 }}</td>
+                    <td class="is-text">{{ r.peak|baseball_text }}</td><td>{{ r.mvp }}</td><td>{{ r.best|floatformat:1 }}</td>
                     {% if role == 'pitcher' %}<td>{{ r.line.w|default:0 }}</td><td>{{ r.line.l|default:0 }}</td><td>{{ r.line.sv|default:0 }}</td><td>{{ r.line.era_text|default:'-' }}</td><td>{{ r.line.so|default:0|comma }}</td>
                     {% elif role == 'batter' %}<td>{{ r.line.avg_text|default:'-' }}</td><td>{{ r.line.h|default:0|comma }}</td><td>{{ r.line.hr|default:0|comma }}</td><td>{{ r.line.rbi|default:0|comma }}</td><td>{{ r.line.ops_text|default:'-' }}</td>
                     {% else %}<td>{{ r.awards }}</td><td>{{ r.rings }}</td>{% endif %}

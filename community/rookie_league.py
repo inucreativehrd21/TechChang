@@ -3,7 +3,7 @@
 시즌: 2026-10-19(월) 개막, 4주(28일)에 144경기 — 하루 5~6경기, KBO 한 시즌 분량.
 매일 밤 rookie_daily 가 전날 경기를 시뮬레이션하고(advance), 시즌 마지막 날 다음 정산에서 시상한다(close_season).
 - 출전: 경기일 포함 최근 3일 안에 활동(TP 획득)이 있어야 엔트리에 든다. 쉬면 결장 → 규정타석·이닝을 못 채운다.
-- 리그는 소속 그대로(rookie_world.LEAGUES): 리틀·중학·고교·대학 / KBO 육성군·퓨처스·1군 / MLB 싱글A~메이저 /
+- 리그는 소속 그대로(rookie_world.LEAGUES): 리틀·중학·고교·대학 / KBO 육성군·퓨처스·1군 / 마이너리그 싱글A~메이저 /
   NPB 2군·1군 / CPBL. 기록은 리그별로 따로 쌓는다. 상대는 같은 리그 구단(학교)에서 고른다.
 - 프로: 타자는 그날 모든 경기(5~6경기)에, 투수는 선발 로테이션으로 하루 한 경기에 나간다(시즌 ≈ 28선발 170이닝).
   학생(아마추어): 하루 한 경기, 선발 투수는 이틀에 한 번.
@@ -12,7 +12,7 @@
 
 경기 모형(타석 승부·상대 선수·내 타순과 보직·경기 시뮬레이션)은 community/rookie_sim.py.
 같은 수준끼리면 리그 평균 ≈ .265/.325/.435, 평균자책점 ≈ 4 — test_rookie_league 가 몬테카를로로 지킨다.
-투수 보직: 선발(하루 한 경기) · 구원(그날 경기 중 보직별 확률로 하루 두 번까지) — 세이브·홀드·블론세이브.
+투수 보직: 선발(하루 한 경기) · 구원(그날 경기 중 보직별 확률로 하루 두 번까지) — 세이브·홀드·블론 세이브.
 
 WAR(추정, 실제 KBO 공식이 아니라 같은 뼈대의 근사):
 - 타자 = (wRAA + 대체 수준 20점/600타석 + 포지션 보정 + 수비 + 주루) / 10, wOBA 가중치는 흔히 쓰는 근사값.
@@ -46,13 +46,13 @@ AM_AWARD_PA, AM_AWARD_OUTS = 20, 30                # 아마추어 최우수선�
 PITCHER_POS = 'SP'
 POSITIONS = [('C', '포수'), ('1B', '1루수'), ('2B', '2루수'), ('3B', '3루수'), ('SS', '유격수'),
              ('OF', '외야수'), ('DH', '지명타자')]
-POS_LABEL = dict(POSITIONS, SP='투수')
+POS_LABEL = dict(POSITIONS, SP='선발 투수', RP='구원 투수')
 POS_ADJ = {'C': 12.0, 'SS': 7.0, '2B': 3.0, '3B': 2.0, 'OF': -2.0, '1B': -10.0, 'DH': -15.0}   # 144경기 기준 점수
 ERR_BASE = {'C': .03, '1B': .03, '2B': .05, '3B': .07, 'SS': .08, 'OF': .03}
 
 META_KEYS = ('vs', 'vs_lvl', 'bslot', 'lead', 'inn', 'club', 'xp')        # 경기 줄 설명 값 — 시즌 누적에서 뺀다
 
-BAT_KEYS = ('g', 'pa', 'ab', 'h', 'd', 't', 'hr', 'rbi', 'r', 'bb', 'hbp', 'so', 'sb', 'cs', 'e', 'def',
+BAT_KEYS = ('g', 'pa', 'ab', 'h', 'd', 't', 'hr', 'rbi', 'r', 'bb', 'hbp', 'so', 'sf', 'sb', 'cs', 'e', 'def',
             'ph', 'pr', 'dr')                                                  # 대타·대주자·대수비 출장
 PIT_KEYS = ('g', 'gs', 'gr', 'w', 'l', 'sv', 'hld', 'bs', 'qs', 'cg', 'sho', 'outs', 'h', 'r', 'er', 'bb', 'hbp',
             'so', 'hr', 'bf', 'np')
@@ -356,8 +356,12 @@ def simulate_day(day: date, rng=None) -> int:
 def _play(p, s, day: date, rng):
     """선수 한 명의 그날 경기 — 타순·보직 판정 → 출전 → 누적 → 경기 경험(성장)·이정표."""
     from .models import RookieGame, RookieSeasonStat
+    from . import rookie as R
     from . import rookie_career as C
     from . import rookie_legacy as G
+    from . import rookie_contracts as Contracts
+    from . import rookie_universe as Universe
+    Contracts.full_assignment(p, day, rng)
     league, lvl = p.league, W.level(p.league)
     assign_role(p, day, lvl)
     stat, _ = RookieSeasonStat.objects.get_or_create(
@@ -383,10 +387,15 @@ def _play(p, s, day: date, rng):
             if len(results) < RELIEF_PER_DAY and rng.random() < RELIEF[p.lineup][0]:
                 results.append((no, relief_game(gs, lvl, rng, p.lineup)))
     opps = W.opponents(league, p.club)
+    fixtures = Universe.club_fixtures(league, SEASON_GAMES, p.club) if pro else ()
+    overrides = {}
     games, lines = [], []
     for no, r in results:
-        games.append(RookieGame(season=s, player=p, league=league, day=day, no=no, opponent=rng.choice(opps),
-                                home=rng.random() < 0.5, team_runs=r['team_runs'], opp_runs=r['opp_runs'],
+        fixture = fixtures[no - 1] if fixtures else None
+        if fixture:
+            overrides[str(fixture['day'])] = dict(club=p.club, **{'for': r['team_runs'], 'against': r['opp_runs']})
+        games.append(RookieGame(season=s, player=p, league=league, day=day, no=no, opponent=fixture['opponent'] if fixture else rng.choice(opps),
+                                home=fixture['home'] if fixture else rng.random() < 0.5, team_runs=r['team_runs'], opp_runs=r['opp_runs'],
                                 line=dict(r['line'], club=p.club), summary=r['summary']))
         stat.totals = add(stat.totals, r['line'])
         lines.append(r['line'])
@@ -399,6 +408,24 @@ def _play(p, s, day: date, rng):
     stat.war = war(p.role, p.position, stat.totals)
     stat.save()
     fields = ['stats', 'ovr', 'best_ovr'] if xp else []
+    if fixtures and nos:
+        Universe.advance(p, s.number, league, SEASON_GAMES, fixtures[nos[-1] - 1]['day'] + 1, overrides)
+        fields.append('career')
+    if Contracts.active(p) or (p.career or {}).get('last_contract'):
+        Contracts.full_service(p, day)
+        fields.append('career')
+    from . import rookie_story as Story
+    promise = Story.state(p).get('story_promise') or {}
+    if promise.get('since') and (day - date.fromisoformat(promise['since'])).days >= 3:
+        from . import rookie_lite as X
+        promised = list(p.games.filter(day__gte=promise['since'], day__lte=day).values_list('line', flat=True))
+        total = {}
+        for row in promised:
+            total = add(total, row)
+        text = Story.settle_promise(p, X.perf_z(p.role, total, max(1, len(promised))))
+        if text:
+            fields.append('career')
+            R._log(p, 'career', text, day=day)
     if lines and any(C.has(p, t) and t not in (p.traits_seen or []) for t in ('clutch', 'learner')) \
             and RookieGame.objects.filter(player=p).count() >= 15:
         if C.reveal(p, 'clutch', day) | C.reveal(p, 'learner', day):
@@ -418,9 +445,38 @@ def recent_lines(p, day: date, league: str, days: int = 10) -> list:
 def assign_role(p, day: date, lvl: float) -> str:
     """경기 전 타순·보직 판정(한 계단씩). 바뀌면 저장하고 기록에 남긴다. 바뀐 이유(없으면 '')."""
     from . import rookie as R
+    from . import rookie_story as Story
+    lvl -= max(-1.25, min(1.25, (Story.value(p, 'trust') - 50) / 40))
+    from . import rookie_contracts as Contracts
+    state = Story.state(p)
+    if p.league == 'mlb' and Contracts.active(p) and (state.get('assignment_pending')
+            or state.get('mlb_bench_season') == season_no(day)):
+        role, slot, why = Contracts.bench_role(p)
+        if (p.lineup, p.slot) != (role, slot):
+            p.lineup, p.slot, p.role_since = role, slot, day
+            p.save(update_fields=['lineup', 'slot', 'role_since'])
+            R._log(p, 'role', why, day=day)
+        return why
     recent = recent_lines(p, day - timedelta(days=1), p.league)
     if p.role == 'pitcher':
         role, slot, why = pitcher_role(p.lineup, p.stats, lvl, recent)
+        from . import rookie_pitching as Pitching
+        if role != 'sp' and p.lineup == 'sp' and Pitching.current(p) == 'SP':
+            event = Pitching.relief_notice(day.toordinal())
+            Pitching.set_track(p, 'RP', day.toordinal(), '감독이 최근 선발 투구와 이닝 유지력을 보고 불펜 전환을 통보했어요.')
+            data = Story.state(p)
+            if not data.get('story_pending'):
+                data['story_pending'] = dict(event, id=f'pitch-role:{p.pk}:{day.isoformat()}')
+            Story.put(p, data)
+            p.save(update_fields=['position', 'career', 'lineup', 'slot'])
+        if role == 'sp' and Pitching.current(p) == 'RP':
+            from .rookie_sim import PEN_LADDER, pen_need, stuff_of
+            role, slot = 'chase', 0
+            for candidate in PEN_LADDER:
+                need, mental = pen_need(candidate, lvl)
+                if stuff_of(p.stats) >= need and p.stats['mental'] >= mental:
+                    role = candidate
+            why = '선발 전환 평가 전에는 불펜 역할을 이어가요.'
     else:
         role, slot, why = batter_role(p.lineup, p.stats, p.ovr, lvl, recent)
     if (role, slot) != (p.lineup, p.slot):

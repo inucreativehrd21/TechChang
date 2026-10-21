@@ -32,12 +32,14 @@ from django.db import transaction
 from django.utils import timezone
 
 from . import rookie_world as W
+from . import rookie_story as Story
+from . import rookie_development as Development
 
 GRADE_DAYS = 7                  # 리틀·중·고 한 학년
 UNIV_GRADE_DAYS = 30            # 대학 한 학년 = 프로 한 시즌(rookie_league.CYCLE)
 DECIDE_DAYS = 3
 MIN_STAY, MIN_STAY_COLLEGE = 14, 7          # 프로 리그 한 단계 최소 체류(일) — 대졸은 짧게
-PROMO_DAYS = 14                             # 승격 심사의 최근 성적 과제를 보는 기간
+PROMO_DAYS = 14                             # 콜업 테스트의 최근 성적 과제를 보는 기간
 PROMO_MISSION = {'batter': {'pa': 20, 'ops': .700}, 'pitcher': {'outs': 24, 'era': 4.50}}
 MAX_AGE = 45
 RETIRE_HINT_AGE = 38
@@ -256,7 +258,7 @@ def decay_for(p, base_rate: float, stat: str) -> float:
 
 
 def promotion_gate(p, today: date | None = None) -> dict:
-    """승격 심사의 OVR 밖 조건 — 지금 리그 최소 체류(대졸 짧게)와 최근 성적 과제. 화면 안내와 심사가 같은 값을 쓴다."""
+    """콜업 테스트의 OVR 밖 조건 — 지금 리그 최소 체류(대졸 짧게)와 최근 성적 과제. 화면 안내와 심사가 같은 값을 쓴다."""
     from . import rookie_league as L
     today = today or timezone.localdate()
     need = MIN_STAY_COLLEGE if (p.career or {}).get('draft_univ') else MIN_STAY
@@ -277,6 +279,12 @@ def promotion_gate(p, today: date | None = None) -> dict:
         ok = pa >= m['pa'] and ops is not None and ops >= m['ops']
         text = f"최근 {PROMO_DAYS}일 {m['pa']}타석 이상, OPS {L.rate(m['ops'])} 이상"
         now = f"{pa}타석" + (f", OPS {L.rate(ops)}" if pa else '')
+    if W.next_league(p.league) == 'mlb':
+        from . import rookie_balance_rules as Balance
+        ready = Balance.overseas_level(p, 'mlb') == 'mlb'
+        text += ' · 메이저 스카우팅 평가 통과'
+        now += ' · ' + ('평가 통과' if ready else '구위·타격 접근과 장기 성적을 더 증명해야 해요')
+        ok = ok and ready
     return {'stay_need': need, 'stay_left': stay_left, 'mission': {'text': text, 'now': now, 'ok': ok},
             'ok': stay_left == 0 and ok}
 
@@ -284,10 +292,10 @@ def promotion_gate(p, today: date | None = None) -> dict:
 def cap_message(p, stat: str, label: str) -> str:
     cap = stat_cap(p, stat)
     if age_ratio(p) < 1.0:
-        return f'{label}은(는) {p.age}세 몸으로 오를 수 있는 끝({cap:.0f})에 닿았어요. 한 살 더 먹으면 다시 열려요.'
+        return f'현재 {label} 능력치는 {p.age}세의 성장 한계({cap:.0f})에 닿았어요. 한 살 더 먹으면 한계가 높아져요.'
     if base_stars(p) + awakened(p) < 5:
-        return f'{label}은(는) 타고난 한계({cap:.0f})에 닿았어요. 다섯 능력을 한계 가까이 키우고 성적을 내면 각성에 도전할 수 있어요.'
-    return f'{label}은(는) 타고난 한계({cap:.0f})에 닿았어요. 다른 능력을 키워 보세요.'
+        return f'현재 {label} 능력치는 타고난 한계({cap:.0f})에 닿았어요. 다섯 능력을 한계 가까이 키우고 성적을 내면 각성에 도전할 수 있어요.'
+    return f'현재 {label} 능력치는 타고난 한계({cap:.0f})에 닿았어요. 다른 능력을 키워 보세요.'
 
 
 def game_stats(p) -> dict:
@@ -298,7 +306,8 @@ def game_stats(p) -> dict:
             s['clutch'] = (float(s.get('contact', 25)) + float(s.get('eye', 25))) / 2 + 5
         else:
             s['mental'] = min(CAP, float(s.get('mental', 25)) + 5)
-    return s
+    from . import rookie_balance_rules as Balance
+    return Balance.game_stats(p, Story.game_stats(p, s))
 
 
 def game_xp(p, lines: list) -> dict:
@@ -315,7 +324,9 @@ def game_xp(p, lines: list) -> dict:
                 continue
             for stat, w in spread.items():
                 units[stat] = units.get(stat, 0.0) + n * w
-    rate = XP_RATE * age_mult(p) * (1.6 if has(p, 'learner') else 1.0)
+    from . import rookie_balance_rules as Balance
+    development = Balance.profile(p)['development']
+    rate = XP_RATE * age_mult(p) * development * .78 * (1.4 if has(p, 'learner') else 1.0) * Development.multiplier(p)
     stats, gains = dict(p.stats), {}
     for stat, u in units.items():
         if stat not in stats:
@@ -474,6 +485,10 @@ def run_draft(p, day: date, rng) -> str:
         k = rng.randint(1, 10)
         offer = {'team': team, 'round': rnd, 'in_round': k, 'pick': (rnd - 1) * 10 + k}
     ok = [s for s in ABROAD if score >= ABROAD_AT[s] and scout >= ABROAD_POT[s]]
+    if src == 'hs':
+        school = list(p.season_stats.filter(league=src).order_by('-season__number')[:1])
+        if school and Development.exceptional_school(p, school[0].totals, 30) and 'mlb' not in ok:
+            ok.append('mlb')
     # 자격이 되는 나라는 모두, 나라마다 구단 셋 가운데 고른다(2026-10-19 사용자 피드백: 해외 진출 때 뜨는 팀만 뜬다)
     from .rookie_lite import abroad_teams
     abroad = {s: (abroad_teams(s, rng) if s in ok else []) for s in ABROAD}
@@ -548,6 +563,7 @@ def decide_now(p, choice: str, day: date, rng, school: str = '') -> str:
         league = first_pro_league(choice, p.ovr, college=pend.get('from') == 'univ')
         join_pro(p, league, team, day, f"{W.SYSTEM_NAME[choice]} 진출 — {W.PRO_TEAM[team]['name']}와 계약, {W.short(league)}부터",
                  bonus=SIGN_BONUS[1][1])
+        Development.mark_entry(p, pend.get('from'), choice)
     elif choice == 'univ':
         if pend.get('from') != 'hs':
             raise R.GameError('대학 진학은 고교 졸업 때만 고를 수 있어요.')

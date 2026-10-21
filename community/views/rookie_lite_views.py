@@ -33,6 +33,7 @@ from .. import rookie_card as K
 from .. import rookie_staff as S
 from ..rookie_card import _palette, _jersey_name, render_png   # noqa: F401 — 테스트가 render_png 를 바꿔 끼운다
 from .. import rookie_world as W
+from .. import rookie_story as Story
 from ..game_visibility import rookie_hidden as is_hidden   # 야구는 운영자도 보인다
 from ..models import LiteCareer
 
@@ -104,10 +105,11 @@ def _ladder(c) -> list:
 
 def _identity(c) -> dict:
     stars = X.scout_stars(c)
-    return {'c': c, 'team': {'name': W.club_label(c.league, c.club), 'color': W.club_color(c.league, c.club)},
+    return {'c': c, 'mind': Story.view(c), 'team': {'name': W.club_label(c.league, c.club), 'color': W.club_color(c.league, c.club)},
             'league_name': W.league(c.league)['name'], 'league_short': W.short(c.league),
             'league_kind': R.league_kind(c.league), 'style_label': X.STYLES[c.role][c.style]['label'],
-            'pos_label': L.POS_LABEL.get(c.position, dict(X.PIT_POSITIONS).get(c.position, '')),
+        'pos_label': L.POS_LABEL.get(c.position, dict(X.PIT_POSITIONS).get(c.position, '')),
+        'top_war': X.Balance.totals(c)['war'],
             'grade_label': _grade(c),
             'stars': stars, 'star_note': X.STAR_NOTE[stars], 'star_range': range(5), 'stars_total': min(5, stars + X.awakened(c)), 'awakened': X.awakened(c),
             'traits': [{'name': X.TRAITS[t][0], 'desc': X.TRAITS[t][1]} for t in (c.traits_seen or []) if t in X.TRAITS],
@@ -260,10 +262,14 @@ def lite_act(request):
                     raise X.LiteError('비시즌 이벤트에 어떻게 할지 먼저 골라 주세요.')
                 intl = {k: request.POST.get(f'intl_{k}', '') for k in pend.get('intl') or []}
                 if X.run_season(c, request.POST.getlist('program'), intensity, choice, rng, intl=intl) is None:
-                    messages.info(request, '올스타 휴식기 — 감독이 면담을 요청했어요.')
+                    messages.info(request, '시즌 중 선택할 장면이 있어요. 내용을 확인하고 답해 주세요.')
             elif action == 'next':
                 X.next_season(c, rng)
             elif action == 'decide':
+                if pend.get('encounter') or pend.get('what') in ('negotiation', 'contract_optout') or (pend.get('what') == 'posting' and pend.get('offers')) or (pend.get('what') == 'meeting' and (X.decision_view(c) or {}).get('contract_scene')):
+                    expected = (X.decision_view(c) or {}).get('id')
+                    if expected != request.POST.get('event_id', ''):
+                        raise X.LiteError('이미 답했거나 조건이 바뀐 장면이에요. 현재 화면을 다시 확인해 주세요.')
                 text = X.decide(c, request.POST.get('what', ''), request.POST.get('choice', ''), rng,
                                 school=request.POST.get('school', ''))
                 c.save()
@@ -337,7 +343,7 @@ AWARD_ORDER = {'mvp': 0, 'ace': 1, 'gg': 2, 'title': 3, 'rookie': 4, 'ring': 5, 
 
 
 def _award_sum(c) -> list:
-    """수상을 종류별로 묶어 센다 — 'KBO 1군 MVP 17회'. 시즌마다 받은 상은 연표에 있다(긴 목록이 화면을 덮지 않게)."""
+    """수상을 종류별로 묶어 센다 — 'KBO MVP 17회'. 시즌마다 받은 상은 연표에 있다(긴 목록이 화면을 덮지 않게)."""
     groups = {}
     for s in c.seasons.all():
         for a in s.awards:
@@ -354,7 +360,7 @@ def _card(c) -> dict:
     pro = [s for s in seasons if s.games and W.is_pro(s.league)]
     played = [s for s in seasons if s.games]
     line = X.career_line(c)
-    total = line['pro'] or (L.line_view(c.role, X._sum_totals(played)) if played else None)
+    total = line['pro'] or line['development'] or (L.line_view(c.role, X._sum_totals(played)) if played else None)
     kinds = [a for s in seasons for a in s.awards]
     gg = sum(1 for a in kinds if a['kind'] == 'gg')
     titles = sum(1 for a in kinds if a['kind'] in ('title', 'ace'))
@@ -380,7 +386,7 @@ def _card(c) -> dict:
         tier, tier_label = 'pro', '프로'
     else:
         tier, tier_label = 'rookie', '루키'
-    badges = [(c.mvp, 'MVP'), (gg, gg_label), (titles, '타이틀'), (c.rings, '우승'), (golds, '국가대표 금')]
+    badges = [(c.mvp, 'MVP'), (gg, gg_label), (titles, '타이틀'), (c.rings, '우승'), (golds, '대표팀 우승')]
     t = total or {}
 
     def n(k):
@@ -397,7 +403,7 @@ def _card(c) -> dict:
     team_name = W.club_label(c.league, c.club)
     prefix, _sp, nick = team_name.rpartition(' ')
     return {'palette': _palette(c.league, c.club), 'team_prefix': prefix, 'team_nick': nick or team_name,
-            'keys': [('프로 WAR', round(sum(s.war for s in pro), 1)), ('최고 OVR', round(best_ovr, 1)), ('통산 수입', money)],
+            'keys': [('최상위 WAR', X.Balance.totals(c)['war']), ('최고 OVR', round(best_ovr, 1)), ('통산 수입', money)],
             'jersey': _jersey_name(c.name), 'serial': f'{c.pk:04d}',
             'tier': tier, 'tier_label': tier_label, 'line': total, 'war': round(sum(s.war for s in pro), 1), 'money': money,
             'best_ovr': round(best_ovr, 1), 'years': f'{first}–{last}', 'seasons': len(played),

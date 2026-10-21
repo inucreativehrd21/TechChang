@@ -1,0 +1,80 @@
+{% load rookie_tags %}
+<div class="gm rk rl rs-preview"><div class="gm-wrap is-wide">
+    <header class="rs-preview-head">
+        <div><a class="gm-back" href="{% url 'community:lite_home' %}">← 게임으로</a><h1 class="rk-title">야구게임 장면 미리보기</h1><p>장면을 고르면 실제 게임에 적용되는 연출을 재생해요.</p></div>
+        <nav class="rs-editions" aria-label="게임 선택">
+            <a href="?edition=lite"{% if edition == 'lite' %} aria-current="page"{% endif %}>라이트</a>
+            <a href="?edition=full"{% if edition == 'full' %} aria-current="page"{% endif %}>정식</a>
+        </nav>
+    </header>
+    {% include 'community/games/_rookie_stadium.html' %}
+    <nav class="rs-scenes" aria-label="재생할 장면">
+        {% for s in scenes %}<a class="rs-scene" href="?edition={{ edition }}&amp;scene={{ s.key }}{% if s.key == 'season' %}#rs-season{% elif s.key == 'cards' %}#rs-uniforms{% elif s.key == 'manager' or s.key == 'interview' or s.key == 'conduct' or s.key == 'highlight' or s.key == 'posting' or s.key == 'negotiation' or s.key == 'assignment' or s.key == 'optout' or s.key == 'rival' or s.key == 'world' %}#rs-story{% endif %}"{% if scene == s.key %} aria-current="page" data-rs-replay{% endif %}><span class="rs-scene-icon" aria-hidden="true">{{ s.icon }}</span><span><b>{{ s.label|baseball_text }}</b><small>{{ s.hint|baseball_text }}</small></span></a>{% endfor %}
+    </nav>
+    {% if uniform_preview %}{% include 'community/games/_rookie_uniform_preview.html' %}{% endif %}
+    {% if story_scene or scene == 'world' %}
+    <div id="rs-story">
+    {% include 'community/games/_rookie_mind.html' %}
+    {% if story_scene %}{% include 'community/games/_rookie_story_scene.html' with e=story_scene %}{% endif %}
+    </div>
+    {% endif %}
+    <div class="rs-preview-stage">
+        <div id="rs-season"><h2 class="rk-h2">시즌 중계</h2>{% include 'community/games/_lite_board.html' %}</div>
+        <section class="rk-panel" aria-labelledby="rs-training-title">
+            <h2 id="rs-training-title">훈련과 성장</h2>
+            <p class="rk-hint">훈련 뒤 능력치가 오르는 순간이에요.</p>
+            {% for label, before, after in demo_stats %}<div class="rs-demo-stat" data-rs-stat data-before="{{ before }}" data-after="{{ after }}"><div><span>{{ label|baseball_text }}</span><b data-rs-value>{{ before }}</b></div><div class="rk-bar" aria-hidden="true"><i style="width: {{ before }}%"></i></div></div>{% endfor %}
+            <div class="rs-demo-actions"><button class="gm-btn is-primary" type="button" data-rs-train>훈련 연출 보기</button><a class="gm-btn" href="?edition={{ edition }}&amp;scene={{ scene }}">장면 다시 보기</a></div>
+            <p class="rs-preview-note" role="status" data-rs-status>로컬 미리보기예요. 실제 선수와 게임 기록은 바뀌지 않아요.</p>
+            <a class="rk-fine" href="{% if edition == 'full' %}{% url 'community:rookie_home' %}{% else %}{% url 'community:lite_home' %}{% endif %}">실제 게임 화면 열기</a>
+        </section>
+    </div>
+    {% if awaken_fx %}{% include 'community/games/_lite_awaken_fx.html' with fx=awaken_fx %}{% endif %}
+    {% if moment_fx %}{% include 'community/games/_lite_moment_fx.html' with fx=moment_fx %}{% endif %}
+    {% if award_fx %}{% include 'community/games/_lite_award_fx.html' with fx=award_fx %}{% endif %}
+    {% if awaken_fx or moment_fx or award_fx %}{% include 'community/games/_lite_fx_script.html' %}{% endif %}
+</div></div>
+<script nonce="{{ csp_nonce }}">
+(function () {
+    var calm = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    var board = document.querySelector('[data-rl-ticker]');
+    var rows = Array.from(board.querySelectorAll('.rl-month'));
+    var final = board.querySelector('.rl-final');
+    var skip = board.querySelector('[data-rl-skip]');
+    var timer;
+    function finish() {
+        clearInterval(timer);
+        rows.concat([final]).forEach(function (row) { row.classList.remove('rl-wait'); });
+        board.classList.remove('is-playing');
+        skip.hidden = true;
+    }
+    if (!calm) {
+        var i = 0;
+        rows.concat([final]).forEach(function (row) { row.classList.add('rl-wait'); });
+        board.classList.add('is-playing');
+        timer = setInterval(function () { if (i < rows.length) rows[i++].classList.remove('rl-wait'); else finish(); }, 500);
+        skip.addEventListener('click', finish);
+    } else finish();
+    var train = document.querySelector('[data-rs-train]');
+    train.addEventListener('click', function () {
+        train.disabled = true;
+        var stats = Array.from(document.querySelectorAll('[data-rs-stat]'));
+        stats.forEach(function (stat) {
+            stat.querySelector('i').style.width = stat.dataset.before + '%';
+            stat.querySelector('[data-rs-value]').textContent = stat.dataset.before;
+        });
+        var start = performance.now();
+        function grow(now) {
+            var t = calm ? 1 : Math.min(1, (now - start) / 850);
+            stats.forEach(function (stat) {
+                var before = Number(stat.dataset.before), after = Number(stat.dataset.after);
+                stat.querySelector('i').style.width = after + '%';
+                stat.querySelector('[data-rs-value]').textContent = Math.round(before + (after - before) * (1 - Math.pow(1 - t, 3)));
+            });
+            if (t < 1) requestAnimationFrame(grow);
+            else { train.disabled = false; document.querySelector('[data-rs-status]').textContent = '훈련을 마쳤어요. 컨택 +3 · 파워 +3 · 선구안 +2'; }
+        }
+        requestAnimationFrame(grow);
+    });
+})();
+</script>

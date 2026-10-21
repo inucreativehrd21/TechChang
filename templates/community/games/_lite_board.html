@@ -1,14 +1,15 @@
+{% load rookie_tags %}
 {% comment %}라이트 시즌 전광판 — 달마다 한 줄씩 넘어간다. 결산(review)과 결정적 순간(moment) 화면이 같이 쓴다.
 seen 이면 이미 본 시즌이라 바로 다 보여 준다(결정적 순간을 고르고 돌아왔을 때 처음부터 다시 돌지 않게).
 맥락: season, season_year, season_league, season_club, season_rings(우승한 대회), seen, skip_label{% endcomment %}
 <section class="rk-board rl-ticker" data-rl-ticker{% if seen %} data-rl-seen{% endif %} aria-label="시즌 전광판">
-    <header class="rk-board-head"><span><i class="rl-live" aria-hidden="true">LIVE</i>{{ season_year }} · {{ season.age }}세 · {{ season_league }}</span><span>{{ season_club }} · {{ season.duty }}</span></header>
+    <header class="rk-board-head"><span><i class="rl-live" aria-hidden="true">LIVE</i>{{ season_year }} · {{ season.age }}세 · {{ season_league|baseball_text }}</span><span>{{ season_club }} · {{ season.duty|baseball_text }}</span></header>
     <ol class="rk-board-rows rl-months">
         {% for m in season.months %}
-        {% if m.moved %}<li class="rl-month is-move"><span class="rk-gno">휴식기</span><span class="rl-mline">{{ m.note|default:m.lg }}</span><span class="rl-wl">{% if m.move_kind == 'up' %}콜업{% elif m.move_kind == 'down' %}강등{% elif m.move_kind == 'trade' %}이적{% else %}보직{% endif %}</span></li>{% endif %}
-        <li class="rl-month{% if m.hot %} is-hot{% endif %}"><span class="rk-gno">{{ m.label }}</span><span class="rl-mline">{{ m.line }}</span><span class="rl-wl">{% if season.team_of %}{{ m.w }}승 {{ m.l }}패{% elif m.hot %}맹활약{% endif %}</span></li>
+        {% if m.moved %}<li class="rl-month is-move"><span class="rk-gno">휴식기</span><span class="rl-mline">{{ m.note|default:m.lg|baseball_text }}</span><span class="rl-wl">{% if m.move_kind == 'up' %}콜업{% elif m.move_kind == 'down' %}강등{% elif m.move_kind == 'trade' %}이적{% else %}보직{% endif %}</span></li>{% endif %}
+        <li class="rl-month{% if m.hot %} is-hot{% endif %}"><span class="rk-gno">{{ m.label|baseball_text }}</span><span class="rl-mline">{{ m.line|baseball_text }}</span><span class="rl-wl">{% if season.team_of %}{{ m.w }}승 {{ m.l }}패{% if m.d %} {{ m.d }}무{% endif %}{% elif m.hot %}맹활약{% endif %}</span></li>
         {% endfor %}
     </ol>
-    <p class="rl-final">{% if season.team_of %}팀은 {{ season.team_w }}승 {{ season.team_l }}패, {{ season.team_of }}팀 중 {{ season.team_rank }}위로 시즌을 마쳤어요{% else %}시즌이 끝났어요{% endif %}{% if season.champion %} · <b>{% if season_rings %}{{ season_rings|join:' · ' }}!{% else %}우승!{% endif %}</b>{% endif %}</p>
+    <p class="rl-final">{% if season.team_of %}팀은 {{ season.team_w }}승 {{ season.team_l }}패{% if season.team_draws %} {{ season.team_draws }}무{% endif %}, {{ season.team_of }}팀 중 {{ season.team_rank }}위로 시즌을 마쳤어요{% else %}시즌이 끝났어요{% endif %}{% if season.champion %} · <b>{% if season_rings %}{{ season_rings|join:' · ' }}!{% else %}우승!{% endif %}</b>{% endif %}</p>
     {% if not seen %}<button type="button" class="rl-skip" data-rl-skip>{{ skip_label|default:'바로 결과 보기' }}</button>{% endif %}
 </section>

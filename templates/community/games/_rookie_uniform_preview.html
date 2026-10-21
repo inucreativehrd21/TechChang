@@ -1,0 +1,21 @@
+<section id="rs-uniforms" aria-label="구단별 유니폼 카드 미리보기">
+    <div class="rs-card-preview">
+        {% with x=uniform_preview %}{% include 'community/games/_lite_retire.html' with c=x.c card=x.card pos_label=x.pos_label style_label=x.style_label %}{% endwith %}
+        <div class="rs-card-options">
+            <h2>간직하고 싶은 나의 유니폼</h2>
+            <p>실제 게임 카드와 같은 화면이에요. 구단을 고르면 유니폼과 카드 색이 함께 바뀌어요.</p>
+            <nav class="rs-card-team-list" aria-label="카드 구단 선택">{% for t in uniform_teams %}<a href="?scene=cards&amp;club={{ t.code }}&amp;edition={{ edition }}#rs-uniforms"{% if uniform_club == t.code %} aria-current="page"{% endif %}><i style="--team: {{ t.color }}" aria-hidden="true"></i>{{ t.name }}</a>{% endfor %}</nav>
+            <p>KBO 구단별 원단과 봉제선을 만들었어요. 해외 구단은 가까운 배색의 원단을 공유하고, 구단명·카드 색·이름·등번호는 해당 선수의 정보로 표시해요.</p>
+            <nav class="rs-editions" aria-label="카드 리그"><a href="?scene=cards&amp;club=kia#rs-uniforms">KBO</a><a href="?scene=cards&amp;club=nyy#rs-uniforms">MLB</a><a href="?scene=cards&amp;club=yomiuri#rs-uniforms">NPB</a><a href="?scene=cards&amp;club=lions#rs-uniforms">CPBL</a></nav>
+            <a class="gm-btn" href="?scene=cards&amp;all=1&amp;club={{ uniform_club }}#rs-uniform-gallery">{{ uniform_group }} {{ uniform_count }}구단 카드 한 번에 보기</a>
+            <form method="get" action="{% url 'community:rookie_preview' %}" class="rs-card-personalize">
+                <input type="hidden" name="scene" value="cards"><input type="hidden" name="club" value="{{ uniform_club }}">
+                <label>선수 이름<input type="text" name="player_name" maxlength="12" value="{{ uniform_name }}" required></label>
+                <label>등번호<input type="number" name="number" min="0" max="99" value="{{ uniform_number }}"></label>
+                <label>등급<select name="tier"><option value="legend"{% if uniform_tier == 'legend' %} selected{% endif %}>레전드</option><option value="star"{% if uniform_tier == 'star' %} selected{% endif %}>스타</option><option value="pro"{% if uniform_tier == 'pro' %} selected{% endif %}>프로</option><option value="rookie"{% if uniform_tier == 'rookie' %} selected{% endif %}>루키</option></select></label>
+                <button type="submit" class="gm-btn is-primary">카드에 적용해 보기</button>
+            </form>
+        </div>
+    </div>
+    {% if uniform_gallery %}<div class="rs-card-gallery" id="rs-uniform-gallery">{% for x in uniform_gallery %}{% include 'community/games/_lite_retire.html' with c=x.c card=x.card pos_label=x.pos_label style_label=x.style_label %}{% endfor %}</div>{% endif %}
+</section>

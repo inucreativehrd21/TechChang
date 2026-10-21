@@ -1,18 +1,20 @@
+{% load rookie_tags %}
 {# 야구선수 키우기 내 선수 (PC·모바일 공용). mode = intro(비로그인) / create(선수 없음) / play — rookie_views.rookie_home #}
 <div class="gm rk">
 <div class="gm-wrap is-wide">
     {% include 'community/games/_rookie_top.html' %}
+    {% include 'community/games/_rookie_stadium.html' %}
 
     {% if mode == 'play' %}
         {% if test %}
-        <section class="rk-board rk-test {% if test.passed %}is-pass{% endif %}" aria-live="polite" aria-label="승격 심사 결과">
-            <header class="rk-board-head"><span>{{ test.league_name }} 승격 심사 · 청백전 {{ test.total }}경기</span><span>{{ test.won }}경기 합격</span></header>
-            <p class="rk-test-verdict">{% if test.passed %}{{ test.league_name }} 승격{% else %}탈락, 내일 다시{% endif %}</p>
+        <section class="rk-board rk-test {% if test.passed %}is-pass{% endif %}" aria-live="polite" aria-label="콜업 테스트 결과">
+            <header class="rk-board-head"><span>{{ test.league_name|baseball_text }} 콜업 테스트 · 청백전 {{ test.total }}경기</span><span>{{ test.won }}경기 합격</span></header>
+            <p class="rk-test-verdict">{% if test.passed %}{{ test.league_name|baseball_text }} 승격{% else %}탈락, 내일 다시{% endif %}</p>
             <ol class="rk-board-rows">
                 {% for g in test.games %}
                 <li class="{% if g.ok %}is-win{% endif %}">
                     <span class="rk-gno">{{ g.no }}</span>
-                    <span class="rk-gsum">{{ g.line }}</span>
+                    <span class="rk-gsum">{{ g.line|baseball_text }}</span>
                     <span class="rk-wl">{% if g.ok %}합격{% else %}불합격{% endif %}</span>
                 </li>
                 {% endfor %}
@@ -40,18 +42,18 @@
                     <label class="rk-role">
                         <input type="radio" name="role" value="{{ key }}" {% if forloop.first %}checked{% endif %} required>
                         <span class="rk-role-box">
-                            <b>{{ role.label }}</b>
-                            <small>{% for k, label, w in role.stats %}{{ label }}{% if not forloop.last %}, {% endif %}{% endfor %}</small>
+                            <b>{{ role.label|baseball_text }}</b>
+                            <small>{% for k, label, w in role.stats %}{{ label|baseball_text }}{% if not forloop.last %}, {% endif %}{% endfor %}</small>
                             <small>{% if key == 'pitcher' %}팀마다 패전조에서 시작해 필승조·마무리, 체력이 좋으면 선발 로테이션까지{% else %}팀마다 대타·대주자(백업)에서 시작해 주전 자리를 따내요{% endif %}</small>
                         </span>
                     </label>
                     {% endfor %}
                 </div>
                 <fieldset class="rk-focus" data-role="batter">
-                    <legend>수비 위치 <small>골든글러브는 위치별로 뽑아요</small></legend>
+                    <legend>포지션 <small>골든글러브는 포지션별로 뽑아요</small></legend>
                     <div class="rk-chips">
                         {% for code, label in positions %}
-                        <label class="rk-chip"><input type="radio" name="position" value="{{ code }}" {% if code == 'SS' %}checked{% endif %}><span>{{ label }}</span></label>
+                        <label class="rk-chip"><input type="radio" name="position" value="{{ code }}" {% if code == 'SS' %}checked{% endif %}><span>{{ label|baseball_text }}</span></label>
                         {% endfor %}
                     </div>
                 </fieldset>
@@ -60,11 +62,18 @@
                     <legend>주특기 <small>이 능력은 훈련 효과가 {{ focus_bonus }}% 더 커요</small></legend>
                     <div class="rk-chips">
                         {% for k, label, w in role.stats %}
-                        <label class="rk-chip"><input type="radio" name="focus_{{ key }}" value="{{ k }}" {% if forloop.first %}checked{% endif %}><span>{{ label }}</span></label>
+                        <label class="rk-chip"><input type="radio" name="focus_{{ key }}" value="{{ k }}" {% if forloop.first %}checked{% endif %}><span>{{ label|baseball_text }}</span></label>
                         {% endfor %}
                     </div>
                 </fieldset>
                 {% endfor %}
+                <fieldset class="rk-focus" data-role="pitcher">
+                    <legend>시작 유형 <small>이후 성적과 코치진 평가에 따라 전환할 수 있어요</small></legend>
+                    <div class="rk-chips">
+                        <label class="rk-chip"><input type="radio" name="pitch_position" value="SP" checked><span>선발 지망</span></label>
+                        <label class="rk-chip"><input type="radio" name="pitch_position" value="RP"><span>불펜 지망</span></label>
+                    </div>
+                </fieldset>
             </section>
 
             <section class="rk-panel">
@@ -116,7 +125,8 @@
     {% endif %}
     {% include 'community/games/_rookie_rights.html' %}
     {% if awaken_fx %}<div class="rl">{% include 'community/games/_lite_awaken_fx.html' with fx=awaken_fx %}</div>{% endif %}
-    {% if award_fx %}<div class="rl">{% include 'community/games/_lite_award_fx.html' with fx=award_fx go='계속하기' %}{% include 'community/games/_lite_fx_script.html' %}</div>{% endif %}
+    {% if award_fx %}<div class="rl">{% include 'community/games/_lite_award_fx.html' with fx=award_fx go='계속하기' %}</div>{% endif %}
+    {% if awaken_fx or award_fx %}{% include 'community/games/_lite_fx_script.html' %}{% endif %}
 </div>
 </div>
 

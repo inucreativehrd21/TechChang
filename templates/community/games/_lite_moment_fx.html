@@ -1,13 +1,14 @@
+{% load rookie_tags static %}
 {% comment %}라이트 결정적 순간 결과 연출(2026-10-19 사용자 요청: 각성처럼 고른 결과를 장면으로 → 상황 그림 말고 이펙트만).
 공(국가대표 결승은 메달)이 날아와 박히는 순간 섬광·충격파·불꽃·빛줄기 → 한 줄 제목 → 점수판 → 우승/준우승. 이기면 구단 색 꽃가루, 지면 빛이 꺼진다.
 기본 모양이 마지막 장면이고 애니메이션이 처음부터 끌고 온다(움직임 줄이기·건너뛰기면 마지막 장면 그대로). 끝없이 도는 것은 .rl-mfx-spin 만.
 맥락: fx = rookie_lite.moment_fx{% endcomment %}
 <div class="rl-mfx{% if fx.won %} is-won{% else %} is-lost{% endif %}{% if fx.ok %} is-good{% else %} is-bad{% endif %}{% if fx.after_text %} has-after{% endif %}{% if fx.path == 'hr' %} is-hr{% endif %}"
      role="dialog" aria-modal="true" aria-labelledby="rl-mfx-stage rl-mfx-result" aria-describedby="rl-mfx-play" data-rl-mfx
-     style="--mfx-c1: {{ fx.colors.0 }}; --mfx-c2: {{ fx.colors.1 }}">
+     style="--mfx-c1: {{ fx.colors.0 }}; --mfx-c2: {{ fx.colors.1 }}" hidden>
     <button type="button" class="rl-mfx-skip" data-rl-mfx-skip>건너뛰기</button>
     <div class="rl-mfx-in" data-rl-mfx-card>
-        <p class="rl-mfx-kicker" id="rl-mfx-stage">{% if fx.when %}{{ fx.when }} {% endif %}{{ fx.stage }}</p>
+        <p class="rl-mfx-kicker" id="rl-mfx-stage">{% if fx.when %}{{ fx.when }} {% endif %}{{ fx.stage|baseball_text }}</p>
         <div class="rl-mfx-stage" aria-hidden="true">
             <span class="rl-mfx-rays"><i class="rl-mfx-spin"></i></span>
             <span class="rl-mfx-burst"></span>
@@ -17,13 +18,7 @@
             <span class="rl-mfx-medal is-{{ fx.medal }}"><i class="rl-mfx-shine"></i></span>
             {% else %}
             <span class="rl-mfx-glow{% if fx.won %} rl-mfx-spin{% endif %}">
-                <svg class="rl-mfx-ball" viewBox="0 0 120 120" focusable="false">
-                    <defs><radialGradient id="mfx-ball" cx=".38" cy=".32" r=".78"><stop offset="0" stop-color="#fff"/><stop offset=".55" stop-color="#e6e8f2"/><stop offset="1" stop-color="#8f98c2"/></radialGradient></defs>
-                    <circle cx="60" cy="60" r="54" fill="url(#mfx-ball)"/>
-                    <path d="M31 15Q53 60 31 105M89 15Q67 60 89 105" fill="none" stroke="#6366f1" stroke-width="2.4" stroke-linecap="round"/>
-                    <path d="M31 15Q53 60 31 105M89 15Q67 60 89 105" fill="none" stroke="#818cf8" stroke-width="9" stroke-dasharray="1.6 5.4"/>
-                    {% if not fx.ok and not fx.won %}<path class="rl-mfx-crack" d="M63 6 55 30l13 15-17 21 14 16-9 24" fill="none" stroke="#1e1b4b" stroke-width="3.2" stroke-linejoin="round" pathLength="1"/>{% endif %}
-                </svg>
+                <img class="rl-mfx-ball rs-fx-asset" src="{% static 'img/rookie/fx/baseball.webp' %}" width="192" height="192" alt="" decoding="async">
             </span>
             {% endif %}
         </div>
@@ -38,7 +33,7 @@
                 <small>상대</small>
             </span>
         </div>
-        <p class="rl-mfx-line">{{ fx.line }}</p>
+        <p class="rl-mfx-line">{{ fx.line|baseball_text }}</p>
         {% if fx.after_text %}<p class="rl-mfx-after">{{ fx.after_text }}</p>{% endif %}
         <p class="rl-mfx-result" id="rl-mfx-result">{{ fx.result }}</p>
         {% if fx.won and not fx.medal %}<span class="rl-mfx-ribbon" aria-hidden="true"></span>{% endif %}

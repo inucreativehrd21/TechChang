@@ -2,7 +2,7 @@
 
 타석 승부(pa_probs): 타자 능력(컨택·파워·선구안·주루·클러치) 대 투수 능력(구속·제구·변화구·멘탈)을
 항목끼리 맞붙인다 — 컨택 대 구위(구속·변화구·멘탈), 선구안 대 제구·멘탈(평정심), 파워 대 구위·멘탈, 득점권에선 클러치 대 멘탈.
-기울기 S=9 — 실력 차이가 결과에 크게 드러나게. 평균 타자 기준 타율: 에이스 상대 ≈ .205, 주전 ≈ .267, 백업 ≈ .326
+기울기 S=9 — 실력 차이가 결과에 크게 드러나게. 평균 타자 기준 타율: 에이스 상대 ≈ .198, 주전 ≈ .256, 백업 ≈ .313
 (test_rookie_league 가 지킨다).
 
 능력치 값 균등화(2026-10-18 점검): 예전엔 +5 의 시즌 WAR 가 컨택 0.97·파워 0.76 대 선구안 0.26·주루 0.20, 투수 멘탈 0·
@@ -15,8 +15,8 @@
 - 상대 타선: 상위(1·2번 — 선구안·주루), 중심(3·4·5번 — 클러치 + 컨택·파워 중 둘), 하위(6~9번 — 밋밋)
 - 상대 투수: 선발 에이스·주전·백업, 불펜 필승조·마무리 / 추격·패전조
 
-내 타순(타자): 백업(대타·대주자·대수비) → 하위타선 주전(6~9번) → 상위타선 테이블세터(1·2번)
-  / 중심타선 교타자(3번)·거포(4·5번) / 5툴(3번, 어디든). 능력이 다음 계단 기준을 넘거나 최근 성적으로
+내 타순(타자): 백업(대타·대주자·대수비) → 하위 타선 주전(6~9번) → 상위 타선 테이블세터(1·2번)
+  / 중심 타선 교타자(3번)·거포(4·5번) / 5툴(3번, 어디든). 능력이 다음 계단 기준을 넘거나 최근 성적으로
   증명하면 한 계단 오르고, 능력이 기준보다 크게 떨어지거나 부진이 이어지면 한 계단 내려간다(매일 밤 경기 전).
 내 보직(투수): 불펜형은 패전조 → 추격조 → 승리조 → 필승조 → 마무리(필승조·마무리는 멘탈도 필요),
   선발형(체력이 구위만큼 되는 투수)은 패전조(롱릴리프) → 선발 로테이션(구위에 따라 5~1선발).
@@ -41,6 +41,7 @@ DEF_RANGE = {'SS': .165, '2B': .165, 'OF': .10, '3B': .08}                    # 
 K_STEAL = .173                            # 도루 시도(주루)
 F_SP, LIM_SP = .64, .12                   # 선발 피로(리그 수준 대비 체력) · 체력이 늘리는 상대 타자 수
 K_RP = .32                                # 불펜 연투 피로(리그 수준 대비 체력)
+HIT_RATE = .96                            # 모든 타석의 안타(홈런 포함)를 상대 4% 낮춘다. 남는 확률은 범타로.
 
 
 def _fatigue(k: float, lvl: float, stamina: float) -> float:
@@ -50,6 +51,17 @@ def _fatigue(k: float, lvl: float, stamina: float) -> float:
 
 def _sig(x: float) -> float:
     return 1.0 / (1.0 + math.exp(-x))
+
+
+def _duel(gap: float) -> float:
+    """12점까지 원래 차이, 그 이상은 완만하게 18점에 접근한다. 실력 순서는 유지한다.
+
+    최상위 재능이 약한 리그에서 매년 0점대 ERA를 만드는 극단만 누른다.
+    능력치·성장 한계는 바꾸지 않고 각 타석의 대결 차이에 적용한다.
+    """
+    if abs(gap) <= 12:
+        return gap / S
+    return math.copysign(12 + 6 * math.tanh((abs(gap) - 12) / 6), gap) / S
 
 
 def _pick(probs: dict, rng) -> str:
@@ -80,10 +92,10 @@ def pa_probs(b: dict, p: dict, risp: bool = False) -> dict:
     con, pw, eye, spd = g(b, 'contact'), g(b, 'power'), g(b, 'eye'), g(b, 'speed')
     clutch = float(b.get('clutch', (con + eye) / 2))           # 내 타자는 클러치 능력치가 없다 → 컨택·선구안 평균
     vel, ctl, brk, men = g(p, 'velocity'), g(p, 'control'), g(p, 'breaking'), g(p, 'mental')
-    d_con = (con - (vel * MIX_CON[0] + brk * MIX_CON[1] + men * MIX_CON[2])) / S
-    d_eye = (eye - (ctl * MIX_EYE[0] + men * MIX_EYE[1])) / S
-    d_pow = (pw - (vel * MIX_POW[0] + brk * MIX_POW[1] + ctl * MIX_POW[2] + men * MIX_POW[3])) / S
-    d_spd = (spd - (vel + ctl + brk) / 3) / S
+    d_con = _duel(con - (vel * MIX_CON[0] + brk * MIX_CON[1] + men * MIX_CON[2]))
+    d_eye = _duel(eye - (ctl * MIX_EYE[0] + men * MIX_EYE[1]))
+    d_pow = _duel(pw - (vel * MIX_POW[0] + brk * MIX_POW[1] + ctl * MIX_POW[2] + men * MIX_POW[3]))
+    d_spd = _duel(spd - (vel + ctl + brk) / 3)
     bb = 0.075 + K_BB * (_sig(d_eye) - .5)
     so = 0.21 - K_SO_CON * (_sig(d_con) - .5) - K_SO_EYE * (_sig(d_eye) - .5)
     hbp = 0.008
@@ -92,11 +104,16 @@ def pa_probs(b: dict, p: dict, risp: bool = False) -> dict:
     bip = contact - hr
     babip = 0.3125 + K_BABIP_CON * (_sig(d_con) - .5) + K_BABIP_SPD * (_sig(d_spd) - .5)
     if risp:                                                    # 득점권: 클러치 대 멘탈
-        babip += 0.06 * (_sig((clutch - men) / S) - 0.5)
+        babip += 0.06 * (_sig(_duel(clutch - men)) - 0.5)
     hits = bip * babip
     d_share, t_share = 0.22 + K_DOUBLE * (_sig(d_pow) - .5), 0.021 + K_TRIPLE * (_sig(d_spd) - .5)
-    return {'BB': bb, 'HBP': hbp, 'SO': so, 'HR': hr, '2B': hits * d_share, '3B': hits * t_share,
-            '1B': hits * (1 - d_share - t_share), 'OUT': bip - hits}
+    out = {'BB': bb, 'HBP': hbp, 'SO': so, 'HR': hr, '2B': hits * d_share, '3B': hits * t_share,
+           '1B': hits * (1 - d_share - t_share), 'OUT': bip - hits}
+    for key in ('1B', '2B', '3B', 'HR'):
+        removed = out[key] * (1 - HIT_RATE)
+        out[key] -= removed
+        out['OUT'] += removed
+    return out
 
 
 # ───────────────────────────── 상대 선수(리그 수준 + 보정)
@@ -125,10 +142,10 @@ STARTER_GRADES = (('ace', 20), ('reg', 55), ('bak', 25))
 STARTER_PA = {'ace': 3, 'reg': 3, 'bak': 2}                 # 선발과 붙는 타석, 나머지는 불펜
 SETUP_SHARE = 0.45                                          # 불펜 타석 중 필승조·마무리 비율
 
-BAT_SPLITS = (('ace', '에이스 선발'), ('reg', '주전 선발'), ('bak', '백업 선발'),
+BAT_SPLITS = (('ace', '에이스 선발'), ('reg', '일반 선발'), ('bak', '대체 선발'),
               ('setup', '필승조·마무리'), ('mop', '추격·패전조'))
-PIT_SPLITS = (('top', '상위타선'), ('heart', '중심타선'), ('bottom', '하위타선'))
-GRADE_LABEL = {'ace': '에이스', 'reg': '주전', 'bak': '백업', 'setup': '필승조', 'mop': '추격조'}
+PIT_SPLITS = (('top', '상위 타선'), ('heart', '중심 타선'), ('bottom', '하위 타선'))
+GRADE_LABEL = {'ace': '에이스', 'reg': '일반', 'bak': '대체', 'setup': '필승조', 'mop': '추격조'}
 GROUP_NOTE = {'top': '출루·주루', 'heart': '클러치·장타', 'bottom': '밋밋'}
 
 
@@ -170,8 +187,8 @@ def _split(line, code: str, o: str):
 
 # ───────────────────────────── 내 타순
 BAT_ROLES = {
-    'bench': '백업(대타·대주자)', 'lower': '하위타선 주전', 'table': '테이블세터',
-    'contact': '중심타선 교타자', 'slugger': '중심타선 거포', 'five': '5툴 플레이어',
+    'bench': '백업(대타·대주자)', 'lower': '하위 타선 주전', 'table': '테이블세터',
+    'contact': '중심 타선 교타자', 'slugger': '중심 타선 거포', 'five': '5툴 플레이어',
 }
 BAT_STEP = {'bench': 0, 'lower': 1, 'table': 2, 'contact': 2, 'slugger': 2, 'five': 2}
 SLOT_PA = {1: 4.65, 2: 4.55, 3: 4.45, 4: 4.35, 5: 4.25, 6: 4.1, 7: 4.0, 8: 3.9, 9: 3.8}
@@ -190,7 +207,7 @@ def _ops(lines) -> tuple[int, float]:
 
 
 def upper_fit(s: dict, lvl: float) -> tuple[str, int] | None:
-    """상위·중심타선에 들 만한 모양 — 5툴 > 거포 > 테이블세터 > 교타자. 없으면 None."""
+    """상위·중심 타선에 들 만한 모양 — 5툴 > 거포 > 테이블세터 > 교타자. 없으면 None."""
     c, p, e, sp, d = (float(s.get(k, 25)) for k in BAT)
     if min(c, p, e, sp, d) >= lvl + 10:                         # 5툴 — 모든 능력이 에이스급
         return 'five', 3
@@ -213,26 +230,26 @@ def batter_role(cur: str, s: dict, ovr: float, lvl: float, recent: list) -> tupl
     if step == 0:
         if ovr >= lvl - 4 or (ovr >= lvl - 10 and pa >= 8 and ops >= .800):
             why = '능력이 올라와' if ovr >= lvl - 4 else f'최근 OPS {ops:.3f}로 증명해'
-            return 'lower', lower_slot, f'{why} 하위타선 주전({lower_slot}번)이 됐습니다'
+            return 'lower', lower_slot, f'{why} 하위 타선 주전({lower_slot}번)이 됐어요'
         return 'bench', 0, ''
     if step == 1:
         if ovr < lvl - 9 or (pa >= 25 and ops < .450):
-            return 'bench', 0, '부진으로 백업(대타·대주자)으로 내려갔습니다'
+            return 'bench', 0, '부진으로 백업(대타·대주자)으로 내려갔어요'
         proven = ovr >= lvl - 1 and pa >= 30 and ops >= .900
         if fit and (ovr >= lvl + 3 or proven):
             role, slot = fit
-            return role, slot, f'{BAT_ROLES[role]}({slot}번)로 올라갔습니다'
+            return role, slot, f'{BAT_ROLES[role]}({slot}번)로 올라갔어요'
         return 'lower', lower_slot, ''
-    # 상위·중심타선
+    # 상위·중심 타선
     if ovr < lvl - 1 or (pa >= 30 and ops < .550) or not fit:
-        return 'lower', lower_slot, f'하위타선({lower_slot}번)으로 내려갔습니다'
+        return 'lower', lower_slot, f'하위 타선({lower_slot}번)으로 내려갔어요'
     role, slot = fit
-    return role, slot, (f'{BAT_ROLES[role]}({slot}번)로 자리를 옮겼습니다' if role != cur else '')
+    return role, slot, (f'{BAT_ROLES[role]}({slot}번)로 자리를 옮겼어요' if role != cur else '')
 
 
 # ───────────────────────────── 내 보직(투수)
 PEN_LADDER = ('mop', 'chase', 'win', 'setup', 'closer')
-PIT_ROLES = {'mop': '패전조', 'chase': '추격조', 'win': '승리조', 'setup': '필승조', 'closer': '마무리', 'sp': '선발'}
+PIT_ROLES = {'mop': '패전조', 'chase': '추격조', 'win': '중간계투', 'setup': '셋업맨', 'closer': '마무리', 'sp': '선발'}
 
 
 def stuff_of(s: dict) -> float:
@@ -270,25 +287,25 @@ def pitcher_role(cur: str, s: dict, lvl: float, recent: list) -> tuple[str, int,
     cur = cur if cur in PIT_ROLES else 'mop'
     if cur == 'sp':
         if float(s.get('stamina', 25)) < lvl - 6 or st < lvl - 6 or (ip >= 15 and era >= 6.5):
-            return 'mop', 0, '선발에서 빠져 롱릴리프(패전조)로 내려갔습니다'
+            return 'mop', 0, '선발에서 빠져 롱릴리프(패전조)로 내려갔어요'
         rank = rotation_rank(s, lvl)
         return 'sp', rank, ''
     if starter_type(s) and cur in ('mop', 'chase', 'win'):
         if st >= lvl - 2 and float(s.get('stamina', 25)) >= lvl - 2 and (ip < 6 or era <= 4.5):
             rank = rotation_rank(s, lvl)
-            return 'sp', rank, f'선발 로테이션({rank}선발)에 들어갔습니다'
+            return 'sp', rank, f'선발 로테이션({rank}선발)에 들어갔어요'
     i = PEN_LADDER.index(cur)
     need_st, need_men = pen_need(cur, lvl)
     if i > 0 and (st < need_st - 4 or men < need_men - 4 or (ip >= 6 and era >= 7.0)):
         down = PEN_LADDER[i - 1]
-        return down, 0, f'{PIT_ROLES[down]}으로 내려갔습니다'
+        return down, 0, f'{PIT_ROLES[down]}으로 내려갔어요'
     if i + 1 < len(PEN_LADDER):
         nxt = PEN_LADDER[i + 1]
         n_st, n_men = pen_need(nxt, lvl)
         proven = ip >= 6 and era <= 3.0
         if men >= n_men and (st >= n_st or (proven and st >= n_st - 2)):
             why = f'최근 평균자책점 {era:.2f}로 증명해 ' if st < n_st else ''
-            return nxt, 0, f'{why}{PIT_ROLES[nxt]}으로 올라갔습니다'
+            return nxt, 0, f'{why}{PIT_ROLES[nxt]}으로 올라갔어요'
     return cur, 0, ''
 
 
@@ -349,7 +366,12 @@ def _plate(line, s, pit, code, slot, ds, rng, cache):
     if o == 'SO':
         line['so'] += 1
     elif o == 'OUT':
-        line['rbi'] += on > 0 and rng.random() < 0.07
+        if on > 0 and rng.random() < .07 and rng.random() < 2 / 3:
+            line['rbi'] += 1
+            if rng.random() < .55:
+                line['sf'] += 1
+                line['ab'] -= 1
+                line[f'{code}_ab'] -= 1
     elif o == 'HR':
         line['h'] += 1
         line['hr'] += 1
@@ -493,8 +515,9 @@ def _pitch(t, s, lvl_base, rng, start_slot, max_outs, pull, lvl: float | None = 
                 runs += sum(bases)
                 bases = [False, False, True]
             elif o == '2B':
-                runs += bases[2] + bases[1] + (bases[0] and rng.random() < 0.4)
-                bases = [False, True, bool(bases[0]) and rng.random() >= 0.4]
+                first_scores = bool(bases[0]) and rng.random() < .4
+                runs += bases[2] + bases[1] + first_scores
+                bases = [False, True, bool(bases[0]) and not first_scores]
             else:
                 scored2 = bases[1] and rng.random() < 0.6
                 runs += bases[2] + scored2
@@ -553,7 +576,7 @@ RELIEF_PER_DAY = 2
 
 
 def relief_game(s: dict, lvl: float, rng, role: str) -> dict:
-    """구원 등판 한 번 — 세이브·홀드·블론세이브·구원승·패."""
+    """구원 등판 한 번 — 세이브·홀드·블론 세이브·구원승·패."""
     from .rookie_league import ip_text
     _p, innings, inn, (lo, hi) = RELIEF[role]
     tired = _fatigue(K_RP, lvl, float(s.get('stamina', 25)))   # 연투 피로 — 체력이 낮으면 구위가 깎인다
@@ -577,7 +600,7 @@ def relief_game(s: dict, lvl: float, rng, role: str) -> dict:
         if t['r'] >= lead:
             if lead <= 3:
                 t['bs'] = 1
-                dec = '블론세이브'
+                dec = '블론 세이브'
             if team_runs == opp_runs:
                 team_runs, opp_runs = (team_runs + 1, opp_runs) if rng.random() < 0.5 else (team_runs, opp_runs + 1)
             if team_runs < opp_runs and t['r'] > lead:
@@ -608,10 +631,10 @@ def role_ladder(role: str, lineup: str, slot: int, s: dict, ovr: float, lvl: flo
     if role == 'batter':
         cur = lineup if lineup in BAT_ROLES else 'bench'
         step = BAT_STEP[cur]
-        steps = [('bench', '백업'), ('lower', '하위타선'), ('upper', '상위·중심타선')]
+        steps = [('bench', '백업'), ('lower', '하위 타선'), ('upper', '상위·중심 타선')]
         fit = upper_fit(s, lvl)
         if step == 0:
-            hint = f'OVR {L - 4} 이상이 되거나, 최근 10일 8타석 이상 OPS .800으로 증명하면 하위타선 주전'
+            hint = f'OVR {L - 4} 이상이 되거나, 최근 10일 8타석 이상 OPS .800으로 증명하면 하위 타선 주전'
         elif step == 1:
             hint = (f'OVR {L + 3} 이상 + 모양이 맞으면 한 계단 위: 테이블세터(선구안·주루 평균 {L + 2}), '
                     f'거포(파워 {L + 4}), 교타자(컨택 {L + 6}), 5툴(모든 능력 {L + 10}). '

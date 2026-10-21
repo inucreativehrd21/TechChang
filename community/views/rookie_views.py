@@ -7,6 +7,7 @@
 진학 지원·드래프트 결정은 일반 폼(POST → 되돌아오기).
 """
 import logging
+import random
 from datetime import timedelta
 
 from django.contrib import messages
@@ -93,7 +94,7 @@ def _pick_season(request, seasons, *, closed_only=False):
 
 
 def _pick_league(request, choices: list, default: str = 'kbo1') -> str:
-    """고른 리그, 아니면 내 선수의 리그, 아니면 기본(KBO 1군)."""
+    """고른 리그, 아니면 내 선수의 리그, 아니면 기본(KBO)."""
     codes = [c['code'] for c in choices]
     want = request.GET.get('lg', '')
     if want in codes:
@@ -115,6 +116,10 @@ def rookie_home(request):
             R.settle(p)
             if p.retired_at:                    # 정산하다 은퇴 나이가 됐다
                 p = None
+            else:
+                from .. import rookie_story as Story
+                Story.prepare_daily(p, timezone.localdate())
+                p.save(update_fields=['career', 'league', 'club', 'league_since', 'lineup', 'slot', 'role_since'])
     if p is None:
         profile = getattr(request.user, 'profile', None)
         name = (getattr(profile, 'nickname', '') or request.user.username)[:12]
@@ -135,6 +140,28 @@ def rookie_home(request):
         p.save(update_fields=['career'])
         ctx['award_fx'] = afx
     return render(request, 'community/rookie.html', ctx)
+
+
+@login_required
+@require_POST
+def rookie_story_reply(request):
+    from .. import rookie_story as Story
+    try:
+        with transaction.atomic():
+            p = R.locked(request.user)
+            if p is None or p.retired_at:
+                raise ValueError('진행 중인 선수가 없어요.')
+            R.settle(p)
+            if p.retired_at:
+                raise ValueError('이미 은퇴한 선수예요.')
+            text = Story.daily_reply(p, request.POST.get('event_id', ''), request.POST.get('choice', ''),
+                                     random.SystemRandom(), timezone.localdate())
+            p.save(update_fields=['career', 'league', 'club', 'league_since', 'lineup', 'slot', 'role_since', 'position'])
+            R._log(p, 'career', text[:200])
+        messages.info(request, text)
+    except ValueError as ex:
+        messages.warning(request, str(ex))
+    return redirect('community:rookie_home')
 
 
 @login_required
@@ -162,7 +189,8 @@ def rookie_create(request):
     try:
         p = R.create(request.user, name=request.POST.get('name', ''), role=role, team=request.POST.get('team', ''),
                      number=number, focus=request.POST.get(f'focus_{role}', ''),
-                     position=request.POST.get('position', ''), region=request.POST.get('region', ''))
+                     position=request.POST.get('pitch_position', request.POST.get('position', '')) if role == 'pitcher' else request.POST.get('position', ''),
+                     region=request.POST.get('region', ''))
     except R.GameError as ex:
         messages.warning(request, str(ex))
         return redirect('community:rookie_home')

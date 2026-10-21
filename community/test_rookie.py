@@ -102,7 +102,7 @@ class DecayWhyTests(TestCase):
         drop = rows['speed']['drop']
         self.assertIsNotNone(drop)
         labels = [x['label'] for x in drop['parts']]
-        self.assertIn('유지비', labels)
+        self.assertIn('기본 감각 저하', labels)
         self.assertIn('쉰 날 감각 저하', labels)
         self.assertIn('나이(노쇠)', labels)                                          # 주루는 몸 능력 — 서른셋이면 노쇠
         self.assertNotIn('나이(노쇠)', [x['label'] for x in rows['eye']['drop']['parts']])   # 선구안은 노쇠가 없다
@@ -208,7 +208,7 @@ class EngineTests(TestCase):
     @mock.patch('community.rookie_career.promotion_gate', return_value=GATE_OK)
     def test_promotion_test_rules(self, _gate):
         with self.assertRaises(R.GameError):
-            R.promotion_test(self.u, rng=FixedRng(10))           # 학생(리틀)은 승격 심사가 없다
+            R.promotion_test(self.u, rng=FixedRng(10))           # 학생(리틀)은 콜업 테스트가 없다
         self.p.league, self.p.club = 'kbo3', 'lg'
         self.p.save()
         with self.assertRaises(R.GameError):
@@ -297,7 +297,7 @@ class ViewTests(TestCase):
         self.client.force_login(self.u)
         self.client.post('/rookie/test/')
         r = self.get('/rookie/')
-        self.assertContains(r, '승격 심사')
+        self.assertContains(r, '콜업 테스트')
         self.assertContains(r, 'rk-test')
         self.assertNotContains(self.get('/rookie/'), 'rk-test')
 

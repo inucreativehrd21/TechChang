@@ -1,41 +1,88 @@
-{# 결정적 순간·수상 연출(.rl-mfx) 공용 — 화면에 있는 연출을 차례로 하나씩 연다(결정적 순간 → 수상). 한 번만 넣는다. #}
+{# 각성 → 결정적 순간 → 수상. 한 장면씩 열고 배경 포커스를 잠근다. #}
 <script nonce="{{ csp_nonce }}">
 (function () {
     if (window.rlFxChain) return;
     window.rlFxChain = true;
-    var all = Array.prototype.slice.call(document.querySelectorAll('[data-rl-mfx]'));
+    var all = Array.from(document.querySelectorAll('[data-rl-mfx]'));
+    if (!all.length) return;
+    var previous = document.activeElement;
+    var calm = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     var cur = null;
+    var locked = [];
+    var lockBackground = function (fx) {
+        locked.forEach(function (el) { el.inert = false; });
+        locked = [];
+        var node = fx;
+        while (node && node !== document.body) {
+            Array.from(node.parentElement.children).forEach(function (el) {
+                if (el !== node && !el.inert && !['SCRIPT', 'STYLE', 'LINK'].includes(el.tagName)) {
+                    el.inert = true;
+                    locked.push(el);
+                }
+            });
+            node = node.parentElement;
+        }
+    };
+    var keydown = function (e) {
+        if (!cur) return;
+        if (e.key === 'Escape') {
+            e.preventDefault();
+            if (cur.ended) cur.close(); else cur.end();
+        }
+        if (e.key === 'Tab') {
+            var buttons = Array.from(cur.fx.querySelectorAll('button:not([disabled]):not([hidden])'));
+            var first = buttons[0], last = buttons[buttons.length - 1];
+            if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+            else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+        }
+    };
     var play = function (i) {
         var fx = all[i];
-        if (!fx) { cur = null; document.documentElement.classList.remove('rl-fx-open'); return; }
+        if (!fx) {
+            cur = null;
+            locked.forEach(function (el) { el.inert = false; });
+            locked = [];
+            document.documentElement.classList.remove('rl-fx-open');
+            document.removeEventListener('keydown', keydown);
+            if (previous && previous.isConnected && previous !== document.body) previous.focus({ preventScroll: true });
+            else {
+                var replay = document.querySelector('[data-rs-replay]');
+                if (replay) replay.focus({ preventScroll: true });
+            }
+            return;
+        }
         var go = fx.querySelector('[data-rl-mfx-close]');
         var skip = fx.querySelector('[data-rl-mfx-skip]');
-        var st = { fx: fx, ended: false };
-        st.end = function () {                                // 건너뛰기 — 마지막 장면으로
-            if (st.ended) return;
+        var st = { fx: fx, ended: false, timer: null };
+        st.end = function () {
+            if (st.ended || st.closing) return;
             st.ended = true;
+            clearTimeout(st.timer);
             fx.classList.add('is-skip');
-            go.focus();
+            skip.hidden = true;
+            go.focus({ preventScroll: true });
         };
         st.close = function () {
             if (st.closing) return;
             st.closing = true;
+            clearTimeout(st.timer);
             fx.classList.add('is-leaving');
-            setTimeout(function () { fx.remove(); play(i + 1); }, 300);
+            setTimeout(function () { fx.remove(); play(i + 1); }, calm ? 0 : 300);
         };
         cur = st;
         fx.hidden = false;
+        lockBackground(fx);
         document.documentElement.classList.add('rl-fx-open');
         skip.addEventListener('click', st.end);
-        fx.querySelector('[data-rl-mfx-card]').addEventListener('click', function (e) { if (!e.target.closest('button')) st.end(); });
         go.addEventListener('click', st.close);
-        var total = parseFloat(getComputedStyle(fx).getPropertyValue('--tr')) * 1000 + 700;
-        setTimeout(function () { if (!st.ended) { st.ended = true; go.focus(); } }, total || 2800);
-        setTimeout(function () { if (!st.ended) skip.focus({ preventScroll: true }); }, 50);
+        if (calm) st.end();
+        else {
+            skip.focus({ preventScroll: true });
+            var total = parseFloat(getComputedStyle(fx).getPropertyValue('--tr')) * 1000 + 1000;
+            st.timer = setTimeout(st.end, total || 3000);
+        }
     };
-    document.addEventListener('keydown', function (e) {
-        if (e.key === 'Escape' && cur) { if (cur.ended) { cur.close(); } else { cur.end(); } }
-    });
+    document.addEventListener('keydown', keydown);
     play(0);
 })();
 </script>

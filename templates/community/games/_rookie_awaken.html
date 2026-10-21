@@ -1,19 +1,20 @@
+{% load rookie_tags %}
 {% comment %}정식 판 각성의 순간 — 다 자란 몸으로 다섯 능력이 모두 한계일 때(2026-10-19 사용자 요청: 라이트 판 기능을 정식 판에도).
 맥락: rookie.dashboard — awaken(odds_pct, cost, next_n, plus, can_pay, wait), awaken_coach, stats, career.scout, p{% endcomment %}
 <div class="rl">
 <section class="rl-awaken" aria-labelledby="rk-awaken-title">
     <div class="rl-awaken-stage">
         <span class="rl-awaken-aura" aria-hidden="true"></span>
-        <p class="rl-awaken-tag">잠재력 끝까지 키워 낸 선수에게 오는 기회</p>
+        <p class="rl-awaken-tag">잠재력에 가까워진 선수에게 오는 기회</p>
         <h2 class="rl-awaken-title" id="rk-awaken-title">각성의 순간</h2>
-        <ul class="rl-awaken-wall" aria-label="지금 능력치 — 모두 한계">
-            {% for s in stats %}<li><span>{{ s.label }}</span><i style="--w: {{ s.bar }}%" aria-hidden="true"></i><b>{{ s.shown }}</b><em>한계</em></li>{% endfor %}
+        <ul class="rl-awaken-wall" aria-label="현재 능력치와 잠재력 한계">
+            {% for s in stats %}<li><span>{{ s.label|baseball_text }}</span><i style="--w: {{ s.bar }}%" aria-hidden="true"></i><b>{{ s.shown }}</b><em>한계</em></li>{% endfor %}
         </ul>
         {% if career.scout %}<p class="rl-awaken-stars"><span>스카우트</span><span class="rk-stars" role="img" aria-label="별 {{ career.scout.stars }}개">{% for i in career.scout.range %}<i class="{% if i < career.scout.stars %}is-on{% elif i < career.scout.total %}is-awaken{% elif i == career.scout.total %}is-next{% endif %}" aria-hidden="true"></i>{% endfor %}</span><small>{{ career.scout.total|add:1 }}번째 별 자리 · 잠재력 +{{ awaken.plus }}</small></p>{% endif %}
     </div>
     <div class="rl-dialog">
         <p class="rl-dialog-name"><b>{{ awaken_coach.0 }}</b> {{ awaken_coach.1 }}</p>
-        <p class="rl-dialog-text">잠재력 끝까지 몸을 만들었고, 성적으로도 증명했어요. 이제 타고난 벽에 닿은 거예요. 며칠 몸과 머리를 통째로 뜯어고쳐 보면 벽을 부술 수도 있어요. 대신 실패하면 꽤 지칠 거예요.</p>
+        <p class="rl-dialog-text">꾸준한 훈련과 실전 경험으로 잠재력에 가까워졌어요. 이제 타고난 한계에 도전해 봐요. 며칠 몸과 머리를 통째로 뜯어고쳐 보면 벽을 부술 수도 있어요. 대신 실패하면 꽤 지칠 거예요.</p>
     </div>
     <div class="rl-replies" role="group" aria-label="각성에 도전할까요">
         <form method="post" action="{% url 'community:rookie_awaken' %}">{% csrf_token %}<input type="hidden" name="choice" value="try">

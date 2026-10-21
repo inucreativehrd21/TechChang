@@ -1,7 +1,7 @@
 {# 기록 리더 한 부문. 맥락: c = rookie_league.leaders 항목 #}
 {% load rookie_tags %}
 <article class="rk-lead">
-    <h3>{{ c.label }}</h3>
+    <h3>{{ c.label|baseball_text }}</h3>
     {% if c.rows %}
     <ol>
         {% for r in c.rows %}

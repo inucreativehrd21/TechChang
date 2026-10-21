@@ -3,7 +3,7 @@ from django.urls import path, re_path
 
 # 실시간 게임 비활성화 (나중을 위해 파일은 유지)
 # from .views import wordchain_views, tictactoe_views
-from .views import map_views, rookie_lite_views, rookie_views
+from .views import map_views, rookie_lite_views, rookie_views, rookie_preview_views
 from .views import base_views, question_views, answer_views, comment_views, profile_views, board_views, baseball_views, guestbook_views, game2048_views, minesweeper_views, portfolio_views
 
 app_name = 'community'
@@ -104,6 +104,8 @@ urlpatterns = [
 
     # rookie_views.py - 야구선수 키우기(사이트 활동으로 키우는 성장 게임, 규칙 community/rookie.py)
     path('rookie/', rookie_views.rookie_home, name='rookie_home'),
+    path('rookie/preview/', rookie_preview_views.rookie_preview, name='rookie_preview'),
+    path('rookie/story/', rookie_views.rookie_story_reply, name='rookie_story_reply'),
     path('rookie/create/', rookie_views.rookie_create, name='rookie_create'),
     path('rookie/train/', rookie_views.rookie_train, name='rookie_train'),
     path('rookie/awaken/', rookie_views.rookie_awaken, name='rookie_awaken'),     # 각성(다섯 능력이 모두 한계일 때)

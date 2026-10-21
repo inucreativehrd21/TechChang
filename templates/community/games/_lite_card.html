@@ -1,8 +1,9 @@
+{% load rookie_tags %}
 {# 라이트 선수 카드. 맥락: rookie_lite_views._identity #}
 <section class="rk-card rl-card" style="--team: {{ team.color|default:'#4f46e5' }}" aria-label="선수 카드">
     <div class="rk-card-top">
         <span class="rk-team"><i class="rk-dot" aria-hidden="true"></i>{{ team.name }}</span>
-        {% if c.retired_at %}<span class="rk-tier is-retired">은퇴</span>{% else %}<span class="rk-tier is-{{ league_kind }}">{{ league_short }}</span>{% endif %}
+        {% if c.retired_at %}<span class="rk-tier is-retired">은퇴</span>{% else %}<span class="rk-tier is-{{ league_kind }}">{{ league_short|baseball_text }}</span>{% endif %}
     </div>
     <div class="rk-card-main">
         <span class="rk-number" aria-hidden="true">{{ c.number }}</span>
@@ -16,7 +17,7 @@
     </div>
     <ul class="rk-stats is-compact rl-stats" aria-label="능력치">
         {% for s in stat_rows %}
-        <li class="rk-stat"><div class="rk-stat-top"><span class="rk-stat-name">{{ s.label }}</span><b class="rk-stat-val">{{ s.shown }}</b></div><div class="rk-bar"><i style="width: {{ s.bar }}%"></i></div></li>
+        <li class="rk-stat"><div class="rk-stat-top"><span class="rk-stat-name">{{ s.label|baseball_text }}</span><b class="rk-stat-val">{{ s.shown }}</b></div><div class="rk-bar"><i style="width: {{ s.bar }}%"></i></div></li>
         {% endfor %}
     </ul>
     {% if traits %}
@@ -28,6 +29,6 @@
         <div><dt>보유 현금</dt><dd>{{ cash }}</dd></div>
         <div><dt>인기</dt><dd>{{ fame }} · {{ fame_label }}</dd></div>
         <div><dt>MVP · 수상 · 우승</dt><dd>{{ c.mvp }} · {{ c.awards }} · {{ c.rings }}</dd></div>
-        <div><dt>프로 통산 WAR</dt><dd>{{ c.war }}</dd></div>
+        <div><dt>최상위 리그 WAR</dt><dd>{{ top_war }}</dd></div>
     </dl>
 </section>

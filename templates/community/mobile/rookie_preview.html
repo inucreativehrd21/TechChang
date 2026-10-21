@@ -1,0 +1,11 @@
+{% extends 'base_mobile.html' %}
+{% load static %}
+{% block title %}야구게임 장면 미리보기 - 테크창{% endblock %}
+{% block tab_games %}active{% endblock %}
+{% block extra_css %}
+<link href="{% static 'css/game.css' %}?v={{ STATIC_VERSION }}" rel="stylesheet">
+<link href="{% static 'css/rookie.css' %}?v={{ STATIC_VERSION }}" rel="stylesheet">
+<link href="{% static 'css/rookie-card.css' %}?v={{ STATIC_VERSION }}" rel="stylesheet">
+<link href="{% static 'css/rookie-stadium.css' %}?v={{ STATIC_VERSION }}" rel="stylesheet">
+{% endblock %}
+{% block content %}{% include 'community/games/_rookie_preview.html' %}{% endblock %}

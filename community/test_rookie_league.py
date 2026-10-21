@@ -28,7 +28,7 @@ def member(name, nick=None):
 
 
 def player(name, role='batter', team='lg', position='SS', level=60.0, league='kbo1'):
-    """프로 성인 선수(기본 KBO 1군) — 나이 한계·잠재력·특성이 경기 보정을 흔들지 않게."""
+    """프로 성인 선수(기본 KBO) — 나이 한계·잠재력·특성이 경기 보정을 흔들지 않게."""
     p = R.create(member(name), name=name[:12], role=role, team=team, position=position, region='서울')
     p.stats = {k: level for k in p.stats}
     p.ovr, p.league, p.club = level, league, team
@@ -44,6 +44,7 @@ def backdate(p):
     """입단을 개막 전으로 — 테스트가 실제 날짜(개막 뒤 입단이면 지난 경기에 못 나간다)에 기대지 않게."""
     from django.utils import timezone as tz
     RookiePlayer.objects.filter(pk=p.pk).update(created_at=tz.make_aware(datetime(2026, 10, 1, 12, 0)))
+    RookieLog.objects.filter(player=p, kind='start').update(day=date(2026, 10, 1))
     p.refresh_from_db()
 
 
@@ -276,7 +277,7 @@ class ScreenTests(TestCase):
             for ua in (PC, MOBILE):
                 r = self.client.get('/rookie/', HTTP_USER_AGENT=ua)
                 self.assertContains(r, 'rk-board-rows')
-                self.assertContains(r, '시즌 1 KBO 1군 기록')
+                self.assertContains(r, '시즌 1 KBO 기록')
                 self.assertContains(r, '규정타석')
                 r = self.client.get('/rookie/league/?lg=kbo1', HTTP_USER_AGENT=ua)
                 self.assertContains(r, '홈런')
@@ -288,7 +289,7 @@ class ScreenTests(TestCase):
             self.assertContains(r, '평균자책점')
             self.assertContains(r, '탈삼진')
             r = self.client.get('/rookie/records/', HTTP_USER_AGENT=PC)
-            self.assertContains(r, '아직 KBO리그 시즌 기록이 없어요')   # 진행 중 시즌 초반은 기록실에 오르지 않는다
+            self.assertContains(r, '아직 KBO 리그 시즌 기록이 없어요')   # 진행 중 시즌 초반은 기록실에 오르지 않는다
 
     def test_batter_position_saved(self):
         u = member('위치선택')
@@ -341,7 +342,7 @@ class OpponentGradeTests(TestCase):
             self.assertEqual(sum(line.get(f'{c}_pa', 0) for c in ('top', 'heart', 'bottom')), line['bf'])
         self.assertEqual(forms, {'strong', 'normal', 'weak'})
         self.assertNotIn('vs', L.add({}, line))
-        # 상위타선은 출루·주루, 중심타선은 클러치에 컨택·파워, 하위타선은 밋밋
+        # 상위 타선은 출루·주루, 중심 타선은 클러치에 컨택·파워, 하위 타선은 밋밋
         top, heart, bottom = M.opp_batter(1, 64), M.opp_batter(4, 64), M.opp_batter(8, 64)
         self.assertGreater(min(top['eye'], top['speed']), max(top['power'], 64))
         self.assertGreater(heart['clutch'], 64 + 8)
@@ -355,21 +356,25 @@ class OpponentGradeTests(TestCase):
         def avg(pr):
             return (pr['1B'] + pr['2B'] + pr['3B'] + pr['HR']) / (1 - pr['BB'] - pr['HBP'])
         vs = {k: avg(M.pa_probs(avg_b, M.opp_pitcher(k, 64.0))) for k in ('ace', 'reg', 'bak')}
-        self.assertLess(vs['ace'], .215)
-        self.assertTrue(.255 <= vs['reg'] <= .28)
-        self.assertGreater(vs['bak'], .315)
+        # 공용 안타 확률 4% 하향 뒤의 목표 구간. 상대 등급 차이는 유지한다.
+        self.assertLess(vs['ace'], .207)
+        self.assertTrue(.245 <= vs['reg'] <= .270)
+        self.assertGreater(vs['bak'], .300)
         # 내 투수도 같은 승부 — 에이스급 타자(+12)와 백업 타자(−10) 사이가 크다
         ace_bat = {k: 76.0 for k in M.BAT}
         bak_bat = {k: 54.0 for k in M.BAT}
-        self.assertGreater(avg(M.pa_probs(ace_bat, avg_p)) - avg(M.pa_probs(bak_bat, avg_p)), .12)
+        self.assertGreater(avg(M.pa_probs(ace_bat, avg_p)) - avg(M.pa_probs(bak_bat, avg_p)), .12 * .96)
 
     def test_seasons_split_by_opponent(self):
         rng = random.Random(13)
         bat = {k: 64.0 for k in M.BAT}
         pit = {k: 64.0 for k in M.PIT}
         tb, tp = {}, {}
-        for _ in range(6 * 144):
-            tb = L.add(tb, L.batter_game(bat, 'SS', 64.0, rng)['line'])
+        # 백업 선발은 25%×2타석만 상대한다. 여러 시드로 표본을 확보해 한 번의 우연을 배제한다.
+        for seed in range(13, 18):
+            rng = random.Random(seed)
+            for _ in range(6 * 144):
+                tb = L.add(tb, L.batter_game(bat, 'SS', 64.0, rng)['line'])
         for _ in range(8 * 28):
             tp = L.add(tp, L.pitcher_game(pit, 64.0, rng)['line'])
         b = {x['code']: x for x in L.splits('batter', tb, 'kbo1')}
@@ -393,11 +398,11 @@ class OpponentGradeTests(TestCase):
             r = self.client.get('/rookie/', HTTP_USER_AGENT=PC)
             self.assertContains(r, '선발, 상대 능력')
             self.assertContains(r, '상대 등급별 성적')
-            self.assertContains(r, '1군 상대 선발 구위: 에이스 75, 주전 64, 백업 54')
-            self.assertContains(r, '하위타선 주전')
+            self.assertContains(r, 'KBO 상대 선발 구위: 에이스 75, 일반 64, 대체 54')
+            self.assertContains(r, '하위 타선 주전')
             self.client.force_login(pit.user)
             r = self.client.get('/rookie/', HTTP_USER_AGENT=MOBILE)
-            self.assertContains(r, '중심타선')
+            self.assertContains(r, '중심 타선')
             self.assertContains(r, 'rk-box-split')
             self.assertContains(r, 'km/h · 직구')
             r = self.client.get(f'/rookie/p/{bat.pk}/', HTTP_USER_AGENT=PC)

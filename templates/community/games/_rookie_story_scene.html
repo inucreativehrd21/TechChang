@@ -1,0 +1,37 @@
+{% load rookie_tags %}
+<section class="rs-story-scene is-{{ e.background|default:'manager-office' }}" aria-labelledby="rs-story-title">
+    <header class="rs-story-head">
+        <p>{% if e.kind == 'negotiation' or e.what == 'negotiation' %}해외 구단 협상 · {{ e.round_no }}/3차{% elif e.kind == 'posting' or e.what == 'posting' %}해외 구단 제안 · 관심 구단 세 곳{% elif e.kind == 'highlight' %}시즌 중 승부처{% elif e.kind == 'interview' %}기자 인터뷰{% else %}선수의 선택{% endif %}</p>
+        <h2 id="rs-story-title">{% if e.kind == 'negotiation' or e.what == 'negotiation' %}{{ e.team_name }}와 협상해요{% else %}{{ e.title|baseball_text }}{% endif %}</h2>
+        {% if e.text %}<p class="rs-story-line">{{ e.text|baseball_text }}</p>{% endif %}
+    </header>
+    <div class="rs-story-content">
+        {% if e.kind == 'negotiation' or e.what == 'negotiation' %}
+        <div class="rs-contract"><span>{{ e.years }}년 계약</span><b>{% if e.entry_league == 'mlb_aaa' %}마이너 연 {{ e.minor_annual|man }}{% else %}연 {{ e.annual|man }}{% endif %}</b><span>{{ e.role }}</span></div>
+        <p class="rs-story-help">인기·국제 평판·자기 관리·실력에 따라 합의 가능성이 달라져요. 보통 최대 세 번 조율하지만, 마이너 거부권 최후통첩은 한 번 거절되면 바로 결렬돼요.</p>
+        {% endif %}
+        {% if e.contract_terms %}{% include 'community/games/_rookie_contract_terms.html' with contract_terms=e.contract_terms %}{% endif %}
+        {% if e.last_rejection %}<p class="rs-choice-result">{{ e.last_rejection|baseball_text }}</p>{% endif %}
+        {% if preview_result %}<p class="rs-choice-result" role="status">{{ preview_result }}</p>{% endif %}
+        <div class="rs-story-choices">
+            {% for ch in e.choices %}
+            <form method="{% if scene_preview %}get{% else %}post{% endif %}" action="{% if scene_preview %}{% url 'community:rookie_preview' %}{% elif lite %}{% url 'community:lite_act' %}{% else %}{% url 'community:rookie_story_reply' %}{% endif %}">
+                {% if scene_preview %}<input type="hidden" name="scene" value="{{ scene }}"><input type="hidden" name="edition" value="{{ edition }}"><input type="hidden" name="deal_key" value="{{ e.key }}"><input type="hidden" name="trail" value="{{ preview_trail }}">{% else %}{% csrf_token %}{% endif %}
+                {% if scene_preview %}<input type="hidden" name="veto" value="{{ request.GET.veto|default:'1' }}"><input type="hidden" name="split" value="{{ request.GET.split|default:'0' }}">{% endif %}
+                <input type="hidden" name="action" value="decide"><input type="hidden" name="what" value="{% if what %}{{ what }}{% elif e.what %}{{ e.what }}{% else %}{{ e.kind }}{% endif %}"><input type="hidden" name="event_id" value="{{ e.id }}"><input type="hidden" name="choice" value="{{ ch.key }}">
+                <button class="rs-story-choice" type="submit">{% if ch.tone %}<em>{{ ch.tone }}</em>{% endif %}<b>{{ ch.label|baseball_text }}</b><small>{{ ch.hint|baseball_text }}{% if ch.chance %} · 합의 가능성 {{ ch.chance }}%{% endif %}</small></button>
+            </form>
+            {% endfor %}
+            {% for offer in e.offers %}
+            <form method="{% if scene_preview %}get{% else %}post{% endif %}" action="{% if scene_preview %}{% url 'community:rookie_preview' %}{% elif lite %}{% url 'community:lite_act' %}{% else %}{% url 'community:rookie_story_reply' %}{% endif %}">
+                {% if scene_preview %}<input type="hidden" name="scene" value="negotiation"><input type="hidden" name="edition" value="{{ edition }}">{% else %}{% csrf_token %}{% endif %}
+                <input type="hidden" name="action" value="decide"><input type="hidden" name="what" value="posting"><input type="hidden" name="event_id" value="{{ e.id }}"><input type="hidden" name="choice" value="{{ offer.key }}">
+                <button class="rs-story-choice" type="submit"><em>{{ offer.system|upper }}{% if offer.entry_league == 'mlb_aaa' %} 산하 마이너{% elif offer.entry_league == 'npb2' %} 2군{% endif %}</em><b>{{ offer.team_name }}</b><small>{{ offer.years }}년 · {% if offer.entry_league == 'mlb_aaa' %}마이너 연 {{ offer.minor_annual|man }}{% else %}연 {{ offer.annual|man }}{% endif %} · {{ offer.role }} — 협상 시작하기</small></button>
+            </form>
+            {% endfor %}
+        </div>
+        {% if e.kind == 'negotiation' or e.what == 'negotiation' or e.kind == 'posting' or e.what == 'posting' %}
+        {% if not scene_preview %}<form method="post" action="{% if lite %}{% url 'community:lite_act' %}{% else %}{% url 'community:rookie_story_reply' %}{% endif %}" class="rs-story-leave">{% csrf_token %}<input type="hidden" name="action" value="decide"><input type="hidden" name="what" value="{{ e.what|default:e.kind }}"><input type="hidden" name="event_id" value="{{ e.id }}"><input type="hidden" name="choice" value="{% if e.kind == 'posting' or e.what == 'posting' %}stay{% else %}leave{% endif %}"><button type="submit" class="gm-btn">협상을 그만두고 KBO에 남을게요</button></form>{% endif %}
+        {% endif %}
+    </div>
+</section>

@@ -1,9 +1,10 @@
+{% load rookie_tags %}
 {# 정식 판 은퇴 카드 페이지(공개). 맥락: rookie_views.rookie_card — c(선수), card(rookie_card.main_card), fresh, is_me #}
 <div class="gm rk rl">
 <div class="gm-wrap is-wide">
     {% include 'community/games/_rookie_top.html' with h1='은퇴 카드' %}
     <div class="rl-cardpage{% if fresh %} is-fresh{% endif %}">
-        <p class="rl-cardpage-head">{% if card.headline.tag %}<em>{{ card.headline.tag }}</em>{% endif %}<b>{{ card.headline.title }}</b></p>
+        <p class="rl-cardpage-head">{% if card.headline.tag %}<em>{{ card.headline.tag }}</em>{% endif %}<b>{{ card.headline.title|baseball_text }}</b></p>
         {% if fresh %}<p class="rl-cardpage-lead">수고 많았어요! 매일 쌓은 활동이 {{ c.name }} 선수의 커리어가 됐어요. 카드 한 장에 담았으니 캡처하거나 이미지로 저장해 자랑해 보세요.</p>{% endif %}
         {% include 'community/games/_lite_retire.html' %}
         <div class="rl-cardpage-actions">

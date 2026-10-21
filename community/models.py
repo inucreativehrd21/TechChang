@@ -1364,6 +1364,10 @@ class LiteSeason(models.Model):
     splits = models.JSONField(default=list, blank=True)          # 리그·보직별 몫(시즌 중 콜업·강등이면 둘)
     press = models.JSONField(default=list, blank=True)           # 기사 제목 [{'tag','title','sub'}]
 
+    @property
+    def team_draws(self):
+        return max(0, self.games - self.team_w - self.team_l) if self.team_of else 0
+
     class Meta:
         verbose_name = '야구선수 키우기 라이트 시즌'
         verbose_name_plural = '야구선수 키우기 라이트 시즌'

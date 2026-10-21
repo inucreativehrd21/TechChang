@@ -13,7 +13,7 @@
                 <ul class="rk-stats is-compact">
                     {% for s in stats %}
                     <li class="rk-stat{% if s.focus %} is-focus{% endif %}">
-                        <div class="rk-stat-top"><span class="rk-stat-name">{{ s.label }}</span><b class="rk-stat-val">{{ s.shown }}</b></div>
+                        <div class="rk-stat-top"><span class="rk-stat-name">{{ s.label|baseball_text }}</span><b class="rk-stat-val">{{ s.shown }}</b></div>
                         <div class="rk-bar"><i style="width: {{ s.bar }}%"></i></div>
                     </li>
                     {% endfor %}
@@ -64,7 +64,7 @@
             <tbody>
                 {% for x in career %}
                 <tr class="{% if x.top %}is-first{% endif %}">
-                    <th scope="row">{{ x.s.season.number }}</th><td class="is-text">{{ x.league }}</td><td class="is-text">{{ x.s.team|team_short }}</td><td>{{ x.s.age|default:'-' }}</td><td>{{ x.v.g|default:0 }}</td>
+                    <th scope="row">{{ x.s.season.number }}</th><td class="is-text">{{ x.league|baseball_text }}</td><td class="is-text">{{ x.s.team|team_short }}</td><td>{{ x.s.age|default:'-' }}</td><td>{{ x.v.g|default:0 }}</td>
                     {% if p.role == 'pitcher' %}
                     <td>{{ x.v.w|default:0 }}</td><td>{{ x.v.l|default:0 }}</td><td>{{ x.v.era_text }}</td><td>{{ x.v.ip_text }}</td><td>{{ x.v.so|default:0 }}</td><td>{{ x.v.bb|default:0 }}</td><td>{{ x.v.whip_text }}</td><td>{{ x.v.qs|default:0 }}</td>
                     {% else %}
@@ -83,7 +83,7 @@
     {% if miles %}
     <h2 class="rk-h2">이정표</h2>
     <ul class="rk-miles">
-        {% for m in miles %}<li><time datetime="{{ m.created_at|date:'c' }}">{{ m.day|date:'Y.n.j' }}</time><span>{{ m.text }}</span></li>{% endfor %}
+        {% for m in miles %}<li><time datetime="{{ m.created_at|date:'c' }}">{{ m.day|date:'Y.n.j' }}</time><span>{{ m.text|baseball_text }}</span></li>{% endfor %}
     </ul>
     {% endif %}
 

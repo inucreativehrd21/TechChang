@@ -1,9 +1,10 @@
+{% load rookie_tags %}
 {# 라이트 은퇴 카드 페이지(공개). 맥락: rookie_lite_views.lite_card — fresh 면 방금 은퇴한 주인 #}
 <div class="gm rk rl">
 <div class="gm-wrap is-wide">
     {% include 'community/games/_lite_top.html' with h1='은퇴 카드' %}
     <div class="rl-cardpage{% if fresh %} is-fresh{% endif %}">
-        <p class="rl-cardpage-head">{% if card.headline.tag %}<em>{{ card.headline.tag }}</em>{% endif %}<b>{{ card.headline.title }}</b></p>
+        <p class="rl-cardpage-head">{% if card.headline.tag %}<em>{{ card.headline.tag }}</em>{% endif %}<b>{{ card.headline.title|baseball_text }}</b></p>
         {% if fresh %}<p class="rl-cardpage-lead">수고 많았어요! {{ c.name }} 선수의 커리어를 카드 한 장에 담았어요. 화면을 캡처해서 자랑해 보세요.</p>{% endif %}
         {% include 'community/games/_lite_retire.html' %}
         <div class="rl-cardpage-actions">

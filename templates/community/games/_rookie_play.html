@@ -1,5 +1,8 @@
+{% load rookie_tags %}
 {# 야구선수 키우기 플레이 영역 — 처음 그릴 때와 훈련(fetch) 뒤 갈아 끼울 때 같은 조각. 맥락: rookie.dashboard #}
 {% include 'community/games/_rookie_decide.html' %}
+{% include 'community/games/_rookie_mind.html' %}
+{% if story %}{% include 'community/games/_rookie_story_scene.html' with e=story %}{% endif %}
 {% if awaken %}{% include 'community/games/_rookie_awaken.html' %}{% endif %}
 <div class="rk-hero">
     {% include 'community/games/_rookie_card.html' with owner=True %}
@@ -22,11 +25,11 @@
             {% for s in stats %}
             <li class="rk-stat{% if s.focus %} is-focus{% endif %}{% if s.capped %} is-capped{% endif %}" data-stat="{{ s.key }}">
                 <div class="rk-stat-top">
-                    <span class="rk-stat-name">{{ s.label }}{% if s.focus %}<em>주특기</em>{% endif %}{% if s.capped %}<em class="is-cap">한계</em>{% endif %}</span>
+                    <span class="rk-stat-name">{{ s.label|baseball_text }}{% if s.focus %}<em>주특기</em>{% endif %}{% if s.capped %}<em class="is-cap">한계</em>{% endif %}</span>
                     <b class="rk-stat-val">{{ s.shown }}</b>
                 </div>
                 <p class="rk-stat-role">{{ s.role }}</p>
-                {% if s.drop %}<p class="rk-stat-why" title="밤사이 빠진 이유">{{ s.drop.when }} −{{ s.drop.total }} · {% for r in s.drop.parts %}{{ r.label }} −{{ r.value }}{% if not forloop.last %}, {% endif %}{% endfor %}</p>{% endif %}
+                {% if s.drop %}<p class="rk-stat-why" title="밤사이 빠진 이유">{{ s.drop.when }} −{{ s.drop.total }} · {% for r in s.drop.parts %}{{ r.label|baseball_text }} −{{ r.value }}{% if not forloop.last %}, {% endif %}{% endfor %}</p>{% endif %}
                 <div class="rk-bar">{% if s.cap_bar %}<s class="rk-cap" style="left: {{ s.cap_bar }}%" title="지금 한계 {{ s.cap|floatformat:0 }}"></s>{% endif %}<i style="width: {{ s.bar }}%"></i></div>
                 <div class="rk-stat-act">
                     <form class="rk-train-form" method="post" action="{% url 'community:rookie_train' %}">
@@ -50,10 +53,10 @@
     <section class="rk-panel rk-ladder" aria-label="타순·보직">
         <div class="rk-head"><h2>{% if p.role == 'pitcher' %}보직{% else %}타순{% endif %}</h2><span class="rk-fine">매일 밤 경기 전에 한 계단씩</span></div>
         <ol class="rk-steps">
-            {% for st in ladder.steps %}<li class="is-{{ st.state }}">{{ st.label }}</li>{% endfor %}
+            {% for st in ladder.steps %}<li class="is-{{ st.state }}">{{ st.label|baseball_text }}</li>{% endfor %}
         </ol>
-        <p class="rk-ladder-now"><b>{{ ladder.label }}</b>{% if ladder.stuff %} · 구위 {{ ladder.stuff }}{% endif %}</p>
-        <p class="rk-hint">{{ ladder.hint }}</p>
+        <p class="rk-ladder-now"><b>{{ ladder.label|baseball_text }}</b>{% if ladder.stuff %} · 구위 {{ ladder.stuff }}{% endif %}</p>
+        <p class="rk-hint">{{ ladder.hint|baseball_text }}</p>
     </section>
     {% endif %}
     <section class="rk-panel rk-earn" aria-label="오늘의 TP">
@@ -62,7 +65,7 @@
             {% for e in earned %}
             <li class="{% if e.done %}is-done{% endif %}">
                 <span class="rk-check" aria-hidden="true">{% if e.done %}✓{% endif %}</span>
-                <span class="rk-earn-main"><b>{{ e.label }}</b><small>+{{ e.tp }} TP{% if e.cap > 1 %}, 오늘 {{ e.count }}/{{ e.cap }}{% endif %}</small></span>
+                <span class="rk-earn-main"><b>{{ e.label|baseball_text }}</b><small>+{{ e.tp }} TP{% if e.cap > 1 %}, 오늘 {{ e.count }}/{{ e.cap }}{% endif %}</small></span>
                 {% if not e.done %}
                     {% if e.source == 'checkin' %}<a class="gm-btn rk-go" href="{% url 'common:daily_checkin' %}" data-rk-checkin rel="nofollow">출석하기</a>
                     {% elif e.source == 'column' %}<a class="gm-btn rk-go" href="{% url 'community:column_map' %}">칼럼 읽기</a>
@@ -75,15 +78,15 @@
 
     <section class="rk-panel rk-cond is-{{ cond.state }}" aria-label="컨디션">
         <div class="rk-head"><h2>컨디션</h2><span class="rk-cond-badge">{% if cond.state == 'good' %}상승세{% elif cond.state == 'ok' %}유지{% else %}하락세{% endif %}</span></div>
-        <p class="rk-cond-note">{{ cond.note }}</p>
-        <p class="rk-hint">지금 능력치를 지키는 데 하루 약 <b>{{ cond.upkeep }} TP</b>의 훈련이 들어요{% if cond.upkeep_over %} — <strong>하루 한도로도 다 지킬 수 없는 수준이에요</strong>{% endif %}. 능력치가 높을수록 유지비가 커져요.{% if cond.aging %} 서른을 넘어 구속·체력·파워·주루가 해마다 조금씩 더 빨리 빠져요.{% endif %}</p>
+        <p class="rk-cond-note">{{ cond.note|baseball_text }}</p>
+        <p class="rk-hint">지금 능력치를 지키는 데 하루 약 <b>{{ cond.upkeep }} TP</b>의 훈련이 들어요{% if cond.upkeep_over %} — <strong>하루 한도로도 다 지킬 수 없는 수준이에요</strong>{% endif %}. 능력치가 높을수록 감각을 유지하는 데 더 많은 훈련이 필요해요.{% if cond.aging %} 서른을 넘어 구속·체력·파워·주루가 해마다 조금씩 더 빨리 빠져요.{% endif %}</p>
     </section>
 
     <section class="rk-panel rk-logs" aria-label="최근 기록">
         <div class="rk-head"><h2>최근 기록</h2><a class="rk-fine" href="{% url 'community:rookie_player' p.pk %}">선수 페이지</a></div>
         <ul class="rk-log-list">
             {% for l in logs %}
-            <li class="is-{{ l.kind }}"><time datetime="{{ l.created_at|date:'c' }}">{{ l.created_at|date:'n.j H:i' }}</time><span>{{ l.text }}</span></li>
+            <li class="is-{{ l.kind }}"><time datetime="{{ l.created_at|date:'c' }}">{{ l.created_at|date:'n.j H:i' }}</time><span>{{ l.text|baseball_text }}</span></li>
             {% empty %}
             <li><span>아직 기록이 없어요.</span></li>
             {% endfor %}

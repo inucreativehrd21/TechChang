@@ -54,7 +54,7 @@ def autoplay(c, rng, max_steps=200):
             what = pend['what']
             seen.add(what)
             if what == 'meeting':
-                X.decide(c, what, rng.choice([k for k, *_ in X.MEET_CHOICES[pend['about']](c)]), rng)
+                X.decide(c, what, rng.choice([ch['key'] for ch in X.decision_view(c)['choices']]), rng)
                 c.save()
                 continue
             if what == 'moment':
@@ -62,11 +62,16 @@ def autoplay(c, rng, max_steps=200):
                 X.decide(c, what, rng.choice([x[0] for x in m['choices']]), rng)
                 c.save()
                 continue
+            if what == 'negotiation':
+                X.decide(c, what, 'accept', rng)
+                c.save()
+                continue
             opts = {'draft': (['sign'] if pend.get('offer') else ['develop']) + list(pend.get('abroad') or {}),
-                    'military': ['sangmu', 'active'], 'posting': ['mlb', 'npb', 'stay'],
+                    'military': ['sangmu', 'active'], 'posting': [o['key'] for o in pend.get('offers') or []] + ['stay']
+                    if pend.get('offers') else ['mlb', 'npb', 'stay'],
                     'fa': [o['key'] for o in pend.get('offers') or []],
                     'return': [o['key'] for o in pend.get('offers') or []] + ['stay'],
-                    'awaken': ['try', 'skip'],
+                    'awaken': ['try', 'skip'], 'contract_optout': ['keep', 'market'],
                     'retire': ['continue'] if c.age < 37 else ['retire']}.get(what, ['retire'])
             X.decide(c, what, rng.choice(opts), rng)
             c.save()
@@ -117,13 +122,13 @@ class EngineTests(TestCase):
         c.club = '경기고'
         self.assertEqual(X.showcase(c, 'hs'), 0.0)
 
-    def test_full_career_ends_in_about_twenty_five_seasons(self):
+    def test_full_career_can_end_early_or_continue_into_veteran_years(self):
         for seed, role, pos in ((3, 'batter', 'SS'), (4, 'pitcher', 'SP'), (5, 'pitcher', 'RP')):
             c = new(f'끝까지{seed}', role, pos, seed=seed)
             seasons, seen = autoplay(c, random.Random(seed))
             c.refresh_from_db()
             self.assertIsNotNone(c.retired_at)
-            self.assertTrue(15 <= seasons <= 28, seasons)                       # 한 판 30분 남짓(약하면 34세 무렵 방출로 일찍 끝난다)
+            self.assertTrue(3 <= seasons <= 28, seasons)  # 고교 졸업 뒤 20대 재계약 실패도 가능해요.
             self.assertIn('draft', seen)
             self.assertEqual(LiteSeason.objects.filter(career=c).count(), c.year - 1)
             self.assertTrue(c.peak)
@@ -349,10 +354,12 @@ class GameRulesTests(TestCase):
         c.save()
         season = None
         for _ in range(4):
-            season = X.run_season(c, X.pick_programs(c, random.Random(_)), 'normal', '', random.Random(_),
+            event = c.pending.get('event')
+            answer = X.EVENTS[event]['choices'][0][0] if event else ''
+            season = X.run_season(c, X.pick_programs(c, random.Random(_)), 'normal', answer, random.Random(_),
                                   intl={k: 'skip' for k in c.pending.get('intl') or []})
             if season is None:
-                X.decide(c, 'meeting', 'accept', random.Random(3))
+                X.decide(c, 'meeting', X.MEET_CHOICES[c.pending['about']](c)[0][0], random.Random(3))
                 season = c.seasons.order_by('-year').first()
             while c.pending.get('what') == 'moment':
                 X.decide(c, 'moment', c.pending['moments'][c.pending.get('i', 0)]['choices'][2][0], random.Random(6))
@@ -429,7 +436,8 @@ class MomentAndWhyTests(TestCase):
         while s is None or c.pending.get('what') == 'moment':
             pend = c.pending
             if pend.get('what') == 'meeting':
-                X.decide(c, 'meeting', 'accept', rng)
+                keys = [ch['key'] for ch in X.decision_view(c)['choices']]
+                X.decide(c, 'meeting', 'accept' if 'accept' in keys else keys[0], rng)
             else:
                 X.decide(c, 'moment', pend['moments'][pend.get('i', 0)]['choices'][0][0], rng)
             s = c.seasons.order_by('-year').first()
@@ -580,7 +588,7 @@ class FourthBatchTests(TestCase):
         c.pending = {'kind': 'plan', 'event': None, 'intl': []}
         with mock.patch.object(X, 'BAD_LUCK_P', 1.0), mock.patch.dict(X.INTENSITY, {'light': ('가볍게', 0.6, -1.0)}):
             state = X.start_season(c, X.pick_programs(c, rng), 'light', '', {}, rng)
-        self.assertTrue(any(n.startswith('억까') for n in state['news']))
+        self.assertTrue(any(n.startswith('뜻밖의 부상') for n in state['news']))
         self.assertTrue(any(p['tag'] == '[황당]' for p in state['press']))
         self.assertGreater(state['out'][1], state['out'][0])
 
@@ -647,7 +655,7 @@ class AgingAndIntlTests(TestCase):
         names = {X.intl_rival('asian', rng).split(' ')[0] for _ in range(200)}
         self.assertLessEqual(names, {'일본', '대만', '중국'})
         wbc = {X.intl_rival('wbc', rng).split(' ')[0] for _ in range(400)}
-        self.assertIn('도미니카', wbc)
+        self.assertIn('도미니카공화국', wbc)
         self.assertTrue(any(X.intl_rival('wbc', rng).split(' ')[1] in X.INTL_NAMES['latin'][0] for _ in range(200)))  # 중남미는 스페인어 이름
 
 
@@ -843,6 +851,8 @@ class AwakenRedesignLiteTests(TestCase):
         for _ in range(6):
             c.flags.pop('awaken_next', None)
             c.stats = {k: X.stat_pot(c, k) for k in c.stats}
+            LiteSeason.objects.update_or_create(career=c, year=1, defaults=dict(age=24, league='kbo1',
+                club='lg', games=144, war=10, totals={'pa': 600, 'ab': 500, 'h': 200, 'hr': 40}))
             if not X.awaken_ready(c):
                 break
             c.pending = {'kind': 'decision', 'what': 'awaken', 'odds': 1.0}
@@ -1215,13 +1225,18 @@ class AbroadChoiceTests(TestCase):
 
     def test_fa_brings_two_teams_from_the_top_market(self):
         c = pro('FA두곳', seed=124, ovr=90.0)
-        LiteSeason.objects.create(career=c, year=1, age=28, league='kbo1', club='lg', games=144, war=6.0)
+        LiteSeason.objects.create(career=c, year=1, age=28, league='kbo1', club='lg', games=144, war=6.0,
+                                  totals={'pa': 620, 'ab': 540, 'h': 180, 'hr': 30, 'bb': 65, 'so': 110})
         offers = X.fa_offers(c, random.Random(2))
         mlb = [o for o in offers if o['key'].startswith('mlb')]
         self.assertEqual(len(mlb), 2)
         self.assertNotEqual(mlb[0]['team'], mlb[1]['team'])
         c.pending = {'kind': 'decision', 'what': 'fa', 'offers': offers}
         X.decide(c, 'fa', 'mlb2', random.Random(1))
+        self.assertEqual(c.pending['what'], 'negotiation')
+        self.assertEqual(c.pending['deal']['team'], mlb[1]['team'])
+        with mock.patch('community.rookie_story.negotiate', return_value=('signed', c.pending['deal'])):
+            X.decide(c, 'negotiation', 'accept', random.Random(1))
         self.assertEqual(c.club, mlb[1]['team'])
         self.assertIn(c.league, ('mlb', 'mlb_aaa'))
 
@@ -1339,6 +1354,12 @@ class ViewTests(TestCase):
             data['event_choice'] = X.EVENTS[event]['choices'][0][0]
         c.post('/rookie/lite/act/', data)
         career.refresh_from_db()
+        while career.pending.get('what') == 'meeting':
+            decision = X.decision_view(career)
+            choice = X.MEET_CHOICES[career.pending['about']](career)[0][0]
+            c.post('/rookie/lite/act/', {'action': 'decide', 'what': 'meeting', 'choice': choice,
+                                       'event_id': decision.get('id', '')})
+            career.refresh_from_db()
         while career.pending.get('what') == 'moment':
             for ua in (PC, MOBILE):
                 self.assertContains(c.get('/rookie/lite/', HTTP_USER_AGENT=ua), 'rl-moment')
@@ -1421,7 +1442,7 @@ class ViewTests(TestCase):
                              follow=True)
         self.assertContains(r, '두 비시즌 연속')
         c.pending = X._meeting(c, 'role_down', 'end', {}, 144, random.Random(2),
-                               new_role=('bench', 0, '백업(대타·대주자)'), old_role=('lower', 6, '하위타선 주전 · 6번'))
+                               new_role=('bench', 0, '백업(대타·대주자)'), old_role=('lower', 6, '하위 타선 주전 · 6번'))
         c.save()
         for ua in (PC, MOBILE):
             r = self.client.get('/rookie/lite/', HTTP_USER_AGENT=ua)

@@ -1,3 +1,4 @@
+{% load rookie_tags %}
 {# 라이트 은퇴 카드 보관함. 맥락: rookie_lite_views.lite_cards — rows: _identity + card #}
 <div class="gm rk rl">
 <div class="gm-wrap is-wide">
@@ -11,7 +12,7 @@
             <span class="rl-mini-no" aria-hidden="true">{{ r.c.number }}</span>
             <b class="rl-mini-name">{{ r.c.name }}</b>
             <span class="rl-mini-pos">{{ r.pos_label }} · {{ r.style_label }}</span>
-            <span class="rl-mini-key"><span>최고 무대 {{ r.card.peak }}</span><span>WAR {{ r.card.war }}</span></span>
+            <span class="rl-mini-key"><span>최고 무대 {{ r.card.peak|baseball_text }}</span><span>WAR {{ r.card.war }}</span></span>
         </a></li>
         {% endfor %}
     </ul>

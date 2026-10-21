@@ -569,7 +569,7 @@ class ScreenTests(TestCase):
         with mock.patch('django.utils.timezone.localdate', return_value=D1 + timedelta(days=1)):
             for ua in (PC, MOBILE):
                 for url, text in (('/rookie/league/?tab=best9&lg=kbo1', '오늘의 베스트 9'),
-                                  ('/rookie/league/?tab=players', 'KBO 1군'),
+                                  ('/rookie/league/?tab=players', 'KBO'),
                                   ('/rookie/records/?view=career&lg=kbo1', '통산 순위'),
                                   ('/rookie/records/?view=hof', '명예의 전당'),
                                   ('/rookie/records/?view=highs&lg=kbo1&role=pitcher', '커리어하이'),

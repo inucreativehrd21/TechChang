@@ -1,3 +1,4 @@
+{% load rookie_tags %}
 {# 라이트 모바일 선수 요약 — HUD 바로 아래 한 줄 + 다섯 능력치. 눌러서 특성·연봉·통산을 펼친다. 맥락: rookie_lite_views._identity #}
 <details class="rl-mcard" style="--team: {{ team.color|default:'#4f46e5' }}">
     <summary>
@@ -8,7 +9,7 @@
             <span class="rl-mcard-more">자세히</span>
         </span>
         <span class="rl-mcard-stats" aria-label="능력치">
-            {% for s in stat_rows %}<span class="rl-mstat"><small>{{ s.label }}</small><b>{{ s.shown }}</b><i style="--w: {{ s.bar }}%" aria-hidden="true"></i></span>{% endfor %}
+            {% for s in stat_rows %}<span class="rl-mstat"><small>{{ s.label|baseball_text }}</small><b>{{ s.shown }}</b><i style="--w: {{ s.bar }}%" aria-hidden="true"></i></span>{% endfor %}
         </span>
     </summary>
     <div class="rl-mcard-body">

@@ -64,7 +64,7 @@
     <ul class="rk-records">
         {% for r in records %}
         <li{% if r.s %} style="--team: {{ r.s.team|team_color }}"{% endif %}>
-            <span class="rk-record-name">{{ r.label }}</span>
+            <span class="rk-record-name">{{ r.label|baseball_text }}</span>
             {% if r.s %}
             <b>{{ r.value }}</b>
             <span class="rk-record-who"><i class="rk-dot" aria-hidden="true"></i>{{ r.s.name }}, 시즌 {{ r.s.season.number }}{% if r.live %} <span class="rk-live">진행 중</span>{% endif %}</span>
@@ -104,7 +104,7 @@
     {% if miles %}
     <h2 class="rk-h2">최근 이정표</h2>
     <ul class="rk-miles">
-        {% for m in miles %}<li><time datetime="{{ m.created_at|date:'c' }}">{{ m.day|date:'n.j' }}</time><a href="{% url 'community:rookie_player' m.player_id %}">{{ m.player.name }}</a><span>{{ m.text }}</span></li>{% endfor %}
+        {% for m in miles %}<li><time datetime="{{ m.created_at|date:'c' }}">{{ m.day|date:'n.j' }}</time><a href="{% url 'community:rookie_player' m.player_id %}">{{ m.player.name }}</a><span>{{ m.text|baseball_text }}</span></li>{% endfor %}
     </ul>
     {% endif %}
     {% include 'community/games/_rookie_rights.html' %}

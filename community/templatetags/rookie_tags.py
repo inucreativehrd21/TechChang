@@ -7,6 +7,20 @@ register = template.Library()
 
 
 @register.filter
+def baseball_text(value):
+    """과거 JSON·기록의 야구 용어도 현재 표시 기준으로 보여 준다. HTML은 그대로 이스케이프한다."""
+    from community.rookie_text import display
+    return display(value)
+
+
+@register.filter
+def man(n):
+    """게임 금액(만원)을 기존 표기와 같은 단위로 보여 준다."""
+    from community.rookie_lite import man as format_money
+    return format_money(n)
+
+
+@register.filter
 def comma(n):
     """4980 → '4,980' — 숫자가 아니면 그대로."""
     try:

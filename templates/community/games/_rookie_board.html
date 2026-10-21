@@ -1,11 +1,12 @@
+{% load rookie_tags %}
 {# 전광판 — 최근 경기일의 경기들. 맥락: season, games, games_day, dnp, p #}
 <section class="rk-board" aria-label="전광판">
     <header class="rk-board-head">
         {% if relief_log %}
-        <span>최근 등판 {{ games|length }}경기 · {{ games.0.league }}</span>
-        <span>{{ ladder.label }}</span>
+        <span>최근 등판 {{ games|length }}경기 · {{ games.0.league|baseball_text }}</span>
+        <span>{{ ladder.label|baseball_text }}</span>
         {% elif games %}
-        <span>{{ games_day|date:'n월 j일 l' }} · {{ games.0.league }}</span>
+        <span>{{ games_day|date:'n월 j일 l' }} · {{ games.0.league|baseball_text }}</span>
         <span>{{ games|length }}경기</span>
         {% else %}
         <span>전광판</span><span>{% if season.phase == 'pre' %}시범 기간{% elif season.phase == 'off' %}시즌 사이 휴식{% else %}시즌 {{ season.number }}{% endif %}</span>
@@ -27,7 +28,7 @@
         <div><dt>이닝</dt><dd>{{ games.0.ip }}</dd></div>
         <div><dt>피안타</dt><dd>{{ b.h|default:0 }}</dd></div>
         <div><dt>실점</dt><dd>{{ b.r|default:0 }}</dd></div>
-        <div><dt>자책</dt><dd>{{ b.er|default:0 }}</dd></div>
+        <div><dt>자책점</dt><dd>{{ b.er|default:0 }}</dd></div>
         <div><dt>볼넷</dt><dd>{{ b.bb|default:0 }}</dd></div>
         <div><dt>탈삼진</dt><dd>{{ b.so|default:0 }}</dd></div>
         <div><dt>피홈런</dt><dd>{{ b.hr|default:0 }}</dd></div>
@@ -35,12 +36,12 @@
     </dl>
     {% if games.0.splits %}
     <ul class="rk-box-split" aria-label="상대 타자 등급별">
-        {% for x in games.0.splits %}<li class="is-{{ x.code }}"><b>{{ x.label }}</b> {{ x.ab }}타수 {{ x.h }}피안타{% if x.hr %} {{ x.hr }}피홈런{% endif %}{% if x.so %} {{ x.so }}삼진{% endif %}</li>{% endfor %}
+        {% for x in games.0.splits %}<li class="is-{{ x.code }}"><b>{{ x.label|baseball_text }}</b> {{ x.ab }}타수 {{ x.h }}피안타{% if x.hr %} {{ x.hr }}피홈런{% endif %}{% if x.so %} {{ x.so }}삼진{% endif %}</li>{% endfor %}
     </ul>
     {% endif %}
     {% endwith %}{% endif %}
-    {% if opp_levels %}<p class="rk-board-note">{% if p.role == 'pitcher' %}{{ games.0.league }} 상대 타선: 상위 {{ opp_levels.top }}(출루·주루), 중심 {{ opp_levels.heart }}(클러치·장타), 하위 {{ opp_levels.bottom }}. 내 구위는 {{ ladder.stuff }} 정도예요.{% else %}{{ games.0.league }} 상대 선발 구위: 에이스 {{ opp_levels.ace }}, 주전 {{ opp_levels.reg }}, 백업 {{ opp_levels.bak }}. 지금 내 OVR {{ p.ovr|floatformat:1 }}.{% endif %}</p>{% endif %}
-    {% if xp_rows %}<p class="rk-board-note is-xp">경기 경험 {% for x in xp_rows %}{{ x.label }} +{{ x.gain|floatformat:2 }}{% if not forloop.last %} · {% endif %}{% endfor %}</p>{% endif %}
+    {% if opp_levels %}<p class="rk-board-note">{% if p.role == 'pitcher' %}{{ games.0.league|baseball_text }} 상대 타선: 상위 {{ opp_levels.top }}(출루·주루), 중심 {{ opp_levels.heart }}(클러치·장타), 하위 {{ opp_levels.bottom }}. 내 구위는 {{ ladder.stuff }} 정도예요.{% else %}{{ games.0.league|baseball_text }} 상대 선발 구위: 에이스 {{ opp_levels.ace }}, 일반 {{ opp_levels.reg }}, 대체 {{ opp_levels.bak }}. 지금 내 OVR {{ p.ovr|floatformat:1 }}.{% endif %}</p>{% endif %}
+    {% if xp_rows %}<p class="rk-board-note is-xp">경기 경험 {% for x in xp_rows %}{{ x.label|baseball_text }} +{{ x.gain|floatformat:2 }}{% if not forloop.last %} · {% endif %}{% endfor %}</p>{% endif %}
     {% if dnp %}<p class="rk-board-note">어제는 결장했어요. 경기일 포함 최근 3일 안에 활동해야 엔트리에 들어요.</p>{% endif %}
     {% elif graduated %}
     <div class="rk-board-empty">

@@ -1,3 +1,4 @@
+{% load rookie_tags %}
 {# 라이트 시즌 연표. 상은 그 시즌 줄 바로 아래 한 줄에(칸 안에 몰아넣으면 줄이 길게 늘어난다). 맥락: seasons = rookie_lite_views._season_rows #}
 {% if seasons %}
 <div class="rk-table-wrap">
@@ -6,10 +7,10 @@
         <tbody>
             {% for r in seasons %}
             <tr class="{% if 'mvp' in r.kinds %}is-first{% endif %}{% if r.s.awards %} has-awards{% endif %}">
-                <th scope="row">{{ r.s.year }}</th><td>{{ r.s.age }}</td><td class="is-text">{{ r.league }}</td><td class="is-text">{{ r.club }}</td>
-                <td class="is-text">{{ r.s.duty }}</td><td class="is-text">{{ r.line }}</td><td class="is-war">{% if r.s.games %}{{ r.s.war }}{% else %}-{% endif %}</td>
+                <th scope="row">{{ r.s.year }}</th><td>{{ r.s.age }}</td><td class="is-text">{{ r.league|baseball_text }}</td><td class="is-text">{{ r.club }}</td>
+                <td class="is-text">{{ r.s.duty|baseball_text }}</td><td class="is-text">{{ r.line|baseball_text }}</td><td class="is-war">{% if r.s.games %}{{ r.s.war }}{% else %}-{% endif %}</td>
             </tr>
-            {% if r.s.awards %}<tr class="rl-years-awards"><td colspan="7"><span class="rl-years-awards-in">{% for a in r.s.awards %}<span class="rl-award is-{{ a.kind }}">{{ a.label }}</span>{% endfor %}</span></td></tr>{% endif %}
+            {% if r.s.awards %}<tr class="rl-years-awards"><td colspan="7"><span class="rl-years-awards-in">{% for a in r.s.awards %}<span class="rl-award is-{{ a.kind }}">{{ a.label|baseball_text }}</span>{% endfor %}</span></td></tr>{% endif %}
             {% endfor %}
         </tbody>
     </table>

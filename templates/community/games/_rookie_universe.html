@@ -1,0 +1,16 @@
+{% load rookie_tags %}
+{% if mind.universe %}
+<section class="rs-career-world" aria-label="내 커리어의 사람들">
+    <details><summary>이어지는 경쟁자와 감독 성향</summary>
+        <p><b>감독 · {{ mind.universe.coach.label|baseball_text }}</b> {{ mind.universe.coach.text|baseball_text }}</p>
+        <div class="rs-rivals">
+        {% for r in mind.universe.rivals %}<article>
+            <header><b>{{ r.name }}</b><span>{{ r.age }}세 · {{ r.league_label }} · OVR {{ r.ovr }}</span></header>
+            <p>{{ r.club_label }} · 관계 {{ r.relation }}/100{% if r.injured %} · 부상 회복 중{% endif %}{% if r.ahead %} · 나보다 앞서 있어요{% endif %}</p>
+            <ul>{% for line in r.history|slice:'-2:' %}<li>{{ line|baseball_text }}</li>{% endfor %}</ul>
+        </article>{% endfor %}
+        </div>
+    </details>
+</section>
+{% endif %}
+{% if mind.standings %}{% include 'community/games/_rookie_standings.html' with table=mind.standings %}{% endif %}
