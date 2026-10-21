@@ -681,6 +681,12 @@ a.rk-rank-main:hover b { color: var(--rk-accent); }
 .rl-ticker.is-playing .rl-skip { display: inline-block; }
 .rl-wait { opacity: 0; transform: translateY(6px); pointer-events: none; }
 .rl-result.rl-wait { transform: none; }
+.rl-choice-result p { margin: 0 0 6px; font-weight: 700; }
+.rl-choice-result small { color: var(--rk-ink-3); }
+.rl-reactions ul { margin: 0; padding: 0; list-style: none; }
+.rl-reactions li + li { border-top: 1px solid var(--rk-line); padding-top: 12px; margin-top: 12px; }
+.rl-reactions li > b { font-size: .76rem; color: var(--rk-ink-3); }
+.rl-reactions li > p { margin: 4px 0 0; font-size: .88rem; line-height: 1.6; }
 
 /* 결산 */
 .rl-line { margin: 10px 0 4px; }
@@ -1211,7 +1217,7 @@ a.rk-rank-main:hover b { color: var(--rk-accent); }
 
 /* ══ 결정적 순간(결승 승부처) · 능력치가 바뀐 이유 — 2026-10-18 ══════════════════════════════
  * 결정적 순간은 감독실과 같은 장면 문법(장면 → 대사 창 → 답)에, 무대만 야간 구장: 조명·전광판 점수 띠·주자 다이아몬드. */
-.rl-moment { overflow: hidden; border-radius: 18px; background: #fff; box-shadow: 0 0 0 1px var(--rk-line), 0 22px 44px -26px rgba(14, 17, 48, .6); }
+.rl-moment { --rl-moment-inset: 18px; overflow: hidden; border-radius: 18px; background: #fff; box-shadow: 0 0 0 1px var(--rk-line), 0 22px 44px -26px rgba(14, 17, 48, .6); }
 .rl-moment-scene { position: relative; height: 236px; overflow: hidden; color: #fff; background:
     radial-gradient(140px 70px at 18% 0, rgba(238, 240, 255, .35), transparent 70%),
     radial-gradient(140px 70px at 82% 0, rgba(238, 240, 255, .35), transparent 70%),
@@ -1234,7 +1240,18 @@ a.rk-rank-main:hover b { color: var(--rk-accent); }
 .rl-diamond i.is-b2 { left: 12px; top: 1px; }
 .rl-diamond i.is-b3 { left: 2px; top: 11px; }
 .rl-diamond i.is-b1 { left: 22px; top: 11px; }
-.rl-scout { bottom: 72px; }
+.rl-moment-brief { padding: 18px var(--rl-moment-inset); }
+.rl-moment-brief .rl-dialog { margin: 0; padding: 0; border: 0; border-radius: 0; }
+.rl-moment-brief .rl-dialog-name { position: static; display: flex; align-items: baseline; gap: 5px; margin: 0; padding: 0; border-radius: 0; color: var(--rk-ink-3); background: none; }
+.rl-moment-brief .rl-dialog-name b { color: var(--rk-ink-2); }
+.rl-moment-brief .rl-dialog-text { margin: 6px 0 0; }
+.rl-moment-brief .rl-scout { position: static; display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: baseline; gap: 4px 10px; max-width: none; margin: 14px 0 0; padding: 12px 0 0; border: 0; border-top: 1px solid var(--rk-line); border-radius: 0; color: var(--rk-ink); background: none; }
+.rl-moment-brief .rl-scout :is(small, b, span) { color: var(--rk-ink-2); }
+.rl-moment-brief .rl-scout span { grid-column: 1 / -1; }
+.rl-moment > .rl-replies { padding: 0 var(--rl-moment-inset) 18px; }
+.rl-moment .rl-moment-tag, .rk .rl-moment-title, .rl-moment .rl-scorebug { left: var(--rl-moment-inset); }
+.rk .rl-moment-title { right: var(--rl-moment-inset); }
+.rl-moment .rl-sb-score { color: var(--rk-ink); }
 .rl-replies-q { margin: 0 0 2px; font-size: 0.84rem; font-weight: 800; color: var(--rk-ink-2); }
 .rl-reply.is-short .rl-tone, .rl-reply.is-edge .rl-tone { color: var(--rk-ink-2); background: var(--rk-line-soft); }
 .rl-reply.is-fast .rl-tone, .rl-reply.is-break .rl-tone { color: #fff; background: var(--rk-accent); }
@@ -1269,11 +1286,11 @@ a.rk-rank-main:hover b { color: var(--rk-accent); }
 .rk-stat-why { margin: -2px 0 6px; font-size: 0.72rem; font-weight: 700; color: var(--rk-fail); }
 
 @media (max-width: 575.98px) {
+    .rl-moment { --rl-moment-inset: 14px; }
     .rl-moment-scene { height: 214px; }
     .rk .rl-moment-title { top: 40px; font-size: 1.12rem; }
     .rl-scorebug { left: 10px; bottom: 22px; gap: 8px; padding: 6px 9px; }
     .rl-sb-score { font-size: 1.05rem; }
-    .rl-scout { top: 72px; right: 10px; bottom: auto; max-width: 72%; }
     .rl-moment-res { padding: 12px 14px; }
     .rl-moment-res h3 { font-size: 1.12rem; }
     .rl-why-list li { padding: 7px 9px; font-size: 0.78rem; }

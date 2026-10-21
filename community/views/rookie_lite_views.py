@@ -180,7 +180,8 @@ def lite_home(request):
         c.flags = {k: v for k, v in c.flags.items() if k not in ('awaken_fx', 'moment_fx', 'award_fx')}
         c.save(update_fields=['flags'])
     ctx.update(mode=pend.get('kind', 'plan'), **_identity(c), seasons=_season_rows(c), awaken_fx=fx, moment_fx=mfx,
-               award_fx=afx, played=c.seasons.count(), quit_min=X.QUIT_MIN_SEASONS)
+               award_fx=afx, played=c.seasons.count(), quit_min=X.QUIT_MIN_SEASONS,
+               playback=pend.get('playback') or {}, board_from=(pend.get('playback') or {}).get('from', 0))
     if pend.get('kind') == 'plan':
         ctx['duty'] = X._duty_now(c)[2]
         ctx.update(shop=X.shop_view(c), coach=X.who_is(c, 'coding'), natl=S.national(X.cal_year(c)))
@@ -205,13 +206,21 @@ def lite_home(request):
                    deltas=[{'label': lab, 'value': (s.deltas or {}).get(k, 0), 'why': ((s.deltas or {}).get('_why') or {}).get(k, [])}
                            for k, lab, _w in R.ROLES[c.role]['stats']] if s else [],
                    moments=pend.get('moments') or [],
-                   drops=[], press=(s.press or []) if s else [],
+                   drops=[], press=(s.press or []) if s else [], reactions=X.season_reactions(c, s) if s else [],
                    splits=[dict(x, lg=W.league(x['league'])['name'], club_name=W.club_short(x['league'], x['club']))
                            for x in (s.splits or [])] if s and len(s.splits or []) > 1 else [],
                    meet_next=bool((c.flags or {}).get('move')))
         ctx['drops'] = [d for d in ctx.get('deltas') or [] if d['value'] < 0]
     elif pend.get('kind') == 'decision':
         ctx['decision'] = X.decision_view(c)
+        if pend.get('what') == 'meeting' and pend.get('phase') == 'mid' and pend.get('half'):
+            sp = pend['half']['splits'][0]
+            code = sp['league']
+            ctx.update(season={'age': c.age, 'duty': sp['duty'], 'months': [
+                {'label': X._chunks(code)[j], 'line': X._short(c.role, sp['chunks'][j] or {}),
+                 'hot': X._hot(c.role, sp['chunks'][j] or {})} for j in range(3)]},
+                season_year=X.cal_year(c), season_league=W.league(code)['name'],
+                season_club=W.club_label(code, sp['club']), season_partial=True)
         if pend.get('what') == 'moment':                     # 정규시즌 전광판을 먼저 다 보고 승부처로
             ctx.update(_board_ctx(c, c.seasons.filter(year=pend.get('year')).first()))
     return render(request, 'community/rookie_lite.html', ctx)

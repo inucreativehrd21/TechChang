@@ -83,6 +83,8 @@
         }
     };
     document.addEventListener('keydown', keydown);
-    play(0);
+    var ticker = document.querySelector('[data-rl-ticker]:not([data-rl-seen])');
+    if (ticker && !calm) ticker.addEventListener('rl:complete', function () { play(0); }, { once: true });
+    else play(0);
 })();
 </script>

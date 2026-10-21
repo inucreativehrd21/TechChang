@@ -261,7 +261,7 @@ def settle_guarantee(p):
     return owed
 
 
-def market_reply(p, event, selected, rng):
+def market_reply(p, event, selected, rng, *, defer_failure=False):
     from . import rookie_story as S
     from . import rookie_pitching as P
     if selected not in [c['key'] for c in event['choices']]:
@@ -289,6 +289,11 @@ def market_reply(p, event, selected, rng):
         chance = clamp(.55 + (p.ovr - top) * .035 - max(0, p.age - 29) * .025, .08, .8)
         if rng.random() < chance:
             return S.change(p, '테스트를 통과해 한 시즌의 경쟁 기회를 얻었어요.', confidence=3)
+        if defer_failure:
+            data = dict(state(p))
+            data['market_test_failed'] = True
+            put(p, data)
+            return '테스트를 통과하지 못했어요. 재정비 기회가 남았다면 낮은 역할에서 다시 준비할 수 있어요.'
     owed = settle_guarantee(p)
     if hasattr(p, 'flags'):
         from .rookie_lite import retire

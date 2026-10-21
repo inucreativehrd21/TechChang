@@ -48,6 +48,7 @@ from . import rookie_world as W
 from . import rookie_story as Story
 from . import rookie_balance_rules as Balance
 from . import rookie_pitching as Pitching
+from .rookie_lite_news import season_features, season_reactions
 
 START_AGE, RETIRE_FROM, RETIRE_AT = 16, 34, 42
 BASE_YEAR = 2026                 # 예전 커리어(flags.start 없음)의 고1 시즌 달력 연도
@@ -1523,7 +1524,10 @@ def resolve_meeting(c, m: dict, choice: str, rng) -> tuple:
                                             duty=duty, **{'from': 3}, chunks=[{} for _ in range(6)]))
         return text, []
     if m.get('market_event'):
-        return Balance.market_reply(c, m['market_event'], choice, rng), []
+        try:
+            return Balance.market_reply(c, m['market_event'], choice, rng, defer_failure=True), []
+        except ValueError as ex:
+            raise LiteError(str(ex)) from ex
     text, items = _resolve_meeting(c, m, choice, rng)
     if (m.get('rival') or {}).get('id'):
         Universe.remember(c, m['rival']['id'], choice, text)
@@ -1738,7 +1742,8 @@ def season_press(c, s, rows: list) -> list:
             out.append(press('', f"{nm}, 제 몫 다한 시즌…다음 시즌 도약 노린다", line))
         else:
             out.append(press('', f"{nm}, 아쉬움 남긴 시즌…‘겨울에 다시 만든다’", line))
-    return out[:6]
+    # 시상 기사만으로 지면이 채워지지 않게 분석·현장·팀 기사도 함께 싣는다.
+    return (out[:3] + season_features(c, s, rows))[:6]
 
 
 # ───────────────────────────── 시즌(전반기 → 올스타 휴식기 면담 → 후반기)
@@ -2606,6 +2611,8 @@ def decide(c, what: str, choice: str, rng, school: str = '') -> str:
         season.save()
         wrap_season(c, season, rng)
         c.pending['moments'] = done
+        if pend.get('playback'):
+            c.pending['playback'] = pend['playback']
         c.flags = dict(c.flags or {}, moment_fx=fx)
         return f"{story} → {d['result']}"
     if what == 'awaken':
@@ -2616,12 +2623,30 @@ def decide(c, what: str, choice: str, rng, school: str = '') -> str:
         text, items = resolve_meeting(c, pend, choice, rng)
         if c.retired_at:
             return text
+        if pend.get('market_event'):
+            if c.flags.pop('market_test_failed', False):
+                event = Balance.market_event(c, pend['market_event'].get('pressure', 0))
+                event['choices'] = [ch for ch in event['choices'] if ch['key'] != 'retry']
+                event.update(title='테스트 결과와 다음 선택', last_rejection=text,
+                             text='남은 길을 직접 골라 주세요. 현역 생활을 마치기로 선택하기 전에는 은퇴하지 않아요.')
+                c.pending = dict(kind='decision', what='meeting', about='career_market', phase='end', market_event=event)
+                return text
+            # 재정비·테스트 합격으로 얻은 시즌을 다른 방출 심사가 곧바로 빼앗지 않게 한다.
+            c.flags['press'] = list(c.flags.get('press') or []) + items
+            c.flags.pop('move', None)
+            c.flags.pop('pin', None)
+            c.ovr = R.overall(c.role, c.stats)
+            c.pending = plan_step(c, rng)
+            _army_tick(c, rng)
+            return text
         if pend.get('phase') == 'mid':
             state = pend['half']
             state['news'].append(text)
             state['press'].extend(items)
             c.pending = {}
             finish_season(c, state, rng)
+            c.pending['playback'] = {'from': 3, 'title': meeting_view(c, pend).get('title', '시즌 중 선택'),
+                                     'text': text}
         elif pend.get('phase') == 'camp':
             c.flags['press'] = list(c.flags.get('press') or []) + items
             c.pending = pend['plan']

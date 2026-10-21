@@ -1,0 +1,8 @@
+{% load rookie_tags %}
+{% if playback.text %}
+<section class="rk-panel rl-choice-result" aria-label="선택 결과" role="status">
+    <h3 class="rk-h3">{{ playback.title|baseball_text }} · 선택 결과</h3>
+    <p>{{ playback.text|baseball_text }}</p>
+    <small>이제 후반기 경기를 이어가요.</small>
+</section>
+{% endif %}

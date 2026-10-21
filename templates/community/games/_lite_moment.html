@@ -10,11 +10,13 @@
             <span class="rl-sb-outs" aria-hidden="true">{% for o in d.outs %}<i class="{% if o %}is-on{% endif %}"></i>{% endfor %}<small>아웃</small></span>
             <span class="rl-diamond" aria-hidden="true"><i class="is-b2{% if d.bases.1 %} is-on{% endif %}"></i><i class="is-b3{% if d.bases.2 %} is-on{% endif %}"></i><i class="is-b1{% if d.bases.0 %} is-on{% endif %}"></i></span>
         </div>
-        <aside class="rl-rival rl-scout" aria-label="스카우팅 리포트"><small>{% if d.side == 'bat' %}상대 {{ d.opp.role }}{% else %}상대 {{ d.opp.role }}{% endif %}</small><b>{{ d.opp.name }}</b><span>{{ d.opp.scout }}</span></aside>
     </div>
-    <div class="rl-dialog">
-        <p class="rl-dialog-name"><b>{{ d.who_name }}</b> {{ d.who_role }}</p>
-        <p class="rl-dialog-text">{{ d.text|baseball_text }}</p>
+    <div class="rl-moment-brief">
+        <div class="rl-dialog">
+            <p class="rl-dialog-name"><b>{{ d.who_name }}</b> {{ d.who_role }}</p>
+            <p class="rl-dialog-text">{{ d.text|baseball_text }}</p>
+        </div>
+        <aside class="rl-rival rl-scout" aria-label="스카우팅 리포트"><small>상대 {{ d.opp.role }}</small><b>{{ d.opp.name }}</b><span>{{ d.opp.scout }}</span></aside>
     </div>
     <div class="rl-replies" role="group" aria-label="{% if d.side == 'bat' %}어떻게 칠까요{% else %}무엇을 던질까요{% endif %}">
         <p class="rl-replies-q">{% if d.side == 'bat' %}어떻게 칠까요? 스카우팅 리포트를 보고 골라 주세요{% else %}무엇을 던질까요? 타자 성향을 보고 골라 주세요{% endif %}</p>

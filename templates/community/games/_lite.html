@@ -194,6 +194,7 @@
         </form>
 
         {% elif mode == 'review' and season %}
+        {% include 'community/games/_lite_choice_result.html' %}
         {% include 'community/games/_lite_board.html' with seen=moments %}
         {% if moments %}
         <section class="rl-moments" aria-label="결정적 순간">
@@ -237,6 +238,12 @@
             <p class="rl-byline">{% include 'community/games/_rookie_staff.html' with who='editor' %}<span><b>승현</b> 야구 기자</span></p>
         </section>
         {% endif %}
+        {% if reactions %}
+        <section class="rk-panel rl-reactions" aria-label="가상 커뮤니티 반응">
+            <div class="rk-head"><h3 class="rk-h3">커뮤니티 반응</h3><small class="rk-fine">게임 속 가상 팬들의 이야기예요</small></div>
+            <ul>{% for reaction in reactions %}<li><b>{{ reaction.name }}</b><p>{{ reaction.text|baseball_text }}</p></li>{% endfor %}</ul>
+        </section>
+        {% endif %}
         {% if season.news %}
         <section class="rk-panel rl-diary" aria-label="시즌 일지">
             <h3 class="rk-h3">시즌 일지</h3>
@@ -249,6 +256,7 @@
         {% elif mode == 'decision' and decision %}
         {% with d=decision %}
         {% if d.what == 'meeting' %}
+        {% if season_partial %}{% include 'community/games/_lite_board.html' with skip_label='바로 상황 보기' %}<div data-rl-scene>{% endif %}
         {% if d.background %}
         {% include 'community/games/_rookie_story_scene.html' with e=d lite=True what='meeting' %}
         {% else %}
@@ -272,11 +280,13 @@
             </div>
         </section>
         {% endif %}
+        {% if season_partial %}</div>{% endif %}
         {% elif d.what == 'negotiation' or d.what == 'contract_optout' %}
         {% include 'community/games/_rookie_story_scene.html' with e=d lite=True what=d.what %}
         {% elif d.what == 'awaken' %}
         {% include 'community/games/_lite_awaken.html' %}
         {% elif d.what == 'moment' %}
+        {% include 'community/games/_lite_choice_result.html' %}
         {% if season %}{% include 'community/games/_lite_board.html' with seen=d.done skip_label='바로 승부처로' %}{% endif %}
         {% include 'community/games/_lite_moment.html' %}
         {% else %}
@@ -507,16 +517,21 @@
     // 결정적 순간이 있는 시즌은 정규시즌을 다 본 뒤에 승부처(.rl-moment)가 뜬다. 이미 본 시즌(data-rl-seen)은 다시 돌지 않는다
     var board = document.querySelector('[data-rl-ticker]');
     if (board && !board.hasAttribute('data-rl-seen') && !(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches)) {
-        var rows = Array.prototype.slice.call(board.querySelectorAll('.rl-month'));
-        var rest = document.querySelectorAll('.rl-final, .rl-moments, .rl-result, .rl-paper, .rl-diary, .rl-next, .rl-moment');
+        var rows = Array.prototype.slice.call(board.querySelectorAll('.rl-month:not([data-rl-row-seen])'));
+        var rest = document.querySelectorAll('.rl-final, .rl-moments, .rl-result, .rl-paper, .rl-reactions, .rl-diary, .rl-next, .rl-moment, [data-rl-scene]');
         board.classList.add('is-playing');
         rows.forEach(function (r) { r.classList.add('rl-wait'); });
-        rest.forEach(function (r) { r.classList.add('rl-wait'); });
+        rest.forEach(function (r) { r.classList.add('rl-wait'); r.inert = true; r.setAttribute('aria-hidden', 'true'); });
         var i = 0, timer;
+        var finished = false;
         var done = function () {
+            if (finished) return;
+            finished = true;
             clearInterval(timer);
             rows.concat(Array.prototype.slice.call(rest)).forEach(function (r) { r.classList.remove('rl-wait'); });
+            rest.forEach(function (r) { r.inert = false; r.removeAttribute('aria-hidden'); });
             board.classList.remove('is-playing');
+            board.dispatchEvent(new Event('rl:complete'));
         };
         timer = setInterval(function () {
             if (i < rows.length) { rows[i].classList.remove('rl-wait'); i += 1; } else { done(); }
