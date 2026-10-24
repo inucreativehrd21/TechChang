@@ -126,13 +126,16 @@ class CurateTests(TestCase):
         calls = []
 
         def ask(key, prompt, **kw):
-            calls.append(prompt)
-            return good(intro='이번 주 추천은 코칭이에요. 조회는 5,321회였어요.') if len(calls) == 1 else good()
+            calls.append((key, prompt))
+            if key == 'critic':
+                return {'must_fix': []}
+            sent = [p for k, p in calls if k == N.CURATOR]
+            return good(intro='이번 주 추천은 코칭이에요. 조회는 5,321회였어요.') if len(sent) == 1 else good()
         copy = N.curate(FACTS, ask_json=ask)
         self.assertEqual(copy['source'], 'curator')
-        self.assertEqual(len(calls), 2)
-        self.assertIn('5,321', calls[1])
-        self.assertIn('수정 횟수·심사 점수·실패담은 쓰지 않습니다', calls[0])
+        self.assertEqual([k for k, _ in calls], [N.CURATOR, N.CURATOR, 'critic'])   # 숫자 날조로 1회 재시도 뒤 평론
+        self.assertIn('5,321', calls[1][1])
+        self.assertIn('수정 횟수·심사 점수·실패담은 쓰지 않습니다', calls[0][1])
 
     def test_falls_back_when_still_wrong_or_failing(self):
         self.assertEqual(N.curate(FACTS, ask_json=lambda *a, **k: good(theme='가' * 40))['source'], 'default')
@@ -148,6 +151,72 @@ class CurateTests(TestCase):
         self.assertTrue(N._problems(good(chat=[{'agent': 'nobody', 'line': '안녕'}] * 3), FACTS))
         self.assertTrue(N._problems(good(chat=[]), FACTS))                     # 회의가 있으면 대화가 있어야
         self.assertEqual(N._problems(N.default_copy(FACTS), FACTS), [])
+
+
+class CriticReviewTests(TestCase):
+    """2026-10-24 — 은혜(큐레이터)가 고른 안건을 은혜가 쓴 문구 그대로 내보내던 것을, 예원(평론가)이
+    한 번 더 보게 한다. '뻔한 이유'·'끊겨 보이는 문장'처럼 기계적으로는 못 거르는 것만 본다."""
+
+    def test_critic_flags_copy_and_curator_rewrites_once(self):
+        calls = []
+
+        def ask(key, prompt, **kw):
+            calls.append(key)
+            if key == 'critic':
+                return {'must_fix': [{'where': '효과 있을까?', 'problem': '뻔한 이유', 'fix': '구체적으로'}]}
+            return good()
+        copy = N.curate(FACTS, ask_json=ask)
+        self.assertEqual(copy['source'], 'curator')
+        self.assertEqual(calls, [N.CURATOR, 'critic', N.CURATOR])
+
+    def test_falls_back_when_review_rewrite_call_fails(self):
+        def ask(key, prompt, **kw):
+            if key == 'critic':
+                return {'must_fix': [{'where': 'x', 'problem': 'y', 'fix': 'z'}]}
+            if '평론가(예원)의 지적' in prompt:
+                raise RuntimeError('재작성 실패')
+            return good()
+        self.assertEqual(N.curate(FACTS, ask_json=ask)['source'], 'default')
+
+    def test_falls_back_when_rewrite_still_breaks_mechanical_rules(self):
+        def ask(key, prompt, **kw):
+            if key == 'critic':
+                return {'must_fix': [{'where': 'x', 'problem': 'y', 'fix': 'z'}]}
+            if '평론가(예원)의 지적' in prompt:
+                return good(theme='가' * 40)       # 다시 써도 길이 규칙을 또 어김
+            return good()
+        self.assertEqual(N.curate(FACTS, ask_json=ask)['source'], 'default')
+
+    def test_critic_call_failure_does_not_block_publishing(self):
+        def ask(key, prompt, **kw):
+            if key == 'critic':
+                raise RuntimeError('평론가 호출 실패')
+            return good()
+        self.assertEqual(N.curate(FACTS, ask_json=ask)['source'], 'curator')
+
+
+class DefaultCopyTruncationTests(TestCase):
+    """2026-10-24 — 위클리 카드에 "...도입 판단에 무엇..." 처럼 문장 중간에서 뚝 끊긴 문구가 나간 사고.
+    default_copy() 의 폴백 문구가 글자 수로만 자르던 것을 단어 경계·완결 문장 기준으로 고쳤다."""
+
+    def test_shortest_fit_prefers_a_candidate_that_already_fits(self):
+        long_one = '아주 길어서 글자수 제한을 넘기는 두 번째 문장입니다 그래서 이건 선택되면 안 됩니다'
+        self.assertEqual(N._shortest_fit(['짧은 문장입니다', long_one], 10, '짧은 문장입니다'), '짧은 문장입니다')
+
+    def test_shortest_fit_cuts_at_a_word_boundary_not_mid_word(self):
+        long = ('스테이징이 없는 jj가 매일 쓰는 Git 작업 여섯 가지를 어떻게 옮기는지, '
+                '1대1 번역이 안 되는 지점이 도입 판단에 무엇을 뜻하는지를 정리했습니다')
+        out = N._shortest_fit([long], 40, long)
+        self.assertLessEqual(len(out), 40)
+        self.assertTrue(out.endswith('…'))
+        body = out[:-1]
+        self.assertTrue(long.startswith(body))
+        self.assertIn(long[len(body):len(body) + 1], ('', ' '))   # 잘린 바로 다음 글자가 공백 — 단어 중간이 아님
+
+    def test_default_copy_why_now_is_a_whole_sentence_when_it_fits(self):
+        facts = {**FACTS, 'picks': [{**PICK, 'summary': '짧은 요약입니다. 두 번째 문장도 짧습니다.'}]}
+        copy = N.default_copy(facts)
+        self.assertEqual(copy['picks']['7']['why_now'], '짧은 요약입니다.')
 
 
 class MakeTests(TestCase):
@@ -180,14 +249,16 @@ class MakeTests(TestCase):
 
     def test_overflow_asks_curator_to_shorten(self):
         r, _ = self.fake_renderer(overflow_first=['theme'])
-        prompts = []
+        calls = []
 
         def ask(key, prompt, **kw):
-            prompts.append(prompt)
-            return quiet()
+            calls.append((key, prompt))
+            return {'must_fix': []} if key == 'critic' else quiet()
         N.make(self.run, ask_json=ask, renderer=r, out=lambda *_: None)
-        self.assertEqual(len(prompts), 2)
-        self.assertIn('넘쳤습니다', prompts[1])
+        curator_prompts = [p for k, p in calls if k == N.CURATOR]
+        self.assertEqual(len(curator_prompts), 2)             # 넘침 전 1회 + 넘침 뒤 다시 쓰기 1회
+        self.assertIn('넘쳤습니다', curator_prompts[1])
+        self.assertEqual([k for k, _ in calls].count('critic'), 2)   # 두 큐레이션 결과 각각 평론가가 봄
 
     def test_dry_run_saves_nothing(self):
         r, state = self.fake_renderer()

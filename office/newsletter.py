@@ -369,6 +369,27 @@ def _fit(s: str, n: int) -> str:
     return s if len(s) <= n else s[:n - 1].rstrip() + '…'
 
 
+def _shortest_fit(cands: list[str], n: int, fallback: str) -> str:
+    """후보 문장·구절 중 n자 이내인 것을 앞에서부터 고른다(보통 첫 문장이 핵심 주장).
+
+    맞는 후보가 하나도 없으면 가장 짧은 후보를 **단어 경계**에서 자른다 — 원래 _fit()처럼
+    문장 중간 아무 글자에서나 끊으면 "...도입 판단에 무엇..." 처럼 말이 안 되는 조각이 남는다.
+    """
+    cands = [re.sub(r'\s+', ' ', c).strip() for c in cands if c and c.strip()]
+    fits = [c for c in cands if len(c) <= n]
+    if fits:
+        return fits[0]            # 순서대로 가장 먼저 맞는 것(보통 요약의 첫 문장이 핵심 주장)
+    pool = cands or [fallback]
+    shortest = min(pool, key=len)
+    if len(shortest) <= n:
+        return shortest
+    cut = shortest[:n - 1]
+    sp = cut.rfind(' ')
+    if sp > n * 0.4:          # 너무 앞에서 자르면 의미가 안 남으니 적당히 뒤쪽일 때만 단어 경계 사용
+        cut = cut[:sp]
+    return cut.rstrip(' ,.;·—') + '…'
+
+
 def default_copy(facts: dict) -> dict:
     """모델 없이 사실만으로 만드는 문구 — 호출 실패·검사 실패 때의 안전판."""
     picks = facts.get('picks') or []
@@ -376,22 +397,81 @@ def default_copy(facts: dict) -> dict:
     intro = (f'연구실이 이번 주 고른 칼럼 {len(picks)}편을 소개해요. 회의에서 왜 이 주제를 골랐는지도 함께 적었어요.'
              if picks else '이번 주에는 새 글 대신 다음 주제를 준비했어요. 다음 주 일정을 확인해 주세요.')
     lines = (facts.get('meeting') or {}).get('lines') or []
-    chat = [{'agent': ln['agent'], 'line': _fit((_sentences(ln['text']) or [''])[0].lstrip('…'), LIMITS['chat'])}
+    chat = [{'agent': ln['agent'],
+             'line': _shortest_fit(_sentences(ln['text']), LIMITS['chat'], (_sentences(ln['text']) or [''])[0])}
             for ln in lines[:CHAT_RANGE[1]]]
     if lines and len(chat) < CHAT_RANGE[0]:
         chat = []
     out = {}
     for p in picks:
         sents = _sentences(p['summary'])
-        pts = [_fit(s, LIMITS['point']) for s in sents[:3]]
-        pts += [_fit(h, LIMITS['point']) for h in p['headings'] if len(pts) < 3]
+        clauses = re.split(r'[,，·;]\s*', sents[0]) if sents else []
+        why_now = _shortest_fit(sents + clauses, LIMITS['why_now'], p['title'])
+        # 포인트는 요약 문장보다 소제목이 짧고 32자 안에 들어올 때가 많다 — 소제목을 먼저 써 본다
+        pts = []
+        for cand in p['headings'] + sents:
+            fitted = _shortest_fit([cand], LIMITS['point'], cand)
+            if fitted not in pts:
+                pts.append(fitted)
+            if len(pts) == 3:
+                break
         while len(pts) < 3:
-            pts.append(_fit('키워드 ' + '·'.join(p['keywords'][:3] or ['칼럼']), LIMITS['point']))
+            pts.append(_shortest_fit([], LIMITS['point'], '키워드 ' + '·'.join(p['keywords'][:3] or ['칼럼'])))
         cat = p['cat'].split('·')[-1].strip()
-        out[str(p['id'])] = {'hook': _fit(p['title'], LIMITS['hook']),
-                             'why_now': _fit((sents[0] if sents else p['title']), LIMITS['why_now']),
+        out[str(p['id'])] = {'hook': _fit(p['title'], LIMITS['hook']), 'why_now': why_now,
                              'points': pts[:3], 'for_whom': _fit(FOR_WHOM.get(cat, '테크창 독자'), LIMITS['for_whom'])}
     return {'theme': theme, 'intro': _fit(intro, LIMITS['intro']), 'chat': chat, 'picks': out, 'source': 'default'}
+
+
+# 큐레이터(은혜)는 이번 주 안건을 고른 당사자이기도 하다 — 자신이 고른 안건을 자신이 쓴 문구로
+# 그대로 내보내면 기획 단계의 착오(뻔한 이유, 끊겨 보이는 문장)를 걸러낼 사람이 없다(agents.py 의
+# 팀장/편집장 분리와 같은 이유). 그래서 예원(평론가 — "독자가 읽을 이유가 있는가")이 완성된 문구를
+# 한 번 더 본다. 레이아웃 넘침·숫자 날조처럼 기계적으로 잴 수 있는 것은 여기서 다시 보지 않는다 —
+# 그건 이미 _problems()/OVERFLOW_JS 가 코드로 더 정확히 잰다. 평론가는 길이가 아니라 "말이 되는가"만 본다.
+REVIEW_PROMPT = (
+    '방금 큐레이터(은혜)가 쓴 연구실 위클리 문구를 평론가로서 검토합니다. 당신은 이번 주 안건을 고르지 '
+    '않았으니 문구가 독자에게 통하는지를 그대로 봅니다.\n'
+    '다음만 확인하세요(길이·글자 수는 이미 따로 검사했으니 보지 않습니다):\n'
+    '① 글자 수를 맞추려 뚝 자른 티가 나서 중간에 끊긴 것처럼 읽히는 문장이 있는지\n'
+    '② why_now 가 독자의 일·업계에서 지금 필요한 구체적 이유인지, "유용합니다" 같은 뻔한 소리뿐인지\n'
+    '③ for_whom 이 이 글에 맞게 구체적인지, 아무 글에나 붙여도 되는 문구는 아닌지\n'
+    '④ theme·intro·picks 가 서로 들어맞는 하나의 이야기로 읽히는지\n\n'
+    '지적할 때는 반드시 문제의 문구를 그대로 인용하세요. 사소한 취향 차이로 막지 말고, 위 네 가지에 '
+    '뚜렷이 해당할 때만 지적하세요.\n\n'
+    '[이번 주 사실]\n{facts}\n\n[큐레이터 문구]\n{copy}\n\n'
+    '출력 JSON: {{"must_fix": [{{"where": "문제의 문구를 그대로 인용", "problem": "무엇이 문제인지", '
+    '"fix": "어떻게 고치는지"}}]}}\n문제가 없으면 "must_fix": [] 로 답하세요.'
+)
+
+
+def _review(facts: dict, copy: dict, ask_json) -> dict:
+    """예원의 검토 — 호출 실패는 통과로 간주한다(평론 자체가 위클리 발행을 막는 새 실패 지점이 되지 않게)."""
+    try:
+        out = ask_json('critic', REVIEW_PROMPT.format(
+            facts=_facts_text(facts), copy=json.dumps(copy, ensure_ascii=False, indent=1)), max_tokens=1800)
+    except Exception as exc:  # noqa: BLE001
+        logger.warning('위클리 평론 실패 — 통과로 간주: %s', exc)
+        return {}
+    return out if isinstance(out, dict) else {}
+
+
+def _pass_review(facts: dict, copy: dict, ask_json) -> dict | None:
+    """평론가 지적이 있으면 큐레이터에게 한 번만 다시 쓰게 한다. 그래도 안 되면 None(기본 문구로)."""
+    from office import review_protocol as RP
+    review = _review(facts, copy, ask_json)
+    must_fix = RP.must_fix_items(review) if review.get('must_fix') else []
+    if not must_fix:
+        return copy
+    note = ('\n\n평론가(예원)의 지적 — 독자가 읽을 이유가 있는지를 봤습니다: '
+            + '; '.join(RP.as_line(m) for m in must_fix) + '. 고쳐서 다시 내세요.')
+    try:
+        revised = ask_json(CURATOR, PROMPT.format(
+            facts=_facts_text(facts), agents=', '.join(AGENT_ORDER), retry=note, **LIMITS), max_tokens=3500)
+    except Exception as exc:  # noqa: BLE001
+        logger.warning('위클리 재작성 실패: %s', exc)
+        return None
+    revised = revised if isinstance(revised, dict) else {}
+    return None if _problems(revised, facts) else revised
 
 
 def curate(facts: dict, *, ask_json=None, shorten: list | None = None) -> dict:
@@ -401,6 +481,7 @@ def curate(facts: dict, *, ask_json=None, shorten: list | None = None) -> dict:
     if shorten:
         retry = '\n\n직전 문구가 카드 칸을 넘쳤습니다. 다음을 더 짧게: ' + ', '.join(shorten)
     probs = []
+    copy = None
     for _ in range(2):
         try:
             copy = ask_json(CURATOR, PROMPT.format(
@@ -411,11 +492,18 @@ def curate(facts: dict, *, ask_json=None, shorten: list | None = None) -> dict:
         copy = copy if isinstance(copy, dict) else {}
         probs = _problems(copy, facts)
         if not probs:
-            copy['source'] = 'curator'
-            return copy
+            break
         retry = '\n\n직전 문구의 문제: ' + '; '.join(probs) + '. 고쳐서 다시 내세요.'
-    logger.warning('위클리 문구 검사 실패 — 기본 문구 사용: %s', probs)
-    return default_copy(facts)
+    else:
+        logger.warning('위클리 문구 검사 실패 — 기본 문구 사용: %s', probs)
+        return default_copy(facts)
+
+    reviewed = _pass_review(facts, copy, ask_json)
+    if reviewed is None:
+        logger.warning('위클리 문구 평론 실패 — 기본 문구 사용')
+        return default_copy(facts)
+    reviewed['source'] = 'curator'
+    return reviewed
 
 
 # ───────────────────────────── 카드 렌더
