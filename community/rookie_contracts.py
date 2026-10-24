@@ -49,7 +49,7 @@ def assignment_choices(p):
     out = [dict(key='accept', label='트리플A에서 다시 증명할게요', tone='마이너 수용',
                 hint='MLB 등록 기간인 서비스타임이 쌓이지 않아요. 스플릿 계약이면 마이너 체류 기간의 연봉도 줄어요')]
     if veto(p):
-        out.append(dict(key='refuse', label='계약의 마이너 거부권을 행사할게요', tone='권리 행사',
+        out.append(dict(key='refuse', label='마이너 거부권을 행사할게요', tone='권리 행사',
                         hint='마이너행은 막지만 MLB에서 벤치·롱릴리프 역할을 맡아요. 출전과 성장 기회가 줄 수 있어요'))
     else:
         out.append(dict(key='appeal', label='에이전트를 통해 재고를 요청할게요', tone='보장 없는 호소',
@@ -79,7 +79,7 @@ def assignment_reply(p, choice, rng, season):
     else:
         data.pop('mlb_bench_season', None)
         p.league = 'mlb_aaa'
-        text = '트리플A로 내려갔어요. MLB 서비스타임이 멈추고, 메이저 무대의 수상·성적 기회도 줄어요.'
+        text = '트리플A로 내려갔어요. MLB 서비스타임이 멈추고, MLB 무대의 수상·성적 기회도 줄어요.'
         if active(p).get('split'):
             text += ' 스플릿 계약이라 마이너 체류 기간에는 낮은 연봉을 받아요.'
     S.put(p, data)
@@ -148,7 +148,7 @@ def optout_reply(p, choice):
         d['optout_seen'] = d['elapsed']
         data['contract'] = d
         S.put(p, data)
-        return '남은 보장 연봉과 원소속 구단을 선택했어요.'
+        return '현재 계약을 유지해요. 남은 보장 연봉과 소속 구단은 그대로예요.'
     data['last_contract'] = dict(d, ended='optout')
     data.pop('contract', None)
     data.pop('mlb_bench_season', None)

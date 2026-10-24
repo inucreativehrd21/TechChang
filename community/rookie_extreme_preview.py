@@ -21,7 +21,7 @@ def random_for(c, purpose):
 def advance(c, expected_token, *, allow_lite=False):
     """전용 사건은 직접 답하고 일반 경기·진로는 자동 진행해 다음 비시즌에 멈춰요."""
     if (not Modes.is_extreme(c) and not (allow_lite and c.mode == Modes.LITE)) or c.retired_at or token(c) != expected_token:
-        raise E.ExtremeError('이미 진행했거나 다른 화면이에요. 현재 화면을 다시 확인해 주세요.')
+        raise E.ExtremeError('이미 처리했거나 바뀐 장면이에요. 현재 화면을 다시 확인해 주세요.')
     if (c.pending or {}).get('kind') != 'plan':
         raise E.ExtremeError('현재 비시즌 화면을 다시 확인해 주세요.')
     if E.event_view(c):

@@ -8,10 +8,11 @@ import random
 
 from . import rookie_sim as M
 from . import rookie_world as W
+from .rookie_text import josa
 from . import rookie_contracts as Contracts
 from . import rookie_universe as Universe
 
-LABELS = {'confidence': '자신감', 'trust': '감독 신뢰', 'discipline': '자기 관리', 'fame': '인기', 'intl_rep': '국제무대 평판'}
+LABELS = {'confidence': '자신감', 'trust': '감독 신뢰', 'discipline': '자기 관리', 'fame': '인기', 'intl_rep': '국제 평판'}
 
 
 def clamp(n, lo=0, hi=100):
@@ -49,7 +50,8 @@ def change(p, reason, **deltas):
         data[key] = after
         actual = round(after - before, 1)
         if actual:
-            changes.append(f'{LABELS[key]} {actual:+g}')
+            changes.append(f'{LABELS[key]} {actual:+g}'.replace('-', '−'))
+    reason = str(reason).rstrip(' .')           # 마침표로 끝난 문장 뒤에 ' — ' 가 붙지 않게
     text = reason + (' — ' + ' · '.join(changes) if changes else '')
     data['story_log'] = (list(data.get('story_log') or []) + [text])[-8:]
     put(p, data)
@@ -96,7 +98,7 @@ def view(p):
 
 
 CHOICES = {
-    'manager': [('team_work', '맡은 역할에서 증명할게요', '신뢰', '팀의 믿음을 얻지만, 더 큰 역할을 요구할 자신감은 한발 접어요'),
+    'manager': [('team_work', '맡은 역할에서 증명할게요', '신뢰', '감독 신뢰를 얻지만, 더 큰 역할을 요구할 자신감은 한발 접어요'),
                 ('request_role', '더 중요한 역할을 맡겨 주세요', '도전', '기회를 앞당길 수 있지만, 준비가 부족하면 신뢰까지 잃어요'),
                 ('extra_work', '추가 훈련 계획을 세울게요', '준비', '훈련 루틴을 다지는 대신, 당장 실력을 증명할 자신감은 낮아져요')],
     'interview': [('team', '동료와 코치 덕분이에요', '동료', '팀의 신뢰를 얻는 대신, 내 존재감과 자신감은 한발 접어요'),
@@ -265,7 +267,8 @@ def posting_offers(p, rng):
         entry = eligible[system]
         _t, recent_war, _games = B.recent(p)
         annual = int(B.annual(p, entry, recent_war, 6) * (.9 + i * .08))
-        role = '주전 경쟁' if entry in W.TOP_LEAGUES else '마이너 선발 경쟁' if p.role == 'pitcher' else '마이너 출전 경쟁'
+        farm = '2군' if entry == 'npb2' else '마이너'
+        role = '주전 경쟁' if entry in W.TOP_LEAGUES else f'{farm} 선발 경쟁' if p.role == 'pitcher' else f'{farm} 출전 경쟁'
         deal = dict(key=club, team=club, system=system, entry_league=entry,
                     years=B.contract_years(p, recent_war) if entry in W.TOP_LEAGUES else 1,
                     annual=annual, budget=round(annual * 1.12),
@@ -307,7 +310,7 @@ def negotiate(p, deal, choice, rng):
         if updated.get('entry_league', 'mlb') != 'mlb' and updated.get('minor_annual'):
             updated['minor_annual'] = round(updated['minor_annual'] * .9)
     elif choice == 'role':
-        updated['role'] = '핵심 선수' if updated.get('entry_league', 'mlb') in W.TOP_LEAGUES else '마이너 핵심 선수'
+        updated['role'] = '핵심 선수' if updated.get('entry_league', 'mlb') in W.TOP_LEAGUES else ('2군 핵심 선수' if updated.get('entry_league') == 'npb2' else '마이너 핵심 선수')
     elif choice in ('minor_veto', 'veto_discount'):
         updated['minor_veto'] = True
         if choice == 'veto_discount':
@@ -486,7 +489,7 @@ def daily_reply(p, event_id, choice, rng, today):
             put(p, data)
             C._reset_role(p, today)
             C._path(p, target, p.club, today)
-            return change(p, f'{W.PRO_TEAM[p.club]["name"]}와 해외 계약에 성공했어요', confidence=8)
+            return change(p, f'{W.PRO_TEAM[p.club]["name"]}{josa(W.PRO_TEAM[p.club]["name"], "와/과")} 해외 계약에 성공했어요', confidence=8)
         put(p, data)
         return change(p, '해외 협상이 결렬됐어요. KBO에 남아 준비해요.', confidence=-6)
     text = resolve(p, event, choice, rng)

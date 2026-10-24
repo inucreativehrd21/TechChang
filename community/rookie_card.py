@@ -210,10 +210,10 @@ def main_card(p) -> dict:
     return {'palette': _palette(league, club), 'team_prefix': prefix, 'team_nick': nick or team_name,
             'jersey': _jersey_name(p.name), 'serial': f'{p.pk:04d}', 'tier': tier, 'tier_label': tier_label,
             'years': f'{_ym(timezone.localtime(p.created_at))}–{_ym(end)}', 'seasons': seasons, 'stats': stats,
-            'keys': [('최상위 WAR', round(sum(r.war for r in pro if r.league in W.TOP_LEAGUES), 1)), ('최고 OVR', best_ovr), ('쌓은 TP', f'{p.tp_earned:,}')],
+            'keys': [('최상위 리그 WAR', round(sum(r.war for r in pro if r.league in W.TOP_LEAGUES), 1)), ('최고 OVR', best_ovr), ('쌓은 TP', f'{p.tp_earned:,}')],
             'honors': [{'n': mvp, 'label': 'MVP'}, {'n': gg, 'label': gg_label}, {'n': titles, 'label': '타이틀'},
                        {'n': best9, 'label': '베스트 9'}, {'n': miles, 'label': '이정표'}],
             'best': best, 'clubs': clubs[:5], 'more_clubs': max(0, len(clubs) - 5), 'peak_short': W.short(peak),
             'epithet': ep, 'war': round(sum(r.war for r in pro), 1),
-            'headline': {'tag': '[은퇴]', 'title': f"{'‘' + ep + '’ ' if ep else ''}{p.name}, {seasons}시즌 현역 마침표…박수 받으며 떠난다"},
+            'headline': {'tag': '[은퇴]', 'title': f"{'‘' + ep + '’ ' if ep else ''}{p.name}, " + (f"{seasons}시즌 선수 생활 마침표…박수 받으며 떠난다" if seasons else "선수 생활 마침표…그라운드와 작별")},
             'identity': R.identity(p)}

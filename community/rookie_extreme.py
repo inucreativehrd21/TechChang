@@ -103,8 +103,8 @@ def event_view(c):
     rival = next(r for r in state['rivals'] if r['id'] == event['rival'])
     event.update(id=pending['id'], key=pending['key'], year=pending['year'], rival=deepcopy(rival),
                  success_percent=round(max(.2, min(.8, .5 + (c.ovr - rival['level']) / 60)) * 100))
-    event['success_effects'] = '성공하면 능력치 2개 최대 +3, 신뢰 +4 추가'
-    event['failure_effects'] = '실패하면 능력치 2개 최대 −4, 이번 시즌 훈련 보정 −35%, 부상 위험 +6%p, 신뢰 −7 추가'
+    event['success_effects'] = '성공하면 능력치 2개 최대 +3, 감독 신뢰 +4 추가'
+    event['failure_effects'] = '실패하면 능력치 2개 최대 −4, 이번 시즌 훈련 보정 −35%, 부상 위험 +6%p, 감독 신뢰 −7 추가'
     return event
 
 
@@ -116,7 +116,7 @@ def apply_choice(c, event_id, choice_key, rng):
     state = deepcopy((c.flags or {}).get('extreme') or {})
     pending = state.get('pending') or {}
     if pending.get('year') != c.year or not secrets.compare_digest(str(pending.get('id', '')), str(event_id)):
-        raise ExtremeError('이미 답했거나 다른 시즌의 장면이에요. 현재 화면을 다시 확인해 주세요.')
+        raise ExtremeError('이미 처리했거나 바뀐 장면이에요. 현재 화면을 다시 확인해 주세요.')
     event = EVENTS[pending['key']]
     picked = next((x for x in event['choices'] if x['key'] == choice_key), None)
     if picked is None:
@@ -178,7 +178,7 @@ def resolve(career_id, user, event_id, choice_key, rng):
                                         flags__extreme__pending__id=event_id).update(flags=c.flags, stats=c.stats, ovr=c.ovr,
                                                                                   best_ovr=c.best_ovr, updated_at=timezone.now())
     if changed != 1:
-        raise ExtremeError('이미 답했거나 조건이 바뀐 장면이에요. 현재 화면을 다시 확인해 주세요.')
+        raise ExtremeError('이미 처리했거나 바뀐 장면이에요. 현재 화면을 다시 확인해 주세요.')
     return result
 
 

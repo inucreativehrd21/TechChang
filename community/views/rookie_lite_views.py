@@ -200,7 +200,7 @@ def _save_plan_draft(c, data):
     if '_draft_key' not in data:
         return
     if (c.pending or {}).get('kind') != 'plan' or data['_draft_key'] != _plan_key(c):
-        raise X.LiteError('다른 시즌의 화면이에요. 현재 화면을 다시 확인해 주세요.')
+        raise X.LiteError('이미 처리했거나 바뀐 장면이에요. 현재 화면을 다시 확인해 주세요.')
     allowed = {p[0] for p in X.PROGRAMS[c.role]} - set(X.train_rules(c)['locked'])
     programs = list(dict.fromkeys(p for p in data.getlist('_draft_program') if p in allowed))[:2]
     event = (c.pending or {}).get('event')
@@ -364,7 +364,7 @@ def lite_act(request):
                 if pend.get('encounter') or pend.get('what') in ('negotiation', 'contract_optout', 'bloom', 'bloom_result') or (pend.get('what') == 'posting' and pend.get('offers')) or (pend.get('what') == 'meeting' and (X.decision_view(c) or {}).get('contract_scene')):
                     expected = (X.decision_view(c) or {}).get('id')
                     if expected != request.POST.get('event_id', ''):
-                        raise X.LiteError('이미 답했거나 조건이 바뀐 장면이에요. 현재 화면을 다시 확인해 주세요.')
+                        raise X.LiteError('이미 처리했거나 바뀐 장면이에요. 현재 화면을 다시 확인해 주세요.')
                 text = X.decide(c, request.POST.get('what', ''), request.POST.get('choice', ''), rng,
                                 school=request.POST.get('school', ''))
                 if text and c.pending.get('playback'):
@@ -507,7 +507,7 @@ def _card(c) -> dict:
     team_name = W.club_label(c.league, c.club)
     prefix, _sp, nick = team_name.rpartition(' ')
     return {'palette': _palette(c.league, c.club), 'team_prefix': prefix, 'team_nick': nick or team_name,
-            'keys': [('최상위 WAR', X.Balance.totals(c)['war']), ('최고 OVR', round(best_ovr, 1)), ('통산 수입', money)],
+            'keys': [('최상위 리그 WAR', X.Balance.totals(c)['war']), ('최고 OVR', round(best_ovr, 1)), ('통산 수입', money)],
             'jersey': _jersey_name(c.name), 'serial': f'{c.pk:04d}',
             'tier': tier, 'tier_label': tier_label, 'line': total, 'war': round(sum(s.war for s in pro), 1), 'money': money,
             'best_ovr': round(best_ovr, 1), 'years': f'{first}–{last}', 'seasons': len(played),

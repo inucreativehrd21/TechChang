@@ -26,3 +26,37 @@ def display(value):
     for before, after in DISPLAY_ALIASES:
         result = result.replace(before, after)
     return result
+
+
+# ───────────────────────────── 조사(받침에 따라)
+_LETTER_BATCHIM = set('LMNRlmnr')
+_DIGIT_BATCHIM = {'0': 'ㅇ', '1': 'ㄹ', '3': 'ㅁ', '6': 'ㄱ', '7': 'ㄹ', '8': 'ㄹ'}
+
+
+def josa(word: str, pair: str) -> str:
+    """받침에 맞는 조사 — pair '이/가'·'을/를'·'은/는'·'와/과'·'으로/로'. 괄호 안 글자는 빼고 본다."""
+    w = (word or '').split('(')[0].rstrip(' ‘’\'"')
+    ch = w[-1:] if w else ''
+    batchim, rieul = False, False
+    if '가' <= ch <= '힣':
+        jong = (ord(ch) - 0xAC00) % 28
+        batchim, rieul = jong != 0, jong == 8
+    elif ch in _DIGIT_BATCHIM:
+        batchim, rieul = True, _DIGIT_BATCHIM[ch] == 'ㄹ'
+    elif ch in _LETTER_BATCHIM:
+        batchim, rieul = True, ch in 'LRlr'
+    first, second = pair.split('/')
+    if pair == '으로/로':
+        return '로' if (not batchim or rieul) else '으로'
+    if pair in ('이/가', '을/를', '은/는', '과/와'):
+        return first if batchim else second
+    return second if batchim else first          # '와/과' 처럼 받침 없는 쪽을 앞에 쓴 경우
+
+
+# ───────────────────────────── 가상 인물 이름 안전망(실존 정치인·이름난 야구인과 겹치지 않게)
+def is_real_person(name: str) -> bool:
+    """가상 경쟁자·로스터 이름이 막아 둔 실존 인물(정치인·역대 대통령, 이름난 야구인)과 겹치는지."""
+    from . import rookie_names as N          # 지연 import — 이 모듈은 다른 모듈에 기대지 않게 둔다
+    from . import rookie_staff as S
+    name = (name or '').strip()
+    return bool(name) and (N.blocked(name) or name in S.FAMOUS)

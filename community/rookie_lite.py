@@ -53,6 +53,7 @@ from . import rookie_pitching as Pitching
 from . import rookie_handedness as Hands
 from . import rookie_bloom as Bloom
 from .rookie_lite_news import season_features, season_reactions
+from .rookie_text import is_real_person, josa  # noqa: F401  (조사 도우미는 rookie_text 로 옮김 — 기존 rookie_lite.josa 호환)
 
 START_AGE, RETIRE_FROM, RETIRE_AT = 16, 34, 42
 BASE_YEAR = 2026                 # 예전 커리어(flags.start 없음)의 고1 시즌 달력 연도
@@ -323,7 +324,7 @@ def scout_stars(c) -> int:
     return 5 if p >= 84 else 4 if p >= 77 else 3 if p >= 68 else 2 if p >= 61 else 1
 
 
-STAR_NOTE = {5: '메이저리그 재목', 4: '리그 간판감', 3: '1군 주전감', 2: '1군 백업감', 1: '갈 길이 멀다'}
+STAR_NOTE = {5: 'MLB 재목', 4: '리그 간판감', 3: '1군 주전감', 2: '1군 백업감', 1: '갈 길이 멀다'}
 
 
 # ───────────────────────────── 비시즌 — 훈련과 이벤트
@@ -449,8 +450,8 @@ def _event_hint(c, code, choice, fallback):
     hints = {
         'form': ('새 폼으로 강점을 끌어낼 수 있어요. 몸에 붙지 않으면 익숙했던 감각도 잃어요',
                  '지금의 감각을 지켜요. 교정 기회를 보내며 자신감은 조금 흔들려요'),
-        'mentor': (f'{learn}를 배워요. 남의 루틴에 맞추느라 내 훈련 리듬은 흐트러져요',
-                   f'{solo}를 내 방식대로 다져요. 초대를 거절한 만큼 코치진의 신뢰는 조금 내줘요'),
+        'mentor': (f"{learn}{josa(learn, '을/를')} 배워요. 남의 루틴에 맞추느라 내 훈련 리듬은 흐트러져요",
+                   f"{solo}{josa(solo, '을/를')} 내 방식대로 다져요. 초대를 거절한 만큼 코치진의 신뢰는 조금 내줘요"),
         'camp': ('새 환경에서 강점을 밀어 올려요. 빡빡한 일정만큼 부상 부담도 커져요',
                  '회복에 시간을 써요. 해외 노출과 새 환경에 도전할 자신감은 양보해요'),
         'position': ('타격에 쓸 여유를 얻어요. 낯선 수비 위치에서 자신감이 흔들려요',
@@ -898,7 +899,7 @@ def cash(c) -> int:
 def _spend(c, amount: int, what: str):
     have = cash(c)
     if amount > have:
-        raise LiteError(f"{what}{josa(what, '을/를')} 사기엔 돈이 모자라요. 보유 현금은 {man(have)}이에요.")
+        raise LiteError(f"{what}에 쓸 돈이 모자라요. 보유 현금은 {man(have)}이에요.")
     c.flags = dict(c.flags or {})
     c.flags['cash'] = have - amount
 
@@ -1157,7 +1158,7 @@ def buy(c, item: str, code: str) -> str:
         c.flags['camp'] = c.year
         up = round(c.stats[code] - old, 1)
         return (f"해외 전지훈련을 다녀왔어요 — {labels[code]} +{up:g}" if up > 0
-                else f"해외 전지훈련을 다녀왔지만 {labels[code]}{josa(labels[code], '은/는')} 이미 잠재력 끝이에요")
+                else f"해외 전지훈련을 다녀왔지만 {labels[code]}{josa(labels[code], '은/는')} 이미 한계에 닿아 있어요")
     if item == 'fan':
         if f.get('fan') == c.year:
             raise LiteError('팬 감사 이벤트는 비시즌에 한 번이에요.')
@@ -1184,31 +1185,6 @@ def buy(c, item: str, code: str) -> str:
         c.flags['invest'] = {'year': c.year, 'amount': amount}
         return f'지인 사업에 {man(amount)}을 맡겼어요 — 결과는 시즌이 끝나면 나와요'
     raise LiteError('살 물건을 다시 골라 주세요.')
-
-
-# ───────────────────────────── 조사(받침에 따라)
-_LETTER_BATCHIM = set('LMNRlmnr')
-_DIGIT_BATCHIM = {'0': 'ㅇ', '1': 'ㄹ', '3': 'ㅁ', '6': 'ㄱ', '7': 'ㄹ', '8': 'ㄹ'}
-
-
-def josa(word: str, pair: str) -> str:
-    """받침에 맞는 조사 — pair '이/가'·'을/를'·'은/는'·'와/과'·'으로/로'. 괄호 안 글자는 빼고 본다."""
-    w = (word or '').split('(')[0].rstrip(' ‘’\'"')
-    ch = w[-1:] if w else ''
-    batchim, rieul = False, False
-    if '가' <= ch <= '힣':
-        jong = (ord(ch) - 0xAC00) % 28
-        batchim, rieul = jong != 0, jong == 8
-    elif ch in _DIGIT_BATCHIM:
-        batchim, rieul = True, _DIGIT_BATCHIM[ch] == 'ㄹ'
-    elif ch in _LETTER_BATCHIM:
-        batchim, rieul = True, ch in 'LRlr'
-    first, second = pair.split('/')
-    if pair == '으로/로':
-        return '로' if (not batchim or rieul) else '으로'
-    if pair in ('이/가', '을/를', '은/는', '과/와'):
-        return first if batchim else second
-    return second if batchim else first          # '와/과' 처럼 받침 없는 쪽을 앞에 쓴 경우
 
 
 # ───────────────────────────── 훈련 가드레일(같은 판을 똑같이 돌리지 않게, 2026-10-18 사용자 요청)
@@ -1454,7 +1430,24 @@ def rival_name(league: str, rng) -> str:
     if sysname in ABROAD_NAMES:
         a, b, sep = ABROAD_NAMES[sysname]
         return f'{rng.choice(a)}{sep}{rng.choice(b)}'
-    return rng.choice(SURNAMES) + rng.choice(GIVEN) + rng.choice(GIVEN)
+    for _ in range(RIVAL_NAME_TRIES):                        # 실존 인물과 겹치면 같은 rng 로 다시 뽑는다(씨앗별 결정성 유지)
+        name = rng.choice(SURNAMES) + rng.choice(GIVEN) + rng.choice(GIVEN)
+        if not is_real_person(name):
+            return name
+    return _safe_rival_name()
+
+
+RIVAL_NAME_TRIES = 20
+
+
+def _safe_rival_name() -> str:
+    """다시 뽑기가 계속 실패할 때의 고정 이름 — 조합을 순서대로 훑어 처음 안전한 이름."""
+    for s in SURNAMES:
+        for g in GIVEN:
+            for h in GIVEN:
+                if g != h and not is_real_person(s + g + h):
+                    return s + g + h
+    return '김민준'
 
 
 def make_rival(c, league: str, kind: str, rng) -> dict:
@@ -1463,18 +1456,18 @@ def make_rival(c, league: str, kind: str, rng) -> dict:
 
 
 def _want(c) -> str:
-    return '주전' if c.role == 'batter' else ('선발' if c.position == 'SP' else '필승조')
+    return '주전' if c.role == 'batter' else ('선발' if c.position == 'SP' else '셋업맨')
 
 
 STUBBORN_HINT = '성적이 받쳐 주면 통하지만, 아니면 역효과가 나요'
 MEET_CHOICES = {
     **{kind: (lambda c, kind=kind: Story.choices(c, kind)) for kind in ('highlight', 'manager', 'interview', 'conduct', 'rival')},
-    'promote': lambda c: [('accept', '맡겨 주시는 자리에서 뭐든 할게요', '승격', '높은 무대에 올라가요. 원하는 보직이 아닐 수 있고 경쟁도 거세져요'),
-                          ('demand', f'{_want(c)} 자리가 아니면 안 올라갈래요', '조건', '원하는 역할까지 노려요. 설득에 실패하면 콜업과 감독의 믿음을 잃어요')],
+    'promote': lambda c: [('accept', '맡겨 주시는 자리에서 뭐든 할게요', '콜업', '높은 무대에 올라가요. 원하는 보직이 아닐 수 있고 경쟁도 거세져요'),
+                          ('demand', f'{_want(c)} 자리가 아니면 안 올라갈래요', '조건', '원하는 역할까지 노려요. 설득에 실패하면 콜업과 감독 신뢰를 잃어요')],
     'demote': lambda c: [('accept', '받아들일게요. 내려가서 감을 찾아올게요', '재정비', '신뢰를 지키며 다시 준비해요. 당장 뛰는 무대는 낮아져요'),
                          ('argue', '여기서 이겨 내고 싶어요. 한 번만 더 기회를 주세요', '잔류', '현재 무대에 남을 기회를 걸어요. 거절되면 강등에 불화까지 남아요'),
                          ('trade', '차라리 트레이드해 주세요', '새 팀', '환경을 바꿔 보지만, 받아 줄 팀이 없으면 관계만 틀어져요')],
-    'role_down': lambda c: [('accept', '팀을 위해서라면 할게요', '적응', '감독의 믿음은 지켜요. 중요한 상황에서 뛸 기회는 줄어들어요'),
+    'role_down': lambda c: [('accept', '팀을 위해서라면 할게요', '적응', '감독 신뢰는 지켜요. 중요한 상황에서 뛸 기회는 줄어들어요'),
                             ('argue', '제 자리를 지키고 싶어요', '고수', '익숙한 보직을 지킬 수 있어요. 설득에 실패하면 출전과 신뢰를 함께 잃어요')],
     'role_up': lambda c: [('accept', '기대에 꼭 보답할게요', '책임', '더 중요한 승부를 맡아요. 상대와 부담도 그만큼 무거워져요'),
                           ('modest', '아직 부족해요. 지금 자리에서 더 배울게요', '유지', '익숙한 보직에서 배우지만, 도약할 기회와 자신감은 한발 내줘요')],
@@ -1528,7 +1521,7 @@ def meeting_view(c, m) -> dict:
         text = f"{r['name']} 선수가 {sc['why']}. 후반기엔 {duty} 자리를 맡아 줘요."
     elif about == 'promote':
         title = f"{W.short(m['to'])} 콜업"
-        text = (f"{to_name} {r['pos']} {r['name']} 선수가 부진해요({r['line']}). 전반기 {m['line']}, 지금 {feel}이면 충분하대요. 올라갈 준비 됐죠?"
+        text = (f"{to_name} {r['pos']} {r['name']} 선수가 부진해요({r['line']}). 전반기 {m['line']}, 지금 {feel} 정도면 충분하대요. 올라갈 준비 됐죠?"
                 if mid else f"시즌 내내 지켜봤어요({m['line']}). 다음 시즌엔 {to_name}에서 시작해요. 올라갈 준비 됐죠?")
     elif about == 'demote':
         title = f"{W.short(m['to'])}행 통보"
@@ -1660,7 +1653,7 @@ def _resolve_meeting(c, m: dict, choice: str, rng) -> tuple:
             _move(c, to)
             if rng.random() < 0.55:
                 out.append(press('[단독]', f"{nm}, {lg}행 통보에 감독실서 언성…불화설 솔솔"))
-            return '감독의 마음은 바뀌지 않았어요 — 분위기만 나빠졌어요', out
+            return '감독의 결정은 바뀌지 않았어요 — 감독 신뢰만 깎였어요', out
         sysname = W.system_of(c.league)
         if _sticks(merit, 0.6, rng) and sysname in W.SYSTEM_TEAMS:
             Contracts.transfer(c, rng.choice([t for t, _n, _col in W.SYSTEM_TEAMS[sysname] if t != c.club]))
@@ -1997,8 +1990,8 @@ def break_meeting(c, state, rng) -> dict | None:
 # 실존 인물·사건이 아니라 흔한 꼴만 빌렸다 — 이름은 가상 경쟁자(make_rival). (코드, 짧은 말, 기사 머리, 기사 제목, 감독 대사)
 SCANDALS = (
     ('dating', '열애설', '[단독]', '{r}, 아이돌과 열애설…‘요즘 야구가 손에 안 잡힌다’', '열애설이 터진 뒤로 도무지 집중을 못 해요'),
-    ('casino', '원정 도박', '[충격]', '{r}, 원정 숙소 빠져나가 카지노行 들통…잔여 시즌 출장 정지', '원정 가서 카지노를 드나든 게 들통나서 출장 정지를 받았어요'),
-    ('arcade', '게임장 출입', '[논란]', '{r}, 전지훈련지 게임장 출입 영상 확산…구단 “자체 징계”', '전지훈련 때 게임장에 드나든 영상이 퍼져서 징계를 받았어요'),
+    ('casino', '원정 도박', '[충격]', '{r}, 원정 숙소 빠져나가 카지노 출입 들통…잔여 시즌 출장 정지', '원정 가서 카지노를 드나든 게 들통나서 출장 정지를 받았어요'),
+    ('arcade', '게임장 출입', '[논란]', '{r}, 전지훈련지 게임장 출입 영상 확산…구단 ‘자체 징계’', '전지훈련 때 게임장에 드나든 영상이 퍼져서 징계를 받았어요'),
     ('sns', 'SNS 설화', '[논란]', '{r}, 새벽 SNS 라이브서 ‘감독 저격’…결국 자숙', '새벽에 SNS 라이브를 켜고 사고를 쳐서 자숙 중이에요'),
     ('chat', '단톡방 유출', '[단독]', '{r}, 단톡방 ‘코치 뒷담화’ 캡처 유출…“깊이 반성”', '단톡방 캡처가 돌아서 당분간 못 써요'),
     ('mukbang', '먹방 후유증', '[화제]', '{r}, 먹방 채널 대박 났지만…체중 12kg 불어 ‘몸이 무겁다’', '먹방 채널을 시작하더니 몸이 무거워져서 못 쓰겠어요'),
@@ -2008,7 +2001,7 @@ SCANDAL_P = 0.08            # 프로 시즌마다(올스타 휴식기) 이런 �
 BAD_LUCK = (
     ('샤워하다 미끄러져 새끼손가락이 부러졌어요', '샤워하다 미끄러져 손가락 골절', False),
     ('자고 일어났더니 담이 와서 고개를 못 돌렸어요', '자고 일어났더니 담 걸려', False),
-    ('홈런 세리머니를 하다 동료 헬멧에 코를 부딪혔어요', '세리머니 하다 동료와 충돌', False),
+    ('동료 세리머니를 하다 헬멧에 코를 부딪혔어요', '세리머니 하다 동료와 충돌', False),
     ('반려견 산책을 시키다 발목을 접질렸어요', '반려견 산책 중 발목 염좌', False),
     ('택배 상자를 옮기다 허리를 삐끗했어요', '택배 상자 옮기다 허리 삐끗', False),
     ('조카 장난감 블록을 밟고 발바닥을 다쳤어요', '장난감 블록 밟고 발바닥 부상', False),
@@ -2283,7 +2276,7 @@ def wrap_season(c, season, rng):
             if record['year'] == season.year:
                 event = Extreme.EVENTS[record['key']]
                 season.news.append(f"[익스트림] {event['title']} — 훈련 보정 {record['training'] * 100:+.0f}%, "
-                                   f"부상 위험 {record['risk'] * 100:+.0f}%p, 신뢰 {record['trust']:+.0f}")
+                                   f"부상 위험 {record['risk'] * 100:+.0f}%p, 감독 신뢰 {record['trust']:+.0f}")
     flags = dict(c.flags or {})
     leagues = list(flags.get('leagues') or [])
     if code not in leagues:
@@ -2337,7 +2330,8 @@ def wrap_season(c, season, rng):
         flags['cash'] += back
         season.news.append(f"지인 사업 투자 {label} — {man(inv['amount'])}이 {man(back)}{josa(man(back), '이/가')} 됐어요")
         if label in ('대박', '쪽박'):
-            season.press.append(press('', f"{c.name}, 지인 사업 투자 {'대박…‘운이 좋았다’' if label == '대박' else '쪽박…수억 날렸다'}"))
+            bust = f"쪽박…{man(inv['amount'])} 날렸다"
+            season.press.append(press('', f"{c.name}, 지인 사업 투자 {'대박…‘운이 좋았다’' if label == '대박' else bust}"))
         season.save(update_fields=['news', 'press'])
     c.earnings += season.salary + ad
     c.salary = season.salary
@@ -2508,8 +2502,10 @@ def awaken(c, choice: str, rng) -> str:
     c.stats[k] = round(max(25.0, float(c.stats[k]) - 1.0), 1)
     c.ovr = R.overall(c.role, c.stats)
     f['tired'] = {'injury': ((f.get('tired') or {}).get('injury', 0.0)) + 0.04, 'train': (f.get('tired') or {}).get('train', 1.0)}
-    f['awaken_fx'] = {'ok': False}
-    return '벽은 아직 높았어요 — 다음 시즌 부상 위험이 조금 올라가요'
+    label = dict((x, lab) for x, lab, _w in R.ROLES[c.role]['stats'])[k]
+    f['awaken_fx'] = {'ok': False, 'fail_text': f'무리한 탓에 {label}이 1 빠졌어요. 다음 시즌 부상 위험도 조금 올라가요. '
+                                                f'{AWAKEN_WAIT}시즌 뒤에 다시 도전할 수 있어요.'}
+    return f'벽은 아직 높았어요 — {label} −1, 다음 시즌 부상 위험이 조금 올라가요'
 
 
 BURIED = {'bench', 'mop', 'chase'}          # 이 보직으로 졸업 학년을 보내면 강호에서는 스카우트 눈에 묻힌다
@@ -2712,7 +2708,7 @@ def decide(c, what: str, choice: str, rng, school: str = '') -> str:
                 event = Balance.market_event(c, pend['market_event'].get('pressure', 0))
                 event['choices'] = [ch for ch in event['choices'] if ch['key'] != 'retry']
                 event.update(title='테스트 결과와 다음 선택', last_rejection=text,
-                             text='남은 길을 직접 골라 주세요. 현역 생활을 마치기로 선택하기 전에는 은퇴하지 않아요.')
+                             text='남은 길을 직접 골라 주세요. 선수 생활을 마치기로 선택하기 전에는 은퇴하지 않아요.')
                 c.pending = dict(kind='decision', what='meeting', about='career_market', phase='end', market_event=event)
                 return text
             # 재정비·테스트 합격으로 얻은 시즌을 다른 방출 심사가 곧바로 빼앗지 않게 한다.
@@ -2756,7 +2752,7 @@ def decide(c, what: str, choice: str, rng, school: str = '') -> str:
                                          f"{W.club_short(pend.get('from') or 'hs', old_club)} {nm} 지명"))
         elif choice == 'develop' and not offer:
             c.league, c.club = 'kbo3', c.team
-            text = f"{W.PRO_TEAM[c.team]['name']}와 육성선수 계약을 맺었어요"
+            text = f"{W.PRO_TEAM[c.team]['name']}{josa(W.PRO_TEAM[c.team]['name'], '와/과')} 육성선수 계약을 맺었어요"
             news.append(press('', f"드래프트 미지명 {nm}, {W.PRO_TEAM[c.team]['short']} 육성선수로 재도전"))
         elif _split_pick(choice)[0] in abroad:
             choice, pick = _split_pick(choice)
@@ -2801,7 +2797,7 @@ def decide(c, what: str, choice: str, rng, school: str = '') -> str:
             if not offer:
                 raise LiteError('관심을 보인 세 구단 가운데 하나를 골라 주세요.')
             c.pending = {'kind': 'decision', 'what': 'negotiation', 'deal': dict(offer, round=0)}
-            return f"{W.PRO_TEAM[offer['team']]['name']}와 협상을 시작해요."
+            return f"{W.PRO_TEAM[offer['team']]['name']}{josa(W.PRO_TEAM[offer['team']]['name'], '와/과')} 협상을 시작해요."
         flags['posted'] = True
         choice, pick = _split_pick(choice)
         teams = _teams_of((pend.get('teams') or {}).get(choice)) or (abroad_teams(choice, rng) if choice in ('mlb', 'npb') else [])
@@ -2856,7 +2852,7 @@ def decide(c, what: str, choice: str, rng, school: str = '') -> str:
             elif deal['years']:
                 total = man(deal['annual'] * deal['years'])
                 text = f"KBO로 돌아왔어요 — {team}, {deal['years']}년 총 {total}"
-                news.append(press('[오피셜]', f"{nm}, KBO 복귀…{team}와 {deal['years']}년 총액 {total}"))
+                news.append(press('[오피셜]', f"{nm}, KBO 복귀…{team}{josa(team, '와/과')} {deal['years']}년 총액 {total}"))
             else:
                 text = f'KBO로 돌아왔어요 — {team}'
                 news.append(press('[오피셜]', f"{nm}, KBO 복귀…{team} 유니폼"))
@@ -2944,7 +2940,7 @@ QUIT_WAIT = 300             # 초
 def check_quit(c):
     n = c.seasons.count()
     if n < QUIT_MIN_SEASONS:
-        raise LiteError(f'선수를 만든 뒤 {QUIT_MIN_SEASONS}시즌은 뛰어야 스스로 은퇴할 수 있어요. 지금 {n}시즌을 뛰었어요.')
+        raise LiteError(f'선수를 만든 뒤 {QUIT_MIN_SEASONS}시즌은 뛰어야 스스로 은퇴할 수 있어요. ' + ('아직 한 시즌도 뛰지 않았어요.' if n == 0 else f'지금 {n}시즌을 뛰었어요.'))
 
 
 def quit_wait(mine) -> int:
@@ -2964,7 +2960,8 @@ def retire(c, why: str = '') -> str:
     Balance.settle_guarantee(c)
     c.retired_at = timezone.now()
     c.pending = {'kind': 'retired', 'why': why}
-    return {'방출': '방출됐어요 — 유니폼을 벗었어요', '나이': '마흔둘, 유니폼을 벗었어요'}.get(why, '은퇴를 선언했어요')
+    return {'방출': '방출됐어요 — 유니폼을 벗었어요',
+            '나이': f'{Bloom.retirement_limit(c, RETIRE_AT)}세, 유니폼을 벗었어요'}.get(why, '은퇴를 선언했어요')
 
 
 # ───────────────────────────── 화면·순위용
@@ -3169,8 +3166,10 @@ def retire_headline(c, seasons: int) -> dict:
     """은퇴 카드 머리기사."""
     ep = EPITHET.get(c.style, '')
     why = (c.pending or {}).get('why', '')
-    tail = {'방출': '…그라운드와 작별', '나이': '…마흔둘까지 뛰었다'}.get(why, '…박수 받으며 떠난다')
-    return press('[은퇴]', f"‘{ep}’ {c.name}, {seasons}시즌 현역 마침표{tail}")
+    tail = {'방출': '…그라운드와 작별', '나이': f'…{Bloom.retirement_limit(c, RETIRE_AT)}세까지 뛰었다'}.get(why, '…박수 받으며 떠난다')
+    if not seasons:                                   # 한 경기도 안 뛴 선수에게 '0시즌' 이라고 하지 않는다
+        return press('[은퇴]', f"‘{ep}’ {c.name}, 선수 생활 마침표…그라운드와 작별")
+    return press('[은퇴]', f"‘{ep}’ {c.name}, {seasons}시즌 선수 생활 마침표{tail}")
 
 
 # ───────────────────────────── 결정적 순간(2026-10-18 사용자 요청: 한국시리즈·중요한 경기에서 구종 선택·게스 히팅·안전한 컨택)
@@ -3229,11 +3228,11 @@ def make_moment(c, kind: str, stage: str, when: str, rng, key: str = '', opp_nam
         pitch = rng.choice(OUT_PITCHES)
         opp = {'name': opp_name or rival_name(c.league, rng), 'role': '마무리' if walkoff else '필승조',
                'fast': fast, 'pitch': pitch, 'lvl': round(lvl + 8, 1),
-               'scout': f'직구 {fast}% · 결정구 {pitch}' + (' — 직구로 밀어붙여요' if fast >= 65 else f' — {pitch}를 즐겨 던져요' if fast <= 35 else ' — 반반, 읽기 어려워요')}
+               'scout': f'직구 {fast}% · 결정구 {pitch}' + (' — 직구로 밀어붙여요' if fast >= 65 else f" — {pitch}{josa(pitch, '을/를')} 즐겨 던져요" if fast <= 35 else ' — 반반, 읽기 어려워요')}
         text = (f"{sit['inning']} {sit['outs']}사 {_bases_text(sit['bases'])}, 1점 차로 지고 있어요. 주자 둘이 들어오면 끝내기예요!"
                 if walkoff else f"{sit['inning']} {sit['outs']}사 3루, 동점이에요. 깊은 외야 뜬공이면 희생플라이를 노릴 수 있어요.")
         choices = [('fast', '직구 노려 치기', '게스 히팅', '직구가 오면 크게 — 아니면 헛스윙 위험'),
-                   ('break', f'{pitch} 노려 치기', '게스 히팅', f'{pitch}가 오면 크게 — 직구엔 늦어요'),
+                   ('break', f'{pitch} 노려 치기', '게스 히팅', f"{pitch}{josa(pitch, '이/가')} 오면 크게 — 직구엔 늦어요"),
                    ('short', '짧게 끊어 치기', '안전하게', '삼진은 줄고 장타는 줄어요')]
     else:
         late = c.position != 'SP' or rng.random() < 0.5
@@ -3248,7 +3247,7 @@ def make_moment(c, kind: str, stage: str, when: str, rng, key: str = '', opp_nam
         text = (f"{sit['inning']} {sit['outs']}사 만루, 1점 차로 이기고 있어요. 이 타자만 잡으면 우승이에요!" if late else
                 f"{sit['inning']} {sit['outs']}사 1·3루, 동점이에요. 여기서 막아야 해요.")
         choices = [('fast', '직구로 정면 승부', '힘', '구위로 누른다 — 직구에 강한 타자면 위험'),
-                   ('break', f'{my_pitch}로 유인', '유인', '헛스윙을 노린다 — 손에서 빠지면 볼넷'),
+                   ('break', f"{my_pitch}{josa(my_pitch, '으로/로')} 유인", '유인', '헛스윙을 노린다 — 손에서 빠지면 볼넷'),
                    ('edge', '스트라이크존 구석 공략', '정교', '장타를 억제해요 — 코너를 벗어나면 볼넷 위험')]
     return {'kind': kind, 'key': key, 'stage': stage, 'when': when, 'side': 'bat' if c.role == 'batter' else 'pit',
             'sit': sit, 'opp': opp, 'text': text, 'choices': [list(x) for x in choices], 'name': nm}
@@ -3262,15 +3261,15 @@ def moment_view(c, m: dict) -> dict:
     if m['side'] == 'bat':
         fast = opp.get('fast', 50)
         opp['scout'] = (f'최근엔 직구로 카운트를 잡았어요. {pitch}도 갖고 있어 같은 패턴을 장담하긴 어려워요.' if fast >= 65 else
-                        f'최근엔 {pitch}를 자주 보여 줬어요. 직구를 섞어 타이밍을 바꾸기도 해요.' if fast <= 35 else
-                        f'직구와 {pitch}를 번갈아 써요. 눈에 익은 패턴도 이 승부에선 달라질 수 있어요.')
+                        f"최근엔 {pitch}{josa(pitch, '을/를')} 자주 보여 줬어요. 직구를 섞어 타이밍을 바꾸기도 해요." if fast <= 35 else
+                        f"직구와 {pitch}{josa(pitch, '을/를')} 번갈아 써요. 눈에 익은 패턴도 이 승부에선 달라질 수 있어요.")
         options = [('fast', '직구 노려 치기', '강공', '빠른 공에 힘을 싣지만, 다른 공이 오면 크게 헛돌 수 있어요'),
                    ('break', f'{pitch} 노려 치기', '기다림', '낙차를 읽어 장타를 노려요. 직구가 들어오면 타이밍을 빼앗겨요'),
                    ('short', '짧게 끊어 치기', '컨택', '맞힐 여지를 늘리지만, 짧은 타구에 주자가 묶일 수도 있어요')]
     else:
         opp['scout'] = HITTER_TYPES.get(opp.get('type'), HITTER_TYPES['patient'])[0]
         options = [('fast', '직구로 정면 승부', '구위', '존 안에서 빠르게 승부해요. 타이밍을 읽히면 장타로 이어질 수 있어요'),
-                   ('break', f'{pitch}로 유인', '낙차', '헛스윙을 끌어내요. 배트가 안 나오면 볼카운트가 불리해져요'),
+                   ('break', f"{pitch}{josa(pitch, '으로/로')} 유인", '낙차', '헛스윙을 끌어내요. 배트가 안 나오면 볼카운트가 불리해져요'),
                    ('edge', '스트라이크존 구석 공략', '제구', '정타를 피할 코스를 찾아요. 조금만 벗어나도 볼넷 부담이 커져요')]
     allowed = {x[0] for x in m['choices']}
     return dict(m, opp=opp, who='critic', who_name=name, who_role=role, bases=sit['bases'],

@@ -6,7 +6,9 @@
 import random
 from functools import lru_cache
 
+from . import rookie_league as L
 from . import rookie_world as W
+from .rookie_text import josa
 
 
 def year_of(p):
@@ -51,10 +53,10 @@ def rivals(p, year=None):
                 nxt = W.next_league(r['league'])
                 if nxt and r['ovr'] >= W.level(nxt) - 2 and not r['injured']:
                     r['league'] = nxt
-                    r['history'].append(f'시즌 {turn}: {W.short(nxt)}로 올라갔어요.')
+                    r['history'].append(f'시즌 {turn}: {W.short(nxt)}{josa(W.short(nxt), "으로/로")} 올라갔어요.')
                 if rng.random() < .07:
                     r['club'] = rng.choice(W.SYSTEM_TEAMS[W.system_of(r['league'])])[0]
-                    r['history'].append(f'시즌 {turn}: {W.club_label(r["league"], r["club"])}로 이적했어요.')
+                    r['history'].append(f'시즌 {turn}: {W.club_label(r["league"], r["club"])}{josa(W.club_label(r["league"], r["club"]), "으로/로")} 이적했어요.')
             if r['injured']:
                 r['history'].append(f'시즌 {turn}: 부상으로 기회를 놓쳤어요.')
         r['year'] = max(r['year'], year)
@@ -258,7 +260,7 @@ def table(p, year, league, games, through=None):
     rows.sort(key=lambda r: (-r['pct'], -(r['rf'] - r['ra']), r['club']))
     for i, r in enumerate(rows):
         r['rank'] = i + 1
-        r['pct_text'] = f'{r["pct"]:.3f}'
+        r['pct_text'] = L.rate(r['pct'])
         r['mine'] = r['club'] == p.club and p.league == league
     return dict(league=league, label=W.league(league)['name'], year=year, rows=rows,
                 played=len(scores), rounds=len(rounds), games=games,

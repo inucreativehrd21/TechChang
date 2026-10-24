@@ -24,7 +24,7 @@ def season_features(c, s, rows):
                                f'{nm}의 마운드 성적표, 결과와 과정은 같았을까'])
     elif c.role == 'batter' and t.get('pa'):
         b = L.batting(t)
-        detail = f"타율 {L.rate(b['avg'])} · OPS {b['ops']:.3f} · {t.get('hr', 0)}홈런 · {t.get('sb', 0)}도루"
+        detail = f"타율 {L.rate(b['avg'])} · OPS {L.rate(b['ops'])} · {t.get('hr', 0)}홈런 · {t.get('sb', 0)}도루"
         analysis = rng.choice([f'{nm}, 안타 숫자 뒤에 숨은 타석의 가치',
                                f'장타와 출루로 읽는 {nm}의 한 시즌',
                                f'{nm}의 타격 성적표…타율만으로 설명할 수 있을까'])
@@ -41,14 +41,14 @@ def season_features(c, s, rows):
                                             f'경험과 경쟁 사이…{nm}의 겨울 과제']),
                         f'{s.age}세 시즌을 마쳤어요. 다음 역할과 계약은 앞으로의 선택에 달렸어요.')
     elif not W.is_pro(s.league):
-        field = article('유망주', rng.choice([f'{team} {nm}, 성적 너머 성장 과제는',
+        field = article('유망주', rng.choice([f'{team} {nm}, 성적 너머 성장 과제',
                                             f'다음 무대를 꿈꾸는 {nm}, 올해 남긴 발자취']),
                         f'{s.age}세 · {s.duty}. 다음 시즌에는 어떤 모습을 보여 줄까요?')
     else:
         field = article('현장', rng.choice([f'{team} {nm}, 숫자로 남은 역할과 겨울의 숙제',
                                           f'스포트라이트 밖의 {nm}…한 시즌을 돌아보다',
                                           f'{nm}의 다음 페이지, {team}에서 무엇을 보여 줄까']),
-                        f'올해 맡은 역할은 {s.duty}였어요. 다음 기회는 아직 정해지지 않았어요.')
+                        f'올해는 {s.duty} 역할을 맡았어요. 다음 기회는 아직 정해지지 않았어요.')
     out.append(field)
     if s.team_of:
         out.append(article('팀 결산', f'{team}, {s.team_of}팀 중 {s.team_rank}위…개인 성적과 함께 본 팀의 한 해',

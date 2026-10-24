@@ -605,7 +605,7 @@ def promotion_test(user, rng=None) -> dict:
         p.save(update_fields=['test_on', 'league', 'league_since', 'lineup', 'slot', 'role_since', 'updated_at'])
         won = sum(g['ok'] for g in games)
         _log(p, 'promote' if passed else 'test',
-             f"{name} 승격! {'패전조' if p.role == 'pitcher' else '백업'}부터 다시 자리를 따내야 해요" if passed
+             f"{name} 콜업 테스트 통과! {'패전조' if p.role == 'pitcher' else '백업'}부터 다시 자리를 따내야 해요" if passed
              else f'{name} 콜업 테스트 {won}/{TEST_GAMES} — 탈락', day=today)
     return {'passed': passed, 'league_name': name, 'games': games, 'won': won, 'player': p}
 
@@ -698,7 +698,7 @@ def condition(p, today: date | None = None) -> dict:
     if idle == 0:
         state, note = 'good', '오늘 활동 완료 — 활동 공백에 따른 추가 감각 저하를 막았어요.'
     elif idle == 1:
-        state, note = 'ok', f'어제 마지막 활동 — 오늘 활동하지 않으면 오늘 밤 {rate * 100:g}%가 빠져요.'
+        state, note = 'ok', f'어제 마지막 활동 — 오늘 활동하지 않으면 오늘 밤 능력치의 {rate * 100:g}%가 빠져요.'
     else:
         state, note = 'bad', f'{idle}일째 활동 없음 — 하루 {rate * 100:g}%씩 빠지는 중. 오늘 활동하면 공백에 따른 추가 하락을 막을 수 있어요.'
     aging = p.age >= C.decline_start(p)

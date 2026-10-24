@@ -150,7 +150,8 @@ def resolve(p, event, selected, rng):
     passed = physical and ip >= count * 4.5 and era <= (4.2 if completed else 3.8)
     if selected == 'appeal':
         passed = physical and ip >= 5 and era <= 3.6
-    report = f'연습 평가 {count}경기 · {L.ip_text(line.get("outs", 0))}이닝 · ERA {era:.2f}'
+    era_text = f'{era:.2f}' if ip else '-'                  # 한 이닝도 못 던졌으면 99.00 대신 '-'
+    report = f'연습 평가 {count}경기 · {L.ip_text(line.get("outs", 0))}이닝 · 평균자책점 {era_text}'
     data = dict(B.state(p))
     data['pitch_last_assessment'] = dict(token=token, line=line, passed=passed, practice=True)
     B.put(p, data)

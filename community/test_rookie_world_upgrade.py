@@ -117,7 +117,7 @@ class DatabaseRecordTests(TestCase):
         p = player('리포트투수', role='pitcher', position='SP')
         day = timezone.localdate() - timedelta(days=1)
         empty = Reports.daily(p, day)
-        self.assertIn('출장 기록이 없습니다', empty['summary'])
+        self.assertIn('출장 기록이 없어요', empty['summary'])
         RookieGame.objects.create(player=p, season=L.get_season(1), league='kbo1', day=day, no=1, opponent='kt',
             summary='6이닝', line=dict(g=1, outs=18, h=4, bb=2, so=7, er=1, r=1, np=90, bf=24))
         report = Reports.daily(p, day)

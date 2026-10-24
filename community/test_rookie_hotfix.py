@@ -69,7 +69,7 @@ class LiteHotfixTests(TestCase):
         text = X.apply_event(c, 'mentor', 'accept', random.Random(1), {'injury': 0, 'train': 1, 'salary': 1})
         self.assertGreater(c.stats['eye'], before['eye'])
         self.assertEqual(Story.value(c, 'discipline'), 47)
-        self.assertIn('자기 관리 -3', text)
+        self.assertIn('자기 관리 −3', text)
 
     def test_rebuild_goes_to_training_without_second_release_review(self):
         for i, (role, pos, league) in enumerate([('batter', 'SS', 'kbo3'), ('pitcher', 'SP', 'kbo1'),

@@ -224,6 +224,12 @@ def upper_fit(s: dict, lvl: float) -> tuple[str, int] | None:
     return None
 
 
+def _rate(x: float) -> str:
+    """타율식 표기(.812 · 1.000) — rookie_league 가 이 모듈을 import 하므로 함수 안에서 불러온다."""
+    from .rookie_league import rate
+    return rate(x)
+
+
 def batter_role(cur: str, s: dict, ovr: float, lvl: float, recent: list) -> tuple[str, int, str]:
     """매일 밤 한 계단씩: (보직, 타순, 바뀐 이유 — 안 바뀌면 '')."""
     pa, ops = _ops(recent)
@@ -233,7 +239,7 @@ def batter_role(cur: str, s: dict, ovr: float, lvl: float, recent: list) -> tupl
     lower_slot = 6 if ovr >= lvl else 7 if ovr >= lvl - 3 else 8 if ovr >= lvl - 6 else 9
     if step == 0:
         if ovr >= lvl - 4 or (ovr >= lvl - 10 and pa >= 8 and ops >= .800):
-            why = '능력이 올라와' if ovr >= lvl - 4 else f'최근 OPS {ops:.3f}로 증명해'
+            why = '능력이 올라와' if ovr >= lvl - 4 else f'최근 OPS {_rate(ops)} 성적으로 증명해'
             return 'lower', lower_slot, f'{why} 하위 타선 주전({lower_slot}번)이 됐어요'
         return 'bench', 0, ''
     if step == 1:
@@ -302,14 +308,14 @@ def pitcher_role(cur: str, s: dict, lvl: float, recent: list) -> tuple[str, int,
     need_st, need_men = pen_need(cur, lvl)
     if i > 0 and (st < need_st - 4 or men < need_men - 4 or (ip >= 6 and era >= 7.0)):
         down = PEN_LADDER[i - 1]
-        return down, 0, f'{PIT_ROLES[down]}으로 내려갔어요'
+        return down, 0, f'{PIT_ROLES[down]} 보직으로 내려갔어요'
     if i + 1 < len(PEN_LADDER):
         nxt = PEN_LADDER[i + 1]
         n_st, n_men = pen_need(nxt, lvl)
         proven = ip >= 6 and era <= 3.0
         if men >= n_men and (st >= n_st or (proven and st >= n_st - 2)):
-            why = f'최근 평균자책점 {era:.2f}로 증명해 ' if st < n_st else ''
-            return nxt, 0, f'{why}{PIT_ROLES[nxt]}으로 올라갔어요'
+            why = f'최근 평균자책점 {era:.2f} 성적으로 증명해 ' if st < n_st else ''
+            return nxt, 0, f'{why}{PIT_ROLES[nxt]} 보직으로 올라갔어요'
     return cur, 0, ''
 
 

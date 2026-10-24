@@ -43,7 +43,7 @@ def offer(c):
 def scene(c):
     p = c.pending or {}
     result = p.get('what') == 'bloom_result'
-    return dict(p, title='늦게 핀 꽃' if not result else '당신의 야구는 아직 끝나지 않았어요',
+    return dict(p, title='늦게 핀 꽃' if not result else '내 야구는 아직 끝나지 않았어요',
                 odds_pct=round(p.get('odds', 0) * 100), result=result,
                 bonus=bonus_available(c), years=YEARS, aging_percent=round((1-AGING_KEEP)*100))
 
@@ -82,7 +82,7 @@ def resolve(c, choice, rng):
         b['changes'] = changes
         text = '만개했어요. 잠재력 4성, 이번 시즌부터 3시즌 동안 노쇠가 70% 줄어요.'
     else:
-        text = '결과는 닿지 못했지만, 다시 그라운드에 선 오늘까지 사라지는 건 아니에요.'
+        text = '기대한 결과에는 닿지 못했지만, 다시 그라운드에 선 오늘까지 사라지는 건 아니에요.'
     c.flags.setdefault('press', []).append(X.press('[만개]' if ok else '[다시 서다]', f'{c.name}, 늦게 찾아온 도전 — '+('마침내 피어나다' if ok else '결과보다 오래 남을 한 걸음')))
     c.pending = dict(kind='decision', what='bloom_result', id=p['id']+':result', ok=ok, changes=changes)
     return text

@@ -32,6 +32,7 @@ from django.db import transaction
 from django.utils import timezone
 
 from . import rookie_world as W
+from .rookie_text import josa
 from . import rookie_story as Story
 from . import rookie_development as Development
 
@@ -61,11 +62,11 @@ POTENTIAL_MEAN, POTENTIAL_SD, POTENTIAL_RANGE = 82, 6, (66, 97)
 
 TRAITS = {
     'early': {'name': '조기 개화', 'desc': '또래보다 몸이 빨리 커요. 나이 한계가 한 살 먼저 열리고 고교까지 훈련 효과 +10%, 대신 노쇠가 2년 빨리 와요.'},
-    'late': {'name': '대기만성', 'desc': '늦게 피는 꽃이에요. 스물둘까지 훈련 효과 −10%, 스물여섯부터 +15%, 노쇠가 2년 늦게 와요.'},
+    'late': {'name': '대기만성', 'desc': '늦게 피는 꽃이에요. 22세까지 훈련 효과 −10%, 26세부터 +15%, 노쇠가 2년 늦게 와요.'},
     'grinder': {'name': '연습벌레', 'desc': '훈련 효과 +8%, 하루 훈련 피로도 6회 늦게 와요.'},
     'iron': {'name': '강철 체력', 'desc': '쉬는 날 빠지는 몫이 40% 적고, 노쇠가 절반 속도로 와요.'},
     'clutch': {'name': '큰 경기 체질', 'desc': '승부처에 강해요. 경기에서 클러치(타자)·멘탈(투수) +5.'},
-    'learner': {'name': '경험파', 'desc': '경기에서 배우는 게 많아요. 출전 경험으로 오르는 능력치 +60%.'},
+    'learner': {'name': '경험파', 'desc': '경기에서 배우는 게 많아요. 출전 경험으로 오르는 능력치 +40%.'},
     'natural': {'name': '천재형', 'desc': '주특기가 남달라요. 주특기 훈련 배율 ×1.45(보통 ×1.25), 주특기 한계 +8(보통 +4).'},
 }
 # 드래프트 평가 점수(평균 50, 표준편차 약 10) → 라운드. 아래 값은 하네스로 맞춘다(활동량별 분포는 scratchpad bal_sim.py)
@@ -287,7 +288,7 @@ def promotion_gate(p, today: date | None = None) -> dict:
     if W.next_league(p.league) == 'mlb':
         from . import rookie_balance_rules as Balance
         ready = Balance.overseas_level(p, 'mlb') == 'mlb'
-        text += ' · 메이저 스카우팅 평가 통과'
+        text += ' · MLB 스카우팅 평가 통과'
         now += ' · ' + ('평가 통과' if ready else '구위·타격 접근과 장기 성적을 더 증명해야 해요')
         ok = ok and ready
     return {'stay_need': need, 'stay_left': stay_left, 'mission': {'text': text, 'now': now, 'ok': ok},
@@ -509,7 +510,7 @@ def run_draft(p, day: date, rng) -> str:
         text = (f"시즌 {season} 신인 드래프트 {rnd}라운드 {offer['in_round']}순위(전체 {offer['pick']}순위) — {name} 지명!"
                 + (' 희망 구단이에요' if offer['team'] == p.team else ''))
     else:
-        text = f'시즌 {season} 신인 드래프트 미지명 — 육성선수 계약, ' + ('대학 진학, ' if src == 'hs' else '') + '해외 도전 가운데 고르세요'
+        text = f'시즌 {season} 신인 드래프트 미지명 — 육성선수 계약, ' + ('대학 진학, ' if src == 'hs' else '') + '해외 도전 가운데 골라 주세요'
     R._log(p, 'career', text, day=day)
     return text
 
@@ -567,7 +568,7 @@ def decide_now(p, choice: str, day: date, rng, school: str = '') -> str:
             raise R.GameError(f'{W.SYSTEM_NAME[choice]} 구단의 제안이 없어요.')
         team = pick if pick in teams else teams[0]
         league = first_pro_league(choice, p.ovr, college=pend.get('from') == 'univ')
-        join_pro(p, league, team, day, f"{W.SYSTEM_NAME[choice]} 진출 — {W.PRO_TEAM[team]['name']}와 계약, {W.short(league)}부터",
+        join_pro(p, league, team, day, f"{W.SYSTEM_NAME[choice]} 진출 — {W.PRO_TEAM[team]['name']}{josa(W.PRO_TEAM[team]['name'], '와/과')} 계약, {W.short(league)}부터",
                  bonus=SIGN_BONUS[1][1])
         Development.mark_entry(p, pend.get('from'), choice)
     elif choice == 'univ':
@@ -641,7 +642,7 @@ def _next_grade(p, rng):
         p.age = W.age_of(code, p.grade)
         p.grade_since = day
         open_apply(p)
-        tail = ' — 졸업 학년, ' + ('희망 학교를 고르세요' if code in W.NEXT_SCHOOL else '학년이 끝나는 날 드래프트') \
+        tail = ' — 졸업 학년, ' + ('희망 학교를 골라 주세요' if code in W.NEXT_SCHOOL else '학년이 끝나는 날 드래프트') \
             if W.is_final_grade(code, p.grade) else ''
         R._log(p, 'career', f'{W.grade_label(code, p.grade)} 진급, {p.age}세{tail}', day=day)
         return
@@ -686,7 +687,7 @@ def progress(p, today: date | None = None, rng=None) -> bool:
     if changed:
         p.save(update_fields=FIELDS)
     if W.is_pro(p.league) and p.age >= MAX_AGE:
-        retire_player(p, f'{MAX_AGE}세 — 은퇴', today)
+        retire_player(p, '나이 한계', today)
         return True
     return changed
 

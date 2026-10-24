@@ -232,11 +232,11 @@ def market_event(p, pressure):
     choices = []
     if data.get('market_retries', 0) < 2:
         choices.append(dict(key='retry', label='낮은 조건으로 테스트를 받을게요',
-                            hint='최근 성적·나이·실력으로 재계약을 평가해요. 실패하면 현역 생활을 마쳐요'))
+                            hint='최근 성적·나이·실력으로 재계약을 평가해요. 실패하면 남은 선택지를 고르거나 선수 생활을 마쳐요'))
     if not data.get('rebuild_used'):
         choices.append(dict(key='rebuild', label='역할과 무대를 낮춰 다시 준비할게요',
                             hint='한 번의 재정비 기회예요. 하위 리그·불펜·백업에서 낮은 연봉으로 도전해요'))
-    choices.append(dict(key='retire', label='현역 생활을 마칠게요', hint='지금까지의 기록과 선수 카드를 남겨요'))
+    choices.append(dict(key='retire', label='선수 생활을 마칠게요', hint='지금까지의 기록과 선수 카드를 남겨요'))
     return dict(kind='career_market', background='manager-office', pressure=pressure,
                 title='구단의 다음 시즌 전력 구상',
                 text='최근 출전 내용과 새 경쟁자, 건강·연봉을 함께 검토했어요. 지금 역할을 그대로 보장하기 어려워요. 다음 길을 정해야 해요.',
@@ -300,5 +300,5 @@ def market_reply(p, event, selected, rng, *, defer_failure=False):
         retire(p, '재계약 실패' if selected != 'retire' else '스스로')
     else:
         from .rookie_career import retire_player
-        retire_player(p, '구단 수요 감소로 현역 생활을 마쳤어요')
-    return '현역 생활을 마쳤어요. 기록과 선수 카드를 남겼어요.' + (' 남은 보장 급여도 정산했어요.' if owed else '')
+        retire_player(p, '구단 수요 감소로 선수 생활을 마쳤어요')
+    return '선수 생활을 마쳤어요. 기록과 선수 카드를 남겼어요.' + (' 남은 보장 급여도 정산했어요.' if owed else '')

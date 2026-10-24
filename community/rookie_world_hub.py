@@ -17,6 +17,7 @@ from . import rookie_league as L
 from . import rookie_sim as M
 from . import rookie_universe as U
 from . import rookie_world as W
+from .rookie_text import is_real_person
 
 SURNAMES = ('김', '이', '박', '최', '정', '강', '조', '윤', '장', '임', '한', '오', '서', '신', '권', '황')
 GIVEN = ('민준', '서진', '지훈', '도윤', '현우', '정우', '시윤', '준서', '건우', '지호', '우진', '태윤', '재현', '승민', '도현', '유찬', '하준', '수현', '예준', '재윤')
@@ -117,8 +118,10 @@ def roster(league, club, year=1):
         if generation or not W.is_pro(league):
             replacement = random.Random(f'regen:{league}:{club}:{i}:{generation if W.is_pro(league) else year}')
             name = replacement.choice([item for item in all_names if item not in used])
-        while name in used:
-            name = rng.choice(all_names)
+        if name in used or is_real_person(name):
+            fix = random.Random(f'safe:{league}:{club}:{i}')       # 실존 인물과 겹친 이름만 다른 이름으로(나머지 로스터는 그대로)
+            while name in used or is_real_person(name):
+                name = fix.choice(all_names)
         used.add(name)
         out.append(dict(id=f'{i}:{generation}', name=name, role='batter' if i < 12 else 'pitcher',
                         position=POSITIONS[i] if i < 12 else 'SP' if i < 17 else 'RP', age=age,
