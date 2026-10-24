@@ -6,10 +6,12 @@
 {% block meta_description %}투수·타자를 골라 동네 리틀야구단에서 프로 무대까지 — 칼럼 읽기·댓글·출석으로 훈련 포인트를 모아 키우는 테크창 야구선수 성장 게임.{% endblock %}
 
 {% block extra_css %}
-<link href="{% static 'css/game.css' %}?v={{ STATIC_VERSION }}" rel="stylesheet">
-<link href="{% static 'css/rookie.css' %}?v={{ STATIC_VERSION }}" rel="stylesheet">
+<link href="{% static 'css/game.css' %}?v={{ STATIC_VERSION }}&amp;world=1" rel="stylesheet">
+<link href="{% static 'css/rookie.css' %}?v={{ STATIC_VERSION }}&amp;matchups=1" rel="stylesheet">
 <link href="{% static 'css/rookie-card.css' %}?v={{ STATIC_VERSION }}" rel="stylesheet">
 <link href="{% static 'css/rookie-stadium.css' %}?v={{ STATIC_VERSION }}" rel="stylesheet">
+<link href="{% static 'css/rookie-hub.css' %}?v={{ STATIC_VERSION }}&amp;hub=1" rel="stylesheet">
+<link href="{% static 'css/rookie-daily.css' %}?v={{ STATIC_VERSION }}&amp;daily=1" rel="stylesheet">
 {% endblock %}
 
 {% block content %}

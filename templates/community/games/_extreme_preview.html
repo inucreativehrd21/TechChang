@@ -1,0 +1,59 @@
+<main class="tc-extreme-lab container py-4">
+    <h1>익스트림 비공개 실험실</h1>
+    <p>일반 경기와 진로는 자동으로 진행하고, 전용 이벤트는 직접 골라요. 시제품 기록은 라이트 모드의 선수·카드·순위와 분리돼요.</p>
+    <p class="text-muted">운영자용 검증 화면이에요. 시작 능력 +5, 잠재력 +8, 훈련 ×1.35, 정규 시즌 상대 수준 +5는 아직 실험 수치예요.</p>
+    {% if messages %}{% for message in messages %}<p class="alert alert-info" role="status">{{ message }}</p>{% endfor %}{% endif %}
+    {% if not c or c.retired_at %}
+    <section class="card mb-4"><div class="card-body">
+        <h2>새 시제품 선수</h2>
+        <form method="post">{% csrf_token %}<input type="hidden" name="action" value="create">
+            <label for="extreme-role" class="form-label">포지션</label>
+            <select id="extreme-role" name="role" class="form-select mb-3"><option value="batter">타자 · 유격수</option><option value="pitcher">투수 · 선발</option></select>
+            <label for="extreme-seed" class="form-label">재현용 시드</label>
+            <input id="extreme-seed" name="seed" type="number" value="20261024" min="0" max="4294967295" required class="form-control mb-3">
+            <button class="btn btn-primary" type="submit">시제품 선수 만들기</button>
+        </form>
+    </div></section>
+    {% endif %}
+    {% if c %}
+    <section class="card mb-4"><div class="card-body">
+        <h2>{{ c.name }}{% if c.retired_at %} · 은퇴{% endif %}</h2>
+        <p>{{ c.year }}번째 시즌 · {{ c.age }}세 · {{ league_name }} · OVR {{ c.ovr|floatformat:1 }}</p>
+        <dl class="tc-extreme-lab__stats">{% for key, value in stats %}<div><dt>{{ key }}</dt><dd>{{ value|floatformat:1 }}</dd></div>{% endfor %}</dl>
+    </div></section>
+    {% if event and not c.retired_at %}
+    <section class="card mb-4"><div class="card-body">
+        <h2>{{ event.title }}</h2>
+        <p>{{ event.rival.name }} 선수와 마주했어요.{% if event.has_contest %} 승부 선택의 성공 확률은 {{ event.success_percent }}%예요.{% endif %}</p>
+        <div class="tc-extreme-lab__choices">
+        {% for choice in event.choices %}
+        <form method="post" class="tc-extreme-lab__choice">{% csrf_token %}
+            <input type="hidden" name="action" value="event"><input type="hidden" name="career" value="{{ c.pk }}">
+            <input type="hidden" name="event_id" value="{{ event.id }}"><input type="hidden" name="choice" value="{{ choice.key }}">
+            <button class="btn btn-outline-primary w-100" type="submit">{{ choice.label }}</button>
+            <p class="small mt-2 mb-0">훈련 보정 {{ choice.training_percent }}% · 부상 위험 {{ choice.risk_percent }}%p · 신뢰 {{ choice.trust }} · 존중 {{ choice.respect }} · 경쟁 {{ choice.rivalry }}{% if choice.contest %}<br>승부 성공 시 신뢰 +3, 실패 시 −2가 추가돼요.{% endif %}</p>
+        </form>
+        {% endfor %}
+        </div>
+    </div></section>
+    {% elif not c.retired_at %}
+    <form method="post" class="mb-4">{% csrf_token %}<input type="hidden" name="action" value="advance">
+        <input type="hidden" name="career" value="{{ c.pk }}"><input type="hidden" name="token" value="{{ turn_token }}">
+        <button class="btn btn-primary" type="submit">이번 시즌 진행하기</button>
+    </form>
+    {% endif %}
+    <section class="mb-4"><h2>함께 성장하는 경쟁자</h2>
+        <div class="tc-extreme-lab__rivals">{% for rival in rivals %}<article class="card"><div class="card-body">
+            <h3>{{ rival.name }}</h3><p class="mb-1">수준 {{ rival.level }} · 존중 {{ rival.respect }} · 경쟁 {{ rival.rivalry }}</p>
+            <p class="small mb-0">맞대결 {{ rival.wins }}승 {{ rival.losses }}패</p>
+        </div></article>{% endfor %}</div>
+    </section>
+    <section class="mb-4"><h2>최근 전용 이벤트</h2>
+        {% for row in history %}<p>{{ row.year }}번째 시즌 · {{ row.title }} · {{ row.choice_label }}{% if row.success == True %} · 승부 성공{% elif row.success == False %} · 승부 실패{% endif %}<br><small>훈련 보정 {{ row.training_percent }}% · 부상 위험 {{ row.risk_percent }}%p · 신뢰 {{ row.trust }} · 존중 {{ row.respect }} · 경쟁 {{ row.rivalry }}</small></p>{% empty %}<p>첫 전용 이벤트를 골라 주세요.</p>{% endfor %}
+    </section>
+    <section class="mb-4"><h2>최근 시즌 기록</h2>
+        {% for season in seasons %}<p>{{ season.year }}번째 시즌 · {{ season.league }} · WAR {{ season.war|floatformat:1 }} · OVR {{ season.ovr_end|floatformat:1 }}</p>{% empty %}<p>시즌을 진행하면 기록이 남아요.</p>{% endfor %}
+    </section>
+    {% endif %}
+    <a href="{% url 'community:lite_home' %}">라이트 모드로 돌아가기</a>
+</main>

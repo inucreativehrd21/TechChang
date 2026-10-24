@@ -13,7 +13,7 @@
 {% block twitter_image %}https://techchang.com{% url 'community:rookie_card_og' c.pk %}{% endblock %}
 
 {% block extra_css %}
-<link href="{% static 'css/game.css' %}?v={{ STATIC_VERSION }}" rel="stylesheet">
+<link href="{% static 'css/game.css' %}?v={{ STATIC_VERSION }}&amp;world=1" rel="stylesheet">
 <link href="{% static 'css/rookie.css' %}?v={{ STATIC_VERSION }}" rel="stylesheet">
 <link href="{% static 'css/rookie-card.css' %}?v={{ STATIC_VERSION }}" rel="stylesheet">
 {% endblock %}

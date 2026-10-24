@@ -1,0 +1,9 @@
+{% load rookie_tags %}
+<section class="rs-story-scene is-manager-office rl-extreme-event" data-rl-title="익스트림 전용 이벤트" data-extreme-pending>
+    <header class="rs-story-head"><p>익스트림 전용 이벤트 · {{ c.year }}번째 시즌</p><h2>{{ extreme_event.title }}</h2><p class="rs-story-line">{{ extreme_event.rival.name }} 선수와의 관계가 이어져요.{% if extreme_event.has_contest %} 승부 성공 확률 {{ extreme_event.success_percent }}%. 도전으로 달라진 능력치는 이후에도 유지돼요.{% endif %} 훈련·부상 위험 보정은 이번 시즌에 적용돼요.</p></header>
+    <div class="rs-story-content"><div class="rs-story-choices">
+    {% for choice in extreme_event.choices %}<form method="post" action="{% career_url 'act' %}">{% csrf_token %}
+        <input type="hidden" name="action" value="extreme_event"><input type="hidden" name="event_id" value="{{ extreme_event.id }}"><input type="hidden" name="choice" value="{{ choice.key }}">
+        <button class="rs-story-choice" type="submit"><b>{{ choice.label }}</b><small>훈련 {{ choice.training_percent }}% · 부상 위험 {{ choice.risk_percent }}%p<br>신뢰 {{ choice.trust }} · 존중 {{ choice.respect }} · 경쟁 {{ choice.rivalry }}{% if choice.contest %}<br>{{ extreme_event.success_effects }}<br>{{ extreme_event.failure_effects }}{% endif %}</small></button>
+    </form>{% endfor %}</div></div>
+</section>

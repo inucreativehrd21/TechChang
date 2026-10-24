@@ -28,7 +28,7 @@
             {% endif %}
             <h2 class="rk-h2">연표</h2>
             {% include 'community/games/_lite_seasons.html' %}
-            {% if is_me and not c.retired_at %}<div class="gm-actions"><a class="gm-btn is-primary" href="{% url 'community:lite_home' %}">이어서 하기</a></div>{% endif %}
+            {% if is_me and not c.retired_at %}<div class="gm-actions"><a class="gm-btn is-primary" href="{% career_url 'home' %}">이어서 하기</a></div>{% endif %}
         </div>
     </div>
     {% include 'community/games/_rookie_rights.html' %}

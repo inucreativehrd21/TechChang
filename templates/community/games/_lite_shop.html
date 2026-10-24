@@ -8,7 +8,7 @@
     <div class="rl-shop-body">
         <p class="rk-hint">값은 리그 물가를 곱해요 — 1군·해외 리그일수록 훨씬 비싸요(지금 ×{{ shop.price_x }}). 연봉·광고 수입에서는 세금이 먼저 빠져요. 보호대와 집을 다 갖춰도 부상 위험은 최대 {{ shop.cut_max }}%까지만 줄어요. 지금 인기 <b>{{ shop.fame }}</b>({{ shop.fame_label }}) — 인기가 높으면 광고 수입이 들어오고 올스타 팬 투표에 유리해요.</p>
         {% if shop.pro %}
-        <form method="post" action="{% url 'community:lite_act' %}" class="rl-planform" data-rl-plan>{% csrf_token %}<input type="hidden" name="action" value="buyplan">
+        <form method="post" action="{% career_url 'act' %}" class="rl-planform" data-rl-plan>{% csrf_token %}<input type="hidden" name="action" value="buyplan">
             <p class="rl-shop-name"><b>이번 비시즌 쇼핑</b><span>체크하고 한 번에 사요 · 체크는 저장돼서 다음 해에도 그대로 열려요 · 돈이 모자라면 체크가 풀려요</span></p>
             {% for g in shop.gear %}
             <fieldset class="rl-plan-group"><legend>{{ g.name }} <small>이번 시즌만</small></legend>
@@ -36,7 +36,7 @@
             <p class="rl-shop-name"><b>집</b><span>지금 {{ shop.house }}</span></p>
             <div class="rl-shop-items is-three">
                 {% for h in shop.houses %}
-                <form method="post" action="{% url 'community:lite_act' %}" class="rl-item{% if h.own %} is-own{% endif %}">{% csrf_token %}<input type="hidden" name="action" value="buy"><input type="hidden" name="item" value="house"><input type="hidden" name="code" value="{{ h.code }}">
+                <form method="post" action="{% career_url 'act' %}" class="rl-item{% if h.own %} is-own{% endif %}">{% csrf_token %}<input type="hidden" name="action" value="buy"><input type="hidden" name="item" value="house"><input type="hidden" name="code" value="{{ h.code }}">
                     <b>{{ h.label|baseball_text }}</b><small>{{ h.effect }}</small><span class="rl-price">{{ h.price }}</span>
                     <button type="submit" class="gm-btn{% if h.can %} is-primary{% endif %}"{% if not h.can %} disabled{% endif %}>{% if h.why == 'now' %}지금 사는 곳{% elif h.why == 'owned' %}내 집 있음{% elif h.why == 'poor' %}현금 부족{% elif h.code == 'own' %}사기{% elif h.code == 'rent' %}월세 들어가기{% else %}숙소로 가기{% endif %}</button>
                 </form>
@@ -48,7 +48,7 @@
             <p class="rl-shop-name"><b>나눔</b><span>평생 한 번씩 · 인기가 평생 남고 기사가 나요</span></p>
             <div class="rl-shop-items is-three">
                 {% for t in shop.gives %}
-                <form method="post" action="{% url 'community:lite_act' %}" class="rl-item{% if t.why == 'done' %} is-own{% endif %}">{% csrf_token %}<input type="hidden" name="action" value="buy"><input type="hidden" name="item" value="give"><input type="hidden" name="code" value="{{ t.code }}">
+                <form method="post" action="{% career_url 'act' %}" class="rl-item{% if t.why == 'done' %} is-own{% endif %}">{% csrf_token %}<input type="hidden" name="action" value="buy"><input type="hidden" name="item" value="give"><input type="hidden" name="code" value="{{ t.code }}">
                     <b>{{ t.label|baseball_text }}</b><small>{{ t.effect }}</small><span class="rl-price">{{ t.price }}</span>
                     <button type="submit" class="gm-btn{% if t.can %} is-primary{% endif %}"{% if not t.can %} disabled{% endif %}>{% if t.why == 'done' %}했어요{% elif t.why == 'poor' %}현금 부족{% else %}하기{% endif %}</button>
                 </form>
@@ -60,7 +60,7 @@
             <p class="rl-shop-name"><b>액세서리</b><span>한 번 사면 평생 · 가끔만 들어와요</span></p>
             {% if shop.stock %}
             <div class="rl-shop-items is-one">
-                <form method="post" action="{% url 'community:lite_act' %}" class="rl-item is-rare">{% csrf_token %}<input type="hidden" name="action" value="buy"><input type="hidden" name="item" value="acc"><input type="hidden" name="code" value="{{ shop.stock.code }}">
+                <form method="post" action="{% career_url 'act' %}" class="rl-item is-rare">{% csrf_token %}<input type="hidden" name="action" value="buy"><input type="hidden" name="item" value="acc"><input type="hidden" name="code" value="{{ shop.stock.code }}">
                     <b>{{ shop.stock.name }}</b><small>인기 +{{ shop.stock.plus }}(평생) · 이번 비시즌에만 매장에 있어요</small><span class="rl-price">{{ shop.stock.price }}</span>
                     <button type="submit" class="gm-btn{% if shop.stock.can %} is-primary{% endif %}"{% if not shop.stock.can %} disabled{% endif %}>{% if shop.stock.can %}사기{% else %}현금 부족{% endif %}</button>
                 </form>
@@ -72,7 +72,7 @@
         <div class="rl-shop-row">
             <p class="rl-shop-name"><b>투자</b><span>결과는 시즌이 끝나면 · 평균적으로는 조금 잃어요</span></p>
             <div class="rl-shop-items is-one">
-                <form method="post" action="{% url 'community:lite_act' %}" class="rl-item{% if shop.invest.why == 'open' %} is-own{% endif %}">{% csrf_token %}<input type="hidden" name="action" value="buy"><input type="hidden" name="item" value="invest"><input type="hidden" name="code" value="">
+                <form method="post" action="{% career_url 'act' %}" class="rl-item{% if shop.invest.why == 'open' %} is-own{% endif %}">{% csrf_token %}<input type="hidden" name="action" value="buy"><input type="hidden" name="item" value="invest"><input type="hidden" name="code" value="">
                     <b>지인 사업 투자</b><small>{% if shop.invest.open %}{{ shop.invest.open }}을 맡겨 두었어요 — 시즌이 끝나면 대박·본전·반토막·쪽박 가운데 하나{% else %}보유 현금의 20%를 맡겨요 — 두 배가 될 수도, 다 날릴 수도 있어요{% endif %}</small>
                     <span class="rl-price">{% if shop.invest.open %}{{ shop.invest.open }}{% else %}{{ shop.invest.amount }}{% endif %}</span>
                     <button type="submit" class="gm-btn{% if shop.invest.can %} is-primary{% endif %}"{% if not shop.invest.can %} disabled{% endif %}>{% if shop.invest.why == 'open' %}결과 기다리는 중{% elif shop.invest.why == 'poor' %}현금 부족{% else %}맡기기{% endif %}</button>

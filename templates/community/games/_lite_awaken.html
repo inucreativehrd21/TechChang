@@ -4,7 +4,7 @@
 <section class="rl-awaken" aria-labelledby="rl-awaken-title">
     <div class="rl-awaken-stage">
         <span class="rl-awaken-aura" aria-hidden="true"></span>
-        <p class="rl-awaken-tag">잠재력에 가까워진 선수에게 오는 기회</p>
+        <p class="rl-awaken-tag">{% if d.bloom_bonus %}만개 뒤에 남겨 둔 단 한 번의 각성 도전{% else %}잠재력에 가까워진 선수에게 오는 기회{% endif %}</p>
         <h2 class="rl-awaken-title" id="rl-awaken-title">각성의 순간</h2>
         <ul class="rl-awaken-wall" aria-label="현재 능력치와 잠재력 한계">
             {% for s in stat_rows %}<li><span>{{ s.label|baseball_text }}</span><i style="--w: {{ s.bar }}%" aria-hidden="true"></i><b>{{ s.shown }}</b><em>한계</em></li>{% endfor %}
@@ -16,9 +16,9 @@
         <p class="rl-dialog-text">꾸준한 훈련과 실전 경험으로 잠재력에 가까워졌어요. 이제 타고난 한계에 도전해 봐요. 이번 비시즌에 몸과 머리를 통째로 뜯어고쳐 보면 벽을 부술 수도 있어요. 대신 실패하면 꽤 지칠 거예요.</p>
     </div>
     <div class="rl-replies" role="group" aria-label="각성에 도전할까요">
-        <form method="post" action="{% url 'community:lite_act' %}">{% csrf_token %}<input type="hidden" name="action" value="decide"><input type="hidden" name="what" value="awaken"><input type="hidden" name="choice" value="try">
-            <button type="submit" class="rl-reply is-awaken"><em class="rl-tone">도전</em><b>벽을 부숴 볼게요</b><small>성공 확률 {{ d.odds_pct }}% · 성공하면 보라색 별, 잠재력 +{{ d.plus }} · 실패하면 다음 시즌 부상 위험↑{% if c.role == 'pitcher' %}, 멘탈 −1{% endif %}</small></button></form>
-        <form method="post" action="{% url 'community:lite_act' %}">{% csrf_token %}<input type="hidden" name="action" value="decide"><input type="hidden" name="what" value="awaken"><input type="hidden" name="choice" value="skip">
-            <button type="submit" class="rl-reply is-modest"><em class="rl-tone">보류</em><b>지금의 나를 다듬을게요</b><small>변화 없음 · 두 시즌 뒤에 다시 기회가 와요</small></button></form>
+        <form method="post" action="{% career_url 'act' %}">{% csrf_token %}<input type="hidden" name="action" value="decide"><input type="hidden" name="what" value="awaken"><input type="hidden" name="choice" value="try">
+            <button type="submit" class="rl-reply is-awaken"><em class="rl-tone">도전</em><b>벽을 부숴 볼게요</b><small>성공 확률 {{ d.odds_pct }}% · 성공하면 보라색 별, 잠재력 +{{ d.plus }} · 실패하면 다음 시즌 부상 위험↑{% if c.role == 'pitcher' %}, 멘탈 −1{% endif %}{% if d.bloom_bonus %} · 성공 여부와 관계없이 마지막 각성 기회를 써요{% endif %}</small></button></form>
+        <form method="post" action="{% career_url 'act' %}">{% csrf_token %}<input type="hidden" name="action" value="decide"><input type="hidden" name="what" value="awaken"><input type="hidden" name="choice" value="skip">
+            <button type="submit" class="rl-reply is-modest"><em class="rl-tone">보류</em><b>지금의 나를 다듬을게요</b><small>기회를 쓰지 않아요 · 3시즌 뒤에 조건을 다시 확인해요</small></button></form>
     </div>
 </section>

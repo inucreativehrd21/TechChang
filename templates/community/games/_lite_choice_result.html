@@ -1,8 +1,9 @@
 {% load rookie_tags %}
 {% if playback.text %}
-<section class="rk-panel rl-choice-result" aria-label="선택 결과" role="status">
-    <h3 class="rk-h3">{{ playback.title|baseball_text }} · 선택 결과</h3>
-    <p>{{ playback.text|baseball_text }}</p>
-    <small>이제 후반기 경기를 이어가요.</small>
+<section class="rk-panel rl-choice-result rl-receipt" aria-label="선택 결과" role="status">
+    <h3 class="rk-h3">{{ playback.title|baseball_text }}</h3>
+    <dl>{% if playback.selection %}<dt>내 선택</dt><dd><b>{{ playback.selection|baseball_text }}</b>{% if playback.selection_hint %}<br><small>{{ playback.selection_hint|baseball_text }}</small>{% endif %}</dd>{% endif %}
+    <dt>이벤트 결과</dt><dd>{{ playback.outcome|default:playback.text|baseball_text }}</dd></dl>
+    {% if playback.effects %}<ul class="rl-receipt-effects" aria-label="실제 변화">{% for effect in playback.effects %}<li>{{ effect|baseball_text }}</li>{% endfor %}</ul>{% endif %}
 </section>
 {% endif %}

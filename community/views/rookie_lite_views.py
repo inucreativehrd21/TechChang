@@ -12,10 +12,13 @@
 명예의 전당에는 계정에 붙은 판만 오른다.
 """
 import logging
+import hashlib
+import json
 import os
 import random
 import secrets
 import threading
+from functools import wraps
 
 from django.contrib import messages
 from django.db import transaction
@@ -35,6 +38,10 @@ from ..rookie_card import _palette, _jersey_name, render_png   # noqa: F401 — 
 from .. import rookie_world as W
 from .. import rookie_story as Story
 from .. import rookie_versions as Versions
+from .. import rookie_presentation as Presentation
+from .. import rookie_peers as Peers
+from .. import rookie_modes as Modes
+from .. import rookie_extreme as Extreme
 from ..game_visibility import rookie_hidden as is_hidden   # 야구는 운영자도 보인다
 from ..models import LiteCareer
 
@@ -44,24 +51,46 @@ HALL_ROLES = [('', '전체'), ('pitcher', '투수'), ('batter', '타자')]
 SESSION_KEY = 'lite_guest'
 
 
+def _mode(request):
+    return getattr(request, 'rookie_mode', Modes.LITE)
+
+
+def _route(request, name):
+    return f'community:{_mode(request)}_{name}'
+
+
+def extreme_endpoint(view):
+    @wraps(view)
+    def wrapped(request, *args, **kwargs):
+        if not Modes.public_enabled():
+            raise Http404
+        request.rookie_mode = Modes.EXTREME
+        return view(request, *args, **kwargs)
+    return wrapped
+
+
+def _session_key(request):
+    return 'extreme_guest' if _mode(request) == Modes.EXTREME else SESSION_KEY
+
+
 def _rng():
     return random.SystemRandom()
 
 
 def _guest(request, make: bool = False) -> str:
-    token = request.session.get(SESSION_KEY, '')
+    token = request.session.get(_session_key(request), '')
     if not token and make:
         token = secrets.token_hex(12)
-        request.session[SESSION_KEY] = token
+        request.session[_session_key(request)] = token
     return token
 
 
 def _mine(request):
     """이 사람의 커리어들 — 회원이면 계정, 손님이면 세션 표식."""
     if request.user.is_authenticated:
-        return LiteCareer.objects.filter(user=request.user)
+        return LiteCareer.objects.filter(user=request.user, mode=_mode(request))
     token = _guest(request)
-    return LiteCareer.objects.filter(user__isnull=True, guest=token) if token else LiteCareer.objects.none()
+    return LiteCareer.objects.filter(user__isnull=True, guest=token, mode=_mode(request)) if token else LiteCareer.objects.none()
 
 
 def _claim(request):
@@ -69,10 +98,10 @@ def _claim(request):
     token = _guest(request)
     if not (token and request.user.is_authenticated):
         return
-    if X.claim_guest(request.user, token):
+    if X.claim_guest(request.user, token, mode=_mode(request)):
         messages.info(request, '손님으로 하던 커리어를 내 계정으로 옮겼어요.')
-    if not LiteCareer.objects.filter(user__isnull=True, guest=token).exists():
-        request.session.pop(SESSION_KEY, None)
+    if not LiteCareer.objects.filter(user__isnull=True, guest=token, mode=_mode(request)).exists():
+        request.session.pop(_session_key(request), None)
 
 
 def _is_mine(request, c) -> bool:
@@ -106,7 +135,7 @@ def _ladder(c) -> list:
 
 def _identity(c) -> dict:
     stars = X.scout_stars(c)
-    return {'c': c, 'mind': Story.view(c), 'team': {'name': W.club_label(c.league, c.club), 'color': W.club_color(c.league, c.club)},
+    return {'c': c, 'bloom_info': X.Bloom.info(c), 'mind': Story.view(c), 'team': {'name': W.club_label(c.league, c.club), 'color': W.club_color(c.league, c.club)},
             'league_name': W.league(c.league)['name'], 'league_short': W.short(c.league),
             'league_kind': R.league_kind(c.league), 'style_label': X.STYLES[c.role][c.style]['label'],
         'pos_label': L.POS_LABEL.get(c.position, dict(X.PIT_POSITIONS).get(c.position, '')),
@@ -151,10 +180,40 @@ def _school_groups() -> list:
 
 
 def _base(request, section: str) -> dict:
+    label = '익스트림 모드' if _mode(request) == Modes.EXTREME else '라이트 모드'
     return {'section': section, 'current_game_version': Versions.CURRENT,
+            'game_mode': _mode(request), 'game_label': label, 'game_title': '야구선수 키우기 ' + label,
+            'extreme_public': Modes.public_enabled(),
             'regions': W.REGIONS, 'teams': [R.TEAM[c] for c, _n, _c in R.TEAMS],
             'styles': X.STYLES, 'bat_positions': L.POSITIONS, 'pit_positions': X.PIT_POSITIONS,
             'roles': R.ROLES}
+
+
+def _plan_key(c):
+    p = c.pending or {}
+    raw = [c.pk, c.year, p.get('kind'), p.get('event'), p.get('intl')]
+    return hashlib.sha256(json.dumps(raw, sort_keys=True).encode()).hexdigest()[:24]
+
+
+def _save_plan_draft(c, data):
+    """상점 POST와 함께 온 미완성 선택. 현재 비시즌에만 보관한다."""
+    if '_draft_key' not in data:
+        return
+    if (c.pending or {}).get('kind') != 'plan' or data['_draft_key'] != _plan_key(c):
+        raise X.LiteError('다른 시즌의 화면이에요. 현재 화면을 다시 확인해 주세요.')
+    allowed = {p[0] for p in X.PROGRAMS[c.role]} - set(X.train_rules(c)['locked'])
+    programs = list(dict.fromkeys(p for p in data.getlist('_draft_program') if p in allowed))[:2]
+    event = (c.pending or {}).get('event')
+    event_choices = {x[0] for x in X.EVENTS[event]['choices']} if event else set()
+    draft = {'programs': programs, 'intensity': data.get('_draft_intensity', 'normal'),
+             'event_choice': data.get('_draft_event_choice', ''),
+             'intl': {k: data.get('_draft_intl_' + k, '') for k in c.pending.get('intl') or []}}
+    if draft['intensity'] not in X.INTENSITY:
+        draft['intensity'] = 'normal'
+    if draft['event_choice'] not in event_choices:
+        draft['event_choice'] = ''
+    draft['intl'] = {k: v for k, v in draft['intl'].items() if v in ('go', 'skip')}
+    c.pending = dict(c.pending, draft=draft)
 
 
 def lite_home(request):
@@ -171,7 +230,7 @@ def lite_home(request):
                    last_line=X.career_line(last) if last else None,
                    mine=list(mine.filter(retired_at__isnull=False)[:10]), default_name=name, quit_wait=X.quit_wait(mine),
                    quit_wait_text=X.wait_text(X.quit_wait(mine)),
-                   hall=X.hall('kbo', limit=5), school_groups=_school_groups())
+                   hall=X.hall('kbo', limit=5, mode=_mode(request)), school_groups=_school_groups())
         return render(request, 'community/rookie_lite.html', ctx)
     pend = c.pending or {}
     fl = c.flags or {}
@@ -181,8 +240,22 @@ def lite_home(request):
         c.save(update_fields=['flags'])
     ctx.update(mode=pend.get('kind', 'plan'), **_identity(c), seasons=_season_rows(c), awaken_fx=fx, moment_fx=mfx,
                award_fx=afx, played=c.seasons.count(), quit_min=X.QUIT_MIN_SEASONS,
-               playback=pend.get('playback') or {}, board_from=(pend.get('playback') or {}).get('from', 0))
+               playback=Presentation.receipt(pend.get('playback')), board_from=(pend.get('playback') or {}).get('from', 0))
+    ctx['peers'] = Peers.comparisons(c)
+    if c.mode == Modes.EXTREME and pend.get('kind') == 'plan':
+        event = Extreme.event_view(c)
+        if event:
+            event['has_contest'] = any(choice['contest'] for choice in event['choices'])
+            for choice in event['choices']:
+                choice['training_percent'] = round(choice['training'] * 100)
+                choice['risk_percent'] = round(choice['risk'] * 100)
+        ctx['extreme_event'] = event
     if pend.get('kind') == 'plan':
+        draft = pend.get('draft') or {}
+        ctx.update(plan_key=_plan_key(c), plan_draft=draft,
+                   draft_programs=draft.get('programs') or [],
+                   draft_intl_go=[k for k, v in (draft.get('intl') or {}).items() if v == 'go'],
+                   draft_intl_skip=[k for k, v in (draft.get('intl') or {}).items() if v == 'skip'])
         ctx['duty'] = X._duty_now(c)[2]
         ctx.update(shop=X.shop_view(c), coach=X.who_is(c, 'coding'), natl=S.national(X.cal_year(c)))
         rules = X.train_rules(c)
@@ -247,10 +320,11 @@ def lite_new(request):
                  position=request.POST.get(f'position_{role}', ''), style=request.POST.get(f'style_{role}', ''),
                  region=request.POST.get('region', ''), team=request.POST.get('team', ''), number=number, rng=_rng(),
                  guest='' if request.user.is_authenticated else _guest(request, make=True),
-                 school=request.POST.get('school', ''))
+                 school=request.POST.get('school', ''), mode=_mode(request),
+                 throwing=request.POST.get('throwing', 'R'), batting=request.POST.get('batting', 'R'))
     except X.LiteError as ex:
         messages.warning(request, str(ex))
-    return redirect('community:lite_home')
+    return redirect(_route(request, 'home'))
 
 
 @require_POST
@@ -263,7 +337,15 @@ def lite_act(request):
             if c is None:
                 raise X.LiteError('진행 중인 커리어가 없어요. 새 선수를 만들어 주세요.')
             pend = c.pending or {}
-            if action == 'play':
+            if action == 'extreme_event':
+                if c.mode != Modes.EXTREME:
+                    raise X.LiteError('익스트림 전용 이벤트예요.')
+                result = Extreme.apply_choice(c, request.POST.get('event_id', ''), request.POST.get('choice', ''), rng)
+                c.save(update_fields=['flags', 'stats', 'ovr', 'best_ovr', 'updated_at'])
+                changes = ' · '.join(f"{item['label']} {item['delta']:+g}" for item in result.get('stats', []))
+                outcome = '도전 성공' if result['success'] else '도전 실패' if result['success'] is False else '선택 반영'
+                messages.info(request, outcome + (' — ' + changes if changes else '') + '. 이번 시즌의 훈련·부상 보정에도 반영했어요.')
+            elif action == 'play':
                 if pend.get('kind') != 'plan':
                     raise X.LiteError('지금은 시즌을 시작할 차례가 아니에요.')
                 X.check_programs(c, request.POST.getlist('program'))          # 훈련 두 개·잠김·같은 조합부터 알려 준다
@@ -277,39 +359,46 @@ def lite_act(request):
             elif action == 'next':
                 X.next_season(c, rng)
             elif action == 'decide':
-                if pend.get('encounter') or pend.get('what') in ('negotiation', 'contract_optout') or (pend.get('what') == 'posting' and pend.get('offers')) or (pend.get('what') == 'meeting' and (X.decision_view(c) or {}).get('contract_scene')):
+                scene = X.decision_view(c) or {}
+                selected = next((item for item in scene.get('choices', []) if item['key'] == request.POST.get('choice')), {})
+                if pend.get('encounter') or pend.get('what') in ('negotiation', 'contract_optout', 'bloom', 'bloom_result') or (pend.get('what') == 'posting' and pend.get('offers')) or (pend.get('what') == 'meeting' and (X.decision_view(c) or {}).get('contract_scene')):
                     expected = (X.decision_view(c) or {}).get('id')
                     if expected != request.POST.get('event_id', ''):
                         raise X.LiteError('이미 답했거나 조건이 바뀐 장면이에요. 현재 화면을 다시 확인해 주세요.')
                 text = X.decide(c, request.POST.get('what', ''), request.POST.get('choice', ''), rng,
                                 school=request.POST.get('school', ''))
+                if text and c.pending.get('playback'):
+                    c.pending['playback'] = dict(c.pending['playback'], selection=selected.get('label', ''),
+                                                 selection_hint=selected.get('hint', ''))
                 c.save()
                 if text:
                     messages.info(request, text)
                 if c.retired_at:
-                    return redirect(f"{reverse('community:lite_card', args=[c.pk])}?new=1")
+                    return redirect(f"{reverse(_route(request, 'card'), args=[c.pk])}?new=1")
             elif action == 'buy':
+                _save_plan_draft(c, request.POST)
                 messages.info(request, X.buy(c, request.POST.get('item', ''), request.POST.get('code', '')))
                 c.save()
-                return redirect(reverse('community:lite_home') + '#rl-shop')
+                return redirect(reverse(_route(request, 'home')) + '#rl-shop')
             elif action == 'buyplan':
+                _save_plan_draft(c, request.POST)
                 messages.info(request, X.buy_plan(c, {'bat': request.POST.get('bat', ''), 'guard': request.POST.get('guard', ''),
                                                       'care': request.POST.getlist('care'), 'fan': request.POST.get('fan'),
                                                       'camp': request.POST.get('camp', ''), 'camp_on': request.POST.get('camp_on')}))
                 c.save()
-                return redirect(reverse('community:lite_home') + '#rl-shop')
+                return redirect(reverse(_route(request, 'home')) + '#rl-shop')
             elif action == 'quit':
                 X.check_quit(c)                                       # 만든 뒤 5시즌 전에는 못 그만둔다
                 if request.POST.get('confirm') != 'yes':
                     raise X.LiteError('은퇴하려면 확인 칸에 체크해 주세요.')
                 messages.info(request, X.retire(c, '스스로'))
                 c.save()
-                return redirect(f"{reverse('community:lite_card', args=[c.pk])}?new=1")
+                return redirect(f"{reverse(_route(request, 'card'), args=[c.pk])}?new=1")
             else:
                 raise X.LiteError('다시 시도해 주세요.')
-    except X.LiteError as ex:
+    except (X.LiteError, Extreme.ExtremeError) as ex:
         messages.warning(request, str(ex))
-    return redirect('community:lite_home')
+    return redirect(_route(request, 'home'))
 
 
 def lite_hall(request):
@@ -318,8 +407,8 @@ def lite_hall(request):
     tab = tab if tab in dict(HALL_TABS) else 'kbo'
     role = request.GET.get('role', '')
     role = role if role in dict(HALL_ROLES) else ''
-    every = [dict(r, url=reverse('community:lite_career', args=[r['c'].pk])) for r in X.hall(tab, limit=2000, version=version)]
-    rows = X.hall(tab, role=role, version=version) if role else every[:50]
+    every = [dict(r, url=reverse(_route(request, 'career'), args=[r['c'].pk])) for r in X.hall(tab, limit=2000, version=version, mode=_mode(request))]
+    rows = X.hall(tab, role=role, version=version, mode=_mode(request)) if role else every[:50]
     return render(request, 'community/rookie_lite_hall.html',
                   dict(_base(request, 'hall'), tab=tab, tabs=HALL_TABS, rows=rows, tab_name=dict(HALL_TABS)[tab],
                        role=role, role_tabs=HALL_ROLES, hall_version=version, version_tabs=Versions.CHOICES,
@@ -335,7 +424,7 @@ def lite_today(request):
     role = role if role in dict(HALL_ROLES) else ''
     ago = 1 if request.GET.get('d') == '1' else 0
     start, end = X.day_bounds(ago)
-    rows = X.hall(tab, role=role, since=start, until=end, version=version)
+    rows = X.hall(tab, role=role, since=start, until=end, version=version, mode=_mode(request))
     return render(request, 'community/rookie_lite_today.html',
                   dict(_base(request, 'today'), tab=tab, tabs=HALL_TABS, rows=rows, tab_name=dict(HALL_TABS)[tab],
                        role=role, role_tabs=HALL_ROLES, daily=True, ago=ago, day=start,
@@ -344,7 +433,7 @@ def lite_today(request):
 
 
 def lite_career(request, pk: int):
-    c = get_object_or_404(LiteCareer.objects.select_related('user'), pk=pk)
+    c = get_object_or_404(LiteCareer.objects.select_related('user'), pk=pk, mode=_mode(request))
     if is_hidden(c.user) and c.user_id != request.user.id:
         raise Http404
     awards = _award_sum(c)
@@ -431,11 +520,11 @@ def _card(c) -> dict:
 
 
 def lite_card(request, pk: int):
-    c = get_object_or_404(LiteCareer.objects.select_related('user'), pk=pk)
+    c = get_object_or_404(LiteCareer.objects.select_related('user'), pk=pk, mode=_mode(request))
     if is_hidden(c.user) and c.user_id != request.user.id:
         raise Http404
     if not c.retired_at:
-        return redirect('community:lite_career', pk=pk)
+        return redirect(_route(request, 'career'), pk=pk)
     return render(request, 'community/rookie_lite_card.html',
                   dict(_base(request, 'cards'), **_identity(c), card=_card(c), is_me=_is_mine(request, c),
                        fresh=request.GET.get('new') == '1' and _is_mine(request, c)))
@@ -443,7 +532,7 @@ def lite_card(request, pk: int):
 
 def lite_card_png(request, pk: int, kind: str = 'card'):
     """은퇴 카드 PNG — kind 'card'(1080×1350, 저장·SNS 올리기) · 'og'(1200×630, 링크 미리보기) · 'story'(1080×1920, 인스타 스토리)."""
-    c = get_object_or_404(LiteCareer.objects.select_related('user'), pk=pk)
+    c = get_object_or_404(LiteCareer.objects.select_related('user'), pk=pk, mode=_mode(request))
     if (is_hidden(c.user) and c.user_id != request.user.id) or not c.retired_at or kind not in K.SHOTS:
         raise Http404
     return K.png_response(c.pk, kind, f'{c.name}-은퇴카드.png', request.GET.get('download') == '1', render_png,

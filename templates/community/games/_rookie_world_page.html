@@ -1,0 +1,48 @@
+{% load rookie_tags %}
+<main class="gm rk"><div class="gm-wrap is-wide rk-world">
+    <a class="gm-back" href="{{ home }}">← 내 선수</a>
+    <h1 class="rk-title">내 무대 밖에서도 계속되는 야구</h1>
+    <p>{{ game_label }} · {{ data.year }}번째 시즌 · {{ data.label }}. 내 소속에 관계없이 모든 리그를 볼 수 있어요.</p>
+    <form method="get" class="rk-world__filters">
+        {% if career %}<input type="hidden" name="career" value="{{ career }}">{% endif %}
+        <div><label for="world-league">리그</label><select name="lg" id="world-league">{% for item in league_choices %}<option value="{{ item.code }}"{% if item.code == lg %} selected{% endif %}>{{ item.name }}</option>{% endfor %}</select></div>
+        <div><label for="world-club">구단·학교</label><select name="club" id="world-club">{% for item in club_choices %}<option value="{{ item.code }}"{% if item.code == club %} selected{% endif %}>{{ item.name }}</option>{% endfor %}</select></div>
+        <div><label for="world-year">시즌</label><input id="world-year" name="year" type="number" min="1" max="{{ data.current_year }}" value="{{ data.year }}" required></div>
+        <button class="gm-btn is-primary" type="submit">기록 보기</button>
+    </form>
+    <p class="rk-hint">커리어 시계에 맞춰 진행되는 가상 리그예요. 구단 선수 기록은 같은 대진·점수로 계산하고, 공개 회원의 실제 플레이 기록은 아래에 따로 표시해요.</p>
+    <section class="rk-panel"><div class="rk-head"><h2>{{ league_name }} 순위</h2><span class="rk-fine">{{ data.played }}/{{ data.table.rounds }}라운드</span></div>
+        <div class="rk-table-wrap"><table class="rk-table"><thead><tr><th scope="col">순위</th><th scope="col">구단</th><th scope="col">경기</th><th scope="col">승</th><th scope="col">패</th><th scope="col">무</th><th scope="col">승률</th><th scope="col">득점</th><th scope="col">실점</th></tr></thead><tbody>
+        {% for row in data.table.rows %}<tr{% if row.club == club %} class="rk-world__selected"{% endif %}><td>{{ row.rank }}</td><th scope="row"><a href="?lg={{ lg }}&amp;year={{ data.year }}&amp;club={{ row.club|urlencode }}{% if career %}&amp;career={{ career }}{% endif %}">{{ row.name }}</a></th><td>{{ row.g }}</td><td>{{ row.w }}</td><td>{{ row.l }}</td><td>{{ row.d }}</td><td>{{ row.pct_text }}</td><td>{{ row.rf }}</td><td>{{ row.ra }}</td></tr>{% endfor %}
+        </tbody></table></div>
+    </section>
+    <section class="rk-panel"><div class="rk-head"><h2>리그 경기 결과</h2><span class="rk-fine">{% if data.played %}{{ round }}라운드{% else %}개막 전{% endif %}</span></div>
+        <form method="get" class="rk-world__round"><input type="hidden" name="lg" value="{{ lg }}"><input type="hidden" name="club" value="{{ club }}"><input type="hidden" name="year" value="{{ data.year }}">{% if career %}<input type="hidden" name="career" value="{{ career }}">{% endif %}<label for="world-round">라운드</label><select id="world-round" name="round">{% for n in rounds %}<option value="{{ n }}"{% if n == round %} selected{% endif %}>{{ n }}라운드</option>{% endfor %}</select><button class="gm-btn" type="submit">이동</button></form>
+        <ul class="rk-world__fixtures">{% for row in fixtures %}<li><span>{{ row.home_name }} <small>홈</small></span><b>{{ row.h }} : {{ row.a }}</b><span>{{ row.away_name }} <small>원정</small></span></li>{% empty %}<li>개막 전이에요. 시즌을 진행하면 모든 리그의 결과가 함께 쌓여요.</li>{% endfor %}</ul>
+    </section>
+    <section class="rk-panel"><div class="rk-head"><h2>{{ club_name }} 선수단</h2><span class="rk-fine">가상 구단 선수 · 시즌 누적</span></div>
+        <h3 class="rk-h3">타자</h3><div class="rk-table-wrap"><table class="rk-table"><thead><tr><th scope="col">선수</th><th scope="col">위치</th><th scope="col">나이</th><th scope="col">OVR</th><th scope="col">경기</th><th scope="col">타수</th><th scope="col">안타</th><th scope="col">홈런</th><th scope="col">타점</th><th scope="col">득점</th><th scope="col">타율</th><th scope="col">OPS</th><th scope="col">WAR</th></tr></thead><tbody>
+        {% for row in batters %}<tr><th scope="row">{{ row.name }}</th><td>{{ row.pos }}</td><td>{{ row.age }}</td><td>{{ row.ovr }}</td><td>{{ row.totals.g|default:0 }}</td><td>{{ row.totals.ab|default:0 }}</td><td>{{ row.totals.h|default:0 }}</td><td>{{ row.totals.hr|default:0 }}</td><td>{{ row.totals.rbi|default:0 }}</td><td>{{ row.totals.r|default:0 }}</td><td>{{ row.v.avg_text }}</td><td>{{ row.v.ops_text }}</td><td>{{ row.war }}</td></tr>{% endfor %}</tbody></table></div>
+        <h3 class="rk-h3 rk-mt">투수</h3><div class="rk-table-wrap"><table class="rk-table"><thead><tr><th scope="col">선수</th><th scope="col">보직</th><th scope="col">나이</th><th scope="col">OVR</th><th scope="col">경기</th><th scope="col">이닝</th><th scope="col">승</th><th scope="col">패</th><th scope="col">세이브</th><th scope="col">실점</th><th scope="col">삼진</th><th scope="col">ERA</th><th scope="col">WHIP</th></tr></thead><tbody>
+        {% for row in pitchers %}<tr><th scope="row">{{ row.name }}</th><td>{{ row.pos }}</td><td>{{ row.age }}</td><td>{{ row.ovr }}</td><td>{{ row.totals.g|default:0 }}</td><td>{{ row.v.ip_text }}</td><td>{{ row.totals.w|default:0 }}</td><td>{{ row.totals.l|default:0 }}</td><td>{{ row.totals.sv|default:0 }}</td><td>{{ row.totals.r|default:0 }}</td><td>{{ row.totals.so|default:0 }}</td><td>{{ row.v.era_text }}</td><td>{{ row.v.whip_text }}</td></tr>{% endfor %}</tbody></table></div>
+    </section>
+    <section class="rk-panel"><h2>이 무대에서 뛴 회원 선수</h2><p class="rk-hint">{{ data.year }}번째 시즌, 해당 구단에서 남긴 공개 플레이 기록이에요. 가상 선수와 순위를 섞지 않아요.</p><ul class="rk-world__members">{% for member in members %}<li><a href="{{ member.url }}"><b>{{ member.name }}</b></a><span>{{ member.line }} · WAR {{ member.war|floatformat:1 }}</span></li>{% empty %}<li>아직 이 시즌·구단에 공개 회원 기록이 없어요.</li>{% endfor %}</ul></section>
+{{ clubs_by_league|json_script:'world-clubs-data' }}
+<script nonce="{{ csp_nonce }}">
+(function () {
+    var league = document.getElementById('world-league');
+    var club = document.getElementById('world-club');
+    var source = document.getElementById('world-clubs-data');
+    if (!league || !club || !source) return;
+    var choices = JSON.parse(source.textContent);
+    league.addEventListener('change', function () {
+        var previous = club.value;
+        var options = choices[league.value] || [];
+        club.replaceChildren();
+        options.forEach(function (item) { club.add(new Option(item.name, item.code)); });
+        if (options.some(function (item) { return item.code === previous; })) club.value = previous;
+        club.disabled = options.length === 0;
+    });
+}());
+</script>
+</div></main>

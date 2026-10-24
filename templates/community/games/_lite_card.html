@@ -9,7 +9,7 @@
         <span class="rk-number" aria-hidden="true">{{ c.number }}</span>
         <div class="rk-who">
             <b class="rk-name">{{ c.name }}</b>
-            <span class="rk-meta">{{ pos_label }} · {{ style_label }}</span>
+            <span class="rk-meta">{{ pos_label }} · {{ style_label }} · {{ c.hand_label }}</span>
             <span class="rk-meta">{% if grade_label %}{{ grade_label }} · {% endif %}{{ c.age }}세{% if not c.retired_at %} · {{ c.year }}번째 시즌 앞{% endif %}</span>
             <span class="rk-meta">스카우트 <span class="rk-stars" role="img" aria-label="별 {{ stars }}개{% if awakened %}, 각성 보라색 별 {{ awakened }}개{% endif %}">{% for i in star_range %}<i class="{% if i < stars %}is-on{% elif i < stars_total %}is-awaken{% endif %}" aria-hidden="true"></i>{% endfor %}</span> <span class="rk-nowrap">{{ star_note }}</span></span>
         </div>

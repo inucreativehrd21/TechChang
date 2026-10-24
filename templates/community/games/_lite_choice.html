@@ -1,6 +1,6 @@
 {% load rookie_tags %}
 {# 라이트 갈림길 선택 카드 하나. 맥락: what, choice, label, hint, main #}
-<form method="post" action="{% url 'community:lite_act' %}" class="rl-pathcard{% if main %} is-main{% endif %}">
+<form method="post" action="{% career_url 'act' %}" class="rl-pathcard{% if main %} is-main{% endif %}">
     {% csrf_token %}<input type="hidden" name="action" value="decide"><input type="hidden" name="what" value="{{ what }}"><input type="hidden" name="choice" value="{{ choice }}">
     <b>{{ label|baseball_text }}</b>{% if hint %}<span>{{ hint|baseball_text }}</span>{% endif %}
     <button type="submit" class="gm-btn{% if main %} is-primary{% endif %} is-block">{{ label|baseball_text }}</button>

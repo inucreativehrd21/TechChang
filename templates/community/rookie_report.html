@@ -1,0 +1,4 @@
+{% extends 'base.html' %}{% load static %}
+{% block title %}일일 선수 리포트 - 테크창{% endblock %}
+{% block extra_css %}<link rel="stylesheet" href="{% static 'css/rookie.css' %}?v={{ STATIC_VERSION }}&amp;matchups=1"><link rel="stylesheet" href="{% static 'css/rookie-hub.css' %}?v={{ STATIC_VERSION }}&amp;hub=1"><link rel="stylesheet" href="{% static 'css/rookie-daily.css' %}?v={{ STATIC_VERSION }}&amp;daily=1">{% endblock %}
+{% block content %}{% include 'community/games/_rookie_report_page.html' %}{% endblock %}

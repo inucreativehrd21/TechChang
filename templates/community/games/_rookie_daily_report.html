@@ -1,0 +1,13 @@
+<section class="rk-club-report" aria-label="구단 일일 선수 리포트">
+    <header><h2>구단 일일 선수 리포트</h2><small>전력분석팀 · {{ report.day|date:'Y.m.d' }}</small></header>
+    <p><b>{{ report.player.name }}</b> · {{ report.team }} · {% if report.player.role == 'pitcher' %}투수{% else %}타자{% endif %}</p>
+    <p class="rk-club-report__line">{{ report.summary }}</p>
+    {% if report.metrics %}<dl class="rk-club-report__metrics">{% for label, value in report.metrics %}<div><dt>{{ label }}</dt><dd>{{ value }}</dd></div>{% endfor %}</dl>{% endif %}
+    <div class="rk-club-report__notes">
+        <section><h3>긍정적인 관찰</h3>{% for line in report.strengths %}<p>{{ line }}</p>{% endfor %}</section>
+        <section><h3>보완 과제</h3>{% for line in report.tasks %}<p>{{ line }}</p>{% endfor %}</section>
+    </div>
+    {% if report.trend %}<p class="rk-club-report__line rk-mt">{{ report.trend }}</p>{% endif %}
+    <footer>{{ report.evidence }}{% if report.sample_note %}<br>{{ report.sample_note }}{% endif %}</footer>
+    {% include 'community/games/_rookie_matchup_history.html' with member_history=report.member_history p=report.player matchup_title='이날 회원 선수 맞대결' %}
+</section>

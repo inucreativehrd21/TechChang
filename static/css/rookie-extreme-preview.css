@@ -1,0 +1,20 @@
+.tc-extreme-lab { max-width: 1000px; color: #18181b; }
+.tc-extreme-lab h1 { font-size: 1.6rem; font-weight: 800; margin-bottom: 16px; }
+.tc-extreme-lab h2 { font-size: 1.2rem; font-weight: 700; margin-bottom: 14px; }
+.tc-extreme-lab h3 { font-size: 1rem; font-weight: 700; }
+.tc-extreme-lab p { line-height: 1.7; overflow-wrap: anywhere; }
+.tc-extreme-lab__stats { display: flex; flex-wrap: wrap; gap: 12px 24px; }
+.tc-extreme-lab__stats dt { color: #52525b; font-size: .85rem; }
+.tc-extreme-lab__stats dd { font-weight: 700; margin-bottom: 0; }
+.tc-extreme-lab__choices { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.tc-extreme-lab__rivals { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+.tc-extreme-lab__choice { min-width: 0; }
+.tc-extreme-lab .card { border-color: #e5e7eb; }
+.tc-extreme-lab .btn { min-height: 44px; }
+.tc-extreme-lab .btn-primary { background: #4f46e5; border-color: #4f46e5; }
+.tc-extreme-lab .btn-outline-primary { color: #4f46e5; border-color: #4f46e5; }
+.tc-extreme-lab .btn-outline-primary:hover { color: #fff; background: #4f46e5; border-color: #4f46e5; }
+.tc-extreme-lab :focus-visible { outline: 2px solid #4f46e5; outline-offset: 3px; }
+@media (max-width: 767px) {
+    .tc-extreme-lab__choices, .tc-extreme-lab__rivals { grid-template-columns: 1fr; }
+}

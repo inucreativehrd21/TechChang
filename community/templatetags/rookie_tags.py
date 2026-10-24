@@ -6,6 +6,15 @@ from community import rookie_world as W
 register = template.Library()
 
 
+@register.simple_tag(takes_context=True)
+def career_url(context, name, *args):
+    from django.urls import reverse
+    request = context.get('request')
+    mode = getattr(request, 'rookie_mode', None) or context.get('game_mode') or getattr(context.get('c'), 'mode', 'lite')
+    mode = 'extreme' if mode == 'extreme' else 'lite'
+    return reverse(f'community:{mode}_{name}', args=args)
+
+
 @register.filter
 def baseball_text(value):
     """과거 JSON·기록의 야구 용어도 현재 표시 기준으로 보여 준다. HTML은 그대로 이스케이프한다."""

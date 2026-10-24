@@ -9,12 +9,12 @@
         </div>
     </div>
 
-    {# 야구선수 키우기 — 정식 판·라이트 판을 한 묶음으로 #}
+    {# 야구선수 키우기 — 정식 판·라이트 모드을 한 묶음으로 #}
     <section class="gm-ball" aria-labelledby="gm-ball-title">
         <div class="gm-ball-board">
             <div class="gm-ball-copy">
                 <h2 class="gm-ball-title" id="gm-ball-title">야구선수 키우기 <span class="gm-pill gm-new">NEW</span></h2>
-                <p>리틀야구부터 드래프트, 프로 무대와 은퇴까지 한 선수의 야구 인생을 키워요. 두 판 가운데 마음에 드는 쪽으로 시작해 보세요.</p>
+                <p>리틀야구부터 드래프트, 프로 무대와 은퇴까지 한 선수의 야구 인생을 키워요. 마음에 드는 모드로 시작해 보세요.</p>
             </div>
             <ul class="gm-ball-crew" aria-hidden="true">
                 <li><span class="gm-ball-sprite" style="--sprite: url('/media/lab/chars/lead_idle.png')"></span>감독</li>
@@ -25,7 +25,7 @@
         <div class="gm-ball-modes">
             <a class="gm-ball-mode is-lite" href="{% url 'community:lite_home' %}" data-game-window>
                 <span class="gm-ball-tag">로그인 없이 바로</span>
-                <b>라이트 판 <small>한 판 30분</small></b>
+                <b>라이트 모드 <small>한 판 30분</small></b>
                 <span class="gm-ball-desc">시즌마다 훈련 두 개와 진로를 골라 고1부터 은퇴까지 가요. 드래프트·병역·포스팅·FA를 지나 명예의 전당을 노려요.</span>
                 <span class="gm-ball-meta">은퇴한 커리어 {{ ball.retired }}편 · 진행 중 {{ ball.running }}편</span>
             </a>
@@ -35,6 +35,11 @@
                 <span class="gm-ball-desc">칼럼 읽기·댓글·출석으로 모은 훈련 포인트로 키워요. 경기는 매일 밤 열리고, KBO·메이저리그·일본·대만까지 갈 수 있어요.</span>
                 <span class="gm-ball-meta">현역 {{ ball.players }}명 · 프로 {{ ball.pros }}명</span>
             </a>
+            {% if extreme_public %}<a class="gm-ball-mode is-extreme" href="{% url 'community:extreme_home' %}" data-game-window>
+                <span class="gm-ball-tag">더 빠른 성장 · 별도 기록</span><b>익스트림 모드 <small>새 도전</small></b>
+                <span class="gm-ball-desc">높은 시작 능력과 훈련 효율로 성장해요. 전용 이벤트에서 보상과 위험을 고르고, 강화된 상대와 지속 경쟁자를 만나세요.</span>
+                <span class="gm-ball-meta">시작 능력 +5 · 잠재력 +8 · 훈련 ×1.35</span>
+            </a>{% endif %}
         </div>
     </section>
 
@@ -57,7 +62,7 @@
         <h2 class="gm-h2">순위 보기</h2>
         <div class="gm-links">
             <a class="gm-btn" href="{% url 'community:rookie_league' %}">정식 판 리그</a>
-            <a class="gm-btn" href="{% url 'community:lite_hall' %}">라이트 판 전당</a>
+            <a class="gm-btn" href="{% url 'community:lite_hall' %}">라이트 모드 전당</a>
         </div>
         <div class="gm-links gm-mt">
             <a class="gm-btn" href="{% url 'community:baseball_leaderboard' %}">숫자야구</a>
@@ -70,7 +75,7 @@
     {% if not user.is_authenticated %}
     <div class="gm-card" style="text-align:center;">
         <h2 class="gm-h2">로그인하면 기록이 남아요</h2>
-        <p class="gm-note" style="margin-top:0;">퍼즐 게임과 야구선수 키우기 정식 판은 로그인해야 할 수 있어요. 라이트 판은 로그인 없이도 바로 할 수 있어요.</p>
+        <p class="gm-note" style="margin-top:0;">퍼즐 게임과 야구선수 키우기 정식 판은 로그인해야 할 수 있어요. 라이트 모드은 로그인 없이도 바로 할 수 있어요.</p>
         <div class="gm-actions">
             <a rel="nofollow" class="gm-btn is-primary" href="{% url 'common:login' %}?next={{ request.get_full_path|urlencode }}">로그인</a>
             <a class="gm-btn" href="{% url 'common:signup' %}">회원가입</a>

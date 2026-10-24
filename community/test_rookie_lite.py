@@ -71,7 +71,7 @@ def autoplay(c, rng, max_steps=200):
                     if pend.get('offers') else ['mlb', 'npb', 'stay'],
                     'fa': [o['key'] for o in pend.get('offers') or []],
                     'return': [o['key'] for o in pend.get('offers') or []] + ['stay'],
-                    'awaken': ['try', 'skip'], 'contract_optout': ['keep', 'market'],
+                    'awaken': ['try', 'skip'], 'bloom': ['try', 'skip'], 'bloom_result': ['continue'], 'contract_optout': ['keep', 'market'],
                     'retire': ['continue'] if c.age < 37 else ['retire']}.get(what, ['retire'])
             X.decide(c, what, rng.choice(opts), rng)
             c.save()
@@ -1271,7 +1271,7 @@ class ViewTests(TestCase):
             self.assertContains(r, RIGHTS)
             r = self.client.get('/games/', HTTP_USER_AGENT=ua)
             self.assertContains(r, 'gm-ball')                                          # 야구 두 판은 한 묶음
-            self.assertContains(r, '라이트 판')
+            self.assertContains(r, '라이트 모드')
             self.assertContains(r, '로그인 없이 바로')
             r = self.client.get('/', HTTP_USER_AGENT=ua)
             self.assertContains(r, '야구선수 키우기, 문을 열었어요')                       # 홈 런칭 칸

@@ -8,7 +8,7 @@
 """
 import logging
 import random
-from datetime import timedelta
+from datetime import date, timedelta
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
@@ -28,6 +28,7 @@ from .. import rookie_league as L
 from .. import rookie_legacy as G
 from .. import rookie_versions as Versions
 from .. import rookie_world as W
+from .. import rookie_matchups as Matchups
 from ..game_visibility import rookie_hidden as is_hidden, rookie_visible as visible   # 야구는 운영자도 보인다
 from ..rookie_card import render_png   # noqa: F401 — 테스트가 바꿔 끼운다
 from ..models import RookieAward, RookieGame, RookiePlayer, RookieSeason, RookieSeasonStat
@@ -78,7 +79,28 @@ def _base_ctx(request, section: str) -> dict:
 
 
 def _play_ctx(request, p) -> dict:
-    return dict(_base_ctx(request, 'home'), mode='play', **R.dashboard(p))
+    from .. import rookie_reports as Reports
+    from .. import rookie_peers as Peers
+    from .. import rookie_fan_reactions as Fans
+    report = Reports.daily(p)
+    return dict(_base_ctx(request, 'home'), mode='play', daily_report=report, daily_reactions=Fans.daily(p, report),
+                peers=Peers.comparisons(p), member_history=Matchups.history(p), **R.dashboard(p))
+
+
+@login_required
+def rookie_report(request):
+    from .. import rookie_reports as Reports
+    p = R.current(request.user.id) or RookiePlayer.objects.filter(user=request.user).order_by('-pk').first()
+    if p is None:
+        return redirect('community:rookie_home')
+    yesterday = timezone.localdate() - timedelta(days=1)
+    try:
+        day = date.fromisoformat(request.GET.get('day', ''))
+        day = min(yesterday, max(L.EPOCH, day))
+    except (ValueError, TypeError):
+        day = yesterday
+    return render(request, 'community/rookie_report.html',
+                  dict(report=Reports.daily(p, day), yesterday=yesterday))
 
 
 def _seasons():
@@ -191,7 +213,8 @@ def rookie_create(request):
         p = R.create(request.user, name=request.POST.get('name', ''), role=role, team=request.POST.get('team', ''),
                      number=number, focus=request.POST.get(f'focus_{role}', ''),
                      position=request.POST.get('pitch_position', request.POST.get('position', '')) if role == 'pitcher' else request.POST.get('position', ''),
-                     region=request.POST.get('region', ''))
+                     region=request.POST.get('region', ''), throwing=request.POST.get('throwing', 'R'),
+                     batting=request.POST.get('batting', 'R'))
     except R.GameError as ex:
         messages.warning(request, str(ex))
         return redirect('community:rookie_home')
@@ -321,7 +344,7 @@ def rookie_player(request, pk: int):
     games = [L.game_view(g, p.club, p.role) for g in RookieGame.objects.filter(player=p).order_by('-day', '-no')[:20]]
     ctx = dict(_base_ctx(request, 'league'), p=p, **R.identity(p), path=C.career_view(p),
                ladder=None if p.retired_at else L.ladder_of(p), stats=R.stat_rows(p), career=L.season_lines(career),
-               life=G.lifetime(p), games=games,
+               life=G.lifetime(p), games=games, member_history=Matchups.history(p),
                trophies=list(RookieAward.objects.filter(player=p).select_related('season')
                              .order_by('-season__number', 'order')),
                miles=list(p.logs.filter(kind='mile').exclude(text__contains='베스트 9')[:12]),

@@ -8,7 +8,11 @@
     {% include 'community/games/_rookie_card.html' with owner=True %}
     {% include 'community/games/_rookie_board.html' %}
 </div>
+{% if daily_report %}{% include 'community/games/_rookie_daily_report.html' with report=daily_report %}<p class="rk-report-link"><a href="{% url 'community:rookie_report' %}">날짜별 구단 리포트 보기</a></p>{% endif %}
+{% if daily_reactions %}<section class="rk-panel rl-reactions" aria-label="가상 팬 반응"><h2>경기 뒤 팬 라운지</h2><p class="rk-hint">경기 기록에 맞춘 가상 반응이에요.</p><ul>{% for reaction in daily_reactions %}<li><b>{{ reaction.name }}</b><p>{{ reaction.text }}</p></li>{% endfor %}</ul></section>{% endif %}
+{% include 'community/games/_rookie_peers.html' %}
 
+{% include 'community/games/_rookie_matchup_history.html' %}
 {% if main_line %}{% include 'community/games/_rookie_line.html' with x=main_line role=p.role %}{% endif %}
 
 {# PC: 왼쪽 훈련 / 오른쪽 오늘의 TP·컨디션·기록. 모바일은 이 순서대로 한 단 #}

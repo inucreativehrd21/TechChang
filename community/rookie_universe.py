@@ -64,10 +64,20 @@ def rivals(p, year=None):
     return pool
 
 
-def rival_report(p, league, kind):
+def rival_report(p, league, kind, members=False):
+    """members=True 는 '공개 회원 기록에 도전' 장면에서만 — 기사·면담·콜업 판정에는 가상 경쟁자만 쓴다.
+    실제 회원 이름이 스캔들 기사나 강등 통보에 실리면 안 되고, 다른 리그 기록으로 강도를 어림하지도 않는다."""
     from . import rookie_story as S
     from . import rookie_lite as X
     from . import rookie_league as L
+    from . import rookie_peers as Peers
+    peers = Peers.comparisons(p) if members else []
+    r = next((row for row in peers if row['league'] == league), None)
+    if r:
+        return dict(id=r['id'], name=r['name'], pos='투수' if p.role == 'pitcher' else '타자',
+                    line=r['line'], z=round(max(-2, min(2, (r['ovr'] - W.level(league)) / 7)), 2),
+                    league=r['league_label'], age=r['age'], source='member_record', url=r['url'],
+                    relation=50, history=[f"공개 회원 기록 · {r['age']}세 · {r['season']}번째 시즌"])
     pool = rivals(p)
     candidates = [r for r in pool if r['league'] == league and r['club'] == p.club]
     if not candidates:
@@ -89,7 +99,7 @@ def rival_report(p, league, kind):
     pos = L.POS_LABEL.get(p.position, '야수') if p.role == 'batter' else '투수'
     line = (f'타율 {L.rate(max(.160, min(.370, .252 + z * .027)))} · OPS {L.rate(.720 + z * .075)}'
             if p.role == 'batter' else f'평균자책점 {max(.8, 4.40 - z * .9):.2f}')
-    return dict(id=r['id'], name=r['name'], pos=pos, line=line, z=round(z, 2), league=W.short(league),
+    return dict(id=r['id'], name=r['name'], pos=pos, line=line, z=round(z, 2), league=W.short(league), source='simulation',
                 relation=r['relation'], history=r['history'][-2:])
 
 
@@ -114,6 +124,9 @@ def view(p):
 
 
 def teams(league):
+    if not W.is_pro(league):
+        return ([W.little_club(region) for region in W.REGIONS] if league == 'little'
+                else [school for _region, school in W.schools(league)])
     out = [c for c, _name, _col in W.SYSTEM_TEAMS.get(W.system_of(league), [])]
     if league == 'kbo2':
         out.append('국군체육부대(상무)')

@@ -1,6 +1,6 @@
 {% load rookie_tags %}
 {# 야구선수 키우기 내 선수 (PC·모바일 공용). mode = intro(비로그인) / create(선수 없음) / play — rookie_views.rookie_home #}
-<div class="gm rk">
+<div class="gm rk rk-daily">
 <div class="gm-wrap is-wide">
     {% include 'community/games/_rookie_top.html' %}
     {% include 'community/games/_rookie_stadium.html' %}
@@ -49,6 +49,7 @@
                     </label>
                     {% endfor %}
                 </div>
+                {% include 'community/games/_rookie_hands.html' %}
                 <fieldset class="rk-focus" data-role="batter">
                     <legend>포지션 <small>골든글러브는 포지션별로 뽑아요</small></legend>
                     <div class="rk-chips">
@@ -119,7 +120,7 @@
                 <a rel="nofollow" class="gm-btn is-primary" href="{% url 'common:login' %}?next={{ request.get_full_path|urlencode }}">로그인하고 시작</a>
                 <a class="gm-btn" href="{% url 'common:signup' %}">회원가입</a>
             </div>
-            <p class="rl-guest-note">로그인하기 전에 맛보고 싶다면 <a href="{% url 'community:lite_home' %}">라이트 판</a>을 해 보세요. 한 판 30분, 로그인 없이도 할 수 있어요.</p>
+            <p class="rl-guest-note">로그인하기 전에 맛보고 싶다면 <a href="{% url 'community:lite_home' %}">라이트 모드</a>을 해 보세요. 한 판 30분, 로그인 없이도 할 수 있어요.</p>
         </section>
         {% include 'community/games/_rookie_rules.html' %}
     {% endif %}
@@ -137,7 +138,7 @@
     if (form) {
         var sync = function () {
             var role = (form.querySelector('input[name=role]:checked') || {}).value;
-            form.querySelectorAll('.rk-focus').forEach(function (fs) { fs.hidden = fs.dataset.role !== role; });
+            form.querySelectorAll('.rk-focus[data-role]').forEach(function (fs) { fs.hidden = fs.dataset.role !== role; });
         };
         form.addEventListener('change', sync);
         sync();

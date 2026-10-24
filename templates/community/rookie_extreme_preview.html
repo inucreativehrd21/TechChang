@@ -1,0 +1,5 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %}익스트림 비공개 실험실 - 테크창{% endblock %}
+{% block extra_css %}<link rel="stylesheet" href="{% static 'css/rookie-extreme-preview.css' %}?v={{ STATIC_VERSION }}">{% endblock %}
+{% block content %}{% include 'community/games/_extreme_preview.html' %}{% endblock %}

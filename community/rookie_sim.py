@@ -88,6 +88,8 @@ def _binom(n: int, p: float, rng) -> int:
 
 # ───────────────────────────── 타석 승부
 def pa_probs(b: dict, p: dict, risp: bool = False) -> dict:
+    from . import rookie_handedness as Hands
+    b, p = Hands.matchup(b, p)
     g = lambda d, k: float(d.get(k, 25))  # noqa: E731
     con, pw, eye, spd = g(b, 'contact'), g(b, 'power'), g(b, 'eye'), g(b, 'speed')
     clutch = float(b.get('clutch', (con + eye) / 2))           # 내 타자는 클러치 능력치가 없다 → 컨택·선구안 평균
@@ -143,7 +145,7 @@ STARTER_PA = {'ace': 3, 'reg': 3, 'bak': 2}                 # 선발과 붙는 �
 SETUP_SHARE = 0.45                                          # 불펜 타석 중 필승조·마무리 비율
 
 BAT_SPLITS = (('ace', '에이스 선발'), ('reg', '일반 선발'), ('bak', '대체 선발'),
-              ('setup', '필승조·마무리'), ('mop', '추격·패전조'))
+              ('setup', '필승조·마무리'), ('mop', '추격·패전조'), ('member', '회원 투수'))
 PIT_SPLITS = (('top', '상위 타선'), ('heart', '중심 타선'), ('bottom', '하위 타선'))
 GRADE_LABEL = {'ace': '에이스', 'reg': '일반', 'bak': '대체', 'setup': '필승조', 'mop': '추격조'}
 GROUP_NOTE = {'top': '출루·주루', 'heart': '클러치·장타', 'bottom': '밋밋'}
@@ -151,11 +153,13 @@ GROUP_NOTE = {'top': '출루·주루', 'heart': '클러치·장타', 'bottom': '
 
 def opp_pitcher(kind: str, lvl: float, rng=None) -> dict:
     jitter = rng.gauss(0, 2) if rng else 0.0
-    return {k: lvl + off + jitter for k, off in OPP_PITCHERS[kind].items()}
+    return dict({k: lvl + off + jitter for k, off in OPP_PITCHERS[kind].items()},
+                _throwing='L' if kind in ('ace', 'mop') else 'R')
 
 
 def opp_batter(slot: int, lvl: float) -> dict:
-    return {k: lvl + off for k, off in LINEUP_PROFILE[slot].items()}
+    return dict({k: lvl + off for k, off in LINEUP_PROFILE[slot].items()},
+                _batting='L' if slot in (1, 3, 6) else 'R')
 
 
 def opp_summary(lvl: float) -> dict:
@@ -349,13 +353,15 @@ def _runner(line, o, ds, rng):
             line['cs'] += 1
 
 
-def _plate(line, s, pit, code, slot, ds, rng, cache):
+def _plate(line, s, pit, code, slot, ds, rng, cache, member_pa=None):
+    if member_pa:
+        code = 'member'
     on = rng.choices((0, 1, 2, 3), weights=SLOT_ON[slot])[0]
     risp = on >= 1 and rng.random() < 0.55
     key = (code, risp)
     if key not in cache:
         cache[key] = pa_probs(s, pit, risp=risp)
-    o = _pick(cache[key], rng)
+    o = member_pa['outcome'] if member_pa else _pick(cache[key], rng)
     _split(line, code, o)
     line['pa'] += 1
     if o in ('BB', 'HBP'):
@@ -366,7 +372,7 @@ def _plate(line, s, pit, code, slot, ds, rng, cache):
     if o == 'SO':
         line['so'] += 1
     elif o == 'OUT':
-        if on > 0 and rng.random() < .07 and rng.random() < 2 / 3:
+        if not member_pa and on > 0 and rng.random() < .07 and rng.random() < 2 / 3:
             line['rbi'] += 1
             if rng.random() < .55:
                 line['sf'] += 1
@@ -411,7 +417,8 @@ def _score(line, rng):
     return team, opp
 
 
-def batter_game(s: dict, position: str, lvl: float, rng, role: str = 'lower', slot: int = 7) -> dict | None:
+def batter_game(s: dict, position: str, lvl: float, rng, role: str = 'lower', slot: int = 7,
+                member_pas=()) -> dict | None:
     """한 경기. 백업은 대타·대주자·대수비로만 나오고, 안 나오는 경기는 None."""
     from .rookie_league import bat_summary
     ds = (float(s.get('speed', 25)) - lvl) / S
@@ -420,10 +427,10 @@ def batter_game(s: dict, position: str, lvl: float, rng, role: str = 'lower', sl
     pen = opp_pitcher(pen_kind, lvl, rng)
     cache = {}
     if role == 'bench':
-        r = rng.random()
+        r = 0 if member_pas else rng.random()
         if r < 0.40:                                         # 대타 — 경기 후반 불펜과 한 타석
             line['ph'] += 1
-            _plate(line, s, pen, pen_kind, 0, ds, rng, cache)
+            _plate(line, s, pen, pen_kind, 0, ds, rng, cache, member_pas[0] if member_pas else None)
             text = '대타 ' + bat_summary(line)
             line['vs'] = pen_kind
         elif r < 0.55:                                       # 대주자
@@ -442,12 +449,12 @@ def batter_game(s: dict, position: str, lvl: float, rng, role: str = 'lower', sl
                 'opp_runs': opp, 'summary': text}
     grade = rng.choices([g for g, _w in STARTER_GRADES], weights=[w for _g, w in STARTER_GRADES])[0]
     sp = opp_pitcher(grade, lvl, rng)
-    n = int(SLOT_PA[slot]) + (rng.random() < SLOT_PA[slot] % 1)
+    n = max(len(member_pas), int(SLOT_PA[slot]) + (rng.random() < SLOT_PA[slot] % 1))
     for i in range(n):
         if i < STARTER_PA[grade]:
-            _plate(line, s, sp, grade, slot, ds, rng, cache)
+            _plate(line, s, sp, grade, slot, ds, rng, cache, member_pas[i] if i < len(member_pas) else None)
         else:
-            _plate(line, s, pen, pen_kind, slot, ds, rng, cache)
+            _plate(line, s, pen, pen_kind, slot, ds, rng, cache, member_pas[i] if i < len(member_pas) else None)
     _defense(line, s, position, lvl, rng)
     team, opp = _score(line, rng)
     vs_lvl = round((sp['velocity'] + sp['breaking'] + sp['control']) / 3)
@@ -456,7 +463,7 @@ def batter_game(s: dict, position: str, lvl: float, rng, role: str = 'lower', sl
 
 
 # ───────────────────────────── 경기 — 내 투수
-def _pitch(t, s, lvl_base, rng, start_slot, max_outs, pull, lvl: float | None = None):
+def _pitch(t, s, lvl_base, rng, start_slot, max_outs, pull, lvl: float | None = None, member_pas=()):
     """상대 타순을 따라 던진다. pull(t, outs_inning) 이 True 면 내려온다. 다음 타순을 돌려준다.
     lvl 을 주면(선발) 리그 수준 대비 체력만큼 공을 던질수록 구위가 떨어지거나 버틴다."""
     bases = [False, False, False]
@@ -465,7 +472,7 @@ def _pitch(t, s, lvl_base, rng, start_slot, max_outs, pull, lvl: float | None = 
     cache = {}
     tired = _fatigue(F_SP, lvl, float(s.get('stamina', 25))) if lvl is not None else 0.0
     while t['outs'] < max_outs:
-        if pull(t, outs_inning):
+        if t['bf'] >= len(member_pas) and pull(t, outs_inning):
             break
         risp = bool(bases[1] or bases[2])
         fat = int(round(tired * min(t['bf'], 30) / 25))
@@ -475,7 +482,10 @@ def _pitch(t, s, lvl_base, rng, start_slot, max_outs, pull, lvl: float | None = 
             if fat:
                 mine = dict(s, **{k: float(s.get(k, 25)) - fat for k in ('velocity', 'control', 'breaking')})
             cache[key] = pa_probs(opp_batter(slot, lvl_base), mine, risp=risp)
-        o = _pick(cache[key], rng)
+        member_pa = member_pas[t['bf']] if t['bf'] < len(member_pas) else None
+        if member_pa:
+            slot = member_pa['slot']
+        o = member_pa['outcome'] if member_pa else _pick(cache[key], rng)
         _split(t, LINEUP_GROUP[slot], o)
         slot = slot % 9 + 1
         t['bf'] += 1
@@ -486,7 +496,7 @@ def _pitch(t, s, lvl_base, rng, start_slot, max_outs, pull, lvl: float | None = 
             t['outs'] += 1
             outs_inning += 1
         elif o == 'OUT':
-            if bases[0] and outs_inning < 2 and rng.random() < 0.12:
+            if not member_pa and bases[0] and outs_inning < 2 and rng.random() < 0.12:
                 bases[0] = False
                 t['outs'] += 2
                 outs_inning += 2
@@ -537,7 +547,7 @@ def _form(lvl, rng):
     return key, lvl + off + rng.gauss(0, 2)
 
 
-def starter_game(s: dict, lvl: float, rng) -> dict:
+def starter_game(s: dict, lvl: float, rng, member_pas=()) -> dict:
     from .rookie_league import pit_summary
     form, base = _form(lvl, rng)
     limit = 26.08 + LIM_SP * (float(s.get('stamina', 25)) - 64) + rng.gauss(0, 3)   # 상대 타자 수(체력 64 ≈ 6이닝)
@@ -547,7 +557,7 @@ def starter_game(s: dict, lvl: float, rng) -> dict:
         if outs_inning == 0 and t['outs'] and (t['bf'] >= limit or t['r'] >= 5):
             return True
         return t['r'] >= 7 or t['bf'] >= limit + 6
-    _pitch(t, s, base, rng, 1, 27, pull, lvl=lvl)
+    _pitch(t, s, base, rng, 1, 27, pull, lvl=lvl, member_pas=member_pas)
     pen = _poisson(0.47 * (27 - t['outs']) / 3, rng)
     opp_runs, team = t['r'] + pen, _poisson(4.1, rng)
     if team == opp_runs:
@@ -575,7 +585,7 @@ RELIEF = {   # 보직: (경기당 등판 확률, 이닝 수, 등판 이닝, 점�
 RELIEF_PER_DAY = 2
 
 
-def relief_game(s: dict, lvl: float, rng, role: str) -> dict:
+def relief_game(s: dict, lvl: float, rng, role: str, member_pas=()) -> dict:
     """구원 등판 한 번 — 세이브·홀드·블론 세이브·구원승·패."""
     from .rookie_league import ip_text
     _p, innings, inn, (lo, hi) = RELIEF[role]
@@ -588,7 +598,7 @@ def relief_game(s: dict, lvl: float, rng, role: str) -> dict:
 
     def pull(t, outs_inning):
         return t['r'] >= 4 or t['bf'] >= 3 * innings + 7
-    _pitch(t, s, base, rng, rng.randint(1, 9), 3 * innings, pull)
+    _pitch(t, s, base, rng, rng.randint(1, 9), 3 * innings, pull, member_pas=member_pas)
     opp_at = _poisson(2.8 if lead > 0 else 4.4, rng)
     if lead < 0:
         opp_at = max(opp_at, -lead + rng.randint(0, 2))      # 뒤진 점수 차가 화면 표시와 맞게(0점 아래로 자르지 않게)

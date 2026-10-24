@@ -1,9 +1,10 @@
 
 from django.urls import path, re_path
+from .views import rookie_world_views
 
 # 실시간 게임 비활성화 (나중을 위해 파일은 유지)
 # from .views import wordchain_views, tictactoe_views
-from .views import map_views, rookie_lite_views, rookie_views, rookie_preview_views
+from .views import map_views, rookie_lite_views, rookie_views, rookie_preview_views, rookie_extreme_views
 from .views import base_views, question_views, answer_views, comment_views, profile_views, board_views, baseball_views, guestbook_views, game2048_views, minesweeper_views, portfolio_views
 
 app_name = 'community'
@@ -115,6 +116,8 @@ urlpatterns = [
     path('rookie/retire/', rookie_views.rookie_retire, name='rookie_retire'),
     path('rookie/ranking/', rookie_views.rookie_ranking, name='rookie_ranking'),   # 예전 주소 → 리그
     path('rookie/league/', rookie_views.rookie_league, name='rookie_league'),
+    path('rookie/world/', rookie_world_views.world_hub, name='rookie_world'),
+    path('rookie/report/', rookie_views.rookie_report, name='rookie_report'),
     path('rookie/awards/', rookie_views.rookie_awards, name='rookie_awards'),
     path('rookie/records/', rookie_views.rookie_records, name='rookie_records'),
     path('rookie/p/<int:pk>/', rookie_views.rookie_player, name='rookie_player'),
@@ -124,6 +127,20 @@ urlpatterns = [
     path('rookie/p/<int:pk>/story.png', rookie_views.rookie_card_png, {'kind': 'story'}, name='rookie_card_story'),
     # rookie_lite_views.py - 야구선수 키우기 라이트(한 판 30분 커리어 시뮬레이터, 규칙 community/rookie_lite.py)
     path('rookie/lite/', rookie_lite_views.lite_home, name='lite_home'),
+    path('rookie/lite/world/', rookie_world_views.world_hub, {'edition': 'lite'}, name='lite_world'),
+    path('rookie/extreme/lab/', rookie_extreme_views.preview, name='extreme_preview'),
+    path('rookie/extreme/', rookie_lite_views.extreme_endpoint(rookie_lite_views.lite_home), name='extreme_home'),
+    path('rookie/extreme/world/', rookie_lite_views.extreme_endpoint(rookie_world_views.world_hub), {'edition': 'extreme'}, name='extreme_world'),
+    path('rookie/extreme/new/', rookie_lite_views.extreme_endpoint(rookie_lite_views.lite_new), name='extreme_new'),
+    path('rookie/extreme/act/', rookie_lite_views.extreme_endpoint(rookie_lite_views.lite_act), name='extreme_act'),
+    path('rookie/extreme/hall/', rookie_lite_views.extreme_endpoint(rookie_lite_views.lite_hall), name='extreme_hall'),
+    path('rookie/extreme/today/', rookie_lite_views.extreme_endpoint(rookie_lite_views.lite_today), name='extreme_today'),
+    path('rookie/extreme/cards/', rookie_lite_views.extreme_endpoint(rookie_lite_views.lite_cards), name='extreme_cards'),
+    path('rookie/extreme/c/<int:pk>/', rookie_lite_views.extreme_endpoint(rookie_lite_views.lite_career), name='extreme_career'),
+    path('rookie/extreme/c/<int:pk>/card/', rookie_lite_views.extreme_endpoint(rookie_lite_views.lite_card), name='extreme_card'),
+    path('rookie/extreme/c/<int:pk>/card.png', rookie_lite_views.extreme_endpoint(rookie_lite_views.lite_card_png), name='extreme_card_png'),
+    path('rookie/extreme/c/<int:pk>/og.png', rookie_lite_views.extreme_endpoint(rookie_lite_views.lite_card_png), {'kind': 'og'}, name='extreme_card_og'),
+    path('rookie/extreme/c/<int:pk>/story.png', rookie_lite_views.extreme_endpoint(rookie_lite_views.lite_card_png), {'kind': 'story'}, name='extreme_card_story'),
     path('rookie/lite/new/', rookie_lite_views.lite_new, name='lite_new'),
     path('rookie/lite/act/', rookie_lite_views.lite_act, name='lite_act'),
     path('rookie/lite/hall/', rookie_lite_views.lite_hall, name='lite_hall'),

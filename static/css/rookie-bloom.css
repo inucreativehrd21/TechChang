@@ -1,0 +1,9 @@
+.rk .rl-bloom { border-top: 3px solid var(--rk-accent); }
+.rk .rl-bloom .rs-story-content > p { max-width: 64ch; line-height: 1.85; }
+.rk .rl-bloom .rl-bloom-terms { max-width: none; padding: 16px; border-radius: 10px; background: var(--rk-accent-wash); color: var(--rk-ink-2); line-height: 1.7; }
+.rl-bloom-changes { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin: 16px 0; }
+.rl-bloom-changes > div { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 6px; padding: 8px; border-bottom: 1px solid var(--rk-line); }
+.rl-bloom-changes dd { margin: 0; font-variant-numeric: tabular-nums; }
+.rk .rl-bloom-status { margin: 12px 0; border-left: 3px solid var(--rk-accent); }
+.rl-bloom-status p { margin: 4px 0 0; color: var(--rk-ink-3); font-size: .82rem; }
+@media (max-width: 600px) { .rl-bloom-changes { grid-template-columns: minmax(0, 1fr); } }

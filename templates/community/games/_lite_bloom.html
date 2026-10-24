@@ -1,0 +1,21 @@
+{% load rookie_tags %}
+<section class="rs-story-scene is-manager-office rl-bloom" data-rl-title="만개">
+    <header class="rs-story-head"><p>라이트 모드 · {{ c.age }}세 · {{ c.flags.pro_years }}년째 프로의 유니폼</p><h2>{{ d.title }}</h2></header>
+    <div class="rs-story-content">
+    {% if not d.result %}
+        <p>처음 유니폼을 받았을 때는 이 나이가 되면 당연히 주전일 줄 알았어요. 함께 버스를 타던 동료 몇은 은퇴했고, 신인 때 쓰던 등번호는 이제 후배의 것이에요.</p>
+        <p>아무도 남지 않은 연습장에서 오래된 훈련 수첩을 펼쳤어요. 빼곡한 글씨 사이에, 아직 지우지 못한 한 줄이 남아 있어요. “한 번만, 내 야구를 제대로 보여주고 싶다.”</p>
+        <p>코치가 말해요. “늦었다고 해서, 네가 쌓아 온 시간까지 사라지는 건 아니야. 이번엔 남의 답 말고 네 몸이 기억하는 야구를 해 보자.”</p>
+        <p class="rl-bloom-terms">커리어에 한 번 도전해요. 성공 확률 <b>{{ d.odds_pct }}%</b>. 성공하면 잠재력이 <b>4성</b>으로 올라가고 쌓아 온 훈련이 능력으로 드러나요. 이번 시즌부터 <b>3시즌 동안 노쇠 70% 완화</b>, 이후 기존 성장·성적 조건을 채우면 <b>추가 각성 도전 1회</b>를 얻어요. 실패해도 능력치가 깎이진 않아요.</p>
+        <div class="rs-story-choices">
+        <form method="post" action="{% career_url 'act' %}">{% csrf_token %}<input type="hidden" name="action" value="decide"><input type="hidden" name="what" value="bloom"><input type="hidden" name="event_id" value="{{ d.id }}"><input type="hidden" name="choice" value="try"><button class="rs-story-choice" type="submit"><b>아직, 내 야구를 끝내고 싶지 않아요</b><small>만개에 도전해요 · 이 도전은 한 번뿐이에요</small></button></form>
+        <form method="post" action="{% career_url 'act' %}">{% csrf_token %}<input type="hidden" name="action" value="decide"><input type="hidden" name="what" value="bloom"><input type="hidden" name="event_id" value="{{ d.id }}"><input type="hidden" name="choice" value="skip"><button class="rs-story-choice" type="submit"><b>올해는 내 호흡을 지킬게요</b><small>기회를 쓰지 않아요 · 조건을 유지하면 다음 시즌에 다시 만나요</small></button></form>
+        </div>
+    {% else %}
+        {% if d.ok %}<p>새벽의 {% if c.role == 'pitcher' %}미트 소리{% else %}타구 소리{% endif %}가 달랐어요. 달라진 건 재능 하나가 아니라, 오랫동안 포기하지 않은 사람이 마침내 자기 야구를 찾았다는 거예요.</p><p>선수 명단 옆의 “유망주”라는 말은 이제 지워도 괜찮아요. 오늘은 당신의 이름으로 기억될 날이에요.</p><p class="rl-bloom-terms"><b>만개 성공 · 잠재력 4성</b><br>3시즌 동안 노쇠 70% 완화 · 조건 달성 후 추가 각성 1회</p>
+        <dl class="rl-bloom-changes">{% for row in d.changes %}<div><dt>{{ row.label }}</dt><dd>{{ row.before }} → <b>{{ row.after }}</b> (+{{ row.delta }})</dd></div>{% endfor %}</dl>
+        {% else %}<p>기다렸던 변화는 끝내 찾아오지 않았어요. 그래도 수첩의 마지막 장은 아직 비어 있어요.</p><p>오늘의 결과가 그동안 흘린 땀을 실패로 바꾸지는 않아요. 내일도 야구를 계속할지는, 여전히 당신이 정할 수 있어요.</p><p class="rl-bloom-terms">능력치 손실은 없어요. 만개 도전은 마쳤지만, 남은 커리어는 계속돼요.</p>{% endif %}
+        <form method="post" action="{% career_url 'act' %}">{% csrf_token %}<input type="hidden" name="action" value="decide"><input type="hidden" name="what" value="bloom_result"><input type="hidden" name="event_id" value="{{ d.id }}"><input type="hidden" name="choice" value="continue"><button class="rs-story-choice" type="submit"><b>다시, 그라운드로 나갈게요</b><small>다음 시즌을 준비해요</small></button></form>
+    {% endif %}
+    </div>
+</section>

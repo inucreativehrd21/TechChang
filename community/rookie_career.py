@@ -87,6 +87,10 @@ PIT_XP = {'outs': {'control': .06, 'velocity': .04, 'breaking': .06, 'stamina': 
           'hld': {'mental': .20}, 'w': {'mental': .20}}
 
 
+from . import rookie_handedness as Hands
+TRAITS.update({key: {'name': item[0], 'desc': item[1]} for key, item in Hands.TRAITS.items()})
+
+
 def _clamp(x, lo, hi):
     return max(lo, min(hi, x))
 
@@ -103,7 +107,8 @@ def roll_potential(rng) -> int:
 def roll_traits(rng) -> list:
     r = rng.random()
     n = 0 if r < 0.30 else 1 if r < 0.85 else 2
-    pool = list(TRAITS)
+    from . import rookie_handedness as Hands
+    pool = [t for t in TRAITS if t not in Hands.TRAITS]
     got = []
     while len(got) < n and pool:
         t = rng.choice(pool)
@@ -307,7 +312,8 @@ def game_stats(p) -> dict:
         else:
             s['mental'] = min(CAP, float(s.get('mental', 25)) + 5)
     from . import rookie_balance_rules as Balance
-    return Balance.game_stats(p, Story.game_stats(p, s))
+    from . import rookie_handedness as Hands
+    return Hands.annotate(p, Balance.game_stats(p, Story.game_stats(p, s)))
 
 
 def game_xp(p, lines: list) -> dict:

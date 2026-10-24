@@ -1,0 +1,13 @@
+{% if g.members %}
+<div class="rk-member-game">
+    <b>상대 팀 회원 선수</b>
+    {% for member in g.members %}
+    <div class="rk-member-game-row">
+        <a href="{{ member.url }}">{{ member.name }}</a>
+        {% if member.outcomes %}<span>직접 승부 · {% for outcome in member.outcomes %}{{ outcome }}{% if not forloop.last %}, {% endif %}{% endfor %}</span>
+        {% else %}<span>같은 경기 출전 · 직접 승부한 타석은 없어요</span>{% endif %}
+        {% if member.summary %}<small>상대 기록 {{ member.summary }}</small>{% endif %}
+    </div>
+    {% endfor %}
+</div>
+{% endif %}

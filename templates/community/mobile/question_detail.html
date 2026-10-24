@@ -12,8 +12,8 @@
 {% block og_description %}{{ question.seo_description|default:question.subject }}{% endblock %}
 {% block twitter_title %}{{ question.subject }}{% endblock %}
 {% block twitter_description %}{{ question.seo_description|default:question.subject }}{% endblock %}
-{% block og_image %}{{ question.lead_image_url|default:'https://techchang.com/static/images/og-image.jpg' }}{% endblock %}
-{% block twitter_image %}{{ question.lead_image_url|default:'https://techchang.com/static/images/og-image.jpg' }}{% endblock %}
+{% block og_image %}{{ question.lead_image_url|default:'https://techchang.com/static/images/techchang-share-logo.png' }}{% endblock %}
+{% block twitter_image %}{{ question.lead_image_url|default:'https://techchang.com/static/images/techchang-share-logo.png' }}{% endblock %}
 {% block og_image_alt %}{{ question.subject }}{% endblock %}
 {# 본문이 빈약한 회원 글은 검색엔진에 내놓지 않는다 (Question.is_indexable) #}
 {% block meta_robots %}{% if question.is_indexable %}index, follow{% else %}noindex, follow{% endif %}{% endblock %}

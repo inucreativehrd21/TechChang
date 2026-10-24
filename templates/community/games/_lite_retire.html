@@ -5,7 +5,7 @@
 {% with p=card.palette %}
 <article class="rl-rcard is-{{ card.tier }}{% if p.jersey_asset %} has-premium-uniform{% endif %}" style="--team: {{ p.primary }}; --trim: {{ p.secondary }}; --ink: {{ p.ink }}; --bg: {{ p.bg }}" aria-label="{{ c.name }} 은퇴 카드" data-rl-rcard>
     <div class="rl-rcard-in">
-        <span class="rl-rc-edge" aria-hidden="true">테크창 야구선수 키우기 · 은퇴 카드 {{ card.serial }}</span>
+        <span class="rl-rc-edge" aria-hidden="true">테크창 야구선수 키우기{% if c.mode == 'extreme' %} 익스트림 모드{% endif %} · 은퇴 카드 {{ card.serial }}</span>
         <header class="rl-rc-top">
             <p class="rl-rc-team">{% if card.team_prefix %}<span>{{ card.team_prefix }}</span>{% endif %}<b>{{ card.team_nick }}</b></p>
             <p class="rl-rc-years">{{ card.years }}<small>{{ card.seasons }}시즌</small></p>
@@ -42,7 +42,7 @@
         </div>
         <div class="rl-rc-who">
             <h2 class="rl-rc-name">{% if card.epithet %}<em>‘{{ card.epithet }}’</em>{% endif %}{{ c.name }}</h2>
-            <p class="rl-rc-pos">{{ pos_label }} · {{ style_label }} · 최고 무대 {{ card.peak_short|baseball_text }}</p>
+            <p class="rl-rc-pos">{{ pos_label }} · {{ c.hand_label }} · {{ style_label }} · 최고 무대 {{ card.peak_short|baseball_text }}</p>
         </div>
         <dl class="rl-rc-stats">
             {% for s in card.stats %}<div><dt>{{ s.0 }}</dt><dd>{{ s.1 }}</dd></div>{% endfor %}

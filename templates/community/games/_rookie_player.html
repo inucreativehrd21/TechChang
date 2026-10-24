@@ -1,6 +1,6 @@
 {# 선수 페이지(공개) — 카드·능력치·진로·통산 성적(리그별·프로·평생)·시즌 기록·이정표·최근 경기. 맥락: rookie_views.rookie_player #}
 {% load rookie_tags %}
-<div class="gm rk">
+<div class="gm rk rk-daily">
 <div class="gm-wrap is-wide">
     {% include 'community/games/_rookie_top.html' with h1=p.name %}
 
@@ -87,6 +87,7 @@
     </ul>
     {% endif %}
 
+    {% include 'community/games/_rookie_matchup_history.html' %}
     <h2 class="rk-h2">최근 경기</h2>
     {% if games %}
     <section class="rk-board">
@@ -97,6 +98,7 @@
                 <span class="rk-score"><b>{{ g.me }}</b><em>{{ g.mine }}</em><i>:</i><em>{{ g.theirs }}</em><span>{{ g.opp }}</span></span>
                 <span class="rk-wl">{% if g.win %}승{% else %}패{% endif %}</span>
                 <span class="rk-gsum">{% if g.vs_label %}<span class="rk-vs is-{{ g.vs }}" title="{{ g.vs_label }}">{{ g.vs_short }}{% if not g.relief and g.vs_lvl %} {{ g.vs_lvl }}{% endif %}</span>{% endif %}{{ g.summary }}</span>
+                {% include 'community/games/_rookie_matchup_game.html' %}
             </li>
             {% endfor %}
         </ol>

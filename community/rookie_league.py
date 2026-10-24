@@ -187,7 +187,7 @@ def splits(role: str, t: dict, league: str | None = None) -> list:
     rows = []
     for code, label in (PIT_SPLITS if role == 'pitcher' else BAT_SPLITS):
         g = {k: t.get(f'{code}_{k}', 0) for k in ('pa', 'ab', 'h', 'hr', 'bb', 'so')}
-        if league is None:
+        if league is None or code == 'member':
             level = None
         elif code in summary:
             level = summary[code]
@@ -321,6 +321,7 @@ def simulate_day(day: date, rng=None) -> int:
         pks = list(RookiePlayer.objects.filter(created_at__lt=day_end(day), retired_at__isnull=True)
                    .order_by('pk').values_list('pk', flat=True))
         active = active_players(day)
+        plans = []
         for pk in pks:
             if pk not in active:
                 continue
@@ -330,11 +331,22 @@ def simulate_day(day: date, rng=None) -> int:
                     p = RookiePlayer.objects.select_for_update().filter(pk=pk, retired_at__isnull=True).first()
                     if p is None or not plays_on(p, day):
                         continue
-                    _play(p, s, day, rng)
-                played += 1
+                    plans.append(_plan(p, s, day, rng))
             except Exception:  # noqa: BLE001
                 failed += 1
                 logger.exception('야구선수 키우기 경기 진행 실패: player=%s day=%s', pk, day)
+        from . import rookie_matchups as Matchups
+        for group in Matchups.groups(plans):
+            try:
+                with transaction.atomic():
+                    Matchups.resolve(group, day, rng)
+                    for plan in group:
+                        _play(plan['p'], s, day, rng, prepared=plan)
+                played += len(group)
+            except Exception:  # noqa: BLE001 — 맞대결 양쪽 기록은 함께 저장하거나 함께 취소한다
+                failed += len(group)
+                logger.exception('야구선수 키우기 맞대결 저장 실패: players=%s day=%s',
+                                 [plan['p'].pk for plan in group], day)
         try:
             from .rookie_legacy import after_day
             with transaction.atomic():
@@ -353,14 +365,11 @@ def simulate_day(day: date, rng=None) -> int:
     return played
 
 
-def _play(p, s, day: date, rng):
-    """선수 한 명의 그날 경기 — 타순·보직 판정 → 출전 → 누적 → 경기 경험(성장)·이정표."""
-    from .models import RookieGame, RookieSeasonStat
-    from . import rookie as R
+def _plan(p, s, day: date, rng):
+    """잠근 선수로 출전 계획을 만든다. 양쪽 출전을 확인한 뒤 맞대결 타석을 함께 계산한다."""
+    from .models import RookieSeasonStat
     from . import rookie_career as C
-    from . import rookie_legacy as G
     from . import rookie_contracts as Contracts
-    from . import rookie_universe as Universe
     Contracts.full_assignment(p, day, rng)
     league, lvl = p.league, W.level(p.league)
     assign_role(p, day, lvl)
@@ -371,8 +380,6 @@ def _play(p, s, day: date, rng):
     nos = list(league_games_on(day, league))
     gs = C.game_stats(p)
     pro = W.is_pro(league)
-    before = G.pro_totals(p) if pro else None                   # 이정표 비교용(프로 통산)
-    debut = pro and not RookieGame.objects.filter(player=p, league=league).exists()
     results = []
     if p.role == 'batter':
         for no in nos:
@@ -386,12 +393,32 @@ def _play(p, s, day: date, rng):
         for no in nos:
             if len(results) < RELIEF_PER_DAY and rng.random() < RELIEF[p.lineup][0]:
                 results.append((no, relief_game(gs, lvl, rng, p.lineup)))
+    from . import rookie_universe as Universe
+    fixtures = Universe.club_fixtures(league, SEASON_GAMES if pro else SEASON_DAYS, p.club)
+    for no, result in results:
+        result['_fixture'] = fixtures[no - 1] if fixtures else None
+    return dict(p=p, stat=stat, nos=nos, gs=gs, results=results)
+
+
+def _play(p, s, day: date, rng, prepared=None):
+    """확정한 경기 → 누적 → 경기 경험(성장)·이정표. 맞대결 결과를 경험치에도 반영한다."""
+    from .models import RookieGame
+    from . import rookie as R
+    from . import rookie_career as C
+    from . import rookie_legacy as G
+    from . import rookie_contracts as Contracts
+    from . import rookie_universe as Universe
+    plan = prepared if prepared is not None else _plan(p, s, day, rng)
+    stat, nos, results = plan['stat'], plan['nos'], plan['results']
+    league, pro = p.league, W.is_pro(p.league)
+    before = G.pro_totals(p) if pro else None
+    debut = pro and not RookieGame.objects.filter(player=p, league=league).exists()
     opps = W.opponents(league, p.club)
     fixtures = Universe.club_fixtures(league, SEASON_GAMES, p.club) if pro else ()
     overrides = {}
     games, lines = [], []
     for no, r in results:
-        fixture = fixtures[no - 1] if fixtures else None
+        fixture = r.get('_fixture')
         if fixture:
             overrides[str(fixture['day'])] = dict(club=p.club, **{'for': r['team_runs'], 'against': r['opp_runs']})
         games.append(RookieGame(season=s, player=p, league=league, day=day, no=no, opponent=fixture['opponent'] if fixture else rng.choice(opps),
@@ -429,6 +456,11 @@ def _play(p, s, day: date, rng):
     if lines and any(C.has(p, t) and t not in (p.traits_seen or []) for t in ('clutch', 'learner')) \
             and RookieGame.objects.filter(player=p).count() >= 15:
         if C.reveal(p, 'clutch', day) | C.reveal(p, 'learner', day):
+            fields.append('traits_seen')
+    from . import rookie_handedness as Hands
+    if lines and p.games.count() >= 15:
+        found = [C.reveal(p, trait, day) for trait in Hands.TRAITS]
+        if any(found):
             fields.append('traits_seen')
     if fields:
         p.save(update_fields=fields)
@@ -788,6 +820,7 @@ def vs_label(role: str, vs: str, line: dict | None = None) -> str:
 
 
 def game_view(g, my_team: str, role: str = 'batter') -> dict:
+    from . import rookie_matchups as Matchups
     vs = g.line.get('vs', '')
     return {'no': g.no, 'day': g.day, 'league': W.short(g.league), 'league_code': g.league,
             'me': W.club_short(g.league, g.line.get('club') or my_team), 'xp': g.line.get('xp') or {},
@@ -797,8 +830,8 @@ def game_view(g, my_team: str, role: str = 'batter') -> dict:
             'relief': bool(g.line.get('gr')), 'inn': g.line.get('inn'),
             'splits': [x for x in splits(role, g.line) if x['pa']] if role == 'pitcher' else [],
             'opp': W.club_short(g.league, g.opponent), 'opp_code': g.opponent, 'mine': g.team_runs, 'theirs': g.opp_runs,
-            'win': g.team_runs > g.opp_runs, 'summary': g.summary, 'line': g.line, 'home': g.home,
-            'ip': ip_text(g.line.get('outs', 0))}
+            'win': g.team_runs > g.opp_runs, 'draw': g.team_runs == g.opp_runs, 'summary': g.summary, 'line': g.line, 'home': g.home,
+            'ip': ip_text(g.line.get('outs', 0)), 'members': Matchups.view(g.line)}
 
 
 def season_lines(stats, season=None) -> list:

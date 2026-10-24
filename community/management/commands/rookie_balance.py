@@ -70,6 +70,10 @@ def choose(c, rng, policy):
         return p['offers'][0]['key'] if c.age >= 36 and c.ovr < 65 else 'stay'
     if what == 'awaken':
         return 'try'
+    if what == 'bloom':
+        return 'try'
+    if what == 'bloom_result':
+        return 'continue'
     if what == 'retire':
         last = c.seasons.order_by('-year').first()
         productive = last and last.war >= 1.5

@@ -160,6 +160,8 @@ class ContractCareerTests(TestCase):
         self.assertAlmostEqual(c.flags['mlb_service'], .5)
         self.assertEqual([s['league'] for s in season.splits], ['mlb', 'mlb_aaa'])
         self.assertEqual(c.flags['contract']['years'], 2)
+        self.assertIn('playback', c.pending)
+        self.assertTrue(c.pending['playback']['title'])
 
     def test_bad_meeting_cannot_bypass_minor_veto(self):
         c = self.lite('불화보호', minor_veto=True)

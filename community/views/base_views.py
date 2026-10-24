@@ -140,7 +140,7 @@ def _ball_numbers():
         from .. import rookie_league as RL
         return {'season': RL.season_state(),
                 'players': visible(RookiePlayer.objects.filter(retired_at__isnull=True), 'user').count(),
-                'lites': visible(LiteCareer.objects.all(), 'user').count()}
+                'lites': visible(LiteCareer.objects.filter(mode='lite'), 'user').count()}
     except Exception:  # noqa: BLE001
         logging.getLogger(__name__).exception('home ball block unavailable')
         return None
@@ -589,7 +589,7 @@ def games_index(request):
     PRO_LEAGUES = [c for c in LEAGUES if is_pro(c)]
     rookies = rookie_visible(RookiePlayer.objects.filter(retired_at__isnull=True), 'user')   # 야구는 운영자도 센다
     from ..models import LiteCareer
-    lites = rookie_visible(LiteCareer.objects.all(), 'user')
+    lites = rookie_visible(LiteCareer.objects.filter(mode='lite'), 'user')
     bb, g2, ms = (visible(NumberBaseballGame.objects.all()), visible(Game2048.objects.all()),
                   visible(MinesweeperGame.objects.all()))      # 운영자(admin) 판은 세지 않는다
 
@@ -649,6 +649,8 @@ def games_index(request):
         'games_info': games_info,
         'recent_stats': recent_stats,
     }
+    from .. import rookie_modes as Modes
+    context['extreme_public'] = Modes.public_enabled()
 
     template = 'community/mobile/games_index.html' if getattr(request, 'is_mobile', False) else 'community/games_index.html'
     return render(request, template, context)

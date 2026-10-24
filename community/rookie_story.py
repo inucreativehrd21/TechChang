@@ -146,9 +146,12 @@ def encounter(p, kind, rng):
     key = 'highlight_' + ('bat' if p.role == 'batter' else 'pit') if kind == 'highlight' else kind
     opponent = None
     if kind == 'rival':
-        opponent = Universe.rival_report(p, p.league, 'down')
+        opponent = Universe.rival_report(p, p.league, 'down', members=True)
         title, text, background, read = (f'{opponent["name"]} 선수와 다시 만났어요',
             f'{opponent["line"]}. 같은 자리의 경쟁자예요. 지난 대화를 기억하고 있어요. 어떻게 경쟁할까요?', 'manager-office', '')
+        if opponent.get('source') == 'member_record':
+            title = f'{opponent["name"]} 선수의 기록에 도전해요'
+            text = f'{opponent["age"]}세 {opponent["league"]} 공개 회원 기록: {opponent["line"]}. 이 기록을 목표 삼아 훈련해요. 실제 회원과 동시에 치르는 경기는 아니에요.'
     elif kind == 'highlight':
         read = 'fast' if rng.random() < .5 else 'break'
         scout = highlight_report(p, read)

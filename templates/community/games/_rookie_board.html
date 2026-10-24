@@ -1,6 +1,7 @@
 {% load rookie_tags %}
 {# 전광판 — 최근 경기일의 경기들. 맥락: season, games, games_day, dnp, p #}
-<section class="rk-board" aria-label="전광판">
+<section class="rk-board" aria-label="경기 결과">
+    <h2 class="rk-board-title">경기 결과</h2>
     <header class="rk-board-head">
         {% if relief_log %}
         <span>최근 등판 {{ games|length }}경기 · {{ games.0.league|baseball_text }}</span>
@@ -15,11 +16,12 @@
     {% if games %}
     <ol class="rk-board-rows{% if p.role == 'pitcher' %} is-pitcher{% endif %}">
         {% for g in games %}
-        <li class="{% if g.win %}is-win{% endif %}">
-            <span class="rk-gno">{% if relief_log %}{{ g.day|date:'n.j' }}{% else %}{{ g.no }}{% endif %}</span>
-            <span class="rk-score"><b>{{ g.me }}</b><em>{{ g.mine }}</em><i>:</i><em>{{ g.theirs }}</em><span>{{ g.opp }}</span></span>
-            <span class="rk-wl">{% if g.win %}승{% else %}패{% endif %}</span>
-            <span class="rk-gsum">{% if g.vs_label %}<span class="rk-vs is-{{ g.vs }}" title="{{ g.vs_label }}, 상대 능력 {{ g.vs_lvl }}">{{ g.vs_short }}{% if not g.relief and g.vs_lvl %} {{ g.vs_lvl }}{% endif %}</span>{% endif %}{{ g.summary }}{% if p.role == 'pitcher' and g.line.np and not g.relief %}, 투구수 {{ g.line.np }}{% endif %}</span>
+        <li class="rk-game-card {% if g.win %}is-win{% endif %}">
+            <span class="rk-gno">{% if relief_log %}{{ g.day|date:'n.j' }}{% else %}{{ g.no }}경기{% endif %}</span>
+            <span class="rk-score"><b class="rk-score-team">{{ g.me }}</b><em>{{ g.mine }}</em><i>:</i><em>{{ g.theirs }}</em><span class="rk-score-team">{{ g.opp }}</span></span>
+            <span class="rk-wl">{% if g.win %}승{% elif g.draw %}무{% else %}패{% endif %}</span>
+            <span class="rk-gsum">{% if g.vs_label %}<span class="rk-vs is-{{ g.vs }}" title="{{ g.vs_label }}, 상대 능력 {{ g.vs_lvl }}">{{ g.vs_short }}{% if not g.relief and g.vs_lvl %} {{ g.vs_lvl }}{% endif %}</span>{% endif %}<span>{{ g.summary }}</span>{% if p.role == 'pitcher' and g.line.np and not g.relief %}<small>투구수 {{ g.line.np }}</small>{% endif %}</span>
+            {% include 'community/games/_rookie_matchup_game.html' %}
         </li>
         {% endfor %}
     </ol>

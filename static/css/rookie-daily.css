@@ -1,0 +1,113 @@
+/* 정식판 — 구단의 선수 등록 카드와 경기 기록. premium.css의 폰트·중립색을 사용해요. */
+.rk.rk-daily {
+    --rk-ink: var(--text-primary, #18181b);
+    --rk-ink-2: var(--text-secondary, #3f3f46);
+    --rk-ink-3: var(--text-tertiary, #71717a);
+    --rk-ink-4: var(--text-tertiary, #71717a);
+    --rk-line: var(--border-color, #e4e4e7);
+    --rk-line-soft: var(--bg-mute, #f4f4f5);
+    --rk-board: #fff;
+    --rk-board-ink: var(--text-primary, #18181b);
+    --rk-board-dim: var(--text-tertiary, #71717a);
+    --rk-led: var(--text-primary, #18181b);
+    --rk-r: var(--radius-md, 12px);
+    color: var(--rk-ink);
+    background: var(--bg-secondary, #fafafa);
+}
+.rk-daily .rk-title { font-size: clamp(1.45rem, 2.3vw, 1.8rem); font-weight: 750; letter-spacing: -.04em; }
+.rk-daily .rk-nav { margin-bottom: 24px; }
+.rk-daily .rk-nav a { font-size: .875rem; font-weight: 600; }
+.rk-daily .rk-hero { grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr); gap: 20px; align-items: start; }
+.rk-daily .rk-card, .rk-daily .rk-board { min-width: 0; padding: 28px; border: 1px solid var(--rk-line); border-radius: var(--rk-r); background: #fff; box-shadow: 0 2px 8px #18181b04; }
+.rk-daily .rk-card { display: flex; flex-direction: column; }
+.rk-daily .rk-card::before { content: none; }
+.rk-daily .rk-card-top { gap: 16px; padding-bottom: 20px; border-bottom: 1px solid var(--rk-line-soft); }
+.rk-daily .rk-team { min-width: 0; font-size: .8rem; font-weight: 600; }
+.rk-daily .rk-tier { padding: 0; border-radius: 0; background: none; color: var(--rk-ink-3); font-size: .75rem; font-weight: 500; box-shadow: none; }
+.rk-daily .rk-card-main { display: grid; grid-template-columns: 62px minmax(0, 1fr) auto; gap: 18px; align-items: start; margin: 24px 0; }
+.rk-daily .rk-card-main .rk-number { grid-column: 1; grid-row: 1; width: auto; min-width: 0; padding-right: 16px; border-right: 1px solid var(--rk-line); color: var(--rk-ink-2); text-align: left; font-size: 2.4rem; font-weight: 500; letter-spacing: -.06em; }
+.rk-daily .rk-number small { display: block; margin-bottom: 12px; color: var(--rk-ink-3); font-size: .65rem; font-weight: 500; letter-spacing: 0; }
+.rk-daily .rk-card-main .rk-who { grid-column: 2; grid-row: 1; gap: 5px; }
+.rk-daily .rk-name { color: var(--rk-ink); font-size: 1.5rem; font-weight: 750; letter-spacing: -.045em; overflow-wrap: anywhere; }
+.rk-daily .rk-meta { font-size: .75rem; line-height: 1.6; }
+.rk-daily .rk-card-main .rk-ovr { grid-column: 3; grid-row: 1; margin-top: 2px; text-align: right; }
+.rk-daily .rk-ovr small { margin-bottom: 8px; font-size: .65rem; font-weight: 500; }
+.rk-daily .rk-ovr b { color: var(--rk-ink); font-size: 2rem; font-weight: 600; letter-spacing: -.045em; }
+.rk-daily .rk-role-line { margin-top: 6px; font-size: .75rem; }
+.rk-daily .rk-role-line b { color: var(--rk-ink-2); font-weight: 650; }
+.rk-daily .rk-next { margin-top: auto; padding-top: 18px; border-top: 1px solid var(--rk-line); }
+.rk-daily .rk-next-label { margin-bottom: 10px; font-size: .75rem; }
+.rk-daily .rk-next .rk-bar { height: 3px; background: var(--rk-line-soft); }
+.rk-daily .rk-next .rk-bar i { background: var(--rk-ink-2); box-shadow: none; }
+.rk-daily .rk-board { background-image: none; }
+.rk-daily .rk-board-title { margin: 0 0 8px; font-size: .95rem; font-weight: 650; letter-spacing: -.025em; }
+.rk-daily .rk-board-head { padding-bottom: 16px; border-color: var(--rk-line); font-size: .75rem; font-weight: 400; }
+.rk-daily .rk-board-rows .rk-game-card { grid-template-columns: 2.5rem minmax(0, 1fr) 26px; gap: 12px; padding: 20px 0; border-color: var(--rk-line-soft); border-top-style: solid; }
+.rk-daily .rk-game-card .rk-score { grid-template-columns: minmax(0, 1fr) max-content auto max-content minmax(0, 1fr); gap: 8px; }
+.rk-daily .rk-game-card .rk-score b, .rk-daily .rk-game-card .rk-score span { color: var(--rk-ink-2); font-size: .82rem; font-weight: 500; }
+.rk-daily .rk-game-card .rk-score em, .rk-daily .rk-board-rows li.is-win .rk-score em:first-of-type { color: var(--rk-ink); font-size: 1.8rem; font-weight: 650; text-shadow: none; white-space: nowrap; }
+.rk-daily .rk-score i { color: var(--rk-ink-3); }
+.rk-daily .rk-gno { font-size: .7rem; font-weight: 400; }
+.rk-daily .rk-wl, .rk-daily .rk-board-rows li.is-win .rk-wl { padding: 3px 7px; border: 1px solid var(--rk-line); background: none; color: var(--rk-ink-3); font-size: .7rem; font-weight: 500; box-shadow: none; }
+.rk-daily .rk-board-rows li.is-win .rk-wl { border-color: var(--rk-ink-2); color: var(--rk-ink); }
+.rk-daily .rk-game-card .rk-gsum { grid-column: 2 / -1; gap: 8px; color: var(--rk-ink-2); }
+.rk-daily .rk-game-card .rk-gsum > span:not(.rk-vs) { flex-basis: auto; font-size: .8rem; font-weight: 500; }
+.rk-daily .rk-game-card .rk-gsum small { color: var(--rk-ink-3); }
+.rk-daily .rk-vs, .rk-daily .rk-vs.is-reg, .rk-daily .rk-vs.is-normal, .rk-daily .rk-vs.is-ace, .rk-daily .rk-vs.is-strong, .rk-daily .rk-vs.is-bak, .rk-daily .rk-vs.is-weak { margin: 0; padding: 2px 6px; color: var(--rk-ink-3); background: var(--rk-line-soft); box-shadow: none; font-weight: 500; }
+.rk-daily .rk-board-note { margin-top: 12px; padding-top: 12px; border-color: var(--rk-line); line-height: 1.7; font-size: .73rem; }
+.rk-daily .rk-board-note.is-xp { color: var(--rk-ink-3); }
+.rk-daily .rk-test.is-pass .rk-test-verdict { color: var(--rk-ink); text-shadow: none; }
+.rk-daily .rk-board-empty { padding: 24px 0 8px; gap: 16px; }
+.rk-daily .rk-board-empty b { color: var(--rk-ink); font-size: 2rem; font-weight: 600; text-shadow: none; }
+.rk-daily .rk-box { border-color: var(--rk-line); }
+.rk-daily .rk-box dd { color: var(--rk-ink); font-size: 1.2rem; font-weight: 600; }
+.rk-daily .rk-box-split, .rk-daily .rk-box-split .is-bak { color: var(--rk-ink-3); }
+.rk-daily .rk-club-report { margin: 24px 0 12px; padding: 28px; border: 1px solid var(--rk-line); border-radius: var(--rk-r); }
+.rk-daily .rk-club-report header { padding-bottom: 18px; margin-bottom: 20px; border-color: var(--rk-line); }
+.rk-daily .rk-club-report h2 { font-size: 1.05rem; font-weight: 650; letter-spacing: -.025em; }
+.rk-daily .rk-club-report header small { font-size: .72rem; color: var(--rk-ink-3); }
+.rk-daily .rk-club-report > p { color: var(--rk-ink-2); font-size: .85rem; }
+.rk-daily .rk-club-report__line { max-width: 80ch; line-height: 1.9; }
+.rk-daily .rk-club-report__metrics { gap: 0; padding: 20px 0; margin: 24px 0; border-block: 1px solid var(--rk-line-soft); }
+.rk-daily .rk-club-report__metrics div { padding: 0 24px; border-left: 1px solid var(--rk-line); border-radius: 0; background: none; }
+.rk-daily .rk-club-report__metrics div:first-child { padding-left: 0; border-left: 0; }
+.rk-daily .rk-club-report__metrics dt { color: var(--rk-ink-3); font-size: .7rem; font-weight: 500; }
+.rk-daily .rk-club-report__metrics dd { margin-top: 8px; font-size: 1.7rem; font-weight: 600; letter-spacing: -.04em; }
+.rk-daily .rk-club-report__notes { gap: 32px; }
+.rk-daily .rk-club-report__notes h3 { margin: 0 0 8px; color: var(--rk-ink); font-size: .8rem; font-weight: 650; }
+.rk-daily .rk-club-report__notes p { color: var(--rk-ink-2); font-size: .82rem; line-height: 1.9; }
+.rk-daily .rk-club-report footer { margin-top: 24px; padding-top: 16px; color: var(--rk-ink-3); border-color: var(--rk-line); line-height: 1.8; }
+.rk-daily .rk-panel { border-color: var(--rk-line); box-shadow: none; }
+.rk-daily .rk-head h2, .rk-daily .rk-panel > h2 { font-weight: 650; }
+.rk-daily .rk-stat-val { color: var(--rk-ink); font-weight: 650; }
+.rk-daily .rk-stat-name em { color: var(--rk-ink-3); background: var(--rk-line-soft); }
+.rk-daily .rk-report-link { margin: 0 0 24px; font-size: .8rem; }
+.rk-daily .rk-report-link a { color: var(--rk-ink-2); text-underline-offset: 4px; text-decoration-color: var(--rk-line); }
+.rk-daily .rk-report-link a:hover { color: var(--rk-accent); text-decoration-color: currentColor; }
+@media (min-width: 1101px) {
+    .rk-daily .rk-board-rows .rk-game-card { grid-template-columns: 2.3rem minmax(0, 1fr) 24px minmax(100px, .8fr); padding: 16px 0; }
+    .rk-daily .rk-game-card .rk-gsum { grid-column: auto; gap: 4px; }
+    .rk-daily .rk-game-card .rk-gsum > span:not(.rk-vs) { flex-basis: 100%; font-size: .75rem; }
+}
+@media (max-width: 1000px) {
+    .rk-daily .rk-hero { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 600px) {
+    .rk-daily .rk-card, .rk-daily .rk-board, .rk-daily .rk-club-report { padding: 20px; }
+    .rk-daily .rk-card-main { grid-template-columns: 48px minmax(0, 1fr) auto; gap: 12px; margin: 20px 0; }
+    .rk-daily .rk-card-main .rk-number { padding-right: 10px; font-size: 2rem; }
+    .rk-daily .rk-name { font-size: 1.3rem; }
+    .rk-daily .rk-ovr b { font-size: 1.65rem; }
+    .rk-daily .rk-hero { gap: 16px; }
+    .rk-daily .rk-board-rows .rk-game-card { grid-template-columns: 2.2rem minmax(0, 1fr) 24px; gap: 8px; }
+    .rk-daily .rk-game-card .rk-score { gap: 4px; }
+    .rk-daily .rk-game-card .rk-score b, .rk-daily .rk-game-card .rk-score span { font-size: .75rem; }
+    .rk-daily .rk-game-card .rk-score em { font-size: 1.5rem; }
+    .rk-daily .rk-box { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px 0; }
+    .rk-daily .rk-club-report header { gap: 8px; }
+    .rk-daily .rk-club-report__metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px 0; }
+    .rk-daily .rk-club-report__metrics div { padding: 0 0 0 20px; }
+    .rk-daily .rk-club-report__metrics div:nth-child(odd) { padding-left: 0; border-left: 0; }
+    .rk-daily .rk-club-report__metrics dd { font-size: 1.5rem; }
+    .rk-daily .rk-club-report__notes { grid-template-columns: minmax(0, 1fr); gap: 20px; }
+}

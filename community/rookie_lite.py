@@ -33,6 +33,8 @@ import math
 from . import rookie_contracts as Contracts
 from . import rookie_development as Development
 from . import rookie_universe as Universe
+from . import rookie_modes as Modes
+from . import rookie_extreme as Extreme
 import random
 from datetime import datetime, timedelta
 
@@ -48,6 +50,8 @@ from . import rookie_world as W
 from . import rookie_story as Story
 from . import rookie_balance_rules as Balance
 from . import rookie_pitching as Pitching
+from . import rookie_handedness as Hands
+from . import rookie_bloom as Bloom
 from .rookie_lite_news import season_features, season_reactions
 
 START_AGE, RETIRE_FROM, RETIRE_AT = 16, 34, 42
@@ -121,6 +125,7 @@ TRAITS = {
     'clutch': ('큰 경기 체질', '승부처에 강해요(타자는 클러치, 투수는 멘탈 +5).'),
     'natural': ('천재형', '강점 능력이 6 더 높이 자라요.'),
 }
+TRAITS.update({key: item[:2] for key, item in Hands.TRAITS.items()})
 AWARD_BARS = {   # 가상 경쟁자 기준 — (평균, 흔들림). 셀 수 있는 기록은 144경기 기준, 리그 경기 수만큼 늘린다
     'mvp': (8.0, 0.8), 'rookie': (3.0, 0.6), 'gg_bat': (5.0, 0.6), 'gg_pit': (4.5, 0.5), 'ace': (5.5, 0.6),
     'avg': (.335, .010), 'hr': (33, 3), 'rbi': (115, 8), 'sb': (35, 5), 'w': (17, 1.5), 'era': (2.30, .20),
@@ -156,11 +161,12 @@ def man(n: int) -> str:
 # 한 번 각성하면 잠재력이 한 칸 위 별의 문턱(STAR_FLOOR)까지 오른다 — 별 하나짜리도 다섯 개까지 도전할 수 있다.
 # 기회: 다섯 능력이 모두 한계일 때, 또는 잠재력 가까이(평균 AWAKEN_NEAR 안쪽)까지 열심히 키우고 지난 시즌 성적이 좋을 때.
 STAR_FLOOR = {2: 61, 3: 68, 4: 77, 5: 84}             # scout_stars 의 문턱과 같다
-AWAKEN_AGE, AWAKEN_WAIT, AWAKEN_NEAR, AWAKEN_FORM = 35, 3, 3.0, 1.0
+AWAKEN_AGE, AWAKEN_WAIT, AWAKEN_NEAR, AWAKEN_FORM = 31, 3, 3.0, 1.0
 
 
 def awakened(c) -> int:
-    return int((c.flags or {}).get('awaken', 0))
+    count = int((c.flags or {}).get('awaken', 0))
+    return max(0, count - Bloom.state(c).get('awaken_base', 0)) if Bloom.succeeded(c) else count
 
 
 def base_stars(c) -> int:
@@ -213,7 +219,7 @@ def frac(c, k: str, age: int) -> float:
 
 def roll_traits(rng) -> list:
     n = rng.choices((0, 1, 2), (0.35, 0.5, 0.15))[0]
-    pool, got = list(TRAITS), []
+    pool, got = [t for t in TRAITS if t not in Hands.TRAITS], []
     while len(got) < n and pool:
         t = rng.choice(pool)
         pool.remove(t)
@@ -235,7 +241,7 @@ def school_choices(region: str) -> list:
 def duty_level(c) -> float:
     """보직을 정할 때 보는 리그 수준 — 강호 고교는 주전 경쟁이 세서 HS_COMPETE 만큼 높고,
     프로는 감독 신뢰가 높을수록 낮게(기회를 더), 낮을수록 높게 본다(신뢰 0 → +4, 100 → −4)."""
-    lvl = W.level(c.league)
+    lvl = W.level(c.league) + Modes.opponent_bonus(c)
     if c.league == 'hs' and W.powerhouse('hs', c.club):
         lvl += HS_COMPETE
     if W.is_pro(c.league):
@@ -243,13 +249,19 @@ def duty_level(c) -> float:
     return lvl
 
 
-def create(user, *, name, role, position, style, region, team, number=0, rng=None, guest='', school=''):
+def create(user, *, name, role, position, style, region, team, number=0, rng=None, guest='', school='', mode=Modes.LITE,
+           throwing='R', batting='R'):
     """고향 고교 1학년으로 시작 — school 을 고르면 그 학교(고향 지역 학교여야 한다), 안 고르면 지역 학교 가운데 하나.
     user 가 없으면 손님 판(guest = 세션 표식) — 로그인하면 계정으로 옮긴다(claim_guest)."""
     from django.contrib.auth.models import User
     from .models import LiteCareer
     from .rookie_versions import CURRENT
     rng = rng or random.SystemRandom()
+    try:
+        Modes.validate_create(user, mode)
+        Hands.validate(throwing, batting)
+    except ValueError as ex:
+        raise LiteError(str(ex)) from ex
     if user is None and not guest:
         raise LiteError('잠시 뒤 다시 시도해 주세요.')
     if role not in STYLES or style not in STYLES[role]:
@@ -268,37 +280,39 @@ def create(user, *, name, role, position, style, region, team, number=0, rng=Non
     with transaction.atomic():
         if user is not None:
             User.objects.select_for_update().filter(pk=user.pk).first()
-            mine = LiteCareer.objects.filter(user=user)
+            mine = LiteCareer.objects.filter(user=user, mode=mode)
         else:
-            mine = LiteCareer.objects.filter(user__isnull=True, guest=guest)
+            mine = LiteCareer.objects.filter(user__isnull=True, guest=guest, mode=mode)
         if mine.filter(retired_at__isnull=True).exists():
             raise LiteError('진행 중인 커리어가 있어요. 은퇴한 뒤에 새로 시작할 수 있어요.')
         wait = quit_wait(mine)
         if wait:
             raise LiteError(f'스스로 은퇴하면 5분 동안은 새 선수를 만들 수 없어요. {wait_text(wait)} 뒤에 다시 시작해 주세요.')
-        c = LiteCareer(user=user, guest='' if user else guest, name=name, number=max(0, min(99, int(number or 0))), role=role, position=position,
+        c = LiteCareer(user=user, guest='' if user else guest, mode=mode, name=name, number=max(0, min(99, int(number or 0))), role=role, position=position,
                        style=style, region=region, team=team, age=START_AGE, league='hs', club=school or rng.choice(pool), grade=1,
                        potential=int(_clamp(round(rng.gauss(POT_MEAN, POT_SD)), *POT_RANGE)), traits=roll_traits(rng))
         c.stats = {k: round(max(25.0, stat_pot(c, k) * frac(c, k, START_AGE) + rng.gauss(0, 2)), 1)
                    for k in R.stat_keys(role)}
-        c.ovr = c.best_ovr = R.overall(role, c.stats)
         c.flags = {'game_version': CURRENT, 'kbo_years': 0, 'pro_years': 0, 'leagues': [], 'served': False, 'exempt': False,
                    'start': timezone.localdate().year, 'trust': TRUST_START}
+        Extreme.initialize(c, rng)
+        Hands.initialize(c, throwing, batting, rng)
+        c.ovr = c.best_ovr = R.overall(role, c.stats)
         c.peak = 'hs'
         c.pending = plan_step(c, rng)
         c.save()
     return c
 
 
-def claim_guest(user, guest: str) -> int:
+def claim_guest(user, guest: str, mode=Modes.LITE) -> int:
     """로그인한 회원에게 손님 판을 옮긴다 — 은퇴한 판은 모두, 진행 중인 판은 회원에게 진행 중인 판이 없을 때만."""
     from .models import LiteCareer
     if not guest or user is None:
         return 0
     with transaction.atomic():
-        n = LiteCareer.objects.filter(user__isnull=True, guest=guest, retired_at__isnull=False).update(user=user, guest='')
-        if not LiteCareer.objects.filter(user=user, retired_at__isnull=True).exists():
-            n += LiteCareer.objects.filter(user__isnull=True, guest=guest, retired_at__isnull=True).update(user=user, guest='')
+        n = LiteCareer.objects.filter(mode=mode, user__isnull=True, guest=guest, retired_at__isnull=False).update(user=user, guest='')
+        if not LiteCareer.objects.filter(mode=mode, user=user, retired_at__isnull=True).exists():
+            n += LiteCareer.objects.filter(mode=mode, user__isnull=True, guest=guest, retired_at__isnull=True).update(user=user, guest='')
     return n
 
 
@@ -412,6 +426,8 @@ def plan_step(c, rng) -> dict:
     if W.is_pro(c.league) and rng.random() < ACC_STOCK:               # 한정품은 가끔만 들어온다(사기 어렵게)
         left = [k for k in ACCESSORY if k not in ((c.flags or {}).get('acc') or [])]
         shop = rng.choice(left) if left else None
+    Extreme.complete_year(c)
+    Extreme.offer(c, rng)
     return {'kind': 'plan', 'event': ev, 'intl': intl_offers(c), 'shop': shop}
 
 
@@ -597,6 +613,7 @@ def _apply_event(c, code: str, choice: str, rng, mods: dict) -> str:
 def grow(c, programs, intensity: str, pt: float, war: float, rng, train_mult: float = 1.0, age_keep: float = 1.0) -> dict:
     """한 해 성장 — 나이 곡선 + 훈련 + 출전 경험 + 활약. {능력: 변화}. age_keep: 노쇠 관리팀이면 나이로 빠지는 몫을 덜어 낸다."""
     _lab, mult, _inj = INTENSITY[intensity]
+    train_mult *= Modes.training_multiplier(c)
     plus = {}
     for code in programs:
         for k, v in dict((p[0], p[3]) for p in PROGRAMS[c.role])[code].items():
@@ -614,7 +631,7 @@ def grow(c, programs, intensity: str, pt: float, war: float, rng, train_mult: fl
         if nat > 0:
             nat *= Balance.profile(c)['development']
         if nat < 0:
-            nat *= age_keep * aging
+            nat *= age_keep * aging * Bloom.aging_multiplier(c)
         tr = plus.get(k, 0.0) * mult * age_train * train_mult * (1.25 if has(c, 'grinder') else 1.0)
         tr *= development
         exp = experience * math.sqrt(max(0, pt)) * (1.4 if has(c, 'learner') else 1.0)
@@ -684,7 +701,7 @@ def _game_stats(c) -> dict:
             s['clutch'] = (float(s['contact']) + float(s['eye'])) / 2 + 5
         else:
             s['mental'] = float(s['mental']) + 5
-    return Balance.game_stats(c, Story.game_stats(c, s))
+    return Hands.annotate(c, Balance.game_stats(c, Story.game_stats(c, s)))
 
 
 def _chunks(code: str) -> tuple:
@@ -935,6 +952,7 @@ def injury_odds(c, intensity: str, extra: float = 0.0, cut: float | None = None,
     p *= gear_cut(c) if cut is None else cut
     p *= 1 + (50 - Story.value(c, 'discipline')) * .001
     p += float((c.flags or {}).get('workload', 0)) * .025
+    p += Modes.injury_extra(c)
     return max(INJURY_FLOOR, p)
 
 
@@ -1806,7 +1824,7 @@ def _sim_chunks(c, state, lo: int, hi: int, rng):
     """지금 줄(split)의 리그·보직으로 6구간 가운데 [lo, hi) 구간을 치른다."""
     sp = state['splits'][-1]
     code = sp['league']
-    lvl, G = W.level(code), GAMES.get(code, 120)
+    lvl, G = W.level(code) + Modes.opponent_bonus(c), GAMES.get(code, 120)
     s = _game_stats(c)
     a, b = state['out']
     fixtures = Universe.club_fixtures(code, G, sp['club']) if W.is_pro(code) else ()
@@ -1833,6 +1851,8 @@ def _sim_chunks(c, state, lo: int, hi: int, rng):
 
 def start_season(c, programs, intensity, event_choice, intl_choices, rng) -> dict:
     """비시즌 결정 → 3월 대회 → 전반기. 이어 갈 상태(state)를 돌려준다(JSON 으로 pending 에 담을 수 있게)."""
+    if Modes.is_extreme(c) and ((c.flags or {}).get('extreme') or {}).get('pending'):
+        raise LiteError('익스트림 전용 이벤트에 먼저 답해 주세요.')
     progs = check_programs(c, programs)
     Universe.rivals(c)
     if intensity not in INTENSITY:
@@ -2258,6 +2278,12 @@ def next_season(c, rng):
 def wrap_season(c, season, rng):
     """시즌 기록을 저장한 뒤 — 통산·플래그 반영, 결산 화면으로."""
     code = season.league
+    if Modes.is_extreme(c):
+        for record in c.flags['extreme'].get('history', []):
+            if record['year'] == season.year:
+                event = Extreme.EVENTS[record['key']]
+                season.news.append(f"[익스트림] {event['title']} — 훈련 보정 {record['training'] * 100:+.0f}%, "
+                                   f"부상 위험 {record['risk'] * 100:+.0f}%p, 신뢰 {record['trust']:+.0f}")
     flags = dict(c.flags or {})
     leagues = list(flags.get('leagues') or [])
     if code not in leagues:
@@ -2331,6 +2357,7 @@ def wrap_season(c, season, rng):
     Story.recover(c)
     c.year += 1
     c.age += 1
+    Extreme.complete_year(c)
     if not W.is_pro(c.league):
         c.grade += 1
     c.pending = {'kind': 'review', 'year': season.year}
@@ -2370,12 +2397,15 @@ def next_step(c, rng, skip_meeting: bool = False) -> dict:
     """다음에 올 화면 — 감독 면담 → 결정 → 비시즌 순."""
     flags = c.flags or {}
     code = c.league
-    if c.age > RETIRE_AT:
+    if c.age > Bloom.retirement_limit(c, RETIRE_AT):
         return {'kind': 'decision', 'what': 'end'}
     if code == 'hs' and c.grade > 3:
         return draft_offer(c, 'hs', rng)
     if code == 'univ' and c.grade > 4:
         return draft_offer(c, 'univ', rng)
+    bloom = Bloom.offer(c)
+    if bloom:
+        return bloom
     last = c.seasons.order_by('-year').first()
     pressure = Balance.retention(c, last)
     if pressure is not None and rng.random() < pressure:
@@ -2420,7 +2450,8 @@ def awaken_ready(c) -> bool:
     """각성 기회 — 별이 다섯 개가 안 되고, 나이·차례가 되고, (다섯 능력이 모두 한계) 또는
     (잠재력 가까이까지 키웠고 지난 시즌 성적이 평균보다 AWAKEN_FORM 표준 이상)."""
     f = c.flags or {}
-    if base_stars(c) + awakened(c) >= 5 or c.age > 31 or c.year < int(f.get('awaken_next', 0)) or f.get('army'):
+    bonus = Bloom.bonus_available(c)
+    if base_stars(c) + awakened(c) >= 5 or (c.age > AWAKEN_AGE and not bonus) or c.year < int(f.get('awaken_next', 0)) or f.get('army'):
         return False
     if awakened(c):
         last = c.seasons.order_by('-year').first() if c.pk else None
@@ -2455,12 +2486,14 @@ def awaken(c, choice: str, rng) -> str:
     f = c.flags = dict(c.flags or {})
     f['awaken_next'] = c.year + AWAKEN_WAIT
     if choice == 'skip':
-        return '지금의 나를 다듬기로 했어요 — 두 시즌 뒤에 다시 기회가 와요'
+        return f'지금의 나를 다듬기로 했어요 — {AWAKEN_WAIT}시즌 뒤에 다시 기회가 와요'
+    Bloom.consume_bonus(c)
+    f = c.flags
     nm = c.name
     odds = (c.pending or {}).get('odds')                   # 화면에 보여 준 확률 그대로(0 도 0 으로)
     if rng.random() < (awaken_odds(c) if odds is None else float(odds)):
         gain = awaken_gain(c)
-        f['awaken'] = awakened(c) + 1
+        f['awaken'] = int(f.get('awaken', 0)) + 1
         ups = []
         for k in STYLES[c.role][c.style]['plus']:
             old = float(c.stats[k])
@@ -2468,9 +2501,9 @@ def awaken(c, choice: str, rng) -> str:
             ups.append([dict((x, lab) for x, lab, _w in R.ROLES[c.role]['stats'])[k], 2.0])
         c.ovr = R.overall(c.role, c.stats)
         c.best_ovr = max(c.best_ovr, c.ovr)
-        f['awaken_fx'] = {'ok': True, 'n': f['awaken'], 'plus': gain, 'ups': ups, 'stars': min(5, base_stars(c) + f['awaken'])}
+        f['awaken_fx'] = {'ok': True, 'n': awakened(c), 'plus': gain, 'ups': ups, 'stars': min(5, base_stars(c) + awakened(c))}
         f['press'] = list(f.get('press') or []) + [press('[각성]', f"{nm}, 한계를 부쉈다…‘보라색 별’ {f['awaken']}개째")]
-        return f"각성에 성공했어요! 별이 {min(5, base_stars(c) + f['awaken'])}개가 됐어요 — 모든 능력의 한계가 {gain:g} 올라갔어요"
+        return f"각성에 성공했어요! 별이 {min(5, base_stars(c) + awakened(c))}개가 됐어요 — 모든 능력의 한계가 {gain:g} 올라갔어요"
     k = 'mental' if c.role == 'pitcher' else 'eye'
     c.stats[k] = round(max(25.0, float(c.stats[k]) - 1.0), 1)
     c.ovr = R.overall(c.role, c.stats)
@@ -2592,6 +2625,13 @@ def decide(c, what: str, choice: str, rng, school: str = '') -> str:
     pend = c.pending or {}
     if pend.get('kind') != 'decision' or pend.get('what') != what:
         raise LiteError('지금은 그 결정을 할 차례가 아니에요.')
+    if what == 'bloom':
+        return Bloom.resolve(c, choice, rng)
+    if what == 'bloom_result':
+        if choice != 'continue':
+            raise LiteError('결과를 확인한 뒤 다음 시즌을 준비해 주세요.')
+        c.pending = plan_step(c, rng)
+        return '새로운 마음으로 다음 시즌을 준비해요.'
     if what == 'negotiation':
         try:
             status, deal = Story.negotiate(c, pend['deal'], choice, rng)
@@ -2662,6 +2702,8 @@ def decide(c, what: str, choice: str, rng, school: str = '') -> str:
         c.pending = plan_step(c, rng)
         return text
     if what == 'meeting':
+        # 선택으로 리그·계약이 바뀌어도 방금 답한 장면의 제목은 그대로 남겨요.
+        meeting_title = meeting_view(c, pend).get('title', '시즌 중 선택') if pend.get('phase') == 'mid' else ''
         text, items = resolve_meeting(c, pend, choice, rng)
         if c.retired_at:
             return text
@@ -2687,7 +2729,7 @@ def decide(c, what: str, choice: str, rng, school: str = '') -> str:
             state['press'].extend(items)
             c.pending = {}
             finish_season(c, state, rng)
-            c.pending['playback'] = {'from': 3, 'title': meeting_view(c, pend).get('title', '시즌 중 선택'),
+            c.pending['playback'] = {'from': 3, 'title': meeting_title,
                                      'text': text}
         elif pend.get('phase') == 'camp':
             c.flags['press'] = list(c.flags.get('press') or []) + items
@@ -2854,6 +2896,7 @@ def _army_tick(c, rng):
     army = (c.flags or {}).get('army')
     if not army or army.get('kind') != 'active':
         return
+    served = army['left'] > 0
     while army['left'] > 0:
         ovr_start, lost = c.ovr, {}
         for k in c.stats:
@@ -2870,6 +2913,9 @@ def _army_tick(c, rng):
     c.flags['served'] = True
     c.league, c.club = army['back']
     c.flags.pop('army', None)
+    if served and (c.pending or {}).get('kind') == 'plan':
+        # 복무로 연도가 지났으니, 입대 전 연도로 만든 비시즌 화면(익스트림 전용 사건·국가대표 제안)을 새 연도로 다시 만든다.
+        c.pending = plan_step(c, rng)
 
 
 def army_after_season(c):
@@ -2926,6 +2972,8 @@ def decision_view(c) -> dict | None:
     pend = c.pending or {}
     if pend.get('kind') != 'decision':
         return None
+    if pend.get('what') in ('bloom', 'bloom_result'):
+        return Bloom.scene(c)
     if pend.get('what') == 'contract_optout':
         d = Contracts.active(c) or {}
         return dict(Contracts.optout_view(c, f'{c.pk}:{c.year}:optout:{d.get("elapsed", 0)}'),
@@ -2964,6 +3012,7 @@ def decision_view(c) -> dict | None:
         v['offer_list'] = [dict(o, team_name=W.PRO_TEAM[o['team']]['name'], money=man(o['annual']),
                                 total=man(o['annual'] * o['years'])) for o in pend.get('offers') or []]
     if pend.get('what') == 'awaken':
+        v['bloom_bonus'] = Bloom.bonus_available(c)
         v['odds_pct'] = int(round((awaken_odds(c) if pend.get('odds') is None else float(pend['odds'])) * 100))
         v['next_n'] = awakened(c) + 1
         v['plus'] = f'{awaken_gain(c):g}'
@@ -3010,7 +3059,7 @@ def day_bounds(days_ago: int = 0) -> tuple:
     return start, start + timedelta(days=1)
 
 
-def hall(system: str = 'kbo', limit: int = 50, role: str = '', since=None, until=None, version=None) -> list:
+def hall(system: str = 'kbo', limit: int = 50, role: str = '', since=None, until=None, version=None, mode=Modes.LITE) -> list:
     """은퇴한 라이트 커리어 순위 — 나라 리그(system)별로만, 킥루 순서(MVP → 최고 OVR → 수상 → WAR).
     리그를 섞은 전체 순위는 없앴다(2026-10-19 사용자 요청: 리그별로 헷갈리고 가중치가 잘 맞지 않는다).
     role('pitcher'·'batter')을 주면 투수·타자만 — 통산 줄(line)도 붙인다."""
@@ -3018,7 +3067,7 @@ def hall(system: str = 'kbo', limit: int = 50, role: str = '', since=None, until
     from .game_visibility import rookie_visible as visible
     from .models import LiteCareer
     from .rookie_versions import filter_by_version
-    qs = visible(LiteCareer.objects.filter(retired_at__isnull=False, user__isnull=False, created_at__gte=HALL_SINCE), 'user') \
+    qs = visible(LiteCareer.objects.filter(mode=mode, retired_at__isnull=False, user__isnull=False, created_at__gte=HALL_SINCE), 'user') \
         .prefetch_related('seasons')                                       # 손님 판은 로그인해 계정으로 옮겨야 오른다
     qs = filter_by_version(qs, version, 'flags')
     if role in ('pitcher', 'batter'):

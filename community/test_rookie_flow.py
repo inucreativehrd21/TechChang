@@ -8,7 +8,7 @@ from unittest import mock
 
 from django.contrib.messages import get_messages
 from django.core.cache import cache
-from django.test import Client, TestCase
+from django.test import Client, TestCase, override_settings
 from django.utils import timezone
 
 from . import rookie as R
@@ -31,19 +31,20 @@ class CareerHttpFlowTests(TestCase):
         self.assertEqual(warnings, [], (url, data, warnings))
         return response
 
-    def run_life(self, role, position, ua, guest, seed, policy):
+    def run_life(self, role, position, ua, guest, seed, policy, mode='lite'):
+        base = f'/rookie/{mode}/'
         cache.clear()
         client = Client(enforce_csrf_checks=True, HTTP_USER_AGENT=ua)
         user = member('flow-' + str(seed))
         if not guest:
             client.force_login(user)
-        self.assertEqual(client.get('/rookie/lite/').status_code, 200)
+        self.assertEqual(client.get(f'/rookie/{mode}/').status_code, 200)
         rng = random.Random(seed)
         with mock.patch('community.views.rookie_lite_views._rng', return_value=rng):
-            self.post_form(client, '/rookie/lite/new/', dict(
+            self.post_form(client, f'/rookie/{mode}/new/', dict(
                 name='흐름검사', role=role, region='서울', team='lg', number=17,
                 **{'position_' + role: position, 'style_' + role: list(X.STYLES[role])[0]}))
-            c = LiteCareer.objects.get(user=user) if not guest else LiteCareer.objects.get(guest=client.session['lite_guest'])
+            c = LiteCareer.objects.get(user=user, mode=mode) if not guest else LiteCareer.objects.get(guest=client.session[mode + '_guest'])
             seen = Counter()
             claimed = False
             for step in range(260):
@@ -54,13 +55,22 @@ class CareerHttpFlowTests(TestCase):
                     break
                 if guest and not claimed and c.seasons.count() >= 3:
                     client.force_login(user)
-                    self.assertEqual(client.get('/rookie/lite/').status_code, 200)
+                    self.assertEqual(client.get(f'/rookie/{mode}/').status_code, 200)
                     c.refresh_from_db()
                     self.assertEqual(c.user_id, user.pk)
                     self.assertEqual(c.guest, '')
                     claimed = True
                 pending = copy.deepcopy(c.pending)
                 seen[pending.get('what', pending['kind'])] += 1
+                if pending['kind'] == 'plan' and mode == 'extreme':
+                    from . import rookie_extreme as Extreme
+                    extra = Extreme.event_view(c)
+                    if extra:
+                        self.post_form(client, base + 'act/', dict(action='extreme_event',
+                            event_id=extra['id'], choice=extra['choices'][0]['key']))
+                        c.refresh_from_db()
+                        self.assertIsNone(Extreme.event_view(c))
+                        continue
                 if pending['kind'] == 'plan':
                     event = pending.get('event')
                     data = dict(action='play', program=X.pick_programs(c, rng), intensity='normal')
@@ -74,7 +84,7 @@ class CareerHttpFlowTests(TestCase):
                     data = dict(action='decide', what=pending['what'], choice=choose(c, rng, policy),
                                 event_id=decision.get('id', ''))
                 before = (json.dumps(pending, sort_keys=True), c.year, c.seasons.count())
-                self.post_form(client, '/rookie/lite/act/', data)
+                self.post_form(client, f'/rookie/{mode}/act/', data)
                 c.refresh_from_db()
                 after = (json.dumps(c.pending, sort_keys=True), c.year, c.seasons.count())
                 self.assertTrue(c.retired_at or before != after, (step, data, c.pending))
@@ -84,11 +94,11 @@ class CareerHttpFlowTests(TestCase):
             self.assertGreater(seen['review'], 0)
             if guest:
                 self.assertTrue(claimed)
-            for url in (f'/rookie/lite/c/{c.pk}/', f'/rookie/lite/c/{c.pk}/card/',
-                        '/rookie/lite/cards/', '/rookie/lite/hall/', '/rookie/lite/today/'):
+            for url in (f'/rookie/{mode}/c/{c.pk}/', f'/rookie/{mode}/c/{c.pk}/card/',
+                        f'/rookie/{mode}/cards/', f'/rookie/{mode}/hall/', f'/rookie/{mode}/today/'):
                 self.assertEqual(client.get(url).status_code, 200, url)
             other = Client(HTTP_USER_AGENT=ua)
-            self.assertEqual(other.get(f'/rookie/lite/c/{c.pk}/card/').status_code, 200)
+            self.assertEqual(other.get(f'/rookie/{mode}/c/{c.pk}/card/').status_code, 200)
 
     def test_member_batter_desktop_entire_career(self):
         self.run_life('batter', 'SS', PC, False, 20261051, 'us')
@@ -101,6 +111,15 @@ class CareerHttpFlowTests(TestCase):
 
     def test_guest_starter_desktop_claim_and_entire_career(self):
         self.run_life('pitcher', 'SP', PC, True, 20261054, 'domestic')
+
+
+    @override_settings(ROOKIE_EXTREME_ENABLED=True)
+    def test_extreme_guest_batter_mobile_entire_career(self):
+        self.run_life('batter', 'SS', MOBILE, True, 20261071, 'playing', mode='extreme')
+
+    @override_settings(ROOKIE_EXTREME_ENABLED=True)
+    def test_extreme_starter_desktop_entire_career(self):
+        self.run_life('pitcher', 'SP', PC, False, 20261072, 'us', mode='extreme')
 
 
 class FullCareerHttpFlowTests(TestCase):

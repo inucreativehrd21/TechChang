@@ -34,7 +34,7 @@
             <tbody>
                 {% for r in rows %}
                 <tr class="{% if r.c.user_id == user.id %}is-first{% endif %}">
-                    <th scope="row" class="rl-hall-name"><span class="rl-hall-no">{{ forloop.counter }}</span><a href="{% url 'community:lite_career' r.c.pk %}">{{ r.c.name }}</a><small class="rl-hall-who">{% if r.c.role == 'pitcher' %}투수{% else %}타자{% endif %} · {{ r.c.age }}세 은퇴</small></th>
+                    <th scope="row" class="rl-hall-name"><span class="rl-hall-no">{{ forloop.counter }}</span><a href="{% career_url 'career' r.c.pk %}">{{ r.c.name }}</a><small class="rl-hall-who">{% if r.c.role == 'pitcher' %}투수{% else %}타자{% endif %} · {{ r.c.age }}세 은퇴</small></th>
                     <td class="is-text">{{ r.peak|baseball_text }}</td><td>{{ r.mvp }}</td><td>{{ r.best|floatformat:1 }}</td>
                     {% if role == 'pitcher' %}<td>{{ r.line.w|default:0 }}</td><td>{{ r.line.l|default:0 }}</td><td>{{ r.line.sv|default:0 }}</td><td>{{ r.line.era_text|default:'-' }}</td><td>{{ r.line.so|default:0|comma }}</td>
                     {% elif role == 'batter' %}<td>{{ r.line.avg_text|default:'-' }}</td><td>{{ r.line.h|default:0|comma }}</td><td>{{ r.line.hr|default:0|comma }}</td><td>{{ r.line.rbi|default:0|comma }}</td><td>{{ r.line.ops_text|default:'-' }}</td>
@@ -52,7 +52,7 @@
     <section class="rk-panel"><p class="rk-empty">{% if role %}아직 은퇴한 {% if role == 'pitcher' %}투수{% else %}타자{% endif %}가 없어요.{% else %}아직 은퇴한 커리어가 없어요.{% endif %} 첫 번째 전설이 되어 보세요.</p></section>
     {% endif %}
     {% endif %}
-    <div class="gm-actions"><a class="gm-btn is-primary" href="{% url 'community:lite_home' %}">내 커리어 보기</a></div>
+    <div class="gm-actions"><a class="gm-btn is-primary" href="{% career_url 'home' %}">내 커리어 보기</a></div>
     {% include 'community/games/_rookie_rights.html' %}
 </div>
 </div>

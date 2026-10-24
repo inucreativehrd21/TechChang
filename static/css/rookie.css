@@ -34,6 +34,24 @@
     overflow-wrap: anywhere;
 }
 .rk .rk-mt { margin-top: 12px; }
+.rk .rk-member-history { margin: 16px 0; }
+.rk-member-history-list { list-style: none; margin: 0; padding: 0; }
+.rk-member-history-list > li { display: grid; grid-template-columns: minmax(130px, 1fr) minmax(0, 2fr) auto; align-items: center; gap: 12px; padding: 14px 0; border-top: 1px solid var(--rk-line); }
+.rk-member-who, .rk-member-record { display: flex; flex-direction: column; gap: 4px; margin: 0; min-width: 0; }
+.rk-member-who a { font-weight: 800; color: var(--rk-accent); overflow-wrap: anywhere; }
+.rk-member-who span, .rk-member-record span, .rk-member-team-result { color: var(--rk-ink-3); font-size: .78rem; }
+.rk-member-record b { font-size: .88rem; }
+.rk .rk-member-game { grid-column: 1 / -1; width: 100%; min-width: 0; padding: 10px 12px; border-radius: 8px; background: var(--rk-accent-wash); color: var(--rk-ink); font-size: .8rem; line-height: 1.6; }
+.rk-member-game > b { display: block; font-size: .72rem; color: var(--rk-ink-3); }
+.rk-member-game-row { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 10px; padding-top: 4px; }
+.rk .rk-member-game a { font-weight: 800; color: var(--rk-accent); overflow-wrap: anywhere; }
+.rk-member-game small { flex-basis: 100%; color: var(--rk-ink-3); }
+.rk .rk-member-game a:focus-visible, .rk-member-who a:focus-visible { outline: 2px solid var(--rk-accent); outline-offset: 3px; }
+@media (max-width: 600px) {
+    .rk-member-history-list > li { grid-template-columns: minmax(0, 1fr); gap: 6px; }
+    .rk-member-who { flex-direction: row; flex-wrap: wrap; gap: 4px 10px; align-items: baseline; }
+    .rk .rk-member-game { padding: 8px 10px; }
+}
 .rk .rk-fine { font-size: 0.75rem; color: var(--rk-ink-4); text-decoration: none; }
 .rk a.rk-fine:hover { color: var(--rk-accent); }
 .rk .rk-center { text-align: center; margin-top: 18px; }

@@ -1,0 +1,15 @@
+{% if member_history %}
+<section class="rk-panel rk-member-history" aria-label="{{ matchup_title|default:'회원 선수 맞대결' }}">
+    <div class="rk-head"><h2>{{ matchup_title|default:'회원 선수 맞대결' }}</h2></div>
+    <p class="rk-hint">같은 경기에 출전한 회원 선수들이에요. 타석 성적은 서로 직접 승부한 기록만 모았어요. 승패는 팀 경기 결과예요.</p>
+    <ul class="rk-member-history-list">
+        {% for row in member_history %}
+        <li>
+            <div class="rk-member-who"><a href="{{ row.url }}">{{ row.name }}</a><span>{{ row.league }} · {{ row.last|date:'Y.n.j' }}</span></div>
+            <p class="rk-member-record">{% if row.direct %}<b>{{ row.pa }}타석 {{ row.ab }}타수 {{ row.h }}{% if p.role == 'pitcher' %}피안타{% else %}안타{% endif %}</b><span>{% if p.role == 'pitcher' %}피안타율{% else %}타율{% endif %} {{ row.avg }} · {{ row.hr }}{% if p.role == 'pitcher' %}피홈런{% else %}홈런{% endif %} · {{ row.bb }}볼넷 · {{ row.hbp }}사구 · {{ row.so }}{% if p.role == 'pitcher' %}탈삼진{% else %}삼진{% endif %}</span>{% else %}<span>직접 승부한 타석은 없어요</span>{% endif %}</p>
+            <span class="rk-member-team-result">{{ row.games }}경기 · {{ row.wins }}승 {{ row.losses }}패</span>
+        </li>
+        {% endfor %}
+    </ul>
+</section>
+{% endif %}

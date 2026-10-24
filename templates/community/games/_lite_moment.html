@@ -21,7 +21,7 @@
     <div class="rl-replies" role="group" aria-label="{% if d.side == 'bat' %}어떻게 칠까요{% else %}무엇을 던질까요{% endif %}">
         <p class="rl-replies-q">{% if d.side == 'bat' %}어떻게 칠까요? 스카우팅 리포트를 보고 골라 주세요{% else %}무엇을 던질까요? 타자 성향을 보고 골라 주세요{% endif %}</p>
         {% for ch in d.choices %}
-        <form method="post" action="{% url 'community:lite_act' %}">{% csrf_token %}<input type="hidden" name="action" value="decide"><input type="hidden" name="what" value="moment"><input type="hidden" name="choice" value="{{ ch.key }}">
+        <form method="post" action="{% career_url 'act' %}">{% csrf_token %}<input type="hidden" name="action" value="decide"><input type="hidden" name="what" value="moment"><input type="hidden" name="choice" value="{{ ch.key }}">
             <button type="submit" class="rl-reply is-{{ ch.key }}"><em class="rl-tone">{{ ch.tone }}</em><b>{{ ch.label|baseball_text }}</b><small>{{ ch.hint|baseball_text }}</small></button></form>
         {% endfor %}
     </div>

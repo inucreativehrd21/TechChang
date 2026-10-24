@@ -1,0 +1,71 @@
+/* 야구 기록·선택·구단 리포트. 전역 토큰과 다른 페이지를 바꾸지 않아요. */
+.rk-world > section { margin-top: 20px; }
+.rk-world__filters { display: grid; grid-template-columns: 1fr 1fr 100px auto; align-items: end; gap: 14px; margin: 24px 0 14px; }
+.rk-world label { display: block; margin-bottom: 6px; font-size: .8rem; font-weight: 700; }
+.rk-world select, .rk-world input[type=number] { width: 100%; min-width: 0; min-height: 42px; padding: 8px 12px; border: 1px solid #dce1ec; border-radius: 7px; color: #18181b; background: #fff; }
+.rk-world__selected { background: #eef0ff; }
+.rk-world__round { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin: 14px 0; }
+.rk-world__round select { width: auto; }
+.rk-world__fixtures { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); padding: 0; margin: 16px 0 0; gap: 10px; list-style: none; }
+.rk-world__fixtures li { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 12px; padding: 14px; border: 1px solid #e5e7eb; border-radius: 7px; }
+.rk-world__fixtures li > span:last-child { text-align: right; }
+.rk-world__fixtures small { display: block; color: #6b7280; font-size: .7rem; }
+.rk-world__fixtures b { color: #4f46e5; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.rk-world__members { list-style: none; padding: 0; }
+.rk-world__members li { display: flex; gap: 16px; flex-wrap: wrap; padding: 12px 0; border-bottom: 1px solid #eef0f6; }
+.rk-world .rk-table { font-variant-numeric: tabular-nums; }
+.rk-peers { margin: 20px 0; }
+.rk-peers__grid { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 14px; }
+.rk-peer { min-width: 0; padding: 16px; border: 1px solid #dce1ec; border-radius: 8px; }
+.rk-peer header { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
+.rk-peer header span, .rk-peer p { font-size: .75rem; color: #6b7280; }
+.rk-peer table { width: 100%; margin: 14px 0; font-size: .8rem; font-variant-numeric: tabular-nums; }
+.rk-peer th, .rk-peer td { padding: 7px 4px; border-bottom: 1px solid #eef0f6; text-align: right; }
+.rk-peer th:first-child { text-align: left; }
+.rk .rk-board-rows .rk-game-card { display: grid; grid-template-columns: 3.5rem minmax(210px,1.2fr) 32px minmax(170px,1fr); align-items: center; gap: 12px; padding: 16px 0; }
+.rk .rk-game-card .rk-score { display: grid; grid-template-columns: minmax(0,1fr) 2ch 1ch 2ch minmax(0,1fr); align-items: center; gap: 10px; }
+.rk .rk-game-card .rk-score-team { min-width: 0; line-height: 1.5; overflow-wrap: anywhere; }
+.rk .rk-game-card .rk-score b { text-align: right; }
+.rk .rk-game-card .rk-score em { font-size: 1.6rem; }
+.rk .rk-game-card .rk-gsum { min-width: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.rk .rk-game-card .rk-gsum > span:not(.rk-vs) { flex-basis: 100%; font-weight: 700; }
+.rk .rk-game-card .rk-gsum small { color: #bdc4ea; }
+.rk .rk-game-card .rk-vs { white-space: nowrap; }
+.rk .rl-receipt { color: #eef0ff; background: #15183d; border-color: #303463; background-image: radial-gradient(#ffffff10 .7px,transparent .7px); background-size: 5px 5px; }
+.rk .rl-receipt h3 { color: #a5b4fc; }
+.rl-receipt dl { display: grid; grid-template-columns: 100px minmax(0,1fr); gap: 12px 20px; margin: 16px 0; }
+.rl-receipt dt { color: #a5b4fc; font-size: .8rem; }
+.rl-receipt dd { margin: 0; line-height: 1.7; }
+.rl-receipt .rl-receipt-effects { display: flex; flex-wrap: wrap; gap: 8px; padding: 0; list-style: none; }
+.rl-receipt-effects li { padding: 5px 10px; border-radius: 5px; background: #ffffff12; }
+.rk .rk-club-report { border: 1px solid #dce1ec; border-top: 3px solid #4f46e5; background: #fff; border-radius: 12px; padding: 24px; margin: 20px 0; }
+.rk-club-report header { display: flex; justify-content: space-between; gap: 16px; align-items: baseline; border-bottom: 1px solid #e5e7eb; padding-bottom: 14px; margin-bottom: 18px; }
+.rk-club-report h2 { margin: 0; font-size: 1.15rem; }
+.rk-club-report header small { color: #6b7280; }
+.rk-club-report__line { font-size: .94rem; line-height: 1.8; }
+.rk-club-report__metrics { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 12px; margin: 18px 0; }
+.rk-club-report__metrics div { padding: 12px; background: #f6f7fb; border-radius: 6px; }
+.rk-club-report__metrics dt { font-size: .75rem; color: #6b7280; }
+.rk-club-report__metrics dd { font-size: 1.2rem; font-weight: 800; margin: 4px 0 0; font-variant-numeric: tabular-nums; }
+.rk-club-report__notes { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 16px; }
+.rk-club-report__notes h3 { font-size: .8rem; color: #4f46e5; }
+.rk-club-report__notes p { margin: 0; font-size: .85rem; line-height: 1.8; }
+.rk-club-report footer { border-top: 1px solid #e5e7eb; margin-top: 18px; padding-top: 12px; font-size: .75rem; color: #6b7280; }
+@media (max-width: 1100px) {
+ .rk-peers__grid { grid-template-columns: 1fr; }
+ .rk .rk-board-rows .rk-game-card { grid-template-columns: 3rem minmax(0,1fr) 32px; gap: 8px; }
+ .rk .rk-game-card .rk-gsum { grid-column: 2 / -1; }
+ .rk .rk-game-card .rk-gsum > span:not(.rk-vs) { flex-basis: auto; }
+}
+@media (max-width: 767px) {
+ .rk-world__filters { grid-template-columns: repeat(2,minmax(0,1fr)); }
+ .rk-world__fixtures { grid-template-columns: 1fr; }
+ .rk .rk-game-card .rk-score { gap: 5px; }
+ .rk .rk-game-card .rk-score-team { font-size: .78rem; }
+ .rk .rk-club-report { padding: 16px; }
+ .rk-club-report header { flex-direction: column; gap: 6px; }
+ .rk-club-report__metrics { grid-template-columns: repeat(2,minmax(0,1fr)); }
+ .rk-club-report__notes { grid-template-columns: 1fr; }
+ .rl-receipt dl { grid-template-columns: 1fr; gap: 5px; }
+ .rl-receipt dd + dt { margin-top: 10px; }
+}
