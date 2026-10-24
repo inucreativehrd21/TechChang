@@ -30,6 +30,7 @@ from __future__ import annotations
 import hashlib
 import json
 import math
+import re
 from . import rookie_contracts as Contracts
 from . import rookie_development as Development
 from . import rookie_universe as Universe
@@ -52,6 +53,7 @@ from . import rookie_balance_rules as Balance
 from . import rookie_pitching as Pitching
 from . import rookie_handedness as Hands
 from . import rookie_bloom as Bloom
+from . import rookie_series as Series
 from .rookie_lite_news import season_features, season_reactions
 from .rookie_text import is_real_person, josa, nz, signed  # noqa: F401  (조사 도우미는 rookie_text 로 옮김 — 기존 rookie_lite.josa 호환)
 
@@ -1331,6 +1333,20 @@ def _intl(c, key, state, rng):
         state['news'].append(national_reward(c, key, res['tier']))
     if res['tier'] in ('gold', 'silver', 'champ', 'final'):
         res['final'] = True                                   # 결승 — 메달 색은 결정적 순간에서
+    if Series.enabled() and key in Series.INTL_PLAN:
+        doc = Series.intl(c, key, res['tier'], _series_me(c, INTL_LEVEL))
+        played = {}
+        for rd in doc['rounds']:
+            for g in rd['games']:
+                if g.get('me'):
+                    played = L.add(played, g['me']['line'])
+        if played:
+            res['line'] = _short(c.role, played)
+        if res.get('final'):
+            res['series'] = doc
+        else:
+            doc['result'] = res['result']
+            state.setdefault('series', []).append(doc)
     state['intl'].append(res)
     if t['when'] == 'post':                                   # 시즌 뒤(11월) — 다음 시즌 몸이 무겁다
         c.flags['tired'] = {'injury': t['injury'], 'train': 0.9}
@@ -1862,7 +1878,7 @@ def start_season(c, programs, intensity, event_choice, intl_choices, rng) -> dic
         mods['injury'] += tired.get('injury', 0.0)
         mods['train'] *= tired.get('train', 1.0)
     flags['ledger'] = []
-    state = {'programs': progs, 'intensity': intensity, 'mods': mods, 'news': [], 'intl': [], 'start': dict(c.stats),
+    state = {'programs': progs, 'intensity': intensity, 'mods': mods, 'news': [], 'intl': [], 'series': [], 'start': dict(c.stats),
              'press': list(flags.pop('press', None) or []), 'go': [k for k in offered if intl_choices.get(k) == 'go']}
     nm, code = c.name, c.league
     # 집·장비(상점) — 월세는 시즌마다 나가고, 장비는 이번 시즌만 쓴다. cut 은 부상 위험에 곱한다(gear_cut)
@@ -2130,10 +2146,17 @@ def finish_season(c, state, rng):
             if rng.random() >= 2 * p_win:                     # 결승에 못 올랐다
                 continue
             if not any(m['kind'] == 'amateur' for m in moments):
-                moments.append(make_moment(c, 'amateur', f'{tn} 결승', '', rng, key=tn))   # 그 시즌 첫 결승은 내가 승부한다
-            elif rng.random() < 0.5:                          # 두 번째 결승부터는 반반
-                awards.append({'kind': 'ring', 'label': f'{tn} 우승'})
-                season.champion = True
+                m = make_moment(c, 'amateur', f'{tn} 결승', '', rng, key=tn)   # 그 시즌 첫 결승은 내가 승부한다
+                if Series.enabled():
+                    m['series'] = Series.amateur(c, code, tn, None, _series_me(c, W.level(code)))
+                moments.append(m)
+            else:
+                won_final = rng.random() < 0.5                # 두 번째 결승부터는 반반
+                if won_final:
+                    awards.append({'kind': 'ring', 'label': f'{tn} 우승'})
+                    season.champion = True
+                if Series.enabled():
+                    state['series'].append(Series.amateur(c, code, tn, won_final, _series_me(c, W.level(code))))
     season.awards = awards
     season.salary = salary_for(c, war, mods['salary'], splits=rows)
     # 성장 — 출전 시간은 줄마다 그 리그 기준으로
@@ -2173,6 +2196,8 @@ def finish_season(c, state, rng):
     back = army_after_season(c)
     if back:
         season.news.append(back)
+    if Series.enabled():
+        season.series = list(state.get('series') or [])
     season.save()
     if moments:                                                # 결정적 순간 — 고른 뒤에 시즌을 닫는다
         c.pending = {'kind': 'decision', 'what': 'moment', 'year': season.year, 'moments': moments, 'i': 0, 'done': []}
@@ -2677,6 +2702,8 @@ def decide(c, what: str, choice: str, rng, school: str = '') -> str:
         d = {'kind': m['kind'], 'key': m['key'], 'stage': m['stage'], 'when': m['when'], 'choice': label,
              'text': story, 'line': r['line'], 'ok': r['ok'], 'won': won}
         d['result'] = moment_result_text(d)
+        if m.get('series'):
+            d['series'] = _close_series(c, m, r, won, d['result'])
         done = list(pend.get('done') or []) + [d]
         fx = moment_fx(c, m, r, d, more=i + 1 < len(ms))
         if i + 1 < len(ms):
@@ -3453,30 +3480,90 @@ def moment_fx(c, m: dict, r: dict, d: dict, more: bool) -> dict:
             'colors': list(colors), 'more': more}
 
 
+def _series_me(c, lvl: float):
+    """시리즈 경기에서 내 기록을 만들 재료 — 지금 능력치(경기 보정 포함)와 그 수준에서의 보직."""
+    return Series.Me(c.role, _game_stats(c), c.position, duty_for(c, lvl)[:2], lvl)
+
+
+def _close_series(c, m: dict, r: dict, won: bool, result: str) -> dict:
+    """결정적 순간 뒤 — 결승 흐름을 결과 쪽으로 마무리한 기록."""
+    before, after = moment_score(m, r)
+    moment = {'before': before, 'after': after, 'side': m.get('side', 'bat'), 'game_won': won,
+              'line': r.get('line', ''), 'stage': m.get('stage', ''),
+              'inning': (m.get('sit') or {}).get('inning', ''), 'ok': r.get('ok')}
+    data = m['series']
+    if m['kind'] == 'series':
+        doc = dict(data['doc'] or {'kind': 'post', 'key': c.league, 'title': f'{W.short(c.league)} 포스트시즌',
+                                   'rounds': [], 'team': Series.team_of(c.league, c.club)})
+        lvl = W.level(c.league) + Series.POST_LEVEL
+        final = Series.final_close(c, data['final'], won, moment, _series_me(c, lvl))
+        doc['rounds'] = list(doc.get('rounds') or []) + [final]
+    else:
+        doc = Series.close_single(c, data, won, moment)
+    doc['result'] = result
+    return doc
+
+
 def moments_for(c, code: str, rank: int, team_n: int, state: dict, rng) -> list:
     """이번 시즌 결정적 순간들 — 국가대표 결승, 최종 시리즈, 아마추어 대회 결승(시즌에 하나)."""
     out = []
     for res in state['intl']:
         if res.get('final'):
-            out.append(make_moment(c, 'intl', f"{res['name']} 결승", INTL[res['key']]['month'], rng, key=res['key'],
-                                   opp_name=intl_rival(res['key'], rng)))
+            m = make_moment(c, 'intl', f"{res['name']} 결승", INTL[res['key']]['month'], rng, key=res['key'],
+                            opp_name=intl_rival(res['key'], rng))
+            if res.get('series'):
+                m['series'] = res['series']
+            out.append(m)
     standings = Universe.current_table(c)
     if code == 'kbo1' and standings and standings['year'] == c.year:
         opponent, bracket = Universe.kbo_final(c, standings)
         state['news'].extend(bracket)
+        doc = None
+        if Series.enabled() and any(r['club'] == c.club for r in standings['rows'][:5]):
+            doc = Series.postseason(c, code, rank, bool(opponent), _series_me(c, W.level(code) + Series.POST_LEVEL),
+                                    kbo_games=Series.kbo_games(c, standings))
         if opponent:
-            m = make_moment(c, 'series', '한국시리즈 최종 승부', '10월', rng,
+            stage = '한국시리즈 최종 승부'
+            opened = None
+            if doc is not None:
+                opened = Series.final_open(c, code, Series.team_of(code, opponent['club']),
+                                           standings['rows'][0]['club'] == c.club,
+                                           _series_me(c, W.level(code) + Series.POST_LEVEL))
+                stage = f"한국시리즈 {opened['moment_game']}차전"
+            m = make_moment(c, 'series', stage, '10월', rng,
                             opp_name=f'{opponent["name"]} {rival_name(code, rng)}')
             m['opponent_club'] = opponent['club']
+            if opened:
+                m['series'] = {'doc': doc, 'final': opened}
             out.append(m)
+        elif doc is not None:
+            state['series'].append(doc)
         return out
     odds = POSTSEASON.get(code, ())
     if team_n and rank <= len(odds):
         reach = 1.0 if (code == 'kbo1' and rank == 1) else min(1.0, 2 * odds[rank - 1])   # KBO 1위는 한국시리즈 직행
-        if rng.random() < reach:
-            out.append(make_moment(c, 'series', f'{SERIES_NAME.get(code, "최종 시리즈")} 7차전', '10월', rng))
+        reached = rng.random() < reach
+        doc = None
+        if Series.enabled() and code in Series.ROUNDS:
+            doc = Series.postseason(c, code, rank, reached, _series_me(c, W.level(code) + Series.POST_LEVEL))
+        if reached:
+            stage = f'{SERIES_NAME.get(code, "최종 시리즈")} 7차전'
+            opened = None
+            if doc is not None:
+                used = {x['opponent']['code'] for x in doc['rounds'] if x.get('opponent')}
+                pool = [t['code'] for t in Series._clubs(code, c.club) if t['code'] not in used]
+                pick = Series.rng_for(c, 'final-opp').choice(pool) if pool else c.club
+                opened = Series.final_open(c, code, Series.team_of(code, pick), rank <= 2,
+                                           _series_me(c, W.level(code) + Series.POST_LEVEL))
+                stage = f"{SERIES_NAME.get(code, '최종 시리즈')} {opened['moment_game']}차전"
+            m = make_moment(c, 'series', stage, '10월', rng)
+            if opened:
+                m['series'] = {'doc': doc, 'final': opened}
+            out.append(m)
         else:
-            rnd = POST_ROUND.get(code, '포스트시즌')
+            if doc is not None:
+                state['series'].append(doc)
+            rnd = doc['rounds'][-1]['name'] if doc and doc.get('rounds') else POST_ROUND.get(code, '포스트시즌')
             team = W.club_short(code, c.club)
             state['news'].append(f'정규시즌 {rank}위로 가을야구에 나갔지만 {rnd}에서 탈락했어요')
             state['press'].append(press('', f"{team}, {rnd}서 탈락…{c.name}의 가을은 여기까지"))
@@ -3499,7 +3586,7 @@ def moment_result_text(d: dict) -> str:
     if d['kind'] == 'intl':
         t = INTL[d['key']]
         return f"{t['name']} {t['tiers'][0][1] if d['won'] else t['tiers'][1][1]}"
-    name = d['key'] if d['kind'] == 'amateur' else d['stage'].replace(' 7차전', '').replace(' 최종 승부', '')
+    name = d['key'] if d['kind'] == 'amateur' else re.sub(r' (\d+차전|최종 승부)$', '', d['stage'])
     return f'{name} 우승!' if d['won'] else f'{name} 준우승'
 
 
@@ -3509,6 +3596,8 @@ def resolve_moments(c, season, done: list, rng) -> list:
     team = W.club_short(season.league, season.club)
     for d in done:
         won = d['won']
+        if d.get('series'):
+            season.series = list(season.series or []) + [d['series']]
         if d['kind'] == 'series':
             stage = SERIES_NAME.get(season.league, '최종 시리즈')
             if won:

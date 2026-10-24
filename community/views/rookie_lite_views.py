@@ -32,6 +32,7 @@ from django.views.decorators.http import require_POST
 from .. import rookie as R
 from .. import rookie_league as L
 from .. import rookie_lite as X
+from .. import rookie_series as Series
 from .. import rookie_card as K
 from .. import rookie_staff as S
 from ..rookie_card import _palette, _jersey_name, render_png   # noqa: F401 — 테스트가 render_png 를 바꿔 끼운다
@@ -289,6 +290,7 @@ def lite_home(request):
                            for x in (s.splits or [])] if s and len(s.splits or []) > 1 else [],
                    meet_next=bool((c.flags or {}).get('move')))
         ctx['drops'] = [d for d in ctx.get('deltas') or [] if d['value'] < 0]
+        ctx['series_boards'] = list(s.series or []) if s is not None and Series.enabled() else []
     elif pend.get('kind') == 'decision':
         ctx['decision'] = X.decision_view(c)
         if pend.get('what') == 'meeting' and pend.get('phase') == 'mid' and pend.get('half'):

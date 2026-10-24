@@ -1,0 +1,70 @@
+{% comment %}특별 경기 전광판 — 틀(2026-10-25). 시각 디자인·재생 연출은 Codex 담당이라 여기엔 구조와 데이터 연결만 둔다.
+입력: doc = LiteSeason.series 의 한 항목(형식은 community/rookie_series.py 의 series_doc()).
+재생 훅(디자인 단계에서 JS 를 붙일 자리):
+  [data-sb]            전광판 하나 — data-sb-kind(post·intl·amateur), data-sb-result
+  [data-sb-round]      라운드 — data-sb-state(won·lost·pending)
+  [data-sb-rail] li    경기 칩 — data-sb-game(번호), data-sb-won, data-sb-moment
+  [data-sb-game-card]  경기 상세(라인스코어·내 기록) — 같은 data-sb-game 번호
+  [data-sb-controls]   자동 진행·건너뛰기·시리즈 끝으로 버튼 자리(지금은 hidden, 정적 표시가 기본)
+동작 줄이기(prefers-reduced-motion)·스크린리더용 라이브 영역(aria-live)은 재생 스크립트가 지켜야 한다.{% endcomment %}
+<section class="sb" data-sb data-sb-kind="{{ doc.kind }}" data-sb-result="{{ doc.result }}" aria-label="{{ doc.title }} 경기 기록">
+    <header class="sb-head">
+        <p class="sb-title">{{ doc.title }}</p>
+        {% if doc.result %}<p class="sb-result">{{ doc.result }}</p>{% endif %}
+    </header>
+    <p class="visually-hidden" aria-live="polite" data-sb-live></p>
+    <ol class="sb-rounds">
+        {% for rd in doc.rounds %}
+        <li class="sb-round is-{{ rd.result }}" data-sb-round="{{ rd.code }}" data-sb-state="{{ rd.result }}">
+            <header class="sb-round-head">
+                <h3 class="sb-round-name">{{ rd.name }}</h3>
+                <span class="sb-format">{{ rd.format }}</span>
+                {% if rd.opponent %}
+                <p class="sb-series"><span class="sb-team is-us">{{ doc.team.short|default:doc.team.name }}</span>
+                    <b class="sb-wins">{{ rd.wins.0 }} : {{ rd.wins.1 }}</b>
+                    <span class="sb-team is-them">{{ rd.opponent.short|default:rd.opponent.name }}</span></p>
+                {% else %}
+                <p class="sb-series"><b class="sb-wins">{{ rd.wins.0 }}승 {{ rd.wins.1 }}패</b></p>
+                {% endif %}
+            </header>
+            {% if rd.games %}
+            <ol class="sb-rail" data-sb-rail aria-label="{{ rd.name }} 경기 목록">
+                {% for g in rd.games %}
+                <li class="sb-chip {% if g.won %}is-won{% else %}is-lost{% endif %}{% if g.moment %} is-moment{% endif %}" data-sb-game="{{ g.no }}" data-sb-won="{{ g.won|yesno:'1,0' }}"{% if g.moment %} data-sb-moment{% endif %}>
+                    <span class="sb-chip-no">{% if rd.games|length > 1 %}{{ g.no }}차전{% else %}{{ rd.name }}{% endif %}</span>
+                    <span class="sb-chip-score">{{ g.score.0 }} : {{ g.score.1 }}</span>
+                </li>
+                {% endfor %}
+            </ol>
+            {% for g in rd.games %}
+            <article class="sb-game" data-sb-game-card data-sb-game="{{ g.no }}" aria-label="{{ rd.name }}{% if rd.games|length > 1 %} {{ g.no }}차전{% endif %}">
+                {% with opp=g.opponent|default:rd.opponent %}
+                <div class="sb-line-wrap">
+                    <table class="sb-line">
+                        <thead><tr><th scope="col">팀</th>{% for n in "123456789" %}<th scope="col">{{ n }}</th>{% endfor %}<th scope="col">R</th><th scope="col">H</th><th scope="col">E</th></tr></thead>
+                        <tbody>
+                        {% if g.home == 'us' %}
+                        <tr class="is-them"><th scope="row">{{ opp.short|default:opp.name }}</th>{% for x in g.them %}<td>{{ x }}</td>{% endfor %}{% for x in g.rhe.them %}<td class="sb-rhe">{{ x }}</td>{% endfor %}</tr>
+                        <tr class="is-us"><th scope="row">{{ doc.team.short|default:doc.team.name }}</th>{% for x in g.us %}<td>{{ x }}</td>{% endfor %}{% for x in g.rhe.us %}<td class="sb-rhe">{{ x }}</td>{% endfor %}</tr>
+                        {% else %}
+                        <tr class="is-us"><th scope="row">{{ doc.team.short|default:doc.team.name }}</th>{% for x in g.us %}<td>{{ x }}</td>{% endfor %}{% for x in g.rhe.us %}<td class="sb-rhe">{{ x }}</td>{% endfor %}</tr>
+                        <tr class="is-them"><th scope="row">{{ opp.short|default:opp.name }}</th>{% for x in g.them %}<td>{{ x }}</td>{% endfor %}{% for x in g.rhe.them %}<td class="sb-rhe">{{ x }}</td>{% endfor %}</tr>
+                        {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+                {% endwith %}
+                <p class="sb-game-foot">{% if g.home == 'us' %}홈{% else %}원정{% endif %}{% if g.walkoff %} · 끝내기{% endif %}{% if g.moment %} · 결정적 순간{% if g.moment.inning %}({{ g.moment.inning }}){% endif %}{% endif %}</p>
+                {% if g.me %}<p class="sb-me">{{ g.me.text }}</p>{% else %}<p class="sb-me is-rest">출전하지 않았어요</p>{% endif %}
+            </article>
+            {% endfor %}
+            {% endif %}
+        </li>
+        {% endfor %}
+    </ol>
+    <div class="sb-controls" data-sb-controls hidden>
+        <button type="button" class="gm-btn" data-sb-play>자동 진행</button>
+        <button type="button" class="gm-btn" data-sb-next>다음 경기</button>
+        <button type="button" class="gm-btn" data-sb-end>시리즈 끝으로</button>
+    </div>
+</section>

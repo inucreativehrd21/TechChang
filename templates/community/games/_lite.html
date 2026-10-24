@@ -213,6 +213,7 @@
             {% endfor %}
         </section>
         {% endif %}
+        {% for doc in series_boards %}{% include 'community/games/_series_board.html' with doc=doc %}{% endfor %}
         <section class="rk-panel rl-result" aria-label="시즌 결산">
             <div class="rk-head"><h2>시즌 결산</h2><span class="rk-fine">OVR {{ season.ovr_start|floatformat:1 }} → {{ season.ovr_end|floatformat:1 }}</span></div>
             {% if season_line %}

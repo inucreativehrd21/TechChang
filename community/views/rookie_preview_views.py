@@ -37,6 +37,7 @@ SCENES = [
     ('optout', '선수 옵트아웃', '보장 연봉과 새 계약 사이', '◇'),
     ('rival', '다시 만난 경쟁자', '함께 훈련할지, 정면 승부할지', '◈'),
     ('world', '살아 있는 커리어 리그', '같은 대진표와 이어지는 경쟁자', '▤'),
+    ('series', '특별 경기 전광판', '한국시리즈·국제대회를 1차전부터', '▦'),
     ('starter_trial', '선발 전환 제안', '불펜 성적과 선발 시험 등판', 'K'),
     ('starter_course', '선발 수업 평가', '긴 이닝 준비와 최종 평가', 'K'),
     ('bullpen_move', '불펜 전환 면담', '부진한 선발의 다음 기회', 'K'),
@@ -121,6 +122,9 @@ def rookie_preview(request):
                season=dict(age=26, duty='주전 외야수', months=months, team_of=10, team_w=89, team_l=55, team_rank=1),
                season_year=2032, season_league='KBO', season_club='나의 구단',
                demo_stats=[('컨택', 76, 79), ('파워', 82, 85), ('선구안', 71, 73)])
+    if scene == 'series':
+        from .. import rookie_series as Series
+        ctx['series_boards'] = Series.demo(request.GET.get('role', 'batter'))
     if uniform_preview:
         ctx.update(uniform_preview=uniform_preview, uniform_gallery=entries if request.GET.get('all') == '1' else [],
                    uniform_teams=[dict(code=code, name=label, color=color) for code, label, color in group],

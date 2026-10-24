@@ -1374,6 +1374,7 @@ class LiteSeason(models.Model):
     salary = models.PositiveIntegerField(default=0)              # 만원
     splits = models.JSONField(default=list, blank=True)          # 리그·보직별 몫(시즌 중 콜업·강등이면 둘)
     press = models.JSONField(default=list, blank=True)           # 기사 제목 [{'tag','title','sub'}]
+    series = models.JSONField(default=list, blank=True)          # 가을야구·국제대회·아마 결승의 경기 단위 기록(rookie_series)
 
     @property
     def team_draws(self):

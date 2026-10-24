@@ -1,0 +1,20 @@
+/* 특별 경기 전광판 — 구조용 최소 스타일(2026-10-25). 색·글꼴·연출 등 시각 디자인은 Codex 단계에서 덮어쓴다.
+   지키는 것만: 모바일에서 라인스코어는 가로 스크롤, 칩은 줄바꿈, 글자는 단어 단위로 끊기. */
+.rk .sb { margin: 16px 0; padding: 16px; border: 1px solid #dfe3ed; border-radius: 12px; background: #fff; word-break: keep-all; }
+.rk .sb-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 4px 12px; }
+.rk .sb-title { margin: 0; font-weight: 800; }
+.rk .sb-result { margin: 0; font-weight: 700; }
+.rk .sb-rounds { list-style: none; margin: 12px 0 0; padding: 0; display: grid; gap: 16px; }
+.rk .sb-round-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; }
+.rk .sb-round-name { margin: 0; font-size: 1rem; }
+.rk .sb-format { font-size: .8rem; color: #535a78; }
+.rk .sb-series { margin: 0; white-space: nowrap; }
+.rk .sb-rail { list-style: none; margin: 8px 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; }
+.rk .sb-chip { display: inline-flex; flex-direction: column; min-width: 4.5rem; padding: 4px 8px; border: 1px solid #dfe3ed; border-radius: 8px; font-size: .8rem; }
+.rk .sb-chip-no, .rk .sb-chip-score { white-space: nowrap; }
+.rk .sb-game { margin-top: 8px; }
+.rk .sb-line-wrap { overflow-x: auto; }
+.rk .sb-line { border-collapse: collapse; font-variant-numeric: tabular-nums; font-size: .8rem; min-width: 100%; }
+.rk .sb-line th, .rk .sb-line td { padding: 2px 6px; text-align: center; border-bottom: 1px solid #eef0f5; white-space: nowrap; }
+.rk .sb-line th[scope="row"] { text-align: left; }
+.rk .sb-game-foot, .rk .sb-me { margin: 4px 0 0; font-size: .8rem; }

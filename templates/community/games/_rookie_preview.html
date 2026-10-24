@@ -12,6 +12,7 @@
         {% for s in scenes %}<a class="rs-scene" href="?edition={{ edition }}&amp;scene={{ s.key }}{% if s.key == 'season' %}#rs-season{% elif s.key == 'cards' %}#rs-uniforms{% elif s.key == 'manager' or s.key == 'interview' or s.key == 'conduct' or s.key == 'highlight' or s.key == 'posting' or s.key == 'negotiation' or s.key == 'assignment' or s.key == 'optout' or s.key == 'rival' or s.key == 'world' %}#rs-story{% endif %}"{% if scene == s.key %} aria-current="page" data-rs-replay{% endif %}><span class="rs-scene-icon" aria-hidden="true">{{ s.icon }}</span><span><b>{{ s.label|baseball_text }}</b><small>{{ s.hint|baseball_text }}</small></span></a>{% endfor %}
     </nav>
     {% if uniform_preview %}{% include 'community/games/_rookie_uniform_preview.html' %}{% endif %}
+    {% if series_boards %}<div id="rs-series">{% for doc in series_boards %}{% include 'community/games/_series_board.html' with doc=doc %}{% endfor %}</div>{% endif %}
     {% if story_scene or scene == 'world' %}
     <div id="rs-story">
     {% include 'community/games/_rookie_mind.html' %}
