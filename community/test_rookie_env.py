@@ -173,3 +173,80 @@ class EnvFlowTests(TestCase):
         html = render_to_string('community/games/_lite_env_splits.html', {'env_rows': rows, 'env_routine': '원정 루틴'})
         self.assertIn('조건별 성적', html)
         self.assertIn('평균자책점', html)
+
+
+class ConditionalTraitTests(SimpleTestCase):
+    def test_roll_is_deterministic_rare_and_never_contradictory(self):
+        counts = {0: 0, 1: 0, 2: 0}
+        for pk in range(1, 3001):
+            got = E.roll_cond(fake(pk=pk))
+            self.assertEqual(got, E.roll_cond(fake(pk=pk)))
+            self.assertFalse({'home_tiger', 'road_reaper'} <= set(got))
+            counts[len(got)] += 1
+        self.assertTrue(.40 < counts[0] / 3000 < .52)
+        self.assertTrue(.06 < counts[2] / 3000 < .14)
+
+    def test_existing_trait_draw_is_untouched(self):
+        pool = [t for t in X.TRAITS if t not in X.Hands.TRAITS and t not in E.COND_TRAITS]
+        self.assertEqual(pool, ['early', 'late', 'iron', 'glass', 'grinder', 'learner', 'clutch', 'natural'])
+        for t in E.COND_TRAITS:
+            self.assertIn(t, X.TRAITS)                                     # 이름은 화면·스카우팅 리포트에 쓴다
+        a = X.roll_traits(random.Random(5))
+        self.assertTrue(set(a) <= set(pool))
+
+    def test_effects_follow_the_condition(self):
+        env = {'month': 7, 'home': 'home', 'park': 'dome', 'weather': '돔', 'wind': '', 'time': '주간', 'crowd': '만원'}
+        self.assertEqual(E.cond_delta('batter', env, ['summer_man']), {'contact': 2.0, 'power': 2.0})
+        self.assertEqual(E.cond_delta('pitcher', env, ['home_tiger', 'night_owl']), {'control': -1.0, 'breaking': -1.0})
+        self.assertEqual(E.cond_delta('batter', env, ['dome_kid', 'big_stage']), {'contact': 3.5, 'power': 3.5})
+        self.assertEqual(E.cond_delta('batter', env, ['rain_man']), {})
+        self.assertEqual(E.cond_delta('batter', dict(env, weather='한파', park='neutral'), ['cold_weak']), {'contact': -4.0, 'power': -4.0})
+        self.assertEqual(E.big_delta('batter', 'post', ['october']), {'contact': 4.0, 'power': 4.0})
+        self.assertEqual(E.big_delta('pitcher', 'intl', ['october']), {})
+
+    def test_reveal_needs_enough_games_and_shows_the_record(self):
+        c = SimpleNamespace(role='batter', traits=['rain_man', 'october'], traits_seen=[])
+        few = {'비': {'pa': 10, 'ab': 9, 'h': 4, 'g_env': 3}}
+        self.assertEqual(E.reveal(c, few, {'pa': 500, 'ab': 450, 'h': 120}), [])
+        many = {'비': {'pa': 40, 'ab': 36, 'h': 12, 'g_env': 9}}
+        out = E.reveal(c, many, {'pa': 500, 'ab': 450, 'h': 120})
+        self.assertEqual([t for t, _ in out], ['rain_man'])
+        self.assertIn('비 타율 .333(시즌 .267)', out[0][1])
+
+    def test_ensure_traits_runs_once(self):
+        c = SimpleNamespace(pk=17, name='한번', traits=['iron'], flags={})
+        first = E.ensure_traits(c)
+        again = E.ensure_traits(c)
+        self.assertEqual(again, [])
+        self.assertEqual(c.traits, ['iron'] + first)
+        self.assertTrue(c.flags['cond_rolled'])
+
+
+@override_settings(ROOKIE_EXTREME_PREVIEW=True, ROOKIE_ENV_ENABLED=True)
+class ConditionalTraitFlowTests(TestCase):
+    def test_trait_shows_in_the_record_and_is_revealed(self):
+        rng = random.Random(77)
+        u = User.objects.create(username='cond-flow', is_staff=True)
+        c = X.create(u, name='조건부', role='batter', position='SS', style='contact', region='서울', team='lg', rng=rng)
+        c.league, c.club, c.age, c.grade = 'kbo1', 'lg', 24, 0
+        c.traits, c.traits_seen = ['home_tiger'], []
+        c.flags = dict(c.flags, cond_rolled=True, start=2026, trust=50)
+        c.pending = {'kind': 'plan', 'event': None, 'intl': [], 'shop': None}           # 비시즌 이벤트 없이 바로 시즌
+        c.save()
+        X.run_season(c, X.pick_programs(c, rng), 'normal', '', rng, routine='balance')
+        while (c.pending or {}).get('kind') == 'decision':
+            view = X.decision_view(c) or {}
+            X.decide(c, c.pending['what'], (view.get('choices') or [{'key': 'accept'}])[0]['key'], rng)
+        s = c.seasons.order_by('-year').first()
+        self.assertIn('home_tiger', c.traits_seen)
+        self.assertTrue(any('숨은 특성 발견 — 안방 호랑이' in n for n in s.news))
+        self.assertIn('home_tiger', s.env.get('revealed', []))
+
+    def test_moment_stats_get_big_game_bonus(self):
+        u = User.objects.create(username='october', is_staff=True)
+        c = X.create(u, name='가을', role='batter', position='SS', style='contact', region='서울', team='lg', rng=random.Random(4))
+        c.traits = ['october']
+        base = X._game_stats(c)
+        boosted = X._moment_stats(c, {'kind': 'series'})
+        self.assertAlmostEqual(boosted['contact'] - base['contact'], 4.0)
+        self.assertEqual(X._moment_stats(c, {'kind': 'amateur'})['contact'], base['contact'])

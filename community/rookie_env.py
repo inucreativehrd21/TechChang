@@ -160,6 +160,10 @@ def buckets(env: dict) -> list:
            PARK_LABEL.get(env['park'], '보통 구장')]
     if env['weather'] != '돔':                                # 돔은 구장 칸으로만 센다(한 경기를 두 번 세지 않게)
         out.insert(2, env['weather'])
+    if env.get('month') in (7, 8):
+        out.append('여름(7·8월)')
+    if env.get('crowd') == '만원':
+        out.append('만원 관중')
     if env['weather'] == '강풍':
         out.append('강풍(뒷바람)' if env.get('wind') == 'out' else '강풍(맞바람)')
     return out
@@ -174,7 +178,7 @@ def add_split(store: dict, env: dict, line: dict) -> dict:
 
 
 SPLIT_ORDER = ('홈', '원정', '중립 경기(대회)', '주간', '야간', '맑음', '흐림', '비', '폭염', '한파', '강풍', '강풍(뒷바람)',
-               '강풍(맞바람)', '돔 구장', '타자 친화 구장', '투수 친화 구장', '보통 구장')
+               '강풍(맞바람)', '돔 구장', '타자 친화 구장', '투수 친화 구장', '보통 구장', '여름(7·8월)', '만원 관중')
 
 
 def split_rows(role: str, splits: dict) -> list:
@@ -252,3 +256,113 @@ def decorate_series(c, doc: dict) -> dict:
                         'time': '야간' if doc.get('kind') == 'post' and r.random() < .8 else '주간',
                         'park': park, 'crowd': '만원' if doc.get('kind') != 'amateur' else '보통'}
     return doc
+
+
+# ───────────────────────────── 조건부 특성(2026-10-25) — 환경에 따라 오르고 내리는 숨은 특성
+# 기존 특성 추첨(roll_traits)과 따로, 커리어 파생 난수로 붙인다(기존 추첨 분포·시즌 난수 순서 불변).
+# 효과는 주요 능력 두 개(타자 컨택·파워, 투수 제구·변화구)에 같은 값. 경기당 기대 가치는 작게(하네스로 맞춤).
+COND_TRAITS = {   # 코드: (이름, 설명, [(조건, 값)…])
+    'rain_man': ('비 오는 날의 사나이', '비 오는 날 +3 · 맑은 날 −0.5', (('weather:비', 3.0), ('weather:맑음', -.5))),
+    'summer_man': ('여름 사나이', '7·8월 +2 · 4월 −2.5', (('month:7', 2.0), ('month:8', 2.0), ('month:4', -2.5))),
+    'home_tiger': ('안방 호랑이', '홈 경기 +2 · 원정 경기 −1.5', (('home:home', 2.0), ('home:away', -1.5))),
+    'road_reaper': ('원정 저승사자', '원정 경기 +2 · 홈 경기 −1.5', (('home:away', 2.0), ('home:home', -1.5))),
+    'night_owl': ('야행성', '야간 경기 +1 · 주간 경기 −3', (('time:야간', 1.0), ('time:주간', -3.0))),
+    'dome_kid': ('돔구장 체질', '돔 구장 +1 · 바깥 구장 −0.3', (('park:dome', 1.0), ('park:open', -.3))),
+    'big_stage': ('만원 관중 체질', '만원 관중 앞 +2.5 · 한산한 경기 −2.5', (('crowd:만원', 2.5), ('crowd:한산', -2.5))),
+    'cold_weak': ('추위에 약함', '한파 경기 −4', (('weather:한파', -4.0),)),
+    'heat_weak': ('더위에 약함', '폭염 경기 −3', (('weather:폭염', -3.0),)),
+    'october': ('가을 야구 사나이', '가을야구 결승의 결정적 순간·시리즈 +4', ()),
+    'global': ('국제대회 체질', '국제대회 경기·결승 +3', ()),
+}
+BIG_TRAITS = {'october': ('post', 4.0), 'global': ('intl', 3.0)}
+COND_WEIGHT = {'cold_weak': .8, 'heat_weak': .8, 'october': .6, 'global': .6}
+COND_EXCLUSIVE = ({'home_tiger', 'road_reaper'},)
+REVEAL_BUCKET = {'rain_man': '비', 'summer_man': '여름(7·8월)', 'home_tiger': '홈', 'road_reaper': '원정',
+                 'night_owl': '야간', 'dome_kid': '돔 구장', 'big_stage': '만원 관중', 'cold_weak': '한파',
+                 'heat_weak': '폭염'}
+REVEAL_MIN_GAMES = 8
+
+
+def main_stats(role: str) -> tuple:
+    return ('contact', 'power') if role == 'batter' else ('control', 'breaking')
+
+
+def _match(cond: str, env: dict) -> bool:
+    kind, value = cond.split(':', 1)
+    if kind == 'month':
+        return env['month'] == int(value)
+    if kind == 'park':
+        return (env['park'] == 'dome') if value == 'dome' else (env['park'] != 'dome')
+    return env.get(kind) == value
+
+
+def cond_delta(role: str, env: dict, traits) -> dict:
+    """이 경기에서 조건부 특성이 더할 값."""
+    total = 0.0
+    for t in traits or ():
+        for cond, value in (COND_TRAITS.get(t) or ('', '', ()))[2]:
+            if _match(cond, env):
+                total += value
+    return {k: total for k in main_stats(role)} if total else {}
+
+
+def big_delta(role: str, scope: str, traits) -> dict:
+    """큰 경기(scope 'post' 가을야구 결승·'intl' 국제대회)에서 특성이 더할 값."""
+    total = sum(v for t, (s, v) in BIG_TRAITS.items() if s == scope and t in (traits or ()))
+    return {k: total for k in main_stats(role)} if total else {}
+
+
+def merge(*deltas) -> dict:
+    out = {}
+    for d in deltas:
+        for k, v in (d or {}).items():
+            out[k] = round(out.get(k, 0.0) + v, 2)
+    return {k: v for k, v in out.items() if v}
+
+
+def roll_cond(c) -> list:
+    """조건부 특성 추첨 — 45%는 하나, 10%는 둘(같은 커리어면 언제 불러도 같다)."""
+    r = random.Random(f'cond-trait:{getattr(c, "pk", 0)}:{getattr(c, "name", "")}')
+    n = r.choices((0, 1, 2), (.45, .45, .10))[0]
+    pool = list(COND_TRAITS)
+    got = []
+    while len(got) < n and pool:
+        t = r.choices(pool, [COND_WEIGHT.get(x, 1.0) for x in pool])[0]
+        pool.remove(t)
+        if any(ex <= {t, *got} for ex in COND_EXCLUSIVE):
+            continue
+        got.append(t)
+    return got
+
+
+def ensure_traits(c) -> list:
+    """스위치를 켠 뒤 첫 시즌에 한 번 — 새 선수도 기존 선수도 같은 확률. 붙은 특성은 숨은 특성(c.traits)에 더한다."""
+    flags = dict(c.flags or {})
+    if flags.get('cond_rolled'):
+        return []
+    got = [t for t in roll_cond(c) if t not in (c.traits or [])]
+    c.traits = list(c.traits or []) + got
+    flags['cond_rolled'] = True
+    c.flags = flags
+    return got
+
+
+def reveal(c, splits: dict, totals: dict) -> list:
+    """시즌 끝 — 조건이 충분히 쌓인 숨은 조건부 특성을 실제 기록과 함께 드러낸다. [(코드, 문장)]"""
+    from . import rookie_league as L
+    out = []
+    seen = set(c.traits_seen or [])
+    for t in c.traits or ():
+        bucket = REVEAL_BUCKET.get(t)
+        if t in seen or not bucket:
+            continue
+        line = (splits or {}).get(bucket) or {}
+        if line.get('g_env', 0) < REVEAL_MIN_GAMES:
+            continue
+        v, base = L.line_view(c.role, line), L.line_view(c.role, totals or {})
+        if c.role == 'batter':
+            stat = f"{bucket} 타율 {v.get('avg_text', '-')}(시즌 {base.get('avg_text', '-')})"
+        else:
+            stat = f"{bucket} 평균자책점 {v.get('era_text', '-')}(시즌 {base.get('era_text', '-')})"
+        out.append((t, f"숨은 특성 발견 — {COND_TRAITS[t][0]}: {stat}"))
+    return out

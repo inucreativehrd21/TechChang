@@ -130,6 +130,7 @@ TRAITS = {
     'natural': ('천재형', '강점 능력이 6 더 높이 자라요.'),
 }
 TRAITS.update({key: item[:2] for key, item in Hands.TRAITS.items()})
+TRAITS.update({key: item[:2] for key, item in Env.COND_TRAITS.items()})     # 조건부 특성 — 추첨은 rookie_env 가 따로
 AWARD_BARS = {   # 가상 경쟁자 기준 — (평균, 흔들림). 셀 수 있는 기록은 144경기 기준, 리그 경기 수만큼 늘린다
     'mvp': (8.0, 0.8), 'rookie': (3.0, 0.6), 'gg_bat': (5.0, 0.6), 'gg_pit': (4.5, 0.5), 'ace': (5.5, 0.6),
     'avg': (.335, .010), 'hr': (33, 3), 'rbi': (115, 8), 'sb': (35, 5), 'w': (17, 1.5), 'era': (2.30, .20),
@@ -223,7 +224,7 @@ def frac(c, k: str, age: int) -> float:
 
 def roll_traits(rng) -> list:
     n = rng.choices((0, 1, 2), (0.35, 0.5, 0.15))[0]
-    pool, got = [t for t in TRAITS if t not in Hands.TRAITS], []
+    pool, got = [t for t in TRAITS if t not in Hands.TRAITS and t not in Env.COND_TRAITS], []
     while len(got) < n and pool:
         t = rng.choice(pool)
         pool.remove(t)
@@ -1280,6 +1281,8 @@ def play_intl(c, key, rng) -> dict:
     """대표팀으로 한 대회 — 내 성적과 대한민국 성적."""
     t = INTL[key]
     s = _game_stats(c)
+    if Env.enabled():
+        s = Env.apply(s, Env.big_delta(c.role, 'intl', c.traits))
     role, slot, _d = duty_for(c, INTL_LEVEL)
     tot = {}
     for i in range(t['games']):
@@ -1334,6 +1337,9 @@ def _intl(c, key, state, rng):
         state['news'].append(national_reward(c, key, res['tier']))
     if res['tier'] in ('gold', 'silver', 'champ', 'final'):
         res['final'] = True                                   # 결승 — 메달 색은 결정적 순간에서
+    if Env.enabled() and 'global' in (c.traits or []) and 'global' not in (c.traits_seen or []) and not res.get('final'):
+        c.traits_seen = list(c.traits_seen or []) + ['global']
+        state['news'].append(f"숨은 특성 발견 — {Env.COND_TRAITS['global'][0]}: 태극마크를 달자 몸이 가벼워졌어요")
     if Series.enabled() and key in Series.INTL_PLAN:
         doc = Series.intl(c, key, res['tier'], _series_me(c, INTL_LEVEL))
         played = {}
@@ -1850,7 +1856,8 @@ def _sim_chunks(c, state, lo: int, hi: int, rng):
         if a <= i / G < b:
             continue
         if envs:
-            s = Env.apply(base, Env.delta(c.role, envs[i], routine))        # 그 경기의 날씨·구장·홈/원정
+            s = Env.apply(base, Env.merge(Env.delta(c.role, envs[i], routine),          # 그 경기의 날씨·구장·홈/원정
+                                          Env.cond_delta(c.role, envs[i], c.traits)))   # + 조건부 특성
         r = None
         if c.role == 'batter':
             r = M.batter_game(s, c.position, lvl, rng, role=sp['role'], slot=sp['slot'])
@@ -2213,6 +2220,10 @@ def finish_season(c, state, rng):
         season.series = [Env.decorate_series(c, d) if Env.enabled() else d for d in (state.get('series') or [])]
     if Env.enabled():
         season.env = {'routine': routine_of(c), 'splits': state.get('env') or {}}
+        for code_t, text in Env.reveal(c, season.env['splits'], season.totals):
+            c.traits_seen = list(c.traits_seen or []) + [code_t]
+            season.news.append(text)
+            season.env.setdefault('revealed', []).append(code_t)
     season.save()
     if moments:                                                # 결정적 순간 — 고른 뒤에 시즌을 닫는다
         c.pending = {'kind': 'decision', 'what': 'moment', 'year': season.year, 'moments': moments, 'i': 0, 'done': []}
@@ -2279,6 +2290,7 @@ def run_season(c, programs, intensity, choice, rng, intl=None, routine=None):
     intl: {대회: 'go'|'skip'} — 안 주면 모두 사양."""
     if Env.enabled():
         c.flags = dict(c.flags or {}, routine={'year': c.year, 'key': routine if routine in Env.ROUTINES else Env.DEFAULT_ROUTINE})
+        Env.ensure_traits(c)
     if c.league == 'mlb' and Contracts.active(c) and (c.flags or {}).get('mlb_camp_season') != c.year:
         c.flags['mlb_camp_season'] = c.year
         if c.flags.get('mlb_bench_season') != c.year and rng.random() < Contracts.camp_risk(c):
@@ -3357,6 +3369,16 @@ def _tilt(p: dict, mult: dict) -> dict:
     return q
 
 
+def _moment_stats(c, m: dict) -> dict:
+    """결정적 순간의 능력치 — 큰 경기 특성(가을 야구 사나이·국제대회 체질)이 더해진다."""
+    s = _game_stats(c)
+    if Env.enabled():
+        scope = {'series': 'post', 'intl': 'intl'}.get(m.get('kind'))
+        if scope:
+            s = Env.apply(s, Env.big_delta(c.role, scope, c.traits))
+    return s
+
+
 def play_moment(c, m: dict, choice: str, rng) -> dict:
     """한 타석 — 고른 수가 맞으면 크게, 틀리면 손해. 결과 문장과 성공 여부."""
     keys = [x[0] for x in m['choices']]
@@ -3373,7 +3395,7 @@ def play_moment(c, m: dict, choice: str, rng) -> dict:
             tilt, read = TILT_BAT['hit'], '노림수 적중'
         else:
             tilt, read = TILT_BAT['miss'], '노림수 빗나감'
-        o = M._pick(_tilt(M.pa_probs(_game_stats(c), opp, risp=True), tilt), rng)
+        o = M._pick(_tilt(M.pa_probs(_moment_stats(c, m), opp, risp=True), tilt), rng)
         pitch = '직구' if thrown == 'fast' else m['opp']['pitch']
         if sit['need'] == 'hit':
             ok = o in ('1B', '2B', '3B', 'HR') or (o in ('BB', 'HBP') and rng.random() < 0.45)
@@ -3406,7 +3428,7 @@ def play_moment(c, m: dict, choice: str, rng) -> dict:
             tilt = dict(tilt, BB=tilt.get('BB', 1.0) * 1.3)              # 유인구 — 손에서 빠지면 볼넷
         elif choice == 'edge':
             tilt = dict(tilt, BB=tilt.get('BB', 1.0) * 1.2, HR=tilt.get('HR', 1.0) * .6)   # 코너 — 장타는 막고 볼넷은 늘고
-        o = M._pick(_tilt(M.pa_probs(hitter, _game_stats(c), risp=True), tilt), rng)
+        o = M._pick(_tilt(M.pa_probs(hitter, _moment_stats(c, m), risp=True), tilt), rng)
         if sit['need'] == 'out':
             ok = o in ('SO', 'OUT')
             text = {'SO': '헛스윙 삼진! 우승을 확정했어요', 'OUT': '평범한 뜬공 — 경기 끝!', 'HR': '만루 홈런을 맞았어요…',
@@ -3520,7 +3542,10 @@ def moment_fx(c, m: dict, r: dict, d: dict, more: bool) -> dict:
 
 def _series_me(c, lvl: float):
     """시리즈 경기에서 내 기록을 만들 재료 — 지금 능력치(경기 보정 포함)와 그 수준에서의 보직."""
-    return Series.Me(c.role, _game_stats(c), c.position, duty_for(c, lvl)[:2], lvl)
+    s = _game_stats(c)
+    if Env.enabled():
+        s = Env.apply(s, Env.big_delta(c.role, 'intl' if lvl == INTL_LEVEL else 'post', c.traits))
+    return Series.Me(c.role, s, c.position, duty_for(c, lvl)[:2], lvl)
 
 
 def _close_series(c, m: dict, r: dict, won: bool, result: str) -> dict:
@@ -3647,6 +3672,10 @@ def resolve_moments(c, season, done: list, rng) -> list:
         won = d['won']
         if d.get('series'):
             season.series = list(season.series or []) + [d['series']]
+        trait = {'series': 'october', 'intl': 'global'}.get(d['kind'])
+        if Env.enabled() and trait in (c.traits or []) and trait not in (c.traits_seen or []):
+            c.traits_seen = list(c.traits_seen or []) + [trait]      # 큰 무대에서 드러나는 숨은 특성
+            season.news.append(f"숨은 특성 발견 — {Env.COND_TRAITS[trait][0]}: {d['stage']}에서 {'기회를 살렸어요' if d['ok'] else '끝까지 버텼어요'}")
         if d['kind'] == 'series':
             stage = SERIES_NAME.get(season.league, '최종 시리즈')
             if won:
