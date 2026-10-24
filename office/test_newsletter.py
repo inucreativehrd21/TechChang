@@ -218,6 +218,26 @@ class DefaultCopyTruncationTests(TestCase):
         copy = N.default_copy(facts)
         self.assertEqual(copy['picks']['7']['why_now'], '짧은 요약입니다.')
 
+    def test_why_now_keeps_the_sentence_whole_instead_of_cutting_at_a_comma(self):
+        """2026-w43 사고 — 쉼표에서 잘라 "~하는지" 처럼 서술어 없이 끝나는 조각을 썼다.
+        완결 서술어가 붙은 둘째 절이 더 나아도, 첫 문장을 통째로 쓰거나(너무 길면) 단어 경계에서 자른다."""
+        summary = ('스테이징이 없는 jj가 매일 쓰는 Git 작업 여섯 가지를 어떻게 옮기는지, '
+                   '1:1 번역이 안 되는 지점이 도입 판단에 무엇을 뜻하는지 짚습니다.')
+        facts = {**FACTS, 'picks': [{**PICK, 'summary': summary}]}
+        why_now = N.default_copy(facts)['picks']['7']['why_now']
+        self.assertNotEqual(why_now, '스테이징이 없는 jj가 매일 쓰는 Git 작업 여섯 가지를 어떻게 옮기는지')
+        self.assertTrue(summary.startswith(why_now.rstrip('…')))
+
+    def test_points_drop_generic_structural_headings(self):
+        """2026-w43 사고 — "왜 지금인가"·"숫자로 보는 현황"처럼 모든 칼럼에 똑같이 붙는 소제목이
+        세 포인트를 그대로 채웠다. 그 글만의 소제목(표·그림 캡션 등)만 points 후보로 쓴다."""
+        facts = {**FACTS, 'picks': [{**PICK, 'summary': '이 글만의 요약 문장입니다.',
+                                     'headings': ['왜 지금인가', '숫자로 보는 현황', '표 1. 그 글만의 캡션']}]}
+        points = N.default_copy(facts)['picks']['7']['points']
+        self.assertNotIn('왜 지금인가', points)
+        self.assertNotIn('숫자로 보는 현황', points)
+        self.assertIn('표 1. 그 글만의 캡션', points)
+
 
 class MakeTests(TestCase):
     def setUp(self):
