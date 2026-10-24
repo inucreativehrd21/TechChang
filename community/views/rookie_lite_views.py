@@ -33,6 +33,8 @@ from .. import rookie as R
 from .. import rookie_league as L
 from .. import rookie_lite as X
 from .. import rookie_series as Series
+from .. import rookie_env as Env
+from .. import rookie_universe as Universe
 from .. import rookie_card as K
 from .. import rookie_staff as S
 from ..rookie_card import _palette, _jersey_name, render_png   # noqa: F401 — 테스트가 render_png 를 바꿔 끼운다
@@ -277,7 +279,12 @@ def lite_home(request):
                    event=X.event_view(c, pend.get('event')), intl=X.intl_view(c, pend.get('intl') or []),
                    offseason=(c.flags or {}).get('press') or [])
         step = 1 + bool(ctx['intl']) + bool(ctx['event'])
-        ctx['steps'] = {'intl': 1, 'event': 1 + bool(ctx['intl']), 'train': step, 'power': step + 1}
+        ctx['steps'] = {'intl': 1, 'event': 1 + bool(ctx['intl']), 'train': step, 'power': step + 1, 'routine': step + 2}
+        if Env.enabled():                                                   # 경기 전 대비 — 시즌 루틴과 올 시즌 예보
+            games = X.GAMES.get(c.league, 120)
+            fixtures = Universe.club_fixtures(c.league, games, c.club) if W.is_pro(c.league) else ()
+            last = ((c.flags or {}).get('routine') or {}).get('key', '')
+            ctx.update(routines=Env.routine_choices(last, c.role), forecast=Env.forecast(c, c.league, games, fixtures))
     elif pend.get('kind') == 'review':
         s = c.seasons.filter(year=pend.get('year')).first()
         ctx.update(_board_ctx(c, s))
@@ -291,6 +298,9 @@ def lite_home(request):
                    meet_next=bool((c.flags or {}).get('move')))
         ctx['drops'] = [d for d in ctx.get('deltas') or [] if d['value'] < 0]
         ctx['series_boards'] = list(s.series or []) if s is not None and Series.enabled() else []
+        if s is not None and Env.enabled() and s.env:
+            ctx['env_rows'] = Env.split_rows(c.role, s.env.get('splits'))
+            ctx['env_routine'] = Env.ROUTINES.get(s.env.get('routine'), ('', ''))[0]
     elif pend.get('kind') == 'decision':
         ctx['decision'] = X.decision_view(c)
         if pend.get('what') == 'meeting' and pend.get('phase') == 'mid' and pend.get('half'):
@@ -361,7 +371,8 @@ def lite_act(request):
                 if pend.get('event') and choice not in [k for k, _l, _h in X.EVENTS[pend['event']]['choices']]:
                     raise X.LiteError('비시즌 이벤트에 어떻게 할지 먼저 골라 주세요.')
                 intl = {k: request.POST.get(f'intl_{k}', '') for k in pend.get('intl') or []}
-                if X.run_season(c, request.POST.getlist('program'), intensity, choice, rng, intl=intl) is None:
+                if X.run_season(c, request.POST.getlist('program'), intensity, choice, rng, intl=intl,
+                                routine=request.POST.get('routine', '')) is None:
                     messages.info(request, '시즌 중 선택할 장면이 있어요. 내용을 확인하고 답해 주세요.')
             elif action == 'next':
                 X.next_season(c, rng)

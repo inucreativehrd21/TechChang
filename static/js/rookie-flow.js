@@ -181,7 +181,8 @@
         if (train) {
             train.dataset.rlTitle = '훈련 두 개 고르기';
             var intensity = document.createElement('section');
-            intensity.className = 'rk-panel'; intensity.dataset.rlTitle = '훈련 강도';
+            intensity.className = 'rk-panel';
+            intensity.dataset.rlTitle = plan.querySelector('input[name="routine"]') ? '훈련 강도 · 경기 전 루틴' : '훈련 강도';
             var heading = train.querySelector('h3');
             if (heading) { while (heading) { var sibling = heading.nextSibling; intensity.appendChild(heading); heading = sibling; } }
             train.after(intensity);
@@ -199,6 +200,7 @@
                 ['이벤트 선택', 'input[name="event_choice"]:checked', 'event'],
                 ['훈련 프로그램', 'input[name="program"]:checked', 'training'],
                 ['훈련 강도', 'input[name="intensity"]:checked', 'intensity'],
+                ['경기 전 루틴', 'input[name="routine"]:checked', 'routine'],
                 ['국가대표 일정', 'input[name^="intl_"]:checked', 'intl']
             ];
             sections.forEach(function (group) {

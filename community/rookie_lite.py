@@ -54,6 +54,7 @@ from . import rookie_pitching as Pitching
 from . import rookie_handedness as Hands
 from . import rookie_bloom as Bloom
 from . import rookie_series as Series
+from . import rookie_env as Env
 from .rookie_lite_news import season_features, season_reactions
 from .rookie_text import is_real_person, josa, nz, signed  # noqa: F401  (조사 도우미는 rookie_text 로 옮김 — 기존 rookie_lite.josa 호환)
 
@@ -1829,6 +1830,11 @@ def _duty_now(c) -> tuple:
     return duty_for(c, duty_level(c))
 
 
+def routine_of(c) -> str:
+    r = (c.flags or {}).get('routine') or {}
+    return r.get('key') if r.get('year') == c.year and r.get('key') in Env.ROUTINES else Env.DEFAULT_ROUTINE
+
+
 def _sim_chunks(c, state, lo: int, hi: int, rng):
     """지금 줄(split)의 리그·보직으로 6구간 가운데 [lo, hi) 구간을 치른다."""
     sp = state['splits'][-1]
@@ -1837,9 +1843,14 @@ def _sim_chunks(c, state, lo: int, hi: int, rng):
     s = _game_stats(c)
     a, b = state['out']
     fixtures = Universe.club_fixtures(code, G, sp['club']) if W.is_pro(code) else ()
+    envs = Env.season(c, code, sp['club'], G, fixtures, pro=W.is_pro(code), amateur_league=code in TOURNAMENTS)         if Env.enabled() else None
+    routine = routine_of(c)
+    base = s
     for i in range(G * lo // 6, G * hi // 6):
         if a <= i / G < b:
             continue
+        if envs:
+            s = Env.apply(base, Env.delta(c.role, envs[i], routine))        # 그 경기의 날씨·구장·홈/원정
         r = None
         if c.role == 'batter':
             r = M.batter_game(s, c.position, lvl, rng, role=sp['role'], slot=sp['slot'])
@@ -1848,6 +1859,8 @@ def _sim_chunks(c, state, lo: int, hi: int, rng):
                 r = M.starter_game(s, lvl, rng)
         elif rng.random() < M.RELIEF[sp['role']][0]:
             r = M.relief_game(s, lvl, rng, sp['role'])
+        if r and envs:
+            Env.add_split(state.setdefault('env', {}), envs[i], r['line'])
         if r:
             j = min(5, i * 6 // G)
             sp['chunks'][j] = L.add(sp['chunks'][j], r['line'])
@@ -2197,10 +2210,16 @@ def finish_season(c, state, rng):
     if back:
         season.news.append(back)
     if Series.enabled():
-        season.series = list(state.get('series') or [])
+        season.series = [Env.decorate_series(c, d) if Env.enabled() else d for d in (state.get('series') or [])]
+    if Env.enabled():
+        season.env = {'routine': routine_of(c), 'splits': state.get('env') or {}}
     season.save()
     if moments:                                                # 결정적 순간 — 고른 뒤에 시즌을 닫는다
         c.pending = {'kind': 'decision', 'what': 'moment', 'year': season.year, 'moments': moments, 'i': 0, 'done': []}
+        big = next((m for m in moments if m['kind'] in ('series', 'intl')), None)
+        if big and Env.enabled():                              # 큰 경기 직전 미디어데이·기자회견
+            c.pending = {'kind': 'decision', 'what': 'mediaday', 'year': season.year, 'stage': big['stage'],
+                         'scope': 'intl' if big['kind'] == 'intl' else 'post', 'then': c.pending}
         c.save()
         return season
     wrap_season(c, season, rng)
@@ -2254,10 +2273,12 @@ def end_meeting(c, rng) -> dict | None:
 
 
 # ───────────────────────────── 시즌을 넘기며(나이·학년·결정)
-def run_season(c, programs, intensity, choice, rng, intl=None):
+def run_season(c, programs, intensity, choice, rng, intl=None, routine=None):
     """비시즌 고른 것 → 전반기 → (휴식기 면담이 있으면 멈춤) → 후반기 → 결산 화면(review). 잠근 행에서 부른다.
     시즌 기록을 돌려준다(면담에서 멈췄으면 None — 면담 답(decide 'meeting') 뒤에 이어 친다).
     intl: {대회: 'go'|'skip'} — 안 주면 모두 사양."""
+    if Env.enabled():
+        c.flags = dict(c.flags or {}, routine={'year': c.year, 'key': routine if routine in Env.ROUTINES else Env.DEFAULT_ROUTINE})
     if c.league == 'mlb' and Contracts.active(c) and (c.flags or {}).get('mlb_camp_season') != c.year:
         c.flags['mlb_camp_season'] = c.year
         if c.flags.get('mlb_bench_season') != c.year and rng.random() < Contracts.camp_risk(c):
@@ -2691,6 +2712,21 @@ def decide(c, what: str, choice: str, rng, school: str = '') -> str:
         else:
             c.pending = next_step(c, rng)
         return text
+    if what == 'mediaday':
+        if pend.get('what') != 'mediaday' or choice not in Env.MEDIA:
+            raise LiteError('미디어데이에서 어떤 각오를 말할지 골라 주세요.')
+        label, _hint, deltas, trust_d = Env.MEDIA[choice]
+        text = Story.change(c, f"{'대표팀 기자회견' if pend.get('scope') == 'intl' else '미디어데이'} — {label}", **deltas)
+        if trust_d:
+            _trust(c, trust_d)
+        c.flags = dict(c.flags or {}, mediaday={'year': pend.get('year'), 'choice': choice})
+        title = Env.media_title(choice, c.name, pend.get('stage', '큰 경기'))
+        season = c.seasons.filter(year=pend.get('year')).first()
+        if season and title:
+            season.press = [press('[미디어데이]' if pend.get('scope') != 'intl' else '[기자회견]', title)] + list(season.press or [])
+            season.save(update_fields=['press'])
+        c.pending = pend['then']
+        return text
     if what == 'moment':
         ms, i = pend['moments'], int(pend.get('i', 0))
         m = ms[i]
@@ -2996,6 +3032,8 @@ def decision_view(c) -> dict | None:
     pend = c.pending or {}
     if pend.get('kind') != 'decision':
         return None
+    if pend.get('what') == 'mediaday':
+        return Env.media_view(pend.get('stage', '큰 경기'), pend.get('scope', 'post'))
     if pend.get('what') in ('bloom', 'bloom_result'):
         return Bloom.scene(c)
     if pend.get('what') == 'contract_optout':
@@ -3501,7 +3539,7 @@ def _close_series(c, m: dict, r: dict, won: bool, result: str) -> dict:
     else:
         doc = Series.close_single(c, data, won, moment)
     doc['result'] = result
-    return doc
+    return Env.decorate_series(c, doc) if Env.enabled() else doc
 
 
 def moments_for(c, code: str, rank: int, team_n: int, state: dict, rng) -> list:
@@ -3594,6 +3632,17 @@ def resolve_moments(c, season, done: list, rng) -> list:
     """결정적 순간이 끝난 뒤 — 우승·메달·병역 특례·기사를 시즌 기록에 넣는다."""
     flags, nm = c.flags, c.name
     team = W.club_short(season.league, season.club)
+    media = (flags or {}).get('mediaday') or {}
+    if media.get('year') == season.year and media.get('choice') == 'bold':
+        big = next((d for d in done if d['kind'] in ('series', 'intl')), None)
+        if big:
+            if big['won']:
+                Story.change(c, '우승 선언을 지켜냈어요', fame=4)
+                season.press.insert(0, press('[화제]', f"‘말한 대로’ {nm}, 우승 선언 지켰다"))
+            else:
+                Story.change(c, '우승 선언이 부메랑이 됐어요', confidence=-6, fame=-4)
+                season.press.insert(0, press('[논란]', f"{nm}의 우승 선언, 결국 공수표로"))
+        flags = c.flags
     for d in done:
         won = d['won']
         if d.get('series'):

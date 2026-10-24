@@ -194,6 +194,13 @@
                     {% for i in intensity %}<label class="rl-gauge-opt is-{{ i.code }}"><input type="radio" name="intensity" value="{{ i.code }}" {% if plan_draft.intensity == i.code or not plan_draft.intensity and i.code == 'normal' %}checked{% endif %}><span><b>{{ i.label|baseball_text }}</b><small>부상 확률 {{ i.risk }}%</small><i class="rl-gauge-bar" aria-hidden="true"></i></span></label>{% endfor %}
                 </div>
                 <p class="rk-hint">강하게 할수록 더 크게 자라지만 다칠 확률이 올라가요(나이가 들수록 더). 부상 확률은 나이·드러난 특성·장비·집을 모두 넣은 값이에요{% if gear_cut %}(지금 장비·집으로 −{{ gear_cut }}%){% endif %}. 잠재력에 가까워지면 훈련 효과가 줄어요.</p>
+                {% if routines %}
+                <h3 class="rl-step is-sub"><span>{{ steps.routine }}</span>경기 전 루틴을 골라 주세요</h3>
+                <p class="rk-hint rl-forecast" data-rl-forecast>올 시즌 예보 · 내 구장 {{ forecast.park }} · 원정 {{ forecast.away }}경기{% if forecast.night %} · 야간 약 {{ forecast.night }}경기{% endif %} · 비 예상 약 {{ forecast.rain }}경기 · 폭염 예상 약 {{ forecast.heat }}경기</p>
+                <div class="rl-gauge rl-routines" role="radiogroup" aria-label="경기 전 루틴">
+                    {% for r in routines %}<label class="rl-gauge-opt"><input type="radio" name="routine" value="{{ r.key }}"{% if r.checked %} checked{% endif %}><span><b>{{ r.label }}</b><small>{{ r.hint }}</small></span></label>{% endfor %}
+                </div>
+                {% endif %}
             </section>
             <div class="rl-cta"><button type="submit" class="gm-btn is-primary is-block rl-go" data-rl-go data-ready="시즌 시작하기">시즌 시작하기</button></div>
         </form>
@@ -214,6 +221,7 @@
         </section>
         {% endif %}
         {% for doc in series_boards %}{% include 'community/games/_series_board.html' with doc=doc %}{% endfor %}
+        {% if env_rows %}{% include 'community/games/_lite_env_splits.html' %}{% endif %}
         <section class="rk-panel rl-result" aria-label="시즌 결산">
             <div class="rk-head"><h2>시즌 결산</h2><span class="rk-fine">OVR {{ season.ovr_start|floatformat:1 }} → {{ season.ovr_end|floatformat:1 }}</span></div>
             {% if season_line %}
@@ -329,6 +337,13 @@
                 {% endfor %}
             </div>
             {% endif %}
+
+            {% elif d.what == 'mediaday' %}
+            <div class="rk-head"><h2>{{ d.title }}</h2><span class="rk-fine">{{ d.stage|baseball_text }}</span></div>
+            <p class="rl-lead">{{ d.text|baseball_text }}</p>
+            <div class="rl-programs is-two">
+                {% for ch in d.choices %}{% include 'community/games/_lite_choice.html' with what='mediaday' choice=ch.key label=ch.label hint=ch.hint main=forloop.first button='말하기' %}{% endfor %}
+            </div>
 
             {% elif d.what == 'military' %}
             <div class="rk-head"><h2>병역</h2><span class="rk-fine">{% if d.forced %}더는 미룰 수 없어요{% else %}28세 전까지 미룰 수 있어요{% endif %}</span></div>

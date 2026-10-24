@@ -38,6 +38,8 @@ def choose(c, rng, policy):
             return 'refuse'
         preferred = {'manager': 'team_work', 'interview': 'team', 'conduct': 'rest', 'rival': 'together', 'highlight': 'short'}
         return next((key for key in ('accept', preferred.get(p.get('about')), 'team_work', 'team', 'rest', 'together', 'short', 'break', 'modest') if key in keys), keys[0])
+    if what == 'mediaday':
+        return 'humble'
     if what == 'moment':
         m = p['moments'][p.get('i', 0)]
         return ('fast' if m['opp'].get('fast', 50) >= 50 else 'break') if m['side'] == 'bat' else 'break'
