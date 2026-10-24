@@ -390,6 +390,13 @@ def _shortest_fit(cands: list[str], n: int, fallback: str) -> str:
     return cut.rstrip(' ,.;·—') + '…'
 
 
+# 칼럼·연재는 소제목이 고정 틀이다(COLUMN_STRUCTURE/series_catalog) — "왜 지금인가"·"숫자로 보는 현황"·
+# "지난 이야기" 같은 건 매 편 똑같이 붙어 글마다 다른 정보가 없다. points 후보에서 뺀다(#124 W43 사고 —
+# 소제목을 그대로 points 로 써서 세 포인트가 전부 "왜 지금인가/숫자로 보는 현황/..." 로 나갔다).
+_GENERIC_HEADING = re.compile(r'왜\s*지금인가|숫자로\s*보는\s*현황|현장의\s*변화|^시사점|지난\s*이야기|'
+                              r'이런\s*적\s*있|AI가\s*짜준\s*코드')
+
+
 def default_copy(facts: dict) -> dict:
     """모델 없이 사실만으로 만드는 문구 — 호출 실패·검사 실패 때의 안전판."""
     picks = facts.get('picks') or []
@@ -405,11 +412,14 @@ def default_copy(facts: dict) -> dict:
     out = {}
     for p in picks:
         sents = _sentences(p['summary'])
-        clauses = re.split(r'[,，·;]\s*', sents[0]) if sents else []
-        why_now = _shortest_fit(sents + clauses, LIMITS['why_now'], p['title'])
-        # 포인트는 요약 문장보다 소제목이 짧고 32자 안에 들어올 때가 많다 — 소제목을 먼저 써 본다
+        # why_now 는 요약 첫 문장을 통째로 쓴다 — 쉼표에서 잘라 쓰면 주어만 남고 서술어가 빠진
+        # 조각이 "말은 되는데 안 끝난" 문장으로 나간다(#117 W43 사고). 안 맞으면 단어 경계에서 자른다.
+        why_now = _shortest_fit(sents, LIMITS['why_now'], p['title'])
+        # 포인트: 소제목 중 매 편 똑같이 붙는 고정 틀(_GENERIC_HEADING)을 뺀 "그 글만의" 소제목을
+        # 먼저 쓰고, 모자라면 요약 문장을 채운다.
+        headings = [h for h in p['headings'] if not _GENERIC_HEADING.search(h)]
         pts = []
-        for cand in p['headings'] + sents:
+        for cand in headings + sents:
             fitted = _shortest_fit([cand], LIMITS['point'], cand)
             if fitted not in pts:
                 pts.append(fitted)
