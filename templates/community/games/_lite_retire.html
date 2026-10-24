@@ -1,7 +1,7 @@
 {% load rookie_tags static %}{% comment %}라이트 은퇴 카드 — 4:5 한 장(2026-10-19 개편: "구단별 색, 화려하고 동적인 카드").
 주인공은 홈 유니폼 등판 — 어깨에 이름, 가운데 등번호(구단 주색 + 보조색 테두리), 핀스트라이프 구단은 줄무늬. 등급은 비스듬한 원형 인장.
 크기는 모두 카드 폭 기준(--u)이라 폰·PC·이미지(card.png)에서 같은 모양. 마우스를 따라 기울고 빛이 비친다(카드 페이지 스크립트).
-맥락: c(라이트 커리어 또는 정식 판 선수), card(rookie_lite_views._card · rookie_card.main_card), pos_label, style_label{% endcomment %}
+맥락: c(라이트 커리어 또는 정식 모드 선수), card(rookie_lite_views._card · rookie_card.main_card), pos_label, style_label{% endcomment %}
 {% with p=card.palette %}
 <article class="rl-rcard is-{{ card.tier }}{% if p.jersey_asset %} has-premium-uniform{% endif %}" style="--team: {{ p.primary }}; --trim: {{ p.secondary }}; --ink: {{ p.ink }}; --bg: {{ p.bg }}" aria-label="{{ c.name }} 은퇴 카드" data-rl-rcard>
     <div class="rl-rcard-in">

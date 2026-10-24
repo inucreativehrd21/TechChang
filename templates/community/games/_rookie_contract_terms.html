@@ -3,11 +3,11 @@
 {% if t %}<div class="rs-contract-terms" aria-label="MLB 계약 권리와 위험">
     <p><b>계약서의 작은 글씨</b> · {{ t.years }}년 남음 · 연 {{ t.annual|man }}</p>
     <dl>
-        <div><dt>마이너 거부권</dt><dd>{% if t.veto %}있어요{% else %}없어요 — 동의 없이 트리플A로 갈 수 있어요{% endif %}</dd></div>
-        <div><dt>연봉 지급</dt><dd>{% if t.split %}스플릿 · MLB 연 {{ t.annual|man }} / 마이너 연 {{ t.minor_annual|man }} · 등록 기간에 비례해요{% else %}전액 보장 · 마이너에 있어도 계약 연봉을 지급해요{% endif %}</dd></div>
-        <div><dt>선수 옵트아웃</dt><dd>{% if t.player_opt_out %}첫 시즌 뒤부터 가능 · 행사하면 남은 보장액을 포기해요{% else %}없어요 — 선수 뜻만으로 계약을 조기 종료할 수 없어요{% endif %}</dd></div>
-        <div><dt>MLB 서비스타임(등록 기간)</dt><dd>{{ t.service|floatformat:2 }}시즌 환산 · 마이너 체류 중에는 쌓이지 않아요</dd></div>
+        <div><dt>마이너 거부권</dt><dd>{% if t.veto %}있어요{% else %}없어요 · 동의 없이 트리플A로 내려갈 수 있어요{% endif %}</dd></div>
+        <div><dt>연봉 지급</dt><dd>{% if t.split %}메이저·마이너 연봉이 따로예요 · 메이저 연 {{ t.annual|man }} / 마이너 연 {{ t.minor_annual|man }} · 뛴 기간만큼 지급돼요{% else %}전액 보장 · 마이너에 있어도 계약 연봉을 지급해요{% endif %}</dd></div>
+        <div><dt>선수 옵트아웃(계약 해지권)</dt><dd>{% if t.player_opt_out %}첫 시즌 뒤부터 쓸 수 있어요 · 쓰면 남은 보장 연봉을 포기해요{% else %}없어요 · 선수 뜻만으로 계약을 조기 종료할 수 없어요{% endif %}</dd></div>
+        <div><dt>MLB 서비스타임(1군 등록 기간)</dt><dd>{% if t.service %}누적 {{ t.service|floatformat:2 }}시즌{% else %}아직 없어요{% endif %} · 마이너에 있는 동안은 쌓이지 않아요</dd></div>
     </dl>
-    <p class="rs-contract-risk">개막 마이너행 검토 확률 {{ t.risk }}% · 실력·신뢰·구단 경쟁에 따라 달라져요. 거부권은 주전이나 출전을 보장하지 않아요.</p>
+    <p class="rs-contract-risk">개막 때 마이너로 내려갈 확률 {{ t.risk }}% · 능력치·신뢰·구단 경쟁에 따라 달라져요. 거부권은 주전이나 출전을 보장하지 않아요.</p>
 </div>{% endif %}
 {% endwith %}

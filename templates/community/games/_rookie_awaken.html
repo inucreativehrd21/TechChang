@@ -1,5 +1,5 @@
 {% load rookie_tags %}
-{% comment %}정식 판 각성의 순간 — 다 자란 몸으로 다섯 능력이 모두 한계일 때(2026-10-19 사용자 요청: 라이트 모드 기능을 정식 판에도).
+{% comment %}정식 모드 각성의 순간 — 다 자란 몸으로 다섯 능력이 모두 한계일 때(2026-10-19 사용자 요청: 라이트 모드 기능을 정식 모드에도).
 맥락: rookie.dashboard — awaken(odds_pct, cost, next_n, plus, can_pay, wait), awaken_coach, stats, career.scout, p{% endcomment %}
 <div class="rl">
 <section class="rl-awaken" aria-labelledby="rk-awaken-title">
@@ -18,7 +18,7 @@
     </div>
     <div class="rl-replies" role="group" aria-label="각성에 도전할까요">
         <form method="post" action="{% url 'community:rookie_awaken' %}">{% csrf_token %}<input type="hidden" name="choice" value="try">
-            <button type="submit" class="rl-reply is-awaken"{% if not awaken.can_pay %} disabled{% endif %}><em class="rl-tone">도전</em><b>{% if awaken.can_pay %}벽을 부숴 볼게요{% else %}TP를 더 모아 올게요{% endif %}</b><small>{{ awaken.cost }} TP · 성공 확률 {{ awaken.odds_pct }}% · 성공하면 보라색 별, 잠재력 +{{ awaken.plus }} · 실패하면 {% if p.role == 'pitcher' %}멘탈{% else %}선구안{% endif %} −1</small></button></form>
+            <button type="submit" class="rl-reply is-awaken"{% if not awaken.can_pay %} disabled{% endif %}><em class="rl-tone">도전</em><b>{% if awaken.can_pay %}벽을 부숴 볼게요{% else %}TP가 모자라요{% endif %}</b><small>{{ awaken.cost }} TP · 성공 확률 {{ awaken.odds_pct }}% · 성공하면 보라색 별, 잠재력 +{{ awaken.plus }} · 실패하면 {% if p.role == 'pitcher' %}멘탈{% else %}선구안{% endif %} −1</small></button></form>
         <form method="post" action="{% url 'community:rookie_awaken' %}">{% csrf_token %}<input type="hidden" name="choice" value="skip">
             <button type="submit" class="rl-reply is-modest"><em class="rl-tone">보류</em><b>지금의 나를 다듬을게요</b><small>TP를 쓰지 않아요 · {{ awaken.wait }}일 뒤에 다시 기회가 와요</small></button></form>
     </div>

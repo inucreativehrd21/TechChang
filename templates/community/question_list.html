@@ -147,7 +147,7 @@
     </section>
     {% endif %}
 
-    <!-- ===== 야구선수 키우기 런칭 — 전광판 하나에 코칭스태프, 아래 두 판 ===== -->
+    <!-- ===== 야구선수 키우기 런칭 — 전광판 하나에 코칭스태프, 아래 두 모드 ===== -->
     <section class="tc-section" aria-labelledby="tc-ball-title">
         <div class="tc-ball" data-reveal>
             <div class="tc-ball-board">
@@ -157,8 +157,8 @@
                     <p class="tc-ball-lede">리틀야구부터 드래프트, 프로 무대와 은퇴까지. 훈련과 진로를 직접 골라 한 선수의 야구 인생을 키워 보세요.</p>
                     {% if ball %}
                     <dl class="tc-ball-nums">
-                        <div><dt>정식 판 현역</dt><dd>{{ ball.players }}<small>명</small></dd></div>
-                        <div><dt>라이트 모드 커리어</dt><dd>{{ ball.lites }}<small>편</small></dd></div>
+                        <div><dt>정식 모드 현역</dt><dd>{{ ball.players }}<small>명</small></dd></div>
+                        <div><dt>라이트 모드 선수</dt><dd>{{ ball.lites }}<small>명</small></dd></div>
                     </dl>
                     {% endif %}
                 </div>
@@ -177,9 +177,9 @@
                 </a>
                 <a href="{% url 'community:rookie_home' %}" class="tc-ball-mode" data-game-window>
                     <span class="tc-ball-tag">로그인하고 매일</span>
-                    <b>정식 판</b>
+                    <b>정식 모드</b>
                     <span>칼럼 읽기·댓글·출석으로 모은 훈련 포인트로 키워요. 경기는 매일 밤 열리고, KBO·메이저리그·일본·대만까지 갈 수 있어요.</span>
-                    <span class="tc-ball-go">정식 판 하러 가기 <i class="fas fa-arrow-right" aria-hidden="true"></i></span>
+                    <span class="tc-ball-go">정식 모드 하러 가기 <i class="fas fa-arrow-right" aria-hidden="true"></i></span>
                 </a>
             </div>
             <p class="tc-ball-more">숫자야구·2048·지뢰찾기는 <a href="{% url 'community:games_index' %}">게임센터</a>에 있어요.</p>

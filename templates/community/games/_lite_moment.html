@@ -2,7 +2,7 @@
 {# 라이트 결정적 순간 — 결승 승부처 한 타석. 맥락: d = rookie_lite.moment_view + what·i·n·done #}
 <section class="rl-moment" aria-labelledby="rl-moment-title">
     <div class="rl-moment-scene">
-        <p class="rl-moment-tag">{% if d.n > 1 %}결정적 순간 {{ d.i }}/{{ d.n }} · {% else %}결정적 순간 · {% endif %}{% if d.when %}{{ d.when }} {% endif %}{{ d.stage|baseball_text }}</p>
+        <p class="rl-moment-tag">{% if d.n > 1 %}결정적 순간 {{ d.i }}/{{ d.n }}{% else %}결정적 순간{% endif %}{% if d.when %} · {{ d.when }}{% endif %}</p>
         <h2 class="rl-moment-title" id="rl-moment-title">{{ d.stage|baseball_text }}</h2>
         <div class="rl-scorebug" aria-label="{{ d.sit.inning }}, {{ d.sit.outs }}아웃, 점수 우리 {{ d.sit.score }} 상대">
             <span class="rl-sb-inn">{{ d.sit.inning }}</span>

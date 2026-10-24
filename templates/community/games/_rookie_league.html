@@ -87,7 +87,7 @@
                 <span class="rk-dot is-lg" style="--team: {{ r.team.color }}" aria-hidden="true"></span>
                 <a class="rk-rank-main" href="{% url 'community:rookie_player' r.p.pk %}">
                     <b>{{ r.p.name }} <small>{{ r.p.number }}</small></b>
-                    <span>{{ r.team.name }}, {{ r.pos_label|default:r.role_label }}, {{ r.p.age }}세</span>
+                    <span>{{ r.team.name }} · {{ r.pos_label|default:r.role_label }} · {{ r.p.age }}세</span>
                 </a>
                 <span class="rk-tier is-{{ r.league_kind }}">{{ r.league_short|baseball_text }}{% if r.title %} {{ r.title|baseball_text }}{% endif %}</span>
                 <b class="rk-rank-val">{{ r.p.ovr|floatformat:1 }}</b>
@@ -101,7 +101,7 @@
 
     {% else %}
     <section class="rk-panel">
-        <p class="rk-note is-flush">구단 전력은 KBO 소속 선수(육성군·퓨처스·1군) OVR의 합이에요. 지망 유망주는 그 구단을 희망하는 학생 선수예요.</p>
+        <p class="rk-note is-flush">구단 전력은 KBO 소속 선수(육성군·퓨처스·1군) OVR의 합이에요. 지망 유망주는 그 구단을 희망 구단으로 적은 학생 선수예요.</p>
         <ol class="rk-rank">
             {% for t in team_rows %}
             <li class="{% if t.team.code == my_team %}is-me{% endif %}{% if not t.n and not t.fans %} is-dim{% endif %}">
@@ -109,7 +109,7 @@
                 <span class="rk-dot is-lg" style="--team: {{ t.team.color }}" aria-hidden="true"></span>
                 <span class="rk-rank-main">
                     <b>{{ t.team.name }}</b>
-                    <span>{% if t.n %}선수 {{ t.n }}명, 1군 {{ t.first }}명, 평균 OVR {{ t.avg }}{% if t.fans %} · {% endif %}{% endif %}{% if t.fans %}지망 유망주 {{ t.fans }}명{% endif %}{% if not t.n and not t.fans %}아직 선수 없음{% endif %}</span>
+                    <span>{% if t.n %}선수 {{ t.n }}명, 1군 {{ t.first }}명, 평균 OVR {{ t.avg }}{% if t.fans %} · {% endif %}{% endif %}{% if t.fans %}지망 유망주 {{ t.fans }}명{% endif %}{% if not t.n and not t.fans %}아직 선수가 없어요{% endif %}</span>
                 </span>
                 <b class="rk-rank-val">{{ t.power }}</b>
             </li>

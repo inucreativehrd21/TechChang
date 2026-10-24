@@ -1,5 +1,5 @@
 {% load rookie_tags %}
-{% comment %}라이트 각성의 순간 — 다섯 능력이 모두 한계에 닿았을 때(2026-10-19 사용자 요청). 성공하면 보라색 별(모든 능력 한계 +6).
+{% comment %}라이트 각성의 순간 — 다섯 능력치가 모두 한계에 닿았을 때(2026-10-19 사용자 요청). 성공하면 보라색 별(모든 능력치 한계 +6).
 맥락: d = decision_view(what='awaken', odds_pct, next_n, plus, who…), stat_rows, stars, star_range, stars_total{% endcomment %}
 <section class="rl-awaken" aria-labelledby="rl-awaken-title">
     <div class="rl-awaken-stage">
@@ -17,8 +17,8 @@
     </div>
     <div class="rl-replies" role="group" aria-label="각성에 도전할까요">
         <form method="post" action="{% career_url 'act' %}">{% csrf_token %}<input type="hidden" name="action" value="decide"><input type="hidden" name="what" value="awaken"><input type="hidden" name="choice" value="try">
-            <button type="submit" class="rl-reply is-awaken"><em class="rl-tone">도전</em><b>벽을 부숴 볼게요</b><small>성공 확률 {{ d.odds_pct }}% · 성공하면 보라색 별, 잠재력 +{{ d.plus }} · 실패하면 다음 시즌 부상 위험↑{% if c.role == 'pitcher' %}, 멘탈 −1{% endif %}{% if d.bloom_bonus %} · 성공 여부와 관계없이 마지막 각성 기회를 써요{% endif %}</small></button></form>
+            <button type="submit" class="rl-reply is-awaken"><em class="rl-tone">도전</em><b>벽을 부숴 볼게요</b><small>성공 확률 {{ d.odds_pct }}% · 성공하면 보라색 별, 잠재력 +{{ d.plus }} · 실패하면 {% if c.role == 'pitcher' %}멘탈{% else %}선구안{% endif %} −1, 다음 시즌 부상 확률↑ · 세 시즌 뒤 재도전{% if d.bloom_bonus %} · 성공 여부와 관계없이 마지막 각성 기회를 써요{% endif %}</small></button></form>
         <form method="post" action="{% career_url 'act' %}">{% csrf_token %}<input type="hidden" name="action" value="decide"><input type="hidden" name="what" value="awaken"><input type="hidden" name="choice" value="skip">
-            <button type="submit" class="rl-reply is-modest"><em class="rl-tone">보류</em><b>지금의 나를 다듬을게요</b><small>기회를 쓰지 않아요 · 3시즌 뒤에 조건을 다시 확인해요</small></button></form>
+            <button type="submit" class="rl-reply is-modest"><em class="rl-tone">보류</em><b>지금의 나를 다듬을게요</b><small>기회를 쓰지 않아요 · 세 시즌 뒤에 조건을 다시 확인해요</small></button></form>
     </div>
 </section>

@@ -572,7 +572,7 @@ class ScreenTests(TestCase):
                                   ('/rookie/league/?tab=players', 'KBO'),
                                   ('/rookie/records/?view=career&lg=kbo1', '통산 순위'),
                                   ('/rookie/records/?view=hof', '명예의 전당'),
-                                  ('/rookie/records/?view=highs&lg=kbo1&role=pitcher', '커리어하이'),
+                                  ('/rookie/records/?view=highs&lg=kbo1&role=pitcher', '커리어 하이'),
                                   (f'/rookie/p/{p.pk}/', '평생 통산')):
                     r = c.get(url, HTTP_USER_AGENT=ua)
                     self.assertContains(r, text, msg_prefix=url)

@@ -10,7 +10,7 @@
         <span>{{ games_day|date:'n월 j일 l' }} · {{ games.0.league|baseball_text }}</span>
         <span>{{ games|length }}경기</span>
         {% else %}
-        <span>전광판</span><span>{% if season.phase == 'pre' %}시범 기간{% elif season.phase == 'off' %}시즌 사이 휴식{% else %}시즌 {{ season.number }}{% endif %}</span>
+        <span>전광판</span><span>{% if season.phase == 'pre' %}시범 기간{% elif season.phase == 'off' %}비시즌{% else %}시즌 {{ season.number }}{% endif %}</span>
         {% endif %}
     </header>
     {% if games %}
@@ -38,11 +38,11 @@
     </dl>
     {% if games.0.splits %}
     <ul class="rk-box-split" aria-label="상대 타자 등급별">
-        {% for x in games.0.splits %}<li class="is-{{ x.code }}"><b>{{ x.label|baseball_text }}</b> {{ x.ab }}타수 {{ x.h }}피안타{% if x.hr %} {{ x.hr }}피홈런{% endif %}{% if x.so %} {{ x.so }}삼진{% endif %}</li>{% endfor %}
+        {% for x in games.0.splits %}<li class="is-{{ x.code }}"><b>{{ x.label|baseball_text }}</b> {{ x.ab }}타수 {{ x.h }}피안타{% if x.hr %} {{ x.hr }}피홈런{% endif %}{% if x.so %} {{ x.so }}탈삼진{% endif %}</li>{% endfor %}
     </ul>
     {% endif %}
     {% endwith %}{% endif %}
-    {% if opp_levels %}<p class="rk-board-note">{% if p.role == 'pitcher' %}{{ games.0.league|baseball_text }} 상대 타선: 상위 {{ opp_levels.top }}(출루·주루), 중심 {{ opp_levels.heart }}(클러치·장타), 하위 {{ opp_levels.bottom }}. 내 구위는 {{ ladder.stuff }} 정도예요.{% else %}{{ games.0.league|baseball_text }} 상대 선발 구위: 에이스 {{ opp_levels.ace }}, 일반 {{ opp_levels.reg }}, 대체 {{ opp_levels.bak }}. 지금 내 OVR {{ p.ovr|floatformat:1 }}.{% endif %}</p>{% endif %}
+    {% if opp_levels %}<p class="rk-board-note">{% if p.role == 'pitcher' %}{{ games.0.league|baseball_text }} 상대 타선: 상위 {{ opp_levels.top }}(출루·주루), 중심 {{ opp_levels.heart }}(클러치·장타), 하위 {{ opp_levels.bottom }}. 내 구위는 {{ ladder.stuff }} 정도예요.{% else %}{{ games.0.league|baseball_text }} 상대 선발 구위: 에이스 {{ opp_levels.ace }}, 일반 {{ opp_levels.reg }}, 대체 {{ opp_levels.bak }}. 내 OVR은 지금 {{ p.ovr|floatformat:1 }}점이에요.{% endif %}</p>{% endif %}
     {% if xp_rows %}<p class="rk-board-note is-xp">경기 경험 {% for x in xp_rows %}{{ x.label|baseball_text }} +{{ x.gain|floatformat:2 }}{% if not forloop.last %} · {% endif %}{% endfor %}</p>{% endif %}
     {% if dnp %}<p class="rk-board-note">어제는 결장했어요. 경기일 포함 최근 3일 안에 활동해야 엔트리에 들어요.</p>{% endif %}
     {% elif graduated %}
@@ -58,7 +58,7 @@
     {% elif season.phase == 'pre' %}
     <div class="rk-board-empty">
         <b>D-{{ season.dday }}</b>
-        <span>{{ season.opening|date:'n월 j일' }} 개막. 프로는 하루 5~6경기(4주 144경기), 학생은 하루 한 경기를 치러요. 그때까지 훈련으로 몸을 만들어 두세요.</span>
+        <span>{{ season.opening|date:'n월 j일' }}에 개막해요. 프로는 하루 5~6경기(4주 144경기), 학생은 하루 한 경기를 치러요. 그때까지 훈련으로 몸을 만들어 둬요.</span>
     </div>
     {% elif dnp %}
     <div class="rk-board-empty">

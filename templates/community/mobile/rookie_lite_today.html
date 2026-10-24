@@ -3,7 +3,7 @@
 
 {% block title %}오늘의 랭킹 - 야구선수 키우기 {{ game_label|default:'라이트 모드' }} - 테크창{% endblock %}
 {% block tab_games %}active{% endblock %}
-{% block meta_description %}야구선수 키우기 {{ game_label|default:'라이트 모드' }} 오늘의 랭킹 — 오늘 은퇴한 커리어를 리그별로 MVP·최고 OVR·수상·WAR 순으로.{% endblock %}
+{% block meta_description %}야구선수 키우기 {{ game_label|default:'라이트 모드' }} 오늘의 랭킹 — 오늘 은퇴한 선수를 리그별로 MVP·최고 OVR·수상·프로 통산 WAR 순으로.{% endblock %}
 
 {% block extra_css %}
 <link href="{% static 'css/game.css' %}?v={{ STATIC_VERSION }}&amp;world=1" rel="stylesheet">

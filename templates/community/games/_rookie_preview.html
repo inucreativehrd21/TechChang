@@ -3,8 +3,8 @@
     <header class="rs-preview-head">
         <div><a class="gm-back" href="{% url 'community:lite_home' %}">← 게임으로</a><h1 class="rk-title">야구게임 장면 미리보기</h1><p>장면을 고르면 실제 게임에 적용되는 연출을 재생해요.</p></div>
         <nav class="rs-editions" aria-label="게임 선택">
-            <a href="?edition=lite"{% if edition == 'lite' %} aria-current="page"{% endif %}>라이트</a>
-            <a href="?edition=full"{% if edition == 'full' %} aria-current="page"{% endif %}>정식</a>
+            <a href="?edition=lite"{% if edition == 'lite' %} aria-current="page"{% endif %}>라이트 모드</a>
+            <a href="?edition=full"{% if edition == 'full' %} aria-current="page"{% endif %}>정식 모드</a>
         </nav>
     </header>
     {% include 'community/games/_rookie_stadium.html' %}

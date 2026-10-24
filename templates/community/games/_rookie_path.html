@@ -12,7 +12,7 @@
         <div><dt>스카우트 평가</dt><dd>고교생이 되면 나와요</dd></div>
         {% endif %}
         {% if owner and career.age_cap %}
-        <div><dt>{{ career.age }}세 몸의 한계</dt><dd>능력치 {{ career.age_cap|floatformat:0 }} — 한 살 먹을 때마다 열려요</dd></div>
+        <div><dt>{{ career.age }}세 나이 한계</dt><dd>능력치 {{ career.age_cap|floatformat:0 }}까지 · 한 살 더 먹으면 한도가 올라가요</dd></div>
         {% endif %}
         {% for d in career.drafts %}
         <div><dt>{% if d.src == 'hs' %}고졸{% else %}대졸{% endif %} 드래프트</dt><dd>{% if d.undrafted %}시즌 {{ d.season }} 미지명{% else %}시즌 {{ d.season }} {{ d.round }}라운드 {{ d.in_round }}순위 · {{ d.team_name }}{% endif %}</dd></div>
@@ -30,5 +30,5 @@
         {% for x in career.path %}<li><span>{{ x.league_short|baseball_text }}</span><b>{{ x.club_name }}</b><small>{{ x.age }}세</small></li>{% endfor %}
     </ol>
     {% endif %}
-    {% if owner and career.retire_hint %}<p class="rk-hint">마흔다섯이 되는 시즌 개막에 은퇴해요. 그 전에 스스로 유니폼을 벗을 수도 있어요.</p>{% endif %}
+    {% if owner and career.retire_hint %}<p class="rk-hint">45세가 되는 시즌 개막에 은퇴해요. 그 전에 스스로 유니폼을 벗을 수도 있어요.</p>{% endif %}
 </section>

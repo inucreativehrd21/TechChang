@@ -1,5 +1,5 @@
-<section class="rk-club-report" aria-label="구단 일일 선수 리포트">
-    <header><h2>구단 일일 선수 리포트</h2><small>전력분석팀 · {{ report.day|date:'Y.m.d' }}</small></header>
+<section class="rk-club-report" aria-label="일일 선수 리포트">
+    <header><h2>일일 선수 리포트</h2><small>전력분석팀 · {{ report.day|date:'Y.m.d' }}</small></header>
     <p><b>{{ report.player.name }}</b> · {{ report.team }} · {% if report.player.role == 'pitcher' %}투수{% else %}타자{% endif %}</p>
     <p class="rk-club-report__line">{{ report.summary }}</p>
     {% if report.metrics %}<dl class="rk-club-report__metrics">{% for label, value in report.metrics %}<div><dt>{{ label }}</dt><dd>{{ value }}</dd></div>{% endfor %}</dl>{% endif %}

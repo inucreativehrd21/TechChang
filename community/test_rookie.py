@@ -323,7 +323,7 @@ class ViewTests(TestCase):
         r = self.get('/rookie/league/?tab=teams')
         self.assertContains(r, 'LG 트윈스')
         self.assertContains(r, '지망 유망주 2명')
-        self.assertContains(r, '아직 선수 없음')
+        self.assertContains(r, '아직 선수가 없어요')
 
     def test_games_index_lists_rookie_and_retire_needs_confirm(self):
         self.assertContains(self.get('/games/'), '야구선수 키우기')
@@ -486,7 +486,7 @@ class MainFromLiteTests(TestCase):
         self.client.force_login(u)
         r = self.client.get('/rookie/', HTTP_USER_AGENT=PC)
         self.assertContains(r, '각성의 순간')
-        self.assertContains(r, 'TP를 더 모아 올게요')                     # 150 TP 가 없다
+        self.assertContains(r, 'TP가 모자라요')                     # 150 TP 가 없다
         with self.assertRaises(R.GameError):
             R.awaken(u, 'try')
         self.client.post('/rookie/awaken/', {'choice': 'skip'})

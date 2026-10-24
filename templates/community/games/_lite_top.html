@@ -8,10 +8,10 @@
     <p class="rk-season"><b>한 판 30분</b><span>고1부터 은퇴까지</span></p>
 </header>
 <nav class="rk-nav" aria-label="{{ game_label|default:'라이트 모드' }} 메뉴">
-    <a href="{% career_url 'home' %}" {% if section == 'home' %}aria-current="page"{% endif %}>내 커리어</a>
+    <a href="{% career_url 'home' %}" {% if section == 'home' %}aria-current="page"{% endif %}>내 선수</a>
     <a href="{% career_url 'hall' %}{% if hall_version %}?version={{ hall_version }}&amp;lg={{ tab }}&amp;role={{ role }}{% endif %}" {% if section == 'hall' %}aria-current="page"{% endif %}>명예의 전당</a>
     <a href="{% career_url 'today' %}{% if hall_version %}?version={{ hall_version }}&amp;lg={{ tab }}&amp;role={{ role }}{% endif %}" {% if section == 'today' %}aria-current="page"{% endif %}>오늘의 랭킹</a>
     <a href="{% career_url 'cards' %}" {% if section == 'cards' %}aria-current="page"{% endif %}>카드 보관함</a>
     {% if extreme_public %}{% if game_mode == 'extreme' %}<a href="{% url 'community:lite_home' %}">라이트 모드</a>{% else %}<a href="{% url 'community:extreme_home' %}">익스트림 모드</a>{% endif %}{% endif %}
-    <a href="{% url 'community:rookie_home' %}">정식 판(매일 키우기)</a>
+    <a href="{% url 'community:rookie_home' %}">정식 모드(매일 키우기)</a>
 </nav>

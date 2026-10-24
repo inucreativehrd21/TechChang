@@ -18,7 +18,7 @@
     </ul>
     {% else %}
     <section class="rk-panel"><p class="rk-empty">아직 은퇴한 선수가 없어요. 첫 선수를 끝까지 키우면 여기 카드가 생겨요.</p>
-        <div class="gm-actions"><a class="gm-btn is-primary" href="{% career_url 'home' %}">내 커리어로</a></div></section>
+        <div class="gm-actions"><a class="gm-btn is-primary" href="{% career_url 'home' %}">내 선수로</a></div></section>
     {% endif %}
     {% if not user.is_authenticated %}<p class="rl-guest-note">지금은 이 브라우저에서 은퇴한 선수만 보여요. 로그인하면 카드가 계정에 보관돼요. <a rel="nofollow" href="{% url 'common:login' %}?next={{ request.path|urlencode }}">로그인</a></p>{% endif %}
     {% include 'community/games/_rookie_rights.html' %}

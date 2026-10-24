@@ -1,12 +1,12 @@
-<section class="rk-peers rk-panel" aria-label="회원 선수와 동나이 기록 비교">
-    <div class="rk-head"><h2>같은 나이, 다른 커리어</h2><span class="rk-fine">{% if p.role == 'pitcher' or c.role == 'pitcher' %}투수{% else %}타자{% endif %} · 공개 회원 기록</span></div>
-    <p class="rk-hint">동나이 기록을 먼저 찾고, 없으면 두 살 이내에서 비교해요. 과거 시즌의 실제 기록이며 직접 맞대결한 결과는 아니에요.</p>
+<section class="rk-peers rk-panel" aria-label="회원 선수와 같은 나이 기록 비교">
+    <div class="rk-head"><h2>같은 나이, 다른 선수</h2><span class="rk-fine">{% if p.role == 'pitcher' or c.role == 'pitcher' %}투수{% else %}타자{% endif %} · 공개 회원 기록</span></div>
+    <p class="rk-hint">같은 나이 기록을 먼저 찾고, 없으면 두 살 이내에서 비교해요. 과거 시즌의 실제 기록이며 직접 맞대결한 결과는 아니에요.</p>
     <div class="rk-peers__grid">{% for peer in peers %}<article class="rk-peer">
         <header><a href="{{ peer.url }}"><b>{{ peer.name }}</b></a><span>{{ peer.age }}세{% if peer.same_age %} · 동갑{% endif %}</span></header>
-        <p>{{ peer.league_label }} · {{ peer.club_label }} · {{ peer.season }}번째 시즌</p>
-        <table><caption class="visually-hidden">{{ peer.name }} 선수의 동나이 기록 비교</caption><thead><tr><th scope="col">기록</th><th scope="col">내 {{ peer.own_age }}세</th><th scope="col">{{ peer.name }}</th></tr></thead><tbody>
+        <p>{{ peer.league_label }} · {{ peer.club_label }} · {% if peer.id|slice:':4' == 'lite' %}{{ peer.season }}번째 시즌{% else %}시즌 {{ peer.season }}{% endif %}</p>
+        <table><caption class="visually-hidden">{{ peer.name }} 선수의 같은 나이 기록 비교</caption><thead><tr><th scope="col">기록</th><th scope="col">내 {{ peer.own_age }}세</th><th scope="col">{{ peer.name }}</th></tr></thead><tbody>
         {% for metric in peer.metrics %}<tr><th scope="row">{{ metric.label }}</th><td>{{ metric.mine }}</td><td>{{ metric.peer }}</td></tr>{% endfor %}
         <tr><th scope="row">WAR</th><td>{{ peer.own_war|floatformat:1 }}</td><td>{{ peer.war|floatformat:1 }}</td></tr></tbody></table>
         <a class="rk-fine" href="{{ peer.url }}">전체 커리어 보기</a>
-    </article>{% empty %}<p class="rk-hint">아직 비교할 공개 동나이·동유형 기록이 없어요. 다른 회원의 기록이 쌓이면 이곳에 표시해요.</p>{% endfor %}</div>
+    </article>{% empty %}<p class="rk-hint">아직 비교할 같은 나이·같은 유형의 공개 기록이 없어요. 다른 회원의 기록이 쌓이면 이곳에 표시해요.</p>{% endfor %}</div>
 </section>

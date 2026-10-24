@@ -16,17 +16,17 @@
         <p class="rl-filter-count" aria-live="polite">{% if role == 'pitcher' %}투수{% elif role == 'batter' %}타자{% else %}선수{% endif %} {{ rows|length }}명</p>
     </form>
     <h2 class="rk-h2">{{ hall_version }} · {{ tab_name }}{% if daily %} · {{ day|date:'n월 j일' }}{% endif %}</h2>
-    <p class="rk-note">커리어를 시작한 버전으로 기록을 나눠요. 1.1 업데이트 전에 시작한 커리어는 끝까지 1.0에 남아요.</p>
+    <p class="rk-note">게임 업데이트 버전(1.0, 1.1)을 기준으로 기록을 나눠요. 선수를 시작한 때의 버전이 끝까지 따라가서, 1.1 업데이트 전에 시작한 선수는 1.0에 남아요.</p>
     {% if lineup and lineup.filled %}{% include 'community/games/_lite_lineup.html' %}{% endif %}
     {% if daily %}
-    <p class="rk-note">{{ day|date:'n월 j일' }} 하루 동안 은퇴한 커리어만, {{ tab_name }} 리그에서 뛴 시즌으로 명예의 전당과 같은 순서(MVP → 최고 OVR → 수상 → 프로 WAR)로 세웠어요. 매일 0시에 새로 시작해요.</p>
+    <p class="rk-note">{{ day|date:'n월 j일' }} 하루 동안 은퇴한 선수만, {{ tab_name }} 리그에서 뛴 시즌으로 명예의 전당과 같은 순서(MVP → 최고 OVR → 수상 → 프로 통산 WAR)로 순위를 매겼어요. 매일 0시에 새로 시작해요.</p>
     {% else %}
-    <p class="rk-note">{{ tab_name }} 리그에서 뛴 시즌만 세서, MVP → 최고 OVR → 수상 → 프로 WAR 순으로 세웠어요. 로그인한 커리어만 올라요. 1.0 출시(2026년 10월 19일) 뒤에 시작한 커리어부터 새로 세요 — 그 전 커리어의 은퇴 카드는 카드 보관함에 그대로 있어요.</p>
+    <p class="rk-note">{{ tab_name }} 리그에서 뛴 시즌만 집계해서 MVP → 최고 OVR → 수상 → 프로 통산 WAR 순으로 순위를 매겨요. 로그인한 선수만 올라요. 1.0 출시(2026년 10월 19일) 뒤에 시작한 선수부터 새로 집계하고, 그 전 선수의 은퇴 카드는 카드 보관함에 그대로 있어요.</p>
     {% endif %}
     {% if rows %}
     <div class="rk-table-wrap">
         <table class="rk-table rk-career-table rl-hall">
-            <thead><tr><th scope="col" class="is-text rl-hall-name">선수</th><th scope="col" class="is-text">최고 리그</th><th scope="col">MVP</th><th scope="col">최고 OVR</th>
+            <thead><tr><th scope="col" class="is-text rl-hall-name">선수</th><th scope="col" class="is-text">최고 무대</th><th scope="col">MVP</th><th scope="col">최고 OVR</th>
                 {% if role == 'pitcher' %}<th scope="col">승</th><th scope="col">패</th><th scope="col">세이브</th><th scope="col">평균자책점</th><th scope="col">탈삼진</th>
                 {% elif role == 'batter' %}<th scope="col">타율</th><th scope="col">안타</th><th scope="col">홈런</th><th scope="col">타점</th><th scope="col">OPS</th>
                 {% else %}<th scope="col">수상</th><th scope="col">우승</th>{% endif %}
@@ -49,10 +49,10 @@
     {% if daily %}
     <section class="rk-panel"><p class="rk-empty">{% if ago %}어제{% else %}오늘{% endif %} {{ tab_name }} 리그를 거쳐 은퇴한 {% if role == 'pitcher' %}투수{% elif role == 'batter' %}타자{% else %}커리어{% endif %}가 없어요.{% if not ago %} 오늘의 1위에 도전해 보세요.{% endif %}</p></section>
     {% else %}
-    <section class="rk-panel"><p class="rk-empty">{% if role %}아직 은퇴한 {% if role == 'pitcher' %}투수{% else %}타자{% endif %}가 없어요.{% else %}아직 은퇴한 커리어가 없어요.{% endif %} 첫 번째 전설이 되어 보세요.</p></section>
+    <section class="rk-panel"><p class="rk-empty">{% if role %}아직 은퇴한 {% if role == 'pitcher' %}투수{% else %}타자{% endif %}가 없어요.{% else %}아직 은퇴한 선수가 없어요.{% endif %} 첫 번째 전설이 되어 보세요.</p></section>
     {% endif %}
     {% endif %}
-    <div class="gm-actions"><a class="gm-btn is-primary" href="{% career_url 'home' %}">내 커리어 보기</a></div>
+    <div class="gm-actions"><a class="gm-btn is-primary" href="{% career_url 'home' %}">내 선수 보기</a></div>
     {% include 'community/games/_rookie_rights.html' %}
 </div>
 </div>

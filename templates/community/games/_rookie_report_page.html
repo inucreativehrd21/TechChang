@@ -1,6 +1,6 @@
 <main class="gm-wrap rk rk-daily container py-4">
     <a class="gm-back" href="{% url 'community:rookie_home' %}">← 내 선수</a>
-    <h1 class="rk-title">매일 쌓이는 구단 관찰 기록</h1>
+    <h1 class="rk-title">일일 선수 리포트</h1>
     <form method="get" class="d-flex gap-2 align-items-end mt-3"><div><label class="form-label" for="report-day">경기 날짜</label><input id="report-day" class="form-control" type="date" name="day" value="{{ report.day|date:'Y-m-d' }}" max="{{ yesterday|date:'Y-m-d' }}" required></div><button class="gm-btn" type="submit">리포트 보기</button></form>
     {% include 'community/games/_rookie_daily_report.html' %}
     <nav class="d-flex gap-3" aria-label="리포트 날짜 이동">{% if report.previous %}<a href="?day={{ report.previous|date:'Y-m-d' }}">이전 날짜</a>{% endif %}{% if report.next %}<a href="?day={{ report.next|date:'Y-m-d' }}">다음 날짜</a>{% endif %}</nav>

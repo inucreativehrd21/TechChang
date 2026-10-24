@@ -28,7 +28,7 @@
         <div><dt>탈삼진</dt><dd>{{ v.so|default:0 }}</dd></div>
         <div class="is-war"><dt>WAR</dt><dd>{{ x.s.war }}</dd></div>
     </dl>
-    <p class="rk-line-sub">WHIP {{ v.whip_text }} · FIP {{ v.fip_text }} · QS {{ v.qs|default:0 }} · 피안타 {{ v.h|default:0 }} · 볼넷 {{ v.bb|default:0 }} · 피홈런 {{ v.hr|default:0 }} · 9이닝당 탈삼진 {{ v.k9|floatformat:1 }}</p>
+    <p class="rk-line-sub">WHIP {{ v.whip_text }} · FIP {{ v.fip_text }} · 퀄리티스타트(QS) {{ v.qs|default:0 }} · 피안타 {{ v.h|default:0 }} · 볼넷 {{ v.bb|default:0 }} · 피홈런 {{ v.hr|default:0 }} · 9이닝당 탈삼진 {{ v.k9|floatformat:1 }}</p>
     {% else %}
     <dl class="rk-line-main">
         <div><dt>경기</dt><dd>{{ v.g|default:0 }}</dd></div>

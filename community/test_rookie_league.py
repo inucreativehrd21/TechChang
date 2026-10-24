@@ -244,7 +244,7 @@ class CloseSeasonTests(TestCase):
             self.assertContains(r, 'rk-diamond')
             self.assertNotContains(r, '>admin<')
             r = c.get('/rookie/records/', HTTP_USER_AGENT=ua)
-            self.assertContains(r, '커리어하이')
+            self.assertContains(r, '커리어 하이')
             self.assertContains(r, '강타자')
             self.assertContains(c.get('/rookie/records/?role=pitcher', HTTP_USER_AGENT=ua), '에이스')
         r = c.get(f'/rookie/p/{self.star.pk}/', HTTP_USER_AGENT=PC)

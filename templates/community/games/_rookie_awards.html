@@ -111,7 +111,7 @@
             <header class="rk-board-head"><span>시즌 {{ season_now.number }} 시상식</span><span>{{ ceremony|date:'n월 j일' }}</span></header>
             <div class="rk-board-empty">
                 <b>{% if season_now.phase == 'pre' %}개막 전{% elif season_now.phase == 'off' %}시상 준비 중{% else %}MVP 레이스{% endif %}</b>
-                <span>시즌이 끝난 다음 날 아침({{ ceremony|date:'n월 j일' }}) 리그마다 시상해요. KBO은 MVP, 신인왕, 포지션별 골든글러브, 개인 타이틀 — 후보가 되려면 타자는 {{ award_pa }}타석, 투수는 {{ award_ip }}이닝 이상 뛰어야 해요. 메이저리그는 사이영상·실버슬러거, 일본은 사와무라상·베스트 나인, 대만은 베스트 텐, 하위 리그와 학생 리그는 리그 MVP·최우수선수를 뽑아요.</span>
+                <span>시즌이 끝난 다음 날 아침({{ ceremony|date:'n월 j일' }}) 리그마다 시상해요. KBO에서는 MVP, 신인왕, 포지션별 골든글러브, 개인 타이틀을 받을 수 있어요. 후보가 되려면 타자는 {{ award_pa }}타석, 투수는 {{ award_ip }}이닝 이상 뛰어야 해요. 메이저리그는 사이영상·실버슬러거, 일본은 사와무라상·베스트 나인, 대만은 베스트 텐, 하위 리그와 학생 리그는 리그 MVP·최우수선수를 뽑아요.</span>
             </div>
             {% if race %}
             <ol class="rk-board-rows is-race">

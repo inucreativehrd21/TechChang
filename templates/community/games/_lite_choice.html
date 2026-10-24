@@ -3,5 +3,5 @@
 <form method="post" action="{% career_url 'act' %}" class="rl-pathcard{% if main %} is-main{% endif %}">
     {% csrf_token %}<input type="hidden" name="action" value="decide"><input type="hidden" name="what" value="{{ what }}"><input type="hidden" name="choice" value="{{ choice }}">
     <b>{{ label|baseball_text }}</b>{% if hint %}<span>{{ hint|baseball_text }}</span>{% endif %}
-    <button type="submit" class="gm-btn{% if main %} is-primary{% endif %} is-block">{{ label|baseball_text }}</button>
+    <button type="submit" class="gm-btn{% if main %} is-primary{% endif %} is-block">고르기</button>
 </form>

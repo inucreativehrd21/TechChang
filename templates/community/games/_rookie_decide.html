@@ -7,7 +7,7 @@
         <span class="rk-fine">{% if career.grade_left %}발표까지 {{ career.grade_left }}일{% else %}오늘 밤 발표{% endif %}</span>
     </div>
     {% if a.choice %}{% include 'community/games/_lite_say.html' with who='data' name='수정' role='스카우트' text='지원서를 냈어요. 발표 전까지는 다른 학교로 바꿔 지원할 수도 있어요.' %}{% else %}{% include 'community/games/_lite_say.html' with who='data' name='수정' role='스카우트' text='졸업 학년이에요! 아래 목록에서 지원할 학교를 하나 고르고 ‘지원하기’를 눌러 주세요.' %}{% endif %}
-    <p class="rk-hint">학년이 끝나는 날 합격이 갈려요. OVR이 {{ a.to_name }} 수준({{ a.level|floatformat:0 }})보다 높을수록, 지금 리그에서 잘할수록 붙기 쉽고, <b>강호</b>는 문이 좁아요. 떨어지거나 고르지 않으면 우리 지역({{ a.home }}) 학교로 가요.{% if not a.home_has %} 지금 목록에 {{ a.home }} 지역 학교가 없어 가까운 지역 학교로 배정돼요.{% endif %}</p>
+    <p class="rk-hint">학년이 끝나는 날 합격 여부가 정해져요. OVR이 {{ a.to_name }} 수준({{ a.level|floatformat:0 }})보다 높을수록, 지금 리그에서 잘할수록 붙기 쉽고, <b>강호</b>는 문이 좁아요. 떨어지거나 고르지 않으면 우리 지역({{ a.home }}) 학교로 가요.{% if not a.home_has %} 지금 목록에 {{ a.home }} 지역 학교가 없어 가까운 지역 학교로 배정돼요.{% endif %}</p>
     {% if a.choice %}<p class="rk-decide-now">지원한 학교 <b>{{ a.choice }}</b> · 합격 가능성 <b class="rk-chance is-{{ a.chance }}">{{ a.chance }}</b></p>{% endif %}
     <form class="rk-decide-form" method="post" action="{% url 'community:rookie_apply' %}">
         {% csrf_token %}
@@ -35,12 +35,12 @@
     <div class="rk-offer" style="--team: {{ d.team.color }}">
         <span class="rk-offer-pick"><b>{{ d.offer.round }}</b>라운드 <b>{{ d.offer.in_round }}</b>순위</span>
         <span class="rk-offer-team"><i class="rk-dot is-lg" aria-hidden="true"></i>{{ d.team.name }}{% if d.want %} <em>희망 구단</em>{% endif %}</span>
-        <span class="rk-fine">전체 {{ d.offer.pick }}순위 · 드래프트 평가 {{ d.score }}(평균 50)</span>
+        <span class="rk-fine">전체 {{ d.offer.pick }}순위 · 드래프트 평가 {{ d.score }}점(평균 50)</span>
     </div>
     {% else %}
     <div class="rk-offer is-none">
         <span class="rk-offer-pick"><b>미지명</b></span>
-        <span class="rk-fine">드래프트 평가 {{ d.score }}(평균 50) — 11라운드까지 이름이 불리지 않았어요.</span>
+        <span class="rk-fine">드래프트 평가 {{ d.score }}점(평균 50) · 11라운드까지 이름이 불리지 않았어요.</span>
     </div>
     {% endif %}
 
@@ -50,7 +50,7 @@
             {% csrf_token %}<input type="hidden" name="choice" value="sign">
             <b>{{ d.team.name }}와 계약</b>
             <span>{{ d.sign_league }}에서 시작해 콜업 테스트로 1군을 노려요.{% if d.bonus %} 계약 보너스 +{{ d.bonus }} TP.{% endif %}</span>
-            <button type="submit" class="gm-btn is-primary is-block">{{ d.team.name }}와 계약</button>
+            <button type="submit" class="gm-btn is-primary is-block">계약하기</button>
         </form>
         {% else %}
         <form class="rk-path-opt is-main" method="post" action="{% url 'community:rookie_decide' %}">
@@ -64,13 +64,13 @@
         <form class="rk-path-opt" method="post" action="{% url 'community:rookie_decide' %}">
             {% csrf_token %}<input type="hidden" name="choice" value="univ">
             <b>대학 진학</b>
-            <span>대학 1년은 30일이에요(프로 한 시즌과 같은 속도). 4년 뒤 다시 드래프트에 나서고, 대졸은 퓨처스·더블A부터 시작해 상위 리그 진입에 필요한 최소 체류 기간이 짧아요.</span>
+            <span>대학 1년은 30일이에요(프로 한 시즌과 같은 속도). 4년 뒤 다시 드래프트에 나서고, 대졸은 퓨처스·더블A에서 시작하고, 상위 리그로 올라가는 데 필요한 최소 체류 기간이 더 짧아요.</span>
             <label class="rk-select"><span class="visually-hidden">진학할 대학</span>
                 <select name="school" required>
                     <option value="">대학 고르기</option>
                     {% for r in d.univ %}
                     <optgroup label="{{ r.region }}{% if r.home %} (우리 지역){% endif %}">
-                        {% for s in r.schools %}<option value="{{ s.name }}">{{ s.name }}{% if s.hard %} · 강호{% endif %} · {{ s.chance }}</option>{% endfor %}
+                        {% for s in r.schools %}<option value="{{ s.name }}">{{ s.name }}{% if s.hard %} · 강호{% endif %} · 합격 가능성 {{ s.chance }}</option>{% endfor %}
                     </optgroup>
                     {% endfor %}
                 </select>

@@ -1,5 +1,5 @@
 {% load rookie_tags %}
-{# 정식 판 은퇴 카드 페이지(공개). 맥락: rookie_views.rookie_card — c(선수), card(rookie_card.main_card), fresh, is_me #}
+{# 정식 모드 은퇴 카드 페이지(공개). 맥락: rookie_views.rookie_card — c(선수), card(rookie_card.main_card), fresh, is_me #}
 <div class="gm rk rl">
 <div class="gm-wrap is-wide">
     {% include 'community/games/_rookie_top.html' with h1='은퇴 카드' %}
@@ -9,7 +9,7 @@
         {% include 'community/games/_lite_retire.html' %}
         <div class="rl-cardpage-actions">
             <a class="gm-btn is-primary" href="{% url 'community:rookie_card_png' c.pk %}?download=1" data-rl-img data-src="{% url 'community:rookie_card_png' c.pk %}" data-name="{{ c.name }}-은퇴카드.png" data-share-label="피드로 공유">{% include 'community/games/_lite_icon.html' with name='save' %}<span data-rl-img-label>이미지 저장</span></a>
-            <a class="gm-btn is-story" href="{% url 'community:rookie_card_story' c.pk %}?download=1" data-rl-img data-src="{% url 'community:rookie_card_story' c.pk %}" data-name="{{ c.name }}-스토리.png" data-share-label="스토리로 공유">{% include 'community/games/_lite_icon.html' with name='story' %}<span data-rl-img-label>스토리 이미지</span></a>
+            <a class="gm-btn is-story" href="{% url 'community:rookie_card_story' c.pk %}?download=1" data-rl-img data-src="{% url 'community:rookie_card_story' c.pk %}" data-name="{{ c.name }}-스토리.png" data-share-label="스토리로 공유">{% include 'community/games/_lite_icon.html' with name='story' %}<span data-rl-img-label>스토리용 이미지 저장</span></a>
             <button type="button" class="gm-btn" data-rl-share data-url="{{ request.scheme }}://{{ request.get_host }}{{ request.path }}" data-title="{{ c.name }} 은퇴 카드 — 테크창 야구선수 키우기">{% include 'community/games/_lite_icon.html' with name='share' %}<span>링크 공유</span></button>
         </div>
         <p class="rl-cardpage-note">피드용은 1080×1350, 스토리용은 1080×1920이에요. 폰에서 '스토리로 공유'를 누르고 인스타그램을 고르면 바로 스토리로 올라가요(링크 스티커에 카드 주소를 붙이면 친구가 눌러 볼 수 있어요).</p>

@@ -1,10 +1,10 @@
 {% load rookie_tags %}
 {% comment %}라이트 명예의 전당 — 역대 베스트 라인업(자리마다 프로 WAR 1위, 외야는 셋). 그라운드 위에 자리대로 선다.
-라이트·정식 판이 같이 쓴다 — 행마다 url(선수 페이지)·color(구단 색)·war·c(선수). 맥락: lineup = rookie_lite.best_lineup, tab_name{% endcomment %}
+라이트·정식 모드가 같이 쓴다 — 행마다 url(선수 페이지)·color(구단 색)·war·c(선수). 맥락: lineup = rookie_lite.best_lineup, tab_name{% endcomment %}
 <section class="rl-lineup" aria-labelledby="rl-lineup-title">
     <div class="rl-lineup-head">
         <h2 class="rl-lineup-title" id="rl-lineup-title">역대 베스트 라인업</h2>
-        <p>{{ tab_name }} · 자리마다 프로 WAR 1위</p>
+        <p>{{ tab_name }} · 포지션마다 프로 통산 WAR 1위</p>
     </div>
     <div class="rl-field">
         <svg class="rl-field-art" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true" focusable="false">

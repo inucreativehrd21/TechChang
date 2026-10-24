@@ -9,7 +9,7 @@
         {% if test %}
         <section class="rk-board rk-test {% if test.passed %}is-pass{% endif %}" aria-live="polite" aria-label="콜업 테스트 결과">
             <header class="rk-board-head"><span>{{ test.league_name|baseball_text }} 콜업 테스트 · 청백전 {{ test.total }}경기</span><span>{{ test.won }}경기 합격</span></header>
-            <p class="rk-test-verdict">{% if test.passed %}{{ test.league_name|baseball_text }} 승격{% else %}탈락, 내일 다시{% endif %}</p>
+            <p class="rk-test-verdict">{% if test.passed %}{{ test.league_name|baseball_text }} 승격{% else %}탈락했어요. 내일 다시 도전해요{% endif %}</p>
             <ol class="rk-board-rows">
                 {% for g in test.games %}
                 <li class="{% if g.ok %}is-win{% endif %}">
@@ -36,7 +36,7 @@
         <form class="rk-create" method="post" action="{% url 'community:rookie_create' %}">
             {% csrf_token %}
             <section class="rk-panel">
-                <h2 class="rl-step"><span>1</span>투수예요, 타자예요?</h2>
+                <h2 class="rl-step"><span>1</span>투수예요, 타자예요? 기본 정보를 정해요</h2>
                 <div class="rk-roles">
                     {% for key, role in roles.items %}
                     <label class="rk-role">
@@ -44,7 +44,7 @@
                         <span class="rk-role-box">
                             <b>{{ role.label|baseball_text }}</b>
                             <small>{% for k, label, w in role.stats %}{{ label|baseball_text }}{% if not forloop.last %}, {% endif %}{% endfor %}</small>
-                            <small>{% if key == 'pitcher' %}팀마다 패전조에서 시작해 필승조·마무리, 체력이 좋으면 선발 로테이션까지{% else %}팀마다 대타·대주자(백업)에서 시작해 주전 자리를 따내요{% endif %}</small>
+                            <small>{% if key == 'pitcher' %}팀에 들어가면 패전조에서 시작해 필승조·마무리로, 체력이 좋으면 선발 로테이션까지 올라가요{% else %}팀에 들어가면 대타·대주자(백업)에서 시작해 주전 자리를 따내요{% endif %}</small>
                         </span>
                     </label>
                     {% endfor %}
@@ -114,13 +114,13 @@
     {% else %}
         <section class="rk-panel rk-intro">
             <h2>리틀야구에서 메이저리그까지</h2>
-            {% include 'community/games/_lite_say.html' with who='data' name='수정' role='스카우트' text='정식 판은 테크창 활동으로 매일 조금씩 키우는 게임이에요. 로그인하면 바로 시작할 수 있어요.' %}
-            <p>투수나 타자를 골라 동네 리틀야구단에서 시작해요. 중학교·고교 야구부를 거쳐 신인 드래프트에서 희망 구단의 지명을 노리고, 대학이나 미국·일본·대만으로 갈 수도 있어요. 칼럼 읽기와 댓글, 출석 체크로 번 훈련 포인트로 능력치를 올리고, 매일 밤 경기를 치러요. 쉬면 감각이 떨어지고 경기에도 못 나가요.</p>
+            {% include 'community/games/_lite_say.html' with who='data' name='수정' role='스카우트' text='정식 모드는 테크창 활동으로 매일 조금씩 키우는 게임이에요. 로그인하면 바로 시작할 수 있어요.' %}
+            <p>투수나 타자를 골라 동네 리틀야구단에서 시작해요. 중학교·고교 야구부를 거쳐 신인 드래프트에서 희망 구단의 지명을 노리고, 대학이나 미국·일본·대만으로 갈 수도 있어요. 칼럼 읽기와 댓글, 출석 체크로 번 훈련 포인트(TP)로 능력치를 올리고, 매일 밤 경기를 치러요. 쉬면 감각이 떨어지고 경기에도 못 나가요.</p>
             <div class="gm-actions">
                 <a rel="nofollow" class="gm-btn is-primary" href="{% url 'common:login' %}?next={{ request.get_full_path|urlencode }}">로그인하고 시작</a>
                 <a class="gm-btn" href="{% url 'common:signup' %}">회원가입</a>
             </div>
-            <p class="rl-guest-note">로그인하기 전에 맛보고 싶다면 <a href="{% url 'community:lite_home' %}">라이트 모드</a>을 해 보세요. 한 판 30분, 로그인 없이도 할 수 있어요.</p>
+            <p class="rl-guest-note">로그인하기 전에 맛보고 싶다면 <a href="{% url 'community:lite_home' %}">라이트 모드</a>를 해 보세요. 한 판 30분, 로그인 없이도 할 수 있어요.</p>
         </section>
         {% include 'community/games/_rookie_rules.html' %}
     {% endif %}

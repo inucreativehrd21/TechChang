@@ -31,7 +31,7 @@
             <input type="hidden" name="action" value="event"><input type="hidden" name="career" value="{{ c.pk }}">
             <input type="hidden" name="event_id" value="{{ event.id }}"><input type="hidden" name="choice" value="{{ choice.key }}">
             <button class="btn btn-outline-primary w-100" type="submit">{{ choice.label }}</button>
-            <p class="small mt-2 mb-0">훈련 보정 {{ choice.training_percent }}% · 부상 위험 {{ choice.risk_percent }}%p · 신뢰 {{ choice.trust }} · 존중 {{ choice.respect }} · 경쟁 {{ choice.rivalry }}{% if choice.contest %}<br>승부 성공 시 신뢰 +3, 실패 시 −2가 추가돼요.{% endif %}</p>
+            <p class="small mt-2 mb-0">훈련 보정 {{ choice.training_percent }}% · 부상 확률 {{ choice.risk_percent }}%p · 신뢰 {{ choice.trust }} · 존중 {{ choice.respect }} · 경쟁 {{ choice.rivalry }}{% if choice.contest %}<br>승부 성공 시 신뢰 +3, 실패 시 −2가 추가돼요.{% endif %}</p>
         </form>
         {% endfor %}
         </div>

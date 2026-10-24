@@ -1,4 +1,4 @@
-{# 기록실 — 리그별 커리어하이·단일 시즌 기록 / 통산 순위 / 명예의 전당 + 최근 이정표. 맥락: rookie_views.rookie_records #}
+{# 기록실 — 리그별 커리어 하이·단일 시즌 기록 / 통산 순위 / 명예의 전당 + 최근 이정표. 맥락: rookie_views.rookie_records #}
 {% load rookie_tags %}
 <div class="gm rk">
 <div class="gm-wrap is-wide">
@@ -6,7 +6,7 @@
 
     <div class="rk-controls">
         <nav class="rk-seg" aria-label="기록실 화면">
-            <a href="?view=highs&amp;lg={{ lg }}" {% if view == 'highs' %}aria-current="page"{% endif %}>커리어하이</a>
+            <a href="?view=highs&amp;lg={{ lg }}" {% if view == 'highs' %}aria-current="page"{% endif %}>커리어 하이</a>
             <a href="?view=career&amp;lg={{ lg }}" {% if view == 'career' %}aria-current="page"{% endif %}>통산 순위</a>
             <a href="?view=hof&amp;version={{ hall_version }}" {% if view == 'hof' %}aria-current="page"{% endif %}>명예의 전당</a>
         </nav>
@@ -25,12 +25,12 @@
             <a href="?view=highs&amp;lg={{ lg }}&amp;role=batter" {% if role == 'batter' %}aria-current="page"{% endif %}>타자</a>
             <a href="?view=highs&amp;lg={{ lg }}&amp;role=pitcher" {% if role == 'pitcher' %}aria-current="page"{% endif %}>투수</a>
         </nav>
-        {% if mine %}<p class="rk-note is-inline">내 커리어하이는 {{ mine }}위예요.</p>{% endif %}
+        {% if mine %}<p class="rk-note is-inline">내 커리어 하이는 {{ mine }}위예요.</p>{% endif %}
         {% endif %}
     </div>
 
     {% if view == 'highs' %}
-    <h2 class="rk-h2">커리어하이 · {{ lg_name }}</h2>
+    <h2 class="rk-h2">커리어 하이 · {{ lg_name }}</h2>
     <p class="rk-note">{{ lg_name }}에서 뛴 선수마다 가장 좋았던 시즌(WAR) 하나씩을 나란히 놓았어요. 리그마다 수준이 달라 따로 견줘요.</p>
     {% if top %}
     <section class="rk-hof" style="--team: {{ top.s.team|team_color }}">
@@ -55,14 +55,14 @@
                 <b>{% if h.s.player_id %}<a href="{% url 'community:rookie_player' h.s.player_id %}">{{ h.s.name }}</a>{% else %}{{ h.s.name }}{% endif %}</b>
                 <span><i class="rk-dot" aria-hidden="true"></i>시즌 {{ h.s.season.number }} {{ h.s.team|team_short }}{% if h.live %} <span class="rk-live">진행 중</span>{% endif %}</span>
             </span>
-            <span class="rk-highs-line">{% if role == 'pitcher' %}{{ h.v.w|default:0 }}승 {{ h.v.l|default:0 }}패, {{ h.v.era_text }}, {{ h.v.so|default:0 }}K{% else %}{{ h.v.avg_text }}, {{ h.v.hr|default:0 }}홈런, OPS {{ h.v.ops_text }}{% endif %}</span>
+            <span class="rk-highs-line">{% if role == 'pitcher' %}{{ h.v.w|default:0 }}승 {{ h.v.l|default:0 }}패, {{ h.v.era_text }}, {{ h.v.so|default:0 }}탈삼진{% else %}{{ h.v.avg_text }}, {{ h.v.hr|default:0 }}홈런, OPS {{ h.v.ops_text }}{% endif %}</span>
             <span class="rk-highs-war"><i style="width: {{ h.bar }}%"></i><b>{{ h.s.war }}</b></span>
         </li>
         {% endfor %}
     </ol>
     {% endif %}
     {% else %}
-    <section class="rk-panel"><p class="rk-empty">아직 {{ lg_name }} 시즌 기록이 없어요. 이 리그에서 시즌을 반 넘게 치르면 이곳에 커리어하이가 쌓여요.</p></section>
+    <section class="rk-panel"><p class="rk-empty">아직 {{ lg_name }} 시즌 기록이 없어요. 이 리그에서 시즌을 반 넘게 치르면 이곳에 커리어 하이가 쌓여요.</p></section>
     {% endif %}
 
     <h2 class="rk-h2">단일 시즌 기록 · {{ lg_short }}</h2>
@@ -72,19 +72,19 @@
             <span class="rk-record-name">{{ r.label|baseball_text }}</span>
             {% if r.s %}
             <b>{{ r.value }}</b>
-            <span class="rk-record-who"><i class="rk-dot" aria-hidden="true"></i>{{ r.s.name }}, 시즌 {{ r.s.season.number }}{% if r.live %} <span class="rk-live">진행 중</span>{% endif %}</span>
+            <span class="rk-record-who"><i class="rk-dot" aria-hidden="true"></i>{{ r.s.name }} · 시즌 {{ r.s.season.number }}{% if r.live %} <span class="rk-live">진행 중</span>{% endif %}</span>
             {% else %}
-            <b class="is-none">—</b><span class="rk-record-who">아직 없음</span>
+            <b class="is-none">—</b><span class="rk-record-who">아직 없어요</span>
             {% endif %}
         </li>
         {% endfor %}
     </ul>
 
     {% else %}
-    {% if view == 'hof' %}<p class="rk-note">{{ hall_version }} 버전에서 시작한 커리어의 기록이에요. 1.1 업데이트 전에 시작한 커리어는 끝까지 1.0에 남아요.</p>{% endif %}
+    {% if view == 'hof' %}<p class="rk-note">게임 업데이트 버전(1.0, 1.1)을 기준으로 기록을 나눠요. {{ hall_version }} 버전에서 시작한 선수의 기록이고, 1.1 업데이트 전에 시작한 선수는 끝까지 1.0에 남아요.</p>{% endif %}
     {% if view == 'hof' and lineup and lineup.filled %}{% include 'community/games/_lite_lineup.html' with tab_name=lg_name %}{% endif %}
     <h2 class="rk-h2">{% if view == 'hof' %}명예의 전당 · {{ hall_version }}{% else %}통산 순위{% endif %} · {{ lg_name }}</h2>
-    <p class="rk-note">{% if view == 'hof' %}은퇴한 선수 가운데 {{ lg_name }}에서 반 시즌 이상 뛰었거나 상을 받은 선수예요. {% endif %}순서는 MVP 수 → 이 리그에서의 최고 OVR → 수상 수 → 통산 WAR 순이에요.</p>
+    <p class="rk-note">{% if view == 'hof' %}은퇴한 선수 가운데 {{ lg_name }}에서 반 시즌 이상 뛰었거나 상을 받은 선수예요. {% endif %}MVP 수 → 이 리그에서의 최고 OVR → 수상 수 → 프로 통산 WAR 순서로 정해요.</p>
     {% if rows %}
     <div class="rk-table-wrap">
         <table class="rk-table rk-career-table">

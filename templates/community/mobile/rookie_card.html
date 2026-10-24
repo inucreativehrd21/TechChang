@@ -1,9 +1,9 @@
 {% extends 'base_mobile.html' %}
 {% load static %}
 
-{% block title %}{{ c.name }} 은퇴 카드 - 야구선수 키우기 - 테크창{% endblock %}
+{% block title %}{{ c.name }} 은퇴 카드 - 야구선수 키우기 정식 모드 - 테크창{% endblock %}
 {% block tab_games %}active{% endblock %}
-{% block meta_description %}{{ c.name }}({{ pos_label }}) — {{ card.years }}, {{ card.seasons }}시즌, 최고 무대 {{ card.peak_short }}. 테크창 야구선수 키우기 은퇴 카드.{% endblock %}
+{% block meta_description %}{{ c.name }}({{ pos_label }}) — {{ card.years }}, {{ card.seasons }}시즌, 최고 무대 {{ card.peak_short }}. 테크창 야구선수 키우기 정식 모드 은퇴 카드.{% endblock %}
 {% block og_title %}{{ c.name }} 은퇴 카드 — 테크창 야구선수 키우기{% endblock %}
 {% block og_description %}{{ card.headline.title }}{% endblock %}
 {% block og_image %}https://techchang.com{% url 'community:rookie_card_og' c.pk %}{% endblock %}
