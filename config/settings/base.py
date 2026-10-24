@@ -69,6 +69,7 @@ MIDDLEWARE = [
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'common.game_controls.GameControlMiddleware',
     'allauth.account.middleware.AccountMiddleware',  # django-allauth
     'common.middleware.SecurityMiddleware',  # 보안 미들웨어
     'common.middleware.RequestLoggingMiddleware',  # 요청 로깅 미들웨어

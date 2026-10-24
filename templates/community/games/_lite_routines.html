@@ -1,0 +1,14 @@
+{% load static %}
+<div class="re-preparation" data-rl-forecast>
+    <img src="{% static 'img/rookie/environment/preparation.webp' %}?v={{ STATIC_VERSION }}" width="1536" height="1024" alt="" loading="lazy" decoding="async">
+    <div><p>올 시즌 예보</p><b>{{ forecast.park }}</b><span>예상 환경을 보고 내 루틴을 정해요.</span></div>
+</div>
+<dl class="re-forecast">
+    <div><dt><i class="re-icon">{% include 'community/games/_env_icon.html' with name='road' %}</i>원정</dt><dd>{{ forecast.away }}<small>경기</small></dd></div>
+    <div><dt><i class="re-icon">{% include 'community/games/_env_icon.html' with name='moon' %}</i>야간</dt><dd>{{ forecast.night }}<small>경기 예상</small></dd></div>
+    <div><dt><i class="re-icon">{% include 'community/games/_env_icon.html' with name='rain' %}</i>비</dt><dd>{{ forecast.rain }}<small>경기 예상</small></dd></div>
+    <div><dt><i class="re-icon">{% include 'community/games/_env_icon.html' with name='heat' %}</i>폭염</dt><dd>{{ forecast.heat }}<small>경기 예상</small></dd></div>
+</dl>
+<div class="re-routines" role="radiogroup" aria-label="경기 전 루틴">
+{% for r in routines %}<label class="re-routine"><input type="radio" name="routine" value="{{ r.key }}"{% if r.checked %} checked{% endif %}><span><i class="re-icon">{% include 'community/games/_env_icon.html' with name=r.icon %}</i><b>{{ r.label }}</b><small>{{ r.hint }}</small><em class="re-picked" aria-hidden="true">선택됨</em></span></label>{% endfor %}
+</div>

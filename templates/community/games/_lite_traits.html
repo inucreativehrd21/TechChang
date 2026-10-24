@@ -1,0 +1,3 @@
+{% if traits %}<ul class="rk-traits" aria-label="드러난 특성">
+{% for t in traits %}<li{% if t.condition %} class="re-trait{% if t.weak %} is-weak{% endif %}"{% endif %}>{% if t.icon %}<i class="re-icon" aria-hidden="true">{% include 'community/games/_env_icon.html' with name=t.icon %}</i>{% endif %}<b>{{ t.name }}{% if t.weak %}<small class="re-weak-label">약점</small>{% endif %}</b><span>{{ t.desc }}</span></li>{% endfor %}
+</ul>{% endif %}

@@ -152,6 +152,19 @@ class SeriesRulesTests(SimpleTestCase):
                 self.assertIn('data-sb', html)
                 self.assertNotIn('None', html)
 
+    def test_runner_up_has_no_championship_effect_and_pitcher_scene_is_pitching(self):
+        for role in ('batter', 'pitcher'):
+            for outcome in ('win', 'loss'):
+                for doc in S.demo(role, outcome):
+                    check(self, doc)
+                    html = render_to_string('community/games/_series_board.html', {'doc': doc})
+                    self.assertEqual('data-sb-champion' in html, outcome == 'win')
+                    self.assertEqual('series/reflection.webp' in html, outcome == 'loss')
+                    if role == 'pitcher' and doc['kind'] != 'amateur':
+                        game = doc['rounds'][-1]['games'][-1]
+                        self.assertEqual(game['home'], 'them')
+                        self.assertIn('삼진' if outcome == 'win' else '안타를 허용', game['me']['text'])
+
 
 @override_settings(ROOKIE_EXTREME_PREVIEW=True)
 class SeriesSwitchTests(TestCase):

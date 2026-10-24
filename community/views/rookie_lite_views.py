@@ -34,6 +34,7 @@ from .. import rookie_league as L
 from .. import rookie_lite as X
 from .. import rookie_series as Series
 from .. import rookie_env as Env
+from .. import rookie_env_presentation as EnvUI
 from .. import rookie_universe as Universe
 from .. import rookie_card as K
 from .. import rookie_staff as S
@@ -146,7 +147,7 @@ def _identity(c) -> dict:
         'top_war': X.Balance.totals(c)['war'],
             'grade_label': _grade(c),
             'stars': stars, 'star_note': X.STAR_NOTE[stars], 'star_range': range(5), 'stars_total': min(5, stars + X.awakened(c)), 'awakened': X.awakened(c),
-            'traits': [{'name': X.TRAITS[t][0], 'desc': X.TRAITS[t][1]} for t in (c.traits_seen or []) if t in X.TRAITS],
+            'traits': EnvUI.visible_traits(c),
             'stat_rows': [{'key': k, 'label': lab, 'value': float(c.stats.get(k, 25)), 'shown': int(float(c.stats.get(k, 25))),
                            'bar': round(float(c.stats.get(k, 25)) / 99 * 100, 1)} for k, lab, _w in R.ROLES[c.role]['stats']],
             'salary': X.man(c.salary), 'earnings': X.man(c.earnings), 'want': R.TEAM.get(c.team, {}),
@@ -185,7 +186,7 @@ def _school_groups() -> list:
 
 def _base(request, section: str) -> dict:
     label = '익스트림 모드' if _mode(request) == Modes.EXTREME else '라이트 모드'
-    return {'section': section, 'current_game_version': Versions.CURRENT,
+    return {'section': section, 'current_game_version': Versions.CURRENT, 'env_enabled': Env.enabled(),
             'game_mode': _mode(request), 'game_label': label, 'game_title': '야구선수 키우기 ' + label,
             'extreme_public': Modes.public_enabled(),
             'regions': W.REGIONS, 'teams': [R.TEAM[c] for c, _n, _c in R.TEAMS],
@@ -217,6 +218,8 @@ def _save_plan_draft(c, data):
     if draft['event_choice'] not in event_choices:
         draft['event_choice'] = ''
     draft['intl'] = {k: v for k, v in draft['intl'].items() if v in ('go', 'skip')}
+    if Env.enabled() and data.get('_draft_routine') in Env.ROUTINES:
+        draft['routine'] = data['_draft_routine']
     c.pending = dict(c.pending, draft=draft)
 
 
@@ -283,8 +286,10 @@ def lite_home(request):
         if Env.enabled():                                                   # 경기 전 대비 — 시즌 루틴과 올 시즌 예보
             games = X.GAMES.get(c.league, 120)
             fixtures = Universe.club_fixtures(c.league, games, c.club) if W.is_pro(c.league) else ()
-            last = ((c.flags or {}).get('routine') or {}).get('key', '')
+            last = draft.get('routine') or ((c.flags or {}).get('routine') or {}).get('key', '')
             ctx.update(routines=Env.routine_choices(last, c.role), forecast=Env.forecast(c, c.league, games, fixtures))
+            for routine in ctx['routines']:
+                routine['icon'] = EnvUI.ROUTINE_ICONS[routine['key']]
     elif pend.get('kind') == 'review':
         s = c.seasons.filter(year=pend.get('year')).first()
         ctx.update(_board_ctx(c, s))
@@ -301,6 +306,8 @@ def lite_home(request):
         if s is not None and Env.enabled() and s.env:
             ctx['env_rows'] = Env.split_rows(c.role, s.env.get('splits'))
             ctx['env_routine'] = Env.ROUTINES.get(s.env.get('routine'), ('', ''))[0]
+            ctx['env_groups'] = EnvUI.split_groups(c.role, ctx['env_rows'])
+        ctx['trait_discoveries'] = EnvUI.discoveries(c, s)
     elif pend.get('kind') == 'decision':
         ctx['decision'] = X.decision_view(c)
         if pend.get('what') == 'meeting' and pend.get('phase') == 'mid' and pend.get('half'):

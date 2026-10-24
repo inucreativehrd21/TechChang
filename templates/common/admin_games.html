@@ -1,0 +1,25 @@
+{% extends 'common/admin_base.html' %}
+{% block title %}게임 관리 - 테크창{% endblock %}
+{% block admin_heading %}게임 관리{% endblock %}
+{% block admin_description %}야구게임의 공개 범위와 새 기능을 한곳에서 관리해요.{% endblock %}
+{% block admin_content %}
+<div class="ad-toolbar"><p>기능 설정은 저장한 뒤 다음 요청부터 적용돼요.</p><div class="ad-actions"><a class="btn" href="{% url 'community:games_index' %}">게임 센터</a><a class="btn btn-primary" href="{% url 'common:admin_game_preview' %}?scene=environment">기능 미리보기</a></div></div>
+<div class="ad-stat-strip">
+    <div><span>정식 모드 선수</span><strong>{{ regular_count|default_if_none:'—' }}</strong><small>누적 등록</small></div>
+    {% for stat in career_stats %}<div><span>{{ stat.label }} 진행 중</span><strong>{{ stat.active }}</strong><small>완료 {{ stat.finished }}판 · 오늘 새 커리어 {{ stat.today }}판</small></div>{% endfor %}
+</div>
+<section class="ad-panel"><header class="ad-panel-head"><div><h2>기능 스위치</h2><p>‘환경 설정 사용’은 배포 시 지정한 기본값을 따라요. 저장된 선수 기록은 지우지 않아요.</p></div>{% if state %}<span class="ad-muted">{{ state.updated_at|date:'Y.m.d H:i' }} · {{ state.updated_by.username|default:'관리자' }}</span>{% endif %}</header>
+{% if not storage_ready %}<p class="ad-notice">설정 저장소가 아직 준비되지 않았어요. 현재 환경 설정을 표시하고 있어요.</p>{% endif %}
+<form method="post" class="ad-feature-form" data-ad-feature-form>{% csrf_token %}{{ form.revision }}
+    {% if form.non_field_errors %}<div class="ad-form-errors" role="alert">{{ form.non_field_errors }}</div>{% endif %}
+    {% for feature in features %}<fieldset class="ad-feature"><legend>{{ feature.label }}</legend><div class="ad-feature-summary"><p>{{ feature.description }}</p><span class="ad-status{% if feature.effective %} is-on{% endif %}">{% if feature.effective %}사용 중{% else %}꺼짐{% endif %}</span></div>
+        <div class="ad-feature-options">{{ feature.field }}</div>{{ feature.field.errors }}
+        <p class="ad-feature-meta">{% if feature.ready %}DB 준비됨{% else %}<span class="ad-danger">DB 준비 필요</span>{% endif %} · 기본값 {% if feature.environment %}켜짐{% else %}꺼짐{% endif %} · {% if feature.inherited %}환경 설정 사용 중{% else %}관리자 설정 사용 중{% endif %}</p>
+    </fieldset>{% endfor %}
+    <div class="ad-save-bar"><p data-ad-dirty aria-live="polite">현재 설정을 확인하고 저장해 주세요.</p><button class="btn btn-primary" type="submit"{% if not storage_ready %} disabled{% endif %}>변경 내용 저장</button></div>
+</form></section>
+<section class="ad-panel"><header class="ad-panel-head"><div><h2>장면 확인과 게임 바로가기</h2><p>기능 미리보기는 실제 선수나 경기 결과를 바꾸지 않아요.</p></div></header><div class="ad-shortcuts">
+<a href="{% url 'common:admin_game_preview' %}?scene=series&amp;env=1"><b>시리즈 전광판</b><span>경기별 기록과 환경</span></a><a href="{% url 'common:admin_game_preview' %}?scene=traits"><b>특성 발견</b><span>조건부 특성과 약점 연출</span></a><a href="{% url 'common:admin_game_preview' %}?scene=mediaday&amp;scope=intl"><b>대표팀 기자회견</b><span>경기 전 각오와 선택</span></a><a href="{% url 'community:lite_home' %}"><b>라이트 모드</b><span>실제 게임 화면</span></a><a href="{% url 'community:extreme_home' %}"><b>익스트림 모드</b><span>공개 설정에 따라 접근해요</span></a><a href="{% url 'community:rookie_home' %}"><b>정식 모드</b><span>선수·리그 운영 상태</span></a>
+</div></section>
+<section class="ad-panel"><header class="ad-panel-head"><h2>최근 변경 이력</h2><span class="ad-muted">최근 20건</span></header><div class="ad-table-wrap" tabindex="0" role="region" aria-label="게임 설정 변경 이력"><table class="table"><thead><tr><th scope="col">변경일</th><th scope="col">관리자</th><th scope="col">변경 내용</th></tr></thead><tbody>{% for change in history %}<tr><td>{{ change.at|date:'Y.m.d H:i' }}</td><td>{{ change.actor.username|default:'삭제된 계정' }}</td><td>{% for item in change.items %}<div>{{ item.label }} <span class="ad-muted">{{ item.before }} →</span> <b>{{ item.after }}</b></div>{% endfor %}</td></tr>{% empty %}<tr><td colspan="3" class="ad-empty">아직 변경한 설정이 없어요.</td></tr>{% endfor %}</tbody></table></div></section>
+{% endblock %}

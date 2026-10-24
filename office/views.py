@@ -198,7 +198,9 @@ def office_admin(request):
         'tasks': tasks, 'done_tasks': done_tasks, 'github_ok': github.available(),
         'crew_pending': sum(1 for t in tasks if t.status == Task.ST_BACKLOG),
         'agents': AGENTS, 'topic_label': TOPIC_LABEL, 'job_log': job_log,
-        'has_api_key': bool(getattr(settings, 'ANTHROPIC_API_KEY', '')),
+        'manual_jobs_available': (os.environ.get('CLAUDE_BACKEND', 'api').lower() == 'cli'
+                                  or (bool(getattr(settings, 'ANTHROPIC_API_KEY', ''))
+                                      and os.environ.get('AI_ALLOW_PAID_API', 'false').lower() == 'true')),
     })
 
 

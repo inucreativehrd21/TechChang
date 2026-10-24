@@ -1,0 +1,19 @@
+{% load static %}
+{% if trait_discoveries %}
+{% if inline %}
+<section class="rk-panel re-discoveries" aria-label="이번 시즌 발견한 특성" data-rl-scene data-rl-title="발견한 특성">
+    <h2>내 성향을 발견했어요</h2><p class="re-note">좋은 조건과 조심할 조건을 알게 됐어요.</p>
+    {% for t in trait_discoveries %}<article class="re-trait-record{% if t.weak %} is-weak{% endif %}"><i class="re-icon">{% include 'community/games/_env_icon.html' with name=t.icon %}</i><div><h3>{{ t.name }}{% if t.weak %}<small class="re-weak-label">약점</small>{% endif %}</h3><p>{{ t.desc }}</p><small>{{ t.evidence }}</small></div></article>{% endfor %}
+</section>
+{% else %}
+<div class="rl-mfx re-discovery" role="dialog" aria-modal="true" aria-labelledby="re-discovery-title" aria-describedby="re-discovery-description" data-rl-mfx{% if not trait_preview %} data-rl-fx-key="rl-traits-v1:{{ c.pk }}:{{ season_year }}:{% for t in trait_discoveries %}{{ t.key }},{% endfor %}"{% endif %} hidden>
+    <div class="re-discovery-card">
+        <button type="button" class="re-skip" data-rl-mfx-skip>연출 건너뛰기</button>
+        <div class="re-discovery-object" aria-hidden="true"><span></span><img src="{% static 'img/rookie/environment/discovery.webp' %}?v={{ STATIC_VERSION }}" width="512" height="512" alt="" decoding="async"></div>
+        <h2 id="re-discovery-title">숨은 특성 발견</h2><p id="re-discovery-description" class="re-note">기록 속에서 내 성향이 드러났어요.</p>
+        {% for t in trait_discoveries %}<article class="re-trait-record{% if t.weak %} is-weak{% endif %}"><i class="re-icon">{% include 'community/games/_env_icon.html' with name=t.icon %}</i><div><h3>{{ t.name }}{% if t.weak %}<small class="re-weak-label">약점</small>{% endif %}</h3><p>{{ t.desc }}</p><small>{{ t.evidence }}</small></div></article>{% endfor %}
+        <button type="button" class="gm-btn is-primary is-block re-discovery-go" data-rl-mfx-close>시즌 결산 보기</button>
+    </div>
+</div>
+{% endif %}
+{% endif %}

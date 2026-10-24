@@ -12,13 +12,13 @@ def is_extreme(c):
 
 
 def preview_enabled():
-    configured = getattr(settings, 'ROOKIE_EXTREME_PREVIEW', os.environ.get('ROOKIE_EXTREME_PREVIEW', 'false'))
-    return configured is True or str(configured).lower() in ('true', '1')
+    from common.game_controls import enabled
+    return enabled('ROOKIE_EXTREME_PREVIEW')
 
 
 def public_enabled():
-    configured = getattr(settings, 'ROOKIE_EXTREME_ENABLED', os.environ.get('ROOKIE_EXTREME_ENABLED', 'false'))
-    return configured is True or str(configured).lower() in ('true', '1')
+    from common.game_controls import enabled
+    return enabled('ROOKIE_EXTREME_ENABLED')
 
 
 def allowed(user):

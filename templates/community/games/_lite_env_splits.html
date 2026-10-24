@@ -1,10 +1,7 @@
-{% comment %}조건별 성적(경기 환경) — 틀. 시각 디자인은 Codex. 맥락: env_rows([{key, games, line, rate, rate_label}]), env_routine{% endcomment %}
-<section class="rk-panel rl-env" aria-label="조건별 성적" data-rl-env>
+{% load rookie_env_tags %}{% env_split_groups env_rows c.role as display_env_groups %}
+<section class="rk-panel rl-env re-splits" aria-label="조건별 성적" data-rl-env>
     <div class="rk-head"><h2>조건별 성적</h2>{% if env_routine %}<span class="rk-fine">시즌 루틴 · {{ env_routine }}</span>{% endif %}</div>
-    <div class="sb-line-wrap">
-        <table class="rl-env-table">
-            <thead><tr><th scope="col">조건</th><th scope="col">경기</th><th scope="col">{{ env_rows.0.rate_label }}</th><th scope="col">기록</th></tr></thead>
-            <tbody>{% for r in env_rows %}<tr><th scope="row">{{ r.key }}</th><td>{{ r.games }}</td><td>{{ r.rate|default:'-' }}</td><td>{{ r.line }}</td></tr>{% endfor %}</tbody>
-        </table>
-    </div>
+    <p class="re-note">{% if c.role == 'pitcher' or env_rows.0.rate_label == '평균자책점' %}평균자책점은 낮을수록 좋아요.{% else %}타율은 높을수록 좋아요.{% endif %} 8경기 미만은 아직 표본이 적어요.</p>
+    <div class="re-split-groups">{% for group in display_env_groups %}<section class="re-split-group"><h3>{{ group.label }}</h3><dl>{% for r in group.rows %}<div class="re-split-row{% if r.small %} is-small{% endif %}"><dt><i class="re-icon">{% include 'community/games/_env_icon.html' with name=r.icon %}</i>{{ r.key }}<small>{{ r.games }}경기{% if r.small %} · 표본 적음{% endif %}</small></dt><dd><div class="re-rate"><span>{{ r.rate_label }}</span><b>{{ r.rate|default:'—' }}</b></div><span class="re-bar" aria-hidden="true"><i style="--re-width: {{ r.width }}%"></i></span><p>{{ r.line }}</p></dd></div>{% endfor %}</dl></section>{% endfor %}</div>
+    <p class="re-note">조건마다 상대와 경기 수가 달라서, 특성의 효과만을 나타내는 수치는 아니에요.</p>
 </section>

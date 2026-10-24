@@ -45,9 +45,8 @@ DEFAULT_ROUTINE = 'balance'
 
 
 def enabled() -> bool:
-    from django.conf import settings
-    v = getattr(settings, 'ROOKIE_ENV_ENABLED', os.environ.get('ROOKIE_ENV_ENABLED', 'false'))
-    return v is True or str(v).lower() == 'true'
+    from common.game_controls import enabled as control_enabled
+    return control_enabled('ROOKIE_ENV_ENABLED')
 
 
 def _rng(c, tag: str) -> random.Random:

@@ -1,0 +1,15 @@
+{% extends request.is_mobile|yesno:'base_mobile.html,base.html' %}
+{% load static %}
+{% block title %}관리자 대시보드 - 테크창{% endblock %}
+{% block tab_games %}{% endblock %}
+{% block extra_css %}<link href="{% static 'css/admin-dashboard.css' %}?v={{ STATIC_VERSION }}" rel="stylesheet">{% block admin_css %}{% endblock %}{% endblock %}
+{% block content %}
+<div class="ad-console">
+    <header class="ad-head"><div><a class="ad-home" href="{% url 'community:index' %}">테크창 운영</a><h1>{% block admin_heading %}관리자 대시보드{% endblock %}</h1><p>{% block admin_description %}사이트의 상태를 살펴보고 필요한 작업을 처리해요.{% endblock %}</p></div><a class="ad-site-link" href="{% url 'community:index' %}">사이트 보기 <span aria-hidden="true">↗</span></a></header>
+    {% block admin_navigation %}{% include 'common/_admin_nav.html' %}{% endblock %}
+    <div class="ad-feedback" role="status" aria-live="polite" data-ad-feedback hidden></div>
+    <form class="ad-csrf" hidden>{% csrf_token %}</form>
+    <div class="ad-body">{% block admin_content %}{% endblock %}</div>
+</div>
+{% endblock %}
+{% block script %}{{ block.super }}<script src="{% static 'js/admin-dashboard.js' %}?v={{ STATIC_VERSION }}" defer></script>{% block admin_script %}{% endblock %}{% endblock %}

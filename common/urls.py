@@ -3,6 +3,7 @@ from django.urls import path
 from django.contrib.auth import views as auth_views
 from . import legal_views, social_views, views
 from .login_views import AccountLoginView
+from . import game_admin_views
 
 app_name = 'common'
 
@@ -36,6 +37,8 @@ urlpatterns = [
     # 관리자 기능
     path('admin/otp/', views.admin_otp, name='admin_otp'),
     path('admin/dashboard/', views.admin_dashboard, name='admin_dashboard'),
+    path('admin/games/', game_admin_views.game_admin, name='admin_games'),
+    path('admin/games/preview/', game_admin_views.game_preview, name='admin_game_preview'),
     path('admin/monitor/', views.server_monitor, name='server_monitor'),
     path('admin/monitor/send-email/', views.send_monitor_email, name='send_monitor_email'),
     path('admin/monitor/finding/<int:finding_id>/approve/', views.finding_approve, name='finding_approve'),

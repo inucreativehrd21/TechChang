@@ -28,6 +28,7 @@
 from __future__ import annotations
 
 import hashlib
+from common.game_controls import feature_snapshot
 import json
 import math
 import re
@@ -2284,6 +2285,7 @@ def end_meeting(c, rng) -> dict | None:
 
 
 # ───────────────────────────── 시즌을 넘기며(나이·학년·결정)
+@feature_snapshot
 def run_season(c, programs, intensity, choice, rng, intl=None, routine=None):
     """비시즌 고른 것 → 전반기 → (휴식기 면담이 있으면 멈춤) → 후반기 → 결산 화면(review). 잠근 행에서 부른다.
     시즌 기록을 돌려준다(면담에서 멈췄으면 None — 면담 답(decide 'meeting') 뒤에 이어 친다).
@@ -2674,6 +2676,7 @@ def fa_offers(c, rng) -> list:
     return out
 
 
+@feature_snapshot
 def decide(c, what: str, choice: str, rng, school: str = '') -> str:
     """갈림길 선택 — 고친 c 와 소식 문장. 저장은 부른 쪽."""
     pend = c.pending or {}

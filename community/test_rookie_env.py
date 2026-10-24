@@ -175,6 +175,7 @@ class EnvFlowTests(TestCase):
         self.assertIn('평균자책점', html)
 
 
+@override_settings(GAME_CONTROLS_USE_DB=False)
 class ConditionalTraitTests(SimpleTestCase):
     def test_roll_is_deterministic_rare_and_never_contradictory(self):
         counts = {0: 0, 1: 0, 2: 0}

@@ -5,7 +5,7 @@
         <div class="gm-head-text">
             <span class="gm-eyebrow">Game Center</span>
             <h1 class="gm-title">게임</h1>
-            <p class="gm-sub">야구선수 키우기와 퍼즐 게임 {{ games_info|length }}종이 있어요. 퍼즐 게임은 지금까지 {{ recent_stats.total_games_played }}판 플레이됐어요.</p>
+            <p class="gm-sub">야구선수 키우기 {% if extreme_public %}세 모드{% else %}두 모드{% endif %}와 퍼즐 게임 {{ games_info|length }}종이 있어요. 퍼즐 게임은 지금까지 {{ recent_stats.total_games_played }}판 플레이됐어요.</p>
         </div>
     </div>
 

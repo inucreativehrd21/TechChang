@@ -1,0 +1,7 @@
+{% load static rookie_tags %}
+<div class="re-media{% if d.scope == 'intl' %} is-international{% endif %}">
+    <header class="re-media-scene"><img src="{% static 'img/rookie/press-room.webp' %}?v={{ STATIC_VERSION }}" width="1536" height="1024" alt="" loading="lazy" decoding="async"><div><p>{{ d.stage|baseball_text }}</p><h2>{{ d.title }}</h2></div><span class="re-mic" aria-hidden="true">{% include 'community/games/_env_icon.html' with name='mic' %}</span></header>
+    <p class="re-media-question">{{ d.text|baseball_text }}</p>
+    <div class="rl-programs is-two re-media-choices">{% for ch in d.choices %}{% if media_preview %}<div class="rl-pathcard"><b>{{ ch.label }}</b><span>{{ ch.hint }}</span><button type="button" class="gm-btn is-block" data-re-media-choice="{{ ch.label }}">말하기</button></div>{% else %}{% include 'community/games/_lite_choice.html' with what='mediaday' choice=ch.key label=ch.label hint=ch.hint main=forloop.first button='말하기' %}{% endif %}{% endfor %}</div>
+    {% if media_preview %}<p class="re-media-preview-note" role="status" data-re-media-status>미리보기예요. 선수 기록은 바뀌지 않아요.</p>{% endif %}
+</div>

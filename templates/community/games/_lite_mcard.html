@@ -14,9 +14,7 @@
     </summary>
     <div class="rl-mcard-body">
         <p class="rl-mcard-note">스카우트 평가 {{ star_note }}</p>
-        {% if traits %}
-        <ul class="rk-traits" aria-label="숨은 특성">{% for t in traits %}<li><b>{{ t.name }}</b><span>{{ t.desc }}</span></li>{% endfor %}</ul>
-        {% endif %}
+        {% include 'community/games/_lite_traits.html' %}
         <dl class="rk-facts">
             <div><dt>연봉</dt><dd>{{ salary }}</dd></div>
             <div><dt>통산 수입</dt><dd>{{ earnings }}</dd></div>

@@ -3,7 +3,11 @@
 (function () {
     if (window.rlFxChain) return;
     window.rlFxChain = true;
-    var all = Array.from(document.querySelectorAll('[data-rl-mfx]'));
+    var all = Array.from(document.querySelectorAll('[data-rl-mfx]')).filter(function (fx) {
+        var key = fx.dataset.rlFxKey;
+        try { if (key && sessionStorage.getItem(key) === 'seen') { fx.remove(); return false; } } catch (_) {}
+        return true;
+    });
     if (!all.length) return;
     var previous = document.activeElement;
     var calm = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -65,6 +69,7 @@
         st.close = function () {
             if (st.closing) return;
             st.closing = true;
+            try { if (fx.dataset.rlFxKey) sessionStorage.setItem(fx.dataset.rlFxKey, 'seen'); } catch (_) {}
             clearTimeout(st.timer);
             fx.classList.add('is-leaving');
             setTimeout(function () { fx.remove(); play(i + 1); }, calm ? 0 : 300);
@@ -86,5 +91,13 @@
     var ticker = document.querySelector('[data-rl-ticker]:not([data-rl-seen])');
     if (ticker && !calm) ticker.addEventListener('rl:complete', function () { play(0); }, { once: true });
     else play(0);
+    // 해시 이동이 초기 포커스를 덮어쓰는 모바일·동작 줄이기 환경도 지켜요.
+    window.addEventListener('load', function () {
+        requestAnimationFrame(function () {
+            if (!cur) return;
+            var button = cur.fx.querySelector(cur.ended ? '[data-rl-mfx-close]' : '[data-rl-mfx-skip]');
+            if (button) button.focus({ preventScroll: true });
+        });
+    }, { once: true });
 })();
 </script>

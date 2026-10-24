@@ -12,7 +12,25 @@
         {% for s in scenes %}<a class="rs-scene" href="?edition={{ edition }}&amp;scene={{ s.key }}{% if s.key == 'season' %}#rs-season{% elif s.key == 'cards' %}#rs-uniforms{% elif s.key == 'manager' or s.key == 'interview' or s.key == 'conduct' or s.key == 'highlight' or s.key == 'posting' or s.key == 'negotiation' or s.key == 'assignment' or s.key == 'optout' or s.key == 'rival' or s.key == 'world' %}#rs-story{% endif %}"{% if scene == s.key %} aria-current="page" data-rs-replay{% endif %}><span class="rs-scene-icon" aria-hidden="true">{{ s.icon }}</span><span><b>{{ s.label|baseball_text }}</b><small>{{ s.hint|baseball_text }}</small></span></a>{% endfor %}
     </nav>
     {% if uniform_preview %}{% include 'community/games/_rookie_uniform_preview.html' %}{% endif %}
-    {% if series_boards %}<div id="rs-series">{% for doc in series_boards %}{% include 'community/games/_series_board.html' with doc=doc %}{% endfor %}</div>{% endif %}
+    {% if series_boards %}<div id="rs-series">
+        <nav class="sb-preview-options" aria-label="전광판 상황 미리보기">
+            <a class="gm-btn" href="?scene=series#rs-series">타자 · 우승</a>
+            <a class="gm-btn" href="?scene=series&amp;role=pitcher#rs-series">투수 · 우승</a>
+            <a class="gm-btn" href="?scene=series&amp;outcome=loss#rs-series">준우승</a>
+            <a class="gm-btn" href="?scene=series&amp;role=pitcher&amp;outcome=loss#rs-series">투수 · 패배</a>
+            <a class="gm-btn" href="?scene=series&amp;bench=1#rs-series">결장 기록</a>
+            <a class="gm-btn" href="?scene=series&amp;env=1#rs-series">경기 환경</a>
+        </nav>
+        {% for doc in series_boards %}{% include 'community/games/_series_board.html' with doc=doc %}{% endfor %}
+    </div>{% endif %}
+    {% if environment_preview %}<div id="rs-environment">
+        <nav class="sb-preview-options" aria-label="경기 환경 상황 선택"><a class="gm-btn" href="?scene=environment#rs-environment">시즌 준비</a><a class="gm-btn" href="?scene=environment&amp;role=pitcher#rs-environment">투수 성적</a><a class="gm-btn" href="?scene=traits#rs-environment">특성 발견</a><a class="gm-btn" href="?scene=traits&amp;weak=1#rs-environment">약점 발견</a><a class="gm-btn" href="?scene=mediaday#rs-environment">미디어데이</a><a class="gm-btn" href="?scene=mediaday&amp;scope=intl#rs-environment">대표팀 기자회견</a></nav>
+        {% if scene == 'mediaday' %}<section class="rk-panel">{% include 'community/games/_lite_mediaday.html' with d=decision %}</section>{% else %}
+        {% if trait_discoveries %}{% include 'community/games/_lite_trait_discovery.html' with inline=True %}{% endif %}
+        <section class="rk-panel"><h2>경기 전 루틴</h2>{% include 'community/games/_lite_routines.html' %}</section>
+        {% include 'community/games/_lite_env_splits.html' %}<section class="rk-panel"><h2>조건부 특성</h2>{% include 'community/games/_lite_traits.html' %}</section>
+        {% endif %}
+    </div>{% endif %}
     {% if story_scene or scene == 'world' %}
     <div id="rs-story">
     {% include 'community/games/_rookie_mind.html' %}
@@ -32,8 +50,9 @@
     </div>
     {% if awaken_fx %}{% include 'community/games/_lite_awaken_fx.html' with fx=awaken_fx %}{% endif %}
     {% if moment_fx %}{% include 'community/games/_lite_moment_fx.html' with fx=moment_fx %}{% endif %}
+    {% if trait_discoveries %}{% include 'community/games/_lite_trait_discovery.html' %}{% endif %}
     {% if award_fx %}{% include 'community/games/_lite_award_fx.html' with fx=award_fx %}{% endif %}
-    {% if awaken_fx or moment_fx or award_fx %}{% include 'community/games/_lite_fx_script.html' %}{% endif %}
+    {% if awaken_fx or moment_fx or award_fx or trait_discoveries %}{% include 'community/games/_lite_fx_script.html' %}{% endif %}
 </div></div>
 <script nonce="{{ csp_nonce }}">
 (function () {
@@ -42,12 +61,15 @@
     var rows = Array.from(board.querySelectorAll('.rl-month'));
     var final = board.querySelector('.rl-final');
     var skip = board.querySelector('[data-rl-skip]');
-    var timer;
+    var timer, finished = false;
     function finish() {
+        if (finished) return;
+        finished = true;
         clearInterval(timer);
         rows.concat([final]).forEach(function (row) { row.classList.remove('rl-wait'); });
         board.classList.remove('is-playing');
         skip.hidden = true;
+        board.dispatchEvent(new Event('rl:complete'));
     }
     if (!calm) {
         var i = 0;

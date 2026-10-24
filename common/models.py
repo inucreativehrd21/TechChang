@@ -8,6 +8,28 @@ import string
 User = get_user_model()
 
 
+class GameControlState(models.Model):
+    id = models.PositiveSmallIntegerField(primary_key=True, default=1, editable=False)
+    overrides = models.JSONField(default=dict, blank=True)
+    revision = models.PositiveIntegerField(default=0)
+    updated_at = models.DateTimeField(auto_now=True)
+    updated_by = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL, related_name='+')
+
+    class Meta:
+        verbose_name = '게임 기능 설정'
+
+
+class GameControlChange(models.Model):
+    changes = models.JSONField(default=dict)
+    revision = models.PositiveIntegerField()
+    actor = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL, related_name='+')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at', '-pk']
+        verbose_name = '게임 설정 변경 이력'
+
+
 class KakaoUser(models.Model):
 	"""예전 카카오 정보의 호환용 보관함. 신규 인증·프로필은 User/Profile/SocialIdentity만 사용해요."""
 	kakao_id = models.BigIntegerField(unique=True, verbose_name="카카오 ID")

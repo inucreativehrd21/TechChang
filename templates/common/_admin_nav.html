@@ -1,0 +1,11 @@
+{% with route=request.resolver_match.url_name namespace=request.resolver_match.namespace %}
+<nav class="ad-nav" aria-label="관리자 메뉴">
+    <a href="{% url 'common:admin_dashboard' %}"{% if route == 'admin_dashboard' %} aria-current="page"{% endif %}><i class="fas fa-chart-simple" aria-hidden="true"></i>개요</a>
+    <a href="{% url 'common:admin_games' %}"{% if route == 'admin_games' or route == 'admin_game_preview' %} aria-current="page"{% endif %}><i class="fas fa-gamepad" aria-hidden="true"></i>게임 관리</a>
+    <a href="{% url 'common:admin_user_list' %}"{% if route == 'admin_user_list' or route == 'admin_user_detail' %} aria-current="page"{% endif %}><i class="fas fa-users" aria-hidden="true"></i>사용자</a>
+    <a href="{% url 'common:admin_portfolio_approval' %}"{% if route == 'admin_portfolio_approval' %} aria-current="page"{% endif %}><i class="fas fa-id-card" aria-hidden="true"></i>포트폴리오{% if portfolio_pending_count %}<span>{{ portfolio_pending_count }}</span>{% endif %}</a>
+    <a href="{% url 'common:server_monitor' %}"{% if route == 'server_monitor' or route == 'server_logs' %} aria-current="page"{% endif %}><i class="fas fa-server" aria-hidden="true"></i>서버</a>
+    <a href="{% url 'common:admin_blocked_ip_list' %}"{% if route == 'admin_blocked_ip_list' %} aria-current="page"{% endif %}><i class="fas fa-shield-halved" aria-hidden="true"></i>IP 차단</a>
+    <a href="{% url 'office:admin' %}"{% if namespace == 'office' %} aria-current="page"{% endif %}><i class="fas fa-flask" aria-hidden="true"></i>연구실{% if office_pending_count %}<span>{{ office_pending_count }}</span>{% endif %}</a>
+</nav>
+{% endwith %}

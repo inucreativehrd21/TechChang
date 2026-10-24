@@ -6,7 +6,7 @@ from unittest import mock
 
 from django.template import Context, Template
 from django.template.loader import render_to_string
-from django.test import SimpleTestCase
+from django.test import SimpleTestCase, override_settings
 
 from . import rookie_lite as X
 from . import rookie_sim as M
@@ -22,6 +22,7 @@ def player(role='batter'):
                            stats={k: 64 for k in (M.BAT if role == 'batter' else M.PIT)})
 
 
+@override_settings(GAME_CONTROLS_USE_DB=False)
 class BaseballTextTests(SimpleTestCase):
     def test_league_names_distinguish_majors_from_minors_without_changing_codes(self):
         self.assertEqual(W.short('kbo1'), 'KBO')

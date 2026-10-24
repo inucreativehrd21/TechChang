@@ -24,9 +24,8 @@ from . import rookie_world as W
 
 
 def enabled() -> bool:
-    from django.conf import settings
-    v = getattr(settings, 'ROOKIE_SERIES_ENABLED', os.environ.get('ROOKIE_SERIES_ENABLED', 'false'))
-    return v is True or str(v).lower() == 'true'
+    from common.game_controls import enabled as control_enabled
+    return control_enabled('ROOKIE_SERIES_ENABLED')
 
 
 def rng_for(c, tag: str) -> random.Random:
@@ -537,10 +536,11 @@ LiteSeason.series = [
 ]"""
 
 
-def demo(role: str = 'batter') -> list:
-    """디자인 작업용 견본(미리보기 장면) — DB 없이 실제 시뮬레이터로 만든다: KBO 가을야구(한국시리즈 우승), WBC 결승, 고교 대회."""
+def demo(role: str = 'batter', outcome: str = 'win') -> list:
+    """DB 없는 디자인 견본. 우승·준우승과 타자·투수 장면을 실제 생성기로 만든다."""
     from types import SimpleNamespace
     role = role if role in ('batter', 'pitcher') else 'batter'
+    won = outcome != 'loss'
     c = SimpleNamespace(pk=7, year=5, club='lg', league='kbo1')
     keys = M.BAT if role == 'batter' else M.PIT
     stats = {k: 74.0 for k in keys}
@@ -548,14 +548,19 @@ def demo(role: str = 'batter') -> list:
             W.level('kbo1') + POST_LEVEL)
     post = postseason(c, 'kbo1', 3, True, me)
     opened = final_open(c, 'kbo1', team_of('kbo1', 'kia'), False, me)
-    final = final_close(c, opened, True, {'before': [3, 4], 'after': [5, 4], 'side': 'bat', 'game_won': True, 'line': '9회말 2사 2·3루 · 끝내기 2타점 적시타',
-                                          'stage': f"한국시리즈 {opened['moment_game']}차전", 'inning': '9회말', 'ok': True}, me)
+    moment = {'before': [3, 4], 'after': [5, 4] if won else [3, 4], 'side': 'bat', 'game_won': won,
+              'line': '9회말 2사 2·3루 · 끝내기 2타점 적시타' if won else '9회말 2사 · 마지막 타석에서 물러났어요',
+              'stage': f"한국시리즈 {opened['moment_game']}차전", 'inning': '9회말', 'ok': won}
+    if role == 'pitcher':
+        moment.update(before=[4, 3], after=[4, 3] if won else [4, 5], side='pit',
+                      line='9회말 2사 · 마지막 아웃을 삼진으로 잡았어요' if won else '9회말 · 끝내기 안타를 허용했어요')
+    final = final_close(c, opened, won, moment, me)
     post['rounds'] = post['rounds'] + [final]
-    post['result'] = '한국시리즈 우승!'
+    post['result'] = '한국시리즈 우승!' if won else '한국시리즈 준우승'
     wbc = intl(c, 'wbc', 'champ', me)
-    wbc = close_single(c, wbc, True, {'before': [2, 2], 'after': [3, 2], 'side': 'bat', 'line': '8회초 1사 3루 · 결승 희생플라이', 'stage': 'WBC 결승',
-                                       'inning': '8회초', 'ok': True})
-    wbc['result'] = 'WBC 우승'
-    hs = amateur(SimpleNamespace(pk=7, year=2, club='덕수고', league='hs'), 'hs', '봉황대기', True,
+    intl_moment = dict(moment, stage='WBC 결승')
+    wbc = close_single(c, wbc, won, intl_moment)
+    wbc['result'] = 'WBC 우승' if won else 'WBC 준우승'
+    hs = amateur(SimpleNamespace(pk=7, year=2, club='덕수고', league='hs'), 'hs', '봉황대기', won,
                  Me(role, {k: 60.0 for k in keys}, me.position, me.duty_role and ('lower', 4) or ('lower', 4), W.level('hs')))
     return [post, wbc, hs]

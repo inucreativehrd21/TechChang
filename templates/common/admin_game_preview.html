@@ -1,0 +1,9 @@
+{% extends 'common/admin_base.html' %}{% load static %}
+{% block title %}게임 기능 미리보기 - 테크창{% endblock %}
+{% block admin_heading %}게임 기능 미리보기{% endblock %}
+{% block admin_description %}실제 선수 기록을 바꾸지 않고 장면과 조작을 확인해요.{% endblock %}
+{% block admin_css %}
+<link href="{% static 'css/game.css' %}?v={{ STATIC_VERSION }}" rel="stylesheet"><link href="{% static 'css/rookie.css' %}?v={{ STATIC_VERSION }}" rel="stylesheet"><link href="{% static 'css/rookie-card.css' %}?v={{ STATIC_VERSION }}" rel="stylesheet"><link href="{% static 'css/rookie-stadium.css' %}?v={{ STATIC_VERSION }}" rel="stylesheet"><link href="{% static 'css/rookie-hub.css' %}?v={{ STATIC_VERSION }}" rel="stylesheet"><link href="{% static 'css/rookie-series.css' %}?v={{ STATIC_VERSION }}" rel="stylesheet"><link href="{% static 'css/rookie-environment.css' %}?v={{ STATIC_VERSION }}" rel="stylesheet">
+{% endblock %}
+{% block admin_content %}<div class="ad-toolbar"><a href="{% url 'common:admin_games' %}">← 게임 관리로</a><div class="ad-actions"><a class="btn" href="?edition=lite&amp;scene={{ scene }}">라이트 모드</a><a class="btn" href="?edition=full&amp;scene={{ scene }}">정식 모드</a></div></div><div class="ad-game-preview{% if environment_preview or series_boards %} is-feature-scene{% endif %}">{% include 'community/games/_rookie_preview.html' %}</div>{% if trait_preview %}<script nonce="{{ csp_nonce }}">var adminPreviewSkip=document.querySelector('[data-rl-skip]');if(adminPreviewSkip)adminPreviewSkip.click();</script>{% endif %}{% endblock %}
+{% block admin_script %}<script src="{% static 'js/rookie-series.js' %}?v={{ STATIC_VERSION }}" defer></script><script src="{% static 'js/rookie-environment-preview.js' %}?v={{ STATIC_VERSION }}" defer></script>{% endblock %}

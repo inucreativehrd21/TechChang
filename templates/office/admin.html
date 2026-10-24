@@ -1,145 +1,24 @@
-{% extends 'base.html' %}
-{% load pybo_filter %}
-
+{% extends 'common/admin_base.html' %}
+{% load static social_tags pybo_filter %}
 {% block title %}연구실 관리 - 테크창{% endblock %}
+{% block admin_heading %}연구실 관리{% endblock %}
+{% block admin_description %}회의 안건·칼럼 검수·예약 발행·작업 진행을 관리해요.{% endblock %}
+{% block admin_css %}<link href="{% static 'css/admin-office.css' %}?v={{ STATIC_VERSION }}" rel="stylesheet">{% endblock %}
+{% block admin_content %}
 
-{% block extra_css %}
-<style>
-  .oa { max-width: 1100px; margin: 0 auto; padding: var(--space-6) var(--space-4) var(--space-12); display: grid; gap: var(--space-5); }
-  .oa-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px; }
-  .oa-head h1 { font-size: 1.5rem; font-weight: 800; margin: 0; }
-  .oa-head form { display: inline; }
-  .oa-actions { display: flex; flex-wrap: wrap; gap: 8px; }
-  .oa-actions button { border: 0; border-radius: 8px; padding: 7px 12px; font-weight: 600; font-size: .85rem; color: #fff; background: #4f46e5; cursor: pointer; }
-  .oa-actions button.alt { background: #0f766e; }
-  .oa-actions button[disabled] { opacity: .4; }
-  .panel { border: 1px solid var(--border-color, #e5e7eb); border-radius: 14px; background: var(--bg-card, #fff); padding: 16px 18px; }
-  .panel h2 { font-size: 1.05rem; font-weight: 800; margin: 0 0 12px; display: flex; align-items: center; gap: 8px; }
-  .badge-n { background: #ef4444; color: #fff; border-radius: 999px; font-size: .72rem; padding: 1px 8px; }
-  .decision { border-top: 1px dashed var(--border-color, #e5e7eb); padding: 12px 0; display: grid; gap: 6px; }
-  .decision:first-of-type { border-top: 0; padding-top: 0; }
-  .pane-title { font-size: 1.05rem; font-weight: 800; margin: 0 0 12px; }
-  .decision .kind { font-size: .72rem; color: #4f46e5; font-weight: 700; letter-spacing: .04em; }
-  .decision .q { font-weight: 700; }
-  .opt { display: grid; grid-template-columns: 20px 1fr; gap: 8px; padding: 6px 8px; border-radius: 8px; border: 1px solid transparent; }
-  .opt:has(input:checked), .opt.chosen { border-color: #4f46e5; background: rgba(79,70,229,.06); }
-  .opt b { display: block; }
-  .opt small { color: var(--text-secondary); }
-  .opt .rec { display: inline-block; font-size: 11px; font-weight: 700; color: #fff; background: #4f46e5; border-radius: 4px; padding: 1px 6px; vertical-align: 1px; }
-  .decision .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
-  .decision input[type=text] { flex: 1; min-width: 160px; border: 1px solid var(--border-color, #e5e7eb); border-radius: 8px; padding: 5px 8px; font-size: .85rem; }
-  .decision button { border: 0; border-radius: 8px; padding: 6px 12px; font-weight: 600; font-size: .85rem; color: #fff; background: #111827; cursor: pointer; }
-  .draft { border-top: 1px dashed var(--border-color, #e5e7eb); padding: 12px 0; display: grid; gap: 8px; }
-  .draft:first-of-type { border-top: 0; padding-top: 0; }
-  .draft .meta { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: .85rem; color: var(--text-secondary); }
-  .score { font-weight: 800; color: #b45309; }
-  .score.ok { color: #16a34a; }
-  .issues { margin: 0; padding-left: 1.1em; font-size: .9rem; }
-  .draft details { font-size: .92rem; }
-  .draft details summary { cursor: pointer; color: #4f46e5; font-weight: 600; }
-  .draft .preview { border: 1px solid var(--border-color, #e5e7eb); border-radius: 10px; padding: 14px 16px; margin-top: 8px; max-height: 480px; overflow: auto; }
-  .draft .preview img { max-width: 100%; }
-  .draft .btns { display: flex; gap: 8px; }
-  .draft .btns button { border: 0; border-radius: 8px; padding: 6px 12px; font-weight: 600; font-size: .85rem; color: #fff; cursor: pointer; }
-  .pub { background: #16a34a; } .rej { background: #6b7280; }
-  .muted { color: var(--text-secondary); }
-  .tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--border-color, #e5e7eb); margin: -4px 0 16px; }
-  .tabs .tab { background: none; border: 0; border-bottom: 2px solid transparent; padding: 8px 14px; font-weight: 600; color: var(--text-secondary); cursor: pointer; margin-bottom: -1px; }
-  .tabs .tab.active { color: #4f46e5; border-bottom-color: #4f46e5; }
-  .meeting-pick { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; }
-  .meeting-pick .pick { border: 1px solid var(--border-color, #e5e7eb); background: var(--bg-card, #fff); border-radius: 999px; padding: 4px 12px; font-size: .85rem; cursor: pointer; color: var(--text-secondary); }
-  .meeting-pick .pick.active { background: #4f46e5; border-color: #4f46e5; color: #fff; }
-  .minutes-head { margin-bottom: 14px; }
-  .minutes-head .summary { margin: 8px 0 0; padding: 12px 14px; background: rgba(79,70,229,.06); border-left: 3px solid #4f46e5; border-radius: 0 8px 8px 0; max-width: 78ch; line-height: 1.65; }
-  .fold-bar { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; font-size: .82rem; }
-  .fold-btn { border: 1px solid var(--border-color, #e5e7eb); background: var(--bg-card, #fff); border-radius: 6px; padding: 3px 10px; font-size: .8rem; cursor: pointer; color: var(--text-primary, #111); }
-  .fold-btn:hover { border-color: #4f46e5; color: #4f46e5; }
-  .chat { display: grid; gap: 10px; max-width: 82ch; }
-  details.round > summary, details.turn > summary { list-style: none; cursor: pointer; }
-  details.round > summary::-webkit-details-marker, details.turn > summary::-webkit-details-marker { display: none; }
-  .round-sep { display: flex; align-items: center; gap: 10px; color: var(--text-secondary); font-size: .8rem; font-weight: 600; letter-spacing: .04em; padding: 4px 0; }
-  .round-sep::before, .round-sep::after { content: ""; flex: 1; height: 1px; background: var(--border-color, #e5e7eb); }
-  details.round:not([open]) .round-sep { color: #4f46e5; }
-  details.round[open] > summary { margin-bottom: 10px; }
-  .turn { display: grid; gap: 4px; margin-bottom: 10px; }
-  .turn .who { display: flex; align-items: baseline; gap: 6px; flex-wrap: wrap; }
-  .turn .who::before { content: "▾"; color: var(--text-secondary); font-size: .8rem; width: 10px; }
-  details.turn:not([open]) .who::before { content: "▸"; }
-  .turn .who .dot { width: 9px; height: 9px; border-radius: 50%; align-self: center; }
-  .turn .who small { color: var(--text-secondary); }
-  .turn .who .preview { display: none; color: var(--text-secondary); font-size: .85rem; flex-basis: 100%; padding-left: 25px; }
-  details.turn:not([open]) .preview { display: block; }
-  .turn p { margin: 0; line-height: 1.7; font-size: .95rem; padding-left: 25px; }
-  .brief { margin-top: 18px; font-size: .85rem; }
-  .brief summary { cursor: pointer; color: var(--text-secondary); }
-  .brief pre { white-space: pre-wrap; font-size: .8rem; margin-top: 8px; }
-  table.logs { width: 100%; font-size: .85rem; border-collapse: collapse; }
-  table.logs td { padding: 4px 6px; border-top: 1px solid var(--border-color, #e5e7eb); vertical-align: top; }
-  table.logs td:first-child { white-space: nowrap; color: var(--text-secondary); }
-  pre.joblog { background: #0f172a; color: #cbd5e1; border-radius: 10px; padding: 12px; font-size: .78rem; max-height: 260px; overflow: auto; margin: 0; }
-  .tab-pane.narrow { max-width: 760px; }
-  .task { border: 1px solid var(--border-color, #e5e7eb); border-radius: 12px; padding: 14px 16px; margin-bottom: 12px; display: grid; gap: 8px; }
-  .task .t-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-  .task .t-head b { flex: 1; min-width: 200px; }
-  .pri { font-size: .72rem; font-weight: 800; border-radius: 5px; padding: 1px 7px; }
-  .p-P1 { background: #fee2e2; color: #b91c1c; } .p-P2 { background: #e0e7ff; color: #4338ca; } .p-P3 { background: #f1f5f9; color: #64748b; }
-  .st { font-size: .74rem; border-radius: 999px; padding: 1px 9px; background: #f1f5f9; color: #475569; }
-  .st-working { background: #fef3c7; color: #b45309; } .st-pr_open { background: #dcfce7; color: #15803d; }
-  .st-failed { background: #fee2e2; color: #b91c1c; } .st-approved { background: #e0e7ff; color: #4338ca; }
-  .task .t-body { font-size: .9rem; color: var(--text-secondary); }
-  .task .t-plan { font-size: .9rem; line-height: 1.65; }
-  .task .t-plan code { background: rgba(79,70,229,.08); border-radius: 4px; padding: 0 5px; }
-  .t-actions { display: flex; flex-wrap: wrap; gap: 6px; }
-  .btn-sm { border: 0; border-radius: 7px; padding: 5px 12px; font-size: .84rem; font-weight: 600; cursor: pointer; color: #fff; background: #111827; }
-  .btn-sm.go { background: #4f46e5; } .btn-sm.ok { background: #16a34a; } .btn-sm.rej { background: #6b7280; }
-  .btn-sm.ghost { background: transparent; color: var(--text-secondary); border: 1px solid var(--border-color, #e5e7eb); }
-  .new-task summary { cursor: pointer; font-weight: 600; color: #4f46e5; font-size: .9rem; }
-  .new-task form { display: grid; gap: 8px; max-width: 520px; margin-top: 10px; }
-  .new-task input, .new-task textarea, .new-task select { border: 1px solid var(--border-color, #e5e7eb); border-radius: 8px; padding: 7px 10px; font: inherit; font-size: .9rem; }
-  .new-task button { justify-self: start; }
-  .chip { font-size: .72rem; font-weight: 700; border-radius: 999px; padding: 1px 9px; background: #e0e7ff; color: #4f46e5; }
-  .chip.live { background: #fef3c7; color: #b45309; }
-  .fatal { font-size: .85rem; color: #b91c1c; }
-  .fatal code { background: #fee2e2; color: #b91c1c; border-radius: 4px; padding: 0 5px; font-size: .95em; }
-  .rubric { display: flex; flex-wrap: wrap; gap: 6px; }
-  .rubric .r { font-size: .78rem; border: 1px solid var(--border-color, #e5e7eb); border-radius: 6px; padding: 2px 8px; color: var(--text-secondary); }
-  .rubric .r b { color: var(--text-primary, #111); font-weight: 600; }
-  .viz { font-size: .85rem; color: var(--text-secondary); }
-  .admin-note { font-size: .85rem; background: rgba(79,70,229,.06); border-left: 3px solid #4f46e5; padding: 6px 10px; border-radius: 0 6px 6px 0; }
-  .revise-form { display: grid; gap: 6px; }
-  .rv-label { font-size: .8rem; color: var(--text-secondary); }
-  .revise-form textarea { width: 100%; border: 1px solid var(--border-color, #e5e7eb); border-radius: 8px; padding: 8px 10px; font: inherit; font-size: .9rem; resize: vertical; }
-  .revise-form .rev { justify-self: start; border: 0; border-radius: 8px; padding: 6px 14px; font-weight: 600; font-size: .85rem; color: #fff; background: #4f46e5; cursor: pointer; }
-  .progress { display: flex; align-items: center; gap: 8px; font-size: .9rem; background: #fffbeb; border: 1px solid #fde68a; border-radius: 8px; padding: 8px 12px; }
-  .progress .spin { width: 12px; height: 12px; border: 2px solid #f59e0b; border-right-color: transparent; border-radius: 50%; animation: spin .8s linear infinite; }
-  @keyframes spin { to { transform: rotate(360deg); } }
-  .live-bar { display: flex; align-items: center; gap: 10px; font-size: .82rem; margin-bottom: 10px; }
-  .live-bar .spacer { flex: 1; }
-  .live-toggle { display: flex; align-items: center; gap: 6px; cursor: pointer; }
-  .dot-live { width: 8px; height: 8px; border-radius: 50%; background: #22c55e; animation: pulse 1.6s infinite; }
-  @keyframes pulse { 50% { opacity: .25; } }
-  tr.log-new { animation: flash 1.6s ease-out; }
-  @keyframes flash { from { background: rgba(79,70,229,.14); } to { background: transparent; } }
-  @media (prefers-reduced-motion: reduce) { .progress .spin, .dot-live, tr.log-new { animation: none; } }
-  .tabs .tab .badge-n { margin-left: 4px; vertical-align: 1px; }
-</style>
-{% endblock %}
-
-{% block content %}
 <div class="oa">
   <div class="oa-head">
     <div>
-      <h1>연구팀 연구실 관리</h1>
-      <small style="color:var(--text-secondary)">회의 안건 결정 · 보류 칼럼 검수 · 수동 실행. 공개 페이지: <a href="{% url 'office:home' %}">/lab/</a> · <a href="{% url 'community:column_map' %}"><i class="fas fa-map"></i> 칼럼 지도</a></small>
+      <p class="oa-links"><a href="{% url 'office:home' %}">연구실 보기 <span aria-hidden="true">↗</span></a><a href="{% url 'community:column_map' %}">칼럼 지도 <span aria-hidden="true">↗</span></a></p>
+      <p class="oa-help">회의를 소집하거나 주제별 칼럼 제작을 시작할 수 있어요.</p>
     </div>
     <div class="oa-actions">
       <form method="post" action="{% url 'office:run_job' %}">{% csrf_token %}<input type="hidden" name="job" value="meeting">
-        <button type="submit" {% if not has_api_key %}disabled title="ANTHROPIC_API_KEY 없음"{% endif %} data-confirm="편집회의를 지금 소집할까요? (API 호출 12회, 2~4분)">편집회의 소집</button></form>
+        <button type="submit" {% if not manual_jobs_available %}disabled title="AI 실행 설정을 확인해 주세요"{% endif %} data-confirm="편집회의를 지금 소집할까요? 완료까지 몇 분 걸려요.">편집회의 소집</button></form>
       {% for k, v in topic_label.items %}
       <form method="post" action="{% url 'office:run_job' %}">{% csrf_token %}<input type="hidden" name="job" value="publish"><input type="hidden" name="topic" value="{{ k }}">
-        <button type="submit" class="alt" {% if not has_api_key %}disabled{% endif %} data-confirm="{{ v }} 칼럼 제작을 시작할까요? (초안→검증→차트→QA, 3~6분)">{{ v }} 칼럼 제작</button></form>
+        <button type="submit" class="alt" {% if not manual_jobs_available %}disabled{% endif %} data-confirm="{{ v }} 칼럼 제작을 시작할까요? 완료까지 몇 분 걸려요.">{{ v }} 칼럼 제작</button></form>
       {% endfor %}
-      <a href="{% url 'common:admin_dashboard' %}" class="btn btn-sm btn-outline-secondary">대시보드</a>
     </div>
   </div>
 
@@ -156,8 +35,8 @@
     <section class="tab-pane narrow" data-pane="decisions">
       {% for m in meetings %}
         {% if forloop.first %}
-          <p style="margin:0 0 10px; color:var(--text-secondary); font-size:.9rem;"><b>{{ m.week_start|date:"Y.m.d" }} 주차</b> · {{ m.held_at|date:"m/d H:i" }} 개최 · {{ m.get_status_display }}</p>
-          <p style="font-size:.92rem;">{{ m.summary }}</p>
+          <p><b>{{ m.week_start|date:"Y.m.d" }} 주차</b> · {{ m.held_at|date:"m/d H:i" }} 개최 · {{ m.get_status_display }}</p>
+          <p>{{ m.summary }}</p>
           {% for d in m.decisions.all %}
           <div class="decision">
             <div class="kind">{{ d.get_kind_display }}{% if d.topic_name %} · {{ d.topic_name }}{% endif %}{% if d.consumed_at %} · 칼럼 반영됨{% endif %}</div>
@@ -165,14 +44,14 @@
             {% if d.chosen_key %}
               {% for o in d.options %}
               <div class="opt {% if o.key == d.chosen_key %}chosen{% endif %}"><span>{% if o.key == d.chosen_key %}✓{% else %}&nbsp;{% endif %}</span>
-                <div><b>{% if o.recommended %}<span class="rec">★ 추천</span> {% endif %}{{ o.title }}</b><small>{{ o.detail }} — {{ o.proposed_by }}</small>{% if o.demand_note %}<small style="color:#4f46e5">▸ {{ o.demand_note }}</small>{% endif %}</div></div>
+                <div><b>{% if o.recommended %}<span class="rec">★ 추천</span> {% endif %}{{ o.title }}</b><small>{{ o.detail }} — {{ o.proposed_by }}</small>{% if o.demand_note %}<small>▸ {{ o.demand_note }}</small>{% endif %}</div></div>
               {% endfor %}
-              {% if d.note %}<small style="color:var(--text-secondary)">메모: {{ d.note }}</small>{% endif %}
+              {% if d.note %}<small>메모: {{ d.note }}</small>{% endif %}
             {% else %}
               <form method="post" action="{% url 'office:decision_choose' d.id %}">{% csrf_token %}
                 {% for o in d.options %}
                 <label class="opt"><input type="radio" name="key" value="{{ o.key }}" id="d{{ d.id }}-{{ o.key }}" required>
-                  <span><b>{% if o.recommended %}<span class="rec">★ 추천</span> {% endif %}{{ o.title }}</b><small>{{ o.detail }} — {{ o.proposed_by }}</small>{% if o.demand_note %}<small style="color:#4f46e5">▸ {{ o.demand_note }}</small>{% endif %}</span></label>
+                  <span><b>{% if o.recommended %}<span class="rec">★ 추천</span> {% endif %}{{ o.title }}</b><small>{{ o.detail }} — {{ o.proposed_by }}</small>{% if o.demand_note %}<small>▸ {{ o.demand_note }}</small>{% endif %}</span></label>
                 {% endfor %}
                 <div class="row"><input type="text" name="note" id="note-{{ d.id }}" placeholder="메모 (선택)" maxlength="300"><button type="submit">결정</button></div>
               </form>
@@ -181,7 +60,7 @@
           {% endfor %}
         {% endif %}
       {% empty %}
-        <p style="color:var(--text-secondary)">아직 회의가 없습니다. 위 "편집회의 소집"으로 시작하세요 (정기: 일요일 20:00).</p>
+        <p>아직 회의가 없어요. 위 "편집회의 소집"으로 시작하세요 (정기: 일요일 20:00).</p>
       {% endfor %}
     </section>
 
@@ -212,7 +91,7 @@
         </div>
       </div>
       {% endfor %}
-      <h2 class="pane-title" style="margin-top:22px;">검수 대기</h2>
+      <h2 class="pane-title">검수 대기</h2>
       {% endif %}
       {% for d in held %}
       <div class="draft" data-draft="{{ d.id }}">
@@ -231,8 +110,8 @@
         {% endif %}
         <div class="viz">시각화: {{ d.chart_note|default:"(기록 없음)" }}</div>
         {% if d.qa_report.issues %}<ul class="issues">{% for i in d.qa_report.issues %}<li>{{ i }}</li>{% endfor %}</ul>{% endif %}
-        {% if d.qa_report.notes %}<div style="font-size:.9rem;">편집장: {{ d.qa_report.notes }}</div>{% endif %}
-        {% if d.check_report.notes %}<div style="font-size:.9rem;">팩트체크: {{ d.check_report.notes }}</div>{% endif %}
+        {% if d.qa_report.notes %}<div>편집장: {{ d.qa_report.notes }}</div>{% endif %}
+        {% if d.check_report.notes %}<div>팩트체크: {{ d.check_report.notes }}</div>{% endif %}
         {% if d.admin_note %}<div class="admin-note">직전 운영자 지시: {{ d.admin_note }}</div>{% endif %}
         <details><summary>본문 미리보기</summary><div class="preview">{{ d.content|mark }}</div></details>
 
@@ -250,24 +129,24 @@
           </div>
         {% endif %}
       </div>
-      {% empty %}<p style="color:var(--text-secondary)">검수 대기 칼럼이 없습니다.</p>{% endfor %}
+      {% empty %}<p>검수 대기 칼럼이 없어요.</p>{% endfor %}
 
-      <h2 class="pane-title" style="margin-top:22px;">최근 제작 결과</h2>
+      <h2 class="pane-title">최근 제작 결과</h2>
       <table class="logs">
         {% for d in recent_drafts %}
         <tr><td>{{ d.created_at|date:"m/d" }}</td><td>{{ d.topic_name }}</td>
           <td>{% if d.question %}<a href="{% url 'community:detail' d.question.id %}">{{ d.subject }}</a>{% else %}{{ d.subject|default:d.brief|default:"(실패)" }}{% endif %}</td>
           <td>{{ d.get_status_display }} · {{ d.qa_score|default:"-" }}점</td></tr>
-        {% empty %}<tr><td colspan="4" style="color:var(--text-secondary)">없음</td></tr>{% endfor %}
+        {% empty %}<tr><td colspan="4">없음</td></tr>{% endfor %}
       </table>
     </section>
 
 
     <section class="tab-pane narrow" data-pane="crew" hidden>
-      <p class="muted" style="margin:0 0 14px; font-size:.86rem;">
+      <p class="muted">
         편집회의의 개발·운영 결정과 서버 로그 지적사항이 여기로 모입니다. 승인하면 연구팀이 서버에서 수정안을 만들고
         검증(<code>check</code>+<code>test</code>)을 통과한 것만 PR 로 올립니다. <b>머지와 배포는 사람이 합니다.</b>
-        {% if not github_ok %}<br><b style="color:#b91c1c;">GITHUB_DISPATCH_TOKEN 미설정 — 이슈·PR 생성은 건너뜁니다.</b>{% endif %}
+        {% if not github_ok %}<br><b>GITHUB_DISPATCH_TOKEN 미설정 — 이슈·PR 생성은 건너뜁니다.</b>{% endif %}
       </p>
 
       {% for t in tasks %}
@@ -298,11 +177,11 @@
             <p><b>원인</b><br>{{ t.plan.root_cause|linebreaksbr }}</p>
             {% if t.result.files %}<p><b>수정한 파일</b><br>{% for f in t.result.files %}<code>{{ f }}</code> {% endfor %}</p>{% endif %}
             {% if t.plan.test_hint %}<p><b>확인 방법</b><br>{{ t.plan.test_hint }}</p>{% endif %}
-            {% if t.result.verify %}<pre class="joblog" style="max-height:200px;">{{ t.result.verify }}</pre>{% endif %}
+            {% if t.result.verify %}<pre class="joblog">{{ t.result.verify }}</pre>{% endif %}
           </div>
         </details>
         {% endif %}
-        {% if t.note %}<div class="muted" style="font-size:.85rem;">비고: {{ t.note }}</div>{% endif %}
+        {% if t.note %}<div class="muted">비고: {{ t.note }}</div>{% endif %}
 
         {% if t.status != 'working' %}
         <div class="t-actions">
@@ -328,7 +207,7 @@
         {% endif %}
       </div>
       {% empty %}
-      <p class="muted">백로그가 비어 있습니다. 편집회의에서 개발·운영 안건을 결정하거나 아래에서 직접 등록하세요.</p>
+      <p class="muted">백로그가 비어 있어요. 편집회의에서 개발·운영 안건을 결정하거나 아래에서 직접 등록하세요.</p>
       {% endfor %}
 
       <details class="new-task">
@@ -345,7 +224,7 @@
       </details>
 
       {% if done_tasks %}
-      <h2 class="pane-title" style="margin-top:22px;">최근 처리</h2>
+      <h2 class="pane-title">최근 처리</h2>
       <table class="logs">
         {% for t in done_tasks %}
         <tr><td>{{ t.created_at|date:"m/d" }}</td><td>{{ t.get_status_display }}</td>
@@ -382,7 +261,7 @@
             <summary class="round-sep"><span>{{ r.grouper }}라운드 · {% if r.grouper == 1 %}지표 해석과 제안{% else %}검토와 조율{% endif %} · {{ r.list|length }}명</span></summary>
             {% for t in r.list %}
             <details class="turn" open>
-              <summary class="who"><span class="dot" style="background:{{ t.color }}"></span><b>{{ t.name }}</b><small>{{ t.title }}</small><span class="preview">{{ t.text|truncatechars:60 }}</span></summary>
+              <summary class="who"><span class="dot"></span><b>{{ t.name }}</b><small>{{ t.title }}</small><span class="preview">{{ t.text|truncatechars:60 }}</span></summary>
               <p>{{ t.text }}</p>
             </details>
             {% endfor %}
@@ -392,7 +271,7 @@
         <details class="brief"><summary>팀장이 받은 지표 브리핑 원문</summary><pre>{{ m.briefing }}</pre></details>
       </article>
       {% endfor %}
-      {% else %}<p class="muted">아직 회의가 없습니다.</p>{% endif %}
+      {% else %}<p class="muted">아직 회의가 없어요.</p>{% endif %}
     </section>
 
     <section class="tab-pane" data-pane="worklog" hidden>
@@ -403,33 +282,43 @@
         <span class="muted" id="live-running"></span>
       </div>
       <table class="logs" id="worklog-table">
-        {% for l in logs %}<tr data-log="{{ l.id }}"><td>{{ l.created_at|date:"m/d H:i:s" }}</td><td><b style="color:{{ l.agent_color }}">{{ l.agent_name }}</b></td><td>{{ l.text }}</td></tr>
+        {% for l in logs %}<tr data-log="{{ l.id }}"><td>{{ l.created_at|date:"m/d H:i:s" }}</td><td><b>{{ l.agent_name }}</b></td><td>{{ l.text }}</td></tr>
         {% empty %}<tr><td class="muted" colspan="3">없음</td></tr>{% endfor %}
       </table>
     </section>
 
     <section class="tab-pane" data-pane="joblog" hidden>
-      <p class="muted" style="margin:0 0 8px; font-size:.85rem;">logs/office_jobs.log 마지막 40줄 — 수동 소집·제작 버튼의 실행 출력</p>
+      <p class="muted">logs/office_jobs.log 마지막 40줄 — 수동 소집·제작 버튼의 실행 출력</p>
       <pre class="joblog" id="joblog">{{ job_log|default:"(없음)" }}</pre>
     </section>
   </div>
 </div>
-{% endblock %}
 
-{% block script %}
+{% endblock %}
+{% block admin_script %}
+
 <script nonce="{{ csp_nonce }}">
   document.querySelectorAll('button[data-confirm]').forEach(function (b) {
     b.addEventListener('click', function (e) { if (!confirm(b.dataset.confirm)) e.preventDefault(); });
   });
   // 탭 (마지막 탭은 기억)
   var tabs = document.querySelectorAll('.tabs .tab'), panes = document.querySelectorAll('.tab-pane');
+  panes.forEach(function(p){p.id='oa-pane-'+p.dataset.pane;p.setAttribute('role','tabpanel');p.setAttribute('aria-labelledby','oa-tab-'+p.dataset.pane);});
+  tabs.forEach(function(t){t.id='oa-tab-'+t.dataset.tab;t.setAttribute('aria-controls','oa-pane-'+t.dataset.tab);});
   function showTab(name) {
+    if (!Array.from(tabs).some(function(t){return t.dataset.tab===name;})) name=tabs[0].dataset.tab;
+    tabs.forEach(function(t){t.setAttribute('aria-selected',t.dataset.tab===name?'true':'false');t.tabIndex=t.dataset.tab===name?0:-1;});
     tabs.forEach(function (t) { t.classList.toggle('active', t.dataset.tab === name); });
     panes.forEach(function (p) { p.hidden = p.dataset.pane !== name; });
     try { localStorage.setItem('lab-admin-tab', name); } catch (e) {}
   }
-  tabs.forEach(function (t) { t.addEventListener('click', function () { showTab(t.dataset.tab); }); });
-  try { var saved = localStorage.getItem('lab-admin-tab'); if (saved) showTab(saved); } catch (e) {}
+  tabs.forEach(function (t,index) {
+    t.addEventListener('click', function () { showTab(t.dataset.tab); history.replaceState(null,'','#'+t.dataset.tab); });
+    t.addEventListener('keydown',function(e){var target=index;if(e.key==='ArrowRight')target=(index+1)%tabs.length;else if(e.key==='ArrowLeft')target=(index+tabs.length-1)%tabs.length;else if(e.key==='Home')target=0;else if(e.key==='End')target=tabs.length-1;else return;e.preventDefault();showTab(tabs[target].dataset.tab);tabs[target].focus();});
+  });
+  var saved = location.hash.slice(1);
+  try { saved = saved || localStorage.getItem('lab-admin-tab'); } catch (e) {}
+  showTab(saved || 'decisions');
   // 작업 로그 실시간 폴링 (재작성·제작 중이면 3초, 평소 15초)
   var activityUrl = "{% url 'office:admin_activity' %}";
   var tbl = document.getElementById('worklog-table'), stamp = document.getElementById('live-stamp'),
@@ -493,4 +382,5 @@
     });
   });
 </script>
+
 {% endblock %}

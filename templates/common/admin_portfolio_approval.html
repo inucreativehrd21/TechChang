@@ -1,68 +1,57 @@
-{% extends 'base.html' %}
-
-{% block title %}포트폴리오 게시 승인 - 테크창{% endblock %}
-
-{% block content %}
-<div class="container my-4" style="background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); padding: var(--space-8); border-radius: var(--radius-2xl); min-height: 100vh;">
-  <!-- 헤더 -->
-  <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
-    <h2 style="color: #f3f4f6; font-weight: 800;">
-      <i class="fas fa-id-card me-2" style="color: #c4b5fd;"></i>포트폴리오 게시 승인
-    </h2>
-    <a href="{% url 'common:admin_dashboard' %}" class="btn" style="background: rgba(255,255,255,0.1); color: #e2e8f0; border: 1px solid rgba(255,255,255,0.2); font-weight: 600;">
-      <i class="fas fa-arrow-left me-2"></i>대시보드
-    </a>
-  </div>
-
-  <p style="color:#94a3b8;">구성원이 게시 요청한 포트폴리오입니다. 내용을 검토한 뒤 승인하면 구성원 목록에 공개됩니다.</p>
-
-  <!-- 승인 대기 -->
-  <div class="card border-0 mb-4" style="background: rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08);">
+{% extends 'common/admin_base.html' %}
+{% load static social_tags %}
+{% block title %}포트폴리오 승인 - 테크창{% endblock %}
+{% block admin_heading %}포트폴리오 승인{% endblock %}
+{% block admin_description %}게시 요청을 검토하고 승인·반려·공개 회수를 처리해요.{% endblock %}
+{% block admin_content %}
+<div class="ad-portfolio">
+<!-- 승인 대기 -->
+  <div class="card border-0 mb-4">
     <div class="card-body">
-      <h5 style="color:#fde68a; font-weight: 700;" class="mb-3">
+      <h2 class="mb-3">
         <i class="fas fa-clock me-2"></i>승인 대기 ({{ pending_count }})
-      </h5>
+      </h2>
 
       {% if pending_count == 0 %}
-      <p style="color:#94a3b8;" class="mb-0"><i class="fas fa-check-circle me-2"></i>대기 중인 게시 요청이 없습니다.</p>
+      <p class="mb-0"><i class="fas fa-check-circle me-2"></i>대기 중인 게시 요청이 없어요.</p>
       {% endif %}
 
       <!-- 신규 컬렉션 -->
       {% for c in pending_collections %}
-      <div class="p-3 mb-3 rounded" style="background: rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.1);">
+      <div class="p-3 mb-3 rounded">
         <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
           <div>
-            <h6 class="mb-1" style="color:#f8fafc; font-weight:700;">{{ c.portfolio_name }}</h6>
-            <div style="color:#cbd5e1; font-size:0.9rem;">
+            <h3 class="mb-1">{{ c.portfolio_name }}</h3>
+            <div>
               <i class="fas fa-user me-1"></i>{{ c.user.username }}
               {% if c.title %}· {{ c.title }}{% endif %}
               · <i class="far fa-clock me-1"></i>{{ c.approval_requested_at|date:"Y.m.d H:i" }} 요청
             </div>
-            {% if c.bio %}<p class="mb-0 mt-2" style="color:#94a3b8; font-size:0.875rem;">{{ c.bio|truncatechars:120 }}</p>{% endif %}
+            {% if c.bio %}<p class="mb-0 mt-2">{{ c.bio|truncatechars:120 }}</p>{% endif %}
           </div>
-          <a href="{% url 'community:portfolio_collection_detail' c.slug %}" target="_blank" class="btn btn-sm" style="background:#3b82f6; color:white; font-weight:600;">
+          <a href="{% url 'community:portfolio_collection_detail' c.slug %}" target="_blank" rel="noopener" class="btn btn-sm">
             <i class="fas fa-external-link-alt me-1"></i>내용 보기
           </a>
         </div>
         {% if c.content_mode == 'html' %}
-        <div class="mt-3 p-2 rounded" style="background:rgba(8,145,178,0.08); border:1px solid rgba(8,145,178,0.25);">
-          <div style="color:#67e8f9; font-size:0.85rem; margin-bottom:0.4rem;">
+        <div class="mt-3 p-2 rounded">
+          <div>
             <i class="fas fa-file-code me-1"></i><strong>HTML 직접 업로드</strong>
             {% if c.html_filename %} · {{ c.html_filename }}{% endif %} · {{ c.html_content|length }}자
-            <a href="{% url 'community:portfolio_collection_raw' c.slug %}" target="_blank" style="color:#93c5fd; margin-left:0.5rem;"><i class="fas fa-external-link-alt me-1"></i>원본 새 탭</a>
+            <a href="{% url 'community:portfolio_collection_raw' c.slug %}" target="_blank" rel="noopener"><i class="fas fa-external-link-alt me-1"></i>원본 새 탭</a>
           </div>
-          <div style="color:#fca5a5; font-size:0.78rem; margin-bottom:0.4rem;"><i class="fas fa-exclamation-triangle me-1"></i>승인 전 아래 소스에 피싱·악성 스크립트·외부 유출 시도가 없는지 검토하세요. (표시 시 샌드박스 격리되지만, 부적절한 콘텐츠는 반려하세요.)</div>
+          <div><i class="fas fa-exclamation-triangle me-1"></i>승인 전 아래 소스에 피싱·악성 스크립트·외부 유출 시도가 없는지 검토하세요. (표시 시 샌드박스 격리되지만, 부적절한 콘텐츠는 반려하세요.)</div>
           <details>
-            <summary style="cursor:pointer; color:#cbd5e1; font-size:0.85rem;">소스 코드 검토 (펼치기)</summary>
-            <pre style="max-height:360px; overflow:auto; background:#020617; color:#e2e8f0; padding:0.75rem; border-radius:8px; font-size:0.75rem; margin-top:0.5rem; white-space:pre-wrap; word-break:break-all;">{{ c.html_content }}</pre>
+            <summary>소스 코드 검토 (펼치기)</summary>
+            <pre>{{ c.html_content }}</pre>
           </details>
           {% if c.html_assets.all %}
           <div class="mt-2">
-            <div style="color:#94a3b8; font-size:0.8rem; margin-bottom:0.4rem;"><i class="fas fa-images me-1"></i>함께 업로드한 사진 {{ c.html_assets.count }}장</div>
-            <div style="display:flex; flex-wrap:wrap; gap:0.4rem;">
+            <div><i class="fas fa-images me-1"></i>함께 업로드한 사진 {{ c.html_assets.count }}장</div>
+            <div>
               {% for a in c.html_assets.all %}
-              <a href="{% url 'community:portfolio_collection_asset' c.slug a.id %}" target="_blank" title="{{ a.original_name }}">
-                <img src="{% url 'community:portfolio_collection_asset' c.slug a.id %}" alt="{{ a.original_name }}" style="width:64px; height:64px; object-fit:cover; border-radius:6px; border:1px solid rgba(255,255,255,0.15);">
+              <a href="{% url 'community:portfolio_collection_asset' c.slug a.id %}" target="_blank" rel="noopener" title="{{ a.original_name }}">
+                <img width="64" height="64" loading="lazy" src="{% url 'community:portfolio_collection_asset' c.slug a.id %}" alt="{{ a.original_name }}">
               </a>
               {% endfor %}
             </div>
@@ -73,14 +62,14 @@
         <div class="d-flex gap-2 mt-3 flex-wrap align-items-start">
           <form method="post" action="{% url 'common:admin_portfolio_approve' 'collection' c.id %}">
             {% csrf_token %}
-            <button type="submit" class="btn btn-sm" style="background:#10b981; color:white; font-weight:600;">
+            <button type="submit" class="btn btn-sm">
               <i class="fas fa-check me-1"></i>승인
             </button>
           </form>
-          <form method="post" action="{% url 'common:admin_portfolio_reject' 'collection' c.id %}" class="d-flex gap-2 flex-grow-1" style="min-width:240px;">
+          <form method="post" action="{% url 'common:admin_portfolio_reject' 'collection' c.id %}" class="d-flex gap-2 flex-grow-1">
             {% csrf_token %}
-            <input type="text" name="reason" placeholder="반려 사유 (선택)" class="form-control form-control-sm" style="background:rgba(0,0,0,0.2); color:#e2e8f0; border:1px solid rgba(255,255,255,0.15);">
-            <button type="submit" class="btn btn-sm" style="background:#ef4444; color:white; font-weight:600; white-space:nowrap;">
+            <input type="text" name="reason" aria-label="반려 또는 회수 사유" placeholder="반려 사유 (선택)" class="form-control form-control-sm">
+            <button type="submit" class="btn btn-sm">
               <i class="fas fa-times me-1"></i>반려
             </button>
           </form>
@@ -90,32 +79,32 @@
 
       <!-- 레거시 포트폴리오 -->
       {% for p in pending_legacy %}
-      <div class="p-3 mb-3 rounded" style="background: rgba(255,255,255,0.06); border:1px solid rgba(245,158,11,0.3);">
+      <div class="p-3 mb-3 rounded">
         <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
           <div>
-            <h6 class="mb-1" style="color:#f8fafc; font-weight:700;">{{ p.get_display_name }}의 포트폴리오 <span class="badge" style="background:#d97706;">기존</span></h6>
-            <div style="color:#cbd5e1; font-size:0.9rem;">
+            <h3 class="mb-1">{{ p.get_display_name }}의 포트폴리오 <span class="badge">기존</span></h3>
+            <div>
               <i class="fas fa-user me-1"></i>{{ p.user.username }}
               {% if p.title %}· {{ p.title }}{% endif %}
               · <i class="far fa-clock me-1"></i>{{ p.approval_requested_at|date:"Y.m.d H:i" }} 요청
             </div>
-            {% if p.bio %}<p class="mb-0 mt-2" style="color:#94a3b8; font-size:0.875rem;">{{ p.bio|truncatechars:120 }}</p>{% endif %}
+            {% if p.bio %}<p class="mb-0 mt-2">{{ p.bio|truncatechars:120 }}</p>{% endif %}
           </div>
-          <a href="{% url 'community:portfolio_view' p.user.id %}" target="_blank" class="btn btn-sm" style="background:#3b82f6; color:white; font-weight:600;">
+          <a href="{% url 'community:portfolio_view' p.user.id %}" target="_blank" rel="noopener" class="btn btn-sm">
             <i class="fas fa-external-link-alt me-1"></i>내용 보기
           </a>
         </div>
         <div class="d-flex gap-2 mt-3 flex-wrap align-items-start">
           <form method="post" action="{% url 'common:admin_portfolio_approve' 'legacy' p.id %}">
             {% csrf_token %}
-            <button type="submit" class="btn btn-sm" style="background:#10b981; color:white; font-weight:600;">
+            <button type="submit" class="btn btn-sm">
               <i class="fas fa-check me-1"></i>승인
             </button>
           </form>
-          <form method="post" action="{% url 'common:admin_portfolio_reject' 'legacy' p.id %}" class="d-flex gap-2 flex-grow-1" style="min-width:240px;">
+          <form method="post" action="{% url 'common:admin_portfolio_reject' 'legacy' p.id %}" class="d-flex gap-2 flex-grow-1">
             {% csrf_token %}
-            <input type="text" name="reason" placeholder="반려 사유 (선택)" class="form-control form-control-sm" style="background:rgba(0,0,0,0.2); color:#e2e8f0; border:1px solid rgba(255,255,255,0.15);">
-            <button type="submit" class="btn btn-sm" style="background:#ef4444; color:white; font-weight:600; white-space:nowrap;">
+            <input type="text" name="reason" aria-label="반려 또는 회수 사유" placeholder="반려 사유 (선택)" class="form-control form-control-sm">
+            <button type="submit" class="btn btn-sm">
               <i class="fas fa-times me-1"></i>반려
             </button>
           </form>
@@ -126,53 +115,53 @@
   </div>
 
   <!-- 공개 중인 포트폴리오 (회수 가능) -->
-  <div class="card border-0 mb-4" style="background: rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08);">
+  <div class="card border-0 mb-4">
     <div class="card-body">
-      <h5 style="color:#6ee7b7; font-weight: 700;" class="mb-3">
+      <h2 class="mb-3">
         <i class="fas fa-globe me-2"></i>공개 중인 포트폴리오 ({{ approved_count }})
-      </h5>
-      <p style="color:#94a3b8; font-size:0.875rem;">이미 승인되어 공개 중인 포트폴리오입니다. 문제가 있으면 사유와 함께 회수하여 승인 전(비공개) 상태로 되돌릴 수 있습니다.</p>
+      </h2>
+      <p>이미 승인되어 공개 중인 포트폴리오입니다. 문제가 있으면 사유와 함께 회수하여 승인 전(비공개) 상태로 되돌릴 수 있어요.</p>
 
       {% if approved_count == 0 %}
-      <p style="color:#94a3b8;" class="mb-0"><i class="fas fa-info-circle me-2"></i>현재 공개 중인 포트폴리오가 없습니다.</p>
+      <p class="mb-0"><i class="fas fa-info-circle me-2"></i>현재 공개 중인 포트폴리오가 없어요.</p>
       {% endif %}
 
       <!-- 신규 컬렉션 -->
       {% for c in approved_collections %}
-      <div class="p-3 mb-3 rounded" style="background: rgba(16,185,129,0.06); border:1px solid rgba(16,185,129,0.2);">
+      <div class="p-3 mb-3 rounded">
         <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
           <div>
-            <h6 class="mb-1" style="color:#f8fafc; font-weight:700;">{{ c.portfolio_name }}
-              {% if not c.is_published %}<span class="badge" style="background:#64748b;">작성자 비공개</span>{% endif %}
-            </h6>
-            <div style="color:#cbd5e1; font-size:0.9rem;">
+            <h3 class="mb-1">{{ c.portfolio_name }}
+              {% if not c.is_published %}<span class="badge">작성자 비공개</span>{% endif %}
+            </h3>
+            <div>
               <i class="fas fa-user me-1"></i>{{ c.user.username }}
               {% if c.title %}· {{ c.title }}{% endif %}
               {% if c.reviewed_at %}· <i class="fas fa-check me-1"></i>{{ c.reviewed_at|date:"Y.m.d H:i" }} 승인{% endif %}
             </div>
           </div>
-          <a href="{% url 'community:portfolio_collection_detail' c.slug %}" target="_blank" class="btn btn-sm" style="background:#3b82f6; color:white; font-weight:600;">
+          <a href="{% url 'community:portfolio_collection_detail' c.slug %}" target="_blank" rel="noopener" class="btn btn-sm">
             <i class="fas fa-external-link-alt me-1"></i>내용 보기
           </a>
         </div>
         {% if c.content_mode == 'html' %}
-        <div class="mt-3 p-2 rounded" style="background:rgba(8,145,178,0.08); border:1px solid rgba(8,145,178,0.25);">
-          <div style="color:#67e8f9; font-size:0.85rem; margin-bottom:0.4rem;">
+        <div class="mt-3 p-2 rounded">
+          <div>
             <i class="fas fa-file-code me-1"></i><strong>HTML 직접 업로드</strong>
             {% if c.html_filename %} · {{ c.html_filename }}{% endif %} · {{ c.html_content|length }}자
-            <a href="{% url 'community:portfolio_collection_raw' c.slug %}" target="_blank" style="color:#93c5fd; margin-left:0.5rem;"><i class="fas fa-external-link-alt me-1"></i>원본 새 탭</a>
+            <a href="{% url 'community:portfolio_collection_raw' c.slug %}" target="_blank" rel="noopener"><i class="fas fa-external-link-alt me-1"></i>원본 새 탭</a>
           </div>
           <details>
-            <summary style="cursor:pointer; color:#cbd5e1; font-size:0.85rem;">소스 코드 검토 (펼치기)</summary>
-            <pre style="max-height:360px; overflow:auto; background:#020617; color:#e2e8f0; padding:0.75rem; border-radius:8px; font-size:0.75rem; margin-top:0.5rem; white-space:pre-wrap; word-break:break-all;">{{ c.html_content }}</pre>
+            <summary>소스 코드 검토 (펼치기)</summary>
+            <pre>{{ c.html_content }}</pre>
           </details>
           {% if c.html_assets.all %}
           <div class="mt-2">
-            <div style="color:#94a3b8; font-size:0.8rem; margin-bottom:0.4rem;"><i class="fas fa-images me-1"></i>함께 업로드한 사진 {{ c.html_assets.count }}장</div>
-            <div style="display:flex; flex-wrap:wrap; gap:0.4rem;">
+            <div><i class="fas fa-images me-1"></i>함께 업로드한 사진 {{ c.html_assets.count }}장</div>
+            <div>
               {% for a in c.html_assets.all %}
-              <a href="{% url 'community:portfolio_collection_asset' c.slug a.id %}" target="_blank" title="{{ a.original_name }}">
-                <img src="{% url 'community:portfolio_collection_asset' c.slug a.id %}" alt="{{ a.original_name }}" style="width:64px; height:64px; object-fit:cover; border-radius:6px; border:1px solid rgba(255,255,255,0.15);">
+              <a href="{% url 'community:portfolio_collection_asset' c.slug a.id %}" target="_blank" rel="noopener" title="{{ a.original_name }}">
+                <img width="64" height="64" loading="lazy" src="{% url 'community:portfolio_collection_asset' c.slug a.id %}" alt="{{ a.original_name }}">
               </a>
               {% endfor %}
             </div>
@@ -182,9 +171,9 @@
         {% endif %}
         <form method="post" action="{% url 'common:admin_portfolio_reject' 'collection' c.id %}" class="d-flex gap-2 mt-3 flex-wrap align-items-start">
           {% csrf_token %}
-          <input type="text" name="reason" placeholder="회수 사유 (작성자에게 표시)" class="form-control form-control-sm flex-grow-1" style="min-width:240px; background:rgba(0,0,0,0.2); color:#e2e8f0; border:1px solid rgba(255,255,255,0.15);">
-          <button type="submit" class="btn btn-sm" style="background:#f59e0b; color:white; font-weight:600; white-space:nowrap;"
-                  onclick="return confirm('이 포트폴리오를 회수하여 비공개로 전환할까요?');">
+          <input type="text" name="reason" aria-label="반려 또는 회수 사유" placeholder="회수 사유 (작성자에게 표시)" class="form-control form-control-sm flex-grow-1">
+          <button type="submit" class="btn btn-sm"
+                  data-confirm="이 포트폴리오를 회수하여 비공개로 전환할까요?">
             <i class="fas fa-undo me-1"></i>게시 회수
           </button>
         </form>
@@ -193,27 +182,27 @@
 
       <!-- 레거시 포트폴리오 -->
       {% for p in approved_legacy %}
-      <div class="p-3 mb-3 rounded" style="background: rgba(16,185,129,0.06); border:1px solid rgba(245,158,11,0.3);">
+      <div class="p-3 mb-3 rounded">
         <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
           <div>
-            <h6 class="mb-1" style="color:#f8fafc; font-weight:700;">{{ p.get_display_name }}의 포트폴리오 <span class="badge" style="background:#d97706;">기존</span>
-              {% if not p.is_public %}<span class="badge" style="background:#64748b;">작성자 비공개</span>{% endif %}
-            </h6>
-            <div style="color:#cbd5e1; font-size:0.9rem;">
+            <h3 class="mb-1">{{ p.get_display_name }}의 포트폴리오 <span class="badge">기존</span>
+              {% if not p.is_public %}<span class="badge">작성자 비공개</span>{% endif %}
+            </h3>
+            <div>
               <i class="fas fa-user me-1"></i>{{ p.user.username }}
               {% if p.title %}· {{ p.title }}{% endif %}
               {% if p.reviewed_at %}· <i class="fas fa-check me-1"></i>{{ p.reviewed_at|date:"Y.m.d H:i" }} 승인{% endif %}
             </div>
           </div>
-          <a href="{% url 'community:portfolio_view' p.user.id %}" target="_blank" class="btn btn-sm" style="background:#3b82f6; color:white; font-weight:600;">
+          <a href="{% url 'community:portfolio_view' p.user.id %}" target="_blank" rel="noopener" class="btn btn-sm">
             <i class="fas fa-external-link-alt me-1"></i>내용 보기
           </a>
         </div>
         <form method="post" action="{% url 'common:admin_portfolio_reject' 'legacy' p.id %}" class="d-flex gap-2 mt-3 flex-wrap align-items-start">
           {% csrf_token %}
-          <input type="text" name="reason" placeholder="회수 사유 (작성자에게 표시)" class="form-control form-control-sm flex-grow-1" style="min-width:240px; background:rgba(0,0,0,0.2); color:#e2e8f0; border:1px solid rgba(255,255,255,0.15);">
-          <button type="submit" class="btn btn-sm" style="background:#f59e0b; color:white; font-weight:600; white-space:nowrap;"
-                  onclick="return confirm('이 포트폴리오를 회수하여 비공개로 전환할까요?');">
+          <input type="text" name="reason" aria-label="반려 또는 회수 사유" placeholder="회수 사유 (작성자에게 표시)" class="form-control form-control-sm flex-grow-1">
+          <button type="submit" class="btn btn-sm"
+                  data-confirm="이 포트폴리오를 회수하여 비공개로 전환할까요?">
             <i class="fas fa-undo me-1"></i>게시 회수
           </button>
         </form>
@@ -224,32 +213,32 @@
 
   <!-- 최근 처리 내역 -->
   {% if recent_items %}
-  <div class="card border-0" style="background: rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08);">
+  <div class="card border-0">
     <div class="card-body">
-      <h5 style="color:#a5b4fc; font-weight: 700;" class="mb-3">
+      <h2 class="mb-3">
         <i class="fas fa-history me-2"></i>최근 처리 내역 ({{ recent_items|length }})
-      </h5>
+      </h2>
       <div class="table-responsive">
-        <table class="table table-sm align-middle" style="color:#e2e8f0;">
+        <table class="table table-sm align-middle">
           <thead>
-            <tr style="color:#94a3b8;">
+            <tr>
               <th>포트폴리오</th><th>구성원</th><th>상태</th><th>검토자</th><th>검토일</th>
             </tr>
           </thead>
           <tbody>
             {% for item in recent_items %}
-            <tr style="border-color:rgba(255,255,255,0.08);">
+            <tr>
               <td>
                 {{ item.name }}
-                {% if item.is_legacy %}<span class="badge" style="background:#d97706;">기존</span>{% endif %}
+                {% if item.is_legacy %}<span class="badge">기존</span>{% endif %}
               </td>
               <td>{{ item.username }}</td>
               <td>
                 {% if item.approval_status == 'approved' %}
-                <span class="badge" style="background:#10b981;">승인</span>
+                <span class="badge">승인</span>
                 {% else %}
-                <span class="badge" style="background:#ef4444;">반려</span>
-                {% if item.rejection_reason %}<small style="color:#94a3b8;"> · {{ item.rejection_reason|truncatechars:40 }}</small>{% endif %}
+                <span class="badge">반려</span>
+                {% if item.rejection_reason %}<small> · {{ item.rejection_reason|truncatechars:40 }}</small>{% endif %}
                 {% endif %}
               </td>
               <td>{{ item.reviewed_by.username|default:"-" }}</td>
@@ -263,4 +252,5 @@
   </div>
   {% endif %}
 </div>
+
 {% endblock %}

@@ -44,10 +44,36 @@ class RookiePreviewTests(TestCase):
         self.assertTemplateUsed(response, 'base_mobile.html')
         self.assertTemplateUsed(response, 'community/games/_lite_award_fx.html')
 
+    def test_series_assets_and_scenarios_use_both_shells_without_creating_a_career(self):
+        before = (LiteCareer.objects.count(), RookiePlayer.objects.count())
+        for mobile in (False, True):
+            response = self.get_preview('?scene=series&role=pitcher&outcome=loss&bench=1', mobile=mobile)
+            self.assertContains(response, 'css/rookie-series.css')
+            self.assertContains(response, 'js/rookie-series.js')
+            self.assertContains(response, 'series/reflection.webp')
+            self.assertContains(response, '출전하지 않았어요')
+            self.assertNotContains(response, 'data-sb-champion')
+        self.assertEqual((LiteCareer.objects.count(), RookiePlayer.objects.count()), before)
+
     def test_unknown_scene_is_safe_to_open(self):
         response = self.get_preview('?scene=missing')
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.context['scene'], 'opening')
+
+    def test_environment_previews_are_isolated_and_press_choices_do_not_submit(self):
+        before = (LiteCareer.objects.count(), RookiePlayer.objects.count())
+        for mobile in (False, True):
+            for query in ('?scene=environment', '?scene=environment&role=pitcher', '?scene=traits&weak=1', '?scene=mediaday&scope=intl', '?scene=series&env=1'):
+                response = self.get_preview(query, mobile=mobile)
+                self.assertEqual(response.status_code, 200)
+                self.assertContains(response, 'rookie-environment.css')
+                if 'mediaday' in query:
+                    self.assertContains(response, 'data-re-media-choice', count=4)
+                    self.assertNotContains(response, 'name="what" value="mediaday"')
+                if 'traits' in query:
+                    self.assertContains(response, '약점')
+                    self.assertContains(response, 'data-rl-mfx-close')
+        self.assertEqual((LiteCareer.objects.count(), RookiePlayer.objects.count()), before)
 
     def test_all_ten_uniforms_render_with_real_static_assets(self):
         response = self.get_preview('?scene=cards&all=1')

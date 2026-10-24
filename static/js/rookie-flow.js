@@ -26,7 +26,7 @@
     var values = function () {
         var data = {};
         plan.querySelectorAll('input[name]').forEach(function (input) {
-            if (input.name === 'program' || input.name === 'event_choice' || input.name === 'intensity' || input.name.indexOf('intl_') === 0) {
+            if (input.name === 'program' || input.name === 'event_choice' || input.name === 'intensity' || input.name === 'routine' || input.name.indexOf('intl_') === 0) {
                 if (!data[input.name]) data[input.name] = [];
                 if (input.checked) data[input.name].push(input.value);
             }

@@ -1067,6 +1067,10 @@ def admin_user_detail(request, user_id):
         pwd1 = request.POST.get('new_password', '').strip()
         pwd2 = request.POST.get('new_password_confirm', '').strip()
 
+        if request.POST.get('action') == 'password' and not (pwd1 and pwd2):
+            messages.error(request, '새 비밀번호와 확인 값을 모두 입력해 주세요.')
+            return redirect('common:admin_user_detail', user_id=user.id)
+
         if pwd1 or pwd2:
             if pwd1 != pwd2:
                 messages.error(request, '새 비밀번호가 일치하지 않습니다.')
@@ -1075,7 +1079,12 @@ def admin_user_detail(request, user_id):
                 messages.error(request, '비밀번호는 8자 이상이어야 합니다.')
                 return redirect('common:admin_user_detail', user_id=user.id)
             user.set_password(pwd1)
+            user.save(update_fields=['password'])
+            if user.pk == request.user.pk:
+                from django.contrib.auth import update_session_auth_hash
+                update_session_auth_hash(request, user)
             messages.success(request, f'{user.username}님의 비밀번호가 재설정되었습니다.')
+            return redirect('common:admin_user_detail', user_id=user.id)
 
         # 닉네임 수정
         nickname = request.POST.get('nickname', '').strip()

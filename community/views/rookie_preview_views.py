@@ -38,6 +38,9 @@ SCENES = [
     ('rival', '다시 만난 경쟁자', '함께 훈련할지, 정면 승부할지', '◈'),
     ('world', '살아 있는 커리어 리그', '같은 대진표와 이어지는 경쟁자', '▤'),
     ('series', '특별 경기 전광판', '한국시리즈·국제대회를 1차전부터', '▦'),
+    ('environment', '경기 환경과 루틴', '시즌 예보·루틴·조건별 성적', '☀'),
+    ('traits', '숨은 특성 발견', '조건과 약점을 알아가는 순간', '◇'),
+    ('mediaday', '미디어데이', '큰 경기 앞 마이크 앞에서', '◍'),
     ('starter_trial', '선발 전환 제안', '불펜 성적과 선발 시험 등판', 'K'),
     ('starter_course', '선발 수업 평가', '긴 이닝 준비와 최종 평가', 'K'),
     ('bullpen_move', '불펜 전환 면담', '부진한 선발의 다음 기회', 'K'),
@@ -47,7 +50,7 @@ SCENES = [
 
 @never_cache
 def rookie_preview(request):
-    if not settings.DEBUG:
+    if not settings.DEBUG and not getattr(request, 'rookie_admin_preview', False):
         raise Http404
     edition = 'full' if request.GET.get('edition') == 'full' else 'lite'
     scenes = [s for s in SCENES if edition == 'lite' or s[0] not in ('homerun', 'strikeout', 'loss')]
@@ -124,7 +127,28 @@ def rookie_preview(request):
                demo_stats=[('컨택', 76, 79), ('파워', 82, 85), ('선구안', 71, 73)])
     if scene == 'series':
         from .. import rookie_series as Series
-        ctx['series_boards'] = Series.demo(request.GET.get('role', 'batter'))
+        ctx['series_boards'] = Series.demo(request.GET.get('role', 'batter'), request.GET.get('outcome', 'win'))
+        if request.GET.get('env') == '1':
+            from .. import rookie_env as Env
+            c = SimpleNamespace(pk=7, name='미리보기', year=5)
+            ctx['series_boards'] = [Env.decorate_series(c, doc) for doc in ctx['series_boards']]
+            ctx['env_enabled'] = True
+        if request.GET.get('bench') == '1':
+            for doc in ctx['series_boards']:
+                for rd in doc['rounds']:
+                    for game in rd['games']:
+                        game['me'] = None
+    if scene in ('environment', 'traits', 'mediaday'):
+        from .. import rookie_env as Env
+        from .. import rookie_env_presentation as EnvUI
+        ctx.update(EnvUI.preview_context(request.GET.get('role', 'batter')))
+        ctx['environment_preview'] = True
+        if scene == 'traits':
+            codes = ('cold_weak', 'heat_weak') if request.GET.get('weak') == '1' else ('rain_man', 'cold_weak')
+            ctx.update(trait_discoveries=[dict(EnvUI.trait(t), evidence='조건이 충분히 쌓인 시즌 기록에서 발견했어요.') for t in codes], trait_preview=True)
+        elif scene == 'mediaday':
+            scope = 'intl' if request.GET.get('scope') == 'intl' else 'post'
+            ctx.update(decision=Env.media_view('WBC 결승' if scope == 'intl' else '한국시리즈 7차전', scope), media_preview=True)
     if uniform_preview:
         ctx.update(uniform_preview=uniform_preview, uniform_gallery=entries if request.GET.get('all') == '1' else [],
                    uniform_teams=[dict(code=code, name=label, color=color) for code, label, color in group],
@@ -198,6 +222,7 @@ def rookie_preview(request):
             if request.GET.get('choice') in {ch['key'] for ch in event['choices']}:
                 ctx['preview_result'] = Story.resolve(player, event, request.GET['choice'], rng)
         ctx.update(story_scene=event, mind=Story.view(player), scene_preview=True)
-    response = render(request, 'community/rookie_preview.html', ctx)
+    preview_template = 'common/admin_game_preview.html' if getattr(request, 'rookie_admin_preview', False) else 'community/rookie_preview.html'
+    response = render(request, preview_template, ctx)
     response['X-Robots-Tag'] = 'noindex, nofollow'
     return response
