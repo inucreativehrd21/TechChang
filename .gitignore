@@ -44,3 +44,7 @@ staticfiles/
 
 # 연구실 라이브 표시 상태 파일 (office/live.py)
 logs/office_live.*
+
+# 운영·로컬 실행 산출물(소스가 아님)
+/logs/
+/backups/
