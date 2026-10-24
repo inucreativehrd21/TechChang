@@ -13,13 +13,12 @@ from django.core.mail import send_mail
 from django.core.cache import cache
 import json
 import logging
-import requests
 import secrets
 from datetime import timedelta
 from django.contrib.auth.models import User
 from common.forms import UserForm, ProfileForm
 from . import legal
-from .models import Profile, EmailVerification, KakaoUser
+from .models import Profile, EmailVerification
 from community.utils import award_points, deduct_points
 
 
@@ -100,9 +99,12 @@ def profile_edit(request):
 def account_delete(request):
     """회원 탈퇴 — 개인정보 즉시 파기(common.services.account.withdraw).
 
-    카카오 회원은 사이트 비밀번호가 없으므로(무작위 값) 비밀번호 대신 확인 문구만 받는다.
+    사이트 비밀번호가 없는 소셜 회원은 확인 문구로 탈퇴해요.
+    예전 카카오의 알 수 없는 무작위 비밀번호도 실제 연결을 확인해 호환해요.
     """
-    is_social = request.user.username.startswith('kakao_')
+    legacy_kakao = request.user.username.startswith('kakao_') and request.user.social_identities.filter(
+        provider='kakao', subject=request.user.username[6:]).exists()
+    is_social = not request.user.has_usable_password() or legacy_kakao
     ctx = {'is_social': is_social}
     if request.method == 'POST':
         if not is_social and not request.user.check_password(request.POST.get('password', '')):
@@ -385,16 +387,16 @@ def verify_email_change(request):
 
 @login_required
 def force_email_verification(request):
-    """미인증(비카카오) 사용자 강제 이메일 인증 페이지.
+    """소셜 연결이 없는 미인증 사용자의 이메일 인증 페이지.
 
     이메일을 입력/수정한 뒤 인증하면 verify_email_change(AJAX)가 user.email과
     profile.is_email_verified를 갱신한다 — 과거 더미 이메일 사용자가 올바른
     이메일로 교체할 수 있도록 입력 필드를 편집 가능하게 둔다.
-    이미 인증됐거나 카카오 사용자는 들어올 필요가 없으므로 홈으로 보낸다.
+    이미 인증됐거나 소셜 계정이 연결돼 있으면 홈으로 보내요.
     """
     user = request.user
     profile = getattr(user, 'profile', None)
-    if user.username.startswith('kakao_') or (profile and profile.is_email_verified):
+    if user.social_identities.exists() or (profile and profile.is_email_verified):
         return redirect('community:index')
 
     # 더미/플레이스홀더 이메일(빈 값·@kakao.user·@ 없음)이면 비워서 새 입력을 유도
@@ -467,225 +469,6 @@ def signup_with_email_verification(request):
         form = UserForm()
 
     return render(request, 'common/signup_with_verification.html', _signup_ctx(form))
-
-
-# ==================== 카카오 로그인 ====================
-def kakao_login(request):
-    """카카오 로그인 시작 (인가 코드 요청)"""
-    import secrets
-    from django.utils import timezone
-
-    # 환경변수에서 카카오 REST API 키 가져오기
-    kakao_rest_api_key = settings.KAKAO_REST_API_KEY
-
-    # 도메인 기반 redirect_uri 생성
-    host = request.get_host()
-    scheme = 'https' if request.is_secure() else 'http'
-    redirect_uri = f"{scheme}://{host}/common/kakao/callback/"
-
-    # State 토큰 생성 (CSRF 방지)
-    state_token = secrets.token_urlsafe(32)
-
-    # 세션에 state 저장 (검증용)
-    request.session['kakao_oauth_state'] = state_token
-    request.session['kakao_oauth_state_created'] = timezone.now().isoformat()
-
-    kakao_auth_url = (
-        f"https://kauth.kakao.com/oauth/authorize"
-        f"?client_id={kakao_rest_api_key}"
-        f"&redirect_uri={redirect_uri}"
-        f"&response_type=code"
-        f"&state={state_token}"  # State 추가
-    )
-
-    return redirect(kakao_auth_url)
-
-
-def kakao_callback(request):
-    """카카오 로그인 콜백 (토큰 및 사용자 정보 받기)"""
-    from django.utils import timezone
-    from datetime import datetime, timedelta
-
-    code = request.GET.get('code')
-    state = request.GET.get('state')  # 수신된 state
-
-    if not code:
-        messages.error(request, '카카오 로그인에 실패했습니다.')
-        return redirect('common:login')
-
-    # State 검증
-    saved_state = request.session.get('kakao_oauth_state')
-    state_created = request.session.get('kakao_oauth_state_created')
-
-    if not saved_state or not state:
-        logger.warning(f"카카오 OAuth state 누락: saved={bool(saved_state)}, received={bool(state)}")
-        messages.error(request, '인증 오류: State 토큰이 없습니다.')
-        return redirect('common:login')
-
-    if saved_state != state:
-        logger.warning(f"카카오 OAuth state 불일치")
-        messages.error(request, '인증 오류: 잘못된 요청입니다.')
-        return redirect('common:login')
-
-    # State 만료 검증 (5분)
-    if state_created:
-        created_time = datetime.fromisoformat(state_created)
-        if timezone.now() - created_time > timedelta(minutes=5):
-            logger.warning("카카오 OAuth state 만료")
-            messages.error(request, '인증 시간이 만료되었습니다. 다시 시도해주세요.')
-            return redirect('common:login')
-
-    # State 세션 삭제 (재사용 방지)
-    del request.session['kakao_oauth_state']
-    if 'kakao_oauth_state_created' in request.session:
-        del request.session['kakao_oauth_state_created']
-
-    # 환경변수에서 키 가져오기
-    kakao_rest_api_key = settings.KAKAO_REST_API_KEY
-    kakao_client_secret = settings.KAKAO_CLIENT_SECRET
-
-    # 도메인 기반 redirect_uri 생성
-    host = request.get_host()
-    scheme = 'https' if request.is_secure() else 'http'
-    redirect_uri = f"{scheme}://{host}/common/kakao/callback/"
-
-    # 1. 토큰 요청
-    token_url = "https://kauth.kakao.com/oauth/token"
-    token_data = {
-        'grant_type': 'authorization_code',
-        'client_id': kakao_rest_api_key,
-        'client_secret': kakao_client_secret,
-        'redirect_uri': redirect_uri,
-        'code': code,
-    }
-
-    try:
-        token_response = requests.post(token_url, data=token_data)
-        token_json = token_response.json()
-
-        if 'error' in token_json:
-            messages.error(request, f'토큰 요청 실패: {token_json.get("error_description")}')
-            return redirect('common:login')
-
-        access_token = token_json.get('access_token')
-        refresh_token = token_json.get('refresh_token')
-        expires_in = token_json.get('expires_in', 21600)  # 기본 6시간
-
-        # 2. 사용자 정보 요청
-        user_info_url = "https://kapi.kakao.com/v2/user/me"
-        headers = {
-            'Authorization': f'Bearer {access_token}',
-            'Content-Type': 'application/x-www-form-urlencoded;charset=utf-8'
-        }
-
-        user_info_response = requests.get(user_info_url, headers=headers)
-        user_info = user_info_response.json()
-
-        if 'id' not in user_info:
-            messages.error(request, '사용자 정보를 가져올 수 없습니다.')
-            return redirect('common:login')
-
-        # 3. 카카오 사용자 정보 파싱
-        kakao_id = user_info['id']
-        kakao_account = user_info.get('kakao_account', {})
-        profile = kakao_account.get('profile', {})
-
-        nickname = profile.get('nickname')
-        email = kakao_account.get('email')
-        profile_image = profile.get('profile_image_url')
-        thumbnail_image = profile.get('thumbnail_image_url')
-
-        # 4. KakaoUser DB에 저장 또는 업데이트
-        kakao_user, created = KakaoUser.objects.get_or_create(
-            kakao_id=kakao_id,
-            defaults={
-                'nickname': nickname,
-                'email': email,
-                'profile_image': profile_image,
-                'thumbnail_image': thumbnail_image,
-                'access_token': access_token,
-                'refresh_token': refresh_token,
-                'token_expires_at': timezone.now() + timedelta(seconds=expires_in),
-            }
-        )
-
-        if not created:
-            # 기존 사용자 정보 업데이트
-            kakao_user.nickname = nickname
-            kakao_user.email = email
-            kakao_user.profile_image = profile_image
-            kakao_user.thumbnail_image = thumbnail_image
-            kakao_user.access_token = access_token
-            kakao_user.refresh_token = refresh_token
-            kakao_user.token_expires_at = timezone.now() + timedelta(seconds=expires_in)
-            kakao_user.last_login = timezone.now()
-            kakao_user.save()
-
-        # 5. Django User 자동 생성 또는 로그인
-        username = f'kakao_{kakao_id}'
-
-        try:
-            # 기존 Django User 확인
-            django_user = User.objects.get(username=username)
-        except User.DoesNotExist:
-            # Django User 생성 (임의의 복잡한 비밀번호 설정)
-            random_password = secrets.token_urlsafe(32)
-            django_user = User.objects.create_user(
-                username=username,
-                email=email if email else f'kakao_{kakao_id}@kakao.user',
-                password=random_password
-            )
-
-            # Profile 생성
-            Profile.objects.get_or_create(user=django_user, defaults={'nickname': nickname})
-
-        # Django 인증 시스템으로 로그인
-        login(request, django_user, backend='django.contrib.auth.backends.ModelBackend')
-
-        # 세션에 카카오 정보 추가 저장
-        request.session['kakao_user_id'] = kakao_user.id
-        request.session['kakao_nickname'] = kakao_user.nickname
-        request.session['is_kakao_user'] = True
-
-        messages.success(request, f'{nickname}님, 카카오 로그인에 성공했습니다!')
-        return redirect('community:index')
-
-    except requests.exceptions.RequestException as e:
-        logger.error(f"카카오 API 요청 오류: {e}")
-        messages.error(request, '카카오 로그인 중 오류가 발생했습니다.')
-        return redirect('common:login')
-    except Exception as e:
-        logger.error(f"카카오 로그인 오류: {e}")
-        messages.error(request, f'로그인 처리 중 오류가 발생했습니다: {str(e)}')
-        return redirect('common:login')
-
-
-def kakao_logout(request):
-    """카카오 로그아웃"""
-    kakao_user_id = request.session.get('kakao_user_id')
-
-    if kakao_user_id:
-        try:
-            kakao_user = KakaoUser.objects.get(id=kakao_user_id)
-            access_token = kakao_user.access_token
-
-            # 카카오 로그아웃 API 호출
-            logout_url = "https://kapi.kakao.com/v1/user/logout"
-            headers = {'Authorization': f'Bearer {access_token}'}
-            requests.post(logout_url, headers=headers)
-        except Exception as e:
-            logger.error(f"카카오 로그아웃 오류: {e}")
-
-    # Django 로그아웃
-    logout(request)
-
-    # 세션 정리
-    request.session.pop('kakao_user_id', None)
-    request.session.pop('kakao_nickname', None)
-    request.session.pop('is_kakao_user', None)
-
-    messages.success(request, '로그아웃되었습니다.')
-    return redirect('common:login')
 
 
 # ==================== 관리자 기능 ====================
@@ -928,7 +711,7 @@ def admin_dashboard(request):
     email_verified_users = Profile.objects.filter(is_email_verified=True).count()
 
     # 최근 가입 사용자
-    recent_users = User.objects.select_related('profile').order_by('-date_joined')[:10]
+    recent_users = User.objects.select_related('profile').prefetch_related('social_identities').order_by('-date_joined')[:10]
 
     # 칼럼 자동 작성 내역 (테크창 연구팀 봇)
     from community.models import Question
@@ -1184,7 +967,7 @@ def admin_user_list(request):
     rank_filter = request.GET.get('rank', '')
     status_filter = request.GET.get('status', '')
 
-    users = User.objects.select_related('profile').order_by('-date_joined')
+    users = User.objects.select_related('profile').prefetch_related('social_identities').order_by('-date_joined')
 
     # 검색
     if search_query:

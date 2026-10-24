@@ -1,4 +1,5 @@
 from types import SimpleNamespace
+from datetime import date
 from unittest import mock
 
 from django.test import SimpleTestCase
@@ -24,6 +25,16 @@ def fake_journal(*lines):
 
 
 class LogClassificationTests(SimpleTestCase):
+    def test_codex_log_scope_follows_policy_and_receives_only_masked_input(self):
+        stats = {'top_errors': ['ERROR 1.2.3.4 ops@example.com broken request'], 'error_count': 1, 'status_5xx': 1}
+        for day, allowed in ((date(2026, 10, 28), False), (date(2026, 10, 29), True)):
+            with self.subTest(day=day), mock.patch('django.utils.timezone.localdate', return_value=day), \
+                    mock.patch('common.services.claude.ask_json', return_value={'findings': []}) as ask:
+                Command()._analyze_errors(24, stats)
+            self.assertEqual(ask.call_args.kwargs['allow_codex'], allowed)
+            self.assertNotIn('1.2.3.4', ask.call_args.args[0])
+            self.assertNotIn('ops@example.com', ask.call_args.args[0])
+
     def test_ip_blocks_are_counted_separately_from_errors(self):
         with fake_journal(OLD_BLOCK, NEW_BLOCK, DJANGO_500):
             stats = Command()._collect_journal(hours=24)

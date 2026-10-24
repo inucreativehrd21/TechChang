@@ -75,6 +75,7 @@
 {% endblock %}
 
 {% block content %}
+<div class="px-3 pt-3"><a class="btn btn-outline-primary w-100" href="{% url 'common:connections' %}">로그인 계정 연결 · 카카오 / Google</a></div>
 <!-- 프로필 헤더 -->
 <div style="padding: 20px 16px 12px; display: flex; align-items: center; gap: 16px;">
     {% if profile.profile_image %}

@@ -328,10 +328,10 @@ class RequestLoggingMiddleware:
 
 
 class EmailVerificationRequiredMiddleware:
-    """비카카오·미인증 사용자에게 이메일 인증을 강제하는 게이트.
+    """소셜 인증 수단이 없는 미인증 사용자에게 이메일 인증을 요구해요.
 
     인증을 마치기 전까지 모든 페이지를 강제 인증 페이지로 리다이렉트한다.
-    - 제외: 카카오 로그인 사용자(username 'kakao_*'), 스태프/슈퍼유저(잠금 방지)
+    - 제외: 실제 소셜 연결이 있는 회원, 스태프/슈퍼유저(잠금 방지)
     - 통과 허용 경로: 강제 인증 페이지·관련 인증 AJAX·로그아웃·정적/미디어
     인증 성공 시 verify_email_change가 profile.is_email_verified를 True로 바꾸므로
     이후 요청은 자연스럽게 통과한다.
@@ -348,6 +348,10 @@ class EmailVerificationRequiredMiddleware:
             reverse('common:logout'),
             reverse('common:kakao_logout'),
             reverse('common:login'),
+            reverse('common:connections'),
+            reverse('common:google_callback'), reverse('common:kakao_callback'),
+            reverse('common:social_connect', args=['google']),
+            reverse('common:social_connect', args=['kakao']),
         }
         self.exempt_prefixes = tuple(p for p in (
             getattr(settings, 'STATIC_URL', '') or '/static/',
@@ -364,10 +368,10 @@ class EmailVerificationRequiredMiddleware:
         user = getattr(request, 'user', None)
         if not (user and user.is_authenticated):
             return False
-        # 관리자(잠금 방지)·카카오 사용자는 강제 대상 제외
+        # 아이디 접두사를 인증 근거로 사용하지 않아요.
         if user.is_staff or user.is_superuser:
             return False
-        if user.username.startswith('kakao_'):
+        if user.social_identities.exists():
             return False
         # 인증 흐름/정적 경로는 통과시켜 무한 리다이렉트 방지
         path = request.path
@@ -380,7 +384,7 @@ class EmailVerificationRequiredMiddleware:
 
 
 class TermsConsentRequiredMiddleware:
-    """약관 동의 기록이 없는 카카오 소셜 로그인 회원을 동의 화면으로 보낸다.
+    """약관 동의 기록이 없는 소셜 로그인 회원을 동의 화면으로 보낸다.
 
     일반 가입은 가입 화면에서 동의하지만, 카카오 로그인은 동의 절차 없이 계정이 만들어졌다(2026-10-09 이전).
     첫 이용 전에 이용약관·개인정보 수집·이용·만 14세 이상 확인을 받는다. 관리자는 잠금 방지로 제외.
@@ -411,7 +415,7 @@ class TermsConsentRequiredMiddleware:
         user = getattr(request, 'user', None)
         if not (user and user.is_authenticated) or user.is_staff or user.is_superuser:
             return False
-        if not user.username.startswith('kakao_'):
+        if not user.social_identities.exists():
             return False
         path = request.path
         if path in self.exempt_paths or path.startswith(self.exempt_prefixes):

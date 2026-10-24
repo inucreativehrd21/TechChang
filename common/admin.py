@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Profile, Emoticon, UserEmoticon, DailyCheckIn, PointHistory, EmailVerification, KakaoUser, BlockedIP, LogFinding
+from .models import Profile, Emoticon, UserEmoticon, DailyCheckIn, PointHistory, EmailVerification, KakaoUser, SocialIdentity, BlockedIP, LogFinding
 
 
 @admin.register(LogFinding)
@@ -74,6 +74,30 @@ class KakaoUserAdmin(admin.ModelAdmin):
     list_filter = ['created_at', 'last_login']
     search_fields = ['nickname', 'email', 'kakao_id']
     ordering = ['-created_at']
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+
+@admin.register(SocialIdentity)
+class SocialIdentityAdmin(admin.ModelAdmin):
+    list_display = ['user', 'provider', 'created_at']
+    list_filter = ['provider']
+    search_fields = ['user__username']
+    list_select_related = ['user']
+    readonly_fields = ['user', 'provider', 'subject', 'created_at']
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
 
 
 @admin.register(BlockedIP)

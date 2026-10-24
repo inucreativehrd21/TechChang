@@ -1,0 +1,15 @@
+{% load static social_tags %}
+{% account_link_prompt as show_account_link_prompt %}
+{% if show_account_link_prompt %}
+<link rel="stylesheet" href="{% static 'css/account-link-prompt.css' %}?v={{ STATIC_VERSION }}">
+<dialog class="tc-link-prompt" id="account-link-prompt" aria-labelledby="account-link-title" aria-describedby="account-link-description">
+    <h2 id="account-link-title">다음엔 더 간편하게 로그인해요</h2>
+    <p id="account-link-description">지금 쓰는 계정에 Google이나 카카오를 연결할 수 있어요. 연결해도 기존 데이터는 그대로 보존돼요.</p>
+    <div class="tc-link-prompt__actions">
+        <a class="btn btn-primary" href="{% url 'common:connections' %}">계정 연결하기</a>
+        <button class="btn btn-outline-secondary" type="button" data-link-prompt-close>나중에 할게요</button>
+    </div>
+    <p class="tc-link-prompt__hint">언제든 프로필의 ‘로그인 계정 연결’에서 설정할 수 있어요.</p>
+</dialog>
+<script src="{% static 'js/account-link-prompt.js' %}?v={{ STATIC_VERSION }}" defer></script>
+{% endif %}

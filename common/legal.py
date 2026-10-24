@@ -19,11 +19,17 @@ VERSIONS = {
         ('20260607', date(2026, 6, 7), date(2026, 6, 7)),
     ],
     'privacy': [
+        ('20261029', date(2026, 10, 22), date(2026, 10, 29)),
         ('20261009', date(2026, 10, 9), date(2026, 10, 9)),
         ('20260607', date(2026, 6, 7), date(2026, 6, 7)),
     ],
 }
 TITLES = {'terms': '이용약관', 'privacy': '개인정보 처리방침'}
+
+
+def codex_log_analysis_allowed(today: date | None = None) -> bool:
+    """OpenAI 로그 분석은 해당 위탁 안내의 시행일 이후에만 허용한다."""
+    return in_force('privacy', today=today) >= '20261029'
 
 
 def latest(kind: str) -> str:

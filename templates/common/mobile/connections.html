@@ -1,0 +1,5 @@
+{% extends 'base_mobile.html' %}
+{% load static %}
+{% block title %}로그인 계정 연결 - 테크창{% endblock %}
+{% block extra_css %}<link rel="stylesheet" href="{% static 'css/social-connections.css' %}?v={{ STATIC_VERSION }}&amp;social=2">{% endblock %}
+{% block content %}<div class="p-3 tc-connections">{% include 'common/_connections.html' %}</div>{% endblock %}

@@ -119,6 +119,7 @@ class Command(BaseCommand):
 
         try:
             from common.services.claude import ask_json, ClaudeModel
+            from common.legal import codex_log_analysis_allowed
 
             # 외부(AI) 로 보내기 전에 개인정보를 가린다 — 개인정보 처리방침 제6·7조(IP·이메일 마스킹 후 전송)
             error_block = '\n'.join(
@@ -162,6 +163,20 @@ class Command(BaseCommand):
                 system=system,
                 model=model,
                 max_tokens=1500,
+                allow_codex=codex_log_analysis_allowed(),
+                output_schema={
+                    'type': 'object', 'additionalProperties': False,
+                    'required': ['severity', 'overview', 'findings'],
+                    'properties': {
+                        'severity': {'type': 'string', 'enum': ['심각', '주의', '정보']},
+                        'overview': {'type': 'string'},
+                        'findings': {'type': 'array', 'items': {
+                            'type': 'object', 'additionalProperties': False,
+                            'required': ['title', 'cause', 'action'],
+                            'properties': {k: {'type': 'string'} for k in ('title', 'cause', 'action')},
+                        }},
+                    },
+                },
             )
 
             findings = data.get('findings', [])

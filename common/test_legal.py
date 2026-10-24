@@ -10,7 +10,7 @@ from django.utils import timezone
 
 from common import legal
 from common.management.commands.send_log_report import mask_personal
-from common.models import EmailVerification, KakaoUser, Profile
+from common.models import EmailVerification, KakaoUser, Profile, SocialIdentity
 from community.models import Category, Portfolio, Question
 
 PC = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/130'
@@ -18,6 +18,16 @@ MOBILE = 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) Mobile/15E148'
 
 
 class LegalPagesTests(TestCase):
+    def test_openai_log_analysis_starts_with_the_announced_policy(self):
+        self.assertFalse(legal.codex_log_analysis_allowed(date(2026, 10, 28)))
+        self.assertTrue(legal.codex_log_analysis_allowed(date(2026, 10, 29)))
+        with mock.patch('django.utils.timezone.localdate', return_value=date(2026, 10, 21)):
+            for ua in (PC, MOBILE):
+                html = self.client.get('/privacy/', HTTP_USER_AGENT=ua).content.decode()
+                self.assertIn('OpenAI OpCo, LLC', html)
+                self.assertIn('2026년 10월 29일부터 적용', html)
+                self.assertIn('/privacy/20261009/', html)
+
     def test_pages_render_on_pc_and_mobile_with_required_sections(self):
         for ua in (PC, MOBILE):
             privacy = self.client.get('/privacy/', HTTP_USER_AGENT=ua).content.decode()
@@ -74,6 +84,7 @@ class SignupConsentTests(TestCase):
 class KakaoConsentGateTests(TestCase):
     def setUp(self):
         self.user = User.objects.create_user('kakao_123', password='x')
+        SocialIdentity.objects.create(user=self.user, provider='kakao', subject='123')
         Profile.objects.get_or_create(user=self.user)
         self.client.force_login(self.user)
 
@@ -122,7 +133,8 @@ class WithdrawalTests(TestCase):
         self.assertFalse(User.objects.filter(email='alice@example.com').exists())
 
     def test_kakao_member_can_withdraw_without_password(self):
-        user = User.objects.create_user('kakao_777', email='k@kakao.user', password='random')
+        user = User.objects.create_user('kakao_777', email='k@kakao.user', password='legacy-random')
+        SocialIdentity.objects.create(user=user, provider='kakao', subject='777')
         Profile.objects.get_or_create(user=user)
         Profile.objects.filter(user=user).update(terms_agreed_at=timezone.now())   # 동의를 마친 카카오 회원
         KakaoUser.objects.create(kakao_id=777, nickname='카카오', email='k@example.com', access_token='tok')

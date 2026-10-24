@@ -1,0 +1,9 @@
+.tc-connections { color: var(--text-primary, #18181b); }
+.tc-connections .card { border-radius: 12px; border-color: var(--border-color, #e5e7eb); }
+.tc-connections .btn-primary { background: #4f46e5; border-color: #4f46e5; }
+.tc-connections .btn-primary:hover { background: #4338ca; border-color: #4338ca; }
+.tc-connections a { color: #4f46e5; }
+.tc-connections :focus-visible { outline: 2px solid #4f46e5; outline-offset: 3px; }
+.tc-connections__account { padding: 18px; border-left: 3px solid #4f46e5; background: #f8fafc; overflow-wrap: anywhere; }
+.tc-connections summary { cursor: pointer; min-height: 44px; display: list-item; align-content: center; }
+.tc-connections .btn { min-height: 44px; }

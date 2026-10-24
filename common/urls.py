@@ -1,12 +1,13 @@
 
 from django.urls import path
 from django.contrib.auth import views as auth_views
-from . import legal_views, views
+from . import legal_views, social_views, views
+from .login_views import AccountLoginView
 
 app_name = 'common'
 
 urlpatterns = [
-    path('login/', auth_views.LoginView.as_view(template_name='common/login.html'), name='login'),
+    path('login/', AccountLoginView.as_view(), name='login'),
     path('logout/', views.logout_view, name='logout'),
     path('signup/', views.signup_with_email_verification, name='signup'),
     path('consent/', legal_views.consent, name='consent'),   # 소셜 로그인 회원 약관 동의
@@ -23,9 +24,14 @@ urlpatterns = [
     path('account/delete/', views.account_delete, name='account_delete'),
 
     # 카카오 로그인
-    path('kakao/login/', views.kakao_login, name='kakao_login'),
-    path('kakao/callback/', views.kakao_callback, name='kakao_callback'),
-    path('kakao/logout/', views.kakao_logout, name='kakao_logout'),
+    path('kakao/login/', social_views.start, {'provider': 'kakao'}, name='kakao_login'),
+    path('kakao/callback/', social_views.callback, {'provider': 'kakao'}, name='kakao_callback'),
+    path('kakao/logout/', views.logout_view, name='kakao_logout'),
+    path('google/login/', social_views.start, {'provider': 'google'}, name='google_login'),
+    path('google/callback/', social_views.callback, {'provider': 'google'}, name='google_callback'),
+    path('connections/', social_views.connections, name='connections'),
+    path('connections/<str:provider>/connect/', social_views.connect, name='social_connect'),
+    path('connections/<str:provider>/disconnect/', social_views.disconnect, name='social_disconnect'),
 
     # 관리자 기능
     path('admin/otp/', views.admin_otp, name='admin_otp'),

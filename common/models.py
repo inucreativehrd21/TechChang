@@ -9,7 +9,7 @@ User = get_user_model()
 
 
 class KakaoUser(models.Model):
-	"""카카오 로그인 사용자"""
+	"""예전 카카오 정보의 호환용 보관함. 신규 인증·프로필은 User/Profile/SocialIdentity만 사용해요."""
 	kakao_id = models.BigIntegerField(unique=True, verbose_name="카카오 ID")
 	nickname = models.CharField(max_length=100, null=True, blank=True, verbose_name="닉네임")
 	email = models.EmailField(null=True, blank=True, verbose_name="이메일")
@@ -32,6 +32,20 @@ class KakaoUser(models.Model):
 
 	def __str__(self):
 		return f"카카오:{self.nickname or self.kakao_id}"
+
+
+class SocialIdentity(models.Model):
+    """로그인 식별자만 보관해요. 공급자 토큰은 저장하지 않아요."""
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='social_identities')
+    provider = models.CharField(max_length=16, choices=[('kakao', '카카오'), ('google', 'Google')])
+    subject = models.CharField(max_length=255)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=['provider', 'subject'], name='social_provider_subject_unique'),
+            models.UniqueConstraint(fields=['user', 'provider'], name='social_user_provider_unique'),
+        ]
 
 
 class Profile(models.Model):

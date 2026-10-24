@@ -1,0 +1,20 @@
+.tc-link-prompt {
+    width: min(440px, calc(100% - 32px));
+    max-height: calc(100dvh - 40px);
+    padding: 28px;
+    border: 1px solid #e5e7eb;
+    border-radius: 16px;
+    background: #fff;
+    color: #18181b;
+    box-shadow: 0 20px 60px rgb(0 0 0 / 16%);
+    overscroll-behavior: contain;
+}
+.tc-link-prompt::backdrop { background: rgb(24 24 27 / 40%); }
+.tc-link-prompt h2 { margin: 0 0 14px; font-size: 1.35rem; font-weight: 700; line-height: 1.4; text-wrap: balance; }
+.tc-link-prompt p { margin-bottom: 22px; line-height: 1.7; word-break: keep-all; overflow-wrap: anywhere; }
+.tc-link-prompt__actions { display: grid; gap: 10px; }
+.tc-link-prompt__actions .btn { min-height: 44px; padding: 11px 16px; touch-action: manipulation; }
+.tc-link-prompt__actions .btn-primary { color: #fff; background: #4f46e5; border-color: #4f46e5; }
+.tc-link-prompt__actions .btn-primary:hover { background: #4338ca; border-color: #4338ca; }
+.tc-link-prompt .tc-link-prompt__hint { margin: 18px 0 0; color: #52525b; font-size: .8rem; }
+.tc-link-prompt :focus-visible { outline: 2px solid #4f46e5; outline-offset: 3px; }
