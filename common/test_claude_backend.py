@@ -15,7 +15,8 @@ def cli_result(result='답변', *, returncode=0, is_error=False, subtype='succes
 
 
 def cli_env(**extra):
-    env = {'CLAUDE_BACKEND': 'cli', 'CLAUDE_CLI_BIN': '/usr/bin/claude', 'ANTHROPIC_API_KEY': 'sk-ant-test'}
+    env = {'CLAUDE_BACKEND': 'cli', 'CLAUDE_CLI_BIN': '/usr/bin/claude', 'ANTHROPIC_API_KEY': 'sk-ant-test',
+           'AI_FALLBACK_BACKEND': '', 'AI_ALLOW_PAID_API': 'false', 'CLAUDE_CLI_FALLBACK': 'false'}
     env.update(extra)
     return mock.patch.dict('os.environ', env)
 
@@ -44,7 +45,7 @@ class CliBackendTests(SimpleTestCase):
         limited = cli_result('Claude AI usage limit reached', returncode=1, is_error=True)
         api = mock.Mock()
         api.messages.create.return_value = SimpleNamespace(content=[SimpleNamespace(type='text', text='API답')])
-        with cli_env(), mock.patch('common.services.claude.subprocess.run', return_value=limited), \
+        with cli_env(AI_ALLOW_PAID_API='true', CLAUDE_CLI_FALLBACK='true'), mock.patch('common.services.claude.subprocess.run', return_value=limited), \
                 mock.patch('common.services.claude._get_client', return_value=api), \
                 self.settings(ADMINS=[('Admin', 'admin@example.com')]):
             with claude.track_calls() as calls:
@@ -84,13 +85,24 @@ class CliBackendTests(SimpleTestCase):
     def test_default_backend_is_api(self):
         api = mock.Mock()
         api.messages.create.return_value = SimpleNamespace(content=[SimpleNamespace(type='text', text='ok')])
-        with mock.patch.dict('os.environ', {}, clear=False), \
+        with mock.patch.dict('os.environ', {'AI_ALLOW_PAID_API': 'true', 'AI_FALLBACK_BACKEND': ''}, clear=False), \
                 mock.patch('common.services.claude.subprocess.run') as run, \
                 mock.patch('common.services.claude._get_client', return_value=api):
             import os
             os.environ.pop('CLAUDE_BACKEND', None)
             self.assertEqual(claude.ask('q'), 'ok')
         run.assert_not_called()
+
+    def test_structured_error_array_preserves_usage_limit(self):
+        proc = SimpleNamespace(returncode=1, stderr='', stdout=json.dumps({
+            'type': 'result', 'is_error': True, 'subtype': 'error_during_execution',
+            'errors': ["You've hit your usage limit; resets 2:50am (Asia/Seoul)"],
+        }))
+        with cli_env(), mock.patch('common.services.claude.subprocess.run', return_value=proc):
+            with self.assertRaises(claude.CliUnavailable) as cm:
+                claude._cli_ask('q', system='', model=claude.DEFAULT_MODEL)
+        self.assertEqual(cm.exception.kind, 'limit')
+        self.assertIn('2:50am', str(cm.exception))
 
 
 class CliToolsTests(SimpleTestCase):
@@ -132,7 +144,7 @@ class StandardModelTests(SimpleTestCase):
         def fake(prompt, *, system, model, max_tokens):
             calls.append(max_tokens)
             return ('' if len(calls) == 1 else '본문'), {}
-        with mock.patch.dict('os.environ', {'CLAUDE_BACKEND': 'api'}), \
+        with mock.patch.dict('os.environ', {'CLAUDE_BACKEND': 'api', 'AI_ALLOW_PAID_API': 'true', 'AI_FALLBACK_BACKEND': ''}), \
                 mock.patch('common.services.claude._api_ask', side_effect=fake):
             self.assertEqual(claude.ask('q', max_tokens=3000), '본문')
         self.assertEqual(calls, [3000, 6000])

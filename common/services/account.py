@@ -33,12 +33,11 @@ def _delete_file(field):
 @transaction.atomic
 def withdraw(user) -> None:
     """user 의 개인정보를 파기하고 비활성 익명 계정으로 바꾼다. 여러 번 불러도 안전하다."""
-    from common.models import EmailVerification, KakaoUser, Profile
+    from common.models import EmailVerification, KakaoUser, Profile, SocialIdentity
     from community.models import Portfolio, PortfolioCollection
 
     now = timezone.now()
     old_email = user.email or ''
-    old_username = user.username
 
     # 1) 작성한 질문·답변은 비공개(삭제 처리) — 기존 정책 유지
     user.author_question.filter(is_deleted=False).update(is_deleted=True, deleted_date=now)
@@ -64,10 +63,9 @@ def withdraw(user) -> None:
     RookiePlayer.objects.filter(user=user).delete()
 
     # 3) 소셜 로그인 연동 정보(카카오 회원번호·토큰·닉네임·이메일)
-    if old_username.startswith('kakao_'):
-        kakao_id = old_username.removeprefix('kakao_')
-        if kakao_id.isdigit():
-            KakaoUser.objects.filter(kakao_id=int(kakao_id)).delete()
+    subjects = SocialIdentity.objects.filter(user=user, provider='kakao').values_list('subject', flat=True)
+    KakaoUser.objects.filter(kakao_id__in=[int(s) for s in subjects if s.isdigit()]).delete()
+    SocialIdentity.objects.filter(user=user).delete()
     try:
         from allauth.socialaccount.models import SocialAccount
         SocialAccount.objects.filter(user=user).delete()

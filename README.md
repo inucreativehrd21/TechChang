@@ -99,12 +99,18 @@ python manage.py runserver
 | `DJANGO_SECRET_KEY` | Django SECRET_KEY (필수) |
 | `DEBUG` | 개발 시 `True`, 운영 시 `False` |
 | `DJANGO_ALLOWED_HOSTS` | 허용 호스트 |
-| `ANTHROPIC_API_KEY` | Claude API 키 (AI 기능) |
-| `CLAUDE_BACKEND` / `CLAUDE_CODE_OAUTH_TOKEN` | `cli` 면 Claude Code 구독으로 먼저 호출, 실패 시 API 폴백 |
+| `ANTHROPIC_API_KEY` | 유료 API를 명시적으로 허용한 환경에서만 사용하는 선택 키 |
+| `CLAUDE_BACKEND` / `CLAUDE_CODE_OAUTH_TOKEN` | `cli` 면 Claude Code 구독으로 호출 |
+| `AI_FALLBACK_BACKEND` | `codex_cli` 면 Claude 사용량 한도 때 Codex 구독으로 전환 |
+| `AI_ALLOW_PAID_API` | 기본 `false`. Codex 폴백을 선택하면 값과 무관하게 API 키 과금 경로 차단 |
+| `CODEX_HOME` / `CODEX_MODEL` | 서버 전용 구독 인증 저장소 / 기본 `gpt-6.1-sol` |
 | `KAKAO_REST_API_KEY` / `KAKAO_CLIENT_SECRET` | 카카오 로그인 |
 | `RATE_LIMIT_REQUESTS` / `DDOS_THRESHOLD` | Rate limit / DDoS 임계값 |
 
 전체 목록은 [.env.example](.env.example) 참조.
+
+구독 폴백의 인증·비공개 품질 비교·운영 적용·롤백 절차는
+[Codex 구독 폴백 운영 안내](docs/codex-subscription-fallback.md)를 참고하세요.
 
 ---
 

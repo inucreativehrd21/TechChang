@@ -62,6 +62,9 @@ def record_limit(reason: str, job: str = ''):
 
 def limited_until(now=None):
     """아직 풀리지 않은 한도의 해제 시각(없으면 None)."""
+    from common.services import subscriptions
+    if subscriptions.enabled():
+        return subscriptions.available_after(now)
     from office.models import CliLimit
     now = now or timezone.now()
     row = CliLimit.objects.filter(reset_at__gt=now).order_by('-reset_at').first()
@@ -201,6 +204,29 @@ def limit_mail(args: list, reason: str, model: str = '') -> bool:
     subject = (f'구독 한도로 작업 중단 — {args[0] if args else "?"} · {_fmt(at)} 해제' if at
                else f'구독 호출 실패로 작업 중단 — {args[0] if args else "?"}')
     return send(subject, lines, buttons)
+
+
+def subscription_mail(args: list, rec: dict) -> bool:
+    """전환 성공과 양쪽 실패를 구분한다. Claude 한도만으로 작업을 멈췄다고 알리지 않는다."""
+    ok = rec.get('backend') == 'codex_cli'
+    job = ' '.join(args) or '?'
+    lines = [f'작업: manage.py {job}', f'모델: {rec.get("model", "")}',
+             f'전환 사유 또는 실패: {rec.get("fallback", "")[:500]}',
+             'Claude API와 OpenAI API 키는 사용하지 않아요. 구독 플랜의 사용량을 사용해요.']
+    if ok:
+        lines.insert(0, 'Claude 구독 한도로 Codex 구독에 전환했고, 이번 호출은 완료됐어요.')
+        return send('Claude → Codex 구독 전환', lines, [])
+    lines.insert(0, '구독 호출을 완료하지 못해 작업이 멈췄어요.')
+    at = limited_until()
+    buttons = []
+    if args and args[0] in RERUNNABLE:
+        run = at + AFTER_RESET if at else timezone.now()
+        label = '구독 재확인 후 다시 실행' if at else '원인 확인 후 다시 실행'
+        buttons.append((label, link(make_token('rerun', args, f'다시 실행: {job}', run_after=run)),
+                        f'{_fmt(run)} 이후 예약 작업에서 다시 확인해요.'))
+    if at:
+        lines.append(f'다음 구독 확인 예정: {_fmt(at)} (불명확한 한도는 재확인 시각이에요.)')
+    return send('구독 호출 실패로 작업 중단', lines, buttons)
 
 
 def revise_args(draft) -> list:

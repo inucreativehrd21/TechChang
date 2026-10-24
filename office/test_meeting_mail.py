@@ -38,7 +38,7 @@ def fake_cli(fail_on=()):
 class MeetingMailTests(TestCase):
     def setUp(self):
         patches = [
-            mock.patch.dict('os.environ', {'CLAUDE_BACKEND': 'cli'}),
+            mock.patch.dict('os.environ', {'CLAUDE_BACKEND': 'cli', 'AI_FALLBACK_BACKEND': ''}),
             mock.patch('office.management.commands.hold_meeting.collect_site_snapshot', return_value={}),
             mock.patch('office.management.commands.hold_meeting.snapshot_as_text', return_value='방문자 120명'),
             mock.patch('office.trends.scout', return_value=TRENDS),
@@ -50,7 +50,8 @@ class MeetingMailTests(TestCase):
         claude._fallback_alerted = False
 
     def test_mail_has_transcript_steps_decisions_and_fallback(self):
-        with mock.patch('common.services.claude._cli_ask', side_effect=fake_cli(fail_on={2})), \
+        with mock.patch.dict('os.environ', {'AI_ALLOW_PAID_API': 'true', 'CLAUDE_CLI_FALLBACK': 'true'}), \
+                mock.patch('common.services.claude._cli_ask', side_effect=fake_cli(fail_on={2})), \
                 mock.patch('common.services.claude._api_ask', return_value=('API 발언', {'input_tokens': 5, 'output_tokens': 5})):
             call_command('hold_meeting', email='admin@example.com', stdout=mock.MagicMock())
 

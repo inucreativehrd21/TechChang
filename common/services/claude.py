@@ -37,6 +37,9 @@ from typing import Generator
 
 from django.conf import settings
 
+from . import subscriptions
+from .cli_errors import ProviderUnavailable
+
 logger = logging.getLogger(__name__)
 
 
@@ -61,6 +64,8 @@ DEFAULT_MODEL = ClaudeModel.SONNET_5_5
 
 def _get_client():
     """Anthropic 클라이언트를 반환. API 키가 없으면 RuntimeError."""
+    if not subscriptions.paid_api_allowed():
+        raise RuntimeError('유료 AI API 호출이 차단되어 있어요(AI_ALLOW_PAID_API=false).')
     try:
         import anthropic
     except ImportError:
@@ -87,6 +92,8 @@ def ask(
     max_tokens: int = 2048,
     timeout: int | None = None,
     tools: tuple = (),
+    output_schema: dict | None = None,
+    allow_codex: bool = True,
 ) -> str:
     """
     Claude에게 단일 질문을 보내고 응답 문자열을 반환합니다.
@@ -103,13 +110,15 @@ def ask(
     Raises:
         RuntimeError: API 키 미설정 또는 anthropic 패키지 없음
 
-    CLAUDE_BACKEND=cli 이면 API 대신 Claude Code CLI(구독)로 먼저 보내고,
-    실패(사용량 한도·토큰 만료·CLI 없음)하면 API 로 넘어간다.
+    CLAUDE_BACKEND=cli 이면 Claude Code 구독으로 먼저 보낸다.
+    AI_FALLBACK_BACKEND=codex_cli 이면 사용량 한도 때 Codex 구독으로만 전환한다.
+    유료 API는 기본 차단하며, 구독 폴백 선택 중에는 어떤 설정으로도 호출하지 않는다.
     호출마다 경로·시간·토큰을 track_calls() 기록기에 남기고, 폴백은 관리자에게 메일로 알린다.
     tools: CLI 경로에서만 켜는 Claude Code 내장 도구(예: ('WebSearch', 'WebFetch')).
            API 폴백에서는 쓰지 않는다 — 웹 검색은 API 에서 별도 과금이라 비용 정책상 막는다.
     """
-    rec = {'model': str(model), 'backend': '', 'seconds': 0.0, 'fallback': '', 'error': '',
+    rec = {'model': str(model), 'requested_model': str(model), 'attempts': [],
+           'backend': '', 'seconds': 0.0, 'fallback': '', 'error': '',
            'input_tokens': None, 'output_tokens': None, 'tags': dict(_call_tags.get()), 'tools': list(tools)}
     started = time.monotonic()
     # 기본값이 아닐 때만 넘긴다 — 기존 호출·테스트의 _cli_ask(prompt, system=, model=) 형태를 유지
@@ -117,6 +126,19 @@ def ask(
     if tools:
         cli_extra['tools'] = tuple(tools)
     try:
+        if subscriptions.enabled():
+            try:
+                out = subscriptions.ask(
+                    lambda: _cli_ask(prompt, system=system, model=model, **cli_extra),
+                    prompt, system=system, timeout=timeout, tools=tuple(tools), record=rec,
+                    output_schema=output_schema, allow_fallback=allow_codex)
+            except Exception as exc:
+                rec['fallback'] = str(exc)[:500]
+                _alert_fallback(rec, fallback_enabled=False, subscription=True)
+                raise
+            if rec['backend'] == 'codex_cli':
+                _alert_fallback(rec, fallback_enabled=False, subscription=True)
+            return out
         if os.environ.get(BACKEND_ENV, 'api').lower() == 'cli':
             try:
                 out, usage = _cli_ask(prompt, system=system, model=model, **cli_extra)
@@ -124,12 +146,14 @@ def ask(
                 return out
             except CliUnavailable as exc:
                 rec['fallback'] = str(exc)[:300]
-                if os.environ.get(FALLBACK_ENV, 'true').lower() == 'false':
+                if os.environ.get(FALLBACK_ENV, 'false').lower() == 'false' or not subscriptions.paid_api_allowed():
                     _alert_fallback(rec, fallback_enabled=False)
                     raise RuntimeError(f'Claude CLI 호출 실패(API 폴백 꺼짐): {exc}') from exc
                 logger.warning('claude backend=cli 실패 → api 폴백: %s', exc)
                 _alert_fallback(rec, fallback_enabled=True)
 
+        if not subscriptions.paid_api_allowed():
+            raise RuntimeError('유료 AI API 호출이 차단되어 있어요. CLAUDE_BACKEND=cli를 확인해 주세요.')
         out, usage = _api_ask(prompt, system=system, model=model, max_tokens=max_tokens)
         if not out.strip() and max_tokens < 32000:
             # adaptive thinking 이 출력 예산을 다 써서 본문이 빈 경우 — 예산을 늘려 한 번 더
@@ -141,7 +165,7 @@ def ask(
         raise
     finally:
         rec['seconds'] = round(time.monotonic() - started, 1)
-        logger.info('claude backend=%s model=%s %.1fs in=%s out=%s%s', rec['backend'] or 'error', model,
+        logger.info('claude backend=%s model=%s %.1fs in=%s out=%s%s', rec['backend'] or 'error', rec['model'],
                     rec['seconds'], rec['input_tokens'], rec['output_tokens'],
                     ' (fallback)' if rec['fallback'] else '')
         with _lock:
@@ -185,6 +209,7 @@ def _api_ask(prompt: str, *, system: str, model: ClaudeModel | str, max_tokens: 
 # 여러 스레드가 동시에 ask() 를 부를 수 있다(office 병렬 단계). 목록 변경·순회는 잠금으로 보호한다.
 _trackers: list[tuple[list, bool, dict | None]] = []
 _fallback_alerted = False
+_subscription_alerted: set[str] = set()
 _lock = threading.Lock()
 # 호출에 붙는 꼬리표(단계 이름·run_id 등). ContextVar 라 스레드마다 따로 유지된다.
 _call_tags: contextvars.ContextVar[dict] = contextvars.ContextVar('claude_call_tags', default={})
@@ -219,18 +244,30 @@ def track_calls(*, alert: bool = True, filter: dict | None = None):  # noqa: A00
             _trackers.remove(entry)
 
 
-def _alert_fallback(rec: dict, *, fallback_enabled: bool) -> None:
+def _alert_fallback(rec: dict, *, fallback_enabled: bool, subscription: bool = False) -> None:
     """CLI 실패를 관리자에게 알린다. 한 프로세스(=cron 작업 1회)에 한 통만 보낸다."""
     global _fallback_alerted
     with _lock:
-        if _fallback_alerted or any(not alert for _calls, alert, _flt in _trackers):
+        if any(not alert for _calls, alert, _flt in _trackers):
             return
-        _fallback_alerted = True
+        if subscription:
+            category = 'success' if rec.get('backend') == 'codex_cli' else 'failure'
+            if category in _subscription_alerted:
+                return
+            _subscription_alerted.add(category)
+        else:
+            if _fallback_alerted:
+                return
+            _fallback_alerted = True
     try:
         import sys
 
         from django.core.mail import send_mail
 
+        if subscription:
+            from office.jobmail import subscription_mail
+            subscription_mail(sys.argv[1:], rec)
+            return
         if not fallback_enabled:
             # 구독만 쓰는 운영: 멈춘 작업·한도 해제 시각·[한도 풀리면 다시 실행] 버튼(office.jobmail)
             try:
@@ -275,8 +312,10 @@ _SYSTEM_ARG_LIMIT = 100_000
 CLI_SAFE_TOOLS = ('WebSearch', 'WebFetch')
 
 
-class CliUnavailable(Exception):
-    """CLI 경로로 답을 받지 못함 — 호출부는 API 로 폴백한다."""
+class CliUnavailable(ProviderUnavailable):
+    """Claude CLI 실패. 사용량 한도 오류만 Codex 구독으로 넘긴다."""
+    def __init__(self, reason, **kwargs):
+        super().__init__(reason, provider='claude', **kwargs)
 
 
 def _cli_ask(prompt: str, *, system: str, model: ClaudeModel | str,
@@ -326,9 +365,13 @@ def _cli_ask(prompt: str, *, system: str, model: ClaudeModel | str,
     except json.JSONDecodeError:
         raise CliUnavailable(f'exit={proc.returncode} 출력 해석 불가: {(proc.stderr or proc.stdout)[:300]}')
 
+    if not isinstance(data, dict):
+        raise CliUnavailable('Claude CLI 응답이 객체가 아니에요.', kind='protocol')
     out = (data.get('result') or '').strip()
     if proc.returncode != 0 or data.get('is_error') or data.get('subtype') != 'success' or not out:
-        raise CliUnavailable(f"exit={proc.returncode} subtype={data.get('subtype')} {out[:300]}")
+        detail = out or json.dumps(data.get('errors') or data.get('error') or data.get('message')
+                                   or proc.stderr or '최종 응답이 없어요.', ensure_ascii=False)
+        raise CliUnavailable(f"exit={proc.returncode} subtype={data.get('subtype')} {detail[:1500]}")
 
     usage = data.get('usage') or {}
     return out, {'input_tokens': usage.get('input_tokens'), 'output_tokens': usage.get('output_tokens')}
@@ -354,6 +397,10 @@ def ask_stream(
                 content_type='text/plain; charset=utf-8',
             )
     """
+    if subscriptions.enabled() or os.environ.get(BACKEND_ENV, 'api').lower() == 'cli':
+        # CLI는 최종 응답을 검증한 다음 한 덩어리로 전달한다.
+        yield ask(prompt, system=system, model=model, max_tokens=max_tokens)
+        return
     client = _get_client()
 
     kwargs = dict(
@@ -375,6 +422,8 @@ def ask_json(
     system: str = '',
     model: ClaudeModel | str = DEFAULT_MODEL,
     max_tokens: int = 2048,
+    output_schema: dict | None = None,
+    allow_codex: bool = True,
 ) -> dict:
     """
     JSON 응답을 기대하는 요청에 사용합니다.
@@ -386,7 +435,10 @@ def ask_json(
     import json
     import re
 
-    raw = ask(prompt, system=system, model=model, max_tokens=max_tokens)
+    extra = {'output_schema': output_schema} if output_schema is not None else {}
+    if not allow_codex:
+        extra['allow_codex'] = False
+    raw = ask(prompt, system=system, model=model, max_tokens=max_tokens, **extra)
 
     # ```json ... ``` 블록 추출
     match = re.search(r'```(?:json)?\s*([\s\S]+?)```', raw)

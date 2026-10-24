@@ -134,3 +134,49 @@ class RunnerTests(TestCase):
             J.run_due(now=timezone.now() + timedelta(hours=2))
         r.refresh_from_db()
         self.assertEqual(r.status, JobRequest.ST_SKIPPED)        # 이미 공개 대기 — 재심할 필요 없음
+
+
+@mock.patch.dict(os.environ, {**ENV, 'CLAUDE_BACKEND': 'cli', 'AI_FALLBACK_BACKEND': 'codex_cli'})
+class SubscriptionRunnerTests(TestCase):
+    def state(self, provider, minutes):
+        from office.models import AiProviderState
+        return AiProviderState.objects.create(provider=provider, failure_kind='limit',
+                                              retry_at=timezone.now() + timedelta(minutes=minutes))
+
+    def test_claude_limit_does_not_delay_a_job_when_codex_is_available(self):
+        self.state('claude', 120)
+        CliLimit.objects.create(reset_at=timezone.now() + timedelta(hours=4))
+        job = JobRequest.objects.create(kind='rerun', args=['make_newsletter'], run_after=timezone.now())
+        with mock.patch('office.jobs.spawn') as spawn:
+            J.run_due(out=lambda _: None)
+        spawn.assert_called_once()
+        job.refresh_from_db()
+        self.assertEqual(job.status, JobRequest.ST_STARTED)
+
+    def test_both_limits_wait_for_earliest_provider_not_latest(self):
+        self.state('claude', 120)
+        codex = self.state('codex', 20)
+        self.assertEqual(J.limited_until(), codex.retry_at)
+        job = JobRequest.objects.create(kind='rerun', args=['make_newsletter'], run_after=timezone.now())
+        with mock.patch('office.jobs.spawn') as spawn:
+            J.run_due(out=lambda _: None)
+        spawn.assert_not_called()
+        job.refresh_from_db()
+        self.assertEqual(job.run_after, codex.retry_at + J.AFTER_RESET)
+
+    def test_success_mail_does_not_say_job_stopped_or_api_was_used(self):
+        self.state('claude', 120)
+        J.subscription_mail(['make_newsletter'], {'backend': 'codex_cli', 'model': 'gpt-6.1-sol',
+                                                 'fallback': 'usage limit reached'})
+        self.assertIn('Codex 구독 전환', mail.outbox[0].subject)
+        self.assertNotIn('작업 중단', mail.outbox[0].subject)
+        self.assertNotIn('과금 발생', mail.outbox[0].body)
+
+    def test_failure_mail_can_follow_success_mail(self):
+        from common.services import claude
+        claude._subscription_alerted.clear()
+        self.addCleanup(claude._subscription_alerted.clear)
+        with mock.patch('office.jobmail.subscription_mail', return_value=True) as send:
+            claude._alert_fallback({'backend': 'codex_cli'}, fallback_enabled=False, subscription=True)
+            claude._alert_fallback({'backend': ''}, fallback_enabled=False, subscription=True)
+        self.assertEqual(send.call_count, 2)

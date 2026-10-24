@@ -1,5 +1,6 @@
 from django.contrib.auth.models import User
 from django.db import models
+from django.utils import timezone
 
 
 class Meeting(models.Model):
@@ -354,6 +355,17 @@ class Newsletter(models.Model):
 
     def __str__(self):
         return f'No.{self.issue_no} {self.title}'
+
+
+class AiProviderState(models.Model):
+    """구독 공급자별 차단·복구 확인 상태. cron·웹·병렬 워커가 DB로 공유한다."""
+    provider = models.CharField(max_length=20, primary_key=True)
+    revision = models.PositiveIntegerField(default=0)
+    retry_at = models.DateTimeField(null=True, blank=True)
+    probe_until = models.DateTimeField(null=True, blank=True)
+    failure_kind = models.CharField(max_length=20, blank=True)
+    reason = models.CharField(max_length=500, blank=True)
+    updated_at = models.DateTimeField(default=timezone.now)
 
 
 class CliLimit(models.Model):

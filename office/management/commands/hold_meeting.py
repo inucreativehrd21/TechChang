@@ -265,7 +265,11 @@ class Command(BaseCommand):
             self._transcript_section(meeting.transcript),
             ('지표 브리핑 (회의에 제공된 자료)', meeting.briefing, f'<pre style="{PRE}">{escape(meeting.briefing)}</pre>'),
         ]
-        warn = f" · ⚠ API 폴백 {usage['fallbacks']}회" if usage['fallbacks'] else ''
+        warn = ''
+        if usage['codex']:
+            warn += f" · Codex 구독 {usage['codex']}회"
+        if usage['api_fallbacks']:
+            warn += f" · ⚠ API 폴백 {usage['api_fallbacks']}회"
         subject = f'[TechChang] {meeting.week_start} 편집회의 결과 — 결정 {len(decisions)}건 대기{warn}'
         lead = f'{meeting.week_start} 주차 편집회의가 끝났습니다. 안건 {len(decisions)}건이 결정을 기다립니다.'
         self._deliver(to, subject, lead, sections)
@@ -291,7 +295,9 @@ class Command(BaseCommand):
         return {
             'total': len(calls),
             'cli': sum(1 for c in calls if c['backend'] == 'cli'),
+            'codex': sum(1 for c in calls if c['backend'] == 'codex_cli'),
             'api': sum(1 for c in calls if c['backend'] == 'api'),
+            'api_fallbacks': sum(1 for c in calls if c['backend'] == 'api' and c['fallback']),
             'errors': sum(1 for c in calls if not c['backend']),
             'fallbacks': sum(1 for c in calls if c['fallback']),
             'reasons': sorted({c['fallback'] for c in calls if c['fallback']}),
@@ -302,11 +308,15 @@ class Command(BaseCommand):
 
     def _execution_section(self, u):
         mins, secs = divmod(u['seconds'], 60)
-        head = (f"Claude 호출 {u['total']}회 — 구독(CLI) {u['cli']}회 · API {u['api']}회"
+        head = (f"AI 호출 {u['total']}회 — Claude 구독 {u['cli']}회 · Codex 구독 {u['codex']}회 · API {u['api']}회"
                 f"{' · 실패 ' + str(u['errors']) + '회' if u['errors'] else ''} / "
                 f"토큰 입력 {u['input']:,} · 출력 {u['output']:,} / 총 소요 {mins}분 {secs}초")
-        if u['fallbacks']:
-            fb = f"⚠ API 폴백 {u['fallbacks']}회 (과금 발생). 사유:\n" + '\n'.join(f'- {r}' for r in u['reasons'])
+        if u['api_fallbacks']:
+            fb = f"⚠ API 폴백 {u['api_fallbacks']}회 (과금 발생). 사유:\n" + '\n'.join(f'- {r}' for r in u['reasons'])
+        elif u['codex']:
+            fb = f"Codex 구독으로 {u['codex']}회 처리했어요. 유료 API 폴백은 없어요.\n" + '\n'.join(f'- {r}' for r in u['reasons'])
+        elif u['fallbacks']:
+            fb = '구독 호출 실패:\n' + '\n'.join(f'- {r}' for r in u['reasons'])
         else:
             fb = '폴백 없음 — 모든 호출이 구독 경로로 처리되었습니다.' if u['cli'] else 'CLI 백엔드를 쓰지 않았습니다(CLAUDE_BACKEND=api).'
 
