@@ -41,7 +41,7 @@
             {% if role == 'pitcher' %}
             <p class="rk-hof-line"><b>{{ top.v.w|default:0 }}승 {{ top.v.l|default:0 }}패</b><b>{{ top.v.era_text }}</b><span>{{ top.v.ip_text }}이닝 {{ top.v.so|default:0 }}탈삼진, WHIP {{ top.v.whip_text }}</span></p>
             {% else %}
-            <p class="rk-hof-line"><b>{{ top.v.avg_text }} / {{ top.v.obp_text }} / {{ top.v.slg_text }}</b><span>{{ top.v.hr|default:0 }}홈런 {{ top.v.rbi|default:0 }}타점 {{ top.v.sb|default:0 }}도루, OPS {{ top.v.ops_text }}</span></p>
+            <p class="rk-hof-line"><b>타율 {{ top.v.avg_text }} / 출루율 {{ top.v.obp_text }} / 장타율 {{ top.v.slg_text }}</b><span>{{ top.v.hr|default:0 }}홈런 {{ top.v.rbi|default:0 }}타점 {{ top.v.sb|default:0 }}도루, OPS {{ top.v.ops_text }}</span></p>
             {% endif %}
         </div>
         <div class="rk-hof-war"><small>WAR</small><b>{{ top.s.war }}</b></div>
@@ -55,7 +55,7 @@
                 <b>{% if h.s.player_id %}<a href="{% url 'community:rookie_player' h.s.player_id %}">{{ h.s.name }}</a>{% else %}{{ h.s.name }}{% endif %}</b>
                 <span><i class="rk-dot" aria-hidden="true"></i>시즌 {{ h.s.season.number }} {{ h.s.team|team_short }}{% if h.live %} <span class="rk-live">진행 중</span>{% endif %}</span>
             </span>
-            <span class="rk-highs-line">{% if role == 'pitcher' %}{{ h.v.w|default:0 }}승 {{ h.v.l|default:0 }}패, {{ h.v.era_text }}, {{ h.v.so|default:0 }}탈삼진{% else %}{{ h.v.avg_text }}, {{ h.v.hr|default:0 }}홈런, OPS {{ h.v.ops_text }}{% endif %}</span>
+            <span class="rk-highs-line">{% if role == 'pitcher' %}{{ h.v.w|default:0 }}승 {{ h.v.l|default:0 }}패, {{ h.v.era_text }}, {{ h.v.so|default:0 }}탈삼진{% else %}타율 {{ h.v.avg_text }}, {{ h.v.hr|default:0 }}홈런, OPS {{ h.v.ops_text }}{% endif %}</span>
             <span class="rk-highs-war"><i style="width: {{ h.bar }}%"></i><b>{{ h.s.war }}</b></span>
         </li>
         {% endfor %}
@@ -96,7 +96,7 @@
                     <th scope="row"><a href="{% url 'community:rookie_player' r.p.pk %}">{{ r.p.name }}</a>{% if r.p.retired_at and view != 'hof' %} <small class="rk-fine">은퇴</small>{% endif %}</th>
                     <td class="is-text"><i class="rk-dot" style="--team: {{ r.team|team_color }}" aria-hidden="true"></i> {{ r.team|team_short }}</td>
                     <td>{{ r.mvp }}</td><td>{{ r.best|floatformat:1 }}</td><td>{{ r.awards }}</td><td class="is-war">{{ r.war }}</td><td>{{ r.seasons }}</td>
-                    <td class="is-text">{% if r.p.role == 'pitcher' %}{{ r.v.g|default:0|comma }}경기 {{ r.v.w|default:0|comma }}승 {{ r.v.sv|default:0|comma }}세이브, 평균자책점 {{ r.v.era_text }}, {{ r.v.so|default:0|comma }}탈삼진{% else %}{{ r.v.g|default:0|comma }}경기 {{ r.v.avg_text }}, {{ r.v.h|default:0|comma }}안타 {{ r.v.hr|default:0|comma }}홈런 {{ r.v.rbi|default:0|comma }}타점{% endif %}</td>
+                    <td class="is-text">{% if r.p.role == 'pitcher' %}{{ r.v.g|default:0|comma }}경기 {{ r.v.w|default:0|comma }}승 {{ r.v.sv|default:0|comma }}세이브, 평균자책점 {{ r.v.era_text }}, {{ r.v.so|default:0|comma }}탈삼진{% else %}{{ r.v.g|default:0|comma }}경기 타율 {{ r.v.avg_text }}, {{ r.v.h|default:0|comma }}안타 {{ r.v.hr|default:0|comma }}홈런 {{ r.v.rbi|default:0|comma }}타점{% endif %}</td>
                 </tr>
                 {% endfor %}
             </tbody>

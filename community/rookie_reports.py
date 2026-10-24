@@ -31,7 +31,7 @@ def daily(player, day=None):
                   result_rows=[L.game_view(game, player.club, player.role) for game in games],
                   member_history=Matchups.history(player, games))
     if not games:
-        report.update(summary=f'{player.name} 선수는 이날 공식 경기 출장 기록이 없어요.',
+        report.update(summary=f'{player.name} 선수는 이날 공식 경기 출장 기록이 없어요.', on_hold=True,
                       strengths=['당일 경기 표본이 없어 경기력 평가는 보류해요.'],
                       tasks=['출전·휴식 여부는 일정과 엔트리를 함께 확인해야 해요. 저장된 기록만으로 결장 원인을 단정하지 않아요.'])
         return report
@@ -49,9 +49,9 @@ def daily(player, day=None):
             report['strengths'].append(f"장타 {t.get('d', 0) + t.get('t', 0) + t.get('hr', 0)}개를 생산했어요. 장타율은 {L.rate(b['slg'])}이에요.")
         if t.get('bb', 0):
             report['strengths'].append(f"볼넷 {t['bb']}개를 얻어 타격 이외의 출루 경로도 확보했어요.")
-        if t.get('pa', 0) and b['k_pct'] >= .25:
+        if t.get('pa', 0) >= 4 and b['k_pct'] >= .25:      # 1~3타석 표본으로 삼진 비율을 판단하지 않는다
             report['tasks'].append(f"삼진 비율이 {b['k_pct']:.0%}로 높았어요. 다음 출전에서는 타석 접근과 컨택 유지가 우선 과제예요.")
-        if t.get('pa', 0) and b['obp'] < .300:
+        if t.get('pa', 0) >= 3 and b['obp'] < .300:
             report['tasks'].append(f"당일 출루율이 {L.rate(b['obp'])}에 그쳤어요. 불리한 카운트를 줄이고 출루 기회를 늘릴 필요가 있어요.")
         report['trend'] = f"최근 7일 {len(recent)}경기에서 타율 {L.rate(w['avg'])}, OPS {L.rate(w['ops'])}, {week.get('hr', 0)}홈런을 기록했어요."
     else:

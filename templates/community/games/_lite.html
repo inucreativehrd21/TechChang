@@ -309,8 +309,8 @@
             {% endif %}
             <div class="rl-programs is-two">
                 <form method="post" action="{% career_url 'act' %}" class="rl-pathcard is-main">{% csrf_token %}<input type="hidden" name="action" value="decide"><input type="hidden" name="what" value="draft">
-                    {% if d.offer %}<input type="hidden" name="choice" value="sign"><b>{{ d.team.name }}와 계약해요</b><span>KBO에서 프로 생활을 시작해요.</span><button class="gm-btn is-primary is-block">{{ d.team.name }}와 계약하기</button>
-                    {% else %}<input type="hidden" name="choice" value="develop"><b>{{ want.name }} 육성선수</b><span>육성군에서 정식 선수를 노려요.</span><button class="gm-btn is-primary is-block">육성선수로 계약하기</button>{% endif %}
+                    {% if d.offer %}<input type="hidden" name="choice" value="sign"><b>{{ d.team.name }} 지명</b><span>KBO에서 프로 생활을 시작해요.</span><button class="gm-btn is-primary is-block">계약하기</button>
+                    {% else %}<input type="hidden" name="choice" value="develop"><b>{{ want.name }} 육성선수</b><span>육성군에서 정식 선수를 노려요.</span><button class="gm-btn is-primary is-block">계약하기</button>{% endif %}
                 </form>
                 {% if d.univs %}
                 <form method="post" action="{% career_url 'act' %}" class="rl-pathcard">{% csrf_token %}<input type="hidden" name="action" value="decide"><input type="hidden" name="what" value="draft"><input type="hidden" name="choice" value="univ">
@@ -333,9 +333,9 @@
             <div class="rk-head"><h2>병역</h2><span class="rk-fine">{% if d.forced %}더는 미룰 수 없어요{% else %}28세 전까지 미룰 수 있어요{% endif %}</span></div>
             {% include 'community/games/_lite_say.html' with who=d.who name=d.who_name role=d.who_role text='입영 통지서가 나왔어요. 상무(국군체육부대)에 가면 퓨처스리그에서 2년 동안 계속 뛸 수 있고, 현역으로 가면 2년 동안 야구를 쉬어요.' %}
             <div class="rl-programs is-two">
-                {% include 'community/games/_lite_choice.html' with what='military' choice='sangmu' label='상무에 입대할게요' hint='퓨처스리그에서 2년, 실전 감각을 지켜요' main=True %}
-                {% include 'community/games/_lite_choice.html' with what='military' choice='active' label='현역으로 갈게요' hint='2년 동안 쉬어요. 능력치가 조금 빠져요' %}
-                {% if not d.forced %}{% include 'community/games/_lite_choice.html' with what='military' choice='later' label='입대를 미룰게요' hint='아시안게임·올림픽 금메달이면 특례를 받아요' %}{% endif %}
+                {% include 'community/games/_lite_choice.html' with what='military' choice='sangmu' label='상무에 입대할게요' hint='퓨처스리그에서 2년, 실전 감각을 지켜요' main=True button='입대하기' %}
+                {% include 'community/games/_lite_choice.html' with what='military' choice='active' label='현역으로 갈게요' hint='2년 동안 쉬어요. 능력치가 조금 빠져요' button='현역으로 가기' %}
+                {% if not d.forced %}{% include 'community/games/_lite_choice.html' with what='military' choice='later' label='입대를 미룰게요' hint='아시안게임·올림픽 금메달이면 특례를 받아요' button='미루기' %}{% endif %}
             </div>
 
             {% elif d.what == 'posting' %}
@@ -365,7 +365,7 @@
             <div class="rl-programs is-two">
                 {% for o in d.offer_list %}
                 <form method="post" action="{% career_url 'act' %}" class="rl-pathcard{% if forloop.first %} is-main{% endif %}">{% csrf_token %}<input type="hidden" name="action" value="decide"><input type="hidden" name="what" value="fa"><input type="hidden" name="choice" value="{{ o.key }}">
-                    <b>{{ o.team_name }}</b><span class="rl-terms"><span>{{ o.years }}년 계약</span><span>연봉 <b>{{ o.money }}</b> · 총 {{ o.total }}</span></span><button class="gm-btn{% if forloop.first %} is-primary{% endif %} is-block">{{ o.team_name }}와 계약하기</button></form>
+                    <b>{{ o.team_name }}</b><span class="rl-terms"><span>{{ o.years }}년 계약</span><span>연봉 <b>{{ o.money }}</b>{% if o.years > 1 %} · 총 {{ o.total }}{% endif %}</span></span><button class="gm-btn{% if forloop.first %} is-primary{% endif %} is-block">{{ o.team_name }}와 계약하기</button></form>
                 {% endfor %}
             </div>
 
@@ -374,7 +374,7 @@
             {% if d.legacy %}
             {% include 'community/games/_lite_say.html' with who=d.who name=d.who_name role=d.who_role text='해외 무대의 벽이 높았죠. 희망 구단에서 돌아오라고 제안이 왔어요.' %}
             <div class="rl-programs is-two">
-                {% include 'community/games/_lite_choice.html' with what='return' choice='kbo' label='KBO로 돌아갈게요' hint='희망 구단으로 가요' main=True %}
+                {% include 'community/games/_lite_choice.html' with what='return' choice='kbo' label='KBO로 돌아갈게요' hint='희망 구단으로 가요' main=True button='돌아가기' %}
                 {% include 'community/games/_lite_choice.html' with what='return' choice='stay' label='해외에 남을게요' hint='한 번 더 도전해요' %}
             </div>
             {% else %}
@@ -390,7 +390,7 @@
                     <b><i class="rk-dot" aria-hidden="true"></i>{{ o.team_name }} 퓨처스로 유턴</b><span>계약을 스스로 정리하고 돌아가요. 퓨처스에서 다시 1군을 노려요.{% if d.contract_left %} 남은 해외 계약 {{ d.contract_left }}년은 포기해요.{% endif %}</span>
                     <button class="gm-btn{% if forloop.first %} is-primary{% endif %} is-block">계약 정리하고 돌아가기</button>
                     {% else %}
-                    <b><i class="rk-dot" aria-hidden="true"></i>{{ o.team_name }}{% if o.want %}<em class="rl-want">희망 구단</em>{% endif %}</b><span class="rl-terms"><span>KBO · {{ o.years }}년 계약</span><span>연봉 <b>{{ o.money }}</b> · 총 {{ o.total }}</span>{% if d.contract_left %}<small>남은 해외 계약 {{ d.contract_left }}년은 포기해요</small>{% endif %}</span>
+                    <b><i class="rk-dot" aria-hidden="true"></i>{{ o.team_name }}{% if o.want %}<em class="rl-want">희망 구단</em>{% endif %}</b><span class="rl-terms"><span>KBO · {{ o.years }}년 계약</span><span>연봉 <b>{{ o.money }}</b>{% if o.years > 1 %} · 총 {{ o.total }}{% endif %}</span>{% if d.contract_left %}<small>남은 해외 계약 {{ d.contract_left }}년은 포기해요</small>{% endif %}</span>
                     <button class="gm-btn{% if forloop.first %} is-primary{% endif %} is-block">{{ o.team_name }}와 계약하기</button>
                     {% endif %}
                 </form>
@@ -400,11 +400,11 @@
             {% endif %}
 
             {% elif d.what == 'retire' %}
-            <div class="rk-head"><h2>은퇴할까요?</h2><span class="rk-fine">{{ c.age }}세 · 42세면 끝나요</span></div>
+            <div class="rk-head"><h2>은퇴할까요?</h2><span class="rk-fine">{{ c.age }}세 · {{ retire_at|default:42 }}세면 끝나요</span></div>
             {% include 'community/games/_lite_say.html' with who=d.who name=d.who_name role=d.who_role text='몸이 예전 같지는 않죠. 한 시즌 더 뛸까요, 박수 받을 때 떠날까요?' %}
             <div class="rl-programs is-two">
-                {% include 'community/games/_lite_choice.html' with what='retire' choice='continue' label='한 시즌 더 뛸게요' hint='' main=True %}
-                {% include 'community/games/_lite_choice.html' with what='retire' choice='retire' label='은퇴할게요' hint='은퇴 카드를 받고 명예의 전당에 이름을 올려요' %}
+                {% include 'community/games/_lite_choice.html' with what='retire' choice='continue' label='한 시즌 더 뛸게요' hint='' main=True button='계속 뛰기' %}
+                {% include 'community/games/_lite_choice.html' with what='retire' choice='retire' label='은퇴할게요' hint='은퇴 카드를 받고 명예의 전당에 이름을 올려요' button='은퇴하기' %}
             </div>
 
             {% else %}
@@ -412,9 +412,9 @@
             {% if d.what == 'released' %}
             {% include 'community/games/_lite_say.html' with who=d.who name=d.who_name role=d.who_role text='구단이 재계약을 하지 않기로 했어요. 받아 주는 팀이 없네요. 그동안 정말 수고 많았어요.' %}
             {% else %}
-            {% include 'community/games/_lite_say.html' with who=d.who name=d.who_name role=d.who_role text='42세, 이제 유니폼을 벗을 때가 됐어요. 그동안 정말 수고 많았어요.' %}
+            {% include 'community/games/_lite_say.html' with who=d.who name=d.who_name role=d.who_role text=retire_text %}
             {% endif %}
-            {% include 'community/games/_lite_choice.html' with what=d.what choice='retire' label='유니폼을 벗을게요' hint='은퇴 카드를 받고 명예의 전당으로 가요' main=True %}
+            {% include 'community/games/_lite_choice.html' with what=d.what choice='retire' label='유니폼을 벗을게요' hint='은퇴 카드를 받고 명예의 전당으로 가요' main=True button='은퇴하기' %}
             {% endif %}
         </section>
         {% endif %}

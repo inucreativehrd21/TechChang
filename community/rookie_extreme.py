@@ -14,6 +14,19 @@ class ExtremeError(ValueError):
     pass
 
 
+def effect_line(training=0, risk=0, relations=(), training_label='훈련 효과', risk_label='부상 확률', sep=' · '):
+    """선택의 효과 한 줄. 변화가 0 인 항목은 적지 않고, 전부 0 이면 '변화 없음'.
+    training·risk 는 소수(0.12 = 12%), relations 는 [(이름, 값)]."""
+    parts = []
+    t, r = round(float(training) * 100), round(float(risk) * 100)
+    if t:
+        parts.append(f'{training_label} {t:+d}%')
+    if r:
+        parts.append(f'{risk_label} {r:+d}%포인트')
+    parts += [f'{name} {round(v):+d}' for name, v in relations if round(v)]
+    return sep.join(parts) or '변화 없음'
+
+
 # 훈련 보정·부상 위험·신뢰·관계의 교환을 선택 전에 모두 공개해요.
 def choice(key, label, training=0, risk=0, trust=0, respect=0, rivalry=0, contest=False):
     return dict(key=key, label=label, training=training, risk=risk, trust=trust,
@@ -104,7 +117,7 @@ def event_view(c):
     event.update(id=pending['id'], key=pending['key'], year=pending['year'], rival=deepcopy(rival),
                  success_percent=round(max(.2, min(.8, .5 + (c.ovr - rival['level']) / 60)) * 100))
     event['success_effects'] = '성공하면 능력치 2개 최대 +3, 감독 신뢰 +4 추가'
-    event['failure_effects'] = '실패하면 능력치 2개 최대 −4, 이번 시즌 훈련 보정 −35%, 부상 위험 +6%p, 감독 신뢰 −7 추가'
+    event['failure_effects'] = '실패하면 능력치 2개 최대 −4, 이번 시즌 훈련 보정 −35%, 부상 위험 +6%포인트, 감독 신뢰 −7 추가'
     return event
 
 

@@ -1888,3 +1888,6 @@ a.rl-spot.is-bench:hover { transform: none; box-shadow: inset 0 0 0 1px var(--rk
 
 /* 연표 — 기록 칸은 줄바꿈해서 WAR 칸이 잘리지 않게(2026-10-19) */
 .rl-years td.is-text:nth-of-type(5) { white-space: normal; min-width: 11em; }
+
+/* 모바일 — 떠 있는 'PC 버전' 버튼이 마지막 줄(상점 가격·푸터)을 덮지 않게 아래 여백을 더 둔다(2026-10-24) */
+@media (max-width: 767.98px) { .gm.rk, .gm-wrap.rk { padding-bottom: 3.5rem; } }

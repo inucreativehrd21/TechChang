@@ -120,7 +120,7 @@
                     <span class="rk-gno">{{ forloop.counter }}</span>
                     <span class="rk-score"><b>{{ r.s.name }}</b><span>{{ r.s.team|team_short }}</span></span>
                     <span class="rk-wl">WAR {{ r.s.war }}</span>
-                    <span class="rk-gsum">{% if r.s.role == 'pitcher' %}{{ r.v.w|default:0 }}승 {{ r.v.l|default:0 }}패 평균자책점 {{ r.v.era_text }}{% else %}{{ r.v.avg_text }} {{ r.v.hr|default:0 }}홈런 {{ r.v.rbi|default:0 }}타점{% endif %}</span>
+                    <span class="rk-gsum">{% if r.s.role == 'pitcher' %}{{ r.v.w|default:0 }}승 {{ r.v.l|default:0 }}패 평균자책점 {{ r.v.era_text }}{% else %}타율 {{ r.v.avg_text }} {{ r.v.hr|default:0 }}홈런 {{ r.v.rbi|default:0 }}타점{% endif %}</span>
                 </li>
                 {% endfor %}
             </ol>

@@ -289,7 +289,7 @@ def promotion_gate(p, today: date | None = None) -> dict:
         from . import rookie_balance_rules as Balance
         ready = Balance.overseas_level(p, 'mlb') == 'mlb'
         text += ' · MLB 스카우팅 평가 통과'
-        now += ' · ' + ('평가 통과' if ready else '구위·타격 접근과 장기 성적을 더 증명해야 해요')
+        now += ' · ' + ('평가 통과' if ready else ('구속·제구·변화구' if p.role == 'pitcher' else '컨택·선구안·파워') + '과 장기 성적을 더 증명해야 해요')
         ok = ok and ready
     return {'stay_need': need, 'stay_left': stay_left, 'mission': {'text': text, 'now': now, 'ok': ok},
             'ok': stay_left == 0 and ok}

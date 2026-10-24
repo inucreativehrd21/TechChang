@@ -4,7 +4,7 @@
     <summary>
         <span class="rl-mcard-head">
             <span class="rl-mcard-no" aria-hidden="true">{{ c.number }}</span>
-            <span class="rl-mcard-who"><b>{{ c.name }}</b><small>{{ pos_label }} · {{ c.hand_label }} · {{ style_label }}{% if grade_label %} · {{ grade_label }}{% endif %}</small></span>
+            <span class="rl-mcard-who"><b>{{ c.name }}</b><small>{{ pos_label }} · <span class="rk-nowrap">{{ c.hand_label }}</span> · {{ style_label }}{% if grade_label %} · {{ grade_label }}{% endif %}</small></span>
             <span class="rl-mcard-stars" role="img" aria-label="스카우트 별 {{ stars }}개{% if awakened %}, 각성 보라색 별 {{ awakened }}개{% endif %}">{% for i in star_range %}<i class="{% if i < stars %}is-on{% elif i < stars_total %}is-awaken{% endif %}" aria-hidden="true"></i>{% endfor %}</span>
             <span class="rl-mcard-more">자세히</span>
         </span>

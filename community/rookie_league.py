@@ -30,6 +30,7 @@ from django.db import transaction
 from django.utils import timezone
 
 from . import rookie_world as W
+from .rookie_text import nz
 
 logger = logging.getLogger(__name__)
 
@@ -170,6 +171,18 @@ def pit_summary(t) -> str:
             + (f' ({dec})' if dec else ''))
 
 
+def pit_season_summary(t) -> str:
+    """시즌·통산 합계용 한 줄. 한 경기 줄(pit_summary)의 '(승)' 표기는 합계에서 뜻이 불분명해서 숫자로 적는다."""
+    bits = [f"{ip_text(t.get('outs', 0))}이닝"]
+    if t.get('w') or t.get('l'):
+        bits.append(f"{t.get('w', 0)}승 {t.get('l', 0)}패")
+    bits += [f"{t.get('h', 0)}피안타", f"{t.get('r', 0)}실점", f"{t.get('so', 0)}탈삼진"]
+    for key, unit in (('sv', '세이브'), ('hld', '홀드')):
+        if t.get(key):
+            bits.append(f'{t[key]}{unit}')
+    return ' '.join(bits)
+
+
 # ───────────────────────────── 누적·지표
 def add(totals: dict, line: dict) -> dict:
     out = dict(totals)
@@ -230,7 +243,7 @@ def pitching(t: dict) -> dict:
 def war(role: str, position: str, t: dict) -> float:
     if role == 'pitcher':
         p = pitching(t)
-        return round((REPL_FIP - p['fip']) * p['ip'] / 9 / 10, 1) if p['ip'] else 0.0
+        return nz(round((REPL_FIP - p['fip']) * p['ip'] / 9 / 10, 1)) if p['ip'] else 0.0
     pa = t.get('pa', 0)
     if not pa:
         return 0.0
@@ -240,7 +253,7 @@ def war(role: str, position: str, t: dict) -> float:
     full = SEASON_GAMES * 4.2                                   # 주전 한 시즌 타석
     runs = (wraa + 20 * pa / 600 + POS_ADJ.get(position, 0) * min(games / SEASON_GAMES, pa / full) + t.get('def', 0)
             + 0.2 * t.get('sb', 0) - 0.4 * t.get('cs', 0))
-    return round(runs / 10, 1)
+    return nz(round(runs / 10, 1))
 
 
 def qualified(role: str, t: dict, team_games: int, mult: float | None = None) -> bool:
@@ -694,7 +707,7 @@ AMATEUR_LABEL = {'타격왕': '타격상', '홈런왕': '홈런상', '평균자�
 
 def bat_val(r) -> str:
     b = batting(r.totals)
-    return f"{rate(b['avg'])} {r.totals.get('hr', 0)}홈런 {r.totals.get('rbi', 0)}타점 WAR {r.war}"
+    return f"타율 {rate(b['avg'])} {r.totals.get('hr', 0)}홈런 {r.totals.get('rbi', 0)}타점 WAR {r.war}"
 
 
 def pit_val(r) -> str:
@@ -709,7 +722,7 @@ def award_val(r) -> str:
 def gg_val(r) -> str:                  # 다이아몬드 칸에 들어가는 짧은 줄
     if r.role == 'pitcher':
         return f"WAR {r.war} · {r.totals.get('w', 0)}승 {pitching(r.totals)['era']:.2f}"
-    return f"WAR {r.war} · {rate(batting(r.totals)['avg'])} {r.totals.get('hr', 0)}홈런"
+    return f"WAR {r.war} · 타율 {rate(batting(r.totals)['avg'])} {r.totals.get('hr', 0)}홈런"
 
 
 def rank_key(r):                       # WAR 가 같으면 타자는 OPS, 투수는 낮은 평균자책점·많은 이닝

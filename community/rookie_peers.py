@@ -58,7 +58,7 @@ def comparisons(p, limit=3):
                         league=row.league, league_label=W.short(row.league), club=row.club if lite else row.team,
                         club_label=W.club_label(row.league, row.club if lite else row.team),
                         ovr=row.ovr_end if lite else row.best_ovr, war=row.war, own_war=own.war if own else 0,
-                        line=L.pit_summary(row.totals) if p.role == 'pitcher' else L.bat_summary(row.totals),
+                        line=L.pit_season_summary(row.totals) if p.role == 'pitcher' else L.bat_summary(row.totals),
                         role=p.role, url=reverse('community:' + route, args=[peer.pk]), source='회원 커리어',
                         season=row.year if lite else row.season.number,
                         metrics=[dict(label=a[0], mine=a[1] if own else '—', peer=b[1]) for a, b in zip(mine, theirs)]))

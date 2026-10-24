@@ -1,7 +1,7 @@
 {% load rookie_tags %}
-{# 라이트 갈림길 선택 카드 하나. 맥락: what, choice, label, hint, main #}
+{# 라이트 갈림길 선택 카드 하나. 맥락: what, choice, label, hint, main, button(선택, 없으면 '고르기' — 카드 제목과 같은 문장을 되풀이하지 않는다) #}
 <form method="post" action="{% career_url 'act' %}" class="rl-pathcard{% if main %} is-main{% endif %}">
     {% csrf_token %}<input type="hidden" name="action" value="decide"><input type="hidden" name="what" value="{{ what }}"><input type="hidden" name="choice" value="{{ choice }}">
     <b>{{ label|baseball_text }}</b>{% if hint %}<span>{{ hint|baseball_text }}</span>{% endif %}
-    <button type="submit" class="gm-btn{% if main %} is-primary{% endif %} is-block">고르기</button>
+    <button type="submit" class="gm-btn{% if main %} is-primary{% endif %} is-block">{{ button|default:'고르기' }}</button>
 </form>

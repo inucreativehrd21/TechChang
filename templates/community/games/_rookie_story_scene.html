@@ -10,7 +10,7 @@
         <div class="rs-contract"><span>{{ e.years }}년 계약</span><b>{% if e.entry_league == 'mlb_aaa' %}마이너 연 {{ e.minor_annual|man }}{% else %}연 {{ e.annual|man }}{% endif %}</b><span>{{ e.role }}</span></div>
         <p class="rs-story-help">인기·국제 평판·자기 관리·능력치에 따라 합의 확률이 달라져요. 보통 최대 세 번 조율하지만, 마이너 거부권 최후통첩은 한 번 거절되면 바로 결렬돼요.</p>
         {% endif %}
-        {% if e.contract_terms %}{% include 'community/games/_rookie_contract_terms.html' with contract_terms=e.contract_terms %}{% endif %}
+        {% if e.contract_terms %}{% if e.kind == 'negotiation' or e.what == 'negotiation' %}{% include 'community/games/_rookie_contract_terms.html' with contract_terms=e.contract_terms brief=True %}{% else %}{% include 'community/games/_rookie_contract_terms.html' with contract_terms=e.contract_terms %}{% endif %}{% endif %}
         {% if e.last_rejection %}<p class="rs-choice-result">{{ e.last_rejection|baseball_text }}</p>{% endif %}
         {% if e.rival.url %}<p class="rs-story-help"><a href="{{ e.rival.url }}">비교한 회원 선수의 전체 커리어 보기</a> · 공개된 과거 기록과의 비교예요.</p>{% endif %}
         {% if preview_result %}<p class="rs-choice-result" role="status">{{ preview_result }}</p>{% endif %}

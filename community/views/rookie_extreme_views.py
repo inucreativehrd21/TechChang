@@ -61,13 +61,18 @@ def preview(request):
         for choice in event['choices']:
             choice['training_percent'] = round(choice['training'] * 100)
             choice['risk_percent'] = round(choice['risk'] * 100)
+            choice['effects'] = E.effect_line(choice['training'], choice['risk'], [
+                ('신뢰', choice['trust']), ('존중', choice['respect']), ('경쟁', choice['rivalry'])], '훈련 보정', '부상 확률')
     state = ((c.flags or {}).get('extreme') or {}) if c else {}
     history = []
     for record in list(reversed(state.get('history', [])))[:8]:
         item = E.EVENTS[record['key']]
         picked = next(choice for choice in item['choices'] if choice['key'] == record['choice'])
         history.append(dict(record, title=item['title'], choice_label=picked['label'],
-                            training_percent=round(record['training'] * 100), risk_percent=round(record['risk'] * 100)))
+                            training_percent=round(record['training'] * 100), risk_percent=round(record['risk'] * 100),
+                            effects=E.effect_line(record['training'], record['risk'], [
+                                ('신뢰', record['trust']), ('존중', record['respect']), ('경쟁', record['rivalry'])],
+                                '훈련 보정', '부상 위험')))
     labels = dict((key, label) for key, label, _weight in R.ROLES[c.role]['stats']) if c else {}
     response = render(request, 'community/rookie_extreme_preview.html', dict(
         c=c, event=event, rivals=state.get('rivals', []), history=history,

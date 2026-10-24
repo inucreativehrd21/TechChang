@@ -4,6 +4,6 @@
     <div class="rs-story-content"><div class="rs-story-choices">
     {% for choice in extreme_event.choices %}<form method="post" action="{% career_url 'act' %}">{% csrf_token %}
         <input type="hidden" name="action" value="extreme_event"><input type="hidden" name="event_id" value="{{ extreme_event.id }}"><input type="hidden" name="choice" value="{{ choice.key }}">
-        <button class="rs-story-choice" type="submit"><b>{{ choice.label }}</b><small>훈련 효과 {{ choice.training_percent|stringformat:'+d' }}% · 부상 확률 {{ choice.risk_percent|stringformat:'+d' }}%p<br>라이벌 신뢰 {{ choice.trust }} · 존중 {{ choice.respect }} · 경쟁 {{ choice.rivalry }}{% if choice.contest %}<br>{{ extreme_event.success_effects }}<br>{{ extreme_event.failure_effects }}{% endif %}</small></button>
+        <button class="rs-story-choice" type="submit"><b>{{ choice.label }}</b><small>{{ choice.effects }}{% if choice.contest %}<br>{{ extreme_event.success_effects }}<br>{{ extreme_event.failure_effects }}{% endif %}</small></button>
     </form>{% endfor %}</div></div>
 </section>

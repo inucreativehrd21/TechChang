@@ -53,7 +53,7 @@ from . import rookie_pitching as Pitching
 from . import rookie_handedness as Hands
 from . import rookie_bloom as Bloom
 from .rookie_lite_news import season_features, season_reactions
-from .rookie_text import is_real_person, josa  # noqa: F401  (조사 도우미는 rookie_text 로 옮김 — 기존 rookie_lite.josa 호환)
+from .rookie_text import is_real_person, josa, nz, signed  # noqa: F401  (조사 도우미는 rookie_text 로 옮김 — 기존 rookie_lite.josa 호환)
 
 START_AGE, RETIRE_FROM, RETIRE_AT = 16, 34, 42
 BASE_YEAR = 2026                 # 예전 커리어(flags.start 없음)의 고1 시즌 달력 연도
@@ -655,7 +655,7 @@ def grow(c, programs, intensity: str, pt: float, war: float, rng, train_mult: fl
             parts.append(('바닥', 25.0 - raw))
         if cut:
             parts.append(('잠재력 한계', -cut))              # 타고난 끝에 닿아 더 못 오른 몫
-        deltas[k] = round(new - s, 1)
+        deltas[k] = nz(round(new - s, 1))
         why[k] = [(lab, v) for lab, v in parts if abs(v) >= 0.05]
         c.stats[k] = round(new, 1)
     c.ovr = R.overall(c.role, c.stats)
@@ -727,7 +727,7 @@ def _short(role, t) -> str:
                 bits.append(f'{t[key]}{unit}')
         return ' '.join(b for b in bits if b)
     b = L.batting(t)
-    return f"{L.rate(b['avg'])} {t.get('hr', 0)}홈런 {t.get('rbi', 0)}타점 OPS {L.rate(b['ops'])}"
+    return f"타율 {L.rate(b['avg'])} {t.get('hr', 0)}홈런 {t.get('rbi', 0)}타점 OPS {L.rate(b['ops'])}"
 
 
 def _hot(role, t) -> bool:
@@ -1616,7 +1616,7 @@ def _resolve_meeting(c, m: dict, choice: str, rng) -> tuple:
             _trust(c, 5)
             _move(c, to)
             out.append(press('[콜업]', f"{nm}, {lg} 부름 받았다…‘맡겨 주시면 뭐든’", m['line']))
-            return f"{W.league(to)['name']}{josa(W.league(to)['name'], '으로/로')} 올라갔어요!", out
+            return f"{lg}{josa(lg, '으로/로')} 올라갔어요!", out
         if _sticks(merit, 1.0, rng):
             _trust(c, -3)
             _move(c, to)
@@ -2058,13 +2058,13 @@ def finish_season(c, state, rng):
     for i, sp in enumerate(splits):
         frm, to = sp['from'], (splits[i + 1]['from'] if i + 1 < len(splits) else 6)
         t = _sum_chunks(sp['chunks'][frm:to])
-        w = round(L.war(c.role, pos, t), 1) if t else 0.0
+        w = nz(round(L.war(c.role, pos, t), 1)) if t else 0.0
         rows.append({'league': sp['league'], 'club': sp['club'], 'role': sp['role'], 'slot': sp['slot'], 'duty': sp['duty'],
                      'from': frm, 'to': to, 'G': round(GAMES.get(sp['league'], 120) * (to - frm) / 6, 1), 'totals': t,
                      'war': w, 'chunks': sp['chunks']})
         totals = L.add(totals, t)
         war += w
-    war = round(war, 1)
+    war = nz(round(war, 1))
     fr = rows[-1]
     # 같은 일정에서 모든 구단이 맞붙는다. 내 개인 경기 점수는 실제 해당 대진에 반영한다.
     for row, sp in zip(rows, splits):
@@ -2188,7 +2188,7 @@ def season_deltas(c, start: dict | None, ledger: list, grow_why: dict, grown: di
     out, why = {}, {}
     for k in c.stats:
         if start and k in start:
-            out[k] = round(float(c.stats[k]) - float(start[k]), 1)
+            out[k] = nz(round(float(c.stats[k]) - float(start[k]), 1))
         else:
             out[k] = grown.get(k, 0.0)
         items = {}
@@ -2197,7 +2197,7 @@ def season_deltas(c, start: dict | None, ledger: list, grow_why: dict, grown: di
                 items[lab] = items.get(lab, 0.0) + v
         for lab, v in grow_why.get(k, []):
             items[lab] = items.get(lab, 0.0) + v
-        why[k] = [[lab, round(v, 1)] for lab, v in sorted(items.items(), key=lambda x: x[1]) if abs(v) >= 0.05]
+        why[k] = [[lab, nz(round(v, 1))] for lab, v in sorted(items.items(), key=lambda x: x[1]) if abs(v) >= 0.05]
     out['_why'] = why
     return out
 
@@ -2275,8 +2275,8 @@ def wrap_season(c, season, rng):
         for record in c.flags['extreme'].get('history', []):
             if record['year'] == season.year:
                 event = Extreme.EVENTS[record['key']]
-                season.news.append(f"[익스트림] {event['title']} — 훈련 보정 {record['training'] * 100:+.0f}%, "
-                                   f"부상 위험 {record['risk'] * 100:+.0f}%p, 감독 신뢰 {record['trust']:+.0f}")
+                season.news.append(f"[익스트림] {event['title']} — " + Extreme.effect_line(
+                    record['training'], record['risk'], [('감독 신뢰', record['trust'])], '훈련 보정', '부상 위험', ', '))
     flags = dict(c.flags or {})
     leagues = list(flags.get('leagues') or [])
     if code not in leagues:
@@ -2284,7 +2284,7 @@ def wrap_season(c, season, rng):
     flags['leagues'] = leagues
     if W.is_pro(code):
         flags['pro_years'] = flags.get('pro_years', 0) + 1
-        c.war = round(c.war + season.war, 1)
+        c.war = nz(round(c.war + season.war, 1))
         if W.system_of(code) == 'kbo':
             flags['kbo_years'] = flags.get('kbo_years', 0) + 1
         service = dict(flags.get('top_service') or {})
@@ -2898,7 +2898,7 @@ def _army_tick(c, rng):
         for k in c.stats:
             old = float(c.stats[k])
             c.stats[k] = round(max(25.0, old - rng.uniform(1.0, 2.5)), 1)
-            lost[k] = round(c.stats[k] - old, 1)
+            lost[k] = nz(round(c.stats[k] - old, 1))
         c.ovr = R.overall(c.role, c.stats)
         LiteSeason.objects.create(career=c, year=c.year, age=c.age, league=c.league, club=c.club, duty='현역 복무',
                                   games=0, ovr_start=ovr_start, ovr_end=c.ovr, news=['군 복무 중이에요 — 실전을 쉬어 능력치가 조금씩 빠져요'],
@@ -3037,10 +3037,10 @@ def career_line(c) -> dict:
     pro = [r for v in by.values() for _year, r in v]
     total = _sum(r['totals'] for r in pro)
     return {'pro': L.line_view(c.role, total) if pro else None,
-            'top_war': round(sum(r['war'] for r in pro), 1),
+            'top_war': nz(round(sum(r['war'] for r in pro), 1)),
             'development': L.line_view(c.role, _sum(r['totals'] for r in development)) if development else None,
             'systems': [{'name': W.SYSTEM_NAME[k], 'seasons': len({y for y, _r in v}),
-                         'war': round(sum(r['war'] for _y, r in v), 1),
+                         'war': nz(round(sum(r['war'] for _y, r in v), 1)),
                          'v': L.line_view(c.role, _sum(r['totals'] for _y, r in v))} for k, v in by.items()]}
 
 

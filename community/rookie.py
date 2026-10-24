@@ -36,6 +36,7 @@ from __future__ import annotations
 
 import logging
 import random
+from types import SimpleNamespace
 from datetime import date, timedelta
 
 from django.db import transaction
@@ -405,6 +406,23 @@ def award(user, source: str, ref: str = '') -> dict | None:
     return {'tp': got, 'label': rule['label'], 'count': count + 1, 'cap': rule['cap'], 'full': got < rule['tp']}
 
 
+def recent_logs(p, limit: int = 12) -> list:
+    """최근 기록 목록. 보유 한도에 닿아 0 TP 였던 획득 기록이 줄줄이 이어지면 한 줄로 묶는다."""
+    out, run = [], None
+    for log in p.logs.all()[:limit * 3]:
+        if log.kind == 'earn' and not log.tp:
+            if run is None:
+                run = SimpleNamespace(kind='earn', created_at=log.created_at, count=0)
+                out.append(run)
+            run.count += 1
+            run.text = ('보유 한도에 닿아 TP를 받지 못했어요' if run.count == 1 else
+                        f'보유 한도에 닿아 TP를 받지 못한 활동이 {run.count}번 있어요')
+            continue
+        run = None
+        out.append(log)
+    return out[:limit]
+
+
 def safe_award(user, source: str, ref: str = '') -> dict | None:
     """신호·뷰에서 부르는 판 — 게임 쪽 오류가 글·댓글 쓰기를 막지 않게."""
     try:
@@ -704,7 +722,8 @@ def condition(p, today: date | None = None) -> dict:
     aging = p.age >= C.decline_start(p)
     upkeep, over = upkeep_of(p)
     return {'state': state, 'idle': idle, 'rate': rate, 'note': note, 'aging': aging, 'upkeep': upkeep,
-            'upkeep_over': over}
+            'upkeep_over': over, 'aging_age': C.decline_start(p),
+            'body': '구속·체력' if p.role == 'pitcher' else '파워·주루'}
 
 
 def level_case():
@@ -745,7 +764,7 @@ def dashboard(p) -> dict:
         'stats': stat_rows(p, done), 'earned': today_earned(p), 'cond': condition(p), 'next': progress,
         'demote_at': W.demote_below(p.league), 'rank': rank, 'career': C.career_view(p),
         'trained': done, 'fatigue_at': fat, 'tired': done >= fat, 'tp_max': TP_MAX, 'tp_full': p.tp >= TP_MAX,
-        'logs': list(p.logs.all()[:12]), 'cost': TRAIN_COST, 'cost5': TRAIN_COST * 5, 'daily_max': DAILY_MAX,
+        'logs': recent_logs(p), 'cost': TRAIN_COST, 'cost5': TRAIN_COST * 5, 'daily_max': DAILY_MAX,
         'coach': S.staff(p.league, p.club, 'coding', p.role),       # 지금 소속의 코치(학교·나라·구단마다 다른 사람)
         'awaken': C.awaken_view(p), 'awaken_coach': S.staff(p.league, p.club, 'hrd', p.role),
         **player_board(p),

@@ -1,6 +1,6 @@
 {% load rookie_tags %}<section class="rs-mind" aria-label="선수의 마음과 평판">
     <dl><div><dt>자신감</dt><dd>{{ mind.confidence }}<small>/100</small></dd></div><div><dt>감독 신뢰</dt><dd>{{ mind.trust }}</dd></div><div><dt>자기 관리</dt><dd>{{ mind.discipline }}</dd></div><div><dt>인기</dt><dd>{{ mind.fame }}</dd></div></dl>
-    <p>자신감에 따른 타격 접근·제구·멘탈 {{ mind.bonus }} · 자기 관리에 따른 훈련 효율 {{ mind.training }}%</p>
+    <p>자신감에 따른 {% if mind.affects %}{{ mind.affects }}{% else %}능력{% endif %} {{ mind.bonus }} · 자기 관리에 따른 훈련 효율 {{ mind.training }}%</p>
     {% if mind.pitching %}<p class="rs-promise">현재 보직: {{ mind.pitching.label }}{% if mind.pitching.course %} · 선발 수업 진행 중 — 다음 코치진 평가를 준비해요{% endif %}</p>{% endif %}
     {% if mind.pitching.history %}<details><summary>투수 보직 변화</summary><ul>{% for item in mind.pitching.history %}<li>{{ item.text }}</li>{% endfor %}</ul></details>{% endif %}
     {% if mind.development %}<p class="rs-promise">{{ mind.development.text|baseball_text }} 현재 성장 효과 {{ mind.development.percent }}%예요.</p>{% endif %}

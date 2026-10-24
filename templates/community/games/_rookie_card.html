@@ -8,7 +8,7 @@
         <span class="rk-number"><small>등번호</small>{{ p.number }}</span>
         <div class="rk-who">
             <b class="rk-name">{{ p.name }}</b>
-            <span class="rk-meta">{{ pos_label|default:role_label }} · {{ p.hand_label }}{% if p.focus %}, 주특기 {{ focus_label }}{% endif %}</span>
+            <span class="rk-meta">{{ pos_label|default:role_label }} · <span class="rk-nowrap">{{ p.hand_label }}</span>{% if p.focus %}, 주특기 {{ focus_label }}{% endif %}</span>
             <span class="rk-meta">{% if grade_label and not p.retired_at %}{{ grade_label }} · {% endif %}{{ p.age }}세</span>
             {% if league_kind == 'am' and want.name and not p.retired_at %}<span class="rk-meta">희망 구단 <i class="rk-dot is-sm" style="--team: {{ want.color }}" aria-hidden="true"></i>{{ want.name }}</span>{% endif %}
             {% if ladder %}<span class="rk-role-line"><b>{{ ladder.label|baseball_text }}</b>{% if ladder.style %} · {{ ladder.style }}{% endif %}</span>

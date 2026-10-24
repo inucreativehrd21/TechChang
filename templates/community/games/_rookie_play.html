@@ -83,7 +83,7 @@
     <section class="rk-panel rk-cond is-{{ cond.state }}" aria-label="컨디션">
         <div class="rk-head"><h2>컨디션</h2><span class="rk-cond-badge">{% if cond.state == 'good' %}상승세{% elif cond.state == 'ok' %}유지{% else %}하락세{% endif %}</span></div>
         <p class="rk-cond-note">{{ cond.note|baseball_text }}</p>
-        <p class="rk-hint">지금 능력치를 지키는 데 하루 약 <b>{{ cond.upkeep }} TP</b>의 훈련이 들어요{% if cond.upkeep_over %} — <strong>하루 한도로도 다 지킬 수 없는 수준이에요</strong>{% endif %}. 능력치가 높을수록 감각을 유지하는 데 더 많은 훈련이 필요해요.{% if cond.aging %} 서른셋부터 구속·체력·파워·주루가 해마다 조금씩 더 빨리 빠져요.{% endif %}</p>
+        <p class="rk-hint">지금 능력치를 지키는 데 하루 약 <b>{{ cond.upkeep }} TP</b>의 훈련이 들어요{% if cond.upkeep_over %} — <strong>하루 한도로도 다 지킬 수 없는 수준이에요</strong>{% endif %}. 능력치가 높을수록 감각을 유지하는 데 더 많은 훈련이 필요해요.{% if cond.aging %} {{ cond.aging_age }}세부터 몸 능력({{ cond.body }})이 해마다 조금씩 더 빨리 빠져요.{% endif %}</p>
     </section>
 
     <section class="rk-panel rk-logs" aria-label="최근 기록">

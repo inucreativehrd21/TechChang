@@ -28,6 +28,17 @@ def display(value):
     return result
 
 
+def nz(value):
+    """반올림해서 0 이 된 수의 음수 부호('-0.0')를 지운다. 화면에 '-0' 이 나오지 않게."""
+    return 0.0 if value == 0 else value
+
+
+def signed(value, digits: int = 1) -> str:
+    """부호 붙은 수 문자열. 반올림하면 0 인 값은 부호 없이 '0'."""
+    n = round(float(value), digits)
+    return '0' if n == 0 else f'{n:+g}'
+
+
 # ───────────────────────────── 조사(받침에 따라)
 _LETTER_BATCHIM = set('LMNRlmnr')
 _DIGIT_BATCHIM = {'0': 'ㅇ', '1': 'ㄹ', '3': 'ㅁ', '6': 'ㄱ', '7': 'ㄹ', '8': 'ㄹ'}

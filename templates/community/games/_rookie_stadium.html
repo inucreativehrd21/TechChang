@@ -4,7 +4,7 @@
     <div class="rs-stadium-copy">
         {% if c or p %}
         <p class="rs-caption">{% if c %}{{ team.name }}{% else %}나의 야구 커리어{% endif %}</p>
-        <h2>{% if c %}{{ c.name }}{% else %}{{ p.name }}{% endif %},<br>다음 기록을 향해.</h2>
+        <h2>{% if c %}{{ c.name }}{% else %}{{ p.name }}{% endif %}, <br>다음 기록을 향해.</h2>
         <p>오늘의 선택이 다음 시즌의 나를 만들어요.</p>
         {% else %}
         <p class="rs-caption">{% if edition == 'full' or not lite_stage %}매일 쌓아 가는 야구 커리어{% else %}한 판에 담는 야구 인생{% endif %}</p>

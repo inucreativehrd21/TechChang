@@ -42,7 +42,7 @@
         </div>
         <div class="rl-rc-who">
             <h2 class="rl-rc-name">{% if card.epithet %}<em>‘{{ card.epithet }}’</em>{% endif %}{{ c.name }}</h2>
-            <p class="rl-rc-pos">{{ pos_label }} · {{ c.hand_label }} · {{ style_label }} · 최고 무대 {{ card.peak_short|baseball_text }}</p>
+            <p class="rl-rc-pos">{{ pos_label }} · <span class="rk-nowrap">{{ c.hand_label }}</span> · {{ style_label }} · 최고 무대 {{ card.peak_short|baseball_text }}</p>
         </div>
         <dl class="rl-rc-stats">
             {% for s in card.stats %}<div><dt>{{ s.0 }}</dt><dd>{{ s.1 }}</dd></div>{% endfor %}

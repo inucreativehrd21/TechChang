@@ -17,7 +17,7 @@
                 {% if high %}<p class="rl-high"><span>커리어 하이</span>{{ high.year }}년 ({{ high.age }}세) {{ high.league|baseball_text }} · {{ high.line|baseball_text }} · WAR {{ high.war }}</p>{% endif %}
                 {% if line.systems %}
                 <ul class="rl-news">
-                    {% for x in line.systems %}<li><b>{{ x.name }}</b> {{ x.seasons }}시즌 · WAR {{ x.war }} · {% if c.role == 'pitcher' %}{{ x.v.w|default:0|comma }}승 {{ x.v.sv|default:0|comma }}세이브, 평균자책점 {{ x.v.era_text }}{% else %}{{ x.v.avg_text }}, {{ x.v.hr|default:0|comma }}홈런 {{ x.v.rbi|default:0|comma }}타점, OPS {{ x.v.ops_text }}{% endif %}</li>{% endfor %}
+                    {% for x in line.systems %}<li><b>{{ x.name }}</b> {{ x.seasons }}시즌 · WAR {{ x.war }} · {% if c.role == 'pitcher' %}{{ x.v.w|default:0|comma }}승 {{ x.v.sv|default:0|comma }}세이브, 평균자책점 {{ x.v.era_text }}{% else %}타율 {{ x.v.avg_text }}, {{ x.v.hr|default:0|comma }}홈런 {{ x.v.rbi|default:0|comma }}타점, OPS {{ x.v.ops_text }}{% endif %}</li>{% endfor %}
                 </ul>
                 {% endif %}
             </section>

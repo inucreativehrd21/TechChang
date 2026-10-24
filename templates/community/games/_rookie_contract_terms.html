@@ -1,7 +1,7 @@
 {% load rookie_tags %}
 {% with t=contract_terms %}
 {% if t %}<div class="rs-contract-terms" aria-label="MLB 계약 권리와 위험">
-    <p><b>계약서의 작은 글씨</b> · {{ t.years }}년 남음 · 연 {{ t.annual|man }}</p>
+    <p><b>계약서의 작은 글씨</b>{% if not brief %} · {{ t.years }}년 남음 · 연 {{ t.annual|man }}{% endif %}</p>
     <dl>
         <div><dt>마이너 거부권</dt><dd>{% if t.veto %}있어요{% else %}없어요 · 동의 없이 트리플A로 내려갈 수 있어요{% endif %}</dd></div>
         <div><dt>연봉 지급</dt><dd>{% if t.split %}메이저·마이너 연봉이 따로예요 · 메이저 연 {{ t.annual|man }} / 마이너 연 {{ t.minor_annual|man }} · 뛴 기간만큼 지급돼요{% else %}전액 보장 · 마이너에 있어도 계약 연봉을 지급해요{% endif %}</dd></div>

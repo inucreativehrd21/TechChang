@@ -43,6 +43,7 @@ from .. import rookie_peers as Peers
 from .. import rookie_modes as Modes
 from .. import rookie_extreme as Extreme
 from ..game_visibility import rookie_hidden as is_hidden   # 야구는 운영자도 보인다
+from ..rookie_text import signed
 from ..models import LiteCareer
 
 logger = logging.getLogger(__name__)
@@ -238,7 +239,9 @@ def lite_home(request):
     if fx or mfx or afx:                                       # 각성·결정적 순간·수상 연출 — 한 번 보여 주고 지운다
         c.flags = {k: v for k, v in c.flags.items() if k not in ('awaken_fx', 'moment_fx', 'award_fx')}
         c.save(update_fields=['flags'])
-    ctx.update(mode=pend.get('kind', 'plan'), **_identity(c), seasons=_season_rows(c), awaken_fx=fx, moment_fx=mfx,
+    ctx.update(mode=pend.get('kind', 'plan'), retire_at=X.Bloom.retirement_limit(c, X.RETIRE_AT),
+               retire_text=f'{X.Bloom.retirement_limit(c, X.RETIRE_AT)}세, 이제 유니폼을 벗을 때가 됐어요. 그동안 정말 수고 많았어요.',
+               **_identity(c), seasons=_season_rows(c), awaken_fx=fx, moment_fx=mfx,
                award_fx=afx, played=c.seasons.count(), quit_min=X.QUIT_MIN_SEASONS,
                playback=Presentation.receipt(pend.get('playback')), board_from=(pend.get('playback') or {}).get('from', 0))
     ctx['peers'] = Peers.comparisons(c)
@@ -249,6 +252,8 @@ def lite_home(request):
             for choice in event['choices']:
                 choice['training_percent'] = round(choice['training'] * 100)
                 choice['risk_percent'] = round(choice['risk'] * 100)
+                choice['effects'] = Extreme.effect_line(choice['training'], choice['risk'], [
+                    ('라이벌 신뢰', choice['trust']), ('존중', choice['respect']), ('경쟁', choice['rivalry'])])
         ctx['extreme_event'] = event
     if pend.get('kind') == 'plan':
         draft = pend.get('draft') or {}
@@ -342,7 +347,7 @@ def lite_act(request):
                     raise X.LiteError('익스트림 전용 이벤트예요.')
                 result = Extreme.apply_choice(c, request.POST.get('event_id', ''), request.POST.get('choice', ''), rng)
                 c.save(update_fields=['flags', 'stats', 'ovr', 'best_ovr', 'updated_at'])
-                changes = ' · '.join(f"{item['label']} {item['delta']:+g}" for item in result.get('stats', []))
+                changes = ' · '.join(f"{item['label']} {signed(item['delta'])}" for item in result.get('stats', []) if signed(item['delta']) != '0')
                 outcome = '도전 성공' if result['success'] else '도전 실패' if result['success'] is False else '선택 반영'
                 messages.info(request, outcome + (' — ' + changes if changes else '') + '. 이번 시즌의 훈련·부상 보정에도 반영했어요.')
             elif action == 'play':
@@ -451,7 +456,9 @@ def _award_sum(c) -> list:
     groups = {}
     for s in c.seasons.all():
         for a in s.awards:
-            label = a['label'] if a['kind'] in ('national',) else f"{W.short(s.league)} {a['label']}"
+            lg = W.short(s.league)
+            # '퓨처스 MVP'·'고교 최우수선수'처럼 라벨에 리그 이름이 이미 있으면 한 번 더 붙이지 않는다.
+            label = a['label'] if a['kind'] in ('national',) or a['label'].startswith(lg) else f"{lg} {a['label']}"
             g = groups.setdefault((a['kind'], label), {'kind': a['kind'], 'label': label, 'n': 0, 'first': s.age})
             g['n'] += 1
     return sorted(groups.values(), key=lambda g: (AWARD_ORDER.get(g['kind'], 9), -g['n'], g['first']))

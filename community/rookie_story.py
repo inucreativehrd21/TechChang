@@ -1,6 +1,6 @@
 """정식·라이트 공용 자신감·대화·협상. 기존 JSON 필드를 쓰며 영구 능력치는 바꾸지 않는다.
 
-자신감은 타격 접근·제구와 멘탈 ±1.25, 자기 관리는 훈련 효율 ±7.5%로 제한한다.
+자신감은 (타자) 컨택·선구안, (투수) 제구·멘탈 ±1.25, 자기 관리는 훈련 효율 ±7.5%로 제한한다.
 상호작용의 결과와 원인을 최근 기록에 남기고, 자신감은 주기마다 50으로 수렴한다.
 """
 import secrets
@@ -8,7 +8,7 @@ import random
 
 from . import rookie_sim as M
 from . import rookie_world as W
-from .rookie_text import josa
+from .rookie_text import josa, signed
 from . import rookie_contracts as Contracts
 from . import rookie_universe as Universe
 
@@ -58,6 +58,9 @@ def change(p, reason, **deltas):
     return text
 
 
+AFFECT_LABEL = {'batter': '컨택·선구안', 'pitcher': '제구·멘탈'}      # game_stats 의 affected 와 같은 능력(역할별)
+
+
 def bonus(p):
     # 팬의 응원은 자신감이 무너졌을 때 작은 완충만 제공한다. 인기 자체가 능력치가 되지는 않는다.
     raw = (value(p, 'confidence') - 50) / 40
@@ -90,7 +93,7 @@ def view(p):
     from . import rookie_pitching as Pitching
     return dict(confidence=round(value(p, 'confidence')), trust=round(value(p, 'trust')),
                 discipline=round(value(p, 'discipline')), fame=round(value(p, 'fame')),
-                bonus=f'{bonus(p):+g}', training=round((training_mult(p) - 1) * 100),
+                bonus=signed(bonus(p), 2), affects=AFFECT_LABEL.get(p.role, ''), training=round((training_mult(p) - 1) * 100),
                 history=list(reversed(state(p).get('story_log') or []))[:4], pitching=Pitching.view(p),
                 promise=state(p).get('story_promise'), contract=Contracts.summary(p),
                 contract_income=state(p).get('mlb_contract_income', 0), development=Development.view(p),

@@ -181,11 +181,11 @@ def member_stats(league, club, year, *, mode='daily'):
     if mode == 'daily':
         rows = rookie_visible(RookieSeasonStat.objects.filter(league=league, team=club, season__number=year,
                     player__isnull=False, user__is_active=True), 'user').select_related('player').order_by('-war')[:50]
-        return [dict(name=s.name, role=s.role, line=L.pit_summary(s.totals) if s.role == 'pitcher' else L.bat_summary(s.totals),
+        return [dict(name=s.name, role=s.role, line=L.pit_season_summary(s.totals) if s.role == 'pitcher' else L.bat_summary(s.totals),
                      war=s.war, url=reverse('community:rookie_player', args=[s.player_id])) for s in rows]
     rows = rookie_visible(LiteSeason.objects.filter(league=league, club=club, year=year, career__mode=mode,
                    career__user__is_active=True), 'career__user').select_related('career').order_by('-war')[:50]
     route = 'extreme_career' if mode == 'extreme' else 'lite_career'
     return [dict(name=s.career.name, role=s.career.role,
-                 line=L.pit_summary(s.totals) if s.career.role == 'pitcher' else L.bat_summary(s.totals),
+                 line=L.pit_season_summary(s.totals) if s.career.role == 'pitcher' else L.bat_summary(s.totals),
                  war=s.war, url=reverse('community:' + route, args=[s.career_id])) for s in rows]

@@ -31,7 +31,7 @@
             <input type="hidden" name="action" value="event"><input type="hidden" name="career" value="{{ c.pk }}">
             <input type="hidden" name="event_id" value="{{ event.id }}"><input type="hidden" name="choice" value="{{ choice.key }}">
             <button class="btn btn-outline-primary w-100" type="submit">{{ choice.label }}</button>
-            <p class="small mt-2 mb-0">훈련 보정 {{ choice.training_percent }}% · 부상 확률 {{ choice.risk_percent }}%p · 신뢰 {{ choice.trust }} · 존중 {{ choice.respect }} · 경쟁 {{ choice.rivalry }}{% if choice.contest %}<br>승부 성공 시 신뢰 +3, 실패 시 −2가 추가돼요.{% endif %}</p>
+            <p class="small mt-2 mb-0">{{ choice.effects }}{% if choice.contest %}<br>승부 성공 시 신뢰 +3, 실패 시 −2가 추가돼요.{% endif %}</p>
         </form>
         {% endfor %}
         </div>
@@ -49,7 +49,7 @@
         </div></article>{% endfor %}</div>
     </section>
     <section class="mb-4"><h2>최근 전용 이벤트</h2>
-        {% for row in history %}<p>{{ row.year }}번째 시즌 · {{ row.title }} · {{ row.choice_label }}{% if row.success == True %} · 승부 성공{% elif row.success == False %} · 승부 실패{% endif %}<br><small>훈련 보정 {{ row.training_percent }}% · 부상 위험 {{ row.risk_percent }}%p · 신뢰 {{ row.trust }} · 존중 {{ row.respect }} · 경쟁 {{ row.rivalry }}</small></p>{% empty %}<p>첫 전용 이벤트를 골라 주세요.</p>{% endfor %}
+        {% for row in history %}<p>{{ row.year }}번째 시즌 · {{ row.title }} · {{ row.choice_label }}{% if row.success == True %} · 승부 성공{% elif row.success == False %} · 승부 실패{% endif %}<br><small>{{ row.effects }}</small></p>{% empty %}<p>첫 전용 이벤트를 골라 주세요.</p>{% endfor %}
     </section>
     <section class="mb-4"><h2>최근 시즌 기록</h2>
         {% for season in seasons %}<p>{{ season.year }}번째 시즌 · {{ season.league }} · WAR {{ season.war|floatformat:1 }} · OVR {{ season.ovr_end|floatformat:1 }}</p>{% empty %}<p>시즌을 진행하면 기록이 남아요.</p>{% endfor %}

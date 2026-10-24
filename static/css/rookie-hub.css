@@ -50,6 +50,7 @@
 .rk-club-report__notes { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 16px; }
 .rk-club-report__notes h3 { font-size: .8rem; color: #4f46e5; }
 .rk-club-report__notes p { margin: 0; font-size: .85rem; line-height: 1.8; }
+.rk-club-report__notes > .is-hold { grid-column: 1 / -1; }
 .rk-club-report footer { border-top: 1px solid #e5e7eb; margin-top: 18px; padding-top: 12px; font-size: .75rem; color: #6b7280; }
 @media (max-width: 1100px) {
  .rk-peers__grid { grid-template-columns: 1fr; }

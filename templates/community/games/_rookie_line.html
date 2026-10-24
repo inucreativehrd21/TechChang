@@ -57,7 +57,7 @@
                 {% for r in x.splits %}
                 <tr class="is-{{ r.code }}">
                     <th scope="row"><span class="rk-grade is-{{ r.code }}">{{ r.label|baseball_text }}</span>{% if r.note %}<small class="rk-grade-note">{{ r.note|baseball_text }}</small>{% endif %}</th>
-                    <td>{{ r.level }}</td><td>{{ r.pa }}</td><td class="is-key">{{ r.avg_text }}</td><td>{{ r.obp_text }}</td>
+                    <td>{{ r.level|default_if_none:"-" }}</td><td>{{ r.pa }}</td><td class="is-key">{{ r.avg_text }}</td><td>{{ r.obp_text }}</td>
                     <td>{{ r.hr }}</td><td>{{ r.bb }}</td><td>{{ r.so }}</td>
                 </tr>
                 {% endfor %}

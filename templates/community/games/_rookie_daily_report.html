@@ -4,8 +4,12 @@
     <p class="rk-club-report__line">{{ report.summary }}</p>
     {% if report.metrics %}<dl class="rk-club-report__metrics">{% for label, value in report.metrics %}<div><dt>{{ label }}</dt><dd>{{ value }}</dd></div>{% endfor %}</dl>{% endif %}
     <div class="rk-club-report__notes">
+        {% if report.on_hold %}
+        <section class="is-hold"><h3>관찰 보류</h3>{% for line in report.strengths %}<p>{{ line }}</p>{% endfor %}{% for line in report.tasks %}<p>{{ line }}</p>{% endfor %}</section>
+        {% else %}
         <section><h3>긍정적인 관찰</h3>{% for line in report.strengths %}<p>{{ line }}</p>{% endfor %}</section>
         <section><h3>보완 과제</h3>{% for line in report.tasks %}<p>{{ line }}</p>{% endfor %}</section>
+        {% endif %}
     </div>
     {% if report.trend %}<p class="rk-club-report__line rk-mt">{{ report.trend }}</p>{% endif %}
     <footer>{{ report.evidence }}{% if report.sample_note %}<br>{{ report.sample_note }}{% endif %}</footer>
