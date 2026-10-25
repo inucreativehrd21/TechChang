@@ -119,7 +119,10 @@
                        HRD를 공부하며 기술을 함께 다루던 그 모임의 질문 — <b>사람의 성장을 기술로 어떻게 도울 것인가</b> — 가
                        이 사이트의 뿌리입니다.</p>
                     <figure class="tc-about-photo">
-                        <img src="{% static 'images/group.jpg' %}" alt="테크창 활동 당시 단체사진" loading="lazy">
+                        {# 원본 group.jpg(5712×4284, 4.5MB)는 쓰지 않는다 — 소개 창을 열 때만 화면 크기 사본을 받는다(base.html) #}
+                        <img data-tc-about-src="{% static 'images/group-1600.webp' %}" data-tc-about-srcset="{% static 'images/group-800.webp' %} 800w, {% static 'images/group-1600.webp' %} 1600w"
+                             sizes="(min-width: 992px) 760px, 92vw" width="1600" height="1200" decoding="async" alt="테크창 활동 당시 단체사진">
+                        <noscript><img src="{% static 'images/group-800.webp' %}" width="800" height="600" alt="테크창 활동 당시 단체사진"></noscript>
                         <figcaption>테크창 활동 당시</figcaption>
                     </figure>
                     <p>모임 활동에서 출발한 그 질문을 이어받아, 지금의 테크창은 누구나 찾아와 읽고 묻고 나눌 수 있는

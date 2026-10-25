@@ -139,6 +139,17 @@
     </script>
     <script nonce="{{ csp_nonce }}">
     (function () {
+        // 소개 창의 단체사진은 창을 열 때 처음 받는다 — 페이지마다(게임 창 포함) 사진을 받아 디코딩하지 않게
+        var about = document.getElementById('aboutModal');
+        if (about) about.addEventListener('show.bs.modal', function () {
+            about.querySelectorAll('img[data-tc-about-src]').forEach(function (img) {
+                if (img.dataset.tcAboutSrcset) img.srcset = img.dataset.tcAboutSrcset;
+                img.src = img.dataset.tcAboutSrc;
+                img.removeAttribute('data-tc-about-src');
+            });
+        });
+    })();
+    (function () {
         // PC(넓은 화면·마우스)에서 data-game-window 링크는 게임 창으로 띄운다 — 화면 크기에 맞춰 열고, 막히면 원래대로 이동
         document.addEventListener('click', function (e) {
             var a = e.target.closest && e.target.closest('a[data-game-window]');
