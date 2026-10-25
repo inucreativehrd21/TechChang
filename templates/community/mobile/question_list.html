@@ -10,6 +10,7 @@
 
 {% block extra_css %}
 <link href="{% static 'css/home-mobile.css' %}?v={{ STATIC_VERSION }}" rel="stylesheet">
+<link href="{% static 'css/home-mode-picker.css' %}?v={{ STATIC_VERSION }}" rel="stylesheet">
 {% endblock %}
 
 {% block content %}
@@ -42,11 +43,10 @@
             <ul class="tc-mh-ball-crew" aria-hidden="true">
                 {% for who, name, role in ball_crew %}<li><span class="tc-mh-ball-sprite" style="--sprite: url('/media/lab/chars/{{ who }}_idle.png')"></span>{{ role }}</li>{% endfor %}
             </ul>
+            <span class="tc-mode-invite" aria-hidden="true">플레이할 모드 선택 <i class="fas fa-arrow-right"></i></span>
+            <button type="button" class="tc-mode-trigger" data-tc-mode-open aria-haspopup="dialog" aria-controls="tc-mode-picker" aria-expanded="false"><span class="visually-hidden">야구선수 키우기 모드 선택</span></button>
         </div>
-        <div class="tc-mh-ball-modes">
-            <a href="{% url 'community:lite_home' %}" class="is-lite"><b>라이트 모드</b><span>한 판 30분 · 로그인 없이 바로</span></a>
-            <a href="{% url 'community:rookie_home' %}"><b>정식 모드</b><span>로그인하고 매일 키우기</span></a>
-        </div>
+        <noscript><p><a href="{% url 'community:games_index' %}">게임센터에서 플레이할 모드를 골라 주세요.</a></p></noscript>
         <a class="tc-mh-ball-more" href="{% url 'community:games_index' %}">숫자야구·2048·지뢰찾기는 게임센터에 있어요</a>
     </section>
 {% if lab %}
@@ -185,4 +185,6 @@
 {% endif %}
 
 </div>
+{% include 'community/_home_mode_picker.html' %}
 {% endblock %}
+{% block script %}{{ block.super }}<script src="{% static 'js/home-mode-picker.js' %}?v={{ STATIC_VERSION }}" defer></script>{% endblock %}

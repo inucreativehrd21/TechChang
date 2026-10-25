@@ -57,3 +57,27 @@ class HomeSurvivesLabFailureTests(TestCase):
         r = self.client.get('/', HTTP_USER_AGENT='Mozilla/5.0')
         self.assertEqual(r.status_code, 200)
         self.assertIn('tc-lab', r.content.decode())
+
+
+class HomeModePickerTests(TestCase):
+    def test_both_home_templates_follow_live_public_switch_even_with_warm_cache(self):
+        from common.models import GameControlState
+        from django.urls import reverse
+        state = GameControlState.objects.create(overrides={'ROOKIE_EXTREME_ENABLED': True})
+        cache.clear()
+        for mobile in (False, True):
+            ua = 'Mozilla/5.0 (iPhone) Mobile' if mobile else 'Mozilla/5.0 Windows Chrome/130'
+            response = self.client.get('/', HTTP_USER_AGENT=ua)
+            self.assertEqual(response.status_code, 200)
+            self.assertTemplateUsed(response, 'community/mobile/question_list.html' if mobile else 'community/question_list.html')
+            self.assertContains(response, 'id="tc-mode-picker"', count=1)
+            self.assertContains(response, 'data-tc-mode-open', count=1)
+            self.assertContains(response, 'js/home-mode-picker.js', count=1)
+            for route in ('rookie_home', 'lite_home', 'extreme_home'):
+                self.assertContains(response, 'href="'+reverse('community:'+route)+'"')
+            self.assertNotContains(response, 'class="tc-ball-modes"')
+            self.assertNotContains(response, 'class="tc-mh-ball-modes"')
+        state.overrides = {'ROOKIE_EXTREME_ENABLED': False}
+        state.save()
+        for ua in ('Mozilla/5.0 Windows Chrome/130', 'Mozilla/5.0 (iPhone) Mobile'):
+            self.assertNotContains(self.client.get('/', HTTP_USER_AGENT=ua), 'href="'+reverse('community:extreme_home')+'"')

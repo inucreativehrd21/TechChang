@@ -164,7 +164,7 @@
 }
 .tc-mh-empty { font-size: 0.8125rem; color: var(--tc-ink-3); }
 
-/* ── 야구선수 키우기 런칭 카드 — 위는 전광판(남색·LED), 아래는 두 판 ── */
+/* ── 야구선수 키우기 런칭 카드 — 전광판(남색·LED)에서 모드 선택 ── */
 .tc-mh-ball {
     --tc-board: #15183d;
     --tc-board-dim: #9ea4d6;
@@ -243,27 +243,6 @@
 .tc-mh-ball-crew li:nth-child(3) .tc-mh-ball-sprite { animation-delay: -0.7s; }
 .tc-mh-ball-crew li:nth-child(4) .tc-mh-ball-sprite { animation-delay: -0.15s; }
 @keyframes tc-mh-breathe { from { background-position: -576px 0; } to { background-position: -768px 0; } }
-.tc-mh-ball-modes {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 8px;
-    padding: 12px 12px 4px;
-}
-.tc-mh-ball-modes a {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-    padding: 12px;
-    background: var(--tc-bg);
-    border: 1px solid var(--tc-accent-line);
-    border-radius: var(--tc-r-md);
-}
-.tc-mh-ball-modes a:active { transform: scale(0.97); }
-.tc-mh-ball-modes b { font-size: 0.9375rem; font-weight: 800; color: var(--tc-ink); }
-.tc-mh-ball-modes span { font-size: 0.75rem; line-height: 1.45; color: var(--tc-ink-3); word-break: keep-all; }
-.tc-mh-ball-modes a.is-lite { background: var(--tc-accent); border-color: var(--tc-accent); }
-.tc-mh-ball-modes a.is-lite b { color: #fff; }
-.tc-mh-ball-modes a.is-lite span { color: #e0e7ff; }
 .tc-mh-ball-more {
     display: block;
     padding: 8px 14px 12px;

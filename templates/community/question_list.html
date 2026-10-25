@@ -9,6 +9,7 @@
 
 {% block extra_css %}
 <link href="{% static 'css/home.css' %}?v={{ STATIC_VERSION }}" rel="stylesheet">
+<link href="{% static 'css/home-mode-picker.css' %}?v={{ STATIC_VERSION }}" rel="stylesheet">
 {% endblock %}
 
 {% block content %}
@@ -147,7 +148,7 @@
     </section>
     {% endif %}
 
-    <!-- ===== 야구선수 키우기 런칭 — 전광판 하나에 코칭스태프, 아래 두 모드 ===== -->
+    <!-- ===== 야구선수 키우기 — 배너에서 모드 선택 ===== -->
     <section class="tc-section" aria-labelledby="tc-ball-title">
         <div class="tc-ball" data-reveal>
             <div class="tc-ball-board">
@@ -161,27 +162,16 @@
                         <div><dt>라이트 모드 선수</dt><dd>{{ ball.lites }}<small>명</small></dd></div>
                     </dl>
                     {% endif %}
+                    <span class="tc-mode-invite" aria-hidden="true">플레이할 모드 선택 <i class="fas fa-arrow-right"></i></span>
                 </div>
                 <ul class="tc-ball-crew" aria-label="코칭스태프">
                     {% for who, name, role in ball_crew %}
                     <li><span class="tc-ball-sprite" style="--sprite: url('/media/lab/chars/{{ who }}_idle.png')" aria-hidden="true"></span><b>{{ name }}</b><small>{{ role }}</small></li>
                     {% endfor %}
                 </ul>
+                <button type="button" class="tc-mode-trigger" data-tc-mode-open aria-haspopup="dialog" aria-controls="tc-mode-picker" aria-expanded="false"><span class="visually-hidden">야구선수 키우기 모드 선택</span></button>
             </div>
-            <div class="tc-ball-modes">
-                <a href="{% url 'community:lite_home' %}" class="tc-ball-mode is-lite" data-game-window>
-                    <span class="tc-ball-tag">로그인 없이 바로</span>
-                    <b>라이트 모드</b>
-                    <span>한 판 30분이면 끝나요. 시즌마다 훈련 두 개와 진로를 골라 고1부터 은퇴까지, 명예의 전당을 노려요.</span>
-                    <span class="tc-ball-go">라이트 모드 바로 하기 <i class="fas fa-arrow-right" aria-hidden="true"></i></span>
-                </a>
-                <a href="{% url 'community:rookie_home' %}" class="tc-ball-mode" data-game-window>
-                    <span class="tc-ball-tag">로그인하고 매일</span>
-                    <b>정식 모드</b>
-                    <span>칼럼 읽기·댓글·출석으로 모은 훈련 포인트로 키워요. 경기는 매일 밤 열리고, KBO·메이저리그·일본·대만까지 갈 수 있어요.</span>
-                    <span class="tc-ball-go">정식 모드 하러 가기 <i class="fas fa-arrow-right" aria-hidden="true"></i></span>
-                </a>
-            </div>
+            <noscript><p><a href="{% url 'community:games_index' %}">게임센터에서 플레이할 모드를 골라 주세요.</a></p></noscript>
             <p class="tc-ball-more">숫자야구·2048·지뢰찾기는 <a href="{% url 'community:games_index' %}">게임센터</a>에 있어요.</p>
         </div>
     </section>
@@ -272,10 +262,13 @@
     </section>
 
 </div>
+{% include 'community/_home_mode_picker.html' %}
 
 {% endblock %}
 
 {% block script %}
+{{ block.super }}
+<script src="{% static 'js/home-mode-picker.js' %}?v={{ STATIC_VERSION }}" defer></script>
 <script>
 (function () {
     var docEl = document.documentElement;
