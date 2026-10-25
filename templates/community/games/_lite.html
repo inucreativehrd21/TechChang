@@ -317,8 +317,8 @@
             {% endif %}
             <div class="rl-programs is-two">
                 <form method="post" action="{% career_url 'act' %}" class="rl-pathcard is-main">{% csrf_token %}<input type="hidden" name="action" value="decide"><input type="hidden" name="what" value="draft">
-                    {% if d.offer %}<input type="hidden" name="choice" value="sign"><b>{{ d.team.name }} 지명</b><span>KBO에서 프로 생활을 시작해요.</span><button class="gm-btn is-primary is-block">계약하기</button>
-                    {% else %}<input type="hidden" name="choice" value="develop"><b>{{ want.name }} 육성선수</b><span>육성군에서 정식 선수를 노려요.</span><button class="gm-btn is-primary is-block">계약하기</button>{% endif %}
+                    {% if d.offer %}<input type="hidden" name="choice" value="sign"><b>{{ d.team.name }} 지명</b><span>KBO에서 프로 생활을 시작해요. 계약금 <b>{{ d.bonus_text }}</b></span><button class="gm-btn is-primary is-block">계약하기</button>
+                    {% else %}<input type="hidden" name="choice" value="develop"><b>{{ want.name }} 육성선수</b><span>육성군에서 정식 선수를 노려요. 계약금 <b>{{ d.bonus_develop_text }}</b></span><button class="gm-btn is-primary is-block">계약하기</button>{% endif %}
                 </form>
                 {% if d.univs %}
                 <form method="post" action="{% career_url 'act' %}" class="rl-pathcard">{% csrf_token %}<input type="hidden" name="action" value="decide"><input type="hidden" name="what" value="draft"><input type="hidden" name="choice" value="univ">
@@ -329,7 +329,7 @@
                 {% endif %}
             </div>
             {% if d.abroad_list %}
-            <h3 class="rk-h3">해외에서도 제안이 왔어요</h3>
+            <h3 class="rk-h3">해외에서도 제안이 왔어요 <small class="rk-fine">계약금 {{ d.bonus_text }}</small></h3>
             <div class="rl-programs{% if d.abroad_list|length == 1 %} is-one{% elif d.abroad_list|length == 2 %} is-two{% else %} is-three{% endif %}">
                 {% for x in d.abroad_list %}
                 {% include 'community/games/_lite_abroad.html' with what='draft' hint='마이너·2군부터 시작해요. 가고 싶은 구단을 골라 주세요.' %}
@@ -392,7 +392,7 @@
             {% if d.offer_list.0.key == 'self' %}
             {% include 'community/games/_lite_say.html' with who=d.who name=d.who_name role=d.who_role text='아직 KBO 구단 제안은 없어요. 그래도 원하면 계약을 스스로 정리하고 돌아가서, 희망 구단 퓨처스부터 다시 시작할 수 있어요.' %}
             {% else %}
-            {% include 'community/games/_lite_say.html' with who=d.who name=d.who_name role=d.who_role text='KBO 구단에서 복귀 제안이 왔어요. 조건을 보고 골라 주세요. 남아서 계속 도전해도 돼요.' %}
+            {% include 'community/games/_lite_say.html' with who=d.who name=d.who_name role=d.who_role text='KBO 구단들이 복귀 제안을 보냈어요. 마음에 드는 구단을 고르면 연봉과 역할을 협상해요. 남아서 계속 도전해도 돼요.' %}
             {% endif %}
             <div class="rl-programs is-two">
                 {% for o in d.offer_list %}
@@ -402,7 +402,7 @@
                     <button class="gm-btn{% if forloop.first %} is-primary{% endif %} is-block">계약 정리하고 돌아가기</button>
                     {% else %}
                     <b><i class="rk-dot" aria-hidden="true"></i>{{ o.team_name }}{% if o.want %}<em class="rl-want">희망 구단</em>{% endif %}</b><span class="rl-terms"><span>KBO · {{ o.years }}년 계약</span><span>연봉 <b>{{ o.money }}</b>{% if o.years > 1 %} · 총 {{ o.total }}{% endif %}</span>{% if d.contract_left %}<small>남은 해외 계약 {{ d.contract_left }}년은 포기해요</small>{% endif %}</span>
-                    <button class="gm-btn{% if forloop.first %} is-primary{% endif %} is-block">{{ o.team_name }}와 계약하기</button>
+                    <button class="gm-btn{% if forloop.first %} is-primary{% endif %} is-block">{{ o.team_name }}와 협상하기</button>
                     {% endif %}
                 </form>
                 {% endfor %}

@@ -488,12 +488,20 @@ class FourthBatchTests(TestCase):
         star.club = W.MLB_TEAMS[0][0]
         star.save()
         offers = X.return_offers(star, rng)
-        self.assertEqual([o['key'] for o in offers], ['kbo', 'rich'])
-        self.assertGreater(offers[1]['annual'], offers[0]['annual'])
+        self.assertEqual(len(offers), X.RETURN_CLUBS)                        # 희망 구단 + 다른 KBO 구단 둘
+        self.assertEqual(offers[0]['team'], star.team)
+        self.assertEqual(len({o['team'] for o in offers}), X.RETURN_CLUBS)
+        self.assertGreater(offers[1]['annual'], offers[0]['annual'])          # 실력이 넘치면 한 구단은 돈을 더
         star.pending = {'kind': 'decision', 'what': 'return', 'offers': offers}
-        X.decide(star, 'return', 'kbo', rng)
+        X.decide(star, 'return', offers[0]['key'], rng)                       # 고르면 바로 입단하지 않고 협상
+        self.assertEqual((star.pending['what'], star.pending['origin']), ('negotiation', 'return'))
+        self.assertEqual(star.league, 'mlb')
+        with mock.patch.object(X.Story, 'deal_chance', return_value=1.0):
+            text = X.decide(star, 'negotiation', 'accept', rng)
+        self.assertIn('KBO 복귀 협상에 성공', text)
         self.assertEqual((star.league, star.club), ('kbo1', star.team))
         self.assertEqual(star.flags['contract']['annual'], offers[0]['annual'])
+        self.assertTrue(any('KBO 복귀' in x['title'] for x in star.flags['press']))
         old = pro('노장해외', seed=42, league='npb1', ovr=60.0, age=35)          # 남아도 은퇴는 물어본다
         old.club = W.NPB_TEAMS[0][0]
         old.pending = {'kind': 'decision', 'what': 'return', 'offers': X.return_offers(old, rng)}
@@ -1473,3 +1481,80 @@ class ViewTests(TestCase):
                 r = self.client.get('/rookie/lite/', HTTP_USER_AGENT=ua)
                 self.assertEqual(r.status_code, 200, pend)
                 self.assertContains(r, 'rk-decide')
+
+
+class ReturnSigningBloomTests(TestCase):
+    """2026-10-25 사용자 요청 — KBO 복귀 기사·협상, 첫 프로 계약 계약금(상한 1억)."""
+
+    def star(self, name='복귀협상'):
+        c = pro(name, seed=51, league='mlb', ovr=74.0, age=30)
+        c.club = W.MLB_TEAMS[0][0]
+        c.flags = dict(c.flags, contract={'years': 2, 'annual': 90000})
+        c.save()
+        return c
+
+    def test_return_rumor_article_and_failed_talks_fall_back_to_other_clubs(self):
+        rng = random.Random(7)
+        c = self.star()
+        pend = X.next_step(c, rng, skip_meeting=True)
+        self.assertEqual(pend['what'], 'return')
+        self.assertTrue(any(x['tag'] == '[단독]' and 'KBO 유턴 검토' in x['title'] for x in c.flags['press']))
+        c.pending = pend
+        first = pend['offers'][1]
+        X.decide(c, 'return', first['key'], rng)
+        with mock.patch.object(X.Story, 'deal_chance', return_value=0.0):
+            for _ in range(5):
+                if c.pending['what'] != 'negotiation':
+                    break
+                X.decide(c, 'negotiation', 'salary', rng)
+        self.assertEqual(c.pending['what'], 'return')                           # 결렬되면 남은 구단 제안으로
+        self.assertNotIn(first['team'], [o['team'] for o in c.pending['offers']])
+        self.assertEqual(c.league, 'mlb')
+        self.assertIn('contract', c.flags)                                       # 해외 계약은 그대로
+        X.decide(c, 'return', 'stay', rng)
+        self.assertEqual(c.league, 'mlb')
+
+    def test_legacy_return_offer_keys_still_negotiate(self):
+        rng = random.Random(8)
+        c = self.star('예전제안')
+        c.pending = {'kind': 'decision', 'what': 'return',
+                     'offers': [{'key': 'kbo', 'team': c.team, 'league': 'kbo1', 'years': 2, 'annual': 30000}]}
+        X.decide(c, 'return', 'kbo', rng)
+        self.assertEqual(c.pending['what'], 'negotiation')
+        self.assertEqual(c.pending['deal']['system'], 'kbo')
+        with mock.patch.object(X.Story, 'deal_chance', return_value=1.0):
+            X.decide(c, 'negotiation', 'accept', rng)
+        self.assertEqual(c.league, 'kbo1')
+
+    def amateur(self, c, ops_hits):
+        for i, h in enumerate(ops_hits):
+            LiteSeason.objects.create(career=c, year=1 + i, age=16 + i, league='hs', club=c.club,
+                                      games=30, totals={'pa': 120, 'ab': 100, 'h': h, 'd': h // 4, 'hr': h // 6,
+                                                        'bb': 15, 'so': 20, 'hbp': 2, 'sf': 3})
+
+    def test_signing_bonus_follows_amateur_stats_with_one_eok_cap(self):
+        weak, strong = new('계약금약', seed=61), new('계약금강', seed=62)
+        self.amateur(weak, [18, 20, 19])
+        self.amateur(strong, [55, 58, 60])
+        low, high = X.signing_bonus(weak), X.signing_bonus(strong)
+        self.assertGreaterEqual(low, X.BONUS_FLOOR)
+        self.assertGreater(high, low)
+        self.assertLessEqual(high, X.BONUS_CAP)
+        self.assertLess(X.signing_bonus(strong, 'develop'), high)
+        self.assertEqual(X.signing_bonus(strong) % 100, 0)
+
+    def test_signing_bonus_is_paid_once_when_signing(self):
+        rng = random.Random(9)
+        c = new('계약금지급', seed=63)
+        self.amateur(c, [40, 45, 50])
+        c.age, c.grade = 18, 3
+        offer = X.draft_offer(c, 'hs', rng)
+        offer['offer'] = offer['offer'] or {'team': c.team, 'round': 3, 'in_round': 4, 'pick': 24}
+        c.pending = offer
+        before_cash, before_earn = X.cash(c), c.earnings
+        text = X.decide(c, 'draft', 'sign', rng)
+        self.assertIn('계약금', text)
+        self.assertEqual(X.cash(c) - before_cash, offer['bonus'])
+        self.assertEqual(c.earnings - before_earn, offer['bonus'])
+        self.assertTrue(any(x['tag'] == '[계약]' for x in c.flags['press']))
+        self.assertLessEqual(offer['bonus'], 10000)

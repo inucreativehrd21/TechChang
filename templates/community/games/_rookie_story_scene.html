@@ -1,14 +1,14 @@
 {% load rookie_tags %}
 <section class="rs-story-scene is-{{ e.background|default:'manager-office' }}" aria-labelledby="rs-story-title">
     <header class="rs-story-head">
-        <p>{% if e.kind == 'negotiation' or e.what == 'negotiation' %}해외 구단 협상 · {{ e.round_no }}/3차{% elif e.kind == 'posting' or e.what == 'posting' %}해외 구단 제안 · 관심 구단 세 곳{% elif e.kind == 'highlight' %}시즌 중 승부처{% elif e.kind == 'interview' %}기자 인터뷰{% else %}선수의 선택{% endif %}</p>
+        <p>{% if e.kind == 'negotiation' or e.what == 'negotiation' %}{% if e.origin == 'return' %}KBO 복귀 협상{% else %}해외 구단 협상{% endif %} · {{ e.round_no }}/3차{% elif e.kind == 'posting' or e.what == 'posting' %}해외 구단 제안 · 관심 구단 세 곳{% elif e.kind == 'highlight' %}시즌 중 승부처{% elif e.kind == 'interview' %}기자 인터뷰{% else %}선수의 선택{% endif %}</p>
         <h2 id="rs-story-title">{% if e.kind == 'negotiation' or e.what == 'negotiation' %}{{ e.team_name }}와 협상해요{% else %}{{ e.title|baseball_text }}{% endif %}</h2>
         {% if e.text %}<p class="rs-story-line">{{ e.text|baseball_text }}</p>{% endif %}
     </header>
     <div class="rs-story-content">
         {% if e.kind == 'negotiation' or e.what == 'negotiation' %}
         <div class="rs-contract"><span>{{ e.years }}년 계약</span><b>{% if e.entry_league == 'mlb_aaa' %}마이너 연 {{ e.minor_annual|man }}{% else %}연 {{ e.annual|man }}{% endif %}</b><span>{{ e.role }}</span></div>
-        <p class="rs-story-help">인기·국제 평판·자기 관리·능력치에 따라 합의 확률이 달라져요. 보통 최대 세 번 조율하지만, 마이너 거부권 최후통첩은 한 번 거절되면 바로 결렬돼요.</p>
+        <p class="rs-story-help">{% if e.origin == 'return' %}인기·자기 관리·능력치에 따라 합의 확률이 달라져요. 최대 세 번 조율하고, 결렬되면 다른 구단 제안으로 돌아가요.{% else %}인기·국제 평판·자기 관리·능력치에 따라 합의 확률이 달라져요. 보통 최대 세 번 조율하지만, 마이너 거부권 최후통첩은 한 번 거절되면 바로 결렬돼요.{% endif %}</p>
         {% endif %}
         {% if e.contract_terms %}{% if e.kind == 'negotiation' or e.what == 'negotiation' %}{% include 'community/games/_rookie_contract_terms.html' with contract_terms=e.contract_terms brief=True %}{% else %}{% include 'community/games/_rookie_contract_terms.html' with contract_terms=e.contract_terms %}{% endif %}{% endif %}
         {% if e.last_rejection %}<p class="rs-choice-result">{{ e.last_rejection|baseball_text }}</p>{% endif %}

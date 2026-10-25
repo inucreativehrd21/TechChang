@@ -6,17 +6,29 @@ from django.core.cache import cache
 from django.test import TestCase, SimpleTestCase, Client, override_settings
 from community import rookie_lite as X, rookie_bloom as B, rookie_handedness as H
 from community import rookie_sim as M, rookie_extreme as E, rookie_modes as Modes, rookie as R
-from community.models import LiteCareer
+from community.models import LiteCareer, LiteSeason
 from community.test_rookie_lite import new, member, PC, MOBILE
 
-def veteran(name='만개검사'):
+DULL = {'pa': 400, 'ab': 360, 'h': 80, 'd': 12, 'hr': 4, 'bb': 30, 'so': 90, 'hbp': 2, 'sf': 3}       # 평범한 시즌
+GREAT = {'pa': 600, 'ab': 520, 'h': 185, 'd': 38, 'hr': 38, 'bb': 70, 'so': 80, 'hbp': 4, 'sf': 5}    # 눈에 띄는 시즌
+
+
+def seasons(c, leagues, totals=DULL):
+    for i, lg in enumerate(leagues):
+        LiteSeason.objects.create(career=c, year=c.year - len(leagues) + i, age=c.age - len(leagues) + i, league=lg,
+                                  club=c.club, games=144, totals=dict(totals))
+
+
+def veteran(name='만개검사', history=('kbo2', 'kbo2')):
     c=new(name)
     c.age,c.year,c.league,c.club,c.grade=32,17,'kbo2','lg',0
     c.potential,c.traits,c.traits_seen=70,[],[]
     c.flags=dict(c.flags,pro_years=12,served=True)
     c.stats={k:round(X.stat_pot(c,k)-1,1) for k in c.stats}
     c.ovr=c.best_ovr=R.overall(c.role,c.stats)
-    c.pending=B.offer(c)
+    c.save()
+    seasons(c, history)                       # 만개 조건 — 오래 빛을 못 봤다(기본: 퓨처스 2시즌 적재)
+    c.pending=B.offer(c) or c.pending
     c.save()
     return c
 
@@ -104,6 +116,9 @@ class PlatoonTests(SimpleTestCase):
 class BloomTests(TestCase):
     def setUp(self):
         cache.clear()
+        appear = mock.patch.object(B, 'APPEAR', 1.0)          # 조건 검사 — 제안이 뜨는 확률은 따로 잰다
+        appear.start()
+        self.addCleanup(appear.stop)
         self.c=veteran()
 
     def win(self):
@@ -117,8 +132,8 @@ class BloomTests(TestCase):
             p=deepcopy(self.c)
             for k,v in change.items():setattr(p,k,v)
             self.assertFalse(B.ready(p),change)
-        p=deepcopy(self.c);p.flags['pro_years']=2
-        self.assertFalse(B.ready(p))
+        fresh=veteran('만개없음',history=())                   # 기록이 없으면 '오래 빛을 못 봤다'가 아니다
+        self.assertFalse(B.ready(fresh))
         p=deepcopy(self.c);p.stats=dict.fromkeys(p.stats,25)
         self.assertFalse(B.ready(p))
 
@@ -286,3 +301,50 @@ class ExtremeDownsideTests(TestCase):
         c.refresh_from_db()
         self.assertEqual(c.stats,after)
 
+
+
+class BloomGateTests(TestCase):
+    """2026-10-25 — 만개는 오래 평범했거나 하위 리그에 묶였을 때만, 그것도 APPEAR 확률로."""
+
+    def setUp(self):
+        cache.clear()
+        appear = mock.patch.object(B, 'APPEAR', 1.0)
+        appear.start()
+        self.addCleanup(appear.stop)
+
+    def test_dull_top_league_years_qualify_but_a_great_year_does_not(self):
+        dull = veteran('평범한1군', history=('kbo1', 'kbo1', 'kbo1'))
+        self.assertTrue(B.overlooked(dull))
+        mixed = veteran('한해반짝', history=())
+        seasons(mixed, ('kbo1', 'kbo1', 'kbo1'))
+        mixed.seasons.filter(year=mixed.year - 1).update(totals=GREAT)          # 가장 최근 시즌은 눈에 띄었다
+        self.assertFalse(B.overlooked(mixed))
+        self.assertFalse(B.ready(mixed))
+
+    def test_buried_in_minors_qualifies_in_every_system(self):
+        for lg in ('kbo2', 'mlb_aa', 'mlb_aaa', 'npb2'):
+            c = veteran(f'적재{lg}', history=())
+            seasons(c, (lg, lg), GREAT)                     # 성적이 좋아도 하위 리그에 묶여 있었으면
+            self.assertTrue(B.overlooked(c), lg)
+        one = veteran('한시즌만', history=())
+        seasons(one, ('kbo1', 'kbo2'), GREAT)
+        self.assertFalse(B.overlooked(one))
+
+    def test_offer_appears_only_at_appear_rate_and_is_fixed_per_season(self):
+        c = veteran('확률검사')
+        self.assertTrue(B.ready(c))
+        with mock.patch.object(B, 'APPEAR', .30):
+            hits = 0
+            for year in range(200):
+                c.year = year
+                hits += B.appears(c)
+                self.assertEqual(B.appears(c), B.appears(c))
+            self.assertTrue(40 <= hits <= 80, hits)
+
+    def test_stale_offer_from_old_rules_does_not_block(self):
+        c = veteran('예전제안', history=())
+        c.pending = dict(kind='decision', what='bloom', id='old', odds=.6)
+        text = X.decide(c, 'bloom', 'try', random.Random(1))
+        self.assertIn('사라졌어요', text)
+        self.assertNotEqual(c.pending.get('what'), 'bloom')
+        self.assertFalse(B.succeeded(c))

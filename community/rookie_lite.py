@@ -2486,7 +2486,11 @@ def next_step(c, rng, skip_meeting: bool = False) -> dict:
         if c.age >= 28 or rng.random() < 0.5:
             return {'kind': 'decision', 'what': 'military', 'forced': c.age >= 28}
     if W.system_of(code) in ABROAD and not flags.get('army'):          # 해외에선 시즌을 마칠 때마다(2026-10-18 사용자 요청)
-        return {'kind': 'decision', 'what': 'return', 'offers': return_offers(c, rng), 'system': W.system_of(code)}
+        offers = return_offers(c, rng)
+        rumor = return_rumor(c, offers)                                  # KBO 구단 제안이 오면 복귀 기사(2026-10-25 사용자 요청)
+        if rumor:
+            c.flags = dict(c.flags or {}, press=list((c.flags or {}).get('press') or []) + [rumor])
+        return {'kind': 'decision', 'what': 'return', 'offers': offers, 'system': W.system_of(code)}
     if W.system_of(code) == 'kbo' and flags.get('top_service', {}).get('kbo1', 0) >= 7 and not flags.get('posted'):
         offers = Story.posting_offers(c, rng)
         if offers:
@@ -2580,6 +2584,23 @@ def showcase(c, src: str) -> float:
     return -0.5 if duty_for(c, duty_level(c))[0] in BURIED else 0.3
 
 
+BONUS_CAP, BONUS_FLOOR = 10000, 1000          # 첫 프로 계약 계약금(만원) — 상한 1억, 바닥 1천만
+BONUS_DEVELOP = .2                              # 육성선수 계약은 계약금이 작다
+
+
+def signing_bonus(c, kind: str = 'draft') -> int:
+    """첫 프로 계약 계약금(2026-10-25 사용자 요청) — 계약 전까지 고교·대학 시즌 성적(평균 대비 z, 표본이 적으면 0 쪽)의
+    평균으로 정한다. z −1 이하면 바닥(1천만), z 3 이상이면 상한(1억). 육성선수는 그 BONUS_DEVELOP 배."""
+    zs = [z for z in (perf_z(c.role, s.totals, s.games) for s in c.seasons.filter(league__in=('hs', 'univ')))
+          if z is not None] if getattr(c, 'pk', None) else []
+    perf = sum(zs) / len(zs) if zs else 0.0
+    share = _clamp((perf + 1.0) / 4.0, 0.0, 1.0)
+    bonus = BONUS_FLOOR + (BONUS_CAP - BONUS_FLOOR) * share ** 1.3
+    if kind == 'develop':
+        bonus *= BONUS_DEVELOP
+    return int(min(BONUS_CAP, bonus) // 100 * 100)
+
+
 def draft_offer(c, src: str, rng) -> dict:
     mean, sd = DRAFT_CLASS[src]
     scout = c.potential + rng.gauss(0, 4 if src == 'hs' else 3)
@@ -2613,7 +2634,7 @@ def draft_offer(c, src: str, rng) -> dict:
         pool = strong if score >= 55 else [s for s in names if s not in strong]
         univs = rng.sample(pool, min(3, len(pool)))
     return {'kind': 'decision', 'what': 'draft', 'from': src, 'score': score, 'offer': offer, 'abroad': abroad,
-            'univs': univs}
+            'univs': univs, 'bonus': signing_bonus(c), 'bonus_develop': signing_bonus(c, 'develop')}
 
 
 ABROAD = ('mlb', 'npb', 'cpbl')
@@ -2640,20 +2661,87 @@ def _split_pick(choice: str) -> tuple:
     return sysname, team
 
 
+RETURN_CLUBS = 3
+
+
 def return_offers(c, rng) -> list:
-    """해외에서 시즌을 마칠 때마다 오는 KBO 복귀 제안 — 1군감이면 희망 구단(실력이 넘치면 돈을 더 주는 구단도),
-    아니면 스스로 계약을 정리하고 희망 구단 퓨처스로 돌아오는 길(2026-10-18 사용자 요청: 본인 의지로 탈출)."""
+    """해외에서 시즌을 마칠 때마다 오는 KBO 복귀 제안 — 1군감이면 희망 구단과 다른 KBO 구단 둘이 조건을 내고, 고른 구단과
+    연봉·역할을 협상한다(2026-10-25 사용자 요청, Story.negotiate — 해외 협상과 같은 3차 조율). 실력이 넘치면 한 구단은 돈을 더 준다.
+    1군감이 아니면 스스로 계약을 정리하고 희망 구단 퓨처스로 돌아오는 길(2026-10-18 사용자 요청: 본인 의지로 탈출)."""
     lvl = W.level('kbo1')
     years = 2 if c.age <= 31 else 1
     if c.ovr < lvl - 4:
         return [{'key': 'self', 'team': c.team, 'league': 'kbo2', 'years': 0, 'annual': 0}]
     w = _clamp((c.ovr - lvl) * 0.9, 0.0, 9.0)
     annual = Balance.annual(c, 'kbo1', w, 9) // 100 * 100
-    out = [{'key': 'kbo', 'team': c.team, 'league': 'kbo1', 'years': years, 'annual': annual}]
-    if c.ovr >= lvl + 2:
-        out.append({'key': 'rich', 'team': rng.choice([t for t, _n, _col in W.KBO_TEAMS if t != c.team]), 'league': 'kbo1',
-                    'years': years, 'annual': int(annual * 1.2) // 100 * 100})
+    star = c.ovr >= lvl + 2
+    others = [t for t, _n, _col in W.KBO_TEAMS if t != c.team]
+    clubs = [c.team] + [others.pop(int(rng.random() * len(others)) % len(others)) for _ in range(RETURN_CLUBS - 1)]
+    out = []
+    for i, team in enumerate(clubs):
+        mult = 1.0 if i == 0 else 1.2 if star and i == 1 else .92 + .12 * rng.random()
+        pay = int(annual * mult) // 100 * 100
+        out.append({'key': team, 'team': team, 'league': 'kbo1', 'system': 'kbo', 'entry_league': 'kbo1', 'origin': 'return',
+                    'years': years + (1 if i and star and c.age <= 29 else 0), 'annual': pay, 'budget': round(pay * 1.12),
+                    'interest': round((.56 if i == 0 else .44) + .1 * rng.random(), 2),
+                    'role': '핵심 선수' if star else '주전 경쟁'})
     return out
+
+
+def return_rumor(c, offers) -> dict | None:
+    """KBO 구단 제안이 왔다는 복귀 기사 — 스스로 유턴만 남은 해에는 없다."""
+    clubs = [W.PRO_TEAM[o['team']]['short'] for o in offers if o.get('key') != 'self' and o.get('team') in W.PRO_TEAM]
+    if not clubs:
+        return None
+    where = W.SYSTEM_NAME.get(W.system_of(c.league), '해외')
+    lead = f"{clubs[0]} 등 {len(clubs)}개 구단" if len(clubs) > 1 else clubs[0]
+    return press('[단독]', f"{where} {c.name}, KBO 유턴 검토…{lead} 관심", '협상 테이블이 열렸다')
+
+
+def _return_terms(c, deal) -> dict:
+    """예전 저장 제안(연봉·연수만 있던 'kbo'·'rich')도 협상할 수 있게 빈 조건을 채운다."""
+    d = dict(deal, system='kbo', entry_league='kbo1', origin='return', round=deal.get('round', 0))
+    d.setdefault('budget', round(d['annual'] * 1.12))
+    d.setdefault('interest', .55 if d['team'] == c.team else .45)
+    d.setdefault('role', '주전 경쟁')
+    d['years'] = d.get('years') or (2 if c.age <= 31 else 1)
+    return d
+
+
+def _return_settle(c, pend, status, deal, rng) -> str:
+    """KBO 복귀 협상 결과 — 합의면 남은 해외 계약을 접고 KBO 1군으로, 결렬이면 남은 구단 제안으로 돌아간다."""
+    flags = dict(c.flags or {}, return_offered=True)
+    nm = c.name
+    if status == 'signed':
+        left = (flags.pop('contract', None) or {}).get('years', 0)
+        c.league, c.club = 'kbo1', deal['team']
+        flags['contract'] = {'years': deal['years'], 'annual': deal['annual']}
+        for k in ('move', 'pin', 'mlb_camp_season', 'mlb_bench_season'):
+            flags.pop(k, None)
+        flags['trust'] = 65 if deal.get('role') == '핵심 선수' else TRUST_START
+        team = W.PRO_TEAM[c.club]['name']
+        total = man(deal['annual'] * deal['years'])
+        role = deal.get('role', '주전 경쟁')
+        text = f"KBO 복귀 협상에 성공했어요 — {team}, {deal['years']}년 총 {total} · {role}"
+        if left > 0:
+            text += f'(남은 해외 계약 {left}년은 포기했어요)'
+        flags['press'] = list(flags.get('press') or []) + [
+            press('[오피셜]', f"{nm}, KBO 복귀…{team}{josa(team, '와/과')} {deal['years']}년 총액 {total}",
+                  f"연봉 {man(deal['annual'])} · {role}")]
+        c.flags = flags
+        Story.change(c, text, confidence=8)
+        c.pending = plan_step(c, rng)
+        return text
+    rest = [o for o in pend.get('offers') or [] if o.get('team') != deal['team'] and o.get('key') != 'self']
+    team = W.PRO_TEAM[deal['team']]['name']
+    flags['press'] = list(flags.get('press') or []) + [press('[협상]', f"{nm}·{team} 복귀 협상 결렬")]
+    c.flags = flags
+    Story.change(c, f"{team}{josa(team, '와/과')}의 복귀 협상이 결렬됐어요", confidence=-4)
+    if rest:
+        c.pending = {'kind': 'decision', 'what': 'return', 'offers': rest, 'system': pend.get('system') or W.system_of(c.league)}
+        return f"{team}{josa(team, '와/과')}의 협상이 결렬됐어요. 남은 구단 제안을 보거나 해외에 남을 수 있어요."
+    c.pending = {'kind': 'decision', 'what': 'retire'} if c.age >= RETIRE_FROM else plan_step(c, rng)
+    return f"{team}{josa(team, '와/과')}의 협상이 결렬됐어요. 해외에서 계속 도전해요."
 
 
 def fa_offers(c, rng) -> list:
@@ -2697,6 +2785,8 @@ def decide(c, what: str, choice: str, rng, school: str = '') -> str:
         if status == 'counter':
             c.pending = dict(pend, deal=deal)
             return '구단이 조건을 다시 제시했어요. 다음 협상에서 조율해 주세요.'
+        if pend.get('origin') == 'return':
+            return _return_settle(c, pend, status, deal, rng)
         flags = dict(c.flags or {}, posted=True)
         if status == 'signed':
             c.league = deal.get('entry_league') or ('npb1' if deal['system'] == 'npb' else 'mlb')
@@ -2851,6 +2941,15 @@ def decide(c, what: str, choice: str, rng, school: str = '') -> str:
             raise LiteError('그 길은 지금 고를 수 없어요.')
         if W.is_pro(c.league):
             c.grade = 0
+            # 첫 프로 계약 계약금 — 제안 때 정한 금액(예전 화면이면 지금 계산), 상한 1억
+            kind = 'develop' if choice == 'develop' else 'draft'
+            bonus = pend.get('bonus_develop' if kind == 'develop' else 'bonus')
+            bonus = min(BONUS_CAP, int(bonus if bonus is not None else signing_bonus(c, kind)))
+            if bonus > 0:
+                flags['cash'] = (int(flags['cash']) if 'cash' in flags else int(c.earnings or 0)) + bonus
+                c.earnings = int(c.earnings or 0) + bonus
+                text += f' · 계약금 {man(bonus)}'
+                news.append(press('[계약]', f"{nm}, 계약금 {man(bonus)}에 사인…{W.PRO_TEAM.get(c.club, {}).get('short', '')} 첫 프로 계약"))
     elif what == 'military':
         if choice == 'sangmu':
             flags['army'] = {'kind': 'sangmu', 'left': 2, 'back': [c.league, c.club]}
@@ -2918,6 +3017,13 @@ def decide(c, what: str, choice: str, rng, school: str = '') -> str:
             offers = [{'key': 'kbo', 'team': c.team, 'league': 'kbo1' if c.ovr >= W.level('kbo1') - 4 else 'kbo2',
                        'years': 0, 'annual': 0}]
         deal = next((o for o in offers if o['key'] == choice), None)
+        if deal and deal['key'] != 'self' and deal.get('league') == 'kbo1':
+            # KBO 구단을 고르면 바로 입단하지 않고 그 구단과 연봉·역할을 협상한다(2026-10-25 사용자 요청)
+            c.flags = flags
+            c.pending = {'kind': 'decision', 'what': 'negotiation', 'origin': 'return', 'deal': _return_terms(c, deal),
+                         'offers': offers, 'system': pend.get('system') or W.system_of(c.league)}
+            team = W.PRO_TEAM[deal['team']]['name']
+            return f"{team}{josa(team, '와/과')} 복귀 협상을 시작해요."
         if deal:
             left = (flags.pop('contract', None) or {}).get('years', 0)
             c.league, c.club = deal['league'], deal['team']
@@ -3056,7 +3162,7 @@ def decision_view(c) -> dict | None:
         return dict(Contracts.optout_view(c, f'{c.pk}:{c.year}:optout:{d.get("elapsed", 0)}'),
                     what='contract_optout', contract_scene=True)
     if pend.get('what') == 'negotiation':
-        return dict(Story.deal_view(c, pend['deal']), what='negotiation', kind='negotiation',
+        return dict(Story.deal_view(c, pend['deal']), what='negotiation', kind='negotiation', origin=pend.get('origin', ''),
                     id=f"{c.pk}:{c.year}:{pend['deal']['team']}:{pend['deal'].get('round', 0)}")
     if pend.get('what') == 'meeting':
         view = dict(meeting_view(c, pend), what='meeting')
@@ -3075,6 +3181,8 @@ def decision_view(c) -> dict | None:
     v['who_name'], v['who_role'] = who_is(c, v['who'])
     if pend.get('what') == 'draft':
         v['team'] = W.PRO_TEAM.get((pend.get('offer') or {}).get('team', ''), {})
+        v['bonus_text'] = man(pend['bonus'] if pend.get('bonus') is not None else signing_bonus(c))
+        v['bonus_develop_text'] = man(pend['bonus_develop'] if pend.get('bonus_develop') is not None else signing_bonus(c, 'develop'))
         v['abroad_list'] = [{'system': k, 'name': W.SYSTEM_NAME[k], 'teams': [W.PRO_TEAM[t] for t in _teams_of(ts)]}
                             for k, ts in (pend.get('abroad') or {}).items()]
     if pend.get('what') == 'posting':

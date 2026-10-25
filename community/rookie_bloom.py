@@ -1,9 +1,16 @@
-"""31세 뒤 라이트 전용 만개. 확률·기간·추가 각성 한 번을 저장 상태로 검증해요."""
+"""31세 뒤 라이트 전용 만개. 확률·기간·추가 각성 한 번을 저장 상태로 검증해요.
+
+2026-10-25 사용자 요청: 너무 강해서 '오래 빛을 못 본 선수'에게만 — 최근 프로 3시즌 내리 평범한 성적(평균 대비
+z < DULL_Z, 큰 상 없음)이거나 최근 2시즌 내리 하위 리그(퓨처스·육성군·트리플A 이하·NPB 2군)에 있었을 때만 후보가 되고,
+후보가 돼도 그 시즌에 제안이 뜰 확률은 APPEAR 예요(선수·시즌마다 고정 — 새로고침으로 다시 뽑지 않아요).
+"""
 import hashlib
 from . import rookie_modes as Modes, rookie_world as W
 
 NORMAL_AWAKEN_AGE = 31
-MIN_PRO_YEARS, NEAR_LIMIT, YEARS, AGING_KEEP = 7, 6.0, 3, .30
+NEAR_LIMIT, YEARS, AGING_KEEP = 6.0, 3, .30
+DULL_YEARS, BURIED_YEARS, DULL_Z, APPEAR = 3, 2, 0.3, .30
+MAJOR_AWARDS = ('mvp', 'gg', 'ace', 'title', 'rookie', 'ring')
 
 def state(c):
     return (c.flags or {}).get('bloom') or {}
@@ -25,13 +32,37 @@ def ready(c):
     f, b = c.flags or {}, state(c)
     if c.age <= NORMAL_AWAKEN_AGE or f.get('army') or b.get('attempted') or c.year < b.get('next_year', 0):
         return False
-    if X.base_stars(c) + X.awakened(c) > 3 or f.get('pro_years', 0) < MIN_PRO_YEARS:
+    if X.base_stars(c) + X.awakened(c) > 3:
         return False
     gaps = [max(0, X.stat_pot(c, k) - float(c.stats[k])) for k in c.stats]
-    return bool(gaps) and sum(gaps) / len(gaps) <= NEAR_LIMIT
+    return bool(gaps) and sum(gaps) / len(gaps) <= NEAR_LIMIT and overlooked(c)
+
+
+def overlooked(c):
+    """오래 빛을 못 봤나 — 최근 프로 DULL_YEARS 시즌 내리 평범했거나, 최근 BURIED_YEARS 시즌 내리 하위 리그."""
+    from . import rookie_lite as X
+    if not getattr(c, 'pk', None):
+        return False
+    pro = [s for s in c.seasons.order_by('-year')[:DULL_YEARS + 3] if W.is_pro(s.league)]
+
+    def minor(s):
+        return s.league not in W.TOP_LEAGUES
+
+    def dull(s):
+        z = X.perf_z(c.role, s.totals, s.games)
+        return (z is None or z < DULL_Z) and not any(a.get('kind') in MAJOR_AWARDS for a in (s.awards or []))
+    buried = len(pro) >= BURIED_YEARS and all(minor(s) for s in pro[:BURIED_YEARS])
+    stalled = len(pro) >= DULL_YEARS and all(dull(s) for s in pro[:DULL_YEARS])
+    return buried or stalled
+
+
+def appears(c):
+    """후보 시즌에 제안이 실제로 뜨나 — 선수·시즌마다 고정된 APPEAR 확률."""
+    roll = int(hashlib.sha256(f'bloom-appear:{c.pk}:{c.year}'.encode()).hexdigest()[:8], 16) / 0xFFFFFFFF
+    return roll < APPEAR
 
 def offer(c):
-    if not ready(c):
+    if not ready(c) or not appears(c):
         return None
     from . import rookie_lite as X
     last = c.seasons.order_by('-year').first() if c.pk else None
@@ -50,8 +81,11 @@ def scene(c):
 def resolve(c, choice, rng):
     from . import rookie_lite as X, rookie as R
     p = c.pending or {}
-    if p.get('what') != 'bloom' or not ready(c):
+    if p.get('what') != 'bloom':
         raise X.LiteError('지금은 만개를 선택할 차례가 아니에요.')
+    if not ready(c):          # 조건이 바뀌기 전(2026-10-25)에 떠 있던 제안 — 막히지 않게 다음 시즌으로
+        c.pending = X.plan_step(c, rng)
+        return '만개 조건이 바뀌어 이번 제안은 사라졌어요. 다음 시즌을 준비해요.'
     if choice not in ('try', 'skip'):
         raise X.LiteError('다시 도전할지 골라 주세요.')
     if choice == 'skip':
