@@ -184,7 +184,9 @@ def league_career(league: str, *, retired_only: bool = False, limit: int = 30, v
     if not acc:
         return []
     awards = {}
-    for pid, kind in RookieAward.objects.filter(league=league, player_id__in=list(acc)).values_list('player_id', 'kind'):
+    # 반기 MVP(rookie_halves)는 명예의 전당 순서에 넣지 않는다 — 전·후기 리그를 켜도 순서가 그대로
+    for pid, kind in RookieAward.objects.filter(league=league, player_id__in=list(acc)).exclude(kind='half') \
+            .values_list('player_id', 'kind'):
         a = awards.setdefault(pid, {'mvp': 0, 'n': 0})
         a['n'] += 1
         a['mvp'] += kind == 'mvp' or kind == 'minor'

@@ -1,0 +1,154 @@
+/**
+ * 야구선수 키우기 정식 판 — 경기장 칸(시간대 경기·경기 재생·다음 경기·순위 레이스). rookie.css 의 .rk 토큰 위에 얹는다.
+ * 재생 전광판은 라이트 시즌 전광판(.rl-ticker·.rl-month·.rl-wait)을 그대로 쓰고, 여기선 경기장 칸 배치와 이닝 점수판만.
+ * 색: 인디고 하나(--rk-accent·--rk-led), 어두운 면은 전광판뿐. PC 는 재생 | 곁 칸 두 단, 768px 아래는 한 단.
+ */
+.rk-md { margin: 16px 0; }
+.rk-md-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(240px, 300px); gap: 16px; align-items: start; }
+.rk-md-main { min-width: 0; }
+.rk-md-side { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+
+/* 오늘 경기 — 시각 순 칩. 지난 경기는 눌러서 다시 보기 */
+.rk-md-day { display: flex; gap: 6px; margin: 4px 0 12px; padding: 0 0 4px; list-style: none; overflow-x: auto; scrollbar-width: thin; }
+.rk-md-day > li { flex: 0 0 auto; }
+.rk-md-day > li:not(.is-done), .rk-md-chip {
+    display: flex; flex-direction: column; gap: 1px; min-width: 92px; padding: 7px 10px;
+    border: 1px solid var(--rk-line); border-radius: 10px; background: #fff; font: inherit; text-align: left; color: var(--rk-ink-2);
+}
+.rk-md-chip { cursor: pointer; }
+.rk-md-chip:hover { border-color: var(--rk-accent-line); }
+.rk-md-chip:focus-visible { outline: 2px solid var(--rk-accent); outline-offset: 2px; }
+.rk-md-chip[aria-pressed="true"] { border-color: var(--rk-accent); background: var(--rk-accent-wash); }
+.rk-md-day time { font-size: 0.72rem; font-weight: 800; color: var(--rk-ink-3); font-variant-numeric: tabular-nums; }
+.rk-md-day span { font-size: 0.78rem; font-weight: 600; white-space: nowrap; }
+.rk-md-day span small { font-weight: 600; color: var(--rk-ink-4); }
+.rk-md-day b { font-size: 0.82rem; font-weight: 800; font-variant-numeric: tabular-nums; }
+.rk-md-day .is-win b { color: var(--rk-accent); }
+.rk-md-day .is-next { border-style: dashed; }
+.rk-md-day .is-rest { opacity: .55; }
+
+/* 재생 전광판 — 이닝 점수판 */
+.rk-replay { margin: 0; }
+.rk-linescore {
+    display: grid; grid-template-columns: 3.2em repeat(9, minmax(0, 1fr)) 2.4em; gap: 2px 4px; margin: 10px 0 4px;
+    padding-bottom: 10px; border-bottom: 1px solid rgba(255, 255, 255, .09);
+    font-size: 0.8rem; font-weight: 700; text-align: center; font-variant-numeric: tabular-nums; color: var(--rk-board-ink);
+}
+.rk-linescore .rk-ls-name { text-align: left; color: var(--rk-board-dim); font-weight: 600; }
+.rk-linescore b { color: var(--rk-led); font-weight: 900; }
+.rk-linescore .rl-wait { opacity: 0; transform: none; }
+.rk-replay .rl-month.is-mine .rk-gno { color: var(--rk-led); }
+.rk-replay .rl-wl { font-variant-numeric: tabular-nums; color: var(--rk-board-dim); box-shadow: none; padding: 0; }
+.rk-md-empty { padding: 20px; }
+.rk-md-empty p { margin: 0; color: var(--rk-board-dim); font-size: 0.88rem; }
+.rk-md-new { margin: 10px 0 0; }
+
+/* 곁 칸 — 다음 경기·순위 레이스 */
+.rk-md-card { padding: 14px; border: 1px solid var(--rk-line); border-radius: 12px; background: var(--rk-paper); }
+.rk-md-card h3 { margin: 0 0 6px; font-size: 0.86rem; font-weight: 800; }
+.rk-md-card h3 small { margin-left: 4px; font-weight: 600; color: var(--rk-ink-3); }
+.rk-md-card .rk-hint { margin: 6px 0 0; }
+.rk-md-when { margin: 0; font-size: 1.25rem; font-weight: 900; font-variant-numeric: tabular-nums; color: var(--rk-accent); }
+.rk-md-vs { margin: 2px 0 0; font-size: 0.9rem; color: var(--rk-ink-2); }
+.rk-md-race table { width: 100%; border-collapse: collapse; font-size: 0.78rem; font-variant-numeric: tabular-nums; }
+.rk-md-race th, .rk-md-race td { padding: 5px 4px; border-top: 1px solid var(--rk-line-soft); text-align: right; white-space: nowrap; }
+.rk-md-race thead th { border-top: 0; font-size: 0.7rem; font-weight: 700; color: var(--rk-ink-3); }
+.rk-md-race tbody th { text-align: left; font-weight: 600; max-width: 8.5em; overflow: hidden; text-overflow: ellipsis; }
+.rk-md-race td:first-child, .rk-md-race thead th:first-child { text-align: left; }
+.rk-md-race tr.is-mine th, .rk-md-race tr.is-mine td { color: var(--rk-accent); font-weight: 800; background: var(--rk-accent-wash); }
+
+@media (max-width: 767.98px) {
+    .rk-md-grid { grid-template-columns: 1fr; }
+    .rk-linescore { grid-template-columns: 2.6em repeat(9, minmax(0, 1fr)) 2em; font-size: 0.72rem; gap: 2px; }
+}
+@media (prefers-reduced-motion: reduce) {
+    .rk-linescore .rl-wait { opacity: 1; }
+}
+
+/* 전·후기 리그 가을야구(rookie_halves) — 경기장 칸 맨 위 한 줄 + 시리즈 전광판 */
+.rk-md-post { margin: 0 0 16px; }
+.rk-md-post-line { margin: 0 0 10px; padding: 10px 14px; border: 1px solid var(--rk-line); border-left: 3px solid var(--rs-accent, #4f46e5); border-radius: 10px; background: var(--rk-paper); font-size: .9rem; }
+.rk-md-post-line b { margin-right: 6px; color: var(--rs-accent, #4f46e5); }
+
+/* 하나의 구장, 시각과 시즌만 바뀌어요. 왼쪽은 항상 밝은 문구 영역이에요. */
+.rk .rk-md { padding: 0; overflow: clip; background: #fff; }
+.rk-md [hidden] { display: none !important; }
+.rk-md-home { position: relative; isolation: isolate; overflow: hidden; min-height: 240px; padding: 30px; background: #f4f5f8; }
+.rk-md-sky, .rk-md-ornament { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: center 60%; z-index: -3; }
+.rk-md-ornament { z-index: -2; pointer-events: none; }
+.rk-md-home::after { content: ''; position: absolute; inset: 0; z-index: -1; background: linear-gradient(90deg,rgba(255,255,255,.98),rgba(255,255,255,.85) 35%,rgba(255,255,255,.08) 78%); }
+.rk-md-home-copy { max-width: 65%; }
+.rk .rk-md-home h2 { margin: 10px 0 8px; font-size: 1.7rem; color: #18181b; letter-spacing: -.04em; }
+.rk-md-home-copy p { margin: 0; color: #52525b; font-size: .85rem; }
+.rk-md-clock { display: inline-block; margin-top: 20px; font-size: 1.2rem; font-weight: 750; color: #3f3f46; font-variant-numeric: tabular-nums; }
+.rk-phase-label { color: var(--rk-accent); font-size: .75rem; font-weight: 700; }
+.rk-md-lights { position: absolute; inset: 0; pointer-events: none; opacity: 0; background: rgba(238,242,255,.65); }
+.rk-md-home.is-lighting .rk-md-lights { animation: rk-lights-on 1s ease-out; }
+@keyframes rk-lights-on { from { opacity: .65; } to { opacity: 0; } }
+.rk-md > .rk-md-grid, .rk-md > .rk-post { margin: 22px; }
+.rk-md-grid:has(> .rk-md-main > .rk-md-regular) { display: flex; flex-direction: column-reverse; }
+.rk-md-grid:has(> .rk-md-main > .rk-md-regular) > * { width: 100%; }
+.rk-md-grid:has(> .rk-md-main > .rk-md-regular) .rk-md-side { display: grid; grid-template-columns: minmax(180px,.7fr) minmax(0,1.3fr); align-items: start; }
+.rk-calendar { margin: 22px; padding-bottom: 20px; border-bottom: 1px solid var(--rk-line); }
+.rk-calendar header, .rk-calendar header > div { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 5px 14px; }
+.rk-calendar header b { font-size: .85rem; color: var(--rk-ink); }
+.rk-calendar header span, .rk-calendar header p { font-size: .74rem; color: var(--rk-ink-3); margin: 0; }
+.rk-calendar progress, .rk-half-progress progress { display: block; appearance: none; width: 100%; height: 4px; margin: 12px 0; border: 0; border-radius: 4px; overflow: hidden; background: #e4e4e7; accent-color: var(--rk-accent); }
+.rk-calendar progress::-webkit-progress-bar, .rk-half-progress progress::-webkit-progress-bar { background: #e4e4e7; }
+.rk-calendar progress::-webkit-progress-value, .rk-half-progress progress::-webkit-progress-value { background: var(--rk-accent); }
+.rk-calendar progress::-moz-progress-bar, .rk-half-progress progress::-moz-progress-bar { background: var(--rk-accent); }
+.rk-calendar-scroll { overflow-x: auto; scrollbar-width: thin; padding: 3px 0 6px; }
+.rk-calendar ol { display: flex; list-style: none; padding: 0; margin: 0; min-width: 620px; gap: 10px; }
+.rk-calendar li { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 5px; padding: 8px; border-left: 2px solid #e4e4e7; }
+.rk-calendar li span, .rk-calendar li time { font-size: .66rem; color: #71717a; }
+.rk-calendar li b { font-size: .72rem; font-weight: 650; color: #52525b; }
+.rk-calendar li[aria-current] { border-color: var(--rk-accent); background: #eef2ff; }
+.rk-calendar li[aria-current] b { color: var(--rk-accent); }
+.rk-calendar li.is-past { opacity: .7; }
+.rk-post-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 15px; }
+.rk .rk-post-head h3 { font-size: 1.3rem; margin: 6px 0; letter-spacing: -.035em; color: #18181b; }
+.rk-post-head p { font-size: .83rem; margin: 0; color: #52525b; line-height: 1.65; }
+.rk-post-format { font-size: .7rem; color: #71717a; border: 1px solid #e4e4e7; border-radius: 5px; padding: 5px 8px; }
+.rk-post.is-new-result { animation: rk-result-in .55s ease-out; }
+@keyframes rk-result-in { from { opacity: .6; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+.rk-post-news { display: grid; grid-template-columns: minmax(0,.8fr) minmax(0,1.2fr); gap: 22px; align-items: center; padding: 18px; background: #fafafa; border: 1px solid #e4e4e7; border-radius: 12px; }
+.rk-post-news img { width: 100%; height: 160px; object-fit: cover; border-radius: 8px; }
+.rk .rk-post-news h4 { margin: 0 0 8px; font-size: 1rem; color: #3f3f46; }
+.rk-post-news p { margin: 6px 0; font-size: .82rem; color: #71717a; }
+.rk-post-news .rk-post-finalists { font-size: 1.15rem; color: #3f3f46; font-variant-numeric: tabular-nums; }
+.rk-post-news small { font-size: .7rem; color: #71717a; }
+.rk-post-wait { padding: 22px; background: #fafafa; border: 1px dashed #d4d4d8; border-radius: 10px; }
+.rk-post-wait p { color: #71717a; font-size: .82rem; margin: 8px 0 0; }
+.rk-md-regular { padding: 14px; border: 1px solid #e4e4e7; border-radius: 10px; }
+.rk-md-regular > summary { font-size: .8rem; font-weight: 650; cursor: pointer; color: #52525b; }
+.rk-md-regular > summary span { margin-left: 6px; color: #71717a; font-size: .72rem; font-weight: 400; }
+.rk-md-regular[open] > summary { margin-bottom: 16px; }
+.rk-replay-label { font-size: .66rem; font-style: normal; border: 1px solid currentColor; border-radius: 4px; padding: 3px 6px; margin-right: 8px; }
+.rk-race-league { font-size: .74rem; color: #71717a; margin: 0 0 12px; }
+.rk-half-progress > span { font-size: .7rem; color: #71717a; }
+.rk-half-champs { display: flex; flex-direction: column; gap: 7px; padding: 12px 0; }
+.rk-half-champs p { margin: 0; padding: 9px 10px; display: flex; flex-wrap: wrap; gap: 5px 10px; align-items: center; background: #fafafa; border-radius: 6px; font-size: .78rem; }
+.rk-half-champs p > span { color: #71717a; font-size: .68rem; }
+.rk-half-champs strong { color: var(--rk-accent); background: #eef2ff; font-size: .66rem; padding: 3px 6px; border-radius: 4px; }
+.rk-race-tabs { display: flex; gap: 4px; margin: 8px 0 12px; border-bottom: 1px solid #e4e4e7; }
+.rk-race-tabs button { flex: 1; padding: 9px 5px; font: inherit; font-size: .76rem; background: transparent; border: 0; border-bottom: 2px solid transparent; color: #71717a; cursor: pointer; }
+.rk-race-tabs button[aria-pressed="true"] { color: var(--rk-accent); border-color: var(--rk-accent); font-weight: 700; }
+.rk .rk-race-table h4 { font-size: .75rem; margin: 10px 0; color: #52525b; }
+.rk-race-scroll { max-height: 360px; overflow: auto; scrollbar-width: thin; }
+.rk-md-race .rk-race-scroll table { min-width: 250px; }
+.rk .rk-md-race tbody th { white-space: normal; min-width: 80px; max-width: none; text-overflow: clip; }
+.rk-first-champ { display: inline-block; color: var(--rk-accent); font-size: .6rem; border: 1px solid #c7d2fe; border-radius: 3px; padding: 1px 3px; margin-left: 4px; }
+.rk-md :is(button,summary,[tabindex]):focus-visible { outline: 2px solid var(--rk-accent); outline-offset: 3px; }
+.rk-md-new { padding: 0 22px 22px; }
+@media (max-width: 767.98px) {
+    .rk-md-home { min-height: 190px; padding: 20px; }
+    .rk-md-home-copy { max-width: 75%; }
+    .rk-md > .rk-md-grid, .rk-md > .rk-post, .rk-calendar { margin: 16px; }
+    .rk-md-grid:has(> .rk-md-main > .rk-md-regular) .rk-md-side { display: flex; }
+    .rk-md-grid:has(> .rk-md-main > .rk-md-regular) .rk-md-side > * { width: 100%; }
+    .rk-post-news { grid-template-columns: 1fr; gap: 14px; padding: 14px; }
+    .rk-post-news img { height: 130px; }
+    .rk-calendar ol { min-width: 580px; }
+    .rk-md-clock { margin-top: 12px; }
+}
+@media (prefers-reduced-motion: reduce) { .rk-md-home.is-lighting .rk-md-lights, .rk-post.is-new-result { animation: none; } }

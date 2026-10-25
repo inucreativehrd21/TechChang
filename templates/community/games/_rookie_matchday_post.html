@@ -1,0 +1,10 @@
+{% load static rookie_tags %}
+<section class="rk-post{% if not md.post.mine %} is-observer{% endif %}" data-rk-post="{{ md.post.season }}:{{ p.pk }}" data-rk-post-shown="{{ md.post.shown }}" aria-labelledby="rk-post-title">
+    <header class="rk-post-head"><div><span class="rk-phase-label">{% if md.post.done %}가을야구 최종{% else %}가을야구 진행 중{% endif %}</span><h3 id="rk-post-title">{{ md.post.final }}</h3><p>{% if md.post.done %}{{ md.post.line|baseball_text }}{% else %}{{ md.post.headline }}{% if md.post.next %} · 다음 {{ md.post.next.no }}차전 <time datetime="{{ md.post.next.at|date:'c' }}">{{ md.post.next_label }}</time>{% endif %}{% endif %}</p></div><span class="rk-post-format">{{ md.post.need }}선승제</span></header>
+    {% if md.post.mine %}
+        {% if md.post.shown %}{% include 'community/games/_series_board.html' with doc=md.post.doc c=p season_year=md.post.season live_series=md.post.live progress=md.post %}
+        {% else %}<div class="rk-post-wait"><b>{{ md.post.team.name }} <span>대</span> {{ md.post.opponent.name }}</b><p>첫 경기 뒤 이곳에서 시리즈 전적과 내 기록을 확인해요.</p></div>{% endif %}
+    {% else %}
+        <div class="rk-post-news"><img src="{% static 'img/rookie/series/reflection.webp' %}?v={{ STATIC_VERSION }}" width="1536" height="1024" alt="" loading="lazy"><div><h4>우리 팀의 다음 도전을 기다리며</h4><p>이번 결승에는 나서지 못했어요. 시즌을 돌아보고 다음 도전을 준비해요.</p><p class="rk-post-finalists"><b>{{ md.post.team.short }}</b> {{ md.post.wins.0 }} : {{ md.post.wins.1 }} <b>{{ md.post.opponent.short }}</b></p><small>{% if md.post.done %}{{ md.post.champion.name }} 우승{% else %}다른 구단의 결승 소식 · {{ md.post.shown }}차전까지{% endif %}</small></div></div>
+    {% endif %}
+</section>

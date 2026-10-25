@@ -1,0 +1,17 @@
+{% load rookie_tags %}
+{% comment %}경기 한 판 재생 — 라이트 시즌 전광판(_lite_board.html)과 같은 틀로 이닝마다 한 줄씩. 규칙 community/rookie_playback.py.
+맥락: r(build 결과), shown(처음 보일 경기 id){% endcomment %}
+<section class="rk-board rl-ticker rk-replay" data-rk-replay="{{ r.id }}" aria-label="{% if r.at %}{{ r.at }} {% endif %}경기 중계">
+    <header class="rk-board-head"><span><i class="rk-replay-label">경기 기록</i>{% if r.at %}{{ r.at }} · {% endif %}{{ r.day|date:'n월 j일' }} · {{ r.no }}경기</span><span>{{ r.vs|baseball_text }}</span></header>
+    <div class="rk-linescore" role="img" aria-label="이닝별 점수 {{ r.score }}">
+        <span class="rk-ls-name">우리</span>{% for x in r.us_line %}<span data-rk-inn="{{ forloop.counter0 }}">{{ x }}</span>{% endfor %}<b data-rk-inn="9">{{ r.us }}</b>
+        <span class="rk-ls-name">상대</span>{% for x in r.them_line %}<span data-rk-inn="{{ forloop.counter0 }}">{{ x }}</span>{% endfor %}<b data-rk-inn="9">{{ r.them }}</b>
+    </div>
+    <ol class="rk-board-rows rl-months">
+        {% for row in r.rows %}
+        <li class="rl-month{% if row.hot %} is-hot{% endif %}{% if row.mine %} is-mine{% endif %}"><span class="rk-gno">{{ row.label }}</span><span class="rl-mline">{{ row.text|baseball_text }}</span><span class="rl-wl">{{ row.score }}</span></li>
+        {% endfor %}
+    </ol>
+    <p class="rl-final">{% if r.won %}<b>{{ r.result }}</b>{% else %}{{ r.result }}{% endif %} · {{ r.opponent|baseball_text }} {{ r.score }} · {{ r.summary|baseball_text }}</p>
+    <button type="button" class="rl-skip" data-rk-replay-skip hidden>바로 결과 보기</button>
+</section>

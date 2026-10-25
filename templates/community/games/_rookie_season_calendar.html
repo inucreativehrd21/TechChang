@@ -1,0 +1,7 @@
+{% if md.calendar %}
+<section class="rk-calendar" aria-label="시즌 {{ md.calendar.season }} 달력">
+    <header><div><b>시즌 {{ md.calendar.season }} · {{ md.calendar.label }}</b><span>오늘 {{ md.calendar.day }}일째 / 30일</span></div><p>{% if md.calendar.phase == 'post' %}다음 개막 {{ md.calendar.next_open|date:'n월 j일' }}{% elif md.calendar.remaining %}{% if md.calendar.phase == 'first' %}전기 종료{% else %}정규시즌 종료{% endif %}까지 {{ md.calendar.remaining }}일{% else %}오늘 {% if md.calendar.phase == 'first' %}전기{% else %}정규시즌{% endif %} 마감{% endif %}</p></header>
+    <progress value="{{ md.calendar.day }}" max="30" aria-label="30일 시즌 진행">{{ md.calendar.day }} / 30일</progress>
+    <div class="rk-calendar-scroll" tabindex="0" role="region" aria-label="시즌 일정, 가로로 스크롤할 수 있어요"><ol>{% for node in md.calendar.nodes %}<li{% if node.current %} aria-current="date"{% elif node.done %} class="is-past"{% endif %}><span>{{ node.day }}일{% if node.day == 31 %}째{% endif %}</span><b>{{ node.label }}</b><time datetime="{{ node.date|date:'Y-m-d' }}">{{ node.date|date:'n/j' }}</time></li>{% endfor %}</ol></div>
+</section>
+{% endif %}

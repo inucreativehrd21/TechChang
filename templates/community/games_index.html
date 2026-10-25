@@ -3,6 +3,10 @@
 
 {% block title %}게임 - 테크창{% endblock %}
 
+{% block meta_description %}야구선수 키우기 정식·라이트{% if extreme_public %}·익스트림{% endif %} 모드와 숫자야구·2048·지뢰찾기를 즐겨요.{% endblock %}
+{% block og_title %}게임 센터 - 테크창{% endblock %}
+{% block og_description %}매일 성장하거나 한 판으로 커리어를 완주해요. 야구 시뮬레이션과 퍼즐 게임을 한곳에서 즐겨요.{% endblock %}
+
 {% block extra_css %}
 <link href="{% static 'css/game.css' %}?v={{ STATIC_VERSION }}&amp;world=1" rel="stylesheet">
 {% endblock %}

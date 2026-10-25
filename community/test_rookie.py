@@ -356,14 +356,14 @@ class ViewTests(TestCase):
 
 
 class ColumnRepeatTests(TestCase):
-    def test_same_column_pays_again_after_30_days(self):
+    def test_same_column_pays_again_next_day(self):
         from datetime import timedelta
         u = member('재독자')
         p = R.create(u, name='재독', role='batter', team='kia', region='서울')
         self.assertTrue(R.award(u, 'column', '77'))
-        self.assertIsNone(R.award(u, 'column', '77'))
-        p.logs.filter(source='column').update(day=timezone.localdate() - timedelta(days=31))
-        self.assertTrue(R.award(u, 'column', '77'))
+        self.assertIsNone(R.award(u, 'column', '77'))                     # 같은 날 새로고침은 안 된다
+        p.logs.filter(source='column').update(day=timezone.localdate() - timedelta(days=1))
+        self.assertTrue(R.award(u, 'column', '77'))                       # 칼럼이 주 3편이라 다음 날 다시 읽으면 된다
 
 
 class CreateTwiceTests(TestCase):

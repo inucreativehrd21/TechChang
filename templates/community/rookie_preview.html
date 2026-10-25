@@ -2,6 +2,8 @@
 {% load static %}
 {% block title %}야구선수 키우기 장면 미리보기 - 테크창{% endblock %}
 {% block extra_css %}
+<link href="{% static 'css/rookie-avatar.css' %}?v={{ STATIC_VERSION }}" rel="stylesheet">
+
 <link href="{% static 'css/game.css' %}?v={{ STATIC_VERSION }}&amp;world=1" rel="stylesheet">
 <link href="{% static 'css/rookie.css' %}?v={{ STATIC_VERSION }}" rel="stylesheet">
 <link href="{% static 'css/rookie-environment.css' %}?v={{ STATIC_VERSION }}" rel="stylesheet">
@@ -11,7 +13,8 @@
 <link href="{% static 'css/rookie-series.css' %}?v={{ STATIC_VERSION }}" rel="stylesheet">
 {% endblock %}
 {% block content %}{% include 'community/games/_rookie_preview.html' %}{% endblock %}
-{% block script %}{{ block.super }}
+{% block script %}
+<script src="{% static 'js/rookie-avatar.js' %}?v={{ STATIC_VERSION }}" defer></script>{{ block.super }}
 <script src="{% static 'js/rookie-series.js' %}?v={{ STATIC_VERSION }}" defer></script>
 <script src="{% static 'js/rookie-environment-preview.js' %}?v={{ STATIC_VERSION }}" defer></script>
 {% endblock %}

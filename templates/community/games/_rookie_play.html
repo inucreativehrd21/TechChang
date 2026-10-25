@@ -1,9 +1,16 @@
 {% load rookie_tags %}
 {# 야구선수 키우기 플레이 영역 — 처음 그릴 때와 훈련(fetch) 뒤 갈아 끼울 때 같은 조각. 맥락: rookie.dashboard #}
 {% include 'community/games/_rookie_decide.html' %}
+{% if md %}{# 경기장 칸(1단계) — 답할 장면 다음, 맨 위 #}
+{% if story %}{% include 'community/games/_rookie_story_scene.html' with e=story %}{% endif %}
+{% if awaken %}{% include 'community/games/_rookie_awaken.html' %}{% endif %}
+{% include 'community/games/_rookie_matchday.html' %}
+{% include 'community/games/_rookie_mind.html' %}
+{% else %}
 {% include 'community/games/_rookie_mind.html' %}
 {% if story %}{% include 'community/games/_rookie_story_scene.html' with e=story %}{% endif %}
 {% if awaken %}{% include 'community/games/_rookie_awaken.html' %}{% endif %}
+{% endif %}
 <div class="rk-hero">
     {% include 'community/games/_rookie_card.html' with owner=True %}
     {% include 'community/games/_rookie_board.html' %}

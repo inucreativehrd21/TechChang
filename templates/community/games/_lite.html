@@ -1,6 +1,6 @@
 {% comment %}야구선수 키우기 라이트 모드(PC·모바일 공용). mode = create(새 선수) / plan(비시즌) / review(시즌 결산) / decision(갈림길)
 로그인 없이도 할 수 있다(손님 판). 맥락: rookie_lite_views.lite_home{% endcomment %}
-{% load rookie_tags static %}
+{% load rookie_tags static rookie_avatar_tags %}
 <div class="gm rk rl"{% if c and mode != 'create' %} data-rl-flow{% endif %}>
 <div class="gm-wrap is-wide">
     {% include 'community/games/_lite_top.html' %}
@@ -32,6 +32,7 @@
 
     <form class="rk-create rl-create" method="post" action="{% career_url 'new' %}">
         {% csrf_token %}
+        {% rookie_avatar_picker %}
         <section class="rk-panel">
             <h2 class="rl-step"><span>1</span>투수예요, 타자예요? 기본 정보를 정해요</h2>
             <div class="rk-roles">

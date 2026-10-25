@@ -1,0 +1,21 @@
+{% load rookie_tags %}
+            {% if md.today %}
+            <ol class="rk-md-day" aria-label="오늘 내 구단 경기">
+                {% for t in md.today %}
+                <li class="{% if t.game %}is-done{% if t.won %} is-win{% endif %}{% elif t.done %}is-rest{% else %}is-next{% endif %}">
+                    {% if t.game %}<button type="button" class="rk-md-chip" data-rk-pick="{{ t.game }}" aria-pressed="{% if t.game == md.shown %}true{% else %}false{% endif %}">{% endif %}
+                    <time>{{ t.label }}</time><span>{{ t.opp|baseball_text }}{% if t.home is not None %} <small>{% if t.home %}홈{% else %}원정{% endif %}</small>{% endif %}</span>
+                    <b>{% if t.game %}{{ t.score }} {% if t.won %}승{% else %}패{% endif %}{% elif t.done %}결장{% elif t.start %}선발 예정{% else %}예정{% endif %}</b>
+                    {% if t.game %}</button>{% endif %}
+                </li>
+                {% endfor %}
+            </ol>
+            {% elif md.replays|length > 1 %}
+            <ol class="rk-md-day" aria-label="{{ md.games_day|date:'n월 j일' }} 경기">
+                {% for r in md.replays %}<li class="is-done{% if r.won %} is-win{% endif %}"><button type="button" class="rk-md-chip" data-rk-pick="{{ r.id }}" aria-pressed="{% if r.id == md.shown %}true{% else %}false{% endif %}"><time>{% if r.at %}{{ r.at }}{% else %}{{ r.no }}경기{% endif %}</time><span>{{ r.opponent|baseball_text }}</span><b>{{ r.score }} {% if r.won %}승{% else %}패{% endif %}</b></button></li>{% endfor %}
+            </ol>
+            {% endif %}
+            {% for r in md.replays %}{% include 'community/games/_rookie_replay.html' with r=r shown=md.shown %}{% empty %}
+            <div class="rk-board rk-md-empty"><p>{% if md.next %}첫 경기를 기다리고 있어요. {{ md.next.label }} 경기가 끝나면 여기서 중계를 볼 수 있어요.{% else %}아직 치른 경기가 없어요. 시즌이 시작되면 경기마다 중계가 올라와요.{% endif %}</p></div>
+            {% endfor %}
+            {% if md.replays and not md.is_today %}<p class="rk-hint">{{ md.games_day|date:'n월 j일' }} 경기예요. 오늘 경기가 끝나면 새 중계로 바뀌어요.</p>{% endif %}

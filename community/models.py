@@ -1220,6 +1220,7 @@ class RookieSeason(models.Model):
     start = models.DateField()
     end = models.DateField()
     simulated_through = models.DateField(null=True, blank=True, verbose_name='경기 진행일')   # 이날 경기까지 끝남
+    slot_through = models.DateTimeField(null=True, blank=True, verbose_name='경기 진행 시각')  # 시간대 진행(rookie_clock): 이 시각 경기까지 끝남
     closed = models.BooleanField(default=False, verbose_name='시상 완료')
     closed_at = models.DateTimeField(null=True, blank=True)
 

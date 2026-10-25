@@ -1,13 +1,14 @@
-{% load rookie_tags static %}
+{% load rookie_tags static rookie_avatar_tags %}
 {% comment %}수상 축하 연출(2026-10-19 사용자 요청: MVP·중요한 상은 모션그래픽으로) — 결정적 순간 연출(.rl-mfx)과 같은 이펙트에 공 대신 트로피.
 트로피가 돌며 솟아올라 박히는 순간 섬광·충격파·불꽃 → 상 이름 → 통산 몇 번째 → 같은 시즌 다른 상 → 꽃가루. 앞 연출(결정적 순간)이 있으면 그게 끝난 뒤 연다(hidden).
 맥락: fx = rookie_lite.award_fx / rookie.award_fx, go(버튼 글){% endcomment %}
-<div class="rl-mfx is-award is-won is-good" role="dialog" aria-modal="true" aria-labelledby="rl-afx-kicker rl-afx-title" aria-describedby="rl-afx-count"
+<div class="rl-mfx is-award is-won is-good{% if fx.half %} is-half-award{% endif %}{% if p or c %} is-avatar-award{% endif %}" role="dialog" aria-modal="true" aria-labelledby="rl-afx-kicker rl-afx-title" aria-describedby="rl-afx-count"
      data-rl-mfx style="--mfx-c1: {{ fx.colors.0 }}; --mfx-c2: {{ fx.colors.1 }}" hidden>
     <button type="button" class="rl-mfx-skip" data-rl-mfx-skip>건너뛰기</button>
     <div class="rl-mfx-in" data-rl-mfx-card>
         <p class="rl-mfx-kicker" id="rl-afx-kicker">{{ fx.kicker }}</p>
         <div class="rl-mfx-stage" aria-hidden="true">
+            {% if p %}{% player_avatar p state='award' size=5 %}{% elif c %}{% player_avatar c state='award' size=5 %}{% endif %}
             <span class="rl-mfx-rays"><i class="rl-mfx-spin"></i></span>
             <span class="rl-mfx-burst"></span>
             <span class="rl-mfx-ring"></span><span class="rl-mfx-ring is-late"></span>

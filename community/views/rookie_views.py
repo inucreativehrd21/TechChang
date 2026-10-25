@@ -82,9 +82,10 @@ def _play_ctx(request, p) -> dict:
     from .. import rookie_reports as Reports
     from .. import rookie_peers as Peers
     from .. import rookie_fan_reactions as Fans
+    from .. import rookie_playback as Playback
     report = Reports.daily(p)
     return dict(_base_ctx(request, 'home'), mode='play', daily_report=report, daily_reactions=Fans.daily(p, report),
-                peers=Peers.comparisons(p), member_history=Matchups.history(p), **R.dashboard(p))
+                peers=Peers.comparisons(p), member_history=Matchups.history(p), md=Playback.stadium(p), **R.dashboard(p))
 
 
 @login_required
@@ -158,10 +159,15 @@ def rookie_home(request):
         p.career = {k: v for k, v in p.career.items() if k != 'awaken_fx'}
         p.save(update_fields=['career'])
         ctx['awaken_fx'] = fx
+    award_seen_before = int((p.career or {}).get('award_seen') or 0)
     afx = R.award_fx(p)                                        # 새로 받은 상 — 한 번 축하
     if afx:
         p.save(update_fields=['career'])
-        ctx['award_fx'] = afx
+        from .. import rookie_matchday_presentation as MatchUI
+        awards = RookieAward.objects.filter(player=p, pk__gt=award_seen_before).select_related('season')
+        ctx['award_fx'] = MatchUI.award_fx(afx, awards)
+    from .. import rookie_playback as Playback
+    Playback.mark_seen(p, ctx.get('md'))                       # 새 경기 중계는 한 번만 저절로 돈다
     return render(request, 'community/rookie.html', ctx)
 
 
@@ -209,13 +215,17 @@ def rookie_create(request):
         number = int(request.POST.get('number') or 0)
     except ValueError:
         number = 0
+    from .. import rookie_avatar as Avatar
     try:
-        p = R.create(request.user, name=request.POST.get('name', ''), role=role, team=request.POST.get('team', ''),
-                     number=number, focus=request.POST.get(f'focus_{role}', ''),
-                     position=request.POST.get('pitch_position', request.POST.get('position', '')) if role == 'pitcher' else request.POST.get('position', ''),
-                     region=request.POST.get('region', ''), throwing=request.POST.get('throwing', 'R'),
-                     batting=request.POST.get('batting', 'R'))
-    except R.GameError as ex:
+        avatar = Avatar.clean(request.POST)
+        with transaction.atomic():
+            p = R.create(request.user, name=request.POST.get('name', ''), role=role, team=request.POST.get('team', ''),
+                         number=number, focus=request.POST.get(f'focus_{role}', ''),
+                         position=request.POST.get('pitch_position', request.POST.get('position', '')) if role == 'pitcher' else request.POST.get('position', ''),
+                         region=request.POST.get('region', ''), throwing=request.POST.get('throwing', 'R'),
+                         batting=request.POST.get('batting', 'R'))
+            Avatar.save(p, avatar)
+    except (R.GameError, ValueError) as ex:
         messages.warning(request, str(ex))
         return redirect('community:rookie_home')
     except IntegrityError:                      # 입단 버튼을 두 번 눌렀다 — 이미 만들어졌다
@@ -446,9 +456,12 @@ def rookie_awards(request):
                    roy=next((a for a in awards if a.kind == 'rookie'), None),
                    ace=next((a for a in awards if a.kind == 'ace'), None),
                    titles=[a for a in awards if a.kind == 'title'],
+                   halves=sorted([a for a in awards if a.kind == 'half'], key=lambda a: a.order),
                    others=sorted([a for a in everyone if a.league != lg and a.kind in ('mvp', 'minor')],
                                  key=lambda a: _league_order(a.league)))
         ctx['mvp_nums'] = L.highlights(ctx['mvp'].stat) if ctx['mvp'] else []
+        from .. import rookie_clock as Clock, rookie_matchday_presentation as MatchUI
+        ctx['half_awards'] = MatchUI.half_awards(ctx['halves']) if ctx['halves'] and Clock.split_season(season.number) else []
         gg = [a for a in awards if a.kind == 'gg']
         spots = {}
         for a in gg:

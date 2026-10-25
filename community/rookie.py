@@ -2,7 +2,7 @@
 
 투수·타자 중 하나를 골라 리틀야구(초6)에서 시작 → 중학교 → 고교 → 드래프트 → 프로(KBO·미국·일본·대만).
 진로·나이·잠재력·숨은 특성은 rookie_career, 리그·구단·학교는 rookie_world(2026-10-17 '선수 일생' 개편).
-훈련 포인트(TP)는 사이트 활동으로만 번다: 출석 체크, 칼럼 읽기, 댓글·답변 달기(하루 한도, 같은 칼럼은 30일에 한 번).
+훈련 포인트(TP)는 사이트 활동으로만 번다: 출석 체크, 칼럼 읽기, 댓글·답변 달기(하루 한도, 같은 칼럼은 하루에 한 번).
 
 설계 — '초반엔 빠르게, 갈수록 꾸준해야 유지'(수렴):
 - 성장: 훈련 1회(10 TP)로 오르는 양이 능력치가 높을수록 준다. gain(s) = 4 × ((99 − s) / 74)^1.6
@@ -84,7 +84,8 @@ EARN = {'checkin': {'tp': 20, 'cap': 1, 'label': '출석 체크'},
         'comment': {'tp': 10, 'cap': 3, 'label': '댓글·답변'}}
 DAILY_MAX = sum(e['tp'] * e['cap'] for e in EARN.values())
 MIN_COMMENT = 10                  # 이보다 짧은 댓글은 TP 를 주지 않는다
-REPEAT_DAYS = 30                  # 같은 칼럼을 다시 읽어 TP 를 받을 수 있는 간격
+REPEAT_DAYS = 1                   # 같은 칼럼을 다시 읽어 TP 를 받을 수 있는 간격 — 칼럼은 주 3편 남짓이라
+                                  # 30일로 두면 하루 3편을 못 채웠다(2026-10-25 사용자 요청). 같은 날 새로고침은 그대로 막는다
 
 
 class GameError(ValueError):
@@ -390,7 +391,7 @@ def award(user, source: str, ref: str = '') -> dict | None:
             return None
         settle(p, today)                                # 이미 정산됨 — 할 일 없음
         earned = p.logs.filter(kind='earn', source=source)
-        # 같은 칼럼·댓글로는 30일에 한 번 — 밀린 칼럼을 다 읽은 장기 회원도 다시 읽으면 TP 를 받는다
+        # 같은 칼럼·댓글로는 하루에 한 번 — 이미 읽은 칼럼도 다음 날 다시 읽으면 TP 를 받는다
         if ref and earned.filter(ref=ref, day__gt=today - timedelta(days=REPEAT_DAYS)).exists():
             return None
         count = earned.filter(day=today).count()

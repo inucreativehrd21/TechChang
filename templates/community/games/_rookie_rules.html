@@ -5,7 +5,7 @@
     <ol class="rk-rule-list">
         <li>
             <b>사이트 활동으로 훈련 포인트(TP)를 벌어요</b>
-            <span>{% for key, e in earn.items %}{{ e.label|baseball_text }} +{{ e.tp }}{% if e.cap > 1 %}(하루 {{ e.cap }}회){% endif %}{% if not forloop.last %}, {% endif %}{% endfor %}. 하루 최대 {{ daily_max }} TP, 같은 칼럼은 30일에 한 번이고, 댓글은 10자 이상이어야 해요. TP는 {{ tp_max }}까지만 쌓여요.</span>
+            <span>{% for key, e in earn.items %}{{ e.label|baseball_text }} +{{ e.tp }}{% if e.cap > 1 %}(하루 {{ e.cap }}회){% endif %}{% if not forloop.last %}, {% endif %}{% endfor %}. 하루 최대 {{ daily_max }} TP, 같은 칼럼은 하루에 한 번(이미 읽은 칼럼도 다음 날 다시 읽으면 TP)이고, 댓글은 10자 이상이어야 해요. TP는 {{ tp_max }}까지만 쌓여요.</span>
         </li>
         <li>
             <b>TP로 훈련해요</b>

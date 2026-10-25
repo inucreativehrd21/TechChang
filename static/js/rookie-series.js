@@ -3,7 +3,10 @@
     'use strict';
     var motion = window.matchMedia('(prefers-reduced-motion: reduce)');
     var players = [];
-    document.querySelectorAll('[data-sb]').forEach(function (board) {
+    function init(scope) { scope.querySelectorAll('[data-sb]').forEach(function (board) {
+        if (board.dataset.sbReady) return;
+        board.dataset.sbReady = '1';
+        var liveSeries = board.hasAttribute('data-sb-live-series');
         var rounds = Array.from(board.querySelectorAll('[data-sb-round]'));
         var entries = [], tabs = [], current = 0, timer = null, observed = false;
         var controls = board.querySelector('[data-sb-controls]');
@@ -69,7 +72,7 @@
                 else tabs[ri].removeAttribute('aria-current');
                 var wins = [Number(round.dataset.sbHeadUs) || 0, Number(round.dataset.sbHeadThem) || 0];
                 entries.forEach(function (entry, ei) {
-                    if (entry.round === round && ei <= current) wins[entry.chip.dataset.sbWon === '1' ? 0 : 1]++;
+                    if (entry.round === round && (liveSeries || ei <= current)) wins[entry.chip.dataset.sbWon === '1' ? 0 : 1]++;
                 });
                 round.querySelector('[data-sb-wins]').textContent = wins[0] + ' : ' + wins[1];
                 var need = Number(round.dataset.sbNeed) || 0;
@@ -77,21 +80,21 @@
                 dots(round.querySelector('[data-sb-dots-them]'), wins[1], need);
                 round.querySelector('[data-sb-progress]').textContent = need > 1 && Math.max.apply(null, wins) < need ? '라운드 승리까지 ' + (need - wins[0]) + '승' : '';
                 var done = entries.every(function (e, ei) { return e.round !== round || ei <= current; });
-                round.querySelector('.sb-round-result').textContent = done ? ({won: '승리', lost: '패배', pending: '기록 대기'}[round.dataset.sbState] || '') : '기록 재생 중';
+                round.querySelector('.sb-round-result').textContent = liveSeries ? '진행 중' : done ? ({won: '승리', lost: '패배', pending: '기록 대기'}[round.dataset.sbState] || '') : '기록 재생 중';
             });
             entries.forEach(function (entry, ei) {
                 entry.card.hidden = ei !== current;
                 entry.chip.classList.toggle('is-current', ei === current);
-                entry.chip.classList.toggle('is-upcoming', ei > current);
+                entry.chip.classList.toggle('is-upcoming', !liveSeries && ei > current);
                 entry.button.disabled = false;
                 if (ei === current) entry.button.setAttribute('aria-current', 'step');
                 else entry.button.removeAttribute('aria-current');
-                entry.chip.querySelector('.sb-chip-state').textContent = ei > current ? '아직 안 봄' : entry.state;
+                entry.chip.querySelector('.sb-chip-state').textContent = !liveSeries && ei > current ? '아직 안 봄' : entry.state;
             });
             board.querySelector('[data-sb-position]').textContent = (current + 1) + ' / ' + entries.length + ' 경기 · ' + active.label;
             var rail = active.chip.parentElement;
             if (rail.scrollWidth > rail.clientWidth) rail.scrollLeft = active.chip.offsetLeft - (rail.clientWidth - active.chip.clientWidth) / 2;
-            complete.hidden = !last;
+            complete.hidden = liveSeries || !last;
             next.disabled = end.disabled = last;
             play.textContent = timer ? '일시정지' : last ? '처음부터 재생' : '자동 재생';
             if (announce) live.textContent = active.label + ', ' + active.state + ', ' + active.card.querySelector('.sb-me').textContent;
@@ -131,7 +134,7 @@
                 show(entries.length - 1, false);
                 rounds.forEach(function (round) { round.hidden = false; });
                 entries.forEach(function (entry) { entry.card.hidden = false; entry.button.disabled = true; });
-            } else show(seen ? entries.length - 1 : current, false);
+            } else show(liveSeries || seen ? entries.length - 1 : current, false);
         }
         setup();
         motion.addEventListener('change', setup);
@@ -143,10 +146,14 @@
                     if (!item.isIntersecting || item.intersectionRatio < .1) { pause(); return; }
                     if (observed) return;
                     observed = true;
-                    if (!seen && !motion.matches && !document.hidden && !document.querySelector('[data-rl-mfx]:not([hidden])')) start();
+                    if (!liveSeries && !seen && !motion.matches && !document.hidden && !document.querySelector('[data-rl-mfx]:not([hidden])')) start();
                 });
             }, {threshold: [0, .1]});
             observer.observe(board);
         }
-    });
+    }); }
+    init(document);
+    if ('MutationObserver' in window) new MutationObserver(function (changes) {
+        if (changes.some(function (change) { return Array.from(change.addedNodes).some(function (n) { return n.nodeType === 1 && (n.matches('[data-sb], #rk-play') || n.querySelector('[data-sb]')); }); })) init(document);
+    }).observe(document.body, {childList: true, subtree: true});
 })();

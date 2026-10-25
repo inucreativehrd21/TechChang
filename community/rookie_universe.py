@@ -135,9 +135,17 @@ def teams(league):
     return out
 
 
-@lru_cache(maxsize=48)
-def schedule(league, games):
-    """각 팀 G경기. 홀수 팀도 휴식일을 포함하며 홈/원정과 대진을 공유한다."""
+@lru_cache(maxsize=64)
+def schedule(league, games, split=False):
+    """각 팀 G경기. 홀수 팀도 휴식일을 포함하며 홈/원정과 대진을 공유한다.
+    split=True 면 전·후기 리그(정식 판, rookie_clock.split_season) — 전기 G/2경기 대진을 짜고 후기는 홈/원정만 바꿔
+    되풀이한다. 한 시즌을 통째로 짜면 홀수 구단 리그에서 반기 경기 수가 어긋난다(퓨처스 11팀 72·73 / 71·72,
+    리틀 17팀 16 / 12). 반기마다 따로 짜면 모든 리그의 모든 구단이 반기마다 G/2경기다."""
+    if split:
+        if games % 2:
+            raise ValueError('전·후기 리그는 짝수 경기 수가 필요해요.')
+        clubs, first = schedule(league, games // 2)
+        return clubs, first + tuple(tuple((b, a) for a, b in pairs) for pairs in first)
     clubs = teams(league)
     n = len(clubs)
     if n < 2:
@@ -173,14 +181,17 @@ def schedule(league, games):
     return tuple(clubs), tuple(rounds)
 
 
-@lru_cache(maxsize=120)
-def club_fixtures(league, games, club):
-    clubs, rounds = schedule(league, games)
+@lru_cache(maxsize=160)
+def club_fixtures(league, games, club, split=False):
+    clubs, rounds = schedule(league, games, split)
     if club not in clubs:
         return ()
     idx = clubs.index(club)
     return tuple(dict(day=d, match=m, opponent=clubs[b if a == idx else a], home=a == idx)
                  for d, pairs in enumerate(rounds) for m, (a, b) in enumerate(pairs) if idx in (a, b))
+
+
+HALF_FORM = .12                   # 전·후기 리그 반기 기세 흔들림(구단 전력 .16 위에) — evaluate_rookie_full 로 맞춘 값
 
 
 def world_state(p, year):
@@ -194,24 +205,31 @@ def world_state(p, year):
     return world
 
 
-def advance(p, year, league, games, through=None, overrides=None):
-    """한 경기 결과는 상대 승패와 같은 점수를 쓴다. 개인 경기 결과도 해당 대진에 넣는다."""
+def advance(p, year, league, games, through=None, overrides=None, split=False):
+    """한 경기 결과는 상대 승패와 같은 점수를 쓴다. 개인 경기 결과도 해당 대진에 넣는다.
+    split 은 그 리그 세계를 처음 만들 때만 정한다 — 이미 있는 세계는 저장된 대진 방식을 그대로 쓴다."""
     from . import rookie_sim as M
-    clubs, rounds = schedule(league, games)
-    if not clubs:
+    if not schedule(league, games)[0]:
         return None
     world = world_state(p, year)
-    state = world['leagues'].setdefault(league, {'games': games, 'scores': []})
+    state = world['leagues'].setdefault(league, dict({'games': games, 'scores': []}, **({'split': True} if split else {})))
+    clubs, rounds = schedule(league, games, state.get('split', False))
     scores = state['scores']
     through = min(len(rounds), through if through is not None else len(rounds))
     own = overrides or {}
     # 구단 전력은 커리어 내에서 이어지고, 시즌 변동은 작게 둔다.
     powers = {c: random.Random(f'club:{getattr(p, "pk", 0)}:{c}').gauss(0, .16)
               + random.Random(f'form:{c}:{year}').gauss(0, .035) for c in clubs}
+    halves = None
+    if state.get('split'):        # 전·후기 리그 — 반기마다 기세가 따로 흔들려 후기에 판이 다시 짜인다(HALF_FORM)
+        halves = [{c: v + random.Random(f'half:{getattr(p, "pk", 0)}:{c}:{year}:{h}').gauss(0, HALF_FORM)
+                   for c, v in powers.items()} for h in (1, 2)]
     for day in range(through):
         if day >= len(scores):
             rng = random.Random(f'league:{getattr(p, "pk", 0)}:{year}:{league}:{day}')
             row = []
+            if halves:
+                powers = halves[day >= len(rounds) // 2]
             for a, b in rounds[day]:
                 h = M._poisson(4.1 * max(.65, 1 + powers[clubs[a]] - powers[clubs[b]] + .035), rng)
                 v = M._poisson(4.1 * max(.65, 1 + powers[clubs[b]] - powers[clubs[a]]), rng)
@@ -232,15 +250,16 @@ def advance(p, year, league, games, through=None, overrides=None):
     return table(p, year, league, games, through)
 
 
-def table(p, year, league, games, through=None):
-    clubs, rounds = schedule(league, games)
+def table(p, year, league, games, through=None, start=0):
+    """순위표 — 라운드 [start, through) 결과로. 전·후기 리그의 반기 순위는 start 로 자른다(half_tables)."""
     world = world_state(p, year)
     state = world['leagues'].get(league)
     if not state:
         return None
+    clubs, rounds = schedule(league, games, state.get('split', False))
     scores = state['scores'][:through]
     rows = [dict(club=c, name=W.club_label(league, c), w=0, l=0, d=0, rf=0, ra=0, g=0) for c in clubs]
-    for day, results in enumerate(scores):
+    for day, results in enumerate(scores[start:], start):
         for (a, b), (h, v) in zip(rounds[day], results):
             home, away = rows[a], rows[b]
             home['g'] += 1
@@ -272,6 +291,40 @@ def current_table(p):
     world = S.state(p).get('career_universe') or {}
     league = (world.get('leagues') or {}).get(p.league)
     return table(p, world['year'], p.league, league['games']) if league else None
+
+
+FINAL_NAME = {'kbo1': '한국시리즈', 'npb1': '일본시리즈', 'mlb': '월드시리즈', 'cpbl': '대만시리즈'}   # 그 밖은 리그 우승 결정전
+
+
+def half_tables(p):
+    """전·후기 리그 순위 — 전·후기로 치르는 세계가 아니면 None.
+    {'half': 지금 반기(1·2), 'first': 전기 표, 'second': 후기 표(전기가 끝난 뒤), 'per': 반기 경기 수,
+     'first_champ'·'second_champ': 반기를 다 치른 뒤의 1위 행}."""
+    from . import rookie_story as S
+    world = S.state(p).get('career_universe') or {}
+    st = (world.get('leagues') or {}).get(p.league)
+    if not st or not st.get('split'):
+        return None
+    total = len(schedule(p.league, st['games'], True)[1])
+    cut, played = total // 2, len(st['scores'])
+    first = table(p, world['year'], p.league, st['games'], cut)
+    second = table(p, world['year'], p.league, st['games'], None, start=cut) if played >= cut else None
+    return dict(half=2 if played >= cut else 1, first=first, second=second, per=st['games'] // 2,
+                final=FINAL_NAME.get(p.league, '우승 결정전'),
+                first_champ=first['rows'][0] if played >= cut else None,
+                second_champ=second['rows'][0] if second and played >= total else None)
+
+
+def half_finalists(halves, whole):
+    """전·후기 우승팀끼리 한국시리즈(KBO 원년 전·후기 리그 방식). 한 구단이 두 반기를 다 이기면
+    시즌 승률 2위가 도전한다(테크창 규칙 — 시리즈 없이 끝나지 않게). 두 반기가 끝나기 전이면 None."""
+    if not halves or not halves['second_champ'] or not whole:
+        return None
+    rows = {r['club']: r for r in whole['rows']}
+    a, b = rows[halves['first_champ']['club']], rows[halves['second_champ']['club']]
+    if a['club'] == b['club']:
+        b = next(r for r in whole['rows'] if r['club'] != a['club'])
+    return a, b
 
 
 def kbo_final(p, standings):

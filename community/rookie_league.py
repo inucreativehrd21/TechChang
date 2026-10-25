@@ -51,7 +51,7 @@ POS_LABEL = dict(POSITIONS, SP='선발 투수', RP='구원 투수')
 POS_ADJ = {'C': 12.0, 'SS': 7.0, '2B': 3.0, '3B': 2.0, 'OF': -2.0, '1B': -10.0, 'DH': -15.0}   # 144경기 기준 점수
 ERR_BASE = {'C': .03, '1B': .03, '2B': .05, '3B': .07, 'SS': .08, 'OF': .03}
 
-META_KEYS = ('vs', 'vs_lvl', 'bslot', 'lead', 'inn', 'club', 'xp')        # 경기 줄 설명 값 — 시즌 누적에서 뺀다
+META_KEYS = ('vs', 'vs_lvl', 'bslot', 'lead', 'inn', 'club', 'xp', 'at')        # 경기 줄 설명 값 — 시즌 누적에서 뺀다
 
 BAT_KEYS = ('g', 'pa', 'ab', 'h', 'd', 't', 'hr', 'rbi', 'r', 'bb', 'hbp', 'so', 'sf', 'sb', 'cs', 'e', 'def',
             'ph', 'pr', 'dr')                                                  # 대타·대주자·대수비 출장
@@ -276,13 +276,14 @@ def line_view(role: str, t: dict) -> dict:
 
 
 # ───────────────────────────── 하루 진행
-def _active_q(day: date):
+def _active_q(day: date, until=None):
     from .models import RookieLog
-    return RookieLog.objects.filter(kind__in=('earn', 'start'), day__gt=day - timedelta(days=ACTIVE_DAYS), day__lte=day)
+    q = RookieLog.objects.filter(kind__in=('earn', 'start'), day__gt=day - timedelta(days=ACTIVE_DAYS), day__lte=day)
+    return q.filter(created_at__lte=until) if until else q      # 시간대 경기: 그 경기 시각까지의 활동만
 
 
-def active_players(day: date) -> set:
-    return set(_active_q(day).values_list('player_id', flat=True))
+def active_players(day: date, until=None) -> set:
+    return set(_active_q(day, until).values_list('player_id', flat=True))
 
 
 def was_active(p, day: date) -> bool:
@@ -319,77 +320,153 @@ def plays_on(p, day: date) -> bool:
 
 
 def simulate_day(day: date, rng=None) -> int:
-    """day 의 경기를 모든 출전 선수에 대해 치른다. 이미 치렀으면 0. 시즌 마지막 날이면 시상까지."""
-    from .models import RookiePlayer, RookieSeason
+    """day 의 경기를 모든 출전 선수에 대해 치른다. 이미 치렀으면 0. 시즌 마지막 날이면 시상까지.
+    시간대 진행(rookie_clock) 시즌이면 그날 남은 시간대를 모두 치른다."""
+    from .models import RookieSeason
+    from . import rookie_clock as Clock
     rng = rng or random.SystemRandom()
     if not in_season(day):
         return 0
+    if Clock.active_on(day):
+        return simulate_slots(day, rng=rng)
     season = get_season(season_no(day))
-    played = failed = 0
     with transaction.atomic():
         # 다른 프로세스(밤 cron·화면 따라잡기)가 같은 시즌을 치르는 중이면 기다리지 않고 넘어간다
         s = RookieSeason.objects.select_for_update(skip_locked=True).filter(pk=season.pk).first()
         if s is None or (s.simulated_through and s.simulated_through >= day):
             return 0
-        pks = list(RookiePlayer.objects.filter(created_at__lt=day_end(day), retired_at__isnull=True)
-                   .order_by('pk').values_list('pk', flat=True))
-        active = active_players(day)
-        plans = []
-        for pk in pks:
-            if pk not in active:
-                continue
-            try:
-                with transaction.atomic():             # 선수 한 명의 오류가 다른 선수의 경기를 막지 않게
-                    # 잠근 최신 행으로 진행한다 — 미리 읽어 둔 객체로 저장하면 그사이 커밋된 훈련·정산을 덮어쓴다
-                    p = RookiePlayer.objects.select_for_update().filter(pk=pk, retired_at__isnull=True).first()
-                    if p is None or not plays_on(p, day):
-                        continue
-                    plans.append(_plan(p, s, day, rng))
-            except Exception:  # noqa: BLE001
-                failed += 1
-                logger.exception('야구선수 키우기 경기 진행 실패: player=%s day=%s', pk, day)
-        from . import rookie_matchups as Matchups
-        for group in Matchups.groups(plans):
-            try:
-                with transaction.atomic():
-                    Matchups.resolve(group, day, rng)
-                    for plan in group:
-                        _play(plan['p'], s, day, rng, prepared=plan)
-                played += len(group)
-            except Exception:  # noqa: BLE001 — 맞대결 양쪽 기록은 함께 저장하거나 함께 취소한다
-                failed += len(group)
-                logger.exception('야구선수 키우기 맞대결 저장 실패: players=%s day=%s',
-                                 [plan['p'].pk for plan in group], day)
-        try:
-            from .rookie_legacy import after_day
-            with transaction.atomic():
-                after_day(s, day)                      # 오늘의 베스트 9
-        except Exception:  # noqa: BLE001
-            logger.exception('야구선수 키우기 %s 베스트 9 실패', day)
-        s.simulated_through = day
-        s.save(update_fields=['simulated_through'])
+        played, failed = _run(s, day, rng, until=day_end(day))
+        _end_day(s, day)
     if failed:
         logger.error('야구선수 키우기 %s 경기 진행: 성공 %s명, 실패 %s명', day, played, failed)
+    _close_if_last(s, day)
+    return played
+
+
+def simulate_slots(day: date, upto=None, rng=None) -> int:
+    """시간대 진행 — day 에서 아직 치르지 않은 시간대를 차례로(upto 시각까지, None 이면 그날 끝까지).
+    그날 마지막 시간대까지 끝나면 베스트 9·진행일 기록·(시즌 마지막 날이면) 시상까지."""
+    from .models import RookieSeason
+    from . import rookie_clock as Clock
+    rng = rng or random.SystemRandom()
+    if not in_season(day):
+        return 0
+    season = get_season(season_no(day))
+    last = len(Clock.SLOTS) - 1 if upto is None else Clock.last_due(day, upto)
+    due = range(last + 1) if last is not None else range(0)
+    pending = [i for i in due if not (season.slot_through and season.slot_through >= Clock.slot_at(day, i))]
+    if not pending or (season.simulated_through and season.simulated_through >= day):
+        return 0                                       # 화면마다 부르는 따라잡기 — 할 일이 없으면 잠그지 않는다
+    played = failed = 0
+    with transaction.atomic():
+        s = RookieSeason.objects.select_for_update(skip_locked=True).filter(pk=season.pk).first()
+        if s is None or (s.simulated_through and s.simulated_through >= day):
+            return 0
+        for slot in pending:
+            at = Clock.slot_at(day, slot)
+            if s.slot_through and s.slot_through >= at:
+                continue
+            a, b = _run(s, day, rng, until=at, slot=slot)
+            played, failed = played + a, failed + b
+            s.slot_through = at
+            s.save(update_fields=['slot_through'])
+        finished = pending[-1] == len(Clock.SLOTS) - 1
+        if finished:
+            _end_day(s, day)
+    if failed:
+        logger.error('야구선수 키우기 %s 경기 진행(시간대): 성공 %s명, 실패 %s명', day, played, failed)
+    if finished:
+        _close_if_last(s, day)
+    return played
+
+
+def _run(s, day: date, rng, *, until, slot=None) -> tuple:
+    """한 번의 경기 진행(하루 몰아서 또는 한 시간대) — (치른 선수 수, 실패 수)."""
+    from .models import RookiePlayer
+    from . import rookie_clock as Clock
+    rows = list(RookiePlayer.objects.filter(created_at__lt=until, retired_at__isnull=True)
+                .order_by('pk').values_list('pk', 'league'))
+    if slot is not None:                                # 이 시각에 라운드가 없는 리그의 선수는 잠그지도 않는다
+        rows = [(pk, lg) for pk, lg in rows if Clock.round_at(lg, day, slot) is not None]
+    active = active_players(day) if slot is None else active_players(day, until)
+    played = failed = 0
+    plans = []
+    for pk, _lg in rows:
+        if pk not in active:
+            continue
+        try:
+            with transaction.atomic():             # 선수 한 명의 오류가 다른 선수의 경기를 막지 않게
+                # 잠근 최신 행으로 진행한다 — 미리 읽어 둔 객체로 저장하면 그사이 커밋된 훈련·정산을 덮어쓴다
+                p = RookiePlayer.objects.select_for_update().filter(pk=pk, retired_at__isnull=True).first()
+                if p is None or not plays_on(p, day):
+                    continue
+                plans.append(_plan(p, s, day, rng, slot=slot))
+        except Exception:  # noqa: BLE001
+            failed += 1
+            logger.exception('야구선수 키우기 경기 진행 실패: player=%s day=%s slot=%s', pk, day, slot)
+    from . import rookie_matchups as Matchups
+    for group in Matchups.groups(plans):
+        try:
+            with transaction.atomic():
+                Matchups.resolve(group, day, rng)
+                for plan in group:
+                    _play(plan['p'], s, day, rng, prepared=plan)
+            played += len(group)
+        except Exception:  # noqa: BLE001 — 맞대결 양쪽 기록은 함께 저장하거나 함께 취소한다
+            failed += len(group)
+            logger.exception('야구선수 키우기 맞대결 저장 실패: players=%s day=%s',
+                             [plan['p'].pk for plan in group], day)
+    return played, failed
+
+
+def _end_day(s, day: date):
+    try:
+        from .rookie_legacy import after_day
+        with transaction.atomic():
+            after_day(s, day)                      # 오늘의 베스트 9
+    except Exception:  # noqa: BLE001
+        logger.exception('야구선수 키우기 %s 베스트 9 실패', day)
+    try:
+        from .rookie_halves import close_half
+        close_half(s, day)                         # 전·후기 리그 — 반기 마지막 날이면 반기 MVP
+    except Exception:  # noqa: BLE001
+        logger.exception('야구선수 키우기 %s 반기 MVP 실패', day)
+    s.simulated_through = day
+    s.save(update_fields=['simulated_through'])
+
+
+def _close_if_last(s, day: date):
     if day == s.end:
         try:
             close_season(s)
         except Exception:  # noqa: BLE001 — 다음 실행의 close_due 가 다시 시도한다
             logger.exception('야구선수 키우기 시즌 %s 시상 실패', s.number)
-    return played
+        try:
+            from .rookie_halves import prepare_post
+            prepare_post(s)                        # 전·후기 리그 가을야구 — 29·30일 시간대마다 공개
+        except Exception:  # noqa: BLE001
+            logger.exception('야구선수 키우기 시즌 %s 가을야구 준비 실패', s.number)
 
 
-def _plan(p, s, day: date, rng):
-    """잠근 선수로 출전 계획을 만든다. 양쪽 출전을 확인한 뒤 맞대결 타석을 함께 계산한다."""
+def _plan(p, s, day: date, rng, slot=None):
+    """잠근 선수로 출전 계획을 만든다. 양쪽 출전을 확인한 뒤 맞대결 타석을 함께 계산한다.
+    slot 이 있으면 그 시각 한 경기만(rookie_clock) — 타순·보직은 그날 첫 진행 때 한 번만 정한다."""
     from .models import RookieSeasonStat
     from . import rookie_career as C
     from . import rookie_contracts as Contracts
     Contracts.full_assignment(p, day, rng)
     league, lvl = p.league, W.level(p.league)
-    assign_role(p, day, lvl)
+    if slot is None or (p.career or {}).get('role_day') != day.isoformat():
+        assign_role(p, day, lvl)
+        if slot is not None:
+            p.career = dict(p.career or {}, role_day=day.isoformat())
+            p.save(update_fields=['career'])
     stat, _ = RookieSeasonStat.objects.get_or_create(
         season=s, player=p, league=league,
         defaults={'user_id': p.user_id, 'name': p.name, 'number': p.number, 'team': p.club, 'role': p.role,
                   'position': p.position, 'age': p.age})
+    if slot is not None:
+        return _plan_slot(p, stat, day, rng, slot)
     nos = list(league_games_on(day, league))
     gs = C.game_stats(p)
     pro = W.is_pro(league)
@@ -407,10 +484,41 @@ def _plan(p, s, day: date, rng):
             if len(results) < RELIEF_PER_DAY and rng.random() < RELIEF[p.lineup][0]:
                 results.append((no, relief_game(gs, lvl, rng, p.lineup)))
     from . import rookie_universe as Universe
-    fixtures = Universe.club_fixtures(league, SEASON_GAMES if pro else SEASON_DAYS, p.club)
+    from .rookie_clock import split_season
+    fixtures = Universe.club_fixtures(league, SEASON_GAMES if pro else SEASON_DAYS, p.club, split_season(s.number))
     for no, result in results:
         result['_fixture'] = fixtures[no - 1] if fixtures else None
     return dict(p=p, stat=stat, nos=nos, gs=gs, results=results)
+
+
+def _plan_slot(p, stat, day: date, rng, slot: int):
+    """한 시간대 — 그 라운드에 내 구단 경기가 있으면 한 경기. 선발은 그날 구단 경기 중 하나(학생은 구단 경기 하나 걸러),
+    구원은 하루 RELIEF_PER_DAY 번까지. 쉬는 판이어도 리그 순위표는 그 라운드까지 진행한다(through)."""
+    from .models import RookieGame
+    from . import rookie_career as C
+    from . import rookie_clock as Clock
+    league, lvl = p.league, W.level(p.league)
+    rnd = Clock.round_at(league, day, slot)
+    g = Clock.club_game(league, p.club, day, slot)
+    nos = [g[0]] if g else []
+    gs = C.game_stats(p)
+    results = []
+    if nos:
+        no = nos[0]
+        if p.role == 'batter':
+            r = batter_game(gs, p.position or 'DH', lvl, rng, role=p.lineup, slot=p.slot)
+            if r:
+                results.append((no, r))
+        elif p.lineup == 'sp':
+            if no == Clock.start_no(p.pk, league, p.club, day):
+                results.append((no, starter_game(gs, lvl, rng)))
+        elif RookieGame.objects.filter(player=p, day=day).count() < RELIEF_PER_DAY \
+                and rng.random() < RELIEF[p.lineup][0]:
+            results.append((no, relief_game(gs, lvl, rng, p.lineup)))
+        for _no, result in results:
+            result['_fixture'] = g[1]
+    return dict(p=p, stat=stat, nos=nos, gs=gs, results=results,
+                through=rnd + 1 if rnd is not None else None, slot=slot)
 
 
 def _play(p, s, day: date, rng, prepared=None):
@@ -427,16 +535,22 @@ def _play(p, s, day: date, rng, prepared=None):
     before = G.pro_totals(p) if pro else None
     debut = pro and not RookieGame.objects.filter(player=p, league=league).exists()
     opps = W.opponents(league, p.club)
-    fixtures = Universe.club_fixtures(league, SEASON_GAMES, p.club) if pro else ()
+    from .rookie_clock import split_season
+    split = split_season(s.number)                     # 전·후기 리그 — 대진을 반기마다 따로 짠다
+    fixtures = Universe.club_fixtures(league, SEASON_GAMES, p.club, split) if pro else ()
     overrides = {}
     games, lines = [], []
     for no, r in results:
         fixture = r.get('_fixture')
         if fixture:
             overrides[str(fixture['day'])] = dict(club=p.club, **{'for': r['team_runs'], 'against': r['opp_runs']})
+        line = dict(r['line'], club=p.club)
+        if plan.get('slot') is not None:                   # 시간대 경기 — 몇 시 경기였는지(재생·오늘 경기 목록)
+            from .rookie_clock import label
+            line['at'] = label(plan['slot'])
         games.append(RookieGame(season=s, player=p, league=league, day=day, no=no, opponent=fixture['opponent'] if fixture else rng.choice(opps),
                                 home=fixture['home'] if fixture else rng.random() < 0.5, team_runs=r['team_runs'], opp_runs=r['opp_runs'],
-                                line=dict(r['line'], club=p.club), summary=r['summary']))
+                                line=line, summary=r['summary']))
         stat.totals = add(stat.totals, r['line'])
         lines.append(r['line'])
     xp = C.game_xp(p, lines) if lines else {}
@@ -448,8 +562,9 @@ def _play(p, s, day: date, rng, prepared=None):
     stat.war = war(p.role, p.position, stat.totals)
     stat.save()
     fields = ['stats', 'ovr', 'best_ovr'] if xp else []
-    if fixtures and nos:
-        Universe.advance(p, s.number, league, SEASON_GAMES, fixtures[nos[-1] - 1]['day'] + 1, overrides)
+    through = plan.get('through') or (fixtures[nos[-1] - 1]['day'] + 1 if fixtures and nos else None)
+    if fixtures and through:                           # 시간대 경기는 내 구단이 쉬는 판이어도 그 라운드까지
+        Universe.advance(p, s.number, league, SEASON_GAMES, through, overrides, split=split)
         fields.append('career')
     if Contracts.active(p) or (p.career or {}).get('last_contract'):
         Contracts.full_service(p, day)
@@ -547,22 +662,27 @@ def role_rank(kind: str, role: str) -> int:
     return BAT_STEP.get(role, -1)
 
 
-def advance(today: date | None = None, *, max_days: int = 60) -> int:
-    """어제까지 치르지 않은 경기일을 차례로 치른다(밤 cron·화면에서 따라잡기). 치른 날 수."""
+def advance(today: date | None = None, *, max_days: int = 60, now=None) -> int:
+    """어제까지 치르지 않은 경기일을 차례로 치른다(밤 cron·화면에서 따라잡기). 치른 날 수.
+    시간대 진행 시즌이면 오늘도 시각이 지난 경기까지 치른다(rookie_tick·화면). today 만 주면 오늘 경기는 건드리지 않는다."""
     from .models import RookieSeason
-    today = today or timezone.localdate()
+    from . import rookie_clock as Clock
+    if today is None and now is None:
+        now = timezone.now()
+    today = today or timezone.localdate(now)
     last = today - timedelta(days=1)
-    if last < EPOCH:
-        return 0
-    done = RookieSeason.objects.exclude(simulated_through=None).order_by('-simulated_through') \
-        .values_list('simulated_through', flat=True).first()
-    day = max(done + timedelta(days=1) if done else EPOCH, last - timedelta(days=max_days - 1))
     n = 0
-    while day <= last:
-        if in_season(day):
-            simulate_day(day)
-            n += 1
-        day += timedelta(days=1)
+    if last >= EPOCH:
+        done = RookieSeason.objects.exclude(simulated_through=None).order_by('-simulated_through') \
+            .values_list('simulated_through', flat=True).first()
+        day = max(done + timedelta(days=1) if done else EPOCH, last - timedelta(days=max_days - 1))
+        while day <= last:
+            if in_season(day):
+                simulate_day(day)
+                n += 1
+            day += timedelta(days=1)
+    if now is not None and in_season(today) and Clock.active_on(today):
+        n += bool(simulate_slots(today, upto=now))
     close_due(today)
     return n
 
@@ -577,6 +697,8 @@ def close_due(today: date | None = None) -> int:
             try:
                 close_season(s)
                 n += 1
+                from .rookie_halves import prepare_post
+                prepare_post(s)
             except Exception:  # noqa: BLE001
                 logger.exception('야구선수 키우기 시즌 %s 시상 재시도 실패', s.number)
     return n

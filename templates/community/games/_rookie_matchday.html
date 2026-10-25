@@ -1,0 +1,23 @@
+{% load static rookie_tags %}
+<section class="rk-panel rk-md" data-rk-md data-rk-now="{{ md.now_ms }}" data-rk-shown="{{ md.shown|default:'' }}"{% if md.auto and not md.post.featured %} data-rk-auto="{{ md.auto }}"{% endif %}{% if md.refresh_at %} data-rk-refresh="{{ md.refresh_at }}"{% endif %} aria-label="경기장">
+    <header class="rk-md-home{% if md.sky.lit %} is-lit{% endif %}" data-rk-home data-rk-sky-key="{{ md.sky.key }}">
+        <img class="rk-md-sky" src="{% static 'img/rookie/clock/' %}{{ md.sky.key }}.webp?v={{ STATIC_VERSION }}" data-rk-sky data-rk-sky-base="{% static 'img/rookie/clock/' %}" data-rk-version="{{ STATIC_VERSION }}" width="1536" height="1024" alt="" decoding="async" fetchpriority="high">
+        {% if md.sky.ornament %}<img class="rk-md-ornament" src="{% static 'img/rookie/clock/' %}{{ md.sky.ornament }}.webp?v={{ STATIC_VERSION }}" width="1536" height="1024" alt="" decoding="async">{% endif %}
+        <div class="rk-md-home-copy"><span class="rk-phase-label">{% if md.calendar %}시즌 {{ md.calendar.season }} · {{ md.calendar.label }}{% else %}나의 홈구장{% endif %}</span><h2>경기장</h2><p data-rk-sky-label>{{ md.sky.label }}</p><span class="rk-md-clock" data-rk-local-time>{{ md.sky.time }}</span></div>
+        <span class="rk-md-lights" aria-hidden="true"></span>
+    </header>
+    {{ md.sky.timeline|json_script:'rk-sky-timeline' }}
+    {% include 'community/games/_rookie_season_calendar.html' %}
+    {% if md.post %}{% include 'community/games/_rookie_matchday_post.html' %}{% endif %}
+    <div class="rk-md-grid">
+        <div class="rk-md-main">
+            {% if md.post.featured %}<details class="rk-md-regular"><summary>정규시즌 마지막 경기 돌아보기 <span>{{ md.games_day|date:'n월 j일' }}</span></summary>{% include 'community/games/_rookie_matchday_regular.html' %}</details>
+            {% else %}{% include 'community/games/_rookie_matchday_regular.html' %}{% endif %}
+        </div>
+        <aside class="rk-md-side">
+            {% if md.next %}<section class="rk-md-card" aria-label="다음 경기"><h3>{% if md.next.postseason and not md.post.mine %}다음 결승 경기{% else %}다음 경기{% endif %}</h3><p class="rk-md-when"><time datetime="{{ md.next.at|date:'c' }}">{% if md.next.today %}오늘{% else %}{{ md.next.day|date:'n월 j일' }}{% endif %} {{ md.next.label }}</time></p><p class="rk-md-vs"><b>{{ md.next.opp|baseball_text }}</b>{% if md.next.postseason %} · {{ md.next.no }}차전{% elif md.next.home is not None %} · {% if md.next.home %}홈{% else %}원정{% endif %}{% endif %}</p>{% if md.next.postseason %}<p class="rk-hint">경기 결과는 공개 시각이 지난 뒤 반영돼요.</p>{% else %}{% if p.role == 'pitcher' and md.next.start_at %}<p class="rk-hint">이날 {{ md.next.start_at }} 경기에 선발로 나가요.</p>{% endif %}<p class="rk-hint">경기 전에 훈련하면 그 경기부터 바로 반영돼요.</p>{% endif %}</section>{% endif %}
+            {% if md.race %}{% include 'community/games/_rookie_matchday_race.html' %}{% endif %}
+        </aside>
+    </div>
+    <p class="rk-md-new" data-rk-new hidden role="status"><button type="button" class="gm-btn is-primary" data-rk-reload>새 경기 결과가 나왔어요 · 보기</button></p>
+</section>

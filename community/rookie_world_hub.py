@@ -52,7 +52,9 @@ def world(player, league, year=None):
     lite = player is not None and hasattr(player, 'flags')
     from .rookie_lite import GAMES
     games = GAMES.get(league, 28) if lite else (L.SEASON_GAMES if W.is_pro(league) else L.SEASON_DAYS)
-    clubs, schedule = U.schedule(league, games)
+    from .rookie_clock import split_season
+    split = not lite and split_season(year)            # 정식 판 전·후기 리그는 대진을 반기마다 따로 짠다
+    clubs, schedule = U.schedule(league, games, split)
     if not clubs:
         return None
     clone = deepcopy(player) if player is not None else SimpleNamespace(pk=0, club='', league='', career={})
@@ -62,7 +64,7 @@ def world(player, league, year=None):
         source['career_universe'] = {'year': year, 'leagues': {}}
     # 조회를 먼저 해도 미래의 내 경기 결과는 만들지 않고, 같은 시점까지만 보여 줘요.
     through = min(len(schedule), round(len(schedule) * fraction))
-    table = U.advance(clone, year, league, games, through)
+    table = U.advance(clone, year, league, games, through, split=split)
     state = (clone.flags if lite else clone.career)['career_universe']['leagues'][league]
     scores = state['scores'][:through]
     fixtures = []

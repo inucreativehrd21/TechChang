@@ -377,7 +377,7 @@ def performance(p, league_code: str) -> float:
     else:
         pa = t.get('pa', 0)
         z = (L.batting(t)['ops'] - .760) / .12 * min(1.0, pa / 60) if pa else 0.0
-    z += 0.5 * RookieAward.objects.filter(player=p, league=league_code).count()
+    z += 0.5 * RookieAward.objects.filter(player=p, league=league_code).exclude(kind='half').count()   # 반기 MVP 는 빼고
     return round(_clamp(z, -2.0, 2.5), 2)
 
 

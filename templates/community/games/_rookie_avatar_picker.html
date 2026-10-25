@@ -1,0 +1,9 @@
+<section class="rk-panel rk-avatar-picker" data-avatar-picker aria-labelledby="rk-avatar-picker-title">
+    <div class="rk-avatar-picker-head"><h2 id="rk-avatar-picker-title">내 캐릭터를 골라요</h2><p>외형은 능력치에 영향을 주지 않아요. 시상식에서는 같은 캐릭터가 정장을 입어요.</p></div>
+    <div class="rk-avatar-picker-layout">
+        <div class="rk-avatar-preview"><div class="rk-avatar-preview-stage">{% include 'community/games/_rookie_avatar.html' %}</div><p data-avatar-caption>유니폼을 입고 다음 경기를 기다려요.</p><div class="rk-avatar-actions" hidden data-avatar-actions><button type="button" data-avatar-preview="idle" aria-pressed="true">대기</button><button type="button" data-avatar-preview="walk" aria-pressed="false">걷기</button><button type="button" data-avatar-preview="award" aria-pressed="false">시상식</button></div></div>
+        <div class="rk-avatar-fields">{% for group in groups %}<label><span>{{ group.label }}</span><select name="avatar_{{ group.key }}" data-avatar-select="{{ group.key }}">{% for option in group.options %}<option value="{{ option.value }}"{% if option.selected %} selected{% endif %}>{{ option.label }}</option>{% endfor %}</select></label>{% endfor %}</div>
+    </div>
+    <noscript><p class="rk-hint">고른 외형은 입단 후 표시돼요. 지금은 기본 모습 미리보기예요.</p></noscript>
+    {{ avatar_manifest|json_script:'rk-avatar-manifest' }}
+</section>

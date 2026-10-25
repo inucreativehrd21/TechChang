@@ -1,7 +1,7 @@
 {% load static rookie_env_tags %}
 {% comment %}결정적 순간이 끝난 결산에서만 읽는 기록이에요. JS가 없으면 모든 경기를 보여 줘요.{% endcomment %}
 {% with last=doc.rounds|last %}
-<section class="sb" data-sb data-sb-kind="{{ doc.kind }}" data-sb-result="{{ doc.result }}" data-sb-key="{{ c.pk }}:{{ season_year }}:{{ doc.kind }}:{{ doc.key }}"{% if seen %} data-sb-seen{% endif %}{% if '금메달' in doc.result or '우승' in doc.result and '준우승' not in doc.result %} data-sb-champion{% endif %} aria-label="{{ doc.title }} 경기 기록">
+<section class="sb" data-sb{% if live_series %} data-sb-live-series{% endif %} data-sb-kind="{{ doc.kind }}" data-sb-result="{{ doc.result }}" data-sb-key="{{ c.pk }}:{{ season_year }}:{{ doc.kind }}:{{ doc.key }}"{% if seen %} data-sb-seen{% endif %}{% if '금메달' in doc.result or '우승' in doc.result and '준우승' not in doc.result %} data-sb-champion{% endif %} aria-label="{{ doc.title }} 경기 기록">
     <header class="sb-head">
         {% if last.result == 'lost' %}
         <img class="sb-backdrop" src="{% static 'img/rookie/series/reflection.webp' %}?v={{ STATIC_VERSION }}" width="1536" height="1024" alt="" loading="lazy" decoding="async">
@@ -15,9 +15,9 @@
         <div class="sb-heading">
             <p class="sb-kicker">{% if doc.kind == 'intl' %}국가대표의 여정{% elif doc.kind == 'amateur' %}꿈이 자라는 무대{% else %}가을야구의 기록{% endif %}</p>
             <h2 class="sb-title">{{ doc.title }}</h2>
-            <p class="sb-result">{{ doc.result|default:'대회 기록' }}</p>
+            <p class="sb-result">{% if live_series %}{{ progress.headline }}{% if progress.next %} · {{ progress.next.no }}차전 {{ progress.next_label }}{% endif %}{% else %}{{ doc.result|default:'대회 기록' }}{% endif %}</p>
         </div>
-        <span class="sb-recap">기록 다시 보기</span>
+        <span class="sb-recap">{% if live_series %}공개된 경기 {{ progress.shown }}개{% else %}기록 다시 보기{% endif %}</span>
         <span class="sb-celebration rl-mfx-confetti" aria-hidden="true" hidden>{% for i in '123456789012345678901234' %}<i style="--k: {{ forloop.counter }}"></i>{% endfor %}</span>
     </header>
     <div class="sb-body">
@@ -28,7 +28,7 @@
             <li class="sb-round is-{{ rd.result }}" data-sb-round="{{ rd.code }}" data-sb-state="{{ rd.result }}" data-sb-need="{{ rd.need }}" data-sb-head-us="{{ rd.head.0|default:0 }}" data-sb-head-them="{{ rd.head.1|default:0 }}">
                 <header class="sb-round-head">
                     <div><h3 class="sb-round-name">{{ rd.name }}</h3><span class="sb-format">{{ rd.format }}</span></div>
-                    <p class="sb-round-result">{% if rd.result == 'won' %}승리{% elif rd.result == 'lost' %}패배{% else %}기록 대기{% endif %}</p>
+                    <p class="sb-round-result">{% if rd.result == 'won' %}승리{% elif rd.result == 'lost' %}패배{% elif live_series %}진행 중{% else %}기록 대기{% endif %}</p>
                 </header>
                 <div class="sb-matchup">
                     <div class="sb-side is-us"><span class="sb-side-label">우리 팀</span><b class="sb-team">{{ doc.team.short|default:doc.team.name }}</b><span class="sb-dots" data-sb-dots-us aria-hidden="true"></span></div>
@@ -81,7 +81,7 @@
         </ol>
         <div class="sb-controls" data-sb-controls hidden>
             <p class="sb-position" data-sb-position></p>
-            <div class="sb-control-buttons"><button type="button" class="sb-button is-primary" data-sb-play aria-pressed="false">자동 재생</button><button type="button" class="sb-button" data-sb-next>다음 경기</button><button type="button" class="sb-button" data-sb-end>시리즈 끝으로</button></div>
+            <div class="sb-control-buttons"><button type="button" class="sb-button is-primary" data-sb-play aria-pressed="false">자동 재생</button><button type="button" class="sb-button" data-sb-next>다음 경기</button><button type="button" class="sb-button" data-sb-end>{% if live_series %}최근 경기로{% else %}시리즈 끝으로{% endif %}</button></div>
         </div>
         <p class="sb-complete" data-sb-complete hidden>{{ doc.result|default:'대회 기록을 모두 봤어요' }} · 마지막 경기까지 함께했어요.<span class="sb-ribbon rl-mfx-ribbon" aria-hidden="true"></span></p>
     </div>

@@ -1,7 +1,7 @@
 {% load rookie_tags %}
 {% if table %}<section class="rs-career-world" aria-label="커리어 리그 순위">
     <details><summary>{{ table.label|baseball_text }} · 모든 구단이 함께 치르는 시즌</summary>
-        <p>내 커리어와 같은 일정으로 치른 순위예요. 내가 나선 경기의 점수도 구단 승패에 반영돼요.</p>
+        <p>내 커리어와 같은 일정으로 치른 순위예요. 내가 나선 경기의 점수도 구단 승패에 반영돼요.{% if md.race.views %} 이 표는 시즌 전체 누적 기록이고, 전기·후기 순위는 위 경기장 칸에서 나눠 볼 수 있어요.{% endif %}</p>
         <div class="rs-table-scroll" tabindex="0" role="region" aria-label="구단 순위표, 좌우로 스크롤할 수 있어요"><table><caption>시즌 {{ table.year }} · {{ table.played }}/{{ table.rounds }}라운드</caption>
             <thead><tr><th scope="col">순위</th><th scope="col">구단</th><th scope="col">경기</th><th scope="col">승</th><th scope="col">패</th><th scope="col">무</th><th scope="col">승률</th><th scope="col">득점:실점</th></tr></thead>
             <tbody>{% for t in table.rows %}<tr{% if t.mine %} class="is-mine"{% endif %}><td>{{ t.rank }}</td><th scope="row">{{ t.name }}</th><td>{{ t.g }}</td><td>{{ t.w }}</td><td>{{ t.l }}</td><td>{{ t.d }}</td><td>{{ t.pct_text }}</td><td>{{ t.rf }}:{{ t.ra }}</td></tr>{% endfor %}</tbody>

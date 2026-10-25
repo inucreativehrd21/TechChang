@@ -1,0 +1,7 @@
+{% load static %}
+<span class="rk-avatar{% if not avatar.ready %} is-missing{% endif %}" data-rk-avatar data-avatar-state="{{ avatar.state }}" style="--av-scale: {{ avatar.size }}" role="img" aria-label="{% if avatar.state == 'award' %}트로피를 든 선수 아바타{% else %}선수 아바타{% endif %}">
+    <span class="rk-avatar-shadow" aria-hidden="true"></span>
+    <span class="rk-avatar-crop" aria-hidden="true">{% for url in avatar.layers %}<span class="rk-avatar-sheet" data-avatar-layer style="background-image: url('{{ url }}')"></span>{% endfor %}</span>
+    <span class="rk-avatar-trophy" aria-hidden="true"><svg viewBox="0 0 16 16" shape-rendering="crispEdges"><path fill="#39364f" d="M3 1h10v2h3v6h-4v2H9v2h3v3H4v-3h3v-2H4V9H0V3h3z"/><path fill="#d7a944" d="M4 2h8v6h-1v2H5V8H4zM1 4h2v4H1zm12 0h2v4h-2zM7 10h2v4H7zM5 14h6v1H5z"/><path fill="#fff1ad" d="M5 3h2v4H5z"/></svg></span>
+    <span class="rk-avatar-fallback" aria-hidden="true"><i class="fas fa-user"></i></span>
+</span>

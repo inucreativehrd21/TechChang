@@ -339,14 +339,18 @@ def lite_new(request):
     except ValueError:
         number = 0
     role = request.POST.get('role', '')
+    from .. import rookie_avatar as Avatar
     try:
-        X.create(request.user if request.user.is_authenticated else None, name=request.POST.get('name', ''), role=role,
-                 position=request.POST.get(f'position_{role}', ''), style=request.POST.get(f'style_{role}', ''),
-                 region=request.POST.get('region', ''), team=request.POST.get('team', ''), number=number, rng=_rng(),
-                 guest='' if request.user.is_authenticated else _guest(request, make=True),
-                 school=request.POST.get('school', ''), mode=_mode(request),
-                 throwing=request.POST.get('throwing', 'R'), batting=request.POST.get('batting', 'R'))
-    except X.LiteError as ex:
+        avatar = Avatar.clean(request.POST)
+        with transaction.atomic():
+            c = X.create(request.user if request.user.is_authenticated else None, name=request.POST.get('name', ''), role=role,
+                     position=request.POST.get(f'position_{role}', ''), style=request.POST.get(f'style_{role}', ''),
+                     region=request.POST.get('region', ''), team=request.POST.get('team', ''), number=number, rng=_rng(),
+                     guest='' if request.user.is_authenticated else _guest(request, make=True),
+                     school=request.POST.get('school', ''), mode=_mode(request),
+                     throwing=request.POST.get('throwing', 'R'), batting=request.POST.get('batting', 'R'))
+            Avatar.save(c, avatar)
+    except (X.LiteError, ValueError) as ex:
         messages.warning(request, str(ex))
     return redirect(_route(request, 'home'))
 

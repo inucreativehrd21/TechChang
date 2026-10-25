@@ -1,11 +1,12 @@
 {% load rookie_tags %}{# 선수 카드 — 내 선수·선수 페이지 공용. 맥락: rookie.identity(p) + (rank, trophies, next, demote_at, owner, ladder, career) #}
 <section class="rk-card" style="--team: {{ team.color|default:'#4f46e5' }}" aria-label="선수 카드">
+    {% load rookie_avatar_tags %}
     <div class="rk-card-top">
         <span class="rk-team"><i class="rk-dot" aria-hidden="true"></i>{{ team.name }}</span>
         {% if p.retired_at %}<span class="rk-tier is-retired">은퇴</span>{% else %}<span class="rk-tier is-{{ league_kind }}">{{ league_short|baseball_text }}{% if title %} {{ title|baseball_text }}{% endif %}</span>{% endif %}
     </div>
     <div class="rk-card-main">
-        <span class="rk-number"><small>등번호</small>{{ p.number }}</span>
+        <div class="rk-card-avatar-number">{% player_avatar p size=2 %}<span class="rk-number"><small>등번호</small>{{ p.number }}</span></div>
         <div class="rk-who">
             <b class="rk-name">{{ p.name }}</b>
             <span class="rk-meta">{{ pos_label|default:role_label }} · <span class="rk-nowrap">{{ p.hand_label }}</span>{% if p.focus %}, 주특기 {{ focus_label }}{% endif %}</span>

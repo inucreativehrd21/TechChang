@@ -1,9 +1,9 @@
-{% load rookie_tags %}
+{% load rookie_tags rookie_avatar_tags %}
 {# 야구선수 키우기 내 선수 (PC·모바일 공용). mode = intro(비로그인) / create(선수 없음) / play — rookie_views.rookie_home #}
 <div class="gm rk rk-daily">
 <div class="gm-wrap is-wide">
     {% include 'community/games/_rookie_top.html' %}
-    {% include 'community/games/_rookie_stadium.html' %}
+    {% if not md %}{% include 'community/games/_rookie_stadium.html' %}{% endif %}
 
     {% if mode == 'play' %}
         {% if test %}
@@ -35,6 +35,7 @@
         <div class="rl-welcome">{% include 'community/games/_lite_say.html' with who='data' name='수정' role='스카우트' text='반가워요! 열두 살 리틀야구단부터 시작해서 프로까지 함께 가 봐요. 아래 네 가지만 정하면 바로 입단할 수 있어요.' %}</div>
         <form class="rk-create" method="post" action="{% url 'community:rookie_create' %}">
             {% csrf_token %}
+            {% rookie_avatar_picker %}
             <section class="rk-panel">
                 <h2 class="rl-step"><span>1</span>투수예요, 타자예요? 기본 정보를 정해요</h2>
                 <div class="rk-roles">
@@ -126,10 +127,12 @@
     {% endif %}
     {% include 'community/games/_rookie_rights.html' %}
     {% if awaken_fx %}<div class="rl">{% include 'community/games/_lite_awaken_fx.html' with fx=awaken_fx %}</div>{% endif %}
+    {% if award_fx.half %}<aside class="rk-half-announcement" role="status"><b>{{ award_fx.hero }} · {{ award_fx.count }}</b><p>{{ award_fx.line }}</p>{% if award_fx.others %}<small>함께 받은 상: {% for award in award_fx.others %}{{ award }}{% if not forloop.last %}, {% endif %}{% endfor %}</small>{% endif %}</aside>{% endif %}
     {% if award_fx %}<div class="rl">{% include 'community/games/_lite_award_fx.html' with fx=award_fx go='계속하기' %}</div>{% endif %}
     {% if awaken_fx or award_fx %}{% include 'community/games/_lite_fx_script.html' %}{% endif %}
 </div>
 </div>
+{% if mode == 'play' and md %}{% include 'community/games/_rookie_matchday_script.html' %}{% endif %}
 
 <script nonce="{{ csp_nonce }}">
 (function () {
@@ -187,10 +190,12 @@
                                   value: parseInt(row.querySelector('.rk-stat-val').textContent, 10) };
             var btns = play.querySelectorAll('.rk-train-form button');
             btns.forEach(function (b) { b.disabled = true; });
+            play.dataset.rkBusy = '1';
             fetch(f.action, { method: 'POST', body: new FormData(f), credentials: 'same-origin',
                               headers: { 'X-Requested-With': 'XMLHttpRequest' } })
                 .then(function (r) { return r.json(); })
                 .then(function (d) {
+                    delete play.dataset.rkBusy;
                     if (d.ok) {
                         play.innerHTML = d.html;
                         grow(d.stat, before);

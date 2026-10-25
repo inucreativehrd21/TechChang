@@ -1,0 +1,23 @@
+.rk-half-awards { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 18px; margin: 0 0 28px; }
+.rk-half-award { min-width: 0; padding: 24px; background: #fff; border: 1px solid #e4e4e7; border-radius: 14px; }
+.rk-half-award header { display: flex; align-items: center; gap: 14px; padding-bottom: 18px; border-bottom: 1px solid #f0f0f2; margin-bottom: 18px; }
+.rk-half-medal { display: grid; place-items: center; width: 46px; height: 46px; flex-shrink: 0; color: #4f46e5; background: #eef2ff; border-radius: 50%; }
+.rk-half-medal svg { width: 24px; height: 24px; }
+.rk .rk-half-award h3 { font-size: 1rem; margin: 0; color: #18181b; }
+.rk-half-award header p { font-size: .72rem; color: #71717a; margin: 5px 0 0; }
+.rk .rk-half-award h4 { margin: 0; font-size: 1.35rem; letter-spacing: -.03em; color: #18181b; }
+.rk-half-award h4 a { color: inherit; text-decoration: none; }
+.rk-half-award h4 a:hover { color: #4f46e5; }
+.rk-half-team { margin: 7px 0 15px; font-size: .8rem; color: #71717a; }
+.rk-half-line { font-size: .9rem; font-weight: 650; color: #3f3f46; line-height: 1.8; margin: 0; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.rk-half-pending { margin: 0; color: #71717a; font-size: .85rem; }
+.rk-half-announcement { border: 1px solid #c7d2fe; border-radius: 10px; padding: 16px 20px; margin: 20px 0; background: #fff; color: #4f46e5; }
+.rk-half-announcement p, .rk-half-announcement small { margin: 6px 0 0; color: #71717a; font-size: .8rem; }
+.rk .is-half-award .rl-mfx-in { max-width: 520px; }
+.rk .rl-mfx.is-half-award { --ti: .35s; --th: .4s; --ts: .55s; --tr: .8s; }
+.rk .is-half-award :is(.rl-mfx-rays,.rl-mfx-burst,.rl-mfx-sparks,.rl-mfx-confetti,.rl-mfx-ring) { display: none; }
+.rk .is-half-award .rl-mfx-stage { transform: scale(.8); }
+.rk .is-half-award .rl-mfx-head { font-size: clamp(1.6rem,5vw,2.2rem); }
+.rk .is-half-award .rl-mfx-count { color: #4f46e5; background: #eef2ff; box-shadow: inset 0 0 0 1px #c7d2fe; font-size: 1.05rem; }
+.rk .is-half-award .rl-mfx-trophy { animation-duration: .9s; }
+@media (max-width: 600px) { .rk-half-awards { grid-template-columns: 1fr; gap: 12px; } .rk-half-award { padding: 20px; } }
