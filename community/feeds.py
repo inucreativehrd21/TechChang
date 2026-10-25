@@ -1,4 +1,4 @@
-"""연구팀 칼럼 RSS — /rss.xml
+"""연구팀 칼럼 RSS — /rss.xml, 공지사항 RSS — /rss-notice.xml
 
 네이버 서치어드바이저에 제출하면 새 칼럼을 사이트맵보다 빨리 수집한다. RSS 리더 구독·외부 자동 연동
 (슬랙·뉴스레터)도 이 주소 하나로 된다. 본문 전체가 아니라 요약(seo_description)만 내보낸다 —
@@ -52,3 +52,20 @@ class ColumnFeed(Feed):
 
     def item_categories(self, item):
         return [item.category.name] if item.category else []
+
+
+class NoticeFeed(ColumnFeed):
+    """공지사항 RSS — /rss-notice.xml. 업데이트·운영 안내를 칼럼 피드와 섞지 않고 따로 내보낸다
+    (칼럼 피드는 네이버 서치어드바이저에 칼럼 수집용으로 제출돼 있다)."""
+    title = '테크창 공지사항'
+    feed_url = f'{SITE}/rss-notice.xml'
+    description = '테크창 서비스 업데이트와 운영 안내.'
+    author_name = '테크창 운영자'
+    CATEGORY = '공지사항'
+
+    def items(self):
+        return (Question.objects.filter(category__name=self.CATEGORY, is_deleted=False, is_locked=False)
+                .select_related('category').order_by('-create_date')[:20])
+
+    def item_author_name(self, item):
+        return '테크창 운영자'

@@ -1,5 +1,8 @@
+from datetime import date, datetime, time
+
 from django.contrib.sitemaps import Sitemap
 from django.urls import reverse
+from django.utils import timezone
 
 from .models import Question, PortfolioCollection
 
@@ -65,11 +68,46 @@ class StaticViewSitemap(Sitemap):
         from .rookie_modes import public_enabled
         return cls.GAME_PAGES + (cls.EXTREME_PAGES if public_enabled() else [])
 
+    # 게임 화면을 크게 바꾼 날 — 야구선수 키우기 1.1.1(시간대 경기·전·후기 리그·가을야구·아바타). 다음 큰 업데이트 때 올린다
+    GAMES_UPDATED = date(2026, 10, 25)
+    LIVE_GAME_PAGES = ('community:rookie_league', 'community:rookie_awards', 'community:rookie_records')
+
     def items(self):
         return self.PAGES + self.game_pages()
 
     def location(self, item):
         return reverse(item[0])
+
+    def lastmod(self, item):
+        """페이지 성격별 마지막 변경 — 게임은 업데이트 날(정식 기록 화면은 마지막 경기일),
+        약관·처리방침은 최신 공고일, 나머지 허브 화면은 마지막 공개 글. 모두 시각이 있는 값으로 맞춘다
+        (date·datetime 이 섞이면 sitemap.xml 묶음의 lastmod 를 계산하지 못한다)."""
+        name = item[0]
+        if name in ('terms', 'privacy'):
+            from common.legal import VERSIONS
+            return self._at(VERSIONS[name][0][1])
+        if name in self.LIVE_GAME_PAGES:
+            return max(self._at(self.GAMES_UPDATED), self._last_game())
+        if name == 'community:games_index' or item in self.game_pages():
+            return self._at(self.GAMES_UPDATED)
+        return self._last_post()
+
+    @staticmethod
+    def _at(day):
+        return timezone.make_aware(datetime.combine(day, time.min))
+
+    def _last_game(self):
+        if not hasattr(self, '_game_cache'):
+            from .models import RookieSeason
+            day = RookieSeason.objects.exclude(simulated_through=None).order_by('-simulated_through')                 .values_list('simulated_through', flat=True).first()
+            self._game_cache = self._at(day) if day else self._at(self.GAMES_UPDATED)
+        return self._game_cache
+
+    def _last_post(self):
+        if not hasattr(self, '_post_cache'):
+            row = QuestionSitemap().public_queryset().values_list('create_date', 'modify_date').first()
+            self._post_cache = (row[1] or row[0]) if row else self._at(self.GAMES_UPDATED)
+        return self._post_cache
 
     def priority(self, item):
         return item[1]

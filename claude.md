@@ -79,7 +79,7 @@ sudo systemctl status mysite nginx
 - **로그**: `sudo journalctl -u mysite -n 50`, `logs/django.log`
 - **정적파일**: `python manage.py collectstatic --clear`
 - **DB 백업**: `python manage.py backup_db` → `backups/db_<ts>.sql.gz` (cron 매일 03:00)
-- **cron**: ubuntu 계정 `crontab -l` (backup_db, send_log_report, send_visitor_report, hold_meeting 일 20:00, 칼럼·연재 **예약 공개**: 전날 13·22시 `--prepare` → 공개 대기 → `office_release` 10분마다 / 당일 10시 `--if-missing` 안전망(office/schedule.py), make_newsletter 금 10:00)
+- **cron**: ubuntu 계정 `crontab -l` (backup_db, send_log_report, send_visitor_report, hold_meeting 일 20:00, 칼럼·연재 **예약 공개**: 전날 13·22시 `--prepare` → 공개 대기 → `office_release` 10분마다 / 당일 10시 `--if-missing` 안전망(office/schedule.py), make_newsletter 금 10:00, 야구 `rookie_daily` 00:10·`rookie_tick` 11~23시 5분마다)
 - **AI 호출**: `common.services.claude.ask` → Claude Code 구독(`claude-sonnet-5-5`) 우선, 명시적인 한도 오류만 Codex 구독(`gpt-6.1-sol`, medium)으로 전환해요. 실제 전환은 `common/services/subscriptions.py`, Codex 제약은 `common/services/codex.py`에 있어요.
 - **비용 정책**: 운영은 `CLAUDE_BACKEND=cli`, `CLAUDE_CLI_FALLBACK=false`, `AI_ALLOW_PAID_API=false`, `AI_FALLBACK_BACKEND=codex_cli`예요. 두 구독 모두 불가하면 보류해요. API 과금이나 `crew_work` 서버 실행으로 우회하지 않아요.
 - **개인정보 경계**: 2026-10-29 시행 처리방침 이전에는 `send_log_report`의 Codex 폴백을 차단해요(`common/legal.py`). 시행일·현재 적용 버전을 구분하고, 비밀값·개인정보를 일반 콘텐츠 프롬프트에 넣지 않아요.

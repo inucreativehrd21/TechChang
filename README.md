@@ -299,6 +299,7 @@ sudo certbot renew --dry-run
 */10 * * * * ... office_release
 0 10 * * 5  ... make_newsletter
 10 0 * * *  ... rookie_daily
+*/5 11-23 * * * ... rookie_tick      # 야구선수 키우기 정식: 시간대 경기(ROOKIE_FULL_SLOTS, 시즌 2부터)
 15 3 * * *  ... purge_personal_data
 ```
 

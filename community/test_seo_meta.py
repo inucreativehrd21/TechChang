@@ -175,6 +175,38 @@ class RssFeedTests(TestCase):
         self.assertNotIn('회원 글', xml)
         self.assertIn('/rss.xml', self.client.get('/').content.decode())   # 페이지 머리말에서 피드 자동 발견
 
+    def test_notice_feed_lists_notices_only(self):
+        admin = User.objects.create_user('admin', password='x')
+        notice, _ = Category.objects.get_or_create(name='공지사항', defaults={'description': '공지'})
+        free, _ = Category.objects.get_or_create(name='자유게시판', defaults={'description': '자유'})
+        q = Question.objects.create(subject='[안내] 업데이트', category=notice, author=admin, create_date=timezone.now(),
+                                    content='업데이트 안내 첫 문단입니다.')
+        Question.objects.create(subject='자유 글', category=free, author=admin, create_date=timezone.now(), content='본문')
+        res = self.client.get('/rss-notice.xml')
+        self.assertEqual(res.status_code, 200)
+        xml = res.content.decode()
+        self.assertIn('<title>[안내] 업데이트</title>', xml)
+        self.assertIn(f'<link>https://techchang.com/{q.id}/</link>', xml)
+        self.assertNotIn('자유 글', xml)
+        self.assertIn('/rss-notice.xml', self.client.get('/').content.decode())
+
+
+class StaticSitemapLastmodTests(TestCase):
+    def test_static_pages_carry_lastmod_and_index_has_one(self):
+        from datetime import date
+        from community.sitemaps import StaticViewSitemap
+        bot = User.objects.create_user(Question.BOT_USERNAME, password='x')
+        cat = Category.objects.create(name='HRD', description='HRD')
+        Question.objects.create(subject='칼럼', category=cat, author=bot, create_date=timezone.now(), content='본문')
+        sm = StaticViewSitemap()
+        mods = {item[0]: sm.lastmod(item) for item in sm.items()}
+        self.assertTrue(all(mods.values()))
+        self.assertEqual(timezone.localdate(mods['community:rookie_home']), StaticViewSitemap.GAMES_UPDATED)
+        self.assertEqual(timezone.localdate(mods['privacy']), date(2026, 10, 22))
+        xml = self.client.get('/sitemap-static.xml').content.decode()
+        self.assertEqual(xml.count('<lastmod>'), len(mods))
+        self.assertIn('sitemap-static.xml</loc><lastmod>', self.client.get('/sitemap.xml').content.decode())
+
 
 class DiscussionForumPostingTests(TestCase):
     """회원 글 구조화 데이터 — GSC '토론 포럼' 문제(2026-10-11): text 누락(심각), url·author.url 누락."""

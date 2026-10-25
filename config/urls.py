@@ -22,7 +22,7 @@ from django.conf.urls.static import static
 from django.views.generic import RedirectView
 from django.contrib.sitemaps.views import index as sitemap_index, sitemap
 from community.views import base_views
-from community.feeds import ColumnFeed
+from community.feeds import ColumnFeed, NoticeFeed
 from common import legal_views
 from common.csp import csp_report
 from community.sitemaps import (StaticViewSitemap, ColumnSitemap, PostSitemap, SeriesSitemap,
@@ -68,6 +68,7 @@ urlpatterns = [
     path('sitemap/', base_views.sitemap_page, name='sitemap_page'),
     path('robots.txt', base_views.robots_txt, name='robots_txt'),
     path('rss.xml', ColumnFeed(), name='rss'),
+    path('rss-notice.xml', NoticeFeed(), name='rss_notice'),   # 공지사항 RSS(업데이트 안내)
     # 이용약관·개인정보 처리방침 (최신 공고본 + 지난 버전 열람)
     path('terms/', legal_views.legal_page, {'kind': 'terms'}, name='terms'),
     path('terms/<str:version>/', legal_views.legal_page, {'kind': 'terms'}, name='terms_version'),
