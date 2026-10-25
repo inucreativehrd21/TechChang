@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128">
+<style>
+.rg{animation:rain .65s ease-in-out infinite alternate}
+@keyframes rain{0%{opacity:1;transform:translateY(0)}100%{opacity:.3;transform:translateY(7px)}}
+@media (prefers-reduced-motion:reduce){*{animation:none!important}}
+</style>
+<circle cx="44" cy="50" r="17" fill="#8AA0B0"/>
+<circle cx="62" cy="41" r="21" fill="#8AA0B0"/>
+<circle cx="81" cy="49" r="16" fill="#8AA0B0"/>
+<rect x="27" y="50" width="70" height="20" rx="5" fill="#8AA0B0"/>
+<g class="rg">
+<line x1="35" y1="76" x2="28" y2="100" stroke="#4A6878" stroke-width="3" stroke-linecap="round"/>
+<line x1="49" y1="76" x2="42" y2="100" stroke="#4A6878" stroke-width="3" stroke-linecap="round"/>
+<line x1="63" y1="76" x2="56" y2="100" stroke="#4A6878" stroke-width="3" stroke-linecap="round"/>
+<line x1="77" y1="76" x2="70" y2="100" stroke="#4A6878" stroke-width="3" stroke-linecap="round"/>
+<line x1="91" y1="76" x2="84" y2="100" stroke="#4A6878" stroke-width="3" stroke-linecap="round"/>
+</g>
+</svg>

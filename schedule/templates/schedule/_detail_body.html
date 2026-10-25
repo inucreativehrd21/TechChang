@@ -1,0 +1,18 @@
+{% load schedule_tags %}
+<article class="mc-panel">
+    <span class="mc-tag mc-k-{% if event.is_community %}community{% else %}mine{% endif %}">{% if event.is_community %}커뮤니티 일정{% else %}내 일정{% endif %}</span>
+    <h1 class="mc-page-title mt-2">{{ event.title }}</h1>
+    <dl class="mc-meta">
+        <dt>날짜</dt><dd>{{ event|date_range }}</dd>
+        <dt>시간</dt><dd>{{ event|time_range }}</dd>
+        {% if event.location %}<dt>장소</dt><dd>{{ event.location }}</dd>{% endif %}
+        {% if event.link %}<dt>링크</dt><dd><a href="{{ event.link }}" target="_blank" rel="noopener noreferrer nofollow ugc">{{ event.link|truncatechars:60 }}</a></dd>{% endif %}
+    </dl>
+    {% if event.memo %}<div class="mc-memo">{{ event.memo }}</div>{% endif %}
+    {% if can_edit %}
+    <div class="mc-detail-actions">
+        <a class="mc-btn mc-btn-ghost" href="{% url 'schedule:event_edit' event.pk %}">수정</a>
+        <a class="mc-btn mc-btn-danger" href="{% url 'schedule:event_delete' event.pk %}">삭제</a>
+    </div>
+    {% endif %}
+</article>

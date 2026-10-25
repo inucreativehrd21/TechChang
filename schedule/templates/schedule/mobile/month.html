@@ -1,0 +1,66 @@
+{% extends 'base_mobile.html' %}
+{% load static schedule_tags %}
+
+{% block title %}며칠 {{ month_label }} - 테크창{% endblock %}
+{% block meta_description %}테크창 커뮤니티 일정과 연구실 칼럼 공개 일정을 한 달력에서 확인하세요.{% endblock %}
+{% block meta_robots %}{% if noindex %}noindex, follow{% else %}{{ block.super }}{% endif %}{% endblock %}
+{% block extra_css %}
+<link href="{% static 'schedule/schedule.css' %}?v={{ STATIC_VERSION }}" rel="stylesheet">
+{% endblock %}
+
+{% block content %}
+<div class="mc-root mc-m">
+    <header class="mc-m-head">
+        <h1 class="mc-m-title">{{ month_label }}</h1>
+        <nav class="mc-m-nav" aria-label="달 이동">
+            <a class="mc-iconbtn" href="{{ prev_url }}" rel="nofollow" aria-label="{{ prev_label }} 보기"><i class="fas fa-chevron-left" aria-hidden="true"></i></a>
+            <a class="mc-today-link" href="{% url 'schedule:month' %}"{% if is_current_month %} aria-current="date"{% endif %}>오늘</a>
+            <a class="mc-iconbtn" href="{{ next_url }}" rel="nofollow" aria-label="{{ next_label }} 보기"><i class="fas fa-chevron-right" aria-hidden="true"></i></a>
+        </nav>
+    </header>
+
+    <div class="mc-m-grid">
+        <div class="mc-m-dow" aria-hidden="true">{% for label, sun in weekday_headers %}<span{% if sun %} class="mc-sun"{% endif %}>{{ label }}</span>{% endfor %}</div>
+        {% for week in weeks %}
+        <div class="mc-m-week">
+            {% for day in week.days %}
+            <a class="mc-m-day{% if not day.in_month %} is-out{% endif %}{% if day.is_today %} is-today{% endif %}" href="{% url 'schedule:day' day.date|date:'Y-m-d' %}" aria-label="{{ day.date|ko_date }}{% if day.is_today %}, 오늘{% endif %}{% if day.kinds %}, 일정 있음{% endif %}">
+                <span class="mc-num{% if day.weekday == 6 %} mc-sun{% endif %}">{{ day.date.day }}</span>
+                <span class="mc-m-marks" aria-hidden="true">{% for kind in day.kinds %}<span class="mc-mark mc-mark-{{ kind }}"></span>{% endfor %}</span>
+            </a>
+            {% endfor %}
+        </div>
+        {% endfor %}
+    </div>
+
+    <div class="mc-m-legend">
+        {% if user.is_authenticated %}<span class="mc-legend-item"><span class="mc-mark mc-mark-mine" aria-hidden="true"></span>내 일정</span>{% endif %}
+        <span class="mc-legend-item"><span class="mc-mark mc-mark-community" aria-hidden="true"></span>커뮤니티</span>
+        {% if has_lab %}<span class="mc-legend-item"><span class="mc-mark mc-mark-lab" aria-hidden="true"></span>연구실</span>{% endif %}
+    </div>
+
+    <div class="mc-m-section">
+        {% if user.is_authenticated %}
+        <a class="mc-btn mc-btn-primary mc-m-add" href="{% url 'schedule:event_create' %}"><i class="fas fa-plus" aria-hidden="true"></i>일정 추가</a>
+        {% else %}
+        <div class="mc-login">로그인하면 내 일정도 이 달력에 함께 적어 둘 수 있어요. <a href="{{ login_url }}?next={{ request.path|urlencode }}">로그인</a></div>
+        {% endif %}
+
+        {% for day, items in agenda %}
+        <section class="mc-m-group" aria-label="{{ day.date|ko_date }}">
+            <h2 class="mc-m-group-head">
+                {% if day.is_today %}<span class="is-today-label">오늘</span>{% endif %}{{ day.date|ko_date }}
+                {% if day.weather %}<span class="mc-wx"><img src="{% static day.weather.icon %}" alt="{{ day.weather.condition }}" width="18" height="18" loading="lazy">{% if day.weather.temp_high is not None %}{{ day.weather.temp_high }}°{% endif %}</span>{% endif %}
+            </h2>
+            <ul class="mc-m-list">
+                {% for it in items %}{% include 'schedule/_agenda_row.html' with when=it|when_short row_class='mc-m-row' %}{% endfor %}
+            </ul>
+        </section>
+        {% empty %}
+        <p class="mc-empty mt-3">이번 달에는 등록된 일정이 없어요.</p>
+        {% endfor %}
+
+        {% if weather_snapshot %}<p class="mc-foot">날씨 출처: 기상청 단기예보</p>{% endif %}
+    </div>
+</div>
+{% endblock %}

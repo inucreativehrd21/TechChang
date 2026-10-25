@@ -1,0 +1,6 @@
+<div class="mc-legend">
+    {% if user.is_authenticated %}<span class="mc-legend-item"><span class="mc-legend-swatch mc-k-mine" aria-hidden="true"></span>내 일정</span>{% endif %}
+    <span class="mc-legend-item"><span class="mc-legend-swatch mc-k-community" aria-hidden="true"></span>커뮤니티 일정</span>
+    {% if has_lab %}<span class="mc-legend-item"><span class="mc-legend-swatch mc-k-lab" aria-hidden="true"></span>연구실 칼럼·위클리</span>{% endif %}
+    {% if weather_snapshot %}<span class="mc-legend-source">날씨 출처: 기상청 단기예보</span>{% endif %}
+</div>

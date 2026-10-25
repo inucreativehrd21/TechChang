@@ -1,0 +1,32 @@
+{% load static schedule_tags %}
+{% if weather %}
+<div class="mc-wxline mb-3">
+    <img src="{% static weather.icon %}" alt="" width="32" height="32">
+    <div>
+        <div class="mc-wx-main">{{ weather.condition }}{% if weather.temp_high is not None %} {% if weather.temp_low is not None %}{{ weather.temp_low }}° / {% endif %}{{ weather.temp_high }}°{% endif %}</div>
+        <div class="mc-wx-sub">{% if weather.rain_prob is not None %}강수확률 {{ weather.rain_prob }}%, {% endif %}출처 기상청 단기예보</div>
+    </div>
+</div>
+{% endif %}
+<div class="mc-panel">
+    {% if items %}
+    <ul class="mc-daylist">
+        {% for it in items %}
+        <li class="mc-dayrow">
+            <div class="mc-dayrow-when">
+                {{ it|time_range }}
+                {% if it.is_multi_day %}<div class="mc-dayrow-meta">{{ it.start_date|ko_short }}–{{ it.end_date|ko_short }}</div>{% endif %}
+            </div>
+            <div>
+                <span class="mc-tag mc-k-{{ it.kind }}">{% if it.icon %}<i class="fas {{ it.icon }}" aria-hidden="true"></i>{% endif %}{{ it.kind|kind_label }}</span>
+                {% if it.url %}<a class="mc-dayrow-title d-block" href="{{ it.url }}">{{ it.title }}</a>{% else %}<p class="mc-dayrow-title">{{ it.title }}</p>{% endif %}
+                {% if it.location %}<div class="mc-dayrow-meta"><i class="fas fa-location-dot" aria-hidden="true"></i> {{ it.location }}</div>{% endif %}
+                {% if it.note %}<div class="mc-dayrow-meta">{{ it.note }}</div>{% endif %}
+            </div>
+        </li>
+        {% endfor %}
+    </ul>
+    {% else %}
+    <p class="mc-empty">이날은 등록된 일정이 없어요.{% if user.is_authenticated %} <a href="{% url 'schedule:event_create' %}?date={{ day|date:'Y-m-d' }}">일정 추가</a>{% endif %}</p>
+    {% endif %}
+</div>

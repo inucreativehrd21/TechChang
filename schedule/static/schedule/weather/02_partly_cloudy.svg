@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128">
+<style>
+.cd{animation:drift 3.2s ease-in-out infinite}
+@keyframes drift{0%,100%{transform:translateX(0)}50%{transform:translateX(-8px)}}
+@media (prefers-reduced-motion:reduce){*{animation:none!important}}
+</style>
+<circle cx="82" cy="42" r="22" fill="#FFD633"/>
+<line x1="82" y1="12" x2="82" y2="20" stroke="#FFBE00" stroke-width="4" stroke-linecap="round"/>
+<line x1="100" y1="24" x2="94" y2="30" stroke="#FFBE00" stroke-width="4" stroke-linecap="round"/>
+<line x1="112" y1="42" x2="104" y2="42" stroke="#FFBE00" stroke-width="4" stroke-linecap="round"/>
+<g class="cd">
+<circle cx="46" cy="70" r="17" fill="#DCF0FF"/>
+<circle cx="63" cy="62" r="20" fill="#DCF0FF"/>
+<circle cx="80" cy="68" r="16" fill="#DCF0FF"/>
+<rect x="29" y="68" width="67" height="18" rx="5" fill="#DCF0FF"/>
+</g>
+</svg>

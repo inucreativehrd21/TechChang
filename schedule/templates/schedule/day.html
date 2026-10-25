@@ -1,0 +1,31 @@
+{% extends 'base.html' %}
+{% load static schedule_tags %}
+
+{% block title %}{{ day|ko_date }} 일정 - 며칠 - 테크창{% endblock %}
+{% block meta_robots %}noindex, follow{% endblock %}
+{% block extra_css %}
+<link href="{% static 'schedule/schedule.css' %}?v={{ STATIC_VERSION }}" rel="stylesheet">
+{% endblock %}
+
+{% block content %}
+<div class="mc-root">
+<div class="mc-narrow">
+    <a class="mc-back" href="{{ month_url }}"><i class="fas fa-arrow-left" aria-hidden="true"></i>{{ day.month }}월 달력</a>
+    <header class="mc-head">
+        <div class="mc-head-left">
+            <h1 class="mc-page-title">{{ day|ko_date }}{% if is_today %}<span class="visually-hidden">, 오늘</span>{% endif %}</h1>
+            <nav class="mc-nav" aria-label="날짜 이동">
+                <a class="mc-iconbtn" href="{{ prev_url }}" rel="nofollow" aria-label="전날 보기"><i class="fas fa-chevron-left" aria-hidden="true"></i></a>
+                <a class="mc-iconbtn" href="{{ next_url }}" rel="nofollow" aria-label="다음 날 보기"><i class="fas fa-chevron-right" aria-hidden="true"></i></a>
+            </nav>
+        </div>
+        {% if user.is_authenticated %}
+        <div class="mc-actions">
+            <a class="mc-btn mc-btn-primary" href="{% url 'schedule:event_create' %}?date={{ day|date:'Y-m-d' }}"><i class="fas fa-plus" aria-hidden="true"></i>일정 추가</a>
+        </div>
+        {% endif %}
+    </header>
+    {% include 'schedule/_day_body.html' %}
+</div>
+</div>
+{% endblock %}

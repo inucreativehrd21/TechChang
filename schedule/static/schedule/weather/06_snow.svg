@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128">
+<style>
+.s1{animation:snow 2.4s ease-in-out infinite}
+.s2{animation:snow 2.4s ease-in-out .8s infinite}
+.s3{animation:snow 2.4s ease-in-out 1.6s infinite}
+@keyframes snow{0%{transform:translate(0,0);opacity:1}50%{transform:translate(5px,17px)}100%{transform:translate(-3px,36px);opacity:0}}
+.sl{fill:none;stroke:#C0DCF2;stroke-width:3;stroke-linecap:round}
+@media (prefers-reduced-motion:reduce){*{animation:none!important}}
+</style>
+<circle cx="44" cy="54" r="17" fill="#CCDDE8"/>
+<circle cx="62" cy="45" r="20" fill="#CCDDE8"/>
+<circle cx="80" cy="52" r="16" fill="#CCDDE8"/>
+<rect x="27" y="54" width="69" height="18" rx="5" fill="#CCDDE8"/>
+<g class="s1">
+<line class="sl" x1="44" y1="78" x2="44" y2="92"/><line class="sl" x1="37" y1="85" x2="51" y2="85"/>
+<line class="sl" x1="38.8" y1="79.8" x2="49.2" y2="90.2"/><line class="sl" x1="49.2" y1="79.8" x2="38.8" y2="90.2"/>
+</g>
+<g class="s2">
+<line class="sl" x1="64" y1="78" x2="64" y2="92"/><line class="sl" x1="57" y1="85" x2="71" y2="85"/>
+<line class="sl" x1="58.8" y1="79.8" x2="69.2" y2="90.2"/><line class="sl" x1="69.2" y1="79.8" x2="58.8" y2="90.2"/>
+</g>
+<g class="s3">
+<line class="sl" x1="84" y1="78" x2="84" y2="92"/><line class="sl" x1="77" y1="85" x2="91" y2="85"/>
+<line class="sl" x1="78.8" y1="79.8" x2="89.2" y2="90.2"/><line class="sl" x1="89.2" y1="79.8" x2="78.8" y2="90.2"/>
+</g>
+</svg>

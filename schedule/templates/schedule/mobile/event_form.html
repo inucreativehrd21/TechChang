@@ -1,0 +1,22 @@
+{% extends 'base_mobile.html' %}
+{% load static %}
+
+{% block title %}{% if is_new %}일정 추가{% else %}일정 수정{% endif %} - 며칠 - 테크창{% endblock %}
+{% block meta_robots %}noindex, nofollow{% endblock %}
+{% block extra_css %}
+<link href="{% static 'schedule/schedule.css' %}?v={{ STATIC_VERSION }}" rel="stylesheet">
+{% endblock %}
+
+{% block content %}
+<div class="mc-root mc-m">
+    <div class="mc-m-section">
+        <a class="mc-back" href="{{ cancel_url }}"><i class="fas fa-arrow-left" aria-hidden="true"></i>{% if is_new %}달력{% else %}일정{% endif %}으로</a>
+        <h1 class="mc-m-title mb-3">{% if is_new %}일정 추가{% else %}일정 수정{% endif %}</h1>
+        {% include 'schedule/_form_body.html' %}
+    </div>
+</div>
+{% endblock %}
+
+{% block script %}
+<script src="{% static 'schedule/schedule.js' %}?v={{ STATIC_VERSION }}" defer></script>
+{% endblock %}

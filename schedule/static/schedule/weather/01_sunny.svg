@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128">
+<style>
+.sg{transform-origin:64px 64px;animation:glow 2.5s ease-in-out infinite}
+.sr{transform-origin:64px 64px;animation:spin 10s linear infinite}
+@keyframes glow{0%,100%{transform:scale(1);opacity:.35}50%{transform:scale(1.55);opacity:.08}}
+@keyframes spin{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){*{animation:none!important}}
+</style>
+<circle class="sg" cx="64" cy="64" r="27" fill="#FFE566"/>
+<g class="sr">
+<line x1="64" y1="6" x2="64" y2="20" stroke="#FFB500" stroke-width="5" stroke-linecap="round"/>
+<line x1="64" y1="108" x2="64" y2="122" stroke="#FFB500" stroke-width="5" stroke-linecap="round"/>
+<line x1="6" y1="64" x2="20" y2="64" stroke="#FFB500" stroke-width="5" stroke-linecap="round"/>
+<line x1="108" y1="64" x2="122" y2="64" stroke="#FFB500" stroke-width="5" stroke-linecap="round"/>
+<line x1="21" y1="21" x2="31" y2="31" stroke="#FFB500" stroke-width="5" stroke-linecap="round"/>
+<line x1="107" y1="21" x2="97" y2="31" stroke="#FFB500" stroke-width="5" stroke-linecap="round"/>
+<line x1="21" y1="107" x2="31" y2="97" stroke="#FFB500" stroke-width="5" stroke-linecap="round"/>
+<line x1="107" y1="107" x2="97" y2="97" stroke="#FFB500" stroke-width="5" stroke-linecap="round"/>
+</g>
+<circle cx="64" cy="64" r="22" fill="#FFD633"/>
+</svg>

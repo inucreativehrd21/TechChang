@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128">
+<style>
+.d1{animation:drop 1.4s ease-in infinite}
+.d2{animation:drop 1.4s ease-in .47s infinite}
+.d3{animation:drop 1.4s ease-in .94s infinite}
+@keyframes drop{0%{transform:translateY(0);opacity:1}85%{opacity:.8}100%{transform:translateY(34px);opacity:0}}
+@media (prefers-reduced-motion:reduce){*{animation:none!important}}
+</style>
+<circle cx="44" cy="54" r="17" fill="#9EC4E0"/>
+<circle cx="62" cy="45" r="20" fill="#9EC4E0"/>
+<circle cx="80" cy="52" r="16" fill="#9EC4E0"/>
+<rect x="27" y="54" width="69" height="18" rx="5" fill="#9EC4E0"/>
+<g class="d1"><ellipse cx="44" cy="80" rx="4" ry="7" fill="#5A9AC8"/></g>
+<g class="d2"><ellipse cx="64" cy="80" rx="4" ry="7" fill="#5A9AC8"/></g>
+<g class="d3"><ellipse cx="82" cy="80" rx="4" ry="7" fill="#5A9AC8"/></g>
+</svg>

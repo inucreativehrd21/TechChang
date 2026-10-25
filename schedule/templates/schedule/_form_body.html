@@ -1,0 +1,30 @@
+<form method="post" class="mc-form mc-panel" novalidate>
+    {% csrf_token %}
+    {% if form.non_field_errors %}<div class="mc-errorbox" role="alert">{% for error in form.non_field_errors %}{{ error }} {% endfor %}</div>{% endif %}
+
+    {% include 'schedule/_field.html' with field=form.title %}
+    <div class="row g-3">
+        <div class="col-sm-6">{% include 'schedule/_field.html' with field=form.start_date %}</div>
+        <div class="col-sm-6">{% include 'schedule/_field.html' with field=form.end_date %}</div>
+        <div class="col-sm-6">{% include 'schedule/_field.html' with field=form.start_time %}</div>
+        <div class="col-sm-6">{% include 'schedule/_field.html' with field=form.end_time %}</div>
+    </div>
+    {% include 'schedule/_field.html' with field=form.location %}
+    {% include 'schedule/_field.html' with field=form.link %}
+    {% include 'schedule/_field.html' with field=form.memo %}
+
+    {% if form.visibility %}
+    <fieldset class="mc-field">
+        <legend class="form-label">{{ form.visibility.label }}</legend>
+        <div class="mc-radio-group">
+            {% for radio in form.visibility %}<label for="{{ radio.id_for_label }}">{{ radio.tag }} {{ radio.choice_label }}</label>{% endfor %}
+        </div>
+        <div class="form-text">{{ form.visibility.help_text }}</div>
+    </fieldset>
+    {% endif %}
+
+    <div class="mc-form-actions">
+        <button class="mc-btn mc-btn-primary" type="submit">{% if is_new %}일정 추가{% else %}변경 저장{% endif %}</button>
+        <a class="mc-btn mc-btn-ghost" href="{{ cancel_url }}">취소</a>
+    </div>
+</form>

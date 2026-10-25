@@ -1,0 +1,10 @@
+{% load schedule_tags %}
+<div class="mc-panel">
+    <h1 class="mc-page-title">일정을 삭제할까요?</h1>
+    <p class="mt-2 mb-0">‘{{ event.title }}’({{ event|date_range }}) 일정이 지워지고, 되돌릴 수 없어요.</p>
+    <form method="post" class="mc-form-actions">
+        {% csrf_token %}
+        <button class="mc-btn mc-btn-danger-solid" type="submit">삭제</button>
+        <a class="mc-btn mc-btn-ghost" href="{{ event.get_absolute_url }}">취소</a>
+    </form>
+</div>

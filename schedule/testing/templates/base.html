@@ -1,0 +1,14 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="robots" content="{% block meta_robots %}index, follow{% endblock %}">
+<title>{% block title %}{% endblock %}</title>
+{% block extra_css %}{% endblock %}
+</head>
+<body data-layout="desktop">
+{% if messages %}{% for message in messages %}<p class="msg">{{ message }}</p>{% endfor %}{% endif %}
+{% block content %}{% endblock %}
+{% block script %}{% endblock %}
+</body>
+</html>

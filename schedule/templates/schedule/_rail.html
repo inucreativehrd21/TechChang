@@ -1,0 +1,51 @@
+{% load static schedule_tags %}
+<div class="mc-rail-today mc-rail-wide">
+    <div class="mc-today">
+        <span class="mc-bignum">{{ today.day }}</span>
+        <span class="mc-today-sub">
+            <span class="mc-today-day">{{ today|ko_weekday }}요일</span>
+            <span class="mc-today-month">{{ today.year }}년 {{ today.month }}월</span>
+        </span>
+    </div>
+    {% if today_weather %}
+    <div class="mc-wxline">
+        <img src="{% static today_weather.icon %}" alt="" width="32" height="32">
+        <div>
+            <div class="mc-wx-main">{{ today_weather.condition }}{% if today_weather.temp_high is not None %} {% if today_weather.temp_low is not None %}{{ today_weather.temp_low }}° / {% endif %}{{ today_weather.temp_high }}°{% endif %}</div>
+            <div class="mc-wx-sub">{% if today_weather.rain_prob is not None %}강수확률 {{ today_weather.rain_prob }}%, {% endif %}출처 기상청 단기예보</div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<section>
+    <h2 class="mc-sec-title">오늘 일정{% if today_items %} <small>{{ today_items|length }}건</small>{% endif %}</h2>
+    {% if today_items %}
+    <ul class="mc-agenda">
+        {% for it in today_items %}{% include 'schedule/_agenda_row.html' with when=it|when_short %}{% endfor %}
+    </ul>
+    {% else %}
+    <p class="mc-empty">오늘은 등록된 일정이 없어요.{% if user.is_authenticated %} <a href="{% url 'schedule:event_create' %}?date={{ today|date:'Y-m-d' }}">일정 추가</a>{% endif %}</p>
+    {% endif %}
+</section>
+
+<section>
+    <h2 class="mc-sec-title">다가오는 일정 <small>앞으로 2주</small></h2>
+    {% if upcoming %}
+    <ul class="mc-agenda">
+        {% for it in upcoming %}{% include 'schedule/_agenda_row.html' with when=it.start_date|ko_short_day %}{% endfor %}
+    </ul>
+    {% else %}
+    <p class="mc-empty">앞으로 2주 동안 예정된 일정이 없어요.</p>
+    {% endif %}
+</section>
+
+{% if not user.is_authenticated %}
+<div class="mc-login mc-rail-wide">로그인하면 내 일정도 이 달력에 함께 적어 둘 수 있어요. <a href="{{ login_url }}?next={{ request.path|urlencode }}">로그인</a></div>
+{% endif %}
+
+<details class="mc-subscribe mc-rail-wide">
+    <summary><i class="far fa-calendar-plus" aria-hidden="true"></i> 내 캘린더 앱에서 구독하기</summary>
+    <p>구글·애플·아웃룩 캘린더에서 아래 주소를 'URL로 구독'에 넣으면 커뮤니티 일정과 연구실 공개 일정이 자동으로 들어가요. 내 일정은 들어가지 않아요.</p>
+    <input type="text" readonly value="{{ ics_url }}" id="mc-ics-url" aria-label="구독 주소">
+</details>

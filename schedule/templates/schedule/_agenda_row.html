@@ -1,0 +1,7 @@
+{% load schedule_tags %}<li class="{{ row_class|default:'mc-agenda-row' }}">
+    <span class="mc-agenda-when">{{ when }}</span>
+    <div class="mc-agenda-what">
+        {% if it.url %}<a class="mc-agenda-title" href="{{ it.url }}">{% else %}<span class="mc-agenda-title">{% endif %}<span class="mc-mark mc-mark-{{ it.kind }}" aria-hidden="true"></span><span class="visually-hidden">{{ it.kind|kind_label }}: </span><span>{{ it.title }}</span>{% if it.url %}</a>{% else %}</span>{% endif %}
+        {% if it.is_multi_day or it.note or it.location %}<div class="mc-agenda-note">{% if it.is_multi_day %}{{ it.start_date|ko_short }}–{{ it.end_date|ko_short }}{% if it.note or it.location %} · {% endif %}{% endif %}{% if it.note %}{{ it.note }}{% else %}{{ it.location }}{% endif %}</div>{% endif %}
+    </div>
+</li>
