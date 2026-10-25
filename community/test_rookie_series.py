@@ -109,6 +109,23 @@ class SeriesRulesTests(SimpleTestCase):
             check(self, doc)
             self.assertEqual(doc['rounds'][-1]['result'], {True: 'won', False: 'lost', None: 'pending'}[won])
 
+    def test_asian_games_only_draws_actual_2026_participants(self):
+        opponents = {'일본', '대만', '중국', '홍콩', '태국', '필리핀', '팔레스타인'}
+        for seed in range(40):
+            with self.subTest(seed=seed):
+                # 12개를 요청해도 참가팀 수를 넘겨 세계대회 팀으로 채우면 안 돼요.
+                pool = S._countries('asian', random.Random(seed), 12)
+                self.assertEqual(set(pool), opponents)
+                self.assertEqual(len(pool), len(opponents))
+                for tier in S.INTL_REACH['asian']:
+                    doc = S.intl(fake(pk=seed), 'asian', tier, None)
+                    for rd in doc['rounds']:
+                        if rd.get('opponent'):
+                            self.assertIn(rd['opponent']['name'], opponents)
+                        for g in rd['games']:
+                            if g.get('opponent'):
+                                self.assertIn(g['opponent']['name'], opponents)
+
     def test_same_career_same_season_same_flow(self):
         a = S.postseason(fake(pk=5), 'mlb', 6, True, me())
         b = S.postseason(fake(pk=5), 'mlb', 6, True, me())

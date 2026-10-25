@@ -390,6 +390,12 @@ def final_close(c, opened: dict, won: bool, moment: dict, me: Me | None) -> dict
 
 # ───────────────────────────── 국제대회 · 아마추어
 INTL_FILLER = ('호주', '체코', '네덜란드', '이탈리아', '캐나다', '파나마', '콜롬비아', '중국', '영국', '독일')
+# 2026 아이치·나고야 아시안게임 실제 참가팀 중 대한민국을 뺀 상대 명단.
+# 결승 상대의 무게(INTL_FIELD)와 전체 참가 명단은 별개예요. 세계대회 보충 명단을 섞지 않아요.
+# https://www.japan-baseball.jp/en/team/amateur/2026/asiangames/overview.html
+INTL_PARTICIPANTS = {
+    'asian': ('일본', '대만', '중국', '홍콩', '태국', '필리핀', '팔레스타인'),
+}
 INTL_PLAN = {   # 단계: (코드, 이름, 경기 수, 조별이면 진출에 필요한 승수)
     'wbc': (('pool', '1라운드', 4, 3), ('qf', '8강', 1, 0), ('sf', '4강', 1, 0), ('final', '결승', 1, 0)),
     'premier12': (('open', '오프닝 라운드', 5, 3), ('super', '슈퍼라운드', 3, 2), ('final', '결승', 1, 0)),
@@ -408,7 +414,11 @@ INTL_REACH = {
 def _countries(key: str, r, n: int) -> list:
     from .rookie_lite import INTL_FIELD
     field = [x[0] for x in INTL_FIELD.get(key, ())]
-    pool = field + [x for x in INTL_FILLER if x not in field]
+    participants = INTL_PARTICIPANTS.get(key)
+    if participants is not None:
+        field = [x for x in field if x in participants]
+    filler = participants if participants is not None else INTL_FILLER
+    pool = field + [x for x in filler if x not in field]
     r.shuffle(pool)
     strong = [x for x in field]
     r.shuffle(strong)
