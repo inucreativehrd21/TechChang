@@ -198,6 +198,9 @@
         var details = document.createElement('details'); details.className = 'rl-flow-menu';
         var summary = document.createElement('summary'); summary.textContent = '게임 메뉴';
         menu.before(details); details.append(summary, menu);
+        // 떠 있는 버전 전환 버튼이 모바일 선택지와 겹치지 않게 게임 메뉴에 둔다.
+        var version = document.querySelector('.m-version-fab');
+        if (version) details.appendChild(version);
     }
     var screens = [];
     if (plan) {

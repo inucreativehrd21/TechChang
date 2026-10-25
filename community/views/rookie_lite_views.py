@@ -18,6 +18,7 @@ import os
 import random
 import secrets
 import threading
+from copy import copy
 from functools import wraps
 
 from django.contrib import messages
@@ -144,7 +145,7 @@ def _identity(c) -> dict:
             'league_name': W.league(c.league)['name'], 'league_short': W.short(c.league),
             'league_kind': R.league_kind(c.league), 'style_label': X.STYLES[c.role][c.style]['label'],
         'pos_label': L.POS_LABEL.get(c.position, dict(X.PIT_POSITIONS).get(c.position, '')),
-        'top_war': X.Balance.totals(c)['war'],
+        'top_war': X.career_line(c)['top_war'],
             'grade_label': _grade(c),
             'stars': stars, 'star_note': X.STAR_NOTE[stars], 'star_range': range(5), 'stars_total': min(5, stars + X.awakened(c)), 'awakened': X.awakened(c),
             'traits': EnvUI.visible_traits(c),
@@ -167,7 +168,7 @@ def _glue(text: str) -> str:
 
 def _season_rows(c) -> list:
     rows = []
-    for s in c.seasons.all():
+    for s in X.visible_seasons(c):
         rows.append({'s': s, 'league': W.short(s.league), 'club': W.club_short(s.league, s.club),
                      'line': X._short(c.role, s.totals) if s.games else s.duty, 'kinds': [a['kind'] for a in s.awards]})
     return rows
@@ -250,7 +251,8 @@ def lite_home(request):
                **_identity(c), seasons=_season_rows(c), awaken_fx=fx, moment_fx=mfx,
                award_fx=afx, played=c.seasons.count(), quit_min=X.QUIT_MIN_SEASONS,
                playback=Presentation.receipt(pend.get('playback')), board_from=(pend.get('playback') or {}).get('from', 0))
-    ctx['peers'] = Peers.comparisons(c)
+    # 비교 칸에도 내부에서 계산된 이번 시즌 최종 성적을 전달하지 않는다.
+    ctx['peers'] = Peers.comparisons(c) if pend.get('what') not in ('moment', 'mediaday') else []
     if c.mode == Modes.EXTREME and pend.get('kind') == 'plan':
         event = Extreme.event_view(c)
         if event:
@@ -293,6 +295,9 @@ def lite_home(request):
     elif pend.get('kind') == 'review':
         s = c.seasons.filter(year=pend.get('year')).first()
         ctx.update(_board_ctx(c, s))
+        done = pend.get('moments') or []
+        if done and s:
+            ctx['board_from'] = max(ctx['board_from'], max(X.moment_board_to(m, s.league) for m in done))
         ctx.update(season_line=L.line_view(c.role, s.totals) if s and s.totals else None,
                    deltas=[{'label': lab, 'value': (s.deltas or {}).get(k, 0), 'why': ((s.deltas or {}).get('_why') or {}).get(k, [])}
                            for k, lab, _w in R.ROLES[c.role]['stats']] if s else [],
@@ -318,8 +323,25 @@ def lite_home(request):
                  'hot': X._hot(c.role, sp['chunks'][j] or {})} for j in range(3)]},
                 season_year=X.cal_year(c), season_league=W.league(code)['name'],
                 season_club=W.club_label(code, sp['club']), season_partial=True)
-        if pend.get('what') == 'moment':                     # 정규시즌 전광판을 먼저 다 보고 승부처로
-            ctx.update(_board_ctx(c, c.seasons.filter(year=pend.get('year')).first()))
+        if pend.get('what') in ('moment', 'mediaday'):
+            s = c.seasons.filter(year=pend.get('year')).first()
+            progress = pend.get('then', pend) if pend.get('what') == 'mediaday' else pend
+            moments = progress.get('moments') or []
+            if s and moments:
+                current = moments[int(progress.get('i', 0))]
+                stop = X.moment_board_to(current, s.league)
+                done = progress.get('done') or []
+                start = max((X.moment_board_to(m, s.league) for m in done), default=0)
+                start = max(start, int(progress.get('board_seen_to', 0)),
+                            int((progress.get('playback') or {}).get('from', 0)))
+                # 렌더링용 복사본만 자른다. 저장된 시즌의 결과·난수는 바꾸지 않는다.
+                shown = copy(s)
+                shown.months = list(s.months or [])[:stop]
+                shown.champion, shown.awards = False, []
+                ctx.update(_board_ctx(c, shown), board_from=start, board_seen=start >= stop,
+                           board_note=f"{current['stage']} 직전이에요. 승부를 고른 뒤 다음 기록을 확인해요.")
+                if stop == 0:
+                    ctx['season'] = None
     return render(request, 'community/rookie_lite.html', ctx)
 
 
@@ -478,7 +500,7 @@ AWARD_ORDER = {'mvp': 0, 'ace': 1, 'gg': 2, 'title': 3, 'rookie': 4, 'ring': 5, 
 def _award_sum(c) -> list:
     """수상을 종류별로 묶어 센다 — 'KBO MVP 17회'. 시즌마다 받은 상은 연표에 있다(긴 목록이 화면을 덮지 않게)."""
     groups = {}
-    for s in c.seasons.all():
+    for s in X.visible_seasons(c):
         for a in s.awards:
             lg = W.short(s.league)
             # '퓨처스 MVP'·'고교 최우수선수'처럼 라벨에 리그 이름이 이미 있으면 한 번 더 붙이지 않는다.

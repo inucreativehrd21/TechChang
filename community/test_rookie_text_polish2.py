@@ -115,7 +115,7 @@ class AwardChipTests(SimpleTestCase):
             SimpleNamespace(league='hs', age=17, awards=[{'kind': 'minor', 'label': '고교 최우수선수'}]),
             SimpleNamespace(league='kbo1', age=25, awards=[{'kind': 'mvp', 'label': 'MVP'}]),
         ]
-        c = SimpleNamespace(seasons=SimpleNamespace(all=lambda: seasons))
+        c = SimpleNamespace(pending={}, seasons=SimpleNamespace(all=lambda: seasons))
         labels = [a['label'] for a in _award_sum(c)]
         self.assertEqual(sorted(labels), sorted(['KBO MVP', '퓨처스 MVP', '트리플A MVP', 'NPB 2군 MVP', '고교 최우수선수']))
 

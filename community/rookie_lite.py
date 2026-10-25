@@ -2227,11 +2227,12 @@ def finish_season(c, state, rng):
             season.env.setdefault('revealed', []).append(code_t)
     season.save()
     if moments:                                                # 결정적 순간 — 고른 뒤에 시즌을 닫는다
-        c.pending = {'kind': 'decision', 'what': 'moment', 'year': season.year, 'moments': moments, 'i': 0, 'done': []}
-        big = next((m for m in moments if m['kind'] in ('series', 'intl')), None)
-        if big and Env.enabled():                              # 큰 경기 직전 미디어데이·기자회견
-            c.pending = {'kind': 'decision', 'what': 'mediaday', 'year': season.year, 'stage': big['stage'],
-                         'scope': 'intl' if big['kind'] == 'intl' else 'post', 'then': c.pending}
+        # 생성 난수와 결과 규칙은 유지하고, 보여 주는 순서만 일정에 맞춘다.
+        for m in moments:
+            m['board_to'] = moment_board_to(m, code)
+        moments.sort(key=lambda m: (m['board_to'], moment_month(m)))
+        c.pending = moment_step({'kind': 'decision', 'what': 'moment', 'year': season.year,
+                                 'moments': moments, 'i': 0, 'done': []})
         c.save()
         return season
     wrap_season(c, season, rng)
@@ -2842,13 +2843,15 @@ def decide(c, what: str, choice: str, rng, school: str = '') -> str:
         label = dict((x[0], x[1]) for x in m['choices'])[choice]
         d = {'kind': m['kind'], 'key': m['key'], 'stage': m['stage'], 'when': m['when'], 'choice': label,
              'text': story, 'line': r['line'], 'ok': r['ok'], 'won': won}
+        if 'board_to' in m:
+            d['board_to'] = m['board_to']
         d['result'] = moment_result_text(d)
         if m.get('series'):
             d['series'] = _close_series(c, m, r, won, d['result'])
         done = list(pend.get('done') or []) + [d]
         fx = moment_fx(c, m, r, d, more=i + 1 < len(ms))
         if i + 1 < len(ms):
-            c.pending = dict(pend, i=i + 1, done=done)
+            c.pending = moment_step(dict(pend, i=i + 1, done=done))
             c.flags = dict(c.flags or {}, moment_fx=fx)
             return f"{story} → {d['result']}"
         season = c.seasons.get(year=pend['year'])
@@ -3214,7 +3217,7 @@ def decision_view(c) -> dict | None:
 def career_line(c) -> dict:
     """통산(프로) 줄과 리그별 줄."""
     from .rookie_legacy import _sum
-    seasons = list(c.seasons.all())
+    seasons = list(visible_seasons(c))
     by, development = {}, []
     for season in seasons:
         for row in season.splits or [dict(league=season.league, totals=season.totals, war=season.war)]:
@@ -3329,7 +3332,7 @@ def _full_time(role: str, p: dict) -> bool:
 def career_high(c, seasons=None) -> dict | None:
     """커리어 하이 — 가장 높은 무대(리그 수준)에서 제대로 뛴 몫 가운데 WAR 가 가장 좋은 것(2026-10-18 사용자 요청).
     시즌 중에 리그를 옮겼으면 리그별 몫(splits)으로 본다. 가장 높은 무대에선 잠깐만 뛰었으면 한 계단 아래 무대로."""
-    seasons = list(c.seasons.all()) if seasons is None else seasons
+    seasons = list(visible_seasons(c)) if seasons is None else seasons
     parts = []
     for s in seasons:
         if not s.games:
@@ -3676,6 +3679,50 @@ def _close_series(c, m: dict, r: dict, won: bool, result: str) -> dict:
         doc = Series.close_single(c, data, won, moment)
     doc['result'] = result
     return Env.decorate_series(c, doc) if Env.enabled() else doc
+
+
+def moment_month(m: dict) -> int:
+    if m.get('kind') == 'intl' and m.get('key') in INTL:
+        return int(INTL[m['key']]['month'].removesuffix('월'))
+    return 10 if m.get('kind') == 'series' else 0
+
+
+def moment_board_to(m: dict, code: str) -> int:
+    """승부처 직전까지 공개할 전광판 줄 수. 현재 대회의 성적도 결과 뒤에 공개한다."""
+    if 'board_to' in m:
+        return max(0, min(6, int(m['board_to'])))
+    if m.get('kind') == 'amateur':
+        chunks = _chunks(code)
+        return chunks.index(m['key']) if m.get('key') in chunks else 0
+    if m.get('kind') == 'intl':
+        when = INTL.get(m.get('key'), {}).get('when')
+        if when == 'pre':
+            return 0
+        if when == 'mid':
+            # 학생은 월 대신 대회 이름을 쓰므로 같은 시즌 구간에 대응한다.
+            return max(0, min(6, moment_month(m) - 4))
+    return 6
+
+
+def moment_step(pending: dict) -> dict:
+    """시즌당 한 번의 기자회견도 해당 승부처 바로 앞에서만 연다."""
+    moments = pending['moments']
+    first_big = next((i for i, m in enumerate(moments) if m['kind'] in ('series', 'intl')), None)
+    if Env.enabled() and not pending.get('media_done') and pending.get('i', 0) == first_big:
+        m = moments[first_big]
+        return {'kind': 'decision', 'what': 'mediaday', 'year': pending['year'], 'stage': m['stage'],
+                'scope': 'intl' if m['kind'] == 'intl' else 'post',
+                'then': dict(pending, media_done=True, board_seen_to=m.get('board_to', 0))}
+    return pending
+
+
+def visible_seasons(c):
+    """승부처를 고르는 중인 시즌의 최종 성적·수상은 결산에서 처음 공개한다."""
+    pending = c.pending or {}
+    seasons = c.seasons.all()
+    if pending.get('kind') == 'decision' and pending.get('what') in ('moment', 'mediaday'):
+        seasons = seasons.exclude(year=pending.get('year', c.year))
+    return seasons
 
 
 def moments_for(c, code: str, rank: int, team_n: int, state: dict, rng) -> list:

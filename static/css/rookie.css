@@ -884,16 +884,16 @@ a.rk-rank-main:hover b { color: var(--rk-accent); }
 
 /* 국가대표 소집 */
 .rl-tourneys { display: flex; flex-direction: column; gap: 8px; margin: 0; padding: 0; list-style: none; }
-.rl-tourney { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 8px 14px; padding: 12px 14px; border: 1px solid var(--rk-line); border-left: 4px solid var(--rk-accent); border-radius: 12px; background: #fff; }
+.rl-tourney { display: grid; grid-template-columns: minmax(0, 1fr); align-items: center; gap: 8px 14px; min-width: 0; padding: 12px 14px; border: 1px solid var(--rk-line); border-left: 4px solid var(--rk-accent); border-radius: 12px; background: #fff; }
 .rl-tourney-main b { display: block; font-size: 1.02rem; font-weight: 900; }
 .rl-tourney-main span { font-size: 0.78rem; color: var(--rk-ink-3); }
 .rl-tags { grid-column: 1; display: flex; flex-wrap: wrap; gap: 4px; }
 .rl-tag { padding: 2px 8px; border-radius: 6px; font-size: 0.72rem; font-weight: 700; color: var(--rk-ink-2); background: var(--rk-line-soft); }
 .rl-tag.is-good { color: var(--rk-accent); background: var(--rk-accent-wash); }
-.rl-seg { grid-column: 2; grid-row: 1 / span 2; display: inline-flex; padding: 3px; border-radius: 99px; background: var(--rk-line-soft); }
-.rl-seg label { position: relative; }
+.rl-seg { grid-column: 1; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); width: 100%; padding: 3px; border-radius: 14px; background: var(--rk-line-soft); }
+.rl-seg label { position: relative; min-width: 0; }
 .rl-seg input { position: absolute; opacity: 0; pointer-events: none; }
-.rl-seg span { display: block; padding: 7px 13px; border-radius: 99px; font-size: 0.8rem; font-weight: 800; color: var(--rk-ink-3); white-space: nowrap; cursor: pointer; }
+.rl-seg span { display: flex; align-items: center; justify-content: center; height: 100%; min-height: 44px; padding: 7px 13px; border-radius: 11px; font-size: 0.8rem; font-weight: 800; line-height: 1.5; color: var(--rk-ink-3); white-space: normal; overflow-wrap: anywhere; text-align: center; cursor: pointer; }
 .rl-seg input:checked + span { color: #fff; background: var(--rk-accent); box-shadow: 0 4px 12px -6px var(--rl-glow); }
 .rl-seg input[value=skip]:checked + span { color: var(--rk-ink); background: #fff; box-shadow: 0 1px 2px rgba(23, 26, 51, .12); }
 .rl-seg input:focus-visible + span { outline: 2px solid var(--rk-accent); outline-offset: 2px; }
@@ -1160,7 +1160,7 @@ a.rk-rank-main:hover b { color: var(--rk-accent); }
 
     /* 국가대표 — 답 버튼은 반반 */
     .rl-tourney { gap: 6px; padding: 10px 12px; }
-    .rl-seg { display: grid; grid-template-columns: 1fr 1fr; width: 100%; }
+    .rl-seg { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .rl-seg span { padding: 8px 6px; text-align: center; }
 
     /* 이벤트·만들기 선택지는 두 칸 */

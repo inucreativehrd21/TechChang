@@ -268,6 +268,7 @@
 
         {% elif mode == 'decision' and decision %}
         {% with d=decision %}
+        {% if d.what == 'mediaday' and season %}{% include 'community/games/_lite_board.html' with seen=board_seen skip_label='바로 기자회견으로' %}<div data-rl-scene>{% endif %}
         {% if d.what == 'meeting' %}
         {% if season_partial %}{% include 'community/games/_lite_board.html' with skip_label='바로 상황 보기' %}<div data-rl-scene>{% endif %}
         {% if d.background %}
@@ -302,7 +303,7 @@
         {% include 'community/games/_lite_awaken.html' %}
         {% elif d.what == 'moment' %}
         {% include 'community/games/_lite_choice_result.html' %}
-        {% if season %}{% include 'community/games/_lite_board.html' with seen=d.done skip_label='바로 승부처로' %}{% endif %}
+        {% if season %}{% include 'community/games/_lite_board.html' with seen=board_seen skip_label='바로 승부처로' %}{% endif %}
         {% include 'community/games/_lite_moment.html' %}
         {% else %}
         <section class="rk-panel rk-decide is-draft" aria-label="갈림길">
@@ -429,6 +430,7 @@
             {% endif %}
         </section>
         {% endif %}
+        {% if d.what == 'mediaday' and season %}</div>{% endif %}
         {% endwith %}
         {% endif %}
 
@@ -533,7 +535,7 @@
         check();
     }
     // 시즌 전광판: 달마다 한 줄씩 넘어간다(움직임을 줄이는 설정이면 한꺼번에)
-    // 결정적 순간이 있는 시즌은 정규시즌을 다 본 뒤에 승부처(.rl-moment)가 뜬다. 이미 본 시즌(data-rl-seen)은 다시 돌지 않는다
+    // 서버가 현재 승부처까지 자른 기록을 본 뒤에 승부처(.rl-moment)가 뜬다. 이미 본 구간(data-rl-seen)은 다시 돌지 않는다
     var board = document.querySelector('[data-rl-ticker]');
     if (board && !board.hasAttribute('data-rl-seen') && !(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches)) {
         var rows = Array.prototype.slice.call(board.querySelectorAll('.rl-month:not([data-rl-row-seen])'));
