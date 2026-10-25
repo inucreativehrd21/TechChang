@@ -24,6 +24,7 @@ from django.contrib.sitemaps.views import index as sitemap_index, sitemap
 from community.views import base_views
 from community.feeds import ColumnFeed
 from common import legal_views
+from common.csp import csp_report
 from community.sitemaps import (StaticViewSitemap, ColumnSitemap, PostSitemap, SeriesSitemap,
                                 MakingSitemap, PortfolioCollectionSitemap, NewsletterSitemap)
 
@@ -48,6 +49,9 @@ urlpatterns = [
     # 기존 pybo URL 리다이렉트 (하위 호환성)
     path('pybo/', RedirectView.as_view(url='/', permanent=True)),
     path('pybo/<path:remaining_path>/', RedirectView.as_view(url='/%(remaining_path)s/', permanent=True)),
+
+    # CSP 위반 보고 수신 (prod.py CSP_REPORT_PATH 와 같은 경로)
+    path('csp-report/', csp_report, name='csp_report'),
 
     path('', include('community.urls')),  # 커뮤니티 메인 (루트 경로)
     path('common/', include('common.urls')),

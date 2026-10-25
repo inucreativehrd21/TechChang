@@ -40,6 +40,9 @@ class SecurityMiddleware:
             '/pybo/baseball/', '/pybo/2048/', '/pybo/minesweeper/', '/pybo/wordchain/',
             '/lab/live.json', '/lab/state.json', '/lab/admin/activity.json',
         ]
+        # 요청 수 집계에서 빼는 경로 — 브라우저가 페이지마다 자동으로 보내는 CSP 위반 보고가
+        # 시간당 한도를 갉아먹어 정상 사용자가 차단되지 않게 한다(수신 쪽 상한은 common/csp.py).
+        self.RATE_LIMIT_EXEMPT_PATHS = frozenset(getattr(settings, 'RATE_LIMIT_EXEMPT_PATHS', ('/csp-report/',)))
         # 게임용 relaxed rate limits (일반보다 2배 관대)
         self.GAME_DDOS_THRESHOLD = 200  # 1분에 200회까지 허용 (일반 120회의 1.67배)
         self.GAME_RATE_LIMIT_REQUESTS = 600  # 시간당 600회 (일반 300회의 2배)
@@ -83,6 +86,9 @@ class SecurityMiddleware:
         if self.is_ip_blocked(client_ip):
             logger.warning(f"Blocked IP attempted access: {client_ip}")
             return HttpResponse("Access Denied", status=403)
+
+        if request.path in self.RATE_LIMIT_EXEMPT_PATHS:
+            return None
 
         # 2. Rate Limiting 확인 (게임 경로는 더 관대한 제한)
         if is_game_path:
@@ -352,6 +358,7 @@ class EmailVerificationRequiredMiddleware:
             reverse('common:google_callback'), reverse('common:kakao_callback'),
             reverse('common:social_connect', args=['google']),
             reverse('common:social_connect', args=['kakao']),
+            reverse('csp_report'),       # 브라우저 자동 보고 — 리다이렉트할 대상이 아니다
         }
         self.exempt_prefixes = tuple(p for p in (
             getattr(settings, 'STATIC_URL', '') or '/static/',
@@ -396,6 +403,7 @@ class TermsConsentRequiredMiddleware:
         self.exempt_paths = {
             reverse('common:consent'), reverse('common:logout'), reverse('common:kakao_logout'),
             reverse('terms'), reverse('privacy'), '/robots.txt', '/favicon.ico',
+            reverse('csp_report'),
         }
         self.exempt_prefixes = tuple(p for p in (
             getattr(settings, 'STATIC_URL', '') or '/static/',

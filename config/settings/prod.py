@@ -64,32 +64,44 @@ SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 # Referrer 정책
 SECURE_REFERRER_POLICY = 'same-origin'
 
-# Content Security Policy (CSP)
-# nonce 기반 CSP로 XSS 공격 방어 강화
-CSP_DEFAULT_SRC = ("'self'",)
-CSP_SCRIPT_SRC = (
-    "'self'",
-    # "'unsafe-inline'", 제거됨 - nonce로 대체
-    "cdn.jsdelivr.net",
-    "cdnjs.cloudflare.com",
-)
-CSP_STYLE_SRC = (
-    "'self'",
-    # "'unsafe-inline'", 제거됨 - nonce로 대체
-    "cdn.jsdelivr.net",
-    "fonts.googleapis.com",
-)
-CSP_FONT_SRC = (
-    "'self'",
-    "fonts.gstatic.com",
-    "cdn.jsdelivr.net",
-)
-CSP_IMG_SRC = ("'self'", "data:", "https:")
-CSP_CONNECT_SRC = ("'self'",)
-CSP_FRAME_ANCESTORS = ("'none'",)
+# Content Security Policy (CSP) — django-csp 4.x 형식
+#
+# 예전 CSP_* 설정은 django-csp 4.0 이 읽지 않아(csp 앱 미등록이라 경고도 없음) 운영 응답에 CSP 헤더가
+# 아예 붙지 않았다. 그대로 4.x 형식으로 옮겨 '강제'하면 nonce 없는 인라인 스크립트·onclick 등이 한꺼번에
+# 막혀 사이트가 깨지므로, 단계적으로 켠다. CSP_MODE(.env):
+#   report-only (기본) — 브라우저는 아무것도 막지 않고 위반만 /csp-report/ 로 보낸다(common/csp.py 가 로그로 남김)
+#   enforce            — 위반을 실제로 차단. security 로그에서 위반이 정리된 뒤에만 켤 것
+#   off                — CSP 헤더를 붙이지 않음(예전 실제 동작과 같다)
+# 보고량은 CSP_REPORT_PERCENTAGE(%) 만큼의 응답에만 report-uri 를 붙여 줄인다(RateLimitedCSPMiddleware).
+# nonce 는 common.context_processors.theme_context 가 request._csp_nonce 에 만든 값을 django-csp 가
+# 그대로 헤더에 쓴다 — 템플릿의 nonce="{{ csp_nonce }}" 와 같은 값이다.
+from csp.constants import NONCE, NONE, SELF, UNSAFE_INLINE
 
-# nonce 포함 설정 (django-csp 3.8+)
-CSP_INCLUDE_NONCE_IN = ['script-src', 'style-src']
+CSP_REPORT_PATH = '/csp-report/'
+_CSP_DIRECTIVES = {
+    'default-src': [SELF],
+    'script-src': [SELF, NONCE, 'https://cdn.jsdelivr.net', 'https://cdnjs.cloudflare.com'],
+    # style 속성이 템플릿 전반에 1천여 곳 있어 인라인 스타일은 허용한다(스크립트만 nonce 로 좁힌다).
+    # Font Awesome CSS·웹폰트가 cdnjs 에서 오므로 style/font 양쪽에 cdnjs 가 필요하다(예전 설정엔 빠져 있었다).
+    'style-src': [SELF, UNSAFE_INLINE, 'https://cdn.jsdelivr.net', 'https://cdnjs.cloudflare.com'],
+    'font-src': [SELF, 'data:', 'https://cdn.jsdelivr.net', 'https://cdnjs.cloudflare.com'],
+    'img-src': [SELF, 'data:', 'https:'],
+    # 틱택토 WebSocket(wss://<host>/ws/...) — 'self' 의 ws 매칭을 모든 브라우저가 하진 않아 호스트를 적는다
+    'connect-src': [SELF] + [f'wss://{h}' for h in ALLOWED_HOSTS if h and not h.replace('.', '').isdigit()],
+    'frame-ancestors': [NONE],
+    'base-uri': [SELF],
+    'object-src': [NONE],
+    'report-uri': [CSP_REPORT_PATH],
+}
+_CSP_CONFIG = {
+    'DIRECTIVES': _CSP_DIRECTIVES,
+    'REPORT_PERCENTAGE': float(os.environ.get('CSP_REPORT_PERCENTAGE', '5')),
+}
+CSP_MODE = os.environ.get('CSP_MODE', 'report-only').strip().lower()
+if CSP_MODE == 'enforce':
+    CONTENT_SECURITY_POLICY = _CSP_CONFIG
+elif CSP_MODE != 'off':
+    CONTENT_SECURITY_POLICY_REPORT_ONLY = _CSP_CONFIG
 
 # ===== 세션·CSRF 보안 =====
 SESSION_COOKIE_SECURE = True

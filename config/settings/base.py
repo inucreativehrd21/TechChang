@@ -64,7 +64,8 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
-    'csp.middleware.CSPMiddleware',  # Content Security Policy
+    # Content Security Policy — 정책은 prod.py(CSP_MODE). 보고 표본 비율(REPORT_PERCENTAGE)은 이 미들웨어만 적용한다
+    'csp.contrib.rate_limiting.RateLimitedCSPMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
