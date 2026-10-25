@@ -1,0 +1,9 @@
+{% extends 'base_mobile.html' %}
+{% load static %}
+
+{% block title %}사이트맵 - 테크창{% endblock %}
+{% block meta_description %}테크창의 공개 칼럼·연재·위클리, 야구 게임과 모드별 기록, 구성원·포트폴리오를 한눈에 찾아봐요.{% endblock %}
+{% block og_title %}사이트맵 - 테크창{% endblock %}
+{% block og_description %}공개 콘텐츠와 게임을 주제별로 모아 둔 테크창 사이트맵이에요.{% endblock %}
+{% block extra_css %}<link href="{% static 'css/sitemap.css' %}?v={{ STATIC_VERSION }}&amp;ops=1" rel="stylesheet">{% endblock %}
+{% block content %}{% include 'community/_sitemap_content.html' %}{% endblock %}

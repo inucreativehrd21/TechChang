@@ -1,0 +1,59 @@
+<div class="container tc-sitemap">
+  <div class="sitemap-head">
+    <h1>사이트맵</h1>
+    <p>테크창의 공개 페이지를 한눈에 모았습니다. 글 {{ total }}편 · 검색엔진용 <a href="/sitemap.xml">sitemap.xml</a></p>
+  </div>
+
+  <section class="sitemap-section">
+    <h2>주요 페이지</h2>
+    <ul class="sitemap-primary">
+      {% for url, label in static_pages %}
+        <li><a href="{{ url }}">{{ label }}</a></li>
+      {% endfor %}
+      <li><a href="{% url 'newsletter_list' %}">연구실 위클리</a></li>
+    </ul>
+  </section>
+
+  <section class="sitemap-section">
+    <h2>야구 게임 · 모드별 기록</h2>
+    <ul class="sitemap-primary">{% for url, label in game_pages %}<li><a href="{{ url }}">{{ label }}</a></li>{% endfor %}</ul>
+  </section>
+  {% if series %}<section class="sitemap-section">
+    <h2>공개된 연재 시리즈</h2>
+    <ul class="sitemap-links">{% for item in series %}<li><a href="{% url 'community:series_detail' item.slug %}">{{ item.title }}</a></li>{% endfor %}</ul>
+  </section>{% endif %}
+  {% if newsletters %}<section class="sitemap-section">
+    <h2>최근 연구실 위클리</h2>
+    <ul class="sitemap-links">{% for item in newsletters %}<li><a href="{% url 'newsletter_detail' item.slug %}">{{ item.title }}</a><span class="date">{{ item.published_at|date:'y.m.d' }}</span></li>{% endfor %}</ul>
+  </section>{% endif %}
+
+  {% for name, posts in groups %}
+    <section class="sitemap-section">
+      <h2>{{ name }} <span class="count">{{ posts|length }}편</span></h2>
+      <ul class="sitemap-links">
+        {% for q in posts %}
+          <li>
+            <a href="{% url 'community:detail' q.id %}">{{ q.subject }}</a>
+            <span class="date">{{ q.create_date|date:"y.m.d" }}</span>
+          </li>
+        {% endfor %}
+      </ul>
+    </section>
+  {% endfor %}
+
+  {% if portfolios %}
+    <section class="sitemap-section">
+      <h2>공개 포트폴리오 <span class="count">{{ portfolios|length }}개</span></h2>
+      <ul class="sitemap-links">
+        {% for p in portfolios %}
+          <li><a href="{% url 'community:portfolio_collection_detail' p.slug %}">{{ p.portfolio_name|default:p.slug }}</a></li>
+        {% endfor %}
+      </ul>
+    </section>
+  {% endif %}
+
+  <p class="sitemap-foot">
+    회원 전용 글과 문의글은 목록에 포함되지 않습니다.
+    <a href="/robots.txt">robots.txt</a>
+  </p>
+</div>

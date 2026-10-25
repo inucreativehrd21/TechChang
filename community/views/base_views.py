@@ -57,9 +57,10 @@ def sitemap_page(request):
     """
     from django.urls import reverse
 
-    from ..sitemaps import PortfolioCollectionSitemap, QuestionSitemap, StaticViewSitemap
+    from ..sitemaps import (ColumnSitemap, PostSitemap, PortfolioCollectionSitemap,
+                           SeriesSitemap, NewsletterSitemap, StaticViewSitemap)
 
-    posts = list(QuestionSitemap().items())
+    posts = sorted(ColumnSitemap().items() + PostSitemap().items(), key=lambda q: q.create_date, reverse=True)
     groups = {}
     for q in posts:
         groups.setdefault(q.category.name if q.category else '기타', []).append(q)
@@ -68,18 +69,14 @@ def sitemap_page(request):
     ordered = [(name, groups.pop(name)) for name in DEFAULT_CATEGORIES if name in groups]
     ordered += sorted(groups.items())
 
-    labels = {
-        'community:index': '홈 — 최신 글',
-        'community:board_main': '게시판',
-        'community:games_index': '게임',
-        'community:members_list': '구성원',
-        'common:point_ranking': '포인트 랭킹',
-        'sitemap_page': '사이트맵',
-    }
+    labels = StaticViewSitemap.LABELS
     return render(request, 'community/sitemap_page.html', {
         # 이 페이지 자신은 뺀다 (자기 자신으로 가는 링크)
         'static_pages': [(reverse(name), labels.get(name, name))
                          for name, _p, _f in StaticViewSitemap.PAGES if name != 'sitemap_page'],
+        'game_pages': [(reverse(name), labels[name]) for name, _p, _f in StaticViewSitemap.game_pages()],
+        'series': SeriesSitemap().items(),
+        'newsletters': [item for item in NewsletterSitemap().items() if item != 'list'][:12],
         'groups': ordered,
         'portfolios': PortfolioCollectionSitemap().items(),
         'total': len(posts),
@@ -315,8 +312,10 @@ def index(request):
         visitors_today = 0
     visitors_total = site_stats.visitors_total()
 
+    from ..rookie_modes import public_enabled
     context = {
         'question_list': page_obj,
+        'extreme_public': public_enabled(),
         'page': page,
         'kw': kw,
         'category': category_name,
@@ -367,7 +366,7 @@ def detail(request, question_id):
         Question.objects.filter(pk=question_id).update(view_count=F('view_count') + 1)
         request.session[session_key] = now
 
-    # 야구선수 키우기 — 연구팀 칼럼을 처음 읽으면 훈련 포인트(같은 칼럼은 한 번, 하루 3편)
+    # 야구선수 키우기 — 연구팀 칼럼을 읽으면 훈련 포인트(같은 칼럼은 하루에 한 번, 하루 3편)
     if request.user.is_authenticated and question.is_column:
         from ..rookie import safe_award
         got = safe_award(request.user, 'column', ref=str(question.id))

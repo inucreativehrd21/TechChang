@@ -61,6 +61,22 @@ def seo(request):
     from urllib.parse import urlencode
     canonical = f'https://techchang.com{path}' + (f'?{urlencode(keep)}' if keep else '')
     noindex = any(request.GET.get(p) for p in NOINDEX_PARAMS)
+    # 개인 상태·인증·날짜/리그 조합 화면은 공개 검색 문서와 구분해요.
+    # robots.txt로 막지 않은 상태 화면은 크롤러가 이 noindex를 읽을 수 있어요.
+    import re
+    private = path.startswith(('/accounts/', '/lab/admin/', '/lab/job/'))
+    if path.startswith('/common/') and path != '/common/points/ranking/':
+        private = True
+    if re.match(r'^/rookie/(?:(?:lite|extreme)/)?(?:world|report|preview|cards|lab)(?:/|$)', path):
+        private = True
+    if re.match(r'^/rookie/(?:(?:lite|extreme)/c|p)/\d+/', path):
+        private = True
+    if path in ('/rookie/', '/rookie/lite/', '/rookie/extreme/'):
+        user = getattr(request, 'user', None)
+        session = getattr(request, 'session', {})
+        private = private or bool(getattr(user, 'is_authenticated', False) or
+                                  session.get('lite_guest') or session.get('extreme_guest'))
+    noindex = noindex or private
     return {
         'canonical_url': canonical,
         'seo_robots': 'noindex, follow' if noindex else 'index, follow',

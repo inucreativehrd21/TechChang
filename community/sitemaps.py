@@ -24,10 +24,49 @@ class StaticViewSitemap(Sitemap):
         ('community:column_map',     0.8, 'weekly'),  # 칼럼 지도 — 칼럼 전체로 가는 내부링크 허브
         ('office:home',              0.6, 'daily'),   # 연구실 — 칼럼이 만들어지는 곳
         ('sitemap_page',             0.4, 'daily'),   # 사람이 보는 사이트맵 = 내부링크 허브
+        ('terms',                    0.3, 'monthly'),
+        ('privacy',                  0.3, 'monthly'),
     ]
 
+    GAME_PAGES = [
+        ('community:rookie_home', .8, 'weekly'),
+        ('community:rookie_league', .6, 'daily'),
+        ('community:rookie_awards', .5, 'daily'),
+        ('community:rookie_records', .6, 'daily'),
+        ('community:lite_home', .8, 'weekly'),
+        ('community:lite_hall', .6, 'daily'),
+        ('community:lite_today', .5, 'daily'),
+    ]
+    EXTREME_PAGES = [
+        ('community:extreme_home', .8, 'weekly'),
+        ('community:extreme_hall', .6, 'daily'),
+        ('community:extreme_today', .5, 'daily'),
+    ]
+    LABELS = {
+        'community:index': '홈 · 최신 글', 'community:board_main': '커뮤니티 게시판',
+        'community:games_index': '게임 센터', 'community:members_list': '구성원',
+        'common:point_ranking': '포인트 랭킹', 'community:series_index': '연재 시리즈',
+        'community:column_map': '칼럼 지도', 'office:home': '연구실', 'sitemap_page': '사이트맵',
+        'terms': '이용약관', 'privacy': '개인정보 처리방침',
+        'community:rookie_home': '야구선수 키우기 · 정식 모드',
+        'community:rookie_league': '정식 모드 · 리그 순위',
+        'community:rookie_awards': '정식 모드 · 시상식',
+        'community:rookie_records': '정식 모드 · 기록실',
+        'community:lite_home': '야구선수 키우기 · 라이트 모드',
+        'community:lite_hall': '라이트 모드 · 명예의 전당',
+        'community:lite_today': '라이트 모드 · 오늘의 랭킹',
+        'community:extreme_home': '야구선수 키우기 · 익스트림 모드',
+        'community:extreme_hall': '익스트림 모드 · 명예의 전당',
+        'community:extreme_today': '익스트림 모드 · 오늘의 랭킹',
+    }
+
+    @classmethod
+    def game_pages(cls):
+        from .rookie_modes import public_enabled
+        return cls.GAME_PAGES + (cls.EXTREME_PAGES if public_enabled() else [])
+
     def items(self):
-        return self.PAGES
+        return self.PAGES + self.game_pages()
 
     def location(self, item):
         return reverse(item[0])
@@ -117,7 +156,7 @@ class MakingSitemap(Sitemap):
     def items(self):
         from office.models import ColumnDraft
         return list(ColumnDraft.objects.filter(status=ColumnDraft.STATUS_PUBLISHED, question__isnull=False,
-                                               question__is_deleted=False)
+                                               question__in=QuestionSitemap().public_queryset())
                     .select_related('question').order_by('-question__create_date')[:500])
 
     def lastmod(self, obj):
