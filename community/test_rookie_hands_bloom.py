@@ -396,3 +396,21 @@ class BloomStoryTests(TestCase):
         self.assertGreaterEqual(len(keys), 6)
         c.pending = dict(kind='decision', what='bloom', id='oldid', odds=.6)       # story 키 없는 예전 저장
         self.assertIn(B.scene(c)['story']['key'], S.BY_KEY)
+
+
+class BloomRoleStoryTests(TestCase):
+    def test_role_stories_only_for_that_role_and_slot_word(self):
+        from community import rookie_bloom_stories as S
+        with mock.patch.object(B, 'APPEAR', 1.0):
+            c = veteran('역할이야기')
+        self.assertGreaterEqual(len(S.STORIES), 13)
+        c.role = 'batter'
+        keys = [s['key'] for s in S.pool(c)]
+        self.assertIn('halfbeat', keys)
+        self.assertNotIn('reinvent', keys)
+        self.assertIn('4번 타자', ' '.join(S.render(c, 'trusted')['intro']))
+        c.role = 'pitcher'
+        keys = [s['key'] for s in S.pool(c)]
+        self.assertIn('reinvent', keys)
+        self.assertNotIn('halfbeat', keys)
+        self.assertIn('선발 한 자리', ' '.join(S.render(c, 'trusted')['intro']))
