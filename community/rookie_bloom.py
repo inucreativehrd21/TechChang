@@ -69,12 +69,16 @@ def offer(c):
     z = X.perf_z(c.role, last.totals, last.games) if last and last.totals else None
     odds = min(.75, .55 + (.10 if X.has(c, 'grinder') else 0) + (.05 if z is not None and z >= 0 else 0))
     ident = hashlib.sha256(f'bloom:{c.pk}:{c.year}:{c.age}:{c.potential}'.encode()).hexdigest()[:24]
-    return dict(kind='decision', what='bloom', id=ident, odds=odds)
+    from . import rookie_bloom_stories as Stories
+    return dict(kind='decision', what='bloom', id=ident, odds=odds, story=Stories.pick(c, ident))
 
 def scene(c):
     p = c.pending or {}
+    from . import rookie_bloom_stories as Stories
     result = p.get('what') == 'bloom_result'
-    return dict(p, title='늦게 핀 꽃' if not result else '내 야구는 아직 끝나지 않았어요',
+    # 이야기는 제안 때 정한 것(예전 저장이면 id 로 고른다) — 도전 전 글과 결과 글이 한 줄기로 이어진다
+    story = Stories.render(c, p.get('story') or Stories.pick(c, (p.get('id') or '').split(':')[0]))
+    return dict(p, story=story, title=story['title'] if not result else '내 야구는 아직 끝나지 않았어요',
                 odds_pct=round(p.get('odds', 0) * 100), result=result,
                 bonus=bonus_available(c), years=YEARS, aging_percent=round((1-AGING_KEEP)*100))
 
@@ -118,7 +122,7 @@ def resolve(c, choice, rng):
     else:
         text = '기대한 결과에는 닿지 못했지만, 다시 그라운드에 선 오늘까지 사라지는 건 아니에요.'
     c.flags.setdefault('press', []).append(X.press('[만개]' if ok else '[다시 서다]', f'{c.name}, 늦게 찾아온 도전 — '+('마침내 피어나다' if ok else '결과보다 오래 남을 한 걸음')))
-    c.pending = dict(kind='decision', what='bloom_result', id=p['id']+':result', ok=ok, changes=changes)
+    c.pending = dict(kind='decision', what='bloom_result', id=p['id']+':result', ok=ok, changes=changes, story=p.get('story'))
     return text
 
 def consume_bonus(c):

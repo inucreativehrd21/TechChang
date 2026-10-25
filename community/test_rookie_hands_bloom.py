@@ -225,7 +225,7 @@ class BloomTests(TestCase):
         client=Client(enforce_csrf_checks=True,HTTP_USER_AGENT=PC)
         client.force_login(self.c.user)
         page=client.get('/rookie/lite/')
-        self.assertContains(page,'늦게 핀 꽃')
+        self.assertContains(page,B.scene(self.c)['story']['title'])
         data=dict(action='decide',what='bloom',choice='try',event_id=self.c.pending['id'])
         self.assertEqual(client.post('/rookie/lite/act/',data).status_code,403)
         token=client.cookies['csrftoken'].value
@@ -348,3 +348,51 @@ class BloomGateTests(TestCase):
         self.assertIn('사라졌어요', text)
         self.assertNotEqual(c.pending.get('what'), 'bloom')
         self.assertFalse(B.succeeded(c))
+
+
+class BloomStoryTests(TestCase):
+    """2026-10-25 — 만개 안내 이야기 여러 개(로직은 같다)."""
+
+    def setUp(self):
+        cache.clear()
+        appear = mock.patch.object(B, 'APPEAR', 1.0)
+        appear.start()
+        self.addCleanup(appear.stop)
+
+    def test_every_story_fills_all_words_for_both_roles(self):
+        from community import rookie_bloom_stories as S
+        c = veteran('이야기검사')
+        self.assertGreaterEqual(len(S.STORIES), 7)
+        for role in ('batter', 'pitcher'):
+            c.role = role
+            for story in S.STORIES:
+                r = S.render(c, story['key'])
+                text = ' '.join([r['title'], r['try_label']] + r['intro'] + r['ok'] + r['fail'])
+                self.assertNotIn('{', text, story['key'])
+                self.assertEqual((len(r['intro']), len(r['ok']), len(r['fail'])), (3, 2, 2))
+        c.role = 'batter'
+        self.assertIn('방망이를', S.render(c, 'regret')['intro'][0])
+        c.role = 'pitcher'
+        self.assertIn('공을', S.render(c, 'regret')['intro'][0])
+
+    def test_minor_only_story_and_same_story_through_result(self):
+        from community import rookie_bloom_stories as S
+        minor = veteran('퓨처스이야기')
+        self.assertIn('bus', [s['key'] for s in S.pool(minor)])
+        minor.league = 'kbo1'
+        self.assertNotIn('bus', [s['key'] for s in S.pool(minor)])
+        c = veteran('같은이야기')
+        key = c.pending['story']
+        self.assertEqual(B.scene(c)['story']['key'], key)
+        self.assertEqual(B.scene(c)['title'], S.BY_KEY[key]['title'])
+        X.decide(c, 'bloom', 'try', random.Random(1))
+        self.assertEqual(c.pending['what'], 'bloom_result')
+        self.assertEqual(B.scene(c)['story']['key'], key)
+
+    def test_stories_spread_across_offers_and_old_pending_still_renders(self):
+        from community import rookie_bloom_stories as S
+        c = veteran('여러이야기')
+        keys = {S.pick(c, f'seed{i}') for i in range(80)}
+        self.assertGreaterEqual(len(keys), 6)
+        c.pending = dict(kind='decision', what='bloom', id='oldid', odds=.6)       # story 키 없는 예전 저장
+        self.assertIn(B.scene(c)['story']['key'], S.BY_KEY)
