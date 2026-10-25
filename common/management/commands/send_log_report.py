@@ -526,65 +526,97 @@ class Command(BaseCommand):
         return stats
 
     # ------------------------------------------------------------------ #
-    def _collect_nginx_access(self, hours, existing_stats):
+    @staticmethod
+    def _rotated_logs(base):
+        """base, base.1, base.2.gz … 를 최신순으로. logrotate 가 매일 넘기므로
+        현재 파일만 읽으면 자정 이후분만 집계된다(24시간·7일 리포트가 5xx 를 놓친 원인)."""
+        found = []
+        d, name = os.path.split(base)
+        try:
+            entries = os.listdir(d or '.')
+        except OSError:
+            return found
+        pat = re.compile(r'^' + re.escape(name) + r'(?:\.(\d+)(?:\.gz)?)?$')
+        for e in entries:
+            m = pat.match(e)
+            if m:
+                found.append((int(m.group(1) or 0), os.path.join(d, e)))
+        return [p for _, p in sorted(found)]
+
+    def _collect_nginx_access(self, hours, existing_stats, candidates=None):
+        import gzip
         from datetime import timezone as tz
 
-        candidates = [
+        candidates = candidates or [
             '/var/log/nginx/techchang_access.log',
             '/var/log/nginx/mysite_access.log',
             '/var/log/nginx/access.log',
         ]
 
-        cutoff = datetime.now(tz.utc).replace(tzinfo=None) - timedelta(hours=hours)
-        date_pat = re.compile(r'\[(\d{2}/\w+/\d{4}:\d{2}:\d{2}:\d{2})')
+        cutoff = datetime.now(tz.utc) - timedelta(hours=hours)
+        # [24/Oct/2026:12:14:30 +0900] — 로그 시각은 서버 지역 시간이라 오프셋까지 읽는다
+        date_pat = re.compile(r'\[(\d{2})/(\w{3})/(\d{4}):(\d{2}):(\d{2}):(\d{2}) ([+-]\d{4})\]')
         month_map = {
             'Jan': 1, 'Feb': 2, 'Mar': 3, 'Apr': 4, 'May': 5, 'Jun': 6,
             'Jul': 7, 'Aug': 8, 'Sep': 9, 'Oct': 10, 'Nov': 11, 'Dec': 12,
         }
 
+        def line_time(line):
+            dm = date_pat.search(line)
+            if not dm:
+                return None
+            day, mon, year, h, mi, s, off = dm.groups()
+            sign = -1 if off[0] == '-' else 1
+            offset = tz(sign * timedelta(hours=int(off[1:3]), minutes=int(off[3:5])))
+            return datetime(int(year), month_map.get(mon, 1), int(day),
+                            int(h), int(mi), int(s), tzinfo=offset)
+
         req_count = s5 = s4 = s404 = s403 = s401 = 0
         path_404 = Counter()
         samples_5xx = []
 
-        for log_path in candidates:
-            if not os.path.exists(log_path):
+        for base in candidates:
+            files = self._rotated_logs(base)
+            if not files:
                 continue
-            try:
-                with open(log_path, 'r', errors='replace') as f:
-                    for line in f:
-                        dm = date_pat.search(line)
-                        if dm:
-                            raw   = dm.group(1)
-                            parts = raw.split('/')
-                            day   = int(parts[0])
-                            mon   = month_map.get(parts[1], 0)
-                            rest  = parts[2].split(':')
-                            year  = int(rest[0])
-                            h, mi, s = int(rest[1]), int(rest[2]), int(rest[3])
-                            log_dt = datetime(year, mon, day, h, mi, s)
-                            if log_dt < cutoff:
+            readable, saw_old = True, False
+            for log_path in files:
+                opener = gzip.open if log_path.endswith('.gz') else open
+                try:
+                    with opener(log_path, 'rt', errors='replace') as f:
+                        for line in f:
+                            log_dt = line_time(line)
+                            if log_dt is not None and log_dt < cutoff:
+                                saw_old = True
                                 continue
 
-                        pr = self._parse_request_line(line)
-                        if pr:
-                            method, path, code = pr
-                            req_count += 1
-                            if 500 <= code < 600:
-                                s5 += 1
-                                if len(samples_5xx) < 5:
-                                    samples_5xx.append(f'{code} {method} {path}')
-                            elif 400 <= code < 500:
-                                s4 += 1
-                                if code == 404:
-                                    s404 += 1
-                                    path_404[path] += 1
-                                elif code == 403:
-                                    s403 += 1
-                                elif code == 401:
-                                    s401 += 1
-            except OSError:
-                continue
-            break
+                            pr = self._parse_request_line(line)
+                            if pr:
+                                method, path, code = pr
+                                req_count += 1
+                                if 500 <= code < 600:
+                                    s5 += 1
+                                    if len(samples_5xx) < 5:
+                                        samples_5xx.append(f'{code} {method} {path}')
+                                elif 400 <= code < 500:
+                                    s4 += 1
+                                    if code == 404:
+                                        s404 += 1
+                                        path_404[path] += 1
+                                    elif code == 403:
+                                        s403 += 1
+                                    elif code == 401:
+                                        s401 += 1
+                except OSError:
+                    if log_path == files[0]:
+                        readable = False   # 현재 파일을 못 읽으면 다음 후보 로그로
+                        break
+                    continue
+                # 이 파일이 이미 기간 밖까지 거슬러 갔으면 더 오래된 파일은 볼 필요가 없다
+                if saw_old:
+                    break
+            if readable:
+                break
 
         result = {
             'request_count': req_count,

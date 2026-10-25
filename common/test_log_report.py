@@ -69,3 +69,33 @@ class LogClassificationTests(SimpleTestCase):
         self.assertEqual(level(INFO_LINE), 'info')
         self.assertEqual(level(DJANGO_500), 'error')
         self.assertEqual(level(GUNICORN_ERR), 'error')
+
+
+def access_line(when, path, code):
+    return f'1.2.3.4 - - [{when.strftime("%d/%b/%Y:%H:%M:%S %z")}] "GET {path} HTTP/2.0" {code} 145 "-" "UA"\n'
+
+
+class NginxRotationTests(SimpleTestCase):
+    """nginx 로그는 자정마다 교체된다. 현재 파일만 읽으면 24시간·7일 집계가 오늘 0시 이후분만 본다."""
+
+    def test_rotated_files_are_read_within_window_with_local_offset(self):
+        import gzip, os, tempfile
+        from datetime import datetime, timedelta, timezone as tz
+        kst = tz(timedelta(hours=9))
+        now = datetime.now(kst)
+        with tempfile.TemporaryDirectory() as d:
+            base = os.path.join(d, 'techchang_access.log')
+            open(base, 'w').close()                               # 자정 직후: 현재 파일은 비어 있음
+            with open(base + '.1', 'w') as f:
+                f.write(access_line(now - timedelta(hours=30), '/old-yesterday/', 500))   # 24시간 밖
+                f.write(access_line(now - timedelta(hours=5), '/rookie/lite/', 500))
+                f.write(access_line(now - timedelta(hours=4), '/x/', 404))
+            with gzip.open(base + '.2.gz', 'wt') as f:
+                f.write(access_line(now - timedelta(days=2), '/older/', 502))
+            stats = Command()._collect_nginx_access(24, {}, candidates=[base])
+            self.assertEqual(stats['status_5xx'], 1)
+            self.assertEqual(stats['status_404'], 1)
+            self.assertEqual(stats['top_errors'], ['500 GET /rookie/lite/'])
+
+            week = Command()._collect_nginx_access(168, {}, candidates=[base])
+            self.assertEqual(week['status_5xx'], 3)
