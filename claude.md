@@ -11,7 +11,7 @@
 
 질문/답변 커뮤니티 + 인터랙티브 게임 플랫폼
 - Stack Overflow 스타일 Q&A
-- 5가지 브라우저 게임 (숫자야구, 2048, 지뢰찾기, 틱택토, 끝말잇기)
+- 야구선수 키우기 3모드(정식·라이트·익스트림), 숫자야구·2048·지뢰찾기(틱택토·끝말잇기 URL은 비활성)
 - 사용자 포인트 및 랭킹 시스템
 
 ## 구조
@@ -23,7 +23,7 @@ community/           # 메인 앱 (구 pybo → community로 마이그레이션 
   ├── models.py      # Question, Answer, Comment, Games
   └── urls.py        # URL: namespace='community'
 common/              # 인증 및 프로필
-office/              # 가상 연구실 (에이전트 6명: agents.py, 회의 hold_meeting, 칼럼 파이프라인 office_publish, /lab/)
+office/              # 가상 연구실 (에이전트 역할 8개: agents.py, 회의 hold_meeting, 칼럼 파이프라인 office_publish, /lab/)
 templates/           # Django 템플릿 (base.html 상속 구조)
   ├── base.html      # 기본 레이아웃
   └── community/     # community 앱 템플릿
@@ -80,4 +80,7 @@ sudo systemctl status mysite nginx
 - **정적파일**: `python manage.py collectstatic --clear`
 - **DB 백업**: `python manage.py backup_db` → `backups/db_<ts>.sql.gz` (cron 매일 03:00)
 - **cron**: ubuntu 계정 `crontab -l` (backup_db, send_log_report, send_visitor_report, hold_meeting 일 20:00, 칼럼·연재 **예약 공개**: 전날 13·22시 `--prepare` → 공개 대기 → `office_release` 10분마다 / 당일 10시 `--if-missing` 안전망(office/schedule.py), make_newsletter 금 10:00)
-- **AI 모델**: 사이트 전체 `ClaudeModel.SONNET_5_5`(claude-sonnet-5-5)로 통일(2026-10-09, 4.x 사용 중단). `common/services/claude.ask` 는 text 블록만 합치고, 빈 응답이면 출력 예산을 늘려 1회 재시도(adaptive thinking 대응). `CLAUDE_BACKEND=cli` 면 구독 CLI 만 사용(**서버 `.env` CLAUDE_CLI_FALLBACK=false — 2026-10-15부터 유료 API 폴백 끔**, 한도 소진 시 그 작업은 실패하고 예약 공개 재시도·당일 4시 준비가 받친다)
+- **AI 호출**: `common.services.claude.ask` → Claude Code 구독(`claude-sonnet-5-5`) 우선, 명시적인 한도 오류만 Codex 구독(`gpt-6.1-sol`, medium)으로 전환해요. 실제 전환은 `common/services/subscriptions.py`, Codex 제약은 `common/services/codex.py`에 있어요.
+- **비용 정책**: 운영은 `CLAUDE_BACKEND=cli`, `CLAUDE_CLI_FALLBACK=false`, `AI_ALLOW_PAID_API=false`, `AI_FALLBACK_BACKEND=codex_cli`예요. 두 구독 모두 불가하면 보류해요. API 과금이나 `crew_work` 서버 실행으로 우회하지 않아요.
+- **개인정보 경계**: 2026-10-29 시행 처리방침 이전에는 `send_log_report`의 Codex 폴백을 차단해요(`common/legal.py`). 시행일·현재 적용 버전을 구분하고, 비밀값·개인정보를 일반 콘텐츠 프롬프트에 넣지 않아요.
+- **최신 운영 문서**: `docs/site-operations.md`, `docs/codex-subscription-fallback.md`, `docs/social-login-setup.md`. 연구실의 현재 구조·개선 우선순위는 `docs/lab-architecture-review-20261024.md`를 참고해요.

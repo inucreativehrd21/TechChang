@@ -12,7 +12,7 @@
 ## 📌 프로젝트 소개
 
 TechChang는 Stack Overflow 스타일의 질문/답변 커뮤니티에 인터랙티브 브라우저 게임과
-회원 포트폴리오 기능을 결합한 종합 커뮤니티 플랫폼입니다. AI(Claude)를 활용한
+회원 포트폴리오 기능을 결합한 종합 커뮤니티 플랫폼입니다. Claude Code·Codex 구독 CLI를 활용한
 자동 칼럼 작성·답변 생성, 서버 로그 기반 자동 개선 파이프라인까지 운영 자동화에
 초점을 맞춰 설계했습니다.
 
@@ -28,23 +28,28 @@ TechChang는 Stack Overflow 스타일의 질문/답변 커뮤니티에 인터랙
 - **프로필 / 포인트 / 랭킹** — 출석 체크, 포인트, 이모티콘, 사용자 랭킹
 
 ### 게임 센터 (`/games/`)
-| 게임 | 설명 | 리더보드 |
-|------|------|:-------:|
-| 숫자야구 | 3자리 숫자 맞추기 | ✅ |
-| 2048 | 타일 합치기 퍼즐 | ✅ |
-| 지뢰찾기 | 클래식 마인스위퍼 | ✅ |
-| 틱택토 | 실시간 대전(WebSocket) | — |
-| 끝말잇기 | 단어 잇기 대전 | — |
+| 게임 | 현재 운영 기능 |
+|------|------|
+| 야구선수 키우기 정식 모드 | 매일 활동·훈련·경기, 날짜별 구단 리포트, 리그·기록실 |
+| 야구선수 키우기 라이트 모드 | 손님 플레이, 고1부터 은퇴까지 커리어, 전당·카드 |
+| 야구선수 키우기 익스트림 모드 | 높은 성장 효율, 전용 사건 12종, 별도 커리어·순위·카드 |
+| 숫자야구 / 2048 / 지뢰찾기 | 퍼즐 게임과 리더보드 |
 
-### AI 기능 (Anthropic Claude)
-- **연구팀 가상 연구실** (`/lab/`) — 6명의 에이전트(팀장·HRD/데이터/프로그래밍 칼럼니스트·검증관·차트 담당)가
-  매주 편집회의로 칼럼 주제·개선 과제를 선택지로 올리고 운영자가 결정. 칼럼은 초안→검증→차트→QA 파이프라인으로 제작,
-  QA 미달은 운영자 검수. 픽셀 연구실에서 활동·회의를 재생
-- **AI 칼럼 자동 작성** — cron 기반 정기 칼럼 생성 (`office_publish`, 회의 결정 주제 반영)
-- **AI 답변 생성** — 질문에 대한 보조 답변
-- **로그 지적사항 → 자동 수정 PR 파이프라인** — 서버 로그를 분석해 지적사항을 도출하고,
-  관리자 승인 시 GitHub Actions(`repository_dispatch`)로 Claude가 수정 PR을 생성, CI가 검증
-  (심각도별 모델 선택, 종류 기반 중복 제거)
+야구 모드는 테크창 회원의 동나이·투타 기록 비교와 전체 리그·구단 조회를 제공해요.
+가상 구단 선수의 시뮬레이션 기록과 공개 회원 DB 기록은 구분해요.
+틱택토·끝말잇기는 코드만 보관하며 현재 URL은 비활성 상태예요.
+익스트림은 운영에서 `ROOKIE_EXTREME_ENABLED=true`, 운영자 실험실은 별도 플래그로 기본 비공개예요.
+
+### 연구실과 AI 호출
+- **연구실** (`/lab/`) — 팀장·편집장·HRD/데이터/프로그래밍 칼럼니스트·검증관·평론가·차트 담당의 8개 역할이에요.
+  회의 → 기획 → 설계도·근거 확인 → 집필 → 코드 점검 → 검증·평론·시각화·심사 → 보완 → 공개 대기로 진행해요.
+- **구독 라우팅** — `common.services.claude.ask`가 Claude Code를 우선 쓰고, 명시적인 사용량 한도 때만
+  Codex `gpt-6.1-sol`/medium으로 전환해요. 둘 다 쓸 수 없으면 보류하며 유료 API는 차단해요.
+- **예약 공개** — 칼럼은 화·목·토, 연재는 월요일 10시 공개해요. 전날과 당일 새벽에 준비하고
+  `office_release`가 10분 간격으로 준비된 원고를 공개해요.
+- **정비** — 로그 지적사항과 회의 과제를 작업 카드로 관리해요. 서버에서 `crew_work`를 실행하지 않아요.
+  패치·PR·배포는 승인된 개발 작업으로 처리하고 CI는 `check`와 테스트를 담당해요.
+  과거 `auto-fix.yml`/`repository_dispatch` 자동 PR 흐름은 현재 저장소에 없어요.
 
 ### 운영 / 관리자
 - **관리자 대시보드** — 통계·모니터링, 사용자 관리(등급/활성화), IP 차단
@@ -57,11 +62,11 @@ TechChang는 Stack Overflow 스타일의 질문/답변 커뮤니티에 인터랙
 ## 🔧 기술 스택
 
 **Backend** — Django 5.2.6, Python 3.12+, MySQL 8 (운영) / SQLite3 (로컬·CI), Channels(Daphne, WebSocket)
-**AI** — Anthropic Claude API (`anthropic` SDK)
+**AI** — Claude Code 구독 CLI → Codex 구독 CLI 폴백. Anthropic SDK는 선택 경로만 남기고 운영 API 과금은 차단
 **Frontend** — Bootstrap 5.3, Vanilla JavaScript, Django Templates
-**인증** — Django Allauth, 카카오 OAuth, 이메일 인증 코드
+**인증** — Django 계정·프로필 공용, 카카오/Google OAuth 식별자 연결, 이메일 인증 코드
 **배포** — Ubuntu 24.04 (OCI), Nginx, Gunicorn(WSGI), MySQL 8, Let's Encrypt SSL
-**CI** — GitHub Actions (`check` + `test`), AI 자동 수정 워크플로
+**CI** — GitHub Actions `ci.yml` (`check` + `test`)
 
 ---
 
@@ -93,6 +98,9 @@ python manage.py runserver
 
 브라우저에서 http://127.0.0.1:8000 접속.
 
+이 작업 PC의 Windows 환경은 `python`이 스텁이므로 `py -3.10 manage.py ...`를 사용해요.
+로컬 화면 검증은 운영 DB와 분리한 SQLite·로컬 메일 설정에서 진행해요.
+
 ### 주요 환경변수
 | 변수 | 설명 |
 |------|------|
@@ -105,12 +113,16 @@ python manage.py runserver
 | `AI_ALLOW_PAID_API` | 기본 `false`. Codex 폴백을 선택하면 값과 무관하게 API 키 과금 경로 차단 |
 | `CODEX_HOME` / `CODEX_MODEL` | 서버 전용 구독 인증 저장소 / 기본 `gpt-6.1-sol` |
 | `KAKAO_REST_API_KEY` / `KAKAO_CLIENT_SECRET` | 카카오 로그인 |
+| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | Google 로그인·기존 계정 연결 |
+| `ROOKIE_EXTREME_ENABLED` / `ROOKIE_EXTREME_PREVIEW` | 일반 공개 / 운영자 실험실(별도) |
 | `RATE_LIMIT_REQUESTS` / `DDOS_THRESHOLD` | Rate limit / DDoS 임계값 |
 
 전체 목록은 [.env.example](.env.example) 참조.
 
 구독 폴백의 인증·비공개 품질 비교·운영 적용·롤백 절차는
 [Codex 구독 폴백 운영 안내](docs/codex-subscription-fallback.md)를 참고하세요.
+최신 운영 점검은 [사이트 운영 런북](docs/site-operations.md), 구조 검토는
+[연구실 아키텍처 리포트](docs/lab-architecture-review-20261024.md)에 있어요.
 
 ---
 
@@ -130,7 +142,7 @@ mysite/
 │   ├── common/          # (mobile/ 서브 디렉터리 포함)
 │   └── community/       # (mobile/ 서브 디렉터리 포함)
 ├── static/              # CSS · JS · 이미지
-├── .github/workflows/   # ci.yml (검증), auto-fix.yml (AI 자동 수정)
+├── .github/workflows/   # ci.yml (검증)
 ├── nginx.conf           # Nginx 설정
 ├── mysite.service       # systemd 유닛
 ├── gunicorn.conf.py     # Gunicorn 설정
@@ -218,9 +230,10 @@ python3 -m venv ~/venvs/mysite
 ~/venvs/mysite/bin/pip install --upgrade pip wheel
 ~/venvs/mysite/bin/pip install -r requirements-prod.txt      # mysqlclient 포함
 
-cp .env.example .env && chmod 600 .env && nano .env
+cp .env.example .env && chmod 600 .env
+# 사용할 수 있는 편집기로 .env를 설정해요. 저장소·채팅에 비밀값을 넣지 않아요.
 #   DJANGO_SECRET_KEY, DJANGO_ALLOWED_HOSTS(도메인+서버 IP), DJANGO_DB_*(ENGINE=mysql),
-#   이메일(DJANGO_EMAIL_*, DJANGO_ADMIN_EMAIL), ANTHROPIC_API_KEY, KAKAO_* 등
+#   이메일(DJANGO_EMAIL_*, DJANGO_ADMIN_EMAIL), Claude/Codex 구독 설정, KAKAO_*, GOOGLE_* 등
 #   SECRET_KEY 생성: python -c 'from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())'
 
 export DJANGO_SETTINGS_MODULE=config.settings.prod
@@ -272,11 +285,21 @@ sudo certbot renew --dry-run
 0 8 * * 1   ... send_log_report --hours 168 --to <admin@example.com>
 30 8 * * 1  ... send_visitor_report --period weekly --to <admin@example.com>
 0 9 1 * *   ... send_visitor_report --period monthly --to <admin@example.com>
-0 20 * * 0  ... hold_meeting --email <admin@example.com> >> .../logs/techchang_office.log 2>&1     # 주간 편집회의
-0 10 * * 2  ... office_publish --topic hrd    >> .../logs/techchang_columns.log 2>&1              # 팀 파이프라인 (구 auto_write_columns)
-0 10 * * 4  ... office_publish --topic data   >> .../logs/techchang_columns.log 2>&1
-0 10 * * 6  ... office_publish --topic coding >> .../logs/techchang_columns.log 2>&1
-0 10 * * 1  [ $(( $(date +\%V) \% 2 )) -eq 1 ] && ... auto_write_series >> .../logs/techchang_series.log 2>&1
+0 20 * * 0  ... hold_meeting --email <admin@example.com>
+# 칼럼: HRD 화 / 데이터 목 / 프로그래밍 토 10시 공개
+0 13 * * 1  ... office_publish --topic hrd --prepare
+0 22 * * 1  ... office_publish --topic hrd --prepare
+0 4 * * 2   ... office_publish --topic hrd --prepare
+0 10 * * 2  ... office_publish --topic hrd --if-missing
+# data: 수 13·22시 / 목 04·10시, coding: 금 13·22시 / 토 04·10시
+0 13 * * 0  ... auto_write_series --series auto --prepare
+0 22 * * 0  ... auto_write_series --series auto --prepare
+0 4 * * 1   ... auto_write_series --series auto --prepare
+0 10 * * 1  ... auto_write_series --series auto --if-missing
+*/10 * * * * ... office_release
+0 10 * * 5  ... make_newsletter
+10 0 * * *  ... rookie_daily
+15 3 * * *  ... purge_personal_data
 ```
 
 </details>
