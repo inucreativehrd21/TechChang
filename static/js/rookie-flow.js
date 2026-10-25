@@ -72,6 +72,31 @@
         if (!text && screen.matches('form')) text = (screen.querySelector('button') || {}).textContent;
         return (text || '다음 장면').replace(/\s+/g, ' ').replace(/^\d+\s*/, '').slice(0, 34);
     };
+    // 숨긴 장면의 배경 사진·그림은 그 장면을 열 때에야 받기 시작해서 넘길 때마다 늦게 떠요.
+    // 첫 화면을 그린 뒤 한가할 때 미리 받아 두면 장면을 넘기는 순간 바로 보여요(이미 받은 건 브라우저 캐시).
+    var warmed = {};
+    function warm(screens) {
+        var urlsOf = function (value) {
+            var out = [];
+            (value || '').replace(/url\(["']?([^"')]+)["']?\)/g, function (_, u) { out.push(u); });
+            return out;
+        };
+        var fetchOne = function (url) {
+            if (!url || warmed[url] || url.indexOf('data:') === 0) return;
+            warmed[url] = true;
+            var image = new Image(); image.decoding = 'async'; image.src = url;
+        };
+        var run = function () {
+            screens.forEach(function (screen) {
+                var nodes = [screen].concat(Array.from(screen.querySelectorAll('[class*="scene"], [class*="rcard"], [style*="url("]')));
+                nodes.forEach(function (el) {
+                    [null, '::before', '::after'].forEach(function (pseudo) { urlsOf(getComputedStyle(el, pseudo).backgroundImage).forEach(fetchOne); });
+                });
+                screen.querySelectorAll('img[src], image[href]').forEach(function (img) { fetchOne(img.currentSrc || img.src || (img.href && img.href.baseVal)); });
+            });
+        };
+        if ('requestIdleCallback' in window) requestIdleCallback(run, {timeout: 2500}); else setTimeout(run, 1200);
+    }
     function deck(host, screens, storageKey, validate) {
         if (screens.length < 2) return null;
         host.classList.add('rl-deck');
@@ -159,6 +184,7 @@
         var initial = screens.findIndex(function (s) { return titleOf(s) === stored; });
         // 복원할 때도 미응답 장면을 건너뛰지 않아요.
         show(initial < 0 ? 0 : initial, false);
+        warm(screens);
         return {show: show, advance: function () { show(desired + 1, keyboardInput, true); }, screens: screens};
     }
 

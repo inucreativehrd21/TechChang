@@ -11,18 +11,12 @@
  */
 
 /* ============================================
-   Web Font — Pretendard Variable (self-hosted)
+   Web Font — Pretendard Variable
    SIL OFL 1.1 — static/fonts/Pretendard-LICENSE.txt
-   가변 폰트 1개로 45~920 전 굵기 커버. base.html 에서 preload.
+   base.html·base_mobile.html 이 jsDelivr 의 글자 범위별 판(dynamic subset)을 불러온다(@font-face 는 그 CSS 안).
+   여기서 같은 이름의 통짜 @font-face 를 다시 선언하면 범위 판보다 우선해 2MB 를 다시 받으니 선언하지 않는다.
+   CDN 이 막히면 아래 --font-sans 의 시스템 글꼴로 보인다. 서버 렌더 카드(lite_card_shot.html)는 static/fonts 를 그대로 쓴다.
    ============================================ */
-@font-face {
-    font-family: 'Pretendard Variable';
-    font-weight: 45 920;
-    font-style: normal;
-    font-display: swap;
-    src: url('../fonts/PretendardVariable.woff2') format('woff2-variations'),
-         url('../fonts/PretendardVariable.woff2') format('woff2');
-}
 
 /* ============================================
    색상 시스템 - Vibrant & Rich

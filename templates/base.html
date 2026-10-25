@@ -61,8 +61,10 @@
     
     {% load static %}
 
-    <!-- Web Font: Pretendard Variable (premium.css @font-face) — 먼저 받도록 preload -->
-    <link rel="preload" href="{% static 'fonts/PretendardVariable.woff2' %}" as="font" type="font/woff2" crossorigin>
+    <!-- Web Font: Pretendard Variable — 글자 범위별로 쪼갠 CDN 판(dynamic subset). 페이지에 쓰인 글자 묶음만 가까운 CDN 에서 받는다.
+         예전 통짜 2MB(static/fonts/PretendardVariable.woff2)는 싱가포르 서버에서 매번 미리 받느라 첫 화면이 무거웠다(2026-10-25) -->
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
 
     <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
