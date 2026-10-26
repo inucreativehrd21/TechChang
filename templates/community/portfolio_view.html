@@ -928,8 +928,10 @@ body {
     </a>
     {% endif %}
     {% endif %}
+    {# HTML 포트폴리오는 장을 넘길 때마다 브라우저 기록이 쌓여(#/장) history.back() 이 이전 장으로만 간다 → 들어오기 전 사이트 페이지로 곧장 나간다(없으면 아래 href) #}
     <a href="{% url 'community:members_list' %}" class="portfolio-top-btn portfolio-exit-btn"
-       onclick="if(window.history.length>1){history.back();return false;}">
+       {% if is_collection and portfolio.content_mode == 'html' %}onclick="var r=document.referrer;if(r&&r.indexOf(location.origin)===0&&r.indexOf(location.pathname)<0){location.href=r;return false;}"
+       {% else %}onclick="if(window.history.length>1){history.back();return false;}"{% endif %}>
         <i class="fas fa-times"></i> 나가기
     </a>
 </div>

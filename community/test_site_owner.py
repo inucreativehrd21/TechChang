@@ -102,6 +102,31 @@ class OwnerLiveStatsTests(TestCase):
         self.assertEqual(site_stats.launch_days(date(2025, 10, 1)), 0)
 
 
+class PortfolioExitButtonTests(TestCase):
+    """HTML 포트폴리오는 장 넘김마다 브라우저 기록이 쌓여 history.back() 으론 나갈 수 없다 → 나가기는 들어오기 전 페이지로 곧장."""
+
+    def page(self, c):
+        return self.client.get(reverse('community:portfolio_collection_detail', args=[c.slug]), HTTP_USER_AGENT=PC).content.decode()
+
+    def exit_link(self, c):
+        html = self.page(c)
+        start = html.index('class="portfolio-top-btn portfolio-exit-btn"')
+        return html[start:html.index('</a>', start)]
+
+    def test_html_portfolio_exit_goes_to_referrer_not_history_back(self):
+        user = User.objects.create_user('someone', password='x')
+        link = self.exit_link(collection(user, 'pf', content_mode='html', html_content='<p>x</p>'))
+        self.assertIn('document.referrer', link)
+        self.assertIn('location.href=r', link)
+        self.assertNotIn('history.back()', link)
+
+    def test_builder_portfolio_keeps_history_back(self):
+        user = User.objects.create_user('builder', password='x')
+        link = self.exit_link(collection(user, 'pf2'))
+        self.assertIn('history.back()', link)
+        self.assertNotIn('document.referrer', link)
+
+
 class AdminSelfApprovalTests(TestCase):
     """관리자는 자기 포트폴리오를 고쳐도 내려가지 않고, 게시 요청은 바로 공개된다. 일반 회원은 예전대로."""
 
