@@ -943,6 +943,7 @@ body { padding-top: var(--nav-height) !important; }
     inset: var(--nav-height) 0 0 0;
     width: 100%;
     height: calc(100vh - var(--nav-height));
+    height: calc(100dvh - var(--nav-height)); /* iOS: 주소창·툴바가 보일 때도 보이는 높이만큼만(모르는 브라우저는 윗줄) */
     border: 0;
     display: block;
     background: #fff;

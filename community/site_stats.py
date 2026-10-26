@@ -3,6 +3,7 @@
 - launch_days: 서비스 런칭일(2025-10-01)부터 지난 날수
 - visitors_total / visitors_today: 일별 방문자(DailyVisitor) 합계 / 오늘
 - lab_columns: 연구팀이 발행한 칼럼·연재 회차 수(삭제 제외)
+- lab_essays / lab_episodes: 그중 단편 칼럼 / 연재 회차(예약 공개 글은 공개될 때 만들어지므로 대기 중인 글은 세지 않는다)
 - as_of: 오늘 날짜(YYYY.MM.DD)
 
 사이트 주인(settings.SITE_OWNER_USERNAME)의 HTML 포트폴리오만 `<span data-tc-stat="launch_days">376</span>` 처럼
@@ -18,7 +19,7 @@ from django.db.models import Sum
 from django.utils import timezone
 
 LAUNCH_DATE = date(2025, 10, 1)
-CACHE_KEY = 'site_stats:v1'
+CACHE_KEY = 'site_stats:v2'
 CACHE_SECONDS = 60
 
 
@@ -44,11 +45,16 @@ def _compute() -> dict:
     from community.models import DailyVisitor, Question
     today = timezone.localdate()
     row = DailyVisitor.objects.filter(date=today).first()
+    lab = Question.objects.filter(author__username=Question.BOT_USERNAME, is_deleted=False)
+    episodes = lab.filter(series__isnull=False).count()
+    total = lab.count()
     return {
         'launch_days': launch_days(today),
         'visitors_total': visitors_total(),
         'visitors_today': row.visitor_count if row else 0,
-        'lab_columns': Question.objects.filter(author__username=Question.BOT_USERNAME, is_deleted=False).count(),
+        'lab_columns': total,
+        'lab_essays': total - episodes,
+        'lab_episodes': episodes,
         'as_of': today.strftime('%Y.%m.%d'),
     }
 

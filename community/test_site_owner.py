@@ -77,6 +77,19 @@ class OwnerLiveStatsTests(TestCase):
         self.assertIn(f'data-tc-stat="as_of">{timezone.localdate():%Y.%m.%d}</span>', html)
         self.assertIn('data-tc-stat="secret_key">x</span>', html)          # 모르는 키는 그대로
 
+    def test_columns_and_series_episodes_are_counted_apart(self):
+        from community.models import ColumnSeries
+        q = Question.objects.filter(author__username=Question.BOT_USERNAME).first()
+        q.series = ColumnSeries.objects.create(slug='django', title='장고', category=q.category)
+        q.episode_number = 1
+        q.save()
+        html = self.raw(collection(self.owner, 'pf', content_mode='html', html_content=(
+            '<p><b data-tc-stat="lab_essays">0</b>·<b data-tc-stat="lab_episodes">0</b>·'
+            '<b data-tc-stat="visitors_today">0</b></p>')))
+        self.assertIn('data-tc-stat="lab_essays">1</b>', html)
+        self.assertIn('data-tc-stat="lab_episodes">1</b>', html)
+        self.assertIn('data-tc-stat="visitors_today">234</b>', html)
+
     def test_other_members_html_is_left_as_uploaded(self):
         html = self.raw(collection(self.member, 'pf', content_mode='html', html_content=STAT_HTML))
         self.assertIn('data-tc-stat="visitors_total">31,789</b>', html)
