@@ -5,7 +5,7 @@ from zoneinfo import ZoneInfo
 from django.core.cache import cache
 from django.test import SimpleTestCase, TestCase
 
-from community.views.base_views import _next_column_slot
+from community.views.base_views import _ball_numbers, _next_column_slot
 
 KST = ZoneInfo('Asia/Seoul')
 BRIEFS = {'hrd': 'HRD 주제', 'data': '데이터 주제', 'coding': ''}
@@ -57,6 +57,19 @@ class HomeSurvivesLabFailureTests(TestCase):
         r = self.client.get('/', HTTP_USER_AGENT='Mozilla/5.0')
         self.assertEqual(r.status_code, 200)
         self.assertIn('tc-lab', r.content.decode())
+
+
+class HomeCareerCountTests(TestCase):
+    def test_banner_counts_lite_and_extreme_careers(self):
+        from community.models import LiteCareer
+
+        LiteCareer.objects.create(mode='lite', name='라이트')
+        LiteCareer.objects.create(mode='extreme', name='익스트림')
+        self.assertEqual(_ball_numbers()['careers'], 2)
+        cache.clear()
+        response = self.client.get('/', HTTP_USER_AGENT='Mozilla/5.0 Windows Chrome/130')
+        self.assertContains(response, '전체 커리어')
+        self.assertContains(response, '<dd>2<small>개</small></dd>', html=True)
 
 
 class HomeModePickerTests(TestCase):

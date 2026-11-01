@@ -130,14 +130,14 @@ def _home_live_data():
 
 
 def _ball_numbers():
-    """야구선수 키우기 전광판 숫자 — 시즌 진행, 정식 판 현역, 라이트 판 커리어. 실패하면 숫자 줄만 숨긴다."""
+    """야구선수 키우기 전광판 숫자 — 시즌 진행, 정식 판 현역, 라이트·익스트림 커리어."""
     try:
         from ..models import LiteCareer, RookiePlayer
         from ..game_visibility import rookie_visible as visible
         from .. import rookie_league as RL
         return {'season': RL.season_state(),
                 'players': visible(RookiePlayer.objects.filter(retired_at__isnull=True), 'user').count(),
-                'lites': visible(LiteCareer.objects.filter(mode='lite'), 'user').count()}
+                'careers': visible(LiteCareer.objects.filter(mode__in=('lite', 'extreme')), 'user').count()}
     except Exception:  # noqa: BLE001
         logging.getLogger(__name__).exception('home ball block unavailable')
         return None
@@ -272,7 +272,7 @@ def index(request):
         .select_related('category')\
         .order_by('-create_date')[:3]
 
-    live = cache.get_or_set('home:live:v3', _home_live_data, 300)
+    live = cache.get_or_set('home:live:v4', _home_live_data, 300)
 
     # 페이지 링크가 검색어·카테고리·정렬을 잃지 않도록 미리 인코딩
     page_qs = urlencode({k: v for k, v in (
