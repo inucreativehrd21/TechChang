@@ -26,7 +26,7 @@ from datetime import datetime
 
 from django.utils import timezone
 
-from common.management.commands.auto_write_columns import COLUMN_STRUCTURE, TOPICS
+from common.management.commands.auto_write_columns import TOPICS
 from . import live
 
 logger = logging.getLogger(__name__)
@@ -53,6 +53,9 @@ MIN_CHARS = 2200           # 본문 하한 — 미달은 치명(too_short)
 TARGET_MAX = 3500          # 권장 상한. **넘겨도 감점하지 않는다** — 밀도가 유지되면 괜찮다
 MAX_CHARS = 7000           # 이 위로는 편집이 필요하다고 본다(산만·중복 의심)
 MAX_AUTO_REVISIONS = 1     # Minor revision 자동 재작성 횟수
+# B: 첫 사실 검증에서 이만큼 틀리면 자동 수정 대신 보류. 2026-10-31 파일럿 두 편은 첫 검증 9·10건이었고,
+# 수정 1회 뒤에도 3~4건이 남아 보류됐다 — 수정·재검증에 쓴 구독 한도가 결과를 바꾸지 못했다.
+EARLY_HOLD_BAD = 6
 LOCK_MAX_DROP = 8          # 수치 잠금이 한 번에 지울 수 있는 문장 상한 — 넘으면 근거 모으기 실패로 보고 지우지 않는다
 PLAIN_STYLE_LIMIT = 0.15   # 평서체 문장이 이 비율을 넘으면 문체 미통일로 본다
 # 칼럼 생성·재작성 출력 한도. 한글은 글자당 토큰이 커서 5,800자 본문이면 1만 토큰을 넘고,
@@ -70,8 +73,12 @@ def live_step(stage: str, agent: str = ''):
             topic = kwargs.get('topic_key') or (args[0] if args and isinstance(args[0], str) and args[0] in TOPIC_AGENT_OF else '')
             if fn.__name__ == 'publish_draft' and args:
                 topic = getattr(args[0], 'topic', '')
-            live.mark(stage, agent or TOPIC_AGENT_OF.get(topic, ''), topic)
-            return fn(*args, **kwargs)
+            from .review_batch import in_worker
+            if not in_worker():
+                live.mark(stage, agent or TOPIC_AGENT_OF.get(topic, ''), topic)
+            from common.services.claude import call_tags, _call_tags
+            with call_tags(stage=_call_tags.get().get('stage') or stage):
+                return fn(*args, **kwargs)
         return inner
     return wrap
 
@@ -97,7 +104,9 @@ BRIEF_PROMPT = (
     '"data_needed": ["찾아 넣어야 할 지표·통계 (기관·보고서 수준으로 구체적으로, 가장 최근 판 기준)", ...3~5개], '
     '"cases": ["다룰 만한 국내외 사례 후보", ...2~3개], '
     '"counterpoint": "반드시 짚어야 할 반론·한계 한 문장", '
-    '"avoid": ["피해야 할 서술·소재", ...2~3개]}}'
+    '"avoid": ["피해야 할 서술·소재", ...2~3개], '
+    '"genre": "tutorial 또는 data — 도구·API의 동작과 사용법을 설명하는 글이면 tutorial, '
+    '공표 통계로 현황·추세를 말하는 글이면 data"}}'
 )
 
 DRAFT_PROMPT = (
@@ -119,12 +128,13 @@ WRITING_STANDARD = (
     '1. 본문 {min_chars:,}자 이상 (참고 자료 제외)\n'
     '2. 처음부터 끝까지 존댓말. 평서체(~다/~이다/~한다)가 한 문장이라도 섞이면 반려.\n'
     '   인용문(> )과 참고 자료 목록만 예외입니다\n'
-    '3. 필수 섹션: 왜 지금인가 / 숫자로 보는 현황 / 현장의 변화 / 시사점 / 맺음말 / 참고 자료\n'
-    '4. "숫자로 보는 현황"에 근거: 공표 통계 수치 3개 이상(기관·보고서명과 함께) **또는** 통계가 없는 기술 주제라면\n'
-    '   공식 문서·스펙을 옮긴 비교표(3행 이상, 출처 명시). 필자가 정한 묶음·점수를 공식 분류처럼 쓰지 마세요\n'
+    '3. 필수 섹션: {sections}\n'
+    '4. {evidence_rule}\n'
     '5. 본문에서 "표 N"·"그림 N"으로 가리킨 것은 그 번호의 제목과 함께 실제로 실을 것\n'
     '6. 운영자에게 하는 말·확인 못 한 사정·작성 메모·자리표시를 본문에 남기지 말 것(확인 못 한 내용은 빼세요)\n'
-    '7. 의뢰서의 "넣어야 할 데이터" 항목을 실제로 본문에 반영할 것\n\n'
+    '7. 의뢰서의 "넣어야 할 데이터" 항목을 실제로 본문에 반영할 것\n'
+    '8. 근거가 직접 말하지 않는 단정(항상·반드시·가장)과 남의 글·현장에 대한 일반화를 쓰지 말 것\n'
+    '9. 파이썬 코드는 그대로 실행되게(테스트 메서드는 클래스 안에). 결과 값은 확인된 것만\n\n'
     '{recency}\n\n'
     '[편집장이 채점하는 항목]\n{rubric}\n\n'
     '[치명 결함 — 하나라도 있으면 발행되지 않습니다]\n'
@@ -157,7 +167,7 @@ REVISE_PROMPT = (
     '팩트체크에서 수정 요청을 받았습니다. 지적을 모두 반영해 칼럼 전체를 다시 쓰세요. '
     '확인 불가한 수치는 삭제하지 말고 **검증 가능한 공표 통계로 교체**하고, outdated(낡은 자료)는 지적에 적힌 '
     '최신 판·값으로 바꾸며, 중복 지적이 있으면 관점을 바꾸세요. '
-    '"## 숫자로 보는 현황"의 비교 가능한 수치 3~5개는 반드시 유지합니다.\n\n'
+    '데이터 근거 섹션("## 숫자로 보는 현황" 또는 "## 판단 기준")의 수치·비교표는 유지합니다.\n\n'
     '[팩트체크 지적]\n{notes}\n[문제 항목]\n{claims}\n\n[원래 초안]\nTITLE: {subject}\n---\n{content}\n\n{structure}'
 )
 
@@ -185,14 +195,15 @@ ADMIN_REVISE_PROMPT = (
 
 CHART_PROMPT = (
     '데이터 시각화 단계입니다. 아래 칼럼 본문에서 차트·표로 만들 수 있는 수치를 찾으세요. **본문에 명시된 숫자만** 씁니다.\n'
-    '이 칼럼에는 "## 숫자로 보는 현황" 섹션이 있으므로 대개 시각화할 수치가 있습니다. '
+    '이 칼럼의 데이터 근거 섹션("## 숫자로 보는 현황" 또는 "## 판단 기준")에 대개 시각화할 수치가 있습니다. '
+    '지원 여부(✓/✗)만 있는 비교표는 이미 표이므로 has_data=false 로 답하세요. '
     '비교 가능한 값이 3개 이상이면 차트(mode="chart"), 2개뿐이면 표만(mode="table") 만드세요. '
     '숫자가 전혀 없을 때만 has_data=false 로 답합니다.\n\n[본문]\n{content}\n\n'
     '출력 JSON: {{"has_data": true/false, "mode": "chart" 또는 "table", "reason": "판단 근거 한 줄", '
     '"spec": {{"type": "bar|hbar|line", "title": "무엇을 비교하는지 드러나는 한글 제목", '
     '"labels": ["항목1", "항목2", ...], "series": [{{"name": "계열명", "values": [숫자, 숫자, ...]}}], '
     '"unit": "%", "source": "본문에 적힌 기관·보고서명"}}, '
-    '"insert_after_heading": "삽입할 ## 헤더 텍스트(본문에 있는 그대로, 보통 \'숫자로 보는 현황\')", '
+    '"insert_after_heading": "삽입할 ## 헤더 텍스트(본문에 있는 그대로, 보통 \'숫자로 보는 현황\' 또는 \'판단 기준\')", '
     '"caption": "차트가 보여주는 핵심 한 문장"}}\n'
     '규칙:\n'
     '- labels 와 각 series.values 개수는 반드시 같아야 합니다. values 에는 단위·기호 없이 숫자만 넣습니다.\n'
@@ -271,8 +282,21 @@ QA_PROMPT = (
 
 
 # ───────────────────────────── 보조
-def rubric_text() -> str:
-    return '\n'.join(f'- {k}: {desc}' for k, (_, desc) in RUBRIC.items())
+# 장르마다 구조·근거 항목의 설명만 바뀐다(가중치는 같다 — 점수 기준선 80·65를 그대로 쓴다)
+RUBRIC_BY_GENRE = {
+    'tutorial': {
+        'evidence': '근거 — 공식 문서·스펙 비교표와 출처, 실행 확인된 예제 결과, 팩트체크 통과 여부. '
+                    '통계가 없는 주제에 통계를 요구하지 마세요',
+    },
+}
+
+
+def rubric_text(genre: str = 'data') -> str:
+    from .genres import spec
+    desc = {k: d for k, (_, d) in RUBRIC.items()}
+    desc['structure'] = f"구조 준수 — {spec(genre)['outline']}"
+    desc.update(RUBRIC_BY_GENRE.get(genre, {}))
+    return '\n'.join(f'- {k}: {d}' for k, d in desc.items())
 
 
 def body_length(content: str) -> int:
@@ -309,7 +333,16 @@ def strip_visual_block(content: str) -> str:
     NOTE = re.compile(r'^\*[^\n]*(?:출처|단위)[^\n]*\*\s*$')
     TABLE = re.compile(r'^\|.*\|\s*$')
 
-    chunks = [c.strip() for c in re.split(r'\n\s*\n', content) if c.strip()]
+    # 코드 블록은 통째로 보존한다. 예전엔 빈 줄로 나눈 덩어리마다 strip() 해서, 코드 블록 안에서 빈 줄 뒤에 오는
+    # 줄의 들여쓰기가 지워지고 연속 빈 줄이 합쳐졌다 — 재작성·패치를 거칠 때마다 파이썬 예제가 깨졌다
+    # (2026-11-01 v3 파일럿 2·3차: class Meta·test 메서드가 클래스 밖으로 빠짐). 문단 앞 공백(중첩 목록)도 지킨다.
+    codes = []
+
+    def keep(m):
+        codes.append(m.group(0))
+        return f'\x00CODE{len(codes) - 1}\x00'
+    content = re.sub(r'```.*?```', keep, content or '', flags=re.S)
+    chunks = [c.strip('\n') for c in re.split(r'\n[ \t]*\n', content) if c.strip()]
 
     def kind(chunk: str) -> str:
         lines = chunk.splitlines()
@@ -348,7 +381,8 @@ def strip_visual_block(content: str) -> str:
                 break
             j += 1
         i = j
-    return '\n\n'.join(out).strip() + '\n'
+    text = '\n\n'.join(out).strip('\n') + '\n'
+    return re.sub(r'\x00CODE(\d+)\x00', lambda m: codes[int(m.group(1))], text)
 
 
 def has_visual(content: str) -> bool:
@@ -398,6 +432,18 @@ def merge_reviews(panel: list) -> dict:
     merged = dict(base)
     merged.update(scores=scores, fatal=[f for f, n in counts.items() if n * 2 > len(valid)], panel=each)
     return merged
+
+
+def early_hold(qa: dict, check: dict) -> str:
+    """자동 수정 1회로 수렴할 가망이 낮으면 그 이유, 아니면 ''(B안 — 보류될 글이 한도를 다 쓰지 않게)."""
+    # 원장 밖 주장(office.grounded)은 좁히거나 지우면 되는 결함이라 세지 않는다 — 틀렸거나 웹으로도 확인 못 한 것만
+    bad = [c for c in (check or {}).get('claims') or [] if isinstance(c, dict) and c.get('status') in BAD_CLAIMS
+           and not c.get('out_of_ledger')]
+    if len(bad) >= EARLY_HOLD_BAD:
+        return f'첫 사실 검증에서 확인 필요 {len(bad)}건'
+    if (qa.get('score') or 0) < MINOR_SCORE:
+        return f"첫 편집 심사 {qa.get('score')}점(수정 기준 {MINOR_SCORE}점 미만)"
+    return ''
 
 
 def verdict_of(score: int, fatal: list) -> str:
@@ -532,6 +578,8 @@ def step_brief(topic_key: str, brief_decision, recent: list, *, rec=None) -> dic
         topic_hint=topic['topic_hint'], audience=topic['audience'], subject=subject,
         detail=chosen.get('detail', ''), recent='\n'.join(f'- {t}' for t in recent) or '(없음)',
         recency=recency_rule()), max_tokens=3000)
+    from .genres import genre_for
+    brief['genre'] = genre_for(topic_key, brief)   # 모델이 모르는 값을 내면 분야 기본값
 
     metrics = ask_agent_json('charter', METRICS_PROMPT.format(
         subject=subject, detail=chosen.get('detail', ''), angle=brief.get('angle', ''),
@@ -692,7 +740,9 @@ def step_blueprint(topic_key: str, brief_decision, brief: dict, recent: list) ->
 @live_step('draft')
 def step_draft(topic_key: str, brief_decision, brief: dict, recent: list, blueprint: str = '') -> tuple:
     """2) 집필. blueprint: 검증관이 먼저 확인한 설계도(office.blueprint.block) — 있으면 그대로 쓰게 한다."""
+    from . import genres as G
     topic = TOPICS[topic_key]
+    genre = G.genre_for(topic_key, brief)
     chosen = (brief_decision.chosen or {}) if brief_decision else {}
     if chosen:
         subject_block = ('이번 칼럼 주제는 편집회의에서 결정되었습니다. 이 주제로 작성하세요.\n'
@@ -712,8 +762,8 @@ def step_draft(topic_key: str, brief_decision, brief: dict, recent: list, bluepr
         today=datetime.now().strftime('%Y년 %m월 %d일'), topic_hint=topic['topic_hint'], audience=topic['audience'],
         subject_block=subject_block, angle=brief.get('angle', ''), questions=lst('questions'),
         data_needed=lst('data_needed'), cases=lst('cases'), counterpoint=brief.get('counterpoint', ''),
-        avoid=lst('avoid'), avoid_titles=avoid_titles, structure=COLUMN_STRUCTURE,
-        standard=writing_standard(topic_key)) + blueprint
+        avoid=lst('avoid'), avoid_titles=avoid_titles, structure=G.structure(genre),
+        standard=writing_standard(topic_key, genre)) + blueprint
     return parse_output(ask_agent(TOPIC_AGENT_OF[topic_key], prompt, max_tokens=COLUMN_MAX_TOKENS))
 
 
@@ -726,20 +776,24 @@ FIX_PROMPT = (
 
 
 @live_step('fix')
-def step_fix_draft(topic_key: str, subject: str, content: str, issues: list, pack: str = '') -> tuple:
+def step_fix_draft(topic_key: str, subject: str, content: str, issues: list, pack: str = '',
+                   genre: str | None = None) -> tuple:
     """초안 자동 점검 지적을 반영해 다시 쓴다. 반환 (subject, content, 남은 지적).
     pack: 근거 묶음(office.evidence) — 있으면 그 사실을 함께 물려 주고, 다시 점검할 때도 대조한다."""
+    from .genres import genre_for, structure
+    genre = genre or genre_for(topic_key, content=content)
     raw = ask_agent(TOPIC_AGENT_OF[topic_key], FIX_PROMPT.format(
         issues='\n'.join(f'- {i}' for i in issues), subject=subject, content=content,
-        structure=COLUMN_STRUCTURE) + pack_block(pack), max_tokens=COLUMN_MAX_TOKENS)
+        structure=structure(genre)) + pack_block(pack), max_tokens=COLUMN_MAX_TOKENS)
     new_subject, new_content = parse_output(raw)
     # 고치려다 더 나빠지면 원고를 버리지 않는다 (safe_rewrite 와 같은 이유)
     if body_length(new_content) < body_length(content) * 0.6:
         return subject, content, issues
-    return new_subject, new_content, precheck_draft(new_content, pack)
+    return new_subject, new_content, precheck_draft(new_content, pack, genre)
 
 
-REQUIRED_SECTIONS = ['왜 지금인가', '숫자로 보는 현황', '현장의 변화', '시사점', '맺음말', '참고 자료']
+from .genres import GENRES as _GENRES
+REQUIRED_SECTIONS = _GENRES['data']['required']   # 데이터 칼럼 틀(audit_columns 호환). 장르별은 office.genres
 
 
 def pack_block(pack: str) -> str:
@@ -772,7 +826,7 @@ def lock_numbers(content: str, pack: str, *, baseline: str | None = None,
     return new, removed
 
 
-def precheck_draft(content: str, pack: str = '') -> list:
+def precheck_draft(content: str, pack: str = '', genre: str | None = None) -> list:
     """초안이 기본 요건을 갖췄는지 코드로 확인. 반환: 지적 목록(비면 통과).
 
     팩트체크·평론·심사는 모두 모델 호출이라, 뻔한 결함을 거기서 걸러내면 호출을 세 번 더
@@ -787,7 +841,9 @@ def precheck_draft(content: str, pack: str = '') -> list:
         issues.append(f'본문이 {length:,}자로 하한 {MIN_CHARS:,}자에 미달합니다. '
                       '분량을 채우려 같은 말을 반복하지 말고 메커니즘·사례·반론을 더 파고드세요.')
 
-    missing = [s for s in REQUIRED_SECTIONS if s not in content]
+    from .genres import genre_for, spec
+    g = spec(genre or genre_for(content=content))
+    missing = [s for s in g['required'] if s not in content]
     if missing:
         issues.append(f'필수 섹션이 없습니다: {", ".join(missing)}')
 
@@ -798,15 +854,20 @@ def precheck_draft(content: str, pack: str = '') -> list:
 
     # '숫자로 보는 현황' 안의 수치 개수 — 비교할 값이 없으면 차트도 못 만들고 근거도 약하다
     sec = re.split(r'\n##\s', content)
-    data_sec = next((s for s in sec if s.startswith('숫자로 보는 현황')), '')
+    data_sec = next((s for s in sec if s.startswith(g['evidence_section'])), '')
     numbers = re.findall(r'\d[\d,]*\.?\d*\s*(?:%|명|건|배|억|만|점|위|달러|원)', data_sec)
     # 근거는 두 방식 중 하나면 된다: 공표 통계 3개 이상, 또는 공식 문서·스펙을 옮긴 비교표(3행 이상 + 출처).
     # 통계가 없는 기술 주제(#36 Jujutsu)에 수치 3개를 강요하자, 작가가 '공식 문서가 분류한 제약 11개'라는
     # 수치를 만들어 냈고 첫 심사에서 근거 없는 수치·과장으로 치명 판정을 받았다.
     table_rows = [ln for ln in data_sec.splitlines() if re.match(r'^\|(?!\s*:?-{2,})', ln)]
     spec_table = len(table_rows) >= 4 and re.search(r'출처|공식 문서|https?://', data_sec)
-    if len(numbers) < 3 and not spec_table:
-        issues.append(f'"숫자로 보는 현황"에 근거가 부족합니다(단위가 붙은 수치 {len(numbers)}개). '
+    where = g['evidence_section']
+    if g is spec('tutorial'):
+        if not spec_table:          # 기술 해설의 근거는 통계가 아니라 출처 있는 비교표
+            issues.append(f'"{where}"에 공식 문서·스펙을 옮긴 비교표(3행 이상, 출처 명시)가 없습니다. '
+                          '통계나 필자가 만든 숫자로 대신하지 마세요.')
+    elif len(numbers) < 3 and not spec_table:
+        issues.append(f'"{where}"에 근거가 부족합니다(단위가 붙은 수치 {len(numbers)}개). '
                       '공표 통계가 있는 주제라면 비교 가능한 수치 3개 이상을 기관·보고서명과 함께 넣고, '
                       '통계가 없는 기술 주제라면 공식 문서·스펙을 옮긴 비교표(3행 이상, 출처 명시)로 근거를 대세요. '
                       '어느 쪽이든 수치를 만들어 내거나 필자가 정한 묶음을 공식 분류처럼 쓰면 반려됩니다.')
@@ -816,13 +877,17 @@ def precheck_draft(content: str, pack: str = '') -> list:
     fake = re.search(r'(가상의?|가정한?|예시로? 든|임의의|허구의)\s*[^\n]{0,20}'
                      r'(조직|기업|회사|팀|사례|수치|값|데이터)', data_sec)
     if fake:
-        issues.append(f'"숫자로 보는 현황"을 지어낸 수치로 채웠습니다("{fake.group(0)[:30]}"). '
+        issues.append(f'"{where}"을 지어낸 수치로 채웠습니다("{fake.group(0)[:30]}"). '
                       '근거 섹션에는 실제 조사·보고서의 값만 씁니다. '
                       '쓸 수치가 없으면 주제를 좁히거나 다른 지표를 찾으세요.')
 
     # 운영 심사에서 반복된 지적(같은 수치 3회 반복·없는 표 언급)도 여기서 잡는다
     from .quality import precheck_issues
     issues += precheck_issues(content)
+
+    # 코드 예제 — 문서 대조로는 못 잡는 파싱 실패·클래스 밖 테스트 메서드(2026-10-31 B 파일럿)
+    from .code_check import static_issues
+    issues += static_issues(content)
 
     # 근거 묶음에 없는 수치 — 기억으로 쓴 숫자는 심사에서 '확인 불가'(치명)로 반려된다(#89·#100)
     from . import evidence as E
@@ -832,9 +897,21 @@ def precheck_draft(content: str, pack: str = '') -> list:
     return issues
 
 
-def writing_standard(topic_key: str = '') -> str:
+EVIDENCE_RULES = {
+    'data': ('"숫자로 보는 현황"에 근거: 공표 통계 수치 3개 이상(기관·보고서명과 함께) **또는** 통계가 없는 기술 주제라면\n'
+             '   공식 문서·스펙을 옮긴 비교표(3행 이상, 출처 명시). 필자가 정한 묶음·점수를 공식 분류처럼 쓰지 마세요'),
+    'tutorial': ('"판단 기준"에 공식 문서·스펙을 옮긴 비교표(3행 이상, 행마다 출처). 통계가 없다는 해명이나\n'
+                 '   필자가 만든 지원=1/0 같은 숫자 포장은 쓰지 마세요'),
+}
+
+
+def writing_standard(topic_key: str = '', genre: str | None = None) -> str:
     """집필 기준 + (분야를 알면) 분야 지식 팩과 모범 칼럼. 집필·재작성·운영자 재작성·리메이크가 모두 거친다."""
-    base = WRITING_STANDARD.format(min_chars=MIN_CHARS, rubric=rubric_text(), recency=recency_rule())
+    from .genres import genre_for, spec
+    genre = genre or genre_for(topic_key)
+    base = WRITING_STANDARD.format(min_chars=MIN_CHARS, rubric=rubric_text(genre), recency=recency_rule(),
+                                   sections=' / '.join(spec(genre)['required']),
+                                   evidence_rule=EVIDENCE_RULES.get(genre, EVIDENCE_RULES['data']))
     if not topic_key:
         return base
     from .arsenal import exemplar_block, knowledge_pack
@@ -854,6 +931,9 @@ HEADLINE_PROMPT = (
 
 
 def step_headline(subject: str, content: str, *, keywords=(), recent=()) -> tuple:
+    from .model_router import profile
+    if profile() == 'b':
+        return subject, '독립 검증이 끝난 제목을 유지해요.'
     """발행 직전 제목 실험실 → (최종 제목, 사유). 코드 검사를 통과한 후보만 쓰고, 아니면 원래 제목을 지킨다."""
     from .quality import _ASSERT
     try:
@@ -929,6 +1009,14 @@ def verified_block(verified: str, role: str) -> str:
     수치도 매번 '확인 불가'로 떨어지고 판정이 회차마다 흔들린다(2026-10-09 원고 #8·#9)."""
     if not verified.strip():
         return ''
+    from .model_router import profile
+    if profile() == 'b':
+        return ('\n\n[확인된 근거 — 운영자 제공 자료 또는 원문 검증 결과]\n'
+                '아래 자료와 대상·기간·단위·범위가 같은 주장만 재사용하세요. 이 묶음에 있다는 이유로 '
+                '다른 주장을 통과시키지 마세요. 해석·인과·추론은 별도로 확인하세요. '
+                '아래 확인 시점과 범위가 같은 원문은 다시 검색하지 말고 제공된 인용·위치로 본문을 대조하세요. '
+                '새 주장·달라진 범위·충돌·누락이 있을 때만 그 항목의 원문을 다시 여세요. '
+                '내부 주장/출처 ID는 공개 본문에 쓰지 마세요.\n' + verified.strip() + '\n')
     rule = {
         'checker': ('아래와 일치하는 주장은 status "verified"로 판정하고 note 에 "운영자 원문 확인"이라고 적으세요. '
                     '중복 여부도 아래 대조 결과를 따르세요. 아래에 없는 주장은 평소대로 검증합니다.'),
@@ -939,7 +1027,8 @@ def verified_block(verified: str, role: str) -> str:
 
 
 @live_step('check', 'checker')
-def step_check(subject: str, content: str, recent: list, verified: str = '', exclude_question_id=None) -> dict:
+def step_check(subject: str, content: str, recent: list, verified: str = '', exclude_question_id=None,
+               previous: dict | None = None, previous_content: str = '', evidence: list | None = None) -> dict:
     """3) 팩트체크. verified: 운영자가 원문을 확인한 사실(office_revise --facts).
     exclude_question_id: 발행된 글을 고칠 때 그 글 자신 — 본문 대조에서 빼지 않으면 자기와 겹친다고 중복 판정한다(#115).
 
@@ -950,25 +1039,70 @@ def step_check(subject: str, content: str, recent: list, verified: str = '', exc
     from .arsenal import dead_links, link_block
     from .similarity import similarity_block
     links = dead_links(content)           # 본문 URL 을 실제로 열어 본다(죽은 출처를 검증관에게 알림)
-    check = ask_agent_json('checker', CHECK_PROMPT.format(
-        titles='\n'.join(f'- {t}' for t in recent) or '(없음)', subject=subject, content=content,
-        recency=recency_rule()) + similarity_block(content, exclude_question_id=exclude_question_id) + ledger.ledger_block(content) + link_block(links)
-        + WEB_CHECK_RULE + verified_block(verified, 'checker'),
-        max_tokens=4000, tools=WEB_TOOLS)
+    from .model_router import profile
+    from .research_contract import RULE as CLAIM_RULE
+    from .delta_review import scope_check
+    from . import grounded
+    scope = None
+    if profile() == 'b' and evidence and grounded.enabled():
+        # 원장 대조 사실 관문 — 웹은 원장에 근거가 없는 주장에만(office.grounded)
+        check = grounded.check(subject, content, evidence, ask_json=ask_agent_json,
+                               titles='\n'.join(f'- {t}' for t in recent),
+                               extra=similarity_block(content, exclude_question_id=exclude_question_id)
+                               + link_block(links), web_tools=WEB_TOOLS)
+    else:
+        scope = scope_check(subject, content, previous_content, previous) if profile() == 'b' else None
+        checked_content = scope['content'] if scope else content
+        check = ask_agent_json('checker', CHECK_PROMPT.format(
+            titles='\n'.join(f'- {t}' for t in recent) or '(없음)', subject=subject, content=checked_content,
+            recency=recency_rule()) + similarity_block(content, exclude_question_id=exclude_question_id)
+            + ledger.ledger_block(content) + link_block(links)
+            + WEB_CHECK_RULE + verified_block(verified, 'checker') + (CLAIM_RULE if profile() == 'b' else ''),
+            max_tokens=4000, tools=WEB_TOOLS)
     if isinstance(check, dict):
         check['dead_links'] = [u for u, _c in links.get('dead', [])]
-    ledger.record(check)
+    from .evidence import validate_check
+    if scope:
+        check['claims'] = scope['preserved'] + list(check.get('claims') or [])
+        check['delta_scope'] = scope['metadata']
+    check = validate_check(check)
+    from .recorder import digest
+    check['content_hash'] = digest(content)
+    check['verification_hash'] = verification_hash(content)
+    check['subject'] = subject
+    from .review_batch import in_worker
+    if not in_worker():
+        ledger.record(check)
     return check
+
+
+def verification_hash(content: str) -> str:
+    """관리 도판은 별도 자동 검사하며, 본문 검증의 공백 차이는 무시한다."""
+    from .recorder import digest
+    return digest(re.sub(r'\s+', ' ', strip_visual_block(content)).strip())
 
 
 @live_step('revise')
 def step_author_revise(topic_key: str, subject: str, content: str, check: dict) -> tuple:
     """4) 팩트체크 지적 반영. 반환: (subject, content, ok, reason)"""
     bad = [c for c in check.get('claims', []) if c.get('status') in BAD_CLAIMS]
+    from .model_router import profile
+    if profile() == 'b':
+        from .patching import patch_revise
+        from .evidence import from_check
+        notes = [f"{c.get('claim')}: {c.get('note', '')}" for c in bad] + list(check.get('critical') or [])
+        return patch_revise(TOPIC_AGENT_OF[topic_key], subject, content, notes, who='독립 검증에서',
+                            guide=pack_block(from_check(check)))
     raw = ask_agent(TOPIC_AGENT_OF[topic_key], REVISE_PROMPT.format(
         notes=check.get('notes', ''), claims=json.dumps(bad, ensure_ascii=False),
-        subject=subject, content=content, structure=COLUMN_STRUCTURE), max_tokens=COLUMN_MAX_TOKENS)
+        subject=subject, content=content, structure=_structure_of(topic_key, content)),
+        max_tokens=COLUMN_MAX_TOKENS)
     return safe_rewrite(raw, subject, content)
+
+
+def _structure_of(topic_key: str, content: str) -> str:
+    from .genres import genre_for, structure
+    return structure(genre_for(topic_key, content=content))
 
 
 @live_step('chart', 'charter')
@@ -980,9 +1114,18 @@ def step_visual(content: str, topic_key: str, *, rec, dry: bool = False, feedbac
     """
     # 편집장이 그림을 지적했으면 그 지적을 받아 다시 그린다 — 예전엔 차트 담당이 지적을 못 받아
     # 재심마다 같은 '지원 상태별 개수' 그림을 그렸고 같은 이유로 네 번 보류됐다(#36)
+    res = plan_visual(content, feedback=feedback)
+    return apply_visual(content, topic_key, res, rec=rec, dry=dry)
+
+
+def plan_visual(content: str, *, feedback: str = '') -> dict:
     fb = (f'\n\n[편집장의 시각자료 지적 — 반드시 반영]\n{feedback}\n이 지적과 같은 그림을 다시 그리면 또 보류됩니다.'
           if feedback else '')
-    res = ask_agent_json('charter', CHART_PROMPT.format(content=content, feedback=fb), max_tokens=3000)
+    return ask_agent_json('charter', CHART_PROMPT.format(content=content, feedback=fb), max_tokens=3000)
+
+
+def apply_visual(content: str, topic_key: str, res: dict, *, rec, dry=False) -> tuple:
+    """불변 원고에 대한 도판 계획을 메인 실행자가 반영한다."""
     spec = res.get('spec') if isinstance(res.get('spec'), dict) else None
     if not res.get('has_data') or not spec:
         note = f"수치 부족으로 생략: {res.get('reason', '')}"[:200]
@@ -1038,12 +1181,15 @@ def length_rule(length: int) -> str:
 @live_step('review', 'editor')
 def step_review(subject: str, content: str, check: dict, chart_rel: str,
                 visual_report: str = '', critique: dict | None = None, verified: str = '',
-                previous: dict | None = None, previous_content: str = '') -> dict:
+                previous: dict | None = None, previous_content: str = '', genre: str | None = None) -> dict:
     """6) 편집 심사 — 편집장(승현)이 항목 점수를 매기고, 총점·판정은 시스템이 계산.
+    genre: 칼럼 장르(office.genres) — 없으면 원고의 소제목으로 고른다.
 
     기획을 고른 팀장이 아니라 편집장이 본다. 같은 사람이 고르고 심사하면 기획 단계의
     착오를 잡아낼 사람이 없어지기 때문이다.
     """
+    from .genres import genre_for
+    genre = genre or genre_for(content=content)
     have = '차트 이미지 있음(값은 대체 텍스트에)' if chart_rel else ('표 있음(차트 없음)' if has_visual(content) else '없음')
     visual = f'{have}\n{visual_report}' if visual_report else have
     length = body_length(content)
@@ -1057,7 +1203,7 @@ def step_review(subject: str, content: str, check: dict, chart_rel: str,
         check=json.dumps({k: v for k, v in check.items() if k != 'first'}, ensure_ascii=False)[:2500],
         critique=critique_text(critique), length=length, length_rule=length_rule(length),
         style=style_note, visual=visual, subject=subject, content=content,
-        rubric=rubric_text()) + verified_block(verified, 'editor')
+        rubric=rubric_text(genre)) + verified_block(verified, 'editor')
     from .arsenal import exemplar_block
     from . import review_protocol as R
     prompt += exemplar_block(for_editor=True)      # 채점 기준점 — 발행된 모범 칼럼과 비교해 매긴다
@@ -1066,7 +1212,11 @@ def step_review(subject: str, content: str, check: dict, chart_rel: str,
     # 기준선 근처면 두 번 더 심사해 항목별 중앙값으로 정한다. 같은 원고가 회차마다 ±5점씩 흔들려
     # (원고 #8: 78→75) 80점 근처에서는 통과 여부가 사실상 운이었다.
     first = compute_score(qa.get('scores') if isinstance(qa.get('scores'), dict) else {})
-    if abs(first - ACCEPT_SCORE) <= REVIEW_PANEL_BAND:
+    from .adjudication import resolve as resolve_disagreement
+    critique = resolve_disagreement(subject, content, qa, check, critique,
+                                   ask_json=ask_agent_json, score=first)
+    from .model_router import profile
+    if profile() != 'b' and abs(first - ACCEPT_SCORE) <= REVIEW_PANEL_BAND:
         panel = [qa] + [ask_agent_json('editor', prompt, max_tokens=3000) for _ in range(2)]
         qa = merge_reviews(panel)
 
@@ -1114,10 +1264,24 @@ def step_review(subject: str, content: str, check: dict, chart_rel: str,
     score = compute_score(scores)
     qa.update({'scores': scores, 'fatal': fatal, 'score': score, 'length': length,
                'verdict': verdict_of(score, fatal), 'rubric_version': 1})
-    return qa
+    if profile() == 'b':
+        qa['must_fix'] += [{'where': '자동 점검', 'problem': flaw,
+                            'fix': '해당 지적만 수정하고 확인된 근거를 유지하세요.', 'done_when': '자동 점검 통과'}
+                           for flaw in precheck_draft(content, verified, genre)]
+        # 본문 코드가 실제 실행에서 실패한 항목 — 모델 판단과 무관하게 필수 수정(실행 환경 차이는 제외돼 있다)
+        from .code_check import failures as code_failures
+        qa['must_fix'] += [{'where': '코드 예제 실행', 'problem': f,
+                            'fix': '실행 확인 결과의 실제 값으로 기대값을 고치거나 코드를 고치세요. 확인하지 않은 값은 쓰지 마세요.',
+                            'done_when': '같은 테스트가 실행 확인에서 통과'} for f in code_failures(verified)]
+    R.require_check(qa, check, content, subject)
+    return R.finalize(qa, previous)
+
+
+from .publishing import guarded_publication
 
 
 @live_step('publish', 'lead')
+@guarded_publication
 def publish_draft(draft: ColumnDraft, *, by=None):
     """ColumnDraft → Question 발행 + 회의 안건 소비 처리."""
     from common.management.commands.auto_write_columns import _get_or_create_bot_user

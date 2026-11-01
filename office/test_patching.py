@@ -57,3 +57,53 @@ class ReviewProtocolTests(SimpleTestCase):
         self.assertIn('"resolved"', block)
         self.assertIn('suggestions 로만', block)
         self.assertEqual(R.previous_block(None), '')
+
+
+class UnsupportedEditTests(SimpleTestCase):
+    """근거 없는 새 수치·단정을 들이는 편집은 거절한다(2026-10-31 B 파일럿: 수정이 매번 새 결함을 만듦)."""
+    PACK = '- 응답자 49,009명 — 원문: "49,009 respondents" (https://survey.example.org/2026)'
+
+    def _patch(self, edits):
+        return PT.patch_revise('coding', '제목', DOC, ['고치세요'], who='심사에서', pack=self.PACK,
+                               ask_json=lambda *a, **k: {'edits': edits, 'title': ''})
+
+    def test_new_number_outside_pack_is_rejected_but_others_apply(self):
+        subject, content, ok, why = self._patch([
+            {'find': '대안 없이 막힙니다.', 'replace': '개발자 3,812명이 대안 없이 막혔습니다.'},   # 근거 없음 → 거절
+            {'find': '셋째 문단입니다.', 'replace': '셋째 문단에는 응답자 49,009명을 적습니다.'}])  # 묶음에 있음
+        self.assertTrue(ok)
+        self.assertIn('1건 거절', why)
+        self.assertIn('대안 없이 막힙니다.', content)
+        self.assertIn('49,009명', content)
+
+    def test_numbers_already_in_the_sentence_and_new_absolutes(self):
+        keep = PT.unsupported({'find': '이미 검증된 수치 45%가 들어 있습니다.',
+                               'replace': '이미 검증된 수치 45%를 그대로 둡니다.'}, self.PACK)
+        self.assertEqual(keep, [])
+        over = PT.unsupported({'find': '셋째 문단입니다.', 'replace': '이 방법이 항상 가장 빠릅니다.'}, self.PACK)
+        self.assertTrue(over and over[0].startswith('단정'))
+
+    def test_all_blocked_keeps_original(self):
+        subject, content, ok, why = self._patch([{'find': '셋째 문단입니다.', 'replace': '매출이 1,234억 원 늘었습니다.'}])
+        self.assertFalse(ok)
+        self.assertEqual(content, DOC)
+        self.assertIn('거절', why)
+
+    def test_without_pack_nothing_is_screened(self):
+        subject, content, ok, why = PT.patch_revise(
+            'coding', '제목', DOC, ['고치세요'], who='심사에서',
+            ask_json=lambda *a, **k: {'edits': [{'find': '셋째 문단입니다.', 'replace': '매출이 1,234억 원입니다.'}]})
+        self.assertTrue(ok)
+
+
+class CodeBreakingEditTests(SimpleTestCase):
+    def test_edit_that_breaks_a_code_block_is_reverted(self):
+        doc = DOC + '\n```python\nclass T(TestCase):\n    def test_a(self):\n        pass\n```\n'
+        edits = [{'find': '    def test_a(self):\n        pass', 'replace': '    def test_a(self):\n      x = 1\n        pass'},
+                 {'find': '셋째 문단입니다.', 'replace': '셋째 문단을 고쳤습니다.'}]
+        subject, content, ok, why = PT.patch_revise('coding', '제목', doc, ['고치세요'], who='심사에서', pack='',
+                                                    ask_json=lambda *a, **k: {'edits': edits})
+        self.assertTrue(ok)
+        self.assertIn('코드 손상', why)
+        self.assertIn('        pass\n```', content)
+        self.assertIn('셋째 문단을 고쳤습니다.', content)

@@ -29,6 +29,7 @@ from office.recorder import StageRecorder
 from office.agents import TOPIC_AGENT
 from office.management.commands.audit_columns import audit_one
 from office.services import ask_agent, log
+from office.run_context import bounded_run
 
 REMAKE_PROMPT = (
     '이미 발행된 칼럼을 현재 편집 기준에 맞게 다시 만듭니다. '
@@ -88,6 +89,7 @@ class Command(BaseCommand):
         finally:
             live.finish()
 
+    @bounded_run
     def _run(self, *args, **opts):
         out = self.stdout.write
         q = Question.objects.filter(pk=opts['question'], is_deleted=False).first()
@@ -109,7 +111,7 @@ class Command(BaseCommand):
             out(self.style.SUCCESS('  이미 현재 기준을 통과합니다 — 손대지 않습니다.'))
             return
 
-        standard = P.writing_standard(topic_key)
+        standard = P.writing_standard(topic_key, 'data')   # 리메이크는 옛 칼럼을 데이터 틀(COLUMN_STRUCTURE)로 다시 쓴다
         # 단계별 산출물 기록 (내부 전용). 발행된 글을 갱신하므로 question 에 묶는다
         stages = StageRecorder(question=q, dry=opts['dry_run'])
         stages.record('audit', 'editor', {'flaws': flaws}, text=q.content)

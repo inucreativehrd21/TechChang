@@ -38,10 +38,23 @@ BLUEPRINT_PROMPT = (
 def make_blueprint(agent: str, context: str, *, ask_json, tools: tuple = ()) -> dict:
     """작가의 설계도. 실패하면 {} — 호출부는 설계도 없이 예전처럼 집필한다."""
     try:
-        bp = ask_json(agent, BLUEPRINT_PROMPT.format(context=context), max_tokens=6000, tools=tools)
+        prompt = BLUEPRINT_PROMPT.format(context=context)
+        from .model_router import profile
+        if profile() == 'b':
+            prompt += ('\n각 claim에 population(측정 대상 또는 문서/API 대상), period(측정 시점 또는 문서 버전)를 '
+                       '추가하세요. 확인할 범위를 구체적으로 적고 모르면 unknown으로 표시하세요. '
+                       '측정 대상·기간이 다른 주장은 claim 문장 자체에도 차이가 드러나게 쓰세요.')
+        bp = ask_json(agent, prompt, max_tokens=6000, tools=tools)
     except Exception as exc:  # noqa: BLE001 — 설계도는 품질 장치일 뿐, 실패해도 집필은 진행
         logger.warning('설계도 작성 실패: %s', exc)
+        from .model_router import profile
+        if profile() == 'b':
+            raise
         return {}
+    from .model_router import profile
+    if profile() == 'b' and (not isinstance(bp, dict) or not bp.get('thesis') or not bp.get('claims')):
+        from .research_contract import ContractIncomplete
+        raise ContractIncomplete('본문 작성 전에 주장과 근거를 담은 설계도가 필요해요.')
     return bp if isinstance(bp, dict) and bp.get('thesis') else {}
 
 
@@ -56,15 +69,69 @@ def verify_blueprint(bp: dict, *, ask_json, tools: tuple = (), extra: str = '') 
     if not bp:
         return {}
     claims = [c for c in (bp.get('claims') or []) if isinstance(c, dict) and str(c.get('claim', '')).strip()]
+    from .model_router import profile
+    hints = []
+    if profile() == 'b':
+        from .research_contract import valid_url
+        from .concurrency import fan_out
+        missing = [c['claim'] for c in claims if not valid_url(c.get('source', ''))][:8]
+        if missing:
+            chunks = [missing[i:i+4] for i in range(0, len(missing), 4)]
+            def task(chunk):
+                prompt = ('아래 주장을 검증할 1차 자료와 반례 자료를 찾아요. 원문을 열고 URL과 제목만 정리해요. '
+                          '검증 통과를 판정하지 마세요. 출력 JSON: {"sources": [{"url": "원문 URL", "title": "제목"}]}\n'
+                          + '\n'.join(chunk))
+                return lambda: ask_json('research', prompt, max_tokens=2500, tools=tools)
+            outcomes = fan_out({str(i): task(chunk) for i, chunk in enumerate(chunks)}, workers=2)
+            hints = [s for o in outcomes.values() if o.ok and isinstance(o.value, dict)
+                     for s in (o.value.get('sources') or []) if isinstance(s, dict) and valid_url(s.get('url'))]
+            if hints:
+                bp['research_sources'] = hints[:8]
+                extra += '\n[조사 워커가 찾은 원문 후보 — 검증 완료가 아니므로 직접 열어 대조하세요]\n' + json.dumps(hints[:8], ensure_ascii=False)
+    from common.services.claude import call_tags
     try:
-        results = E.gather(claims, ask_json=ask_json, tools=tools, extra=extra)
+        with call_tags(purpose='gather'):     # 집필 전 수집 — B안에서는 조사 모델이 맡는다(model_router)
+            results = _grounded(bp, claims, hints, extra, ask_json) if profile() == 'b' else None
+            if results is None:
+                results = E.gather(claims, ask_json=ask_json, tools=tools, extra=extra)
     except Exception as exc:  # noqa: BLE001
         logger.warning('사전 검증 실패: %s', exc)
+        from .model_router import profile
+        if profile() == 'b':
+            raise
         return {}
     ver = {'claims': results, 'pack': E.pack_text(results)}
-    ver.update({k: v for k, v in E.assess_thesis(bp, results, ask_json=ask_json).items()
-                if k in ('thesis_ok', 'thesis_note', 'missing')})
+    with call_tags(purpose='gather'):
+        thesis = E.assess_thesis(bp, results, ask_json=ask_json)
+    ver.update({k: v for k, v in thesis.items() if k in ('thesis_ok', 'thesis_note', 'missing')})
+    ver['coverage'] = {'requested': len(claims), 'reported': len(results),
+                       'verified': sum(c.get('status') == 'verified' for c in results)}
+    from .model_router import profile
+    if profile() == 'b' and (not ver['pack'] or not isinstance(ver.get('thesis_ok'), bool)):
+        from .research_contract import ContractIncomplete
+        raise ContractIncomplete('설계도의 원문 근거 또는 주장 범위 판정을 확인하지 못해 집필을 보류해요.')
     return ver
+
+
+def _grounded(bp: dict, claims: list, hints: list, extra: str, ask_json) -> list | None:
+    """설계도가 적은 출처·조사 워커가 찾은 주소를 코드가 받아(office.sources) 원장 대조로 판정한다.
+    받은 문서가 없으면 None — 호출부가 예전 웹 수집으로 간다. 원장 밖 주장은 확인 불가로 남겨 집필에 쓰지 않는다.
+    2026-11-01 v3 파일럿: 모델의 웹 수집 4묶음이 Codex 입력 506k 토큰을 썼다."""
+    from . import grounded as GR
+    from . import sources as SRC
+    from .evidence import validate_check
+    if not GR.enabled():
+        return None
+    corpus = SRC.Corpus()
+    corpus.add(SRC.urls_in(*(str(c.get('source') or '') for c in claims), *(str(h.get('url') or '') for h in hints),
+                           extra))
+    query = ' '.join(str(c['claim']) for c in claims) + ' ' + str(bp.get('thesis') or '')
+    docs = SRC.entries(corpus.select(query))
+    bp['source_docs'] = {'fetched': list(corpus.docs), 'failed': corpus.failed, 'paragraphs': len(docs)}
+    if not docs:
+        return None
+    rows = GR.verify_claims(claims, GR.entries(documents=docs), ask_json=ask_json)
+    return validate_check({'claims': rows})['claims']   # 계약 검사(인용·URL·위치·대상·기간·지지)는 같다
 
 
 def summary(bp: dict, ver: dict) -> str:
@@ -86,7 +153,7 @@ def block(bp: dict, ver: dict) -> str:
             continue
         text = str(c.get('claim', '')).strip()
         v = by_claim.get(text, {})
-        status = v.get('status', 'unverified' if ver else 'verified')
+        status = v.get('status', 'unverified')
         if status == 'verified':
             fact = v.get('value') or text
             usable.append(f"- {fact} (원문: \"{str(v.get('quote', ''))[:160]}\" {v.get('url') or c.get('source', '')})")

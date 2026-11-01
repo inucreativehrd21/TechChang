@@ -1,0 +1,98 @@
+"""칼럼 장르 — 주제 유형에 맞는 구조를 고른다.
+
+왜(2026-10-31 B 파일럿 2회): 모든 칼럼에 데이터 저널리즘 틀(왜 지금인가 / 숫자로 보는 현황 / 현장의 변화)을
+강제하자, 코딩 튜토리얼은 그 칸을 채우려고 해명("이 글은 보급률 통계 대신…")과 일반화("현장 적용 사례")를 썼다.
+그 문장이 검증에서 확인 불가로, 심사에서 필수 수정으로 다시 걸렸다(편집장 필수 수정 v1 6건 중 3건·v2 6건 중 2건,
+평론 4회 전부). 통계가 있는 주제는 지금 틀을 유지하고, 동작을 설명하는 기술 주제는 튜토리얼 틀을 쓴다.
+"""
+from __future__ import annotations
+
+import os
+
+from common.management.commands.auto_write_columns import COLUMN_STRUCTURE
+
+_SHARED_TAIL = '추가 지침:' + COLUMN_STRUCTURE.split('추가 지침:', 1)[1]
+
+TUTORIAL_STRUCTURE = """
+칼럼 구조는 아래를 엄격히 따르세요. 이 칼럼은 **동작을 설명하는 기술 해설(튜토리얼)**입니다.
+
+출력 형식 (첫 두 줄은 반드시 이 형식이어야 합니다):
+TITLE: [칼럼 제목 - 구체적이고 흥미를 끄는 한국어 제목, 30자 이내]
+---
+[이하 칼럼 본문: 마크다운 형식]
+
+칼럼 본문 구성 (순서 고정):
+
+1. **리드 문단** (헤더 없음, 2~3문장) — 독자가 실제로 막히는 장면 하나와, 이 글이 주는 판단 기준 한 줄
+
+2. **## 어디서 막히나** — 그 장면을 코드나 상황으로 구체적으로. 시의성·업계 동향·다른 글에 대한 평가는 쓰지 않습니다
+
+3. **## 판단 기준** (근거) — **필수**
+   - 공식 문서·스펙을 옮긴 **비교표**(3행 이상)와 각 행의 출처(문서 절 이름 또는 URL)
+   - 필자가 정리한 표라면 "공식 문서 설명을 재구성한 표"라고 한 줄로 밝힙니다. 통계가 없다는 해명은 쓰지 않습니다
+
+4. **## 동작 원리** — 왜 그렇게 동작하는지(메커니즘). `###` 하위 섹션 1~3개
+
+5. **## 실행 예제** — 독자가 그대로 복사해 실행할 수 있는 코드
+   - 모델·테스트 코드는 한 블록 안에서 완결되게 씁니다(필요한 import 포함, 테스트 메서드는 클래스 안에)
+   - 결과 값(쿼리 수·출력)은 실행해서 확인된 값만 적습니다. 확인하지 않았다면 값을 적지 말고 확인 방법만 보여 줍니다
+   - "필자 예상값"이나 독자에게 정답을 미루는 문장은 쓰지 않습니다
+
+6. **## 자주 하는 실수** — 함정 2~3개. 각각 잘못된 코드 → 왜 틀리는지 → 고친 코드
+
+7. **## 체크리스트** — 독자가 자기 코드에 바로 적용할 점검 항목 3~5개(글머리 기호)
+
+8. **## 맺음말** — 판단 기준을 한 번 더, 다음에 확인해 볼 것
+
+9. **## 참고 자료**
+   - 본문에서 근거로 삼은 공식 문서·소스 코드·논문을 글머리 기호(`-`)로 3~6개
+   - 실제로 존재하는 출처만 기재. 확인되지 않은 URL은 절대 지어내지 말 것
+
+10. 마지막 구분선 + 서명
+   ```
+   ---
+   *테크창 연구팀*
+   ```
+
+""" + _SHARED_TAIL
+
+GENRES = {
+    'data': {
+        'label': '데이터 칼럼',
+        'structure': COLUMN_STRUCTURE,
+        'required': ['왜 지금인가', '숫자로 보는 현황', '현장의 변화', '시사점', '맺음말', '참고 자료'],
+        'evidence_section': '숫자로 보는 현황',
+        'outline': '리드·왜 지금인가·숫자로 보는 현황·본론·현장의 변화·시사점·맺음말·참고 자료',
+    },
+    'tutorial': {
+        'label': '기술 해설',
+        'structure': TUTORIAL_STRUCTURE,
+        'required': ['어디서 막히나', '판단 기준', '동작 원리', '실행 예제', '자주 하는 실수', '체크리스트',
+                     '맺음말', '참고 자료'],
+        'evidence_section': '판단 기준',
+        'outline': '리드·어디서 막히나·판단 기준·동작 원리·실행 예제·자주 하는 실수·체크리스트·맺음말·참고 자료',
+    },
+}
+DEFAULT_BY_TOPIC = {'coding': 'tutorial'}
+
+
+def genre_for(topic_key: str = '', brief: dict | None = None, content: str = '') -> str:
+    """기획서가 고른 장르 → 이미 쓴 원고의 근거 소제목 → 분야 기본값 순.
+    재심·운영자 수정처럼 기획서가 없는 단계에서도 원고가 따르는 틀을 유지한다(옛 코딩 칼럼은 데이터 틀)."""
+    if os.environ.get('OFFICE_GENRES', '').strip().lower() not in ('1', 'true', 'yes', 'on'):
+        return 'data'
+    chosen = (brief or {}).get('genre') if isinstance(brief, dict) else None
+    if chosen in GENRES:
+        return chosen
+    for name, s in GENRES.items():
+        if f"## {s['evidence_section']}" in (content or ''):
+            return name
+    return DEFAULT_BY_TOPIC.get(topic_key, 'data')
+
+
+def spec(genre: str) -> dict:
+    return GENRES.get(genre, GENRES['data'])
+
+
+def structure(genre: str) -> str:
+    return spec(genre)['structure']

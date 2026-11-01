@@ -13,15 +13,18 @@ PACK = ('- 코칭 실무자 122,974명(2023년 대비 15% 증가) — 원문: "A
 
 
 class NumberKeyTests(SimpleTestCase):
-    def test_same_value_across_units_and_notation(self):
-        self.assertEqual(E.key('45.64'), E.key('4.564'))           # 억 달러 ↔ billion
-        self.assertEqual(E.key('53.4'), E.key('5.34'))
+    def test_decimal_and_zero_place_values_are_not_collapsed(self):
+        self.assertNotEqual(E.key('45.64'), E.key('4.564'))
+        self.assertNotEqual(E.key('53.4'), E.key('5.34'))
         self.assertEqual(E.key('122,974'), '122974')
-        self.assertEqual(E.key('10'), E.key('100,000'))            # 만 ↔ thousand
+        self.assertNotEqual(E.key('10'), E.key('100,000'))
 
     def test_quote_must_contain_the_claimed_number(self):
         self.assertTrue(E.quote_supports('산업 수익 53.4억 달러', 'Industry revenue soared to $5.34 billion'))
         self.assertFalse(E.quote_supports('응답 10,035건', 'insights from more than 10,000 coaches'))
+        self.assertFalse(E.quote_supports('매출 45.64달러', 'Revenue $4.564'))
+        self.assertFalse(E.quote_supports('매출 4,564원', 'Revenue $4,564'))
+        self.assertTrue(E.quote_supports('실무자 10만 명', '100,000 practitioners'))
 
 
 class UnmatchedTests(SimpleTestCase):
@@ -133,4 +136,24 @@ class SeriesStatsOnlyTests(SimpleTestCase):
                 '설문에서 개발자 84%가 AI 를 씁니다. 응답자는 49,009명이었습니다.\n')
         loose = [n for n, _ in E.unmatched(body, PACK, stats_only=True)]
         self.assertEqual(loose, ['84', '49,009'])                   # 통계 단위가 붙은 수치만
-        self.assertIn('5.2', [n for n, _ in E.unmatched(body, PACK)])  # 칼럼 모드라면 버전도 걸린다
+        self.assertNotIn('5.2', [n for n, _ in E.unmatched(body, PACK)])  # 명시적 제품 버전은 검증관이 의미를 확인한다
+
+    def test_detached_versions_are_not_statistics(self):
+        # 2026-10-31 B 파일럿: 검증관 supported 판정이 '5.2'를 못 찾아 확인 불가로 내려갔어요.
+        claim = '2026년 10월 기준 최신 정식 Django는 6.1.2이며, 이 글은 5.2 문서를 기준으로 설명합니다.'
+        self.assertEqual(E.significant(claim), [])
+        self.assertTrue(E.quote_supports(claim, 'The latest official version is 6.1.2.'))
+        for s in ('이 글은 지원 중인 LTS인 5.2 문서를 기준으로 해요.', '5.2 LTS 대상이에요.', '버전 4.2에서 바뀌었어요.',
+                  '| ManyToManyField | 미지원 | 지원 | QuerySet API reference 5.2, `prefetch_related()` |',
+                  'pip install "Django>=5.2,<5.3" 후 실행해요.'):
+            self.assertEqual(E.significant(s), [], s)
+
+    def test_version_context_keeps_real_statistics(self):
+        self.assertEqual(E.significant('응답자의 5.2%가 버전을 올렸어요.'), ['5.2'])
+        self.assertEqual(E.significant('평균 응답 시간은 45.64초예요.'), ['45.64'])
+        self.assertEqual(E.significant('매출 1.2.3 같은 표기는 없지만 3.5억 달러였어요.'), ['3.5'])
+
+    def test_fix_instruction_with_version_is_not_flagged(self):
+        qa = {'must_fix': [{'where': '리드', 'problem': '버전 구분',
+                            'fix': "'최신 정식 버전은 6.1.2이며, 이 글은 지원 중인 LTS인 5.2 문서를 기준으로 한다'를 넣으세요."}]}
+        self.assertEqual(R.flag_numbers(qa, PACK), 0)

@@ -42,10 +42,27 @@ def apply_edits(content: str, edits: list) -> tuple[str, int, list]:
     return content, applied, failed
 
 
+def unsupported(edit: dict, pack: str) -> list[str]:
+    """편집이 새로 들이는 근거 없는 수치·단정. 원래 문장(find)에 있던 것과 근거 묶음에 있는 것은 허용한다.
+
+    왜(2026-10-31 B 파일럿): 수정이 매번 새 결함을 만들었다(v1 수정본에 새로 틀린 테스트 주장 3건, v2 패치 29건 뒤
+    새 오류 1건). 외부 근거 없이 스스로 고치면 맞던 것도 틀리게 바뀐다(Huang et al., ICLR 2024). 수치는 근거 묶음,
+    단정은 기계 점검이 외부 기준이다.
+    """
+    from . import evidence as E
+    from .quality import overclaims
+    find, repl = str(edit.get('find') or ''), str(edit.get('replace') or '')
+    out = [f'수치 {n}' for n, _ in E.unmatched(repl, f'{pack}\n{find}')]
+    old = set(overclaims(find))
+    out += [f'단정 「{x[:30]}」' for x in overclaims(repl) if x not in old]
+    return out
+
+
 def patch_revise(agent: str, subject: str, content: str, issues: list, *, who: str, guide: str = '',
-                 tools: tuple = (), max_tokens: int = 12000, ask_json=None) -> tuple:
+                 tools: tuple = (), max_tokens: int = 12000, ask_json=None, pack: str | None = None) -> tuple:
     """반환 (subject, content, ok, why). ok=False 면 원고는 그대로 — 호출부가 전체 재작성으로 넘어간다.
-    ask_json: 모델 호출 함수(기본 services.ask_agent_json) — 호출부의 것을 넘기면 테스트에서 함께 대체된다."""
+    ask_json: 모델 호출 함수(기본 services.ask_agent_json) — 호출부의 것을 넘기면 테스트에서 함께 대체된다.
+    pack: 근거 묶음 — 주면 근거 없는 수치·단정을 새로 들이는 편집을 거절한다(원래 문장을 유지)."""
     if ask_json is None:
         from .services import ask_agent_json as ask_json
     if not issues:
@@ -58,9 +75,34 @@ def patch_revise(agent: str, subject: str, content: str, issues: list, *, who: s
         logger.warning('패치 수정 호출 실패: %s', exc)
         return subject, content, False, f'패치 호출 실패: {exc}'[:200]
     edits = [e for e in (res.get('edits') or []) if isinstance(e, dict)]
-    new_content, applied, failed = apply_edits(content, edits)
+    blocked = []
+    if pack is not None:
+        screened = []
+        for e in edits:
+            why_not = unsupported(e, pack)
+            (blocked if why_not else screened).append({**e, 'blocked': why_not} if why_not else e)
+        edits = screened
+        # 편집을 하나씩 적용하며 코드 정적 점검을 다시 본다 — 2026-11-01 v3 파일럿에서 패치가 tests.py 들여쓰기를
+        # 깨뜨려 실행 근거가 사라졌고, 실행 결과에 기대던 주장이 근거 없음이 됐다
+        from .code_check import static_issues
+        base = len(static_issues(content))
+        new_content, applied, failed = content, 0, []
+        for e in edits:
+            nxt, ok_n, _bad = apply_edits(new_content, [e])
+            if not ok_n:
+                failed.append(e)
+            elif len(static_issues(nxt)) > base:
+                blocked.append({**e, 'blocked': ['코드 블록을 깨뜨림']})
+            else:
+                new_content, applied = nxt, applied + 1
+    else:
+        new_content, applied, failed = apply_edits(content, edits)
     if not applied or len(failed) * 2 > len(edits):
-        return subject, content, False, f'패치 {len(edits)}건 중 {len(failed)}건이 원고와 일치하지 않음'
+        reason = f'패치 {len(edits)}건 중 {len(failed)}건이 원고와 일치하지 않음'
+        if blocked:
+            reason += f', 검사에 걸린 편집 {len(blocked)}건 거절({"; ".join(blocked[0]["blocked"])[:80]})'
+        return subject, content, False, reason
     new_subject = str(res.get('title') or '').strip() or subject
-    why = f'패치 {applied}건 적용' + (f', {len(failed)}건 불일치' if failed else '')
+    why = (f'패치 {applied}건 적용' + (f', {len(failed)}건 불일치' if failed else '')
+           + (f', 검사에 걸린 편집 {len(blocked)}건 거절(근거 없는 수치·단정·코드 손상)' if blocked else ''))
     return new_subject, new_content, True, why

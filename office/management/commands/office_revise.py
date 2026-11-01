@@ -15,7 +15,8 @@ from django.contrib.auth.models import User
 from django.core.management.base import BaseCommand, CommandError
 from django.utils import timezone
 
-from common.management.commands.auto_write_columns import COLUMN_STRUCTURE, TOPICS
+from common.management.commands.auto_write_columns import TOPICS
+from office import genres as G
 from office import live
 from office import evidence as E
 from office import pipeline as P
@@ -24,6 +25,7 @@ from office import schedule as S
 from office.agents import AGENTS, TOPIC_AGENT
 from office.models import ColumnDraft
 from office.services import ask_agent, log
+from office.run_context import bounded_run
 
 
 class Command(BaseCommand):
@@ -47,6 +49,7 @@ class Command(BaseCommand):
         finally:
             live.finish()
 
+    @bounded_run
     def _run(self, *args, **opts):
         draft = ColumnDraft.objects.filter(pk=opts['draft']).first()
         if draft is None:
@@ -97,15 +100,16 @@ class Command(BaseCommand):
                 content = edited if edited is not None else draft.content
                 rec('lead', 'revise', f'운영자 직접 교열본으로 재심 요청: {subject} ({P.body_length(content)}자)')
             else:
-                # 1) 운영자 지시 반영 재작성
+                # 1) 운영자 지시 반영 재작성 — 원고가 따르는 틀(office.genres)을 유지한다
+                genre = G.genre_for(topic_key, content=draft.content)
                 live.mark('revise', writer, topic_key)
                 raw = ask_agent(writer, P.ADMIN_REVISE_PROMPT.format(
                     admin_note=admin_note + (f'\n\n[운영자가 원문을 확인한 사실 — 이것만 새로 쓸 수 있습니다]\n{facts}'
                                              if facts else ''),
                     qa_issues='\n'.join(f'- {i}' for i in R.revision_notes(prev_qa)) or '(없음)',
                     check_notes=prev_check.get('notes', '') or '(없음)',
-                    subject=draft.subject, content=draft.content, structure=COLUMN_STRUCTURE,
-                    standard=P.writing_standard(topic_key)) + P.pack_block(pack),
+                    subject=draft.subject, content=draft.content, structure=G.structure(genre),
+                    standard=P.writing_standard(topic_key, genre)) + P.pack_block(pack),
                     max_tokens=P.COLUMN_MAX_TOKENS)
                 subject, content, ok, why = P.safe_rewrite(raw, draft.subject, draft.content)
                 if not ok:

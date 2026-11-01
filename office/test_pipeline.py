@@ -137,6 +137,17 @@ FIGURE_OLD = (
 class StripVisualBlockTests(TestCase):
     """도판을 못 지우면 재작성 때 그림이 두 번 실린다 (draft #6 에서 실제로 발생)."""
 
+    def test_code_blocks_and_nested_lists_keep_indentation(self):
+        # 2026-11-01 v3 파일럿: 빈 줄 뒤 4칸 들여쓴 줄(class Meta·test 메서드)의 들여쓰기가 지워져 예제가 깨졌다
+        code = ('```python\nclass Blog(models.Model):\n    name = models.CharField(max_length=100)\n\n'
+                '    class Meta:\n        app_label = "demo"\n\n\nclass T(TestCase):\n\n'
+                '    def test_a(self):\n        pass\n```')
+        body = '## 실행 예제\n\n앞 문단입니다.\n\n' + code + '\n\n- 목록\n\n    - 중첩 목록\n\n' + FIGURE_NEW + '\n뒷 문단입니다.\n'
+        out = P.strip_visual_block(body)
+        self.assertIn(code, out)
+        self.assertIn('\n    - 중첩 목록', out)
+        self.assertNotIn('![', out)
+
     def test_new_journal_format_is_removed(self):
         body = '## 숫자로 보는 현황\n\n앞 문단입니다.\n\n' + FIGURE_NEW + '\n## 다음 절\n\n뒷 문단입니다.\n'
         out = P.strip_visual_block(body)

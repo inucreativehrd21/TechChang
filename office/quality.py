@@ -183,7 +183,38 @@ def precheck_issues(content: str) -> list[str]:
     if memo:
         issues.append(f'게재 전 메모·작성 과정 문장이 본문에 남아 있습니다: 「{memo[0][:50]}」. '
                       '운영자에게 하는 말·확인하지 못한 사정·자리표시는 모두 지우고, 확인 못 한 내용은 본문에서 빼세요.')
+    over = overclaims(content)
+    if over:
+        shown = ' / '.join(f'「{s[:45]}」' for s in over[:3])
+        issues.append(f'근거가 직접 말하지 않는 단정·일반화 {len(over)}문장: {shown}. '
+                      "원문이 그 범위를 그대로 말하지 않으면 범위를 좁히세요(예: '항상'→'공식 예제에서는', "
+                      "'흔한 소개글은'→ 삭제하고 이 글의 기준만). 다른 글·현장에 대한 평가는 쓰지 않습니다.")
     return issues + recency_issues(content)
+
+
+# 범위를 넘는 단정·일반화 — 2026-10-31 B 파일럿 2회에서 검증에 걸린 주장 28건 중 9건이 단정 표현
+# ('항상 객체 하나', '반드시 쿼리 1회', '가장 빠른 방법'), 7건이 남의 글·현장에 대한 일반화였다.
+# 독자에게 권하는 문장('반드시 확인하세요')과 부정문('항상 그런 것은 아닙니다')은 주장이 아니므로 뺀다.
+_ABSOLUTE = re.compile(r'항상|반드시|무조건|언제나|절대로?|결코|예외\s*없이|모든\s*경우|유일한|'
+                       r'가장\s*(?:빠른|좋은|흔한|많이|쉬운|확실한|중요한|효과적)')
+_GENERAL = re.compile(r'흔한\s*(?:소개글|글|설명|자료|강의)|대부분의\s*(?:글|블로그|자료|강의|개발자|팀|입문자)|'
+                      r'(?:많은|여러)\s*(?:블로그|글|강의)(?:가|는|에서|들)|현장에서는|업계에서는|팀\s*코드에서')
+_NOT_CLAIM = re.compile(r'(?:아닙니다|않습니다|아니에요|않아요|없습니다|아니라|세요[.!]?$|십시오[.!]?$)')
+
+
+def overclaims(content: str) -> list[str]:
+    """본문 문장(코드·표·인용·제목 제외) 가운데 단정·일반화 표현이 든 주장 문장."""
+    body = re.sub(r'```.*?```', '', prose(content), flags=re.S)
+    out = []
+    for line in body.splitlines():
+        s = line.strip()
+        if not s or s.startswith(('#', '>', '*그림', '*표', '<!--')):
+            continue
+        for sent in _SENT_END.split(s):
+            sent = sent.strip()
+            if (_ABSOLUTE.search(sent) or _GENERAL.search(sent)) and not _NOT_CLAIM.search(sent):
+                out.append(sent)
+    return out
 
 
 # 작성 과정 메모 — 독자가 아니라 운영자·편집자에게 하는 말. #36 끝에 '[운영자 확인 요청 — 발행 전 삭제]'
