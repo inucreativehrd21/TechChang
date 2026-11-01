@@ -49,6 +49,7 @@ class ClaudeModel(str, Enum):
     # thinking 이 기본 adaptive 로 켜지고 effort 기본값이 high 라, 출력 예산이 작으면 본문이
     # 비어 돌아올 수 있다 — ask() 가 빈 응답이면 예산을 늘려 한 번 더 부른다.
     SONNET_5_5 = 'claude-sonnet-5-5'
+    OPUS_5_5 = 'claude-opus-5-5'
     # ── 이하 구버전: 코드에서 더 쓰지 않는다(기록·비교용으로만 남김)
     SONNET_5 = 'claude-sonnet-5'
     SONNET = 'claude-sonnet-4-6'
@@ -94,6 +95,8 @@ def ask(
     tools: tuple = (),
     output_schema: dict | None = None,
     allow_codex: bool = True,
+    provider: str | None = None,
+    reasoning_effort: str | None = None,
 ) -> str:
     """
     Claude에게 단일 질문을 보내고 응답 문자열을 반환합니다.
@@ -117,7 +120,8 @@ def ask(
     tools: CLI 경로에서만 켜는 Claude Code 내장 도구(예: ('WebSearch', 'WebFetch')).
            API 폴백에서는 쓰지 않는다 — 웹 검색은 API 에서 별도 과금이라 비용 정책상 막는다.
     """
-    rec = {'model': str(model), 'requested_model': str(model), 'attempts': [],
+    rec = {'model': str(model), 'requested_model': str(model), 'requested_provider': provider or 'claude',
+           'reasoning_effort': reasoning_effort, 'attempts': [],
            'backend': '', 'seconds': 0.0, 'fallback': '', 'error': '',
            'input_tokens': None, 'output_tokens': None, 'tags': dict(_call_tags.get()), 'tools': list(tools)}
     started = time.monotonic()
@@ -126,6 +130,13 @@ def ask(
     if tools:
         cli_extra['tools'] = tuple(tools)
     try:
+        if provider is not None:
+            if provider == 'codex' and not allow_codex:
+                raise RuntimeError('이 요청은 Codex 제공자를 사용할 수 없어요.')
+            return subscriptions.ask_direct(
+                provider, lambda: _cli_ask(prompt, system=system, model=model, **cli_extra),
+                prompt, system=system, model=model, timeout=timeout, tools=tuple(tools), record=rec,
+                reasoning_effort=reasoning_effort, output_schema=output_schema)
         if subscriptions.enabled():
             try:
                 out = subscriptions.ask(

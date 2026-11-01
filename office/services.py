@@ -15,7 +15,7 @@ from django.db.models import Sum
 from django.utils import timezone
 
 from common.services.claude import ask
-from .agents import AGENTS, MODEL
+from .agents import AGENTS, execution_agent
 from .models import ColumnDraft, Decision, Meeting, WorkLog
 
 BOT_USERNAME = 'techchang연구팀'
@@ -90,7 +90,7 @@ def _spool_ask(spool: str, key: str, prompt: str, max_tokens: int, tools: tuple 
     from common.services.claude import _call_tags
 
     os.makedirs(spool, exist_ok=True)
-    agent = AGENTS[key]
+    agent = execution_agent(key)
     with _spool_lock:
         seq = _spool_next_seq(spool)
         meta = {'seq': seq, 'agent': key, 'name': agent['name'], 'title': agent['title'],
@@ -150,9 +150,30 @@ def ask_agent(key: str, prompt: str, *, max_tokens: int = 2000, tools: tuple = (
     spool = os.environ.get(SPOOL_ENV)
     if spool:
         return _spool_ask(spool, key, prompt, max_tokens, tools=tuple(tools))
-    out = ask(prompt, system=AGENTS[key]['system'], model=MODEL, max_tokens=max_tokens, tools=tuple(tools)).strip()
+    from common.services.claude import _call_tags
+    from .model_router import route_for
+    tags = _call_tags.get()
+    route = route_for(key, stage=tags.get('stage', ''), purpose=tags.get('purpose', ''))
+    from .run_context import current, signature
+    context = current()
+    def request(tokens):
+        payload = {'agent': key, 'system': execution_agent(key)['system'], 'prompt': prompt,
+                   'route': route.kwargs(), 'tools': list(tools), 'max_tokens': tokens}
+        sig = signature(payload)
+        if context:
+            cached = context.cached(sig)
+            if cached is not None:
+                return cached
+        timeout = context.reserve() if context else None
+        extra = {'timeout': timeout} if timeout else {}
+        text = ask(prompt, system=execution_agent(key)['system'], max_tokens=tokens, tools=tuple(tools),
+                   **route.kwargs(), **extra).strip()
+        if context:
+            context.remember(sig, text)
+        return text
+    out = request(max_tokens)
     if not out:
-        out = ask(prompt, system=AGENTS[key]['system'], model=MODEL, max_tokens=max_tokens * 2, tools=tuple(tools)).strip()
+        out = request(max_tokens * 2)
     return out
 
 

@@ -73,7 +73,8 @@ def parse_result(proc):
                    'cached_input_tokens': usage.get('cached_input_tokens'), 'web_search_calls': web_search_calls}
 
 
-def ask(prompt: str, *, system='', timeout=None, tools=(), output_schema=None):
+def ask(prompt: str, *, system='', timeout=None, tools=(), output_schema=None,
+        model=None, reasoning_effort=None):
     unknown = set(tools) - SAFE_TOOLS
     if unknown:
         raise ProviderUnavailable('허용하지 않은 Codex 도구를 요청했어요.', provider='codex', kind='config')
@@ -82,7 +83,8 @@ def ask(prompt: str, *, system='', timeout=None, tools=(), output_schema=None):
         raise ProviderUnavailable('codex 실행 파일을 찾을 수 없어요.', provider='codex', kind='config')
     env = child_environment()
     require_chatgpt_login(binary, env)
-    effort = os.environ.get('CODEX_REASONING_EFFORT', 'medium')
+    selected_model = model or model_name()
+    effort = reasoning_effort or os.environ.get('CODEX_REASONING_EFFORT', 'medium')
     if effort not in ('low', 'medium', 'high', 'xhigh'):
         raise ProviderUnavailable('CODEX_REASONING_EFFORT 설정을 확인해 주세요.', provider='codex', kind='config')
     with tempfile.TemporaryDirectory(prefix='techchang-codex-') as directory:
@@ -107,7 +109,7 @@ def ask(prompt: str, *, system='', timeout=None, tools=(), output_schema=None):
         }
         cmd = [binary, '--ask-for-approval', 'never', 'exec', '--ignore-user-config',
                '--strict-config', '--ephemeral', '--skip-git-repo-check', '--json',
-               '--sandbox', 'read-only', '--model', model_name()]
+               '--sandbox', 'read-only', '--model', selected_model]
         for key, value in config.items():
             cmd += ['-c', f'{key}={json.dumps(value, ensure_ascii=False)}']
         if output_schema is not None:

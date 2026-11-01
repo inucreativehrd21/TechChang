@@ -86,9 +86,26 @@ def _invoke(provider, fn, record, timeout):
         retry_at=None, probe_until=None, failure_kind='', reason='', updated_at=timezone.now())
     record['attempts'].append({'provider': provider, 'ok': True})
     record.update(backend='cli' if provider == 'claude' else 'codex_cli', **usage)
-    if provider == 'codex':
+    if provider == 'codex' and not record.get('direct_provider'):
         record['model'] = codex.model_name()
     return out
+
+
+def ask_direct(provider, primary, prompt, *, system, model, timeout, tools, record,
+               reasoning_effort=None, output_schema=None):
+    """역할별 구독 선택. 장애 폴백과 구분하며 다른 제공자/API로 우회하지 않는다."""
+    if provider not in ('claude', 'codex'):
+        raise ValueError('지원하지 않는 구독 제공자예요.')
+    if os.environ.get('CLAUDE_BACKEND', 'cli').lower() != 'cli':
+        raise RuntimeError('연구실 모델 선택에는 CLAUDE_BACKEND=cli가 필요해요. 유료 API는 호출하지 않아요.')
+    record.update(direct_provider=provider, model=str(model))
+    seconds = timeout or int(os.environ.get('CODEX_CLI_TIMEOUT' if provider == 'codex' else 'CLAUDE_CLI_TIMEOUT', '1200'))
+    if provider == 'claude':
+        return _invoke(provider, primary, record, seconds)
+    with codex_lock(timeout=int(os.environ.get('CODEX_LOCK_TIMEOUT', '1200'))):
+        return _invoke(provider, lambda: codex.ask(
+            prompt, system=system, model=str(model), reasoning_effort=reasoning_effort,
+            timeout=seconds, tools=tools, output_schema=output_schema), record, seconds)
 
 
 def ask(primary, prompt, *, system, timeout, tools, record, output_schema=None, allow_fallback=True):
