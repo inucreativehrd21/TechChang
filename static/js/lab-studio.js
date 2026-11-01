@@ -23,7 +23,6 @@ function renderPerson() {
   const current = state.agents?.find(a => a.key === selected);
   selectButtons.forEach(b => b.setAttribute('aria-pressed', String(b.dataset.agent === selected)));
   $('lab-show-all').hidden = !agent;
-  $('lab-person-mark').textContent = agent ? agent.name[0] : '연';
   $('lab-person-name').textContent = agent?.name || '연구원을 만나 보세요';
   $('lab-person-role').textContent = agent?.title || '함께 만드는 연구';
   $('lab-person-duty').textContent = agent?.duty || '자료를 찾는 순간부터 글이 공개될 때까지, 각자 맡은 일이 있어요.';

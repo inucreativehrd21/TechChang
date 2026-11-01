@@ -27,7 +27,7 @@ export async function createLabScene({canvas, labels, roster, onSelect, reducedM
   flow.setAttribute('viewBox', '0 0 1536 1024');
   flow.setAttribute('aria-hidden', 'true');
   flow.classList.add('tc-lp-flow');
-  for (const className of ['tc-lp-trail', 'tc-lp-stream']) {
+  for (const className of ['tc-lp-halo', 'tc-lp-trail', 'tc-lp-stream', 'tc-lp-glint']) {
     const path = document.createElementNS(ns, 'path');
     path.setAttribute('d', layout.flow);
     path.setAttribute('class', className);
