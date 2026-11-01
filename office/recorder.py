@@ -20,15 +20,29 @@ def digest(text: str) -> str:
 
 class StageRecorder:
     def __init__(self, *, draft=None, question=None, meeting=None, dry: bool = False, run_id=None):
+        from .run_context import current
+        context = current()
+        run_id = run_id or (context.run_id if context else None)
         self.run_id = run_id or uuid.uuid4()
         self.draft, self.question, self.meeting = draft, question, meeting
         self.dry = dry
         self.seq = 0
+        if run_id and not dry:
+            from .models import StageRun
+            from django.db.models import Max
+            self.seq = StageRun.objects.filter(run_id=self.run_id).aggregate(n=Max('seq'))['n'] or 0
         self.stages: list[dict] = []
 
     def record(self, stage: str, agent: str = '', output=None, *, status: str = 'ok', kind: str = '',
                sender: str = '', recipient: str = '', attempt: int = 1, text: str = '',
                seconds: float = 0.0, calls=None, error: str = '') -> dict:
+        from .run_context import current
+        context = current()
+        if context:
+            if calls is None:
+                calls = [c for c in context.active_calls if c.get('tags', {}).get('stage') == stage
+                         and id(c) not in context.recorded_call_ids]
+            context.recorded_call_ids.update(id(c) for c in calls)
         self.seq += 1
         row = {
             'seq': self.seq, 'stage': stage, 'agent': agent, 'kind': kind, 'sender': sender,

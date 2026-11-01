@@ -68,6 +68,9 @@ def taken(at, *, topic: str | None = None, series_key: str | None = None):
 def finish_accepted(draft, publish, *, by=None):
     """심사를 통과한 원고 — 공개 예정 시각이 남았으면 '공개 대기'로 두고(None 반환), 지났거나 없으면 바로 발행."""
     from office.models import ColumnDraft
+    from .review_protocol import publishable
+    if not publishable(draft.qa_report or {}):
+        raise ValueError('필수 결함이 없고 심사를 통과한 원고만 공개 대기로 보낼 수 있어요.')
     if draft.publish_at and draft.publish_at > timezone.now() and not draft.target_question_id:
         draft.status = ColumnDraft.STATUS_READY
         if by is not None:
@@ -86,11 +89,18 @@ def publish_now(draft, *, by=None):
     """공개 대기 원고를 지금 발행한다(예정 시각 도래 또는 운영자의 '지금 공개')."""
     from office import pipeline as P
     from office.services import log
+    from .review_protocol import publishable
+    manual_approval = bool(draft.decided_by_id and draft.decided_at
+                           and getattr(draft.decided_by, 'is_staff', False)
+                           and not publishable(draft.qa_report or {}))
+    if not publishable(draft.qa_report or {}) and not manual_approval:
+        raise ValueError('심사 미통과 또는 필수 결함이 남은 원고는 공개할 수 없어요.')
+    extra = {'manual': True} if manual_approval else {}
     if draft.series_key:
         from office.series_pipeline import publish
-        q = publish(draft, by=by)
+        q = publish(draft, by=by or (draft.decided_by if manual_approval else None), **extra)
     else:
-        q = P.publish_draft(draft, by=by)
+        q = P.publish_draft(draft, by=by or (draft.decided_by if manual_approval else None), **extra)
     log('lead', 'publish', f'발행: {draft.subject} (id={q.pk}, {(draft.qa_report or {}).get("score", "-")}점)'
                            + (' — 예정 시각 공개' if by is None else ' — 운영자가 바로 공개'), draft=draft)
     return q

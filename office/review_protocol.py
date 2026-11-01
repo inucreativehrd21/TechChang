@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import difflib
 import re
+import hashlib
 
 MAX_MUST_FIX = 8
 
@@ -39,14 +40,18 @@ RULE = (
 
 def previous_block(previous: dict | None) -> str:
     """재심 때 붙이는 블록 — 직전 필수 수정의 해결 여부부터 판정하게 한다."""
+    if previous:
+        attach_issue_ids(previous)
     items = must_fix_items(previous)
     if not items:
         return ''
-    lines = '\n'.join(f'{i}. [{m.get("where", "")}] {m.get("problem", "")} → 완료 기준: {m.get("done_when", "") or m.get("fix", "")}'
+    lines = '\n'.join(f'{i}. {m["issue_id"]} [{m.get("where", "")}] {m.get("problem", "")} → 완료 기준: {m.get("done_when", "") or m.get("fix", "")}'
                       for i, m in enumerate(items, 1))
     return (
         '\n\n[직전 심사의 필수 수정 사항 — 이번 심사는 이것부터 판정합니다]\n' + lines + '\n'
-        '- 출력 JSON 에 "resolved": [true/false, ...] 를 위 순서대로 넣으세요.\n'
+        '- 출력 JSON 에 "resolved": [true/false, ...] 를 위 순서대로 넣으세요. '
+        '또한 "resolutions": {"issue_ID": {"resolved": true/false, "evidence": "해결됐거나 남아 있는 근거 문장"}}로 '
+        '모든 직전 issue_id를 빠짐없이 판정하세요. 미해결 항목은 같은 issue_id를 must_fix에 유지하세요.\n'
         '- 해결된 항목은 다시 지적하지 마세요. 해결되지 않은 항목만 must_fix 에 다시 넣습니다.\n'
         '- 새 must_fix 는 이번 판에서 새로 생긴 문제(직전 판에 없던 문장·코드·수치)나 치명 결함일 때만 추가합니다. '
         '직전 심사에서 문제 삼지 않았던 부분을 새로 문제 삼고 싶다면 suggestions 로만 적으세요 — '
@@ -61,7 +66,10 @@ def must_fix_items(qa: dict | None) -> list[dict]:
             items.append(m)
         elif isinstance(m, str) and m.strip():
             items.append({'where': '', 'problem': m.strip(), 'fix': '', 'done_when': ''})
-    return items[:MAX_MUST_FIX]
+    for item in (qa or {}).get('open_issues', {}).values():
+        if isinstance(item, dict) and item.get('issue_id') not in {m.get('issue_id') for m in items}:
+            items.append(item)
+    return items
 
 
 def accept_after_revision(qa: dict) -> bool:
@@ -77,7 +85,82 @@ def accept_after_revision(qa: dict) -> bool:
 def unresolved(qa: dict) -> int:
     """재심에서 '해결 안 됨'으로 판정된 직전 필수 수정 수. 2026-10-15 #116: 편집장이 6건 중 2건 미해결이라고 적었는데
     그 2건이 다른 문구로 다시 지적되며 '바뀌지 않은 곳의 새 지적'으로 제안에 내려가, 필수 수정 0건으로 67점 발행됐다."""
-    return sum(1 for r in (qa.get('resolved') or []) if r is False)
+    return max(sum(1 for r in (qa.get('resolved') or []) if r is False),
+               len(qa.get('unresolved_issue_ids') or []))
+
+
+def attach_issue_ids(qa: dict) -> dict:
+    """위치·문제의 고정 식별자를 부여한다. 표시 문자열과 분리해 다음 판에서도 사용한다."""
+    qa['must_fix'] = must_fix_items(qa)
+    for item in qa['must_fix']:
+        if not item.get('issue_id'):
+            text = '\n'.join(str(item.get(k, '')).strip() for k in ('where', 'problem'))
+            item['issue_id'] = 'issue_' + hashlib.sha256(text.encode()).hexdigest()[:16]
+    return qa
+
+
+def blocked(qa: dict) -> bool:
+    return bool(qa.get('fatal') or must_fix_items(qa) or unresolved(qa))
+
+
+def publishable(qa: dict) -> bool:
+    return qa.get('verdict') == 'accept' and not blocked(qa)
+
+
+def finalize(qa: dict, previous: dict | None = None) -> dict:
+    """모든 진입 경로에서 점수가 필수 결함을 무효화하지 못하게 한다."""
+    attach_issue_ids(qa)
+    from .model_router import profile
+    if profile() == 'b':
+        qa['review_contract_version'] = 2
+    if previous and profile() == 'b':
+        attach_issue_ids(previous)
+        resolutions = qa.get('resolutions')
+        resolutions = resolutions if isinstance(resolutions, dict) else {}
+        current = {m['issue_id'] for m in qa.get('must_fix') or []}
+        unresolved_ids = []
+        open_issues = {}
+        for item in must_fix_items(previous):
+            iid = item['issue_id']
+            result = resolutions.get(iid)
+            # truthy 문자열/누락/판정 근거 없음은 해결로 보지 않는다.
+            solved = (isinstance(result, dict) and result.get('resolved') is True
+                      and bool(str(result.get('evidence') or '').strip()) and iid not in current)
+            if not solved:
+                unresolved_ids.append(iid)
+                open_issues[iid] = item
+        qa['unresolved_issue_ids'] = unresolved_ids
+        qa['open_issues'] = open_issues
+    if blocked(qa) and qa.get('verdict') == 'accept':
+        qa['verdict'] = 'major' if qa.get('fatal') else 'minor'
+    if qa.get('fatal'):
+        qa['verdict'] = 'major'
+    if (profile() == 'b' and qa.get('verdict') == 'minor' and not blocked(qa)
+            and isinstance(qa.get('score'), (int, float)) and qa['score'] >= 65):
+        qa['verdict'] = 'accept'
+        qa['accepted_by_contract'] = True
+    qa['issues'] = [as_line(m) for m in must_fix_items(qa)] + [f'(제안) {s}' for s in qa.get('suggestions', [])]
+    return qa
+
+
+def require_check(qa: dict, check: dict, content: str, subject: str = '') -> None:
+    """B의 독립 검증 차단은 편집장 점수로 무효화할 수 없다."""
+    from .model_router import profile
+    if profile() != 'b':
+        return
+    from .pipeline import verification_hash
+    stale = (check.get('verification_hash') != verification_hash(content)
+             or check.get('subject') != subject)
+    if stale or check.get('verdict') != 'pass':
+        qa.setdefault('fatal', []).append('verification_stale' if stale else 'unverified_data')
+        qa.setdefault('must_fix', []).append({
+            'where': '독립 검증', 'problem': '현재 원고 버전의 독립 검증이 완료되지 않았어요.',
+            'fix': '해당 버전의 주장·출처를 다시 검증해요.', 'done_when': '현재 content_hash로 pass 판정'})
+    else:
+        from .recorder import digest
+        qa['verified_content_hash'] = verification_hash(content)
+        qa['reviewed_full_hash'] = digest(content)
+        qa['verified_subject'] = subject
 
 
 def as_line(m: dict) -> str:
@@ -98,9 +181,10 @@ def normalize(qa: dict) -> dict:
         qa['issues'] = [as_line(m) for m in items] + [f'(제안) {s}' for s in sugg]
     else:
         qa['must_fix'] = [{'where': '', 'problem': str(i), 'fix': '', 'done_when': ''}
-                          for i in (qa.get('issues') or []) if str(i).strip()][:MAX_MUST_FIX]
+                          for i in (qa.get('issues') or []) if str(i).strip()]
         qa['suggestions'] = []
-    return qa
+        qa['issues'] = [as_line(m) for m in qa['must_fix']]
+    return attach_issue_ids(qa)
 
 
 def revision_notes(qa: dict | None) -> list[str]:
@@ -136,11 +220,14 @@ def demote_stale(qa: dict, previous: dict | None, prev_content: str, content: st
     if unresolved(qa):        # 직전 필수 수정이 남아 있으면, 다른 문구로 다시 지적된 그 항목일 수 있다 — 내리지 않는다
         return []
     before = must_fix_items(previous)
+    from .model_router import profile
     keep, demoted = [], []
     for m in qa.get('must_fix') or []:
         snips = [sn for sn in _snippets(str(m.get('where', ''))) if len(sn) >= 8]
         stale = (bool(snips) and all(sn in prev_content and sn in content for sn in snips)
                  and not _seen_before(m, before))
+        if profile() == 'b' and m.get('kind') != 'preference':
+            stale = False  # 뒤늦게 발견한 사실·논리 결함은 기존 문장이어도 차단한다.
         (demoted if stale else keep).append(m)
     if demoted:
         qa['must_fix'] = keep

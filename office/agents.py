@@ -1,7 +1,7 @@
 """
 테크창 연구팀 가상 연구실 — 에이전트 명부.
 
-8명이 한 팀이다. 모두 같은 모델(claude-sonnet-5)을 쓰고, 역할은 system prompt 로만 갈린다.
+공개 연구원은 8명이다. 실제 모델·제공자는 office.model_router가 역할과 프로필별로 고른다.
   lead    분석관·팀장 — 주간 회의 진행, 사이트 지표 분석
   editor  편집장 — 발행 여부를 결정하는 편집 심사
   hrd / data / coding  도메인 칼럼니스트 — 주제 제안, 초안 작성, 지적사항 반영
@@ -17,13 +17,24 @@
 """
 from common.services.claude import ClaudeModel
 
-MODEL = ClaudeModel.SONNET_5_5
+MODEL = ClaudeModel.SONNET_5_5  # 과거 비교용 기준선. 실행 모델은 model_router가 선택한다.
 
 TEAM_INTRO = (
     '당신은 "테크창"(techchang.com) 연구팀의 일원입니다. 테크창은 인천대학교 창의인재개발학과 전공심화연구모임 활동에서 시작된 HRD·테크 지식 플랫폼입니다. '
     '팀은 HRD·데이터분석·프로그래밍 세 분야의 칼럼을 정기 발행하고, 커뮤니티 사이트를 함께 운영합니다. '
     '항상 한국어 존댓말로, 동료에게 말하듯 간결하고 구체적으로 말합니다.'
 )
+
+# 공개 명부와 분리한 임시 실행 역할. 연구원 수와 화면에는 포함하지 않아요.
+INTERNAL_AGENTS = {
+    'research': {'name': '자료 조사', 'title': '임시 조사 워커',
+                 'system': TEAM_INTRO + ' 자료 조사만 담당합니다. 원문 URL·위치와 상반된 자료를 찾고, '
+                 '찾지 못한 자료를 만들지 않습니다. 발행·원고 수정·검증 통과 판정은 하지 않습니다.'},
+}
+
+
+def execution_agent(key):
+    return AGENTS[key] if key in AGENTS else INTERNAL_AGENTS[key]
 
 AGENTS = {
     'lead': {

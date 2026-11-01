@@ -23,6 +23,8 @@ from django.utils.html import escape
 
 from common.services.claude import call_tags, track_calls
 from office import live, trends
+from office.model_router import profile
+from office.run_context import bounded_run
 from office.agents import AGENTS, MEETING_ORDER
 from office.models import Decision, Meeting
 from office.services import (WEB_TOOLS, ask_agent, ask_agent_json, collect_site_snapshot, log, snapshot_as_text,
@@ -150,6 +152,7 @@ class Command(BaseCommand):
             step['seconds'] = round(time.monotonic() - started, 1)
             step['calls'] = [c for c in self.calls if c.get('tags', {}).get('step') == label]
 
+    @bounded_run
     def _hold(self, opts):
         # 일요일 저녁에 돌리면 '다음 주' 회의로 기록
         today = timezone.localdate()
@@ -174,14 +177,27 @@ class Command(BaseCommand):
         def who(k):
             return f"{AGENTS[k]['name']}({AGENTS[k]['title']})"
 
-        for rnd, template in ((1, ROUND1), (2, ROUND2)):
-            for key in MEETING_ORDER:
-                if rnd == 2 and key == 'lead':
-                    continue  # 팀장은 2라운드 대신 결론 정리를 맡는다
-                prompt = template.format(who=who(key), brief=brief, transcript=tx(), task=TASKS.get(key, ''))
-                text = self._step(f'{rnd}라운드 · {who(key)}', lambda: ask_agent(key, prompt, max_tokens=1500))
-                transcript.append({'agent': key, 'round': rnd, 'text': text})
-                self.stdout.write(f'  R{rnd} {who(key)}: {text[:60]}...')
+        if profile() == 'b':
+            # 분야별 제안은 다른 작가의 발언을 읽지 않는다. 검토자는 고정된 제안만 읽는다.
+            for key in ('lead', 'hrd', 'data', 'coding'):
+                prompt = ROUND1.format(who=who(key), brief=brief, transcript='(독립 제안 단계예요.)', task=TASKS[key])
+                text = self._step(f'1라운드 · {who(key)}', lambda: ask_agent(key, prompt, max_tokens=1500))
+                transcript.append({'agent': key, 'round': 1, 'text': text})
+            proposals = tx()
+            for key in ('checker', 'charter', 'critic'):
+                task = TASKS.get(key, '독자가 얻을 것과 제안 간의 논리적 충돌만 짚어 주세요.')
+                prompt = ROUND2.format(who=who(key), brief=brief, transcript=proposals) + '\n' + task
+                text = self._step(f'2라운드 · {who(key)}', lambda: ask_agent(key, prompt, max_tokens=1500))
+                transcript.append({'agent': key, 'round': 2, 'text': text})
+        else:
+            for rnd, template in ((1, ROUND1), (2, ROUND2)):
+                for key in MEETING_ORDER:
+                    if rnd == 2 and key == 'lead':
+                        continue
+                    prompt = template.format(who=who(key), brief=brief, transcript=tx(), task=TASKS.get(key, ''))
+                    text = self._step(f'{rnd}라운드 · {who(key)}', lambda: ask_agent(key, prompt, max_tokens=1500))
+                    transcript.append({'agent': key, 'round': rnd, 'text': text})
+                    self.stdout.write(f'  R{rnd} {who(key)}: {text[:60]}...')
 
         result = self._step('결론 정리 · ' + who('lead'),
                             lambda: ask_agent_json('lead', SYNTHESIS.format(brief=brief, transcript=tx()), max_tokens=8000))

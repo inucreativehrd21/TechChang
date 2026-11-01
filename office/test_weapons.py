@@ -120,7 +120,8 @@ class ReviewPanelTests(TestCase):
 
     @staticmethod
     def make(v, fatal=()):
-        return {'scores': {k: v for k in P.RUBRIC}, 'fatal': list(fatal), 'issues': [f'지적 {v}'], 'notes': ''}
+        return {'scores': {k: v for k in P.RUBRIC}, 'fatal': list(fatal), 'must_fix': [],
+                'suggestions': [f'지적 {v}'], 'notes': ''}
 
     def test_clear_cases_are_judged_once(self):
         qa, n = self.review([self.make(5)])

@@ -28,7 +28,7 @@ def fake_json(score=5, critical=()):
             return {'claims': [{'claim': 'path() 사용법', 'status': 'verified',
                                 'note': 'https://docs.djangoproject.com/en/5.2/ref/urls/'}],
                     'critical': list(critical)}
-        return {'scores': {k: score for k in S.SERIES_RUBRIC}, 'fatal': [], 'issues': ['예시를 하나 더'],
+        return {'scores': {k: score for k in S.SERIES_RUBRIC}, 'fatal': [], 'must_fix': [], 'suggestions': ['예시를 하나 더'],
                 'strengths': '코드가 실제와 같다', 'notes': '좋습니다'}
     return _ask
 
@@ -114,7 +114,8 @@ class SeriesPipelineTests(TestCase):
             if key == 'checker':
                 return fake_json()(key, prompt)
             score = next(scores)                       # 첫 심사 3점(60) → 보완 → 재심 5점(100)
-            return {'scores': {k: score for k in S.SERIES_RUBRIC}, 'fatal': [], 'issues': ['코드 설명 보강'],
+            return {'scores': {k: score for k in S.SERIES_RUBRIC}, 'fatal': [],
+                    'must_fix': [] if score == 5 else [{'where': '코드', 'problem': '코드 설명 보강'}], 'suggestions': [],
                     'notes': ''}
 
         rewrite = episode(title='URL 한 줄의 정체 — 고친 판', body=BODY + '보강한 설명입니다. ' * 30)
