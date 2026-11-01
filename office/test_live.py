@@ -32,6 +32,7 @@ class LiveTests(TestCase):
         live.mark('draft', 'coding', 'coding')
         snap = live.snapshot()
         self.assertEqual((snap['step'], snap['state']), ('draft', 'running'))
+        self.assertEqual(snap['agent'], 'coding')
         self.assertIn('프로그래밍 칼럼 — 지금 프로그래밍 칼럼니스트 윤성이 원고를 쓰고 있습니다', snap['message'])
         live.mark('brief', 'lead', 'hrd')
         self.assertIn('은혜가', live.snapshot()['message'])   # 받침 없는 이름
@@ -50,7 +51,9 @@ class LiveTests(TestCase):
     def test_stale_running_is_ignored(self):
         live.mark('review', 'editor')
         later = timezone.now() + live.STALE_AFTER + timedelta(minutes=1)
-        self.assertEqual(live.snapshot(now=later)['state'], 'idle')
+        stale = live.snapshot(now=later)
+        self.assertEqual(stale['state'], 'idle')
+        self.assertNotIn('agent', stale)
 
     def test_publish_stays_done_then_expires(self):
         live.mark('publish', 'lead', 'data')

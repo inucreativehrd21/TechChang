@@ -1,0 +1,13 @@
+{% extends 'base_mobile.html' %}
+{% load static %}
+{% block title %}연구실 - 테크창{% endblock %}
+{% block extra_css %}
+<link href="{% static 'css/home.css' %}?v={{ STATIC_VERSION }}" rel="stylesheet">
+<link href="{% static 'css/lab.css' %}?v={{ STATIC_VERSION }}" rel="stylesheet">
+<link href="{% static 'css/lab-studio.css' %}?v={{ STATIC_VERSION }}" rel="stylesheet">
+{% endblock %}
+{% block content %}{% include 'office/_home_content.html' %}{% endblock %}
+{% block script %}
+{{ roster|json_script:'lab-roster' }}
+<script type="module" src="{% static 'js/lab-studio.js' %}?v={{ STATIC_VERSION }}" nonce="{{ csp_nonce }}"></script>
+{% endblock %}

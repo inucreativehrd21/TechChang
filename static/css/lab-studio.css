@@ -1,0 +1,126 @@
+/* 연구실 3D A안. 전역 토큰은 home.css/premium.css를 사용해요. */
+.tc-labpage .tc-ls-head { display: flex; justify-content: space-between; align-items: end; gap: 2rem; padding-top: clamp(2rem,5vw,4rem); padding-bottom: 2rem; }
+.tc-ls-head h1 { margin: 0; font-size: clamp(2rem,3.7vw,3.25rem); font-weight: 800; line-height: 1.15; letter-spacing: -.05em; text-wrap: balance; color: var(--tc-ink); }
+.tc-ls-head p { margin: 1.125rem 0 0; line-height: 1.7; color: var(--tc-ink-3); font-size: 1rem; word-break: keep-all; }
+.tc-ls-weekly { display: inline-flex; gap: .75rem; align-items: center; flex-shrink: 0; padding: .75rem 0; font-size: .875rem; font-weight: 600; color: var(--tc-ink-2); }
+.tc-labpage .tc-ls-section { padding-top: 0; }
+.tc-ls-studio { display: grid; grid-template-columns: minmax(0,1fr) 270px; border: 1px solid var(--tc-line); border-radius: 20px; overflow: hidden; background: #fff; }
+.tc-ls-world { position: relative; min-width: 0; background: #f4f5f8; }
+.tc-ls-status { position: absolute; z-index: 2; top: 1.25rem; left: 1.5rem; display: flex; align-items: center; gap: .5rem; max-width: calc(100% - 3rem); font-size: .8125rem; line-height: 1.5; color: #52525b; }
+.tc-ls-status > span:first-child { flex: 0 0 7px; width: 7px; height: 7px; background: #a1a1aa; border-radius: 50%; }
+.tc-ls-studio[data-state="running"] .tc-ls-status > span:first-child { background: #4f46e5; box-shadow: 0 0 0 4px rgba(79,70,229,.10); }
+.tc-ls-viewport { position: relative; aspect-ratio: 1.4; width: 100%; overflow: hidden; min-height: 390px; }
+.tc-ls-poster { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
+#lab-canvas { display: block; width: 100%; height: 100%; position: absolute; inset: 0; touch-action: pan-y; cursor: grab; }
+#lab-canvas:active { cursor: grabbing; }
+#lab-canvas[hidden], .tc-ls-poster[hidden], .tc-ls-studio [hidden], .tc-ls-section [hidden] { display: none; }
+.tc-ls-labels { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
+.tc-ls-label { position: absolute; transform: translate(-50%,-100%); font-size: .6875rem; padding: 3px 8px; border-radius: 6px; background: rgba(255,255,255,.94); border: 1px solid #e4e4e7; color: #52525b; white-space: nowrap; opacity: 0; transition: opacity .15s ease; }
+.tc-ls-label.is-selected, .tc-ls-label.is-active { opacity: 1; color: #fff; border-color: #4f46e5; background: #4f46e5; }
+.tc-ls-label.is-hovered { opacity: 1; }
+.tc-ls-space-caption { position: absolute; bottom: 1rem; left: 1.5rem; font-size: .75rem; letter-spacing: .02em; color: #64646e; pointer-events: none; }
+.tc-ls-help { margin: 0; padding: .75rem 1.5rem 1rem; line-height: 1.6; font-size: .75rem; color: #64646e; }
+.tc-ls-help span { display: block; }
+.tc-ls-start { position: absolute; left: 50%; top: 53%; transform: translate(-50%,-50%); display: flex; flex-direction: column; align-items: center; gap: .375rem; width: max-content; max-width: 90%; padding: 1.25rem 1.75rem; border: 1px solid rgba(255,255,255,.9); border-radius: 16px; background: rgba(255,255,255,.94); box-shadow: 0 12px 50px rgba(24,24,27,.13); color: #18181b; }
+.tc-ls-start-icon { width: 40px; height: 40px; line-height: 36px; color: #4f46e5; border: 1px solid #e0e7ff; border-radius: 12px; font-size: 30px; }
+.tc-ls-start b { font-size: .9375rem; }
+.tc-ls-start small { font-size: .75rem; color: #71717a; }
+.tc-ls-start:disabled { opacity: .8; cursor: wait; }
+.tc-ls-detail { padding: 2rem 1.5rem 1.5rem; border-left: 1px solid var(--tc-line-soft); align-self: stretch; }
+.tc-ls-person-mark { width: 52px; height: 52px; display: grid; place-items: center; background: #eef2ff; color: #4f46e5; border-radius: 16px 16px 16px 3px; font-size: 1.25rem; font-weight: 750; margin-bottom: 2rem; }
+.tc-ls-person-role { font-size: .75rem; color: #71717a; margin: 0 0 .375rem; }
+.tc-ls-detail h2 { font-size: 1.5rem; font-weight: 750; letter-spacing: -.04em; margin: 0 0 .875rem; color: #18181b; text-wrap: balance; }
+.tc-ls-detail > p:not(.tc-ls-person-role) { margin: 0; color: #52525b; font-size: .875rem; line-height: 1.7; word-break: keep-all; }
+.tc-ls-activity { margin-top: 2rem; padding-top: 1.25rem; border-top: 1px solid #e4e4e7; }
+.tc-ls-activity h3 { font-size: .75rem; font-weight: 650; margin: 0 0 .625rem; color: #71717a; }
+.tc-ls-activity p { font-size: .875rem; line-height: 1.7; margin: 0; color: #3f3f46; overflow-wrap: anywhere; }
+.tc-ls-activity > span { display: block; margin-top: .625rem; color: #71717a; font-size: .6875rem; }
+.tc-ls-text-btn { border: 0; background: transparent; color: #4f46e5; padding: .5rem 0; margin-top: 1rem; font-size: .8125rem; }
+.tc-ls-toolbar { grid-column: 1/-1; border-top: 1px solid #e4e4e7; padding: .625rem 1rem; display: flex; flex-wrap: wrap; gap: .5rem; justify-content: space-between; align-items: center; background: #fff; }
+.tc-ls-toolbar button, .tc-ls-transcript button { padding: .625rem .75rem; min-height: 40px; border: 1px solid transparent; border-radius: 8px; color: #52525b; background: transparent; font-size: .75rem; font-weight: 550; }
+.tc-ls-toolbar button:hover:enabled, .tc-ls-transcript button:hover { background: #f4f4f5; color: #18181b; }
+.tc-ls-toolbar button:disabled { opacity: .4; cursor: default; }
+.tc-ls-toolbar button[aria-pressed="true"] { color: #4f46e5; background: #eef2ff; }
+.tc-ls-camera-tools, .tc-ls-replay-tools { display: flex; align-items: center; gap: .125rem; }
+.tc-ls-replay-tools button { display: inline-flex; gap: .5rem; align-items: center; }
+.tc-ls-boundary { margin: .75rem .125rem 0; font-size: .6875rem; line-height: 1.7; color: #71717a; max-width: 85ch; }
+.tc-ls-transcript { border: 1px solid #e0e7ff; border-left: 3px solid #4f46e5; background: #fff; padding: 1.25rem 1.5rem; margin-top: 1rem; border-radius: 4px 12px 12px 4px; }
+.tc-ls-transcript > div { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: .5rem; }
+.tc-ls-transcript b { font-size: .875rem; }
+.tc-ls-transcript span { font-size: .75rem; color: #71717a; }
+.tc-ls-transcript p { max-width: 75ch; margin: .875rem 0; line-height: 1.8; font-size: .9375rem; color: #3f3f46; white-space: pre-wrap; overflow-wrap: anywhere; }
+.tc-ls-transcript > div:last-child { justify-content: start; }
+.tc-lb-person { padding: 0; min-width: 44px; min-height: 36px; text-align: left; font-size: 1rem; font-weight: 700; color: var(--tc-ink); border: 0; background: transparent; text-decoration: underline; text-decoration-color: #d4d4d8; text-underline-offset: 4px; }
+.tc-lb-person[aria-pressed="true"] { color: #4f46e5; text-decoration-color: #4f46e5; }
+.tc-ls-section button:focus-visible, .tc-lb-person:focus-visible, #lab-canvas:focus-visible { outline: 3px solid #4f46e5; outline-offset: 3px; }
+.tc-ls-section button:focus-visible { z-index: 5; }
+#lab-canvas:focus-visible { outline-offset: -4px; }
+.tc-lb-team .tc-lb-avatar, .tc-lb-feed .tc-lb-avatar { color: #4f46e5; background: #eef2ff; }
+.tc-lb-feed li:has(> .tc-lb-empty) { display: block; }
+@media (max-width: 1100px) {
+  .tc-ls-studio { grid-template-columns: minmax(0,1fr) 235px; }
+  .tc-ls-detail { padding: 1.5rem 1.25rem; }
+  .tc-ls-person-mark { margin-bottom: 1.5rem; }
+  .tc-ls-viewport { min-height: 370px; }
+}
+@media (max-width: 760px) {
+  .tc-labpage { padding: 0 0 2rem; }
+  .tc-labpage .tc-ls-head { padding-top: 2rem; align-items: start; gap: 1rem; }
+  .tc-ls-head h1 { font-size: 1.875rem; max-width: 9em; }
+  .tc-ls-head p { font-size: .875rem; margin-top: .875rem; }
+  .tc-ls-weekly { font-size: .75rem; width: 3rem; flex-direction: column-reverse; gap: .375rem; padding: .25rem 0; text-align: center; line-height: 1.4; }
+  .tc-ls-weekly i { font-size: 1.125rem; }
+  .tc-ls-studio { grid-template-columns: 1fr; border-radius: 16px; }
+  .tc-ls-viewport { min-height: 0; aspect-ratio: 1.05; }
+  .tc-ls-status { top: 1rem; left: 1rem; max-width: calc(100% - 2rem); font-size: .75rem; }
+  .tc-ls-help { padding: .5rem 1rem .875rem; }
+  .tc-ls-space-caption { left: 1rem; bottom: .75rem; }
+  .tc-ls-detail { border-left: 0; border-top: 1px solid #e4e4e7; padding: 1.25rem; display: grid; grid-template-columns: 42px 1fr; column-gap: .875rem; }
+  .tc-ls-person-mark { grid-row: 1/3; width: 42px; height: 44px; margin: 0; border-radius: 12px 12px 12px 3px; }
+  .tc-ls-detail h2 { font-size: 1.1875rem; margin: 0 0 .75rem; }
+  .tc-ls-detail > p:not(.tc-ls-person-role), .tc-ls-activity, .tc-ls-text-btn { grid-column: 1/-1; }
+  .tc-ls-person-role { margin: 0 0 .125rem; }
+  .tc-ls-activity { margin-top: 1rem; padding-top: .875rem; }
+  .tc-ls-toolbar { padding: .5rem; }
+  .tc-ls-toolbar button { min-height: 44px; padding: .625rem .5rem; }
+  .tc-ls-camera-tools { flex: 1; }
+  .tc-ls-transcript { padding: 1rem; }
+  .tc-lb-person { min-height: 44px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tc-ls-label { transition: none; }
+}
+
+/* B 배경판과 독립 인물 레이어. WebGL 렌더러는 되돌리기용으로 유지해요. */
+.tc-ls-studio[data-engine="plate"] .tc-ls-world { background: #fff; }
+.tc-ls-studio[data-engine="plate"] .tc-ls-status { padding: .375rem .625rem; border-radius: 8px; background: rgba(255,255,255,.94); pointer-events: none; z-index: 8; }
+.tc-lp-frame { position: absolute; inset: 0; display: flex; align-items: center; overflow: hidden; touch-action: pan-y; }
+.tc-lp-plane { position: relative; width: 100%; aspect-ratio: 1.5; flex-shrink: 0; transform-origin: center; transition: transform .35s ease; }
+.tc-lp-background, .tc-lp-occlusion, .tc-lp-flow { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; user-select: none; }
+.tc-lp-background { z-index: 0; }
+.tc-lp-occlusion { z-index: 3; }
+.tc-lp-flow { z-index: 1; overflow: visible; }
+.tc-lp-flow path { fill: none; stroke: #4f46e5; stroke-linecap: round; stroke-linejoin: round; }
+.tc-lp-trail { stroke-width: 2; opacity: .23; }
+.tc-lp-stream { stroke-width: 3; stroke-dasharray: 12 180; opacity: .75; animation: tc-lp-flow 10s linear infinite; }
+@keyframes tc-lp-flow { to { stroke-dashoffset: -768; } }
+.tc-lp-person { position: absolute; display: block; min-width: 24px; padding: 0; border: 0; background: transparent; cursor: pointer; -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
+.tc-lp-person > img { width: 100%; height: 100%; object-fit: contain; position: relative; pointer-events: none; user-select: none; }
+.tc-lp-person::before { content: ''; position: absolute; left: 18%; bottom: -1%; width: 64%; height: 7%; border-radius: 50%; background: rgba(47,43,39,.25); filter: blur(3px); transform: rotate(-12deg); }
+.tc-lp-person--integrated::before { content: none; }
+.tc-lp-person::after { content: ''; position: absolute; left: 5%; bottom: -3%; width: 90%; height: 12%; border: 2px solid #4f46e5; border-radius: 50%; opacity: 0; pointer-events: none; }
+.tc-lp-name { position: absolute; bottom: calc(100% + 4px); left: 50%; transform: translateX(-50%); padding: 4px 8px; border: 1px solid #e4e4e7; background: #fff; color: #3f3f46; border-radius: 6px; font-size: 12px; line-height: 1.4; white-space: nowrap; opacity: 0; pointer-events: none; }
+.tc-lp-person:hover .tc-lp-name, .tc-lp-person:focus-visible .tc-lp-name, .tc-lp-person.is-selected .tc-lp-name, .tc-lp-person.is-active .tc-lp-name, .tc-lp-person.is-speaking .tc-lp-name { opacity: 1; }
+.tc-lp-person.is-selected::after, .tc-lp-person.is-speaking::after, .tc-lp-person.is-active::after { opacity: 1; }
+.tc-lp-person.is-selected .tc-lp-name, .tc-lp-person.is-speaking .tc-lp-name, .tc-lp-person.is-active .tc-lp-name { background: #4f46e5; border-color: #4f46e5; color: #fff; }
+.tc-lp-person.is-active::after { animation: tc-lp-pulse 2.4s ease-in-out infinite; }
+@keyframes tc-lp-pulse { 50% { transform: scale(1.12); opacity: .4; } }
+.tc-lp-person:focus-visible, .tc-lp-frame:focus-visible { outline: 2px solid #4f46e5; outline-offset: -2px; border-radius: 6px; }
+.tc-lp-frame[data-zoomed="true"] { cursor: grab; touch-action: none; }
+.tc-lp-frame[data-dragging="true"] { cursor: grabbing; user-select: none; }
+.tc-lp-frame[data-dragging="true"] .tc-lp-plane, .tc-lp-frame[data-paused="true"] .tc-lp-plane { transition: none; }
+.tc-lp-frame[data-paused="true"] *, .tc-lp-frame[data-paused="true"] *::after { animation-play-state: paused !important; }
+@media (prefers-reduced-motion: reduce) {
+  .tc-lp-plane { transition: none; }
+  .tc-lp-stream, .tc-lp-person.is-active::after { animation: none; }
+}

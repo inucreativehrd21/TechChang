@@ -1,0 +1,84 @@
+{
+  "version": 2,
+  "width": 1536,
+  "height": 1024,
+  "flow": "M 360 418 L 390 453 Q 398 460 385 477 L 362 505 Q 345 531 375 549 L 663 729 Q 715 760 776 754 L 1090 754 Q 1124 753 1155 777",
+  "tableMask": "polygon(38.1% 45%, 38.3% 43%, 40% 41.3%, 43% 40.6%, 47% 40.9%, 50% 42.5%, 63% 51.1%, 65.1% 53.3%, 65.9% 55.5%, 65.8% 57.2%, 63.3% 59.2%, 63.3% 65.3%, 62% 67%, 59.3% 67.5%, 56.5% 66.8%, 55.7% 65.5%, 55.7% 58%, 46.5% 52.8%, 46.5% 56.4%, 45% 57.6%, 42.5% 57.7%, 40.4% 56.6%, 40.4% 49.4%, 38.6% 47.3%)",
+  "people": {
+    "checker": {
+      "x": 268.44,
+      "y": 300.28,
+      "width": 78.83,
+      "height": 187.06,
+      "layer": 4,
+      "pixelWidth": 177,
+      "pixelHeight": 420
+    },
+    "lead": {
+      "x": 687.26,
+      "y": 329.83,
+      "width": 138.27,
+      "height": 204.49,
+      "layer": 2,
+      "pixelWidth": 284,
+      "pixelHeight": 420
+    },
+    "critic": {
+      "x": 543.16,
+      "y": 471.62,
+      "width": 172.62,
+      "height": 202.51,
+      "layer": 4,
+      "pixelWidth": 358,
+      "pixelHeight": 420
+    },
+    "charter": {
+      "x": 973.9,
+      "y": 548.64,
+      "width": 162.87,
+      "height": 194.89,
+      "layer": 4,
+      "pixelWidth": 351,
+      "pixelHeight": 420
+    },
+    "editor": {
+      "x": 831.44,
+      "y": 274.68,
+      "width": 97.21,
+      "height": 223.1,
+      "layer": 4,
+      "pixelWidth": 183,
+      "pixelHeight": 420
+    },
+    "hrd": {
+      "integrated": true,
+      "x": 933,
+      "y": 204,
+      "width": 119,
+      "height": 169,
+      "layer": 4,
+      "pixelWidth": 330,
+      "pixelHeight": 420
+    },
+    "data": {
+      "integrated": true,
+      "x": 1097,
+      "y": 306,
+      "width": 119,
+      "height": 186,
+      "layer": 4,
+      "pixelWidth": 306,
+      "pixelHeight": 420
+    },
+    "coding": {
+      "integrated": true,
+      "x": 1276,
+      "y": 398,
+      "width": 119,
+      "height": 188,
+      "layer": 4,
+      "pixelWidth": 306,
+      "pixelHeight": 420
+    }
+  }
+}

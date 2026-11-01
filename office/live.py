@@ -153,7 +153,8 @@ def snapshot(now=None) -> dict:
             else:
                 message = f'{subject}지금 {who} {STEP_VERB.get(step, "작업 중입니다")}.'
             out.update(step=step, state=data['state'], message=message,
-                       since=data.get('since'), job_started=data.get('job_started'))
+                       since=data.get('since'), job_started=data.get('job_started'),
+                       agent=data.get('agent') if a else '')
             return out
 
     # 실행 중인 작업이 없으면, 회의가 끝나고 안건이 결정을 기다리는지 본다

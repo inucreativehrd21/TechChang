@@ -133,6 +133,7 @@ def office_home(request):
         d.topic_name = TOPIC_LABEL.get(d.topic, '')
     return render(request, 'office/office.html', {
         'roster_groups': public_roster_groups(),
+        'roster': public_roster(),
         'agent_count': len(AGENTS),
         'meeting': meeting,
         'public_decisions': decisions,
@@ -261,7 +262,7 @@ def draft_publish(request, draft_id):
         return redirect('office:admin')
     if draft.series_key:      # 연재 원고 — 새 회차로 발행하거나, 리메이크면 대상 글을 제자리 갱신
         from office.series_pipeline import publish as publish_series
-        q = publish_series(draft, by=request.user)
+        q = publish_series(draft, by=request.user, manual=True)
         WorkLog.objects.create(agent='lead', action='publish', draft=draft,
                                text=f'관리자 검수 후 발행: {draft.subject} (id={q.pk})')
         messages.success(request, f'발행: {draft.subject}')
