@@ -121,26 +121,9 @@
 }
 .tc-lb-members { list-style: none; margin: 0; padding: 0; }
 .tc-lb-member {
-    display: grid;
-    grid-template-columns: 2.25rem 1fr;
-    gap: 0.75rem;
-    align-items: start;
     padding: 0.75rem 0;
 }
 .tc-lb-member + .tc-lb-member { border-top: 1px solid var(--tc-line-soft); }
-/* 캔버스 속 캐릭터 옷 색 = 같은 연구원이라는 표시 */
-.tc-lb-avatar {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 2.25rem;
-    height: 2.25rem;
-    border-radius: 50%;
-    font-size: 0.875rem;
-    font-weight: 700;
-    color: #fff;
-    background: var(--who, var(--tc-ink-3));
-}
 .tc-lb-who { display: flex; align-items: baseline; gap: 0.5rem; flex-wrap: wrap; }
 .tc-lb-name { font-size: 1rem; font-weight: 700; color: var(--tc-ink); }
 .tc-lb-role { font-size: 0.8125rem; font-weight: 500; color: var(--tc-ink-3); }
@@ -243,11 +226,9 @@
 /* ── 회의·칼럼·활동 ── */
 .tc-lb-grid {
     display: grid;
-    grid-template-columns: 7fr 5fr;
     gap: 1rem;
-    align-items: start;
 }
-.tc-lb-side { display: grid; gap: 1rem; }
+.tc-lb-side { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; align-items: start; }
 .tc-lb-panel {
     padding: 1.25rem 1.375rem;
     background: var(--tc-bg);
@@ -326,13 +307,9 @@
     overflow: auto;
 }
 .tc-lb-feed li {
-    display: grid;
-    grid-template-columns: 1.75rem 1fr;
-    gap: 0.625rem;
     padding: 0.5625rem 0;
 }
 .tc-lb-feed li + li { border-top: 1px solid var(--tc-line-soft); }
-.tc-lb-feed .tc-lb-avatar { width: 1.75rem; height: 1.75rem; font-size: 0.75rem; }
 .tc-lb-feed-text { font-size: 0.875rem; line-height: 1.55; color: var(--tc-ink-2); word-break: keep-all; }
 .tc-lb-feed-text b { color: var(--tc-ink); }
 .tc-lb-feed-text .tc-lb-tag { margin: 0 0.25rem; vertical-align: 1px; }
@@ -348,7 +325,9 @@
 @media (max-width: 1024px) {
     .tc-lb-team { grid-template-columns: 1fr 1fr; }
     .tc-lb-group:first-child { grid-column: 1 / -1; }
-    .tc-lb-grid { grid-template-columns: 1fr; }
+}
+@media (max-width: 760px) {
+    .tc-lb-side { grid-template-columns: 1fr; }
 }
 @media (max-width: 640px) {
     .tc-lb-team { grid-template-columns: 1fr; }

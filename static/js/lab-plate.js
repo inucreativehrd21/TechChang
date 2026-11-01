@@ -33,7 +33,34 @@ export async function createLabScene({canvas, labels, roster, onSelect, reducedM
     path.setAttribute('class', className);
     flow.append(path);
   }
+  const stage = document.createElementNS(ns, 'circle');
+  stage.classList.add('tc-lp-stage');
+  stage.setAttribute('r', '15');
+  stage.setAttribute('hidden', '');
+  flow.append(stage);
+  const flowPath = flow.querySelector('.tc-lp-trail');
+  const stepOrder = ['meeting', 'decision', 'brief', 'draft', 'check', 'critique', 'chart', 'review', 'publish'];
+  const stepNames = ['편집회의', '운영자 결정', '기획', '집필', '검증', '평론', '시각화', '편집 심사', '발행'];
   plane.append(flow);
+  for (const item of layout.ambient || []) {
+    if (!['screen', 'paper'].includes(item.kind)) continue;
+    const light = document.createElement('span');
+    light.className = `tc-lp-ambient tc-lp-ambient--${item.kind}`;
+    light.setAttribute('aria-hidden', 'true');
+    Object.assign(light.style, {
+      left: `${item.x / 1536 * 100}%`, top: `${item.y / 1024 * 100}%`,
+      width: `${item.width / 1536 * 100}%`, height: `${item.height / 1024 * 100}%`,
+      animationDelay: `${item.delay || 0}s`,
+    });
+    plane.append(light);
+  }
+  const cue = document.createElement('div');
+  cue.className = 'tc-lp-cue';
+  cue.setAttribute('aria-hidden', 'true');
+  cue.hidden = true;
+  const cueTitle = document.createElement('b');
+  const cueText = document.createElement('span');
+  cue.append(cueTitle, cueText);
   const mask = background.cloneNode();
   mask.alt = '';
   mask.setAttribute('aria-hidden', 'true');
@@ -43,6 +70,7 @@ export async function createLabScene({canvas, labels, roster, onSelect, reducedM
   const buttons = new Map();
   const images = [background, mask];
   let disposed = false, scale = 1, x = 0, y = 0, selected = '', meeting = '', active = '';
+  let liveData = {}, replayTurn = null, replayCamera = null;
   let paused = reducedMotion, visible = true, updates = 0, drag = null, moved = false;
   const listen = (el, event, fn) => el.addEventListener(event, fn, {signal: abort.signal});
   const clamp = (n, min, max) => Math.max(min, Math.min(max, n));
@@ -60,6 +88,11 @@ export async function createLabScene({canvas, labels, roster, onSelect, reducedM
     y = (50 - (p.y + p.height / 2) / 1024 * 100) * scale;
     transform();
   }
+  function focusReplay() {
+    if (!replayTurn || paused || !visible || !layout.people[meeting]) return;
+    scale = 1.16;
+    center(meeting);
+  }
   function mark() {
     for (const [key, b] of buttons) {
       b.setAttribute('aria-pressed', String(key === selected));
@@ -69,6 +102,28 @@ export async function createLabScene({canvas, labels, roster, onSelect, reducedM
     }
     frame.dataset.working = String(Boolean(active));
     updates++;
+  }
+  function renderCue() {
+    const index = stepOrder.indexOf(liveData.step);
+    const showStage = index >= 0 && ['running', 'waiting', 'done'].includes(liveData.state);
+    stage.toggleAttribute('hidden', !showStage);
+    frame.dataset.stageState = showStage ? liveData.state : 'idle';
+    if (showStage) {
+      const point = flowPath.getPointAtLength(flowPath.getTotalLength() * (index / (stepOrder.length - 1)));
+      stage.setAttribute('cx', point.x);
+      stage.setAttribute('cy', point.y);
+    }
+    const showReplay = Boolean(replayTurn?.text);
+    const showLive = showStage && Boolean(liveData.message);
+    cue.hidden = !(showReplay || showLive);
+    if (showReplay) {
+      cueTitle.textContent = `지난 편집회의 · ${replayTurn.name}`;
+      cueText.textContent = replayTurn.text;
+    } else if (showLive) {
+      cueTitle.textContent = `지금 ${stepNames[index]}`;
+      cueText.textContent = liveData.message;
+    }
+    frame.dataset.cue = showReplay ? 'replay' : showLive ? 'live' : 'none';
   }
   for (const agent of roster) {
     const p = layout.people[agent.key];
@@ -101,7 +156,7 @@ export async function createLabScene({canvas, labels, roster, onSelect, reducedM
     listen(button, 'focus', () => center(agent.key));
     buttons.set(agent.key, button); plane.append(button);
   }
-  frame.append(plane);
+  frame.append(plane, cue);
   // 로드가 끝나기 전에는 기존 미리보기를 유지해요. 실패하면 반쪽 장면을 노출하지 않아요.
   try { await Promise.all(images.map(img => img.decode())); }
   catch (error) { abort.abort(); throw error; }
@@ -143,8 +198,21 @@ export async function createLabScene({canvas, labels, roster, onSelect, reducedM
     select(key) { selected = buttons.has(key) ? key : ''; mark(); center(selected); },
     setMeeting(key) { meeting = buttons.has(key) ? key : ''; mark(); center(meeting); },
     setActive(key) { active = buttons.has(key) ? key : ''; mark(); },
-    setPaused(value) { paused = value; motion(); },
-    setVisible(value) { visible = value; motion(); },
+    setLive(data) { liveData = data || {}; renderCue(); },
+    setReplay(turn) {
+      if (turn && !replayTurn) replayCamera = {scale, x, y};
+      replayTurn = turn;
+      frame.dataset.replaying = String(Boolean(turn));
+      if (turn) focusReplay();
+      else if (replayCamera) {
+        ({scale, x, y} = replayCamera);
+        replayCamera = null;
+        transform();
+      }
+      renderCue();
+    },
+    setPaused(value) { paused = value; motion(); if (!paused) focusReplay(); },
+    setVisible(value) { visible = value; motion(); if (visible) focusReplay(); },
     zoom, reset,
     dispose() { if (disposed) return; disposed = true; abort.abort(); frame.remove(); labels.hidden = false; },
     stats() { return {engine: 'plate', people: buttons.size, scale, x, y, updates, animationPaused: paused || !visible, renderLoop: false}; },

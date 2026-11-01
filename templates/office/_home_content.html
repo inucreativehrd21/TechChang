@@ -16,7 +16,6 @@
         <ul class="tc-lb-members">
           {% for a in g.members %}
           <li class="tc-lb-member">
-            <span class="tc-lb-avatar" aria-hidden="true">{{ a.name|first }}</span>
             <div>
               <div class="tc-lb-who"><button class="tc-lb-person" type="button" data-agent="{{ a.key }}" aria-controls="lab-person-detail">{{ a.name }}</button><span class="tc-lb-role">{{ a.title }}</span></div>
               <p class="tc-lb-duty">{{ a.duty }}</p>
@@ -97,7 +96,6 @@
           <ul class="tc-lb-feed">
             {% for l in logs %}
             <li>
-              <span class="tc-lb-avatar"  aria-hidden="true">{{ l.agent_name|first }}</span>
               <div class="tc-lb-feed-text">
                 <b>{{ l.agent_name }}</b><span class="tc-lb-tag">{{ l.label }}</span>{% if l.url %}<a href="{{ l.url }}">{{ l.text }}</a>{% else %}{{ l.text }}{% endif %}
                 <time datetime="{{ l.created_at|date:'c' }}">{{ l.created_at|date:"m.d H:i" }}</time>

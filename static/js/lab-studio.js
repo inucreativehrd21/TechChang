@@ -50,6 +50,7 @@ function renderLive(data) {
   root.dataset.state = data.state || 'idle';
   $('lab-studio-status').textContent = data.message || '지금은 쉬는 중이에요.';
   scene?.setActive(data.state === 'running' ? data.agent : '');
+  scene?.setLive?.(data);
   const flow = $('lab-flow');
   const steps = [...flow.querySelectorAll('[data-step]')];
   const idx = steps.findIndex(e => e.dataset.step === data.step);
@@ -125,7 +126,12 @@ async function start3D() {
     $('lab-scene-note').textContent = '아래 이름으로도 연구원을 선택할 수 있어요.';
     scene.select(selected);
     scene.setActive(live.state === 'running' ? live.agent : '');
-    if (replayIndex >= 0) scene.setMeeting(transcript()[replayIndex]?.agent || '');
+    scene.setLive?.(live);
+    if (replayIndex >= 0) {
+      const turn = transcript()[replayIndex];
+      scene.setMeeting(turn?.agent || '');
+      scene.setReplay?.(turn ? {name: people.get(turn.agent)?.name || '', text: turn.text} : null);
+    }
     scene.setVisible(visible && !document.hidden);
     renderMotion();
   } catch { fallback(); }
@@ -175,6 +181,7 @@ function showTurn(index) {
   $('lab-replay-prev').disabled = replayIndex === 0;
   $('lab-replay-next').disabled = replayIndex === turns.length - 1;
   scene?.setMeeting(t.agent);
+  scene?.setReplay?.({name: a.name, text: t.text});
   scheduleReplay();
 }
 function stopReplay() {
@@ -183,6 +190,7 @@ function stopReplay() {
   $('lab-replay-stop').hidden = true;
   $('lab-replay').hidden = false;
   scene?.setMeeting('');
+  scene?.setReplay?.(null);
   scene?.select(priorSelection);
 }
 $('lab-replay').addEventListener('click', () => { priorSelection = selected; replayAuto = !reduced.matches; $('lab-replay-pause').textContent = replayAuto ? '자동 넘김 정지' : '자동 넘김 재생'; $('lab-replay-pause').setAttribute('aria-pressed', String(!replayAuto)); showTurn(0); });
