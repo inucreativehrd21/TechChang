@@ -374,12 +374,11 @@ LOGGING = {
         },
         # 앱 통합 로그 — 서버 모니터 대시보드가 journalctl 미가용 시 이 파일을 읽어
         # 로그 분석·보안 이벤트·실시간 로그를 제공한다. verbose(타임스탬프 포함) 포맷 필수.
+        # 운영 cron 도 이 설정으로 같은 파일에 쓰므로 회전은 logrotate 에 맡긴다(prod.py 참고).
         'file': {
             'level': 'INFO',
-            'class': 'logging.handlers.RotatingFileHandler',
+            'class': 'logging.handlers.WatchedFileHandler',
             'filename': LOGS_DIR / 'django.log',
-            'maxBytes': 1024*1024*5,  # 5MB
-            'backupCount': 3,
             'formatter': 'verbose',
         },
         'security_file': {

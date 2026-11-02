@@ -134,12 +134,11 @@ LOGGING = {
         },
         'file': {
             'level': 'INFO',
-            # 크기 제한 회전: 대시보드 모니터가 이 파일을 읽어 로그/보안/실시간 로그를
-            # 제공하므로(저널 권한 불필요) 무한 증가를 막아 읽기 비용·디스크를 관리한다.
-            'class': 'logging.handlers.RotatingFileHandler',
+            # 대시보드 모니터·로그 리포트가 이 파일을 읽는다(저널 권한 불필요).
+            # 회전은 logrotate(/etc/logrotate.d/techchang, copytruncate)가 맡는다 — gunicorn 워커와
+            # cron 이 같은 파일에 쓰므로 RotatingFileHandler 는 프로세스마다 연쇄 회전해 로그를 날렸다.
+            'class': 'logging.handlers.WatchedFileHandler',
             'filename': BASE_DIR / 'logs' / 'django.log',
-            'maxBytes': 1024 * 1024 * 5,  # 5MB
-            'backupCount': 3,
             'formatter': 'verbose',
         },
         'console': {

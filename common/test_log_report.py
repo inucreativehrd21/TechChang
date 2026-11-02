@@ -99,3 +99,52 @@ class NginxRotationTests(SimpleTestCase):
 
             week = Command()._collect_nginx_access(168, {}, candidates=[base])
             self.assertEqual(week['status_5xx'], 3)
+
+
+def app_line(when, level, msg):
+    return f'{level} {when.strftime("%Y-%m-%d %H:%M:%S")},000 log {msg}\n'
+
+
+class AppLogRotationTests(SimpleTestCase):
+    """django.log 회전은 logrotate 가 맡는다. 교체 직후에도 시간 창 안의 django.log.1·.N.gz 를 읽어야 한다."""
+
+    def test_rotated_app_logs_are_read_within_window(self):
+        import gzip, os, tempfile
+        from datetime import datetime, timedelta
+        now = datetime.now()
+        with tempfile.TemporaryDirectory() as d:
+            base = os.path.join(d, 'django.log')
+            with open(base, 'w') as f:
+                f.write(app_line(now - timedelta(hours=1), 'INFO', 'now'))
+            with open(base + '.1', 'w') as f:
+                f.write(app_line(now - timedelta(hours=30), 'ERROR', 'Internal Server Error: /old/'))
+                f.write(app_line(now - timedelta(hours=5), 'ERROR', 'Internal Server Error: /recent/'))
+                f.write('Traceback (most recent call last):\n')
+            with gzip.open(base + '.2.gz', 'wt') as f:
+                f.write(app_line(now - timedelta(days=3), 'ERROR', 'Internal Server Error: /older/'))
+            cmd = Command()
+            with mock.patch.object(Command, '_app_log_path', return_value=base):
+                day = cmd._read_log_file(hours=24)
+                week = cmd._read_log_file(hours=168)
+                tail = cmd._read_log_file(tail=5)
+            self.assertEqual([l for l in day if 'Internal' in l], [day[0]])
+            self.assertIn('/recent/', day[0])
+            self.assertIn('Traceback (most recent call last):', day)   # 타임스탬프 없는 이어지는 줄 유지
+            self.assertEqual(sum('Internal' in l for l in week), 3)
+            self.assertTrue(week[0].endswith('/older/'))                 # 오래된 것부터 순서대로
+            self.assertEqual(len(tail), 1)                                # tail 은 현재 파일만
+
+    def test_older_files_are_skipped_once_window_is_covered(self):
+        import os, tempfile
+        from datetime import datetime, timedelta
+        now = datetime.now()
+        with tempfile.TemporaryDirectory() as d:
+            base = os.path.join(d, 'django.log')
+            with open(base, 'w') as f:
+                f.write(app_line(now - timedelta(hours=48), 'INFO', 'start'))
+                f.write(app_line(now - timedelta(hours=1), 'INFO', 'now'))
+            open(base + '.1', 'w').close()
+            with mock.patch.object(Command, '_app_log_path', return_value=base), \
+                    mock.patch.object(Command, '_read_tail_lines', wraps=Command._read_tail_lines) as read:
+                Command()._read_log_file(hours=24)
+            self.assertEqual(read.call_count, 1)

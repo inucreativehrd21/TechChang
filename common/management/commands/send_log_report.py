@@ -213,27 +213,39 @@ class Command(BaseCommand):
     def _read_log_file(self, hours=None, tail=None, max_bytes=6 * 1024 * 1024):
         """
         logs/django.log를 읽어 라인 리스트로 반환 (journalctl 폴백 소스).
-        - hours    : 최근 N시간 라인만 (asctime '%Y-%m-%d %H:%M:%S' 기준 필터)
-        - tail     : 마지막 N줄만
-        - max_bytes: 파일 끝에서 최대 이만큼만 읽어 비용을 제한 (기본 6MB)
+        - hours    : 최근 N시간 라인만 (asctime '%Y-%m-%d %H:%M:%S' 기준 필터).
+                     logrotate 가 넘긴 django.log.1·.N.gz 까지 시간 창만큼 거슬러 읽는다
+        - tail     : 마지막 N줄만 (현재 파일)
+        - max_bytes: 최신 쪽부터 최대 이만큼만 읽어 비용을 제한 (기본 6MB)
         파일이 없거나 못 읽으면 None.
         """
         path = self._app_log_path()
         if not os.path.exists(path):
             return None
-        try:
-            size = os.path.getsize(path)
-            with open(path, 'r', errors='replace') as f:
-                if size > max_bytes:
-                    f.seek(size - max_bytes)
-                    f.readline()  # 잘린 첫 줄 버림
-                lines = [l.rstrip('\n') for l in f]
-        except OSError:
-            return None
+        ts_pat = re.compile(r'(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})')
+        cutoff = datetime.now() - timedelta(hours=hours) if hours is not None else None
+
+        chunks, budget = [], max_bytes
+        for log_path in (self._rotated_logs(path) if hours is not None else [path]):
+            try:
+                chunk = self._read_tail_lines(log_path, budget)
+            except OSError:
+                if log_path == path:
+                    return None
+                continue
+            chunks.append(chunk)
+            budget -= sum(len(l) + 1 for l in chunk)
+            if budget <= 0 or cutoff is None:
+                break
+            first = next((m for m in map(ts_pat.search, chunk) if m), None)
+            try:
+                if first and datetime.strptime(first.group(1), '%Y-%m-%d %H:%M:%S') < cutoff:
+                    break  # 이 파일이 이미 창 밖에서 시작하니 더 오래된 파일은 볼 필요 없다
+            except ValueError:
+                pass
+        lines = [l for chunk in reversed(chunks) for l in chunk]
 
         if hours is not None:
-            cutoff = datetime.now() - timedelta(hours=hours)
-            ts_pat = re.compile(r'(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})')
             kept, keep = [], False
             for line in lines:
                 m = ts_pat.search(line)
@@ -249,6 +261,23 @@ class Command(BaseCommand):
         if tail is not None:
             lines = lines[-tail:]
         return lines
+
+    @staticmethod
+    def _read_tail_lines(path, max_bytes):
+        """파일(.gz 포함) 끝에서 max_bytes 안쪽의 줄들. 잘린 첫 줄은 버린다."""
+        import gzip
+        if path.endswith('.gz'):
+            with gzip.open(path, 'rt', errors='replace') as f:
+                data = f.read()
+            if len(data) > max_bytes:
+                data = data[-max_bytes:].split('\n', 1)[-1]
+            return data.splitlines()
+        size = os.path.getsize(path)
+        with open(path, 'r', errors='replace') as f:
+            if size > max_bytes:
+                f.seek(size - max_bytes)
+                f.readline()  # 잘린 첫 줄 버림
+            return [l.rstrip('\n') for l in f]
 
     @staticmethod
     def _classify_level(line):
