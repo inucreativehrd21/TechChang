@@ -219,6 +219,8 @@ class SchoolPathTests(TestCase):
 
     def test_quick_retire_cannot_reroll_talent(self):
         p = kid('리롤', traits=['natural'], potential=95)
+        # kid() 의 입단일(10-01) 고정이면 날짜가 흐를수록 30일 넘게 뛴 선수가 된다 — 짧은 커리어로 맞춘다
+        RookiePlayer.objects.filter(pk=p.pk).update(created_at=timezone.now() - timedelta(days=3))
         R.retire(p.user)
         q = R.create(p.user, name='리롤2', role='batter', team='kia', region='서울', rng=random.Random(99))
         self.assertEqual((q.potential, q.traits), (95, ['natural']))
