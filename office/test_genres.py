@@ -104,3 +104,17 @@ class CodexBudgetTests(SimpleTestCase):
         ctx = RunContext(dry=True, max_codex_tokens=0)
         ctx.active_calls = [{'direct_provider': 'codex', 'input_tokens': 10 ** 9}]
         ctx.reserve()
+
+
+class TutorialExampleFormatTests(SimpleTestCase):
+    SCRIPT = '\n\n```python\n# demo.py\nfrom django.conf import settings\nsettings.configure()\n```\n'
+
+    def test_tutorial_precheck_flags_unrunnable_example_but_data_genre_does_not(self):
+        flagged = [i for i in P.precheck_draft(tutorial(self.SCRIPT), genre='tutorial') if '실행 예제' in i]
+        self.assertEqual(len(flagged), 2)
+        self.assertFalse([i for i in P.precheck_draft(tutorial(self.SCRIPT), genre='data') if '실행 예제에' in i])
+
+    def test_structure_tells_writer_the_runnable_format(self):
+        text = G.structure('tutorial')
+        self.assertIn('# 앱/models.py', text)
+        self.assertIn('settings.configure', text)

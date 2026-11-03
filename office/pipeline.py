@@ -886,8 +886,10 @@ def precheck_draft(content: str, pack: str = '', genre: str | None = None) -> li
     issues += precheck_issues(content)
 
     # 코드 예제 — 문서 대조로는 못 잡는 파싱 실패·클래스 밖 테스트 메서드(2026-10-31 B 파일럿)
-    from .code_check import static_issues
+    from .code_check import format_issues, static_issues
     issues += static_issues(content)
+    if (genre or genre_for(content=content)) == 'tutorial':   # 실행 예제는 연구실이 실행할 수 있는 형식으로(office.genres)
+        issues += format_issues(content)
 
     # 근거 묶음에 없는 수치 — 기억으로 쓴 숫자는 심사에서 '확인 불가'(치명)로 반려된다(#89·#100)
     from . import evidence as E

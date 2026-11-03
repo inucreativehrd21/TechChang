@@ -10,6 +10,7 @@
 from __future__ import annotations
 
 import logging
+import re
 
 logger = logging.getLogger(__name__)
 
@@ -23,8 +24,15 @@ PATCH_PROMPT = (
     '- find 는 원고에서 한 글자도 바꾸지 말고 그대로 복사하세요(공백·기호 포함). 너무 짧으면 여러 곳과 일치하니 '
     '문장 단위 이상으로 잡으세요.\n'
     '- 새 문단·표를 넣으려면 그 바로 앞 문단을 find 로 잡고, replace 에 그 문단 + 새 내용을 쓰세요.\n'
-    '- 지적과 관계없는 곳은 고치지 마세요. 지적 하나에 편집이 여러 개여도 됩니다.'
+    '- 지적과 관계없는 곳은 고치지 마세요. 지적 하나에 편집이 여러 개여도 됩니다.\n'
+    '- 근거가 없다고 지적된 문장은 확인된 근거(문서 인용·실행 결과)로 바꾸거나 지우세요. '
+    '"필자의 추론", "~로 보입니다"처럼 약하게 바꾸는 편집은 거절됩니다.'
 )
+
+# 근거 없는 주장을 덮는 약화 표현 — 새로 들어오면 편집을 거절한다(unsupported)
+HEDGE = re.compile(r'(?:필자|글쓴이|저자)(?:의|가 보기에는?)\s*(?:추론|해석|추정|판단|생각|짐작)'
+                   r'|(?:추론|추정|짐작)(?:입니다|됩니다|해 봅니다|할 수 있습니다)'
+                   r'|것으로\s*(?:보입니다|추정됩니다|짐작됩니다)|로\s*해석됩니다')
 
 
 def apply_edits(content: str, edits: list) -> tuple[str, int, list]:
@@ -55,6 +63,9 @@ def unsupported(edit: dict, pack: str) -> list[str]:
     out = [f'수치 {n}' for n, _ in E.unmatched(repl, f'{pack}\n{find}')]
     old = set(overclaims(find))
     out += [f'단정 「{x[:30]}」' for x in overclaims(repl) if x not in old]
+    # 근거 없는 문장을 '필자의 추론'으로 약하게 바꾸는 것은 고친 것이 아니다 — 원장 인용으로 바꾸거나 지운다
+    # (2026-11-02 atomic 2차: '기록 없이 사라진다'를 추론으로 바꿔 robust=True 문서와 어긋난 채 남았다)
+    out += [f'추론으로 약화 「{m.group(0)}」' for m in HEDGE.finditer(repl) if m.group(0) not in find]
     return out
 
 

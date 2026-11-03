@@ -107,3 +107,21 @@ class CodeBreakingEditTests(SimpleTestCase):
         self.assertIn('코드 손상', why)
         self.assertIn('        pass\n```', content)
         self.assertIn('셋째 문단을 고쳤습니다.', content)
+
+
+class HedgeEditTests(SimpleTestCase):
+    """근거 없는 문장을 '필자의 추론'으로 약하게 바꾸는 편집은 고친 것이 아니다(2026-11-02 atomic 2차)."""
+    def test_new_hedge_is_rejected_but_citation_or_deletion_passes(self):
+        find = '콜백이 실패하면 메일 작업은 기록 없이 사라집니다.'
+        for repl in ('콜백이 실패하면 메일 작업이 기록 없이 사라질 수 있다는 것이 필자의 추론입니다.',
+                     '콜백이 실패하면 기록 없이 사라지는 것으로 보입니다.'):
+            with self.subTest(repl=repl):
+                self.assertTrue(any(x.startswith('추론으로 약화') for x in PT.unsupported({'find': find, 'replace': repl}, '')))
+        cite = ('공식 문서는 robust=True 이면 콜백 예외를 django.db.backends.base 로거에 기록한다고 설명합니다'
+                '("logged on the django.db.backends.base logger").')
+        self.assertEqual(PT.unsupported({'find': find, 'replace': cite}, ''), [])
+        self.assertEqual(PT.unsupported({'find': find, 'replace': ''}, ''), [])
+
+    def test_hedge_already_in_the_sentence_is_not_new(self):
+        find = '이것은 필자의 해석입니다. 다만 표를 다시 그렸습니다.'
+        self.assertEqual(PT.unsupported({'find': find, 'replace': '이것은 필자의 해석입니다. 표를 다시 그렸습니다.'}, ''), [])

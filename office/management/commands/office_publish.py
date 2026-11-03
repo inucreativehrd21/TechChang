@@ -202,6 +202,9 @@ class Command(BaseCommand):
             else:
                 rec('editor', 'precheck', '자동 점검 지적을 첫 통합 심사에 모아 한 번에 수정해요.')
             pack = self._code_facts(stages, rec, content, pack)
+            if profile() == 'b' and genre == 'tutorial':
+                subject, content, pack = self._run_first(stages, rec, timed, topic_key, writer, subject, content,
+                                                         pack, genre)
 
             # 3) 팩트체크 → 4) 수정
             parallel_reviews = {}
@@ -461,6 +464,24 @@ class Command(BaseCommand):
             bad = CC.failures(block)
             rec('checker', 'check', f"코드 예제 실행: 테스트 {len(res['tests'])}개 중 실패 {len(bad)}개")
         return CC.replace(pack, block)
+
+    def _run_first(self, stages: StageRecorder, rec, timed, topic_key: str, writer: str, subject: str, content: str,
+                   pack: str, genre: str) -> tuple:
+        """튜토리얼: 실행할 수 없는 예제·실행에서 실패한 테스트는 사실 검증 전에 한 번 고친다.
+
+        왜(2026-11-02 atomic·select 파일럿): 실행이 안 된 예제로 사실 관문과 심사를 돌리면 결과 주장이 모두 원장 밖이
+        되고, 심사 뒤 패치로는 실행 근거를 되살리지 못했다. 근거(실행 결과)를 먼저 만들고 글을 거기에 맞춘다."""
+        from office import code_check as CC
+        gate = CC.format_issues(content) + [f'코드 예제 실행 실패 — {f}. 실제 값으로 고치거나 코드를 고치세요'
+                                            for f in CC.failures(pack)]
+        if not gate:
+            return subject, content, pack
+        rec('editor', 'precheck', f'실행 예제 {len(gate)}건 — 사실 검증 전에 먼저 고쳐요: {gate[0][:80]}')
+        subject, content, remaining = timed('fix', writer,
+                                            lambda: P.step_fix_draft(topic_key, subject, content, gate, pack, genre))
+        self._update_last(stages, {'subject': subject, 'content': content, 'remaining': remaining}, text=content)
+        rec(writer, 'revise', f'실행 예제 고침 ({P.body_length(content)}자)')
+        return subject, content, self._code_facts(stages, rec, content, pack, attempt=2)
 
     @staticmethod
     def _update_last(stages: StageRecorder, output: dict, *, text: str = '', status: str = '') -> None:

@@ -78,6 +78,73 @@ def _num_queries(func: ast.FunctionDef) -> list[int]:
     return out
 
 
+# 보조 모듈 블록은 첫 줄이 '# shop/services.py' 같은 경로 머리글이다. 모델·테스트 블록과 같은 앱 안의 모듈로 옮긴다
+_HEADER = re.compile(r'^#\s*(?:([A-Za-z_]\w*)/)?([A-Za-z_]\w*)\.py\s*$')
+_RESERVED = ('models', 'tests', 'settings', 'manage', 'urls', 'views', 'admin', 'apps', 'wsgi', 'asgi', 'conftest')
+
+
+def _path(code: str) -> tuple[str, str] | None:
+    """첫 줄이 정확히 '# 앱/모듈.py' 인 블록의 (앱, 모듈). '# shop/tests_wrong.py — 잘못된 예'처럼 설명이 붙은 발췌는 None."""
+    first = next((ln for ln in code.splitlines() if ln.strip()), '')
+    m = _HEADER.match(first.strip())
+    return (m.group(1) or '', m.group(2)) if m else None
+
+
+def _header(code: str) -> tuple[str, str] | None:
+    p = _path(code)
+    return p if p and p[1] not in _RESERVED else None
+
+
+def _is_test_module(name: str) -> bool:
+    return name == 'tests' or name.startswith('test_')
+
+
+def app_label(content: str) -> str:
+    """본문 경로 머리글의 앱 이름 — 임시 앱을 같은 이름으로 만들어 mock.patch('shop.services.x') 같은 경로가 맞게 한다.
+    쓸 수 없는 이름(표준 라이브러리·Django·실행 파일과 겹침)이면 colapp."""
+    from collections import Counter
+    apps = Counter(p[0] for p in map(_path, blocks(content)) if p and p[0])
+    for name, _n in apps.most_common():
+        if (name.isidentifier() and name not in sys.stdlib_module_names
+                and name not in ('django', 'rest_framework', 'colsettings', 'tests', 'test')):
+            return name
+    return 'colapp'
+
+
+def support_modules(content: str) -> dict[str, tuple[str, str]]:
+    """{모듈 이름: (앱 이름, 소스)} — 같은 이름이 여러 번이면 마지막 정의. 파싱되지 않는 블록은 뺀다."""
+    found = {}
+    for code in blocks(content):
+        head = _header(code)
+        if not head:
+            continue
+        try:
+            tree = ast.parse(code)
+        except SyntaxError:
+            continue
+        if any(isinstance(n, ast.ClassDef) and (_is_model(n) or _is_testcase(n)) for n in tree.body):
+            continue
+        found[head[1]] = (head[0], code)
+    return found
+
+
+def _local_import(node, support: dict):
+    """같은 앱의 보조 모듈을 가리키는 import(.services · shop.services)를 임시 앱 기준 상대 import 로 바꾼다."""
+    if not isinstance(node, ast.ImportFrom) or not support:
+        return None
+    mod = node.module or ''
+    if node.level == 1 and mod.split('.')[0] in support:
+        return node
+    if node.level == 1 and not mod and all(a.name in support for a in node.names):     # from . import services
+        return node
+    for name, (app, _src) in support.items():
+        if not node.level and app and mod.split('.')[:2] == [app, name]:
+            return ast.ImportFrom(module='.'.join(mod.split('.')[1:]), names=node.names, level=1)
+        if not node.level and app and mod == app and all(a.name in support for a in node.names):   # from shop import services
+            return ast.ImportFrom(module=None, names=node.names, level=1)
+    return None
+
+
 def _importable(node) -> bool:
     """임시 앱에서도 같은 뜻인 import 만 — 표준 라이브러리·Django·DRF. 독자 프로젝트 경로·상대 경로는 뺀다
     (모델은 임시 앱의 .models 로 대신하고, 시리얼라이저 같은 다른 모듈은 본문에 없으니 실행하지 않는다)."""
@@ -95,8 +162,14 @@ def assemble(content: str) -> tuple[str, str, dict] | None:
     """본문 블록에서 models.py·tests.py 를 만든다. 모델과 테스트가 둘 다 없으면 None.
     모델·테스트가 든 블록만 쓴다(뷰 예시 블록은 독자 프로젝트에 기대므로 뺀다). 테스트 블록의 보조 함수는
     함께 옮긴다. 같은 이름이 여러 번 나오면(개선 전/후) 마지막 정의를 쓴다."""
-    imports, models, tests, helpers = [], {}, {}, {}
-    for code in blocks(content):
+    imports, local_imports, models, tests, helpers = [], [], {}, {}, {}
+    support = support_modules(content)
+    # 정확한 경로 머리글(# shop/tests.py)이 있으면 그 파일만 실행 대상 — '# shop/tests_wrong.py — 잘못된 예' 같은
+    # 일부러 실패하는 예시·발췌 블록은 빼야 한다(2026-11-03 atomic 3차: 섞여서 오류 14건)
+    paths = [_path(c) for c in blocks(content)]
+    exact_tests = any(p and _is_test_module(p[1]) for p in paths)
+    exact_models = any(p and p[1] == 'models' for p in paths)
+    for code, path in zip(blocks(content), paths):
         try:
             tree = ast.parse(code)
         except SyntaxError:
@@ -105,9 +178,16 @@ def assemble(content: str) -> tuple[str, str, dict] | None:
         has_model, has_test = any(map(_is_model, classes)), any(map(_is_testcase, classes))
         if not (has_model or has_test):
             continue
+        if has_test and exact_tests and not (path and _is_test_module(path[1])):
+            continue
+        if has_model and not has_test and exact_models and not (path and path[1] == 'models'):
+            continue
         for node in tree.body:
             if isinstance(node, (ast.Import, ast.ImportFrom)):
-                if _importable(node):
+                local = _local_import(node, support)
+                if local is not None:
+                    local_imports.append(ast.unparse(local))     # models.py 에는 넣지 않는다(보조 모듈이 models 를 가져와 순환)
+                elif _importable(node):
                     imports.append(ast.unparse(node))
             elif isinstance(node, ast.ClassDef) and _is_model(node):
                 models[node.name] = node
@@ -120,7 +200,8 @@ def assemble(content: str) -> tuple[str, str, dict] | None:
     head = '\n'.join(dict.fromkeys(['from django.db import models', 'from django.conf import settings',
                                     'from django.contrib.auth import get_user_model', *imports]))
     models_py = head + '\n\n' + '\n\n'.join(ast.unparse(m) for m in models.values()) + '\n'
-    tests_py = (head + '\nfrom django.test import TestCase\nfrom django.db.models import Prefetch\nfrom .models import *\n\n'
+    tests_py = (head + '\nfrom django.test import TestCase\nfrom django.db.models import Prefetch\nfrom .models import *\n'
+                + '\n'.join(dict.fromkeys(local_imports)) + '\n\n'
                 + '\n\n'.join(ast.unparse(n) for n in [*helpers.values(), *tests.values()]) + '\n')
     expected = {f.name: _num_queries(f) for t in tests.values() for f in t.body
                 if isinstance(f, ast.FunctionDef) and f.name.startswith('test')}
@@ -128,7 +209,7 @@ def assemble(content: str) -> tuple[str, str, dict] | None:
 
 
 SETTINGS = '''SECRET_KEY = "column-check"
-INSTALLED_APPS = ["django.contrib.contenttypes", "django.contrib.auth", "colapp"]
+INSTALLED_APPS = ["django.contrib.contenttypes", "django.contrib.auth", "__APP__"]
 DATABASES = {"default": {"ENGINE": "django.db.backends.sqlite3", "NAME": ":memory:"}}
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 USE_TZ = True
@@ -144,7 +225,7 @@ out = {"django": django.get_version(), "tests": [], "error": ""}
 try:
     runner = DiscoverRunner(verbosity=0, interactive=False)
     setup_test_environment()
-    suite = runner.build_suite(["colapp"])
+    suite = runner.build_suite(["__APP__"])
     names = [t.id() for t in iter_test_cases(suite)]
     old = runner.setup_databases()
     result = unittest.TextTestRunner(stream=io.StringIO(), verbosity=0).run(suite)
@@ -165,6 +246,17 @@ print("@@RESULT" + json.dumps(out))
 '''
 
 
+def _support_source(source: str, support: dict) -> str:
+    """보조 모듈 안의 `from shop.models import X`·`from shop.helpers import Y` 를 임시 앱 기준 상대 import 로 바꾼다."""
+    tree = ast.parse(source)
+    apps = {app for app, _s in support.values() if app}
+    for node in tree.body:
+        parts = (node.module or '').split('.') if isinstance(node, ast.ImportFrom) and not node.level else []
+        if parts and parts[0] in apps:                      # from shop.models import X · from shop import models
+            node.module, node.level = '.'.join(parts[1:]) or None, 1
+    return ast.unparse(tree) + '\n'
+
+
 def run_examples(content: str, *, timeout: int = TIMEOUT) -> dict:
     """반환: {'ran': bool, 'reason': str, 'django': str, 'tests': [{name,status,message,expected}], 'error': str}"""
     if not enabled():
@@ -174,13 +266,17 @@ def run_examples(content: str, *, timeout: int = TIMEOUT) -> dict:
         return {'ran': False, 'reason': '모델과 테스트가 함께 있는 코드 예제 없음'}
     models_py, tests_py, expected = built
     with tempfile.TemporaryDirectory(prefix='colcheck-') as root:
-        app = Path(root, 'colapp')
+        label = app_label(content)
+        app = Path(root, label)
         app.mkdir()
         Path(app, '__init__.py').write_text('', encoding='utf-8')
         Path(app, 'models.py').write_text(models_py, encoding='utf-8')
         Path(app, 'tests.py').write_text(tests_py, encoding='utf-8')
-        Path(root, 'colsettings.py').write_text(SETTINGS, encoding='utf-8')
-        Path(root, '_run.py').write_text(RUNNER, encoding='utf-8')
+        support = support_modules(content)
+        for name, (_app, source) in support.items():
+            Path(app, f'{name}.py').write_text(_support_source(source, support), encoding='utf-8')
+        Path(root, 'colsettings.py').write_text(SETTINGS.replace('__APP__', label), encoding='utf-8')
+        Path(root, '_run.py').write_text(RUNNER.replace('__APP__', label), encoding='utf-8')
         env = {k: os.environ[k] for k in ('PATH', 'SYSTEMROOT', 'TEMP', 'TMP') if k in os.environ}
         env.update({'DJANGO_SETTINGS_MODULE': 'colsettings', 'PYTHONIOENCODING': 'utf-8'})
         try:
@@ -221,6 +317,27 @@ def facts(result: dict) -> str:
             real = f' 실제 실행 {m.group(1)}회, 본문 기대 {m.group(2)}회 —' if m else ''
             lines.append(f"{ITEM}{t['name']}: 실패{q} —{real} {t['message']}")
     return '\n'.join(lines)
+
+
+_STANDALONE = re.compile(r'settings\.configure\(|django\.setup\(\)|if __name__ == ["\']__main__["\']')
+
+
+def format_issues(content: str) -> list[str]:
+    """튜토리얼 실행 예제가 연구실이 실행할 수 있는 형식인지(office.genres 의 '실행 예제' 규칙).
+
+    왜(2026-11-02 atomic 2차·select 4차): 혼자 실행하는 스크립트로 쓴 예제는 실행 검증이 돌지 않아, '테스트로
+    재현된다'·'메일 1건' 같은 결과 주장이 모두 원장 밖이 됐다. 실행기를 넓히는 대신 예제 형식을 고정한다."""
+    codes = blocks(content)
+    if not codes:
+        return []
+    issues = []
+    if any(_STANDALONE.search(c) for c in codes):
+        issues.append('실행 예제에 혼자 실행하는 스크립트(settings.configure·django.setup()·__main__)가 있습니다. '
+                      '연구실이 실행해 확인할 수 있도록 `# 앱/models.py`·`# 앱/tests.py`(TestCase) 블록으로 나눠 쓰세요.')
+    if assemble(content) is None:
+        issues.append('실행 예제에 예제용 모델(`# 앱/models.py`)과 TestCase 테스트(`# 앱/tests.py`)가 함께 있지 않아 '
+                      '실행 확인을 할 수 없습니다. 결과를 말하는 문장은 그 값을 assert 하는 테스트로 뒷받침하세요.')
+    return issues
 
 
 def failures(pack: str) -> list[str]:
