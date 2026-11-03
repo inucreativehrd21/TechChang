@@ -10,7 +10,13 @@ _profile = ContextVar('office_model_profile', default=None)
 
 
 def profile() -> str:
-    value = _profile.get() or os.environ.get('OFFICE_MODEL_PROFILE', 'a').strip().lower()
+    value = _profile.get()
+    if not value:
+        raw = os.environ.get('OFFICE_MODEL_PROFILE', '').strip().lower()
+        if raw and raw not in ('legacy', 'a', 'b'):        # .env 오타는 조용히 넘기지 않는다
+            raise ValueError('OFFICE_MODEL_PROFILE은 legacy, a, b 중 하나여야 해요.')
+        from .switches import get
+        value = get('profile')                              # .env → 관리 화면 설정 → 기본 a
     if value not in ('legacy', 'a', 'b'):
         raise ValueError('OFFICE_MODEL_PROFILE은 legacy, a, b 중 하나여야 해요.')
     return value

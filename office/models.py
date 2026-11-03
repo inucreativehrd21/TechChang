@@ -400,3 +400,18 @@ class JobRequest(models.Model):
 
     class Meta:
         ordering = ['run_after']
+
+
+class LabSwitch(models.Model):
+    """연구실 기능 스위치 — 관리 화면에서 바꾼 값(office.switches). 서버 .env 에 같은 이름이 있으면 그쪽이 우선한다."""
+    key = models.CharField(max_length=40, unique=True)
+    value = models.CharField(max_length=40)
+    updated_by = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL, related_name='+')
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = '연구실 기능 스위치'
+        verbose_name_plural = '연구실 기능 스위치'
+
+    def __str__(self):
+        return f'{self.key}={self.value}'

@@ -30,7 +30,8 @@ class Outcome:
 
 
 def parallel_enabled() -> bool:
-    if os.environ.get('OFFICE_PARALLEL', '1') == '0':
+    from .switches import get
+    if not get('parallel'):
         return False
     if os.environ.get('OFFICE_AGENT_SPOOL') and os.environ.get('OFFICE_SPOOL_PARALLEL') != '1':
         return False
@@ -38,10 +39,8 @@ def parallel_enabled() -> bool:
 
 
 def max_workers() -> int:
-    try:
-        return max(1, int(os.environ.get('OFFICE_MAX_WORKERS', '3')))
-    except ValueError:
-        return 3
+    from .switches import get
+    return max(1, int(get('max_workers')))
 
 
 def _run(key: str, fn: Callable[[], Any]) -> Outcome:

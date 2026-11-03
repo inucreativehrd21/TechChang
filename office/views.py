@@ -194,7 +194,19 @@ def office_admin(request):
     done_tasks = list(Task.objects.filter(status__in=[Task.ST_DONE, Task.ST_REJECTED, Task.ST_PR])
                       .select_related('decision')[:10])
     job_log = _job_log_tail()
+    from . import switches as SW
+    open_meeting = next((m for m in meetings if m.status == Meeting.STATUS_OPEN), None)
+    revising = [d for d in held if d.status == ColumnDraft.STATUS_REVISING]
+    status = [   # 위쪽 상태 줄 — 누르면 해당 탭으로
+        {'tab': 'decisions', 'label': '결정 대기 안건', 'n': open_meeting.pending_count if open_meeting else 0},
+        {'tab': 'drafts', 'label': '검수 대기 원고', 'n': len(held) - len(revising),
+         'note': f'재작성 중 {len(revising)}' if revising else ''},
+        {'tab': 'drafts', 'label': '공개 대기', 'n': len(ready),
+         'note': f'다음 {timezone.localtime(ready[0].publish_at):%m/%d %H:%M}' if ready and ready[0].publish_at else ''},
+        {'tab': 'crew', 'label': '정비 백로그', 'n': sum(1 for t in tasks if t.status == Task.ST_BACKLOG)},
+    ]
     return render(request, 'office/admin.html', {
+        'status': status, 'switch_groups': SW.panel(), 'switch_summary': SW.summary(),
         'meetings': meetings, 'held': held, 'ready': ready, 'jobs': jobs, 'recent_drafts': recent_drafts, 'logs': logs,
         'tasks': tasks, 'done_tasks': done_tasks, 'github_ok': github.available(),
         'crew_pending': sum(1 for t in tasks if t.status == Task.ST_BACKLOG),
@@ -203,6 +215,31 @@ def office_admin(request):
                                   or (bool(getattr(settings, 'ANTHROPIC_API_KEY', ''))
                                       and os.environ.get('AI_ALLOW_PAID_API', 'false').lower() == 'true')),
     })
+
+
+@admin_required
+@require_POST
+def switch_set(request, key):
+    """설정 탭 — 기능 스위치 하나를 바꾸거나 기본값으로 되돌린다(office.switches)."""
+    from django.http import Http404
+
+    from . import switches as SW
+    spec = SW.BY_KEY.get(key)
+    if spec is None:
+        raise Http404
+    try:
+        if request.POST.get('reset'):
+            SW.reset(key)
+            messages.success(request, f'{spec.label}: 기본값({SW.value_label(spec, spec.default)})으로 되돌렸어요.')
+        else:
+            raw = request.POST.get('value', '')
+            if spec.kind == 'bool' and raw not in ('on', 'off'):
+                raw = 'on' if request.POST.get('enabled') else 'off'
+            value = SW.set_value(key, raw, request.user)
+            messages.success(request, f'{spec.label}: {SW.value_label(spec, value)}(으)로 바꿨어요. 다음 제작부터 적용돼요.')
+    except ValueError as exc:
+        messages.error(request, f'{spec.label}: {exc}')
+    return redirect(reverse('office:admin') + '#settings')
 
 
 @admin_required

@@ -45,6 +45,7 @@ from office import blueprint as B
 from office import review_protocol as R
 from office import evidence as E
 from office import schedule as S
+from office import switches as SW
 from office.patching import patch_revise
 from office.agents import AGENTS, TOPIC_AGENT
 from office.models import ColumnDraft
@@ -206,7 +207,7 @@ class Command(BaseCommand):
             else:
                 rec('editor', 'precheck', '자동 점검 지적을 첫 통합 심사에 모아 한 번에 수정해요.')
             pack = self._code_facts(stages, rec, content, pack)
-            if profile() == 'b' and genre == 'tutorial':
+            if profile() == 'b' and genre == 'tutorial' and SW.get('run_first'):
                 subject, content, pack = self._run_first(stages, rec, timed, topic_key, writer, subject, content,
                                                          pack, genre)
 
@@ -306,7 +307,7 @@ class Command(BaseCommand):
                     writer, subject, P.strip_visual_block(content), notes, who='편집 심사에서',
                     guide=f'[팩트체크 보고]\n{P.check_text(check)}' + P.pack_block(pack),
                     pack=pack if profile() == 'b' else None), attempt=attempt)
-                if ok and not P.looks_truncated(p_content) and profile() == 'b':
+                if ok and not P.looks_truncated(p_content) and profile() == 'b' and SW.get('settle_leftovers'):
                     p_subject, p_content, why = self._settle_overclaims(timed, writer, content, p_subject, p_content,
                                                                         why, check, pack, attempt)
                 if ok and not P.looks_truncated(p_content):

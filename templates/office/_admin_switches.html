@@ -1,0 +1,55 @@
+{% comment %}연구실 관리 › 설정 탭 — 기능 스위치(office.switches). 값은 .env → 이 화면에서 바꾼 값 → 기본값 순서로 정해져요.{% endcomment %}
+<div class="oa-sw-intro">
+  <p>바꾼 값은 다음 제작부터 적용돼요. 서버 설정 파일(.env)에 같은 이름이 있으면 그 값이 우선이라 여기서 바꿀 수 없어요.</p>
+</div>
+{% for g in switch_groups %}
+<section class="oa-sw-group" aria-labelledby="swg-{{ g.key }}">
+  <header class="oa-sw-head">
+    <h2 id="swg-{{ g.key }}">{{ g.title }}</h2>
+    <p>{{ g.intro }}</p>
+  </header>
+  <ul class="oa-sw-list">
+    {% for i in g.items %}
+    <li class="oa-sw{% if i.idle %} is-idle{% endif %}{% if i.locked %} is-locked{% endif %}{% if i.changed %} is-changed{% endif %}">
+      <div class="oa-sw-text">
+        <h3 id="sw-{{ i.spec.key }}">{{ i.spec.label }}</h3>
+        <p id="sw-{{ i.spec.key }}-help">{{ i.spec.help }}</p>
+        <p class="oa-sw-meta">
+          {% if i.locked %}<span class="oa-tag is-lock">{{ i.locked }}</span>
+          {% elif i.source == 'admin' %}<span class="oa-tag is-set">이 화면에서 바꿈 · {{ i.row.updated_by.username|default:"-" }} · {{ i.row.updated_at|date:"m/d H:i" }}</span>
+          {% else %}<span class="oa-tag">기본값</span>{% endif %}
+          {% if i.idle %}<span class="oa-tag is-idle">지금은 안 쓰여요 — {{ i.idle }}</span>{% endif %}
+          <code>{{ i.spec.env }}</code>
+        </p>
+      </div>
+      <form method="post" action="{% url 'office:switch_set' i.spec.key %}" class="oa-sw-ctl"
+            {% if i.spec.warn %}data-warn="{{ i.spec.warn }}"{% endif %}>
+        {% csrf_token %}
+        {% if i.spec.kind == 'bool' %}
+          <label class="oa-toggle">
+            <input type="checkbox" name="enabled" value="1" role="switch" aria-labelledby="sw-{{ i.spec.key }}"
+                   aria-describedby="sw-{{ i.spec.key }}-help" {% if i.value %}checked{% endif %} {% if i.locked %}disabled{% endif %}>
+            <span class="oa-toggle-track" aria-hidden="true"></span>
+            <span class="oa-toggle-text">{{ i.value_label }}</span>
+          </label>
+        {% elif i.spec.kind == 'choice' %}
+          <select name="value" aria-labelledby="sw-{{ i.spec.key }}" {% if i.locked %}disabled{% endif %}>
+            {% for v, name in i.spec.choices %}<option value="{{ v }}" {% if v == i.value %}selected{% endif %}>{{ name }}</option>{% endfor %}
+          </select>
+        {% else %}
+          <span class="oa-num">
+            <input type="number" name="value" value="{{ i.value }}" min="{{ i.spec.minimum }}" max="{{ i.spec.maximum }}"
+                   step="1" inputmode="numeric" aria-labelledby="sw-{{ i.spec.key }}" {% if i.locked %}disabled{% endif %}>
+            {% if i.spec.unit %}<span>{{ i.spec.unit }}</span>{% endif %}
+          </span>
+        {% endif %}
+        {% if not i.locked %}
+          <button type="submit" class="oa-sw-apply">적용</button>
+          {% if i.source == 'admin' %}<button type="submit" name="reset" value="1" class="oa-sw-reset">기본값({{ i.default_label }})으로</button>{% endif %}
+        {% endif %}
+      </form>
+    </li>
+    {% endfor %}
+  </ul>
+</section>
+{% endfor %}

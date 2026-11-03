@@ -32,7 +32,8 @@ ENV_ERRORS = ('ImportError', 'ModuleNotFoundError', 'NoReverseMatch', 'TemplateD
 
 
 def enabled() -> bool:
-    return os.environ.get('OFFICE_CODE_RUN', '').strip().lower() in ('1', 'true', 'yes', 'on')
+    from .switches import get
+    return bool(get('code_run'))        # .env OFFICE_CODE_RUN 으로만 켠다(관리 화면에서는 잠금)
 
 
 def blocks(content: str) -> list[str]:

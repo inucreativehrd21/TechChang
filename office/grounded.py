@@ -12,12 +12,18 @@
 from __future__ import annotations
 
 import json
-import os
 import re
 
 # 원장에 없는 주장 중 웹으로 확인할 최대 개수. 기본 0 — 2026-11-01 v3 파일럿에서 6개 웹 확인이 643k 토큰(원장 대조의
 # 30배)을 썼다. 원장 밖 주장은 확인 불가로 두고 '근거 범위로 좁히거나 삭제'하는 수정 대상으로 돌린다(근거 먼저 원칙).
-GROUNDED_WEB_MAX = int(os.environ.get('OFFICE_GROUNDED_WEB_MAX', '0') or 0)
+GROUNDED_WEB_MAX = None       # 테스트가 숫자로 바꿔 끼운다. 평소에는 스위치(office.switches 'grounded_web_max')
+
+
+def web_max() -> int:
+    if GROUNDED_WEB_MAX is not None:
+        return GROUNDED_WEB_MAX
+    from .switches import get
+    return int(get('grounded_web_max'))
 OUT_OF_LEDGER = '원장 밖 주장 — 근거 원장의 범위로 좁히거나 문장을 지우세요.'
 EXCERPT_CHARS = 800
 
@@ -40,7 +46,8 @@ PROMPT = (
 
 
 def enabled() -> bool:
-    return os.environ.get('OFFICE_GROUNDED_CHECK', '1').strip().lower() not in ('0', 'false', 'off', 'no')
+    from .switches import get
+    return bool(get('grounded_check'))
 
 
 def entries(*sources, code_facts: str = '', documents: list | None = None) -> list[dict]:
@@ -153,8 +160,8 @@ def check(subject: str, content: str, items: list[dict], *, ask_json, titles: st
     claims = [attach(c, by_id) for c in res.get('claims') or [] if isinstance(c, dict) and c.get('claim')]
     missing = [c for c in claims if c['status'] == 'needs_source']
     web = []
-    if missing and web_tools and GROUNDED_WEB_MAX:
-        web = E.gather([{'claim': c['claim']} for c in missing[:GROUNDED_WEB_MAX]], ask_json=ask_json, tools=web_tools)
+    if missing and web_tools and web_max():
+        web = E.gather([{'claim': c['claim']} for c in missing[:web_max()]], ask_json=ask_json, tools=web_tools)
     by_claim = {str(w.get('claim', '')).strip(): w for w in web}
     out = []
     for c in claims:

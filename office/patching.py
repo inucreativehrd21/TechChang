@@ -67,7 +67,8 @@ def unsupported(edit: dict, pack: str) -> list[str]:
     # 근거 없는 문장을 '필자의 추론'으로 약하게 바꾸는 것은 고친 것이 아니다 — 원장 인용으로 바꾸거나 지운다
     # (2026-11-02 atomic 2차: '기록 없이 사라진다'를 추론으로 바꿔 robust=True 문서와 어긋난 채 남았다)
     # 약화는 기존 문장을 바꿀 때만 본다 — 원래 문단을 그대로 두고 뒤에 새 내용을 덧붙이는 편집은 해당 없다
-    if not (find.strip() and find in repl):
+    from .switches import get
+    if get('hedge_reject') and not (find.strip() and find in repl):
         out += [f'추론으로 약화 「{m.group(0)}」' for m in HEDGE.finditer(repl) if m.group(0) not in find]
     return out
 

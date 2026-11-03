@@ -12,7 +12,6 @@ from __future__ import annotations
 import html
 import ipaddress
 import logging
-import os
 import re
 import socket
 import urllib.request
@@ -37,7 +36,8 @@ _STOP = set('the and for with that this are from not but you your can will has h
 
 
 def enabled() -> bool:
-    return os.environ.get('OFFICE_SOURCE_FETCH', '1').strip().lower() not in ('0', 'false', 'off', 'no')
+    from .switches import get
+    return bool(get('source_fetch'))
 
 
 def normalize(url: str) -> str:

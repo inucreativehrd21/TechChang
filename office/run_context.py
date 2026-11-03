@@ -24,8 +24,10 @@ class RunContext:
         self.run_id = str(uuid.UUID(str(run_id))) if run_id else str(uuid.uuid4())
         self.max_calls, self.max_seconds = max_calls, max_seconds
         # 0 이면 끔. 기본은 v2 파일럿(약 118만) 아래 — 사실 관문이 원장 대조로 바뀌면 낮춘다
-        self.max_codex_tokens = (int(os.environ.get('OFFICE_RUN_MAX_CODEX_TOKENS', '1000000'))
-                                 if max_codex_tokens is None else max_codex_tokens)
+        if max_codex_tokens is None:
+            from .switches import get
+            max_codex_tokens = int(get('run_max_codex_tokens'))   # .env → 관리 화면 설정 → 기본 100만
+        self.max_codex_tokens = max_codex_tokens
         self.started = time.monotonic()
         self.lock = threading.RLock()
         self.path = Path(root) / (self.run_id + '.json') if root is not None and not dry else None

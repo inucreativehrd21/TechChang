@@ -172,6 +172,9 @@ def recover_orphans(now=None, out=print, running: set[int] | None = None) -> lis
     같은 원고의 복구 예약이 하루 안에 이미 있으면 되돌리기만 한다(반복 실패가 무한 재실행이 되지 않게)."""
     from office.models import ColumnDraft, JobRequest
     from office.services import log
+    from office.switches import get
+    if not get('orphan_recover'):
+        return []
     now = now or timezone.now()
     running = _running_revise_drafts() if running is None else running
     if running is None:

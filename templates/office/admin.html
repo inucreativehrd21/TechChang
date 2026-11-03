@@ -7,29 +7,42 @@
 {% block admin_content %}
 
 <div class="oa">
-  <div class="oa-head">
-    <div>
+  <div class="oa-top">
+    <section class="oa-status" aria-labelledby="oa-status-title">
+      <h2 class="oa-top-title" id="oa-status-title">지금 처리할 일</h2>
+      <ul class="oa-stats">
+        {% for s in status %}
+        <li><a class="oa-stat{% if s.n %} is-due{% endif %}" href="#{{ s.tab }}" data-goto="{{ s.tab }}">
+          <b>{{ s.n }}</b><span>{{ s.label }}</span>{% if s.note %}<small>{{ s.note }}</small>{% endif %}</a></li>
+        {% endfor %}
+      </ul>
+      <p class="oa-mode">제작 방식 <b>{{ switch_summary }}</b> <a href="#settings" data-goto="settings">설정에서 바꾸기</a></p>
       <p class="oa-links"><a href="{% url 'office:home' %}">연구실 보기 <span aria-hidden="true">↗</span></a><a href="{% url 'community:column_map' %}">칼럼 지도 <span aria-hidden="true">↗</span></a></p>
-      <p class="oa-help">회의를 소집하거나 주제별 칼럼 제작을 시작할 수 있어요.</p>
-    </div>
-    <div class="oa-actions">
-      <form method="post" action="{% url 'office:run_job' %}">{% csrf_token %}<input type="hidden" name="job" value="meeting">
-        <button type="submit" {% if not manual_jobs_available %}disabled title="AI 실행 설정을 확인해 주세요"{% endif %} data-confirm="편집회의를 지금 소집할까요? 완료까지 몇 분 걸려요.">편집회의 소집</button></form>
-      {% for k, v in topic_label.items %}
-      <form method="post" action="{% url 'office:run_job' %}">{% csrf_token %}<input type="hidden" name="job" value="publish"><input type="hidden" name="topic" value="{{ k }}">
-        <button type="submit" class="alt" {% if not manual_jobs_available %}disabled{% endif %} data-confirm="{{ v }} 칼럼 제작을 시작할까요? 완료까지 몇 분 걸려요.">{{ v }} 칼럼 제작</button></form>
-      {% endfor %}
-    </div>
+    </section>
+    <section class="oa-run" aria-labelledby="oa-run-title">
+      <h2 class="oa-top-title" id="oa-run-title">직접 실행</h2>
+      <p class="oa-help">정기 일정과 별개로 지금 시작해요. 구독 사용량을 쓰고 몇 분 걸려요.</p>
+      <div class="oa-actions">
+        <form method="post" action="{% url 'office:run_job' %}">{% csrf_token %}<input type="hidden" name="job" value="meeting">
+          <button type="submit" {% if not manual_jobs_available %}disabled title="AI 실행 설정을 확인해 주세요"{% endif %} data-confirm="편집회의를 지금 소집할까요? 완료까지 몇 분 걸려요.">편집회의 소집</button></form>
+      </div>
+      <p class="oa-run-sub" id="oa-run-columns">칼럼 제작</p>
+      <div class="oa-actions oa-topics" role="group" aria-labelledby="oa-run-columns">
+        {% for k, v in topic_label.items %}
+        <form method="post" action="{% url 'office:run_job' %}">{% csrf_token %}<input type="hidden" name="job" value="publish"><input type="hidden" name="topic" value="{{ k }}">
+          <button type="submit" {% if not manual_jobs_available %}disabled{% endif %} aria-label="{{ v }} 칼럼 제작" data-confirm="{{ v }} 칼럼 제작을 시작할까요? 완료까지 몇 분 걸려요.">{{ v }}</button></form>
+        {% endfor %}
+      </div>
+    </section>
   </div>
 
   <div class="panel tabs-panel">
-    <div class="tabs" role="tablist">
-      <button type="button" class="tab active" data-tab="decisions" role="tab">회의 안건 결정 {% for m in meetings %}{% if m.status == 'open' and forloop.first %}<span class="badge-n">{{ m.pending_count }}</span>{% endif %}{% endfor %}</button>
-      <button type="button" class="tab" data-tab="held" role="tab">보류 칼럼 검수 {% if held %}<span class="badge-n">{{ held|length }}</span>{% endif %}</button>
+    <div class="tabs" role="tablist" aria-label="연구실 관리">
+      <button type="button" class="tab active" data-tab="decisions" role="tab">안건 결정 {% for m in meetings %}{% if m.status == 'open' and forloop.first %}<span class="badge-n">{{ m.pending_count }}</span>{% endif %}{% endfor %}</button>
+      <button type="button" class="tab" data-tab="drafts" role="tab">원고 {% if held %}<span class="badge-n">{{ held|length }}</span>{% endif %}</button>
       <button type="button" class="tab" data-tab="crew" role="tab">정비 백로그 {% if crew_pending %}<span class="badge-n">{{ crew_pending }}</span>{% endif %}</button>
-      <button type="button" class="tab" data-tab="minutes" role="tab">회의록</button>
-      <button type="button" class="tab" data-tab="worklog" role="tab">작업 로그</button>
-      <button type="button" class="tab" data-tab="joblog" role="tab">프로세스 출력</button>
+      <button type="button" class="tab" data-tab="records" role="tab">기록</button>
+      <button type="button" class="tab" data-tab="settings" role="tab">설정</button>
     </div>
 
     <section class="tab-pane narrow" data-pane="decisions">
@@ -64,7 +77,7 @@
       {% endfor %}
     </section>
 
-    <section class="tab-pane narrow" data-pane="held" hidden>
+    <section class="tab-pane narrow" data-pane="drafts" hidden>
       {% if jobs %}
       <h2 class="pane-title">예약된 재실행 <small class="muted">메일 버튼으로 예약 — 10분마다 실행 시각이 된 것을 띄웁니다</small></h2>
       <table class="logs">
@@ -236,7 +249,13 @@
       {% endif %}
     </section>
 
-    <section class="tab-pane" data-pane="minutes" hidden>
+    <section class="tab-pane" data-pane="records" hidden>
+      <div class="oa-sub" role="group" aria-label="기록 종류">
+        <button type="button" class="oa-sub-btn is-on" data-sub="worklog" aria-pressed="true">작업 로그</button>
+        <button type="button" class="oa-sub-btn" data-sub="minutes" aria-pressed="false">회의록</button>
+        <button type="button" class="oa-sub-btn" data-sub="joblog" aria-pressed="false">프로세스 출력</button>
+      </div>
+      <div class="oa-subpane" data-subpane="minutes" hidden>
       {% if meetings %}
       <div class="meeting-pick">
         {% for m in meetings %}
@@ -272,9 +291,9 @@
       </article>
       {% endfor %}
       {% else %}<p class="muted">아직 회의가 없어요.</p>{% endif %}
-    </section>
+      </div>
 
-    <section class="tab-pane" data-pane="worklog" hidden>
+      <div class="oa-subpane" data-subpane="worklog">
       <div class="live-bar">
         <label class="live-toggle"><input type="checkbox" id="live-logs" checked> <span class="dot-live"></span> 실시간 갱신</label>
         <span class="muted" id="live-stamp"></span>
@@ -285,11 +304,16 @@
         {% for l in logs %}<tr data-log="{{ l.id }}"><td>{{ l.created_at|date:"m/d H:i:s" }}</td><td><b>{{ l.agent_name }}</b></td><td>{{ l.text }}</td></tr>
         {% empty %}<tr><td class="muted" colspan="3">없음</td></tr>{% endfor %}
       </table>
+      </div>
+
+      <div class="oa-subpane" data-subpane="joblog" hidden>
+        <p class="muted">직접 실행·재검수 작업의 출력이에요(logs/office_jobs.log 마지막 60줄).</p>
+        <pre class="joblog" id="joblog">{{ job_log|default:"(없음)" }}</pre>
+      </div>
     </section>
 
-    <section class="tab-pane" data-pane="joblog" hidden>
-      <p class="muted">logs/office_jobs.log 마지막 40줄 — 수동 소집·제작 버튼의 실행 출력</p>
-      <pre class="joblog" id="joblog">{{ job_log|default:"(없음)" }}</pre>
+    <section class="tab-pane" data-pane="settings" hidden>
+      {% include 'office/_admin_switches.html' %}
     </section>
   </div>
 </div>
@@ -301,14 +325,18 @@
   document.querySelectorAll('button[data-confirm]').forEach(function (b) {
     b.addEventListener('click', function (e) { if (!confirm(b.dataset.confirm)) e.preventDefault(); });
   });
-  // 탭 (마지막 탭은 기억)
+  // 탭 (마지막 탭은 기억). 예전 탭 이름(보류 칼럼·회의록·작업 로그·프로세스 출력)은 새 묶음으로 잇는다
   var tabs = document.querySelectorAll('.tabs .tab'), panes = document.querySelectorAll('.tab-pane');
+  var ALIAS = {held: 'drafts', minutes: 'records', worklog: 'records', joblog: 'records'};
   panes.forEach(function(p){p.id='oa-pane-'+p.dataset.pane;p.setAttribute('role','tabpanel');p.setAttribute('aria-labelledby','oa-tab-'+p.dataset.pane);});
   tabs.forEach(function(t){t.id='oa-tab-'+t.dataset.tab;t.setAttribute('aria-controls','oa-pane-'+t.dataset.tab);});
   function showTab(name) {
+    if (ALIAS[name]) { showSub(name === 'held' ? null : name); name = ALIAS[name]; }
     if (!Array.from(tabs).some(function(t){return t.dataset.tab===name;})) name=tabs[0].dataset.tab;
     tabs.forEach(function(t){t.setAttribute('aria-selected',t.dataset.tab===name?'true':'false');t.tabIndex=t.dataset.tab===name?0:-1;});
     tabs.forEach(function (t) { t.classList.toggle('active', t.dataset.tab === name); });
+    var current = document.querySelector('.tabs .tab.active');   // 좁은 화면에서 가로로 넘친 탭도 보이게
+    if (current && current.scrollIntoView) current.scrollIntoView({block: 'nearest', inline: 'nearest'});
     panes.forEach(function (p) { p.hidden = p.dataset.pane !== name; });
     try { localStorage.setItem('lab-admin-tab', name); } catch (e) {}
   }
@@ -316,6 +344,37 @@
     t.addEventListener('click', function () { showTab(t.dataset.tab); history.replaceState(null,'','#'+t.dataset.tab); });
     t.addEventListener('keydown',function(e){var target=index;if(e.key==='ArrowRight')target=(index+1)%tabs.length;else if(e.key==='ArrowLeft')target=(index+tabs.length-1)%tabs.length;else if(e.key==='Home')target=0;else if(e.key==='End')target=tabs.length-1;else return;e.preventDefault();showTab(tabs[target].dataset.tab);tabs[target].focus();});
   });
+  // 기록 탭 안의 종류(작업 로그·회의록·프로세스 출력)
+  function showSub(name) {
+    var btns = document.querySelectorAll('.oa-sub-btn');
+    if (!name) { try { name = localStorage.getItem('lab-admin-sub'); } catch (e) {} }
+    if (!Array.from(btns).some(function(b){return b.dataset.sub===name;})) name = 'worklog';
+    btns.forEach(function(b){ var on = b.dataset.sub === name; b.classList.toggle('is-on', on); b.setAttribute('aria-pressed', on ? 'true' : 'false'); });
+    document.querySelectorAll('.oa-subpane').forEach(function(p){ p.hidden = p.dataset.subpane !== name; });
+    try { localStorage.setItem('lab-admin-sub', name); } catch (e) {}
+  }
+  document.querySelectorAll('.oa-sub-btn').forEach(function(b){ b.addEventListener('click', function(){ showSub(b.dataset.sub); }); });
+  showSub(null);
+  // 상태 줄·안내 링크 → 해당 탭
+  document.querySelectorAll('[data-goto]').forEach(function(a){
+    a.addEventListener('click', function(e){ e.preventDefault(); showTab(a.dataset.goto); history.replaceState(null,'','#'+a.dataset.goto);
+      var bar = document.querySelector('.tabs'); if (bar) bar.scrollIntoView({block: 'start', behavior: 'smooth'}); });
+  });
+  // 설정: 켜고 끄기는 바로 적용(되돌리기 쉬운 쪽만 확인 없이), 비용·구성이 바뀌는 쪽은 한 번 묻는다
+  document.querySelectorAll('.oa-sw-ctl').forEach(function(f){
+    var box = f.querySelector('input[type=checkbox]'), sel = f.querySelector('select');
+    f.addEventListener('submit', function(e){
+      if (e.submitter && e.submitter.name === 'reset') return;
+      var turningOn = (box && box.checked) || (sel && sel.value === 'b' && sel.dataset.initial !== 'b');
+      if (f.dataset.warn && turningOn && !confirm(f.dataset.warn)) { e.preventDefault(); if (box) box.checked = !box.checked; }
+    });
+    if (sel) sel.dataset.initial = sel.value;
+    if (box && !box.disabled) {
+      f.classList.add('is-instant');
+      box.addEventListener('change', function(){ if (f.requestSubmit) f.requestSubmit(); else f.submit(); });
+    }
+  });
+  window.addEventListener('hashchange', function(){ if (location.hash.length > 1) showTab(location.hash.slice(1)); });
   var saved = location.hash.slice(1);
   try { saved = saved || localStorage.getItem('lab-admin-tab'); } catch (e) {}
   showTab(saved || 'decisions');

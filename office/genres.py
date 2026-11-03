@@ -7,7 +7,6 @@
 """
 from __future__ import annotations
 
-import os
 
 from common.management.commands.auto_write_columns import COLUMN_STRUCTURE
 
@@ -89,7 +88,8 @@ DEFAULT_BY_TOPIC = {'coding': 'tutorial'}
 def genre_for(topic_key: str = '', brief: dict | None = None, content: str = '') -> str:
     """기획서가 고른 장르 → 이미 쓴 원고의 근거 소제목 → 분야 기본값 순.
     재심·운영자 수정처럼 기획서가 없는 단계에서도 원고가 따르는 틀을 유지한다(옛 코딩 칼럼은 데이터 틀)."""
-    if os.environ.get('OFFICE_GENRES', '').strip().lower() not in ('1', 'true', 'yes', 'on'):
+    from .switches import get
+    if not get('genres'):                                   # .env OFFICE_GENRES → 관리 화면 설정 → 기본 꺼짐
         return 'data'
     chosen = (brief or {}).get('genre') if isinstance(brief, dict) else None
     if chosen in GENRES:
