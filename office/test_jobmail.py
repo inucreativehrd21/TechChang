@@ -180,3 +180,49 @@ class SubscriptionRunnerTests(TestCase):
             claude._alert_fallback({'backend': 'codex_cli'}, fallback_enabled=False, subscription=True)
             claude._alert_fallback({'backend': ''}, fallback_enabled=False, subscription=True)
         self.assertEqual(send.call_count, 2)
+
+
+class OrphanRecoveryTests(TestCase):
+    """2026-11-02 #53 — 배포 restart 가 관리 화면이 띄운 office_revise 를 함께 죽여 '재작성 중'에 멈췄다."""
+    def setUp(self):
+        self.draft = ColumnDraft.objects.create(topic='hrd', subject='멈춘 원고', status=ColumnDraft.STATUS_REVISING,
+                                                admin_note='참고 자료 URL만 고쳐 주세요')
+        self.later = timezone.now() + timedelta(minutes=30)
+
+    def test_orphan_goes_back_to_hold_and_is_requeued_once(self):
+        self.assertEqual([d.pk for d in J.recover_orphans(self.later, out=lambda *_: None, running=set())],
+                         [self.draft.pk])
+        self.draft.refresh_from_db()
+        self.assertEqual(self.draft.status, ColumnDraft.STATUS_HOLD)
+        job = JobRequest.objects.get()
+        self.assertEqual((job.kind, job.args, job.requested_via),
+                         (JobRequest.KIND_REVISE, ['office_revise', '--draft', str(self.draft.pk)], 'recover'))
+        # 다시 멈춰도 같은 날 두 번째 예약은 하지 않는다(무한 재실행 방지)
+        self.draft.status = ColumnDraft.STATUS_REVISING
+        self.draft.save()
+        J.recover_orphans(self.later + timedelta(minutes=30), out=lambda *_: None, running=set())
+        self.assertEqual(JobRequest.objects.count(), 1)
+        self.draft.refresh_from_db()
+        self.assertEqual(self.draft.status, ColumnDraft.STATUS_HOLD)
+
+    def test_running_or_recently_active_job_is_left_alone(self):
+        self.assertEqual(J.recover_orphans(self.later, out=lambda *_: None, running={self.draft.pk}), [])
+        from office.services import log
+        log('critic', 'critique', '평론 중', draft=self.draft)
+        self.assertEqual(J.recover_orphans(timezone.now() + timedelta(minutes=5), out=lambda *_: None, running=set()), [])
+        self.draft.refresh_from_db()
+        self.assertEqual(self.draft.status, ColumnDraft.STATUS_REVISING)
+        self.assertFalse(JobRequest.objects.exists())
+
+    def test_no_process_table_means_no_judgement(self):
+        with mock.patch.object(J, '_running_revise_drafts', return_value=None):
+            self.assertEqual(J.recover_orphans(self.later, out=lambda *_: None), [])
+        self.draft.refresh_from_db()
+        self.assertEqual(self.draft.status, ColumnDraft.STATUS_REVISING)
+
+    def test_requeued_job_starts_on_the_same_tick(self):
+        J.recover_orphans(self.later, out=lambda *_: None, running=set())
+        with mock.patch('office.jobs.spawn') as spawn:
+            started = J.run_due(self.later, out=lambda *_: None)
+        self.assertEqual(len(started), 1)
+        self.assertEqual(spawn.call_args.args[0], ['office_revise', '--draft', str(self.draft.pk)])

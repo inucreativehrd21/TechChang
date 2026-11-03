@@ -14,6 +14,7 @@ class Command(BaseCommand):
 
     def handle(self, *args, **opts):
         from office import jobmail
+        jobmail.recover_orphans(out=self.stdout.write)  # 배포 restart 등으로 끊긴 '재작성 중' 원고 → 재심 예약
         jobmail.run_due(out=self.stdout.write)          # 메일 버튼으로 예약한 재실행·재심 요청
         done = S.release_due(out=self.stdout.write)
         if done:

@@ -140,6 +140,65 @@ def run_due(now=None, out=print) -> list:
     return started
 
 
+# ───────────────────────────── 중단된 재작성 복구
+ORPHAN_AFTER = timedelta(minutes=15)       # 이만큼 작업 기록이 없고 프로세스도 없으면 중단된 것으로 본다
+
+
+def _running_revise_drafts() -> set[int] | None:
+    """지금 돌고 있는 office_revise 의 원고 번호. /proc 이 없으면(로컬 Windows) None — 판단하지 않는다."""
+    if not os.path.isdir('/proc'):
+        return None
+    found = set()
+    for pid in os.listdir('/proc'):
+        if not pid.isdigit():
+            continue
+        try:
+            with open(f'/proc/{pid}/cmdline', 'rb') as f:
+                args = f.read().decode('utf-8', 'replace').split('\0')
+        except OSError:
+            continue
+        if 'office_revise' in args and '--draft' in args:
+            i = args.index('--draft')
+            if i + 1 < len(args) and args[i + 1].isdigit():
+                found.add(int(args[i + 1]))
+    return found
+
+
+def recover_orphans(now=None, out=print, running: set[int] | None = None) -> list:
+    """'재작성 중'에 멈춘 원고를 검수 대기로 되돌리고, 같은 운영자 지시(admin_note)로 재심을 한 번 예약한다.
+
+    관리 화면이 띄운 office_revise 는 웹 서비스(mysite) 안의 프로세스라, 배포 restart 가 함께 SIGKILL 한다
+    (2026-11-02 23:56 #53 — 예원 평론 뒤 끊겨 다음 날 공개를 건너뜀). 본문은 끝날 때만 저장되므로 되돌려도 안전하다.
+    같은 원고의 복구 예약이 하루 안에 이미 있으면 되돌리기만 한다(반복 실패가 무한 재실행이 되지 않게)."""
+    from office.models import ColumnDraft, JobRequest
+    from office.services import log
+    now = now or timezone.now()
+    running = _running_revise_drafts() if running is None else running
+    if running is None:
+        return []
+    recovered = []
+    for d in ColumnDraft.objects.filter(status=ColumnDraft.STATUS_REVISING).select_related('decided_by'):
+        if d.pk in running:
+            continue
+        last = d.logs.order_by('-created_at').values_list('created_at', flat=True).first()
+        if last and now - last < ORPHAN_AFTER:
+            continue
+        d.status = ColumnDraft.STATUS_HOLD
+        d.save(update_fields=['status'])
+        again = JobRequest.objects.filter(draft=d, requested_via='recover',
+                                          created_at__gte=now - timedelta(days=1)).exists()
+        if not again:
+            args = ['office_revise', '--draft', str(d.pk)] + (['--by', d.decided_by.username] if d.decided_by else [])
+            JobRequest.objects.create(kind=JobRequest.KIND_REVISE, args=args, draft=d, run_after=earliest_run(now),
+                                      label=f'중단된 재작성 다시 실행: {d.subject or d.brief}'[:200],
+                                      requested_via='recover')
+        what = '같은 지시로 재심을 다시 예약했어요' if not again else '오늘 이미 한 번 다시 돌렸으니 운영자 확인을 기다려요'
+        log('lead', 'fail', f'재작성이 중간에 끊겨 검수 대기로 되돌렸습니다 — {what}', draft=d)
+        out(f'중단된 재작성 복구: #{d.pk} {d.subject} — {what}')
+        recovered.append(d)
+    return recovered
+
+
 # ───────────────────────────── 메일
 def _recipient() -> str:
     to = os.environ.get('DJANGO_ADMIN_EMAIL', '').strip()
