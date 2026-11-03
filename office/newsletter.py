@@ -108,7 +108,8 @@ def _next_week(run_date: date) -> list[dict]:
     def chosen(topic):
         d = (Decision.objects.filter(topic=topic, consumed_at__isnull=True).exclude(chosen_key='')
              .order_by('-chosen_at').first())
-        return (d.chosen or {}).get('title', '') if d else ''
+        from office.agenda import reader_title       # '/123/ 보강' 같은 내부 기획 문장 대신 독자가 읽을 제목
+        return reader_title(d) if d else ''
 
     def label(d):
         return f"{d:%m.%d}({WEEKDAY[d.weekday()]})"

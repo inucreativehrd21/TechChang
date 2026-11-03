@@ -121,14 +121,15 @@ def office_home(request):
     # 독자의 관심사가 아니고, 탈락 선택지와 그 사유는 내부 판단이라 내보내지 않는다.
     decisions = []
     if meeting:
+        from .agenda import public_item
         for d in meeting.decisions.all():
             if d.kind not in (Decision.KIND_COLUMN, Decision.KIND_SERIES) or not d.chosen_key:
                 continue
-            # 시리즈는 분야가 없다. '시리즈 방향'(내부 안건명) 대신 독자가 읽을 말을 쓴다
-            d.topic_name = TOPIC_LABEL.get(d.topic, '') or (
-                '연재' if d.kind == Decision.KIND_SERIES else '')
-            d.headline = (d.chosen or {}).get('title', '')
-            decisions.append(d)
+            # 선택지 제목은 '기존 칼럼 /123/ 보강: …' 같은 내부 기획 문장이라 독자가 읽을 형태로 바꾼다(office.agenda)
+            item = public_item(d)
+            if item:
+                item['topic_name'] = '연재' if d.kind == Decision.KIND_SERIES else TOPIC_LABEL.get(d.topic, '')
+                decisions.append(item)
     for d in recent_drafts:
         d.topic_name = TOPIC_LABEL.get(d.topic, '')
     return render(request, 'office/office.html', {

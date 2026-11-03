@@ -40,7 +40,6 @@ export async function createLabScene({canvas, labels, roster, onSelect, reducedM
   flow.append(stage);
   const flowPath = flow.querySelector('.tc-lp-trail');
   const stepOrder = ['meeting', 'decision', 'brief', 'draft', 'check', 'critique', 'chart', 'review', 'publish'];
-  const stepNames = ['편집회의', '운영자 결정', '기획', '집필', '검증', '평론', '시각화', '편집 심사', '발행'];
   plane.append(flow);
   for (const item of layout.ambient || []) {
     if (!['screen', 'paper'].includes(item.kind)) continue;
@@ -54,13 +53,6 @@ export async function createLabScene({canvas, labels, roster, onSelect, reducedM
     });
     plane.append(light);
   }
-  const cue = document.createElement('div');
-  cue.className = 'tc-lp-cue';
-  cue.setAttribute('aria-hidden', 'true');
-  cue.hidden = true;
-  const cueTitle = document.createElement('b');
-  const cueText = document.createElement('span');
-  cue.append(cueTitle, cueText);
   const mask = background.cloneNode();
   mask.alt = '';
   mask.setAttribute('aria-hidden', 'true');
@@ -113,17 +105,7 @@ export async function createLabScene({canvas, labels, roster, onSelect, reducedM
       stage.setAttribute('cx', point.x);
       stage.setAttribute('cy', point.y);
     }
-    const showReplay = Boolean(replayTurn?.text);
-    const showLive = showStage && Boolean(liveData.message);
-    cue.hidden = !(showReplay || showLive);
-    if (showReplay) {
-      cueTitle.textContent = `지난 편집회의 · ${replayTurn.name}`;
-      cueText.textContent = replayTurn.text;
-    } else if (showLive) {
-      cueTitle.textContent = `지금 ${stepNames[index]}`;
-      cueText.textContent = liveData.message;
-    }
-    frame.dataset.cue = showReplay ? 'replay' : showLive ? 'live' : 'none';
+    // 문장은 그림 밖 한 곳에서만 — 지금 하는 일은 위쪽 상태 줄, 지난 회의는 아래 재생 패널(그림 속 설명 상자는 중복이라 없앴다)
   }
   for (const agent of roster) {
     const p = layout.people[agent.key];
@@ -156,7 +138,7 @@ export async function createLabScene({canvas, labels, roster, onSelect, reducedM
     listen(button, 'focus', () => center(agent.key));
     buttons.set(agent.key, button); plane.append(button);
   }
-  frame.append(plane, cue);
+  frame.append(plane);
   // 로드가 끝나기 전에는 기존 미리보기를 유지해요. 실패하면 반쪽 장면을 노출하지 않아요.
   try { await Promise.all(images.map(img => img.decode())); }
   catch (error) { abort.abort(); throw error; }

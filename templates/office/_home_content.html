@@ -60,10 +60,10 @@
           <h3 class="tc-lb-sub-title">다음에 나올 글</h3>
           <ul class="tc-lb-next">
             {% for d in public_decisions %}
-            <li>
-              <span class="tc-lb-tag">{% if d.topic_name %}{{ d.topic_name }}{% else %}{{ d.get_kind_display }}{% endif %}</span>
-              <span class="tc-lb-headline">{{ d.headline }}</span>
-              {% if d.public_note %}<span class="tc-lb-note">{{ d.public_note }}</span>{% endif %}
+            <li class="tc-lb-next-{{ d.kind }}">
+              <p class="tc-lb-next-meta">{% if d.topic_name %}<span class="tc-lb-tag">{{ d.topic_name }}</span>{% endif %}<span class="tc-lb-kind">{% if d.kind == 'series' %}{{ d.episode|default:"다음 회" }}{% else %}{{ d.kind_label }}{% endif %}</span></p>
+              {% if d.url %}<a class="tc-lb-headline" href="{{ d.url }}">{{ d.title }}</a>{% else %}<span class="tc-lb-headline">{{ d.title }}</span>{% endif %}
+              {% if d.note %}<span class="tc-lb-note">{{ d.note }}</span>{% endif %}
             </li>
             {% endfor %}
           </ul>
