@@ -104,7 +104,7 @@ class CodeBreakingEditTests(SimpleTestCase):
         subject, content, ok, why = PT.patch_revise('coding', '제목', doc, ['고치세요'], who='심사에서', pack='',
                                                     ask_json=lambda *a, **k: {'edits': edits})
         self.assertTrue(ok)
-        self.assertIn('코드 손상', why)
+        self.assertIn('코드 블록을 깨뜨림 ← 「def test_a(self): pass」', why)      # 무엇이 왜 막혔는지 남긴다
         self.assertIn('        pass\n```', content)
         self.assertIn('셋째 문단을 고쳤습니다.', content)
 
@@ -125,3 +125,16 @@ class HedgeEditTests(SimpleTestCase):
     def test_hedge_already_in_the_sentence_is_not_new(self):
         find = '이것은 필자의 해석입니다. 다만 표를 다시 그렸습니다.'
         self.assertEqual(PT.unsupported({'find': find, 'replace': '이것은 필자의 해석입니다. 표를 다시 그렸습니다.'}, ''), [])
+
+
+class HedgeInsertionTests(SimpleTestCase):
+    """2026-11-03 atomic 5차 — 편집장 요구로 트레이드오프 절을 덧붙인 편집이 '필자의 판단' 때문에 거절됐다."""
+    FIND = '커밋 전후 시점을 실제로 관찰해야 할 때만 `TransactionTestCase`를 씁니다.'
+
+    def test_appending_a_labelled_opinion_is_allowed(self):
+        repl = self.FIND + '\n\n### 메일이 실패하면 결과가 뒤집힌다\n\n필자의 판단으로는 주문을 살리는 쪽이 낫습니다.'
+        self.assertEqual(PT.unsupported({'find': self.FIND, 'replace': repl}, ''), [])
+
+    def test_rewriting_the_sentence_into_a_guess_is_still_rejected(self):
+        repl = '커밋 전후를 관찰할 때 TransactionTestCase를 쓰는 것이 필자의 추론입니다.'
+        self.assertTrue(PT.unsupported({'find': self.FIND, 'replace': repl}, ''))

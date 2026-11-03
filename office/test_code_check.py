@@ -280,3 +280,11 @@ class AppPathTests(SimpleTestCase):
         self.assertTrue(result['ran'], result)
         self.assertEqual(sorted((t['name'], t['status']) for t in result['tests']),
                          [('test_patch_by_app_path', 'passed'), ('test_rolls_back', 'passed')])
+
+
+class RunFirstOverclaimTests(SimpleTestCase):
+    def test_overclaim_sentence_is_fixed_before_fact_check(self):
+        content = SPLIT + '\n이 방법은 항상 한 번의 커밋으로 끝납니다.\n'     # '~없습니다' 같은 부정문은 단정이 아니다
+        out, fix, facts, logs = RunFirstTests._run(self, content, SPLIT)
+        self.assertTrue(any('단정·일반화 문장' in i for i in fix.call_args.args[3]))
+        facts.assert_called_once()

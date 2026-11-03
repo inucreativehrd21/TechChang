@@ -30,7 +30,8 @@ PATCH_PROMPT = (
 )
 
 # 근거 없는 주장을 덮는 약화 표현 — 새로 들어오면 편집을 거절한다(unsupported)
-HEDGE = re.compile(r'(?:필자|글쓴이|저자)(?:의|가 보기에는?)\s*(?:추론|해석|추정|판단|생각|짐작)'
+# '필자의 판단·생각'은 권고·의견을 밝히는 정당한 표시라 넣지 않는다(2026-11-03 atomic 5차: 트레이드오프 절을 막음)
+HEDGE = re.compile(r'(?:필자|글쓴이|저자)(?:의|가 보기에는?)\s*(?:추론|해석|추정|짐작)'
                    r'|(?:추론|추정|짐작)(?:입니다|됩니다|해 봅니다|할 수 있습니다)'
                    r'|것으로\s*(?:보입니다|추정됩니다|짐작됩니다)|로\s*해석됩니다')
 
@@ -65,7 +66,9 @@ def unsupported(edit: dict, pack: str) -> list[str]:
     out += [f'단정 「{x[:30]}」' for x in overclaims(repl) if x not in old]
     # 근거 없는 문장을 '필자의 추론'으로 약하게 바꾸는 것은 고친 것이 아니다 — 원장 인용으로 바꾸거나 지운다
     # (2026-11-02 atomic 2차: '기록 없이 사라진다'를 추론으로 바꿔 robust=True 문서와 어긋난 채 남았다)
-    out += [f'추론으로 약화 「{m.group(0)}」' for m in HEDGE.finditer(repl) if m.group(0) not in find]
+    # 약화는 기존 문장을 바꿀 때만 본다 — 원래 문단을 그대로 두고 뒤에 새 내용을 덧붙이는 편집은 해당 없다
+    if not (find.strip() and find in repl):
+        out += [f'추론으로 약화 「{m.group(0)}」' for m in HEDGE.finditer(repl) if m.group(0) not in find]
     return out
 
 
@@ -114,6 +117,12 @@ def patch_revise(agent: str, subject: str, content: str, issues: list, *, who: s
             reason += f', 검사에 걸린 편집 {len(blocked)}건 거절({"; ".join(blocked[0]["blocked"])[:80]})'
         return subject, content, False, reason
     new_subject = str(res.get('title') or '').strip() or subject
+    # 무엇이 왜 막혔는지 남긴다 — 2026-11-03 atomic 4차에서 거절 3건의 내용을 알 수 없어 규칙의 과잉 거절을 판정하지 못했다
+    detail = ' / '.join(f'{"·".join(b["blocked"])[:60]} ← 「{" ".join(str(b.get("find") or "").split())[:40]}」'
+                        for b in blocked)
+    for b in blocked:
+        logger.info('패치 편집 거절 %s: find=%r replace=%r', b['blocked'], str(b.get('find'))[:200],
+                    str(b.get('replace'))[:300])
     why = (f'패치 {applied}건 적용' + (f', {len(failed)}건 불일치' if failed else '')
-           + (f', 검사에 걸린 편집 {len(blocked)}건 거절(근거 없는 수치·단정·코드 손상)' if blocked else ''))
+           + (f', 검사에 걸린 편집 {len(blocked)}건 거절: {detail}' if blocked else ''))
     return new_subject, new_content, True, why

@@ -26,8 +26,8 @@ CODE = CC.facts({'ran': True, 'django': '5.2.6', 'tests': [
 class EntriesTests(SimpleTestCase):
     def test_keeps_sourced_facts_once_and_execution_results(self):
         items = GR.entries(ROWS, code_facts=CODE)
-        self.assertEqual([e['id'] for e in items], ['E1', 'E2'])
-        self.assertEqual(items[1]['kind'], 'execution')
+        self.assertEqual([e['id'] for e in items], ['E1', 'E2', 'E3'])      # 실행 환경 요약 + 테스트 1개
+        self.assertEqual([e.get('kind') for e in items[1:]], ['execution', 'execution'])
         self.assertIn('앞뒤 문단', GR.ledger_text(items))
 
 
@@ -53,13 +53,13 @@ class AttachTests(SimpleTestCase):
         two = 'select_related is limited to single-valued relationships. It follows foreign keys in one query.'
         self.assertTrue(GR.quoted_in('It follows foreign keys in one query. select_related is limited to single', two))
         self.assertFalse(GR.quoted_in('공식 문서는 select_related가 단일값 관계에만 쓰인다고 설명합니다.', excerpt))
-        moved = GR.attach({'claim': 'a', 'status': 'verified', 'evidence': 'E2',
+        moved = GR.attach({'claim': 'a', 'status': 'verified', 'evidence': 'E3',
                            'quote': 'single-valued relationships - foreign key and one-to-one'}, self.items)
         self.assertEqual((moved['status'], moved['grounded']), ('verified', 'E1'))   # 번호만 잘못 적은 경우
 
     def test_execution_evidence_passes_contract_without_url(self):
         c = GR.attach({'claim': '사례 1 테스트는 assertNumQueries 2회로 통과해요.', 'status': 'verified',
-                       'evidence': 'E2', 'quote': 'test_post_list_queries: 통과 (assertNumQueries 2회)'}, self.items)
+                       'evidence': 'E3', 'quote': 'test_post_list_queries: 통과 (assertNumQueries 2회)'}, self.items)
         with R.use_profile('b'):
             checked = E.validate_check({'claims': [c]})
         self.assertEqual(checked['claims'][0]['status'], 'verified', checked['claims'][0].get('note'))
@@ -164,3 +164,16 @@ class BlueprintGroundedTests(SimpleTestCase):
             ver = B.verify_blueprint(bp, ask_json=ask_json)
         self.assertEqual(ver['coverage']['verified'], 1)
         self.assertIn('single-valued', ver['pack'])
+
+
+class AssertEvidenceTests(SimpleTestCase):
+    """2026-11-03 atomic 4차 — 테스트가 통과해도 '0건·1건' 결과 주장을 인용할 발췌가 없어 원장 밖이 됐다."""
+    def test_result_claim_can_quote_the_checked_assert(self):
+        facts = CC.facts({'ran': True, 'django': '5.2.6', 'tests': [
+            {'name': 'test_with_atomic_leaves_no_rows', 'status': 'passed', 'message': '', 'expected': [],
+             'asserts': ['self.assertEqual(Order.objects.count(), 0)']}]})
+        items = {e['id']: e for e in GR.entries(code_facts=facts)}
+        self.assertIn('Django 5.2.6', items['E1']['quote'])
+        c = GR.attach({'claim': 'atomic으로 감싸면 주문이 0건 남아요.', 'status': 'verified', 'evidence': 'E2',
+                       'quote': 'self.assertEqual(Order.objects.count(), 0)'}, items)
+        self.assertEqual((c['status'], c['grounded']), ('verified', 'E2'))

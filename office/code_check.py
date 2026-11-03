@@ -69,6 +69,25 @@ def static_issues(content: str) -> list[str]:
     return issues
 
 
+def test_asserts(tests_py: str, limit: int = 6) -> dict[str, list[str]]:
+    """테스트 메서드별 assert 호출 원문 — 실행 근거가 '통과'만이 아니라 무엇을 확인했는지까지 담게 한다.
+
+    왜(2026-11-03 atomic 4차): 테스트 12개가 모두 통과했는데도 '재현 1에서 주문 0건' 같은 결과 주장이 원장 밖이
+    됐다. 원장 항목이 'test_x: 통과' 뿐이라 검증관이 0건·1건을 인용할 발췌가 없었다."""
+    out = {}
+    try:
+        tree = ast.parse(tests_py)
+    except SyntaxError:
+        return out
+    for cls in (n for n in tree.body if isinstance(n, ast.ClassDef)):
+        for f in cls.body:
+            if isinstance(f, ast.FunctionDef) and f.name.startswith('test'):
+                calls = [ast.unparse(n)[:120] for n in ast.walk(f)
+                         if isinstance(n, ast.Call) and getattr(n.func, 'attr', '').startswith('assert')]
+                out[f.name] = list(dict.fromkeys(calls))[:limit]
+    return out
+
+
 def _num_queries(func: ast.FunctionDef) -> list[int]:
     out = []
     for node in ast.walk(func):
@@ -288,8 +307,10 @@ def run_examples(content: str, *, timeout: int = TIMEOUT) -> dict:
     if not line:
         return {'ran': False, 'reason': (proc.stderr.strip().splitlines() or ['실행 결과 없음'])[-1][:300]}
     res = json.loads(line[len('@@RESULT'):])
+    checks = test_asserts(tests_py)
     for t in res['tests']:
         t['expected'] = expected.get(t['name'], [])
+        t['asserts'] = checks.get(t['name'], [])
     res['ran'] = not res.get('error')
     res['reason'] = res.get('error', '')
     return res
@@ -306,10 +327,14 @@ def facts(result: dict) -> str:
         return ''
     lines = [f"{HEADING} 본문 코드를 Django {result.get('django', '')} 임시 앱·메모리 DB에서 그대로 실행한 결과예요. "
              '실행 환경 차이로 실패한 항목은 본문 오류로 단정하지 마세요.']
+    passed = sum(1 for t in result['tests'] if t['status'] == 'passed')
+    lines.append(f"{ITEM}실행 환경(Django {result.get('django', '')}, 임시 앱·메모리 SQLite): 통과 {passed}개 / "
+                 f"전체 {len(result['tests'])}개")
     for t in result['tests']:
         q = f" (assertNumQueries {', '.join(map(str, t['expected']))}회)" if t['expected'] else ''
         if t['status'] == 'passed':
-            lines.append(f"{ITEM}{t['name']}: 통과{q}")
+            checked = f" — 확인한 assert: {' ; '.join(t['asserts'])}" if t.get('asserts') else ''
+            lines.append(f"{ITEM}{t['name']}: 통과{q}{checked}")
         elif _env_problem(t['message']):
             lines.append(f"{ITEM}{t['name']}: 실행 환경 차이로 확인 못 함 — {t['message']}")
         else:

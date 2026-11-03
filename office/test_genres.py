@@ -118,3 +118,55 @@ class TutorialExampleFormatTests(SimpleTestCase):
         text = G.structure('tutorial')
         self.assertIn('# 앱/models.py', text)
         self.assertIn('settings.configure', text)
+
+
+class LeftoverClaimTests(SimpleTestCase):
+    """패치 뒤에도 그대로 남은 틀림·원장 밖 문장을 찾는다 — 검증관은 주장을 요약해 적는다(2026-11-03 atomic 2~4차)."""
+    WRONG = 'atomic 블록은 예외가 블록 밖으로 빠져나가면 블록 안의 DB 변경을 롤백하고, 정상으로 끝나면 커밋합니다.'
+    BEFORE = f'## 동작 원리\n\n{WRONG} 그 다음 문장은 문제가 없습니다.\n\n```python\nx = 1\n```\n'
+    CHECK = {'claims': [{'claim': 'atomic 블록은 예외가 나면 롤백하고, 정상으로 끝나면 커밋합니다.', 'status': 'wrong',
+                         'note': '중첩된 안쪽 블록은 커밋하지 않아요.'},
+                        {'claim': '그 다음 문장은 문제가 없습니다.', 'status': 'verified'}]}
+
+    def leftovers(self, after):
+        from office.management.commands.office_publish import Command
+        return Command.leftovers(self.BEFORE, after, self.CHECK)
+
+    def test_unchanged_wrong_sentence_is_sent_back_with_its_exact_text(self):
+        issues = self.leftovers(self.BEFORE)
+        self.assertEqual(len(issues), 1)
+        self.assertIn(f'「{self.WRONG}」', issues[0])
+        self.assertIn('중첩된 안쪽 블록', issues[0])
+
+    def test_fixed_sentence_is_not_sent_back(self):
+        fixed = self.BEFORE.replace(self.WRONG, '가장 바깥 atomic 블록이 정상으로 끝날 때 커밋하고, 안쪽 블록은 세이브포인트만 정리합니다.')
+        self.assertEqual(self.leftovers(fixed), [])
+
+    def test_settle_patches_only_when_something_is_left(self):
+        from office.management.commands.office_publish import Command
+        timed = lambda stage, agent, fn, **k: fn()
+        patched = self.BEFORE.replace(self.WRONG, '가장 바깥 atomic 블록이 끝날 때만 커밋합니다.')
+        with mock.patch('office.management.commands.office_publish.patch_revise',
+                        return_value=('제목', patched, True, '패치 1건 적용')) as patch,                 mock.patch('office.management.commands.office_publish.P.looks_truncated', return_value=False):
+            out = Command()._settle_overclaims(timed, 'coding', self.BEFORE, '제목', self.BEFORE, '패치 3건 적용',
+                                               self.CHECK, '', 1)
+            self.assertEqual(out[1], patched)
+            self.assertIn('남은 문장 1개 추가 패치', out[2])
+            patch.reset_mock()
+            fixed = self.BEFORE.replace(self.WRONG, '가장 바깥 블록만 커밋합니다. 안쪽은 세이브포인트예요.')
+            self.assertEqual(Command()._settle_overclaims(timed, 'coding', self.BEFORE, '제목', fixed, 'w',
+                                                          self.CHECK, '', 1), ('제목', fixed, 'w'))
+            patch.assert_not_called()
+
+    def test_structure_states_conditions_and_test_match_rules(self):
+        text = G.structure('tutorial')
+        self.assertIn('조건을 빼지 않고', text)
+        self.assertIn('설명이 같아야', text)
+
+
+class OverclaimFixTests(SimpleTestCase):
+    def test_full_sentence_is_given_not_truncated(self):
+        s = '이 방법은 항상 한 번의 쿼리로 끝나며 다른 경우는 고려할 필요가 없고 문서도 그렇게 말합니다.'
+        fixes = quality.overclaim_fixes(f'## 동작 원리\n\n{s}\n')
+        self.assertEqual(len(fixes), 1)
+        self.assertIn(f'「{s}」', fixes[0])

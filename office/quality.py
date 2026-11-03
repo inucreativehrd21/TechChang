@@ -202,6 +202,27 @@ _GENERAL = re.compile(r'흔한\s*(?:소개글|글|설명|자료|강의)|대부�
 _NOT_CLAIM = re.compile(r'(?:아닙니다|않습니다|아니에요|않아요|없습니다|아니라|세요[.!]?$|십시오[.!]?$)')
 
 
+def sentences(content: str, min_len: int = 15) -> list[str]:
+    """본문 문장(코드·표·제목 제외) — 검증관이 요약해 적은 주장을 원문 문장과 맞춰 볼 때 쓴다."""
+    body = re.sub(r'```.*?```', '', prose(content), flags=re.S)
+    out = []
+    for line in body.splitlines():
+        s = line.strip()
+        if s and not s.startswith(('#', '|')):
+            out += [x.strip() for x in _SENT_END.split(s) if len(x.strip()) >= min_len]
+    return out
+
+
+def overclaim_fixes(content: str, limit: int = 6) -> list[str]:
+    """단정·일반화 문장마다 고칠 지시 하나 — 잘라 보이지 않고 문장 전체를 준다(패치가 정확히 찾게).
+
+    왜(2026-11-03 atomic 2~4차): '예외 없이 끝나면 커밋합니다'(중첩 블록은 커밋하지 않음)가 세 번 연속 틀림으로
+    남았다. 자동 점검이 잡았지만 45자로 잘린 한 줄 요약이 심사 지적 사이에 섞여 패치가 고치지 않았다."""
+    return [f'단정·일반화 문장 「{s}」 — 공식 문서 문장의 조건(중첩·예외·열린 트랜잭션 여부 등)을 빼지 말고 그 범위로 '
+            '좁히거나, 원장으로 뒷받침할 수 없으면 지우세요. "추론", "~로 보입니다"로 약하게 바꾸지 마세요.'
+            for s in overclaims(content)[:limit]]
+
+
 def overclaims(content: str) -> list[str]:
     """본문 문장(코드·표·인용·제목 제외) 가운데 단정·일반화 표현이 든 주장 문장."""
     body = re.sub(r'```.*?```', '', prose(content), flags=re.S)

@@ -55,6 +55,10 @@ from office.run_context import run_context, current, RunBudgetExceeded
 from office.review_batch import run as review_batch, ReviewIncomplete
 
 
+# 검증관이 요약해 적은 주장과 원고 문장의 유사도 기준 — atomic 2·4차 기록에서 같은 문장은 0.6 이상, 다른 문장은 0.5 미만
+LEFTOVER_MATCH = 0.6
+
+
 class Command(BaseCommand):
     help = '연구팀이 칼럼 1편을 기획·집필·검증·시각화·심사 후 발행(또는 보류)합니다.'
 
@@ -302,6 +306,9 @@ class Command(BaseCommand):
                     writer, subject, P.strip_visual_block(content), notes, who='편집 심사에서',
                     guide=f'[팩트체크 보고]\n{P.check_text(check)}' + P.pack_block(pack),
                     pack=pack if profile() == 'b' else None), attempt=attempt)
+                if ok and not P.looks_truncated(p_content) and profile() == 'b':
+                    p_subject, p_content, why = self._settle_overclaims(timed, writer, content, p_subject, p_content,
+                                                                        why, check, pack, attempt)
                 if ok and not P.looks_truncated(p_content):
                     subject, content = p_subject, p_content
                 else:
@@ -472,8 +479,11 @@ class Command(BaseCommand):
         왜(2026-11-02 atomic·select 파일럿): 실행이 안 된 예제로 사실 관문과 심사를 돌리면 결과 주장이 모두 원장 밖이
         되고, 심사 뒤 패치로는 실행 근거를 되살리지 못했다. 근거(실행 결과)를 먼저 만들고 글을 거기에 맞춘다."""
         from office import code_check as CC
+        from office.quality import overclaim_fixes
         gate = CC.format_issues(content) + [f'코드 예제 실행 실패 — {f}. 실제 값으로 고치거나 코드를 고치세요'
                                             for f in CC.failures(pack)]
+        # 동작 원리의 과잉 일반화도 사실 검증 전에 — 심사 지적에 섞이면 패치가 놓쳤다(atomic 2~4차)
+        gate += overclaim_fixes(content)
         if not gate:
             return subject, content, pack
         rec('editor', 'precheck', f'실행 예제 {len(gate)}건 — 사실 검증 전에 먼저 고쳐요: {gate[0][:80]}')
@@ -482,6 +492,52 @@ class Command(BaseCommand):
         self._update_last(stages, {'subject': subject, 'content': content, 'remaining': remaining}, text=content)
         rec(writer, 'revise', f'실행 예제 고침 ({P.body_length(content)}자)')
         return subject, content, self._code_facts(stages, rec, content, pack, attempt=2)
+
+    @staticmethod
+    def leftovers(before: str, content: str, check: dict) -> list[str]:
+        """패치 뒤에도 원문 그대로 남은 문제 문장 — 사실 검증의 틀림·원장 밖, 그리고 자동 점검의 단정·일반화.
+
+        왜(2026-11-03 atomic 2~4차): '정상 종료되면 커밋된다'(중첩 블록은 커밋하지 않음)를 검증관이 세 번 모두
+        틀림으로 판정했는데 패치 뒤에도 같은 문장이 남았다. 문장 표현이 매번 달라 정규식만으로는 못 잡는다."""
+        from difflib import SequenceMatcher
+
+        from office.quality import overclaim_fixes, overclaims, sentences
+        norm = lambda s: ' '.join(str(s or '').split())
+        old, now = sentences(before), set(sentences(content))
+        issues = []
+        for c in (check or {}).get('claims') or []:
+            bad = 'out_of_ledger' if c.get('out_of_ledger') else c.get('status')
+            claim = norm(c.get('claim'))
+            if bad not in ('wrong', 'out_of_ledger') or not claim or not old:
+                continue
+            # 검증관은 주장을 요약해 적는다 — 패치 전 원고에서 가장 닮은 문장을 찾고, 그 문장이 그대로 남았는지 본다
+            hit = max(old, key=lambda s: SequenceMatcher(None, claim, s).ratio())
+            if SequenceMatcher(None, claim, hit).ratio() < LEFTOVER_MATCH or hit not in now:
+                continue
+            label = '틀림' if bad == 'wrong' else '원장 밖'
+            issues.append(f'사실 검증에서 {label}으로 판정된 문장이 패치 뒤에도 그대로 남았습니다: 「{hit}」 — '
+                          f'검증 메모: {norm(c.get("note"))[:220]} 원장 인용의 조건·범위대로 고치거나 지우세요. '
+                          '"추론", "~로 보입니다"로 약하게 바꾸지 마세요.')
+        left = set(overclaims(before)) & set(overclaims(content))
+        for fix in overclaim_fixes(content):
+            s = next((x for x in left if x in fix), None)
+            if s and not any(norm(s) in i for i in issues):     # 검증 지적과 겹치면 한 번만
+                issues.append(fix)
+        return issues[:8]
+
+    def _settle_overclaims(self, timed, writer: str, before: str, subject: str, content: str, why: str, check: dict,
+                           pack: str, attempt: int) -> tuple:
+        """패치 뒤에도 그대로 남은 문제 문장만 집어 한 번 더 고친다(호출 1회, 남은 게 있을 때만).
+        패치 검사(근거 없는 수치·단정·약화 거절)는 그대로 거친다."""
+        issues = self.leftovers(before, content, check)
+        if not issues:
+            return subject, content, why
+        s2, c2, ok2, why2 = timed('editor_patch_claims', writer, lambda: patch_revise(
+            writer, subject, content, issues, who='사실 검증·자동 점검(패치 뒤에도 남은 문장)에서',
+            guide=f'[팩트체크 보고]\n{P.check_text(check)}' + P.pack_block(pack), pack=pack), attempt=attempt)
+        if ok2 and not P.looks_truncated(c2):
+            return s2, c2, f'{why} · 남은 문장 {len(issues)}개 추가 패치: {why2}'
+        return subject, content, f'{why} · 남은 문장 {len(issues)}개 추가 패치 실패: {why2}'
 
     @staticmethod
     def _update_last(stages: StageRecorder, output: dict, *, text: str = '', status: str = '') -> None:
