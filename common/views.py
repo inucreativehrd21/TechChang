@@ -25,6 +25,7 @@ from community.utils import award_points, deduct_points
 logger = logging.getLogger(__name__)
 
 
+@require_POST
 def logout_view(request):
     logout(request)
     return redirect('community:index')
@@ -1130,6 +1131,7 @@ def admin_user_detail(request, user_id):
 
 
 @login_required
+@require_POST
 def daily_checkin(request):
     """일일 출석 체크"""
     from .models import DailyCheckIn, PointHistory, Profile
@@ -1207,6 +1209,7 @@ def emoticon_shop(request):
 
 
 @login_required
+@require_POST
 def purchase_emoticon(request, emoticon_id):
     """이모티콘 구매"""
     from .models import Emoticon, UserEmoticon, PointHistory, Profile
@@ -1246,6 +1249,7 @@ def purchase_emoticon(request, emoticon_id):
 
 
 @login_required
+@require_POST
 def select_emoticon(request, emoticon_id):
     """이모티콘 선택 (닉네임 옆에 표시)"""
     from .models import Emoticon, UserEmoticon, Profile

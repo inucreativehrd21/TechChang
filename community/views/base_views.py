@@ -177,6 +177,19 @@ def visible_questions(user):
     return qs.exclude(hidden) if hidden is not None else qs
 
 
+def readable_questions(user):
+    """Questions whose answer/comment text may be shown to this reader."""
+    qs = Question.objects.filter(is_deleted=False)
+    if not user.is_authenticated:
+        qs = qs.exclude(is_locked=True)
+    if not (user.is_authenticated and (user.is_staff or user.is_superuser)):
+        if user.is_authenticated:
+            qs = qs.exclude(Q(category__name='문의') & ~Q(author=user))
+        else:
+            qs = qs.exclude(category__name='문의')
+    return qs
+
+
 def category_counts_for(visible, user):
     """(카테고리 목록, {이름: 개수}, 전체 개수). 개수는 노출 기준으로 세고,
     볼 수 있는 문의글이 없는 사용자에게는 문의 카테고리를 숨긴다."""
@@ -435,7 +448,9 @@ def recent_answers(request):
         page = 1
     
     # select_related로 쿼리 최적화
-    answer_list = Answer.objects.select_related('author', 'question', 'question__category').order_by('-create_date')
+    answer_list = Answer.objects.filter(
+        is_deleted=False, question__in=readable_questions(request.user)
+    ).select_related('author', 'question', 'question__category').order_by('-create_date')
     
     paginator = Paginator(answer_list, 10)
     try:
@@ -454,7 +469,11 @@ def recent_comments(request):
         page = 1
     
     # select_related로 쿼리 최적화
-    comment_list = Comment.objects.select_related(
+    readable = readable_questions(request.user)
+    comment_list = Comment.objects.filter(
+        Q(question__in=readable)
+        | Q(answer__question__in=readable, answer__is_deleted=False)
+    ).select_related(
         'author', 'question', 'answer__question'
     ).order_by('-create_date')
     

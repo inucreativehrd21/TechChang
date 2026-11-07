@@ -19,8 +19,10 @@ anthropic>=0.40.0,<2.0.0
 # 환경변수 관리 (.env 로드)
 python-dotenv>=1.0.0,<2.0.0
 
-# 이미지 처리 (모델 ImageField 이용)
-Pillow>=10.0.0,<11.0.0
+# 이미지 처리 (모델 ImageField 이용). 운영·CI Python 3.12는 2026-10 보안 수정판을 사용한다.
+# 로컬 Python 3.10은 Pillow 13 미지원이므로 기존 버전을 유지한다(외부 공개 금지).
+Pillow==13.0.0; python_version >= '3.11'
+Pillow==10.4.0; python_version < '3.11'
 
 # 마크다운 렌더링 (템플릿 필터)
 Markdown>=3.5,<4.0

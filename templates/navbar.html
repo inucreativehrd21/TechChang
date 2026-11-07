@@ -96,9 +96,9 @@
                             <i class="fas fa-coins me-2 text-warning"></i>
                             <strong>{{ user.profile.points }}P</strong>
                         </div></li>
-                        <li><a class="dropdown-item" href="{% url 'common:daily_checkin' %}">
-                            <i class="fas fa-calendar-check me-2 text-success"></i>출석 체크
-                        </a></li>
+                        <li><form method="post" action="{% url 'common:daily_checkin' %}">{% csrf_token %}
+                            <button type="submit" class="dropdown-item"><i class="fas fa-calendar-check me-2 text-success"></i>출석 체크</button>
+                        </form></li>
                         <li><a class="dropdown-item" href="{% url 'common:point_history' %}">
                             <i class="fas fa-history me-2"></i>포인트 히스토리
                         </a></li>
@@ -125,9 +125,9 @@
                         </a></li>
                         {% endif %}
                         <li><hr class="dropdown-divider"></li>
-                        <li><a class="dropdown-item" href="{% url 'common:logout' %}">
-                            <i class="fas fa-sign-out-alt me-2"></i>로그아웃
-                        </a></li>
+                        <li><form method="post" action="{% url 'common:logout' %}">{% csrf_token %}
+                            <button type="submit" class="dropdown-item"><i class="fas fa-sign-out-alt me-2"></i>로그아웃</button>
+                        </form></li>
                     </ul>
                 </li>
                 {% else %}

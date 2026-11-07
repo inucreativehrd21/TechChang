@@ -41,7 +41,7 @@
         <div class="tc-cs-box tc-legal">{% include 'common/legal/_privacy_consent.html' %}</div>
 
         <button type="submit" class="tc-cs-btn" id="tc-cs-submit" disabled>동의하고 시작하기</button>
-        <a href="{% url 'common:kakao_logout' %}" class="tc-cs-out">동의하지 않고 로그아웃</a>
+        <button type="submit" formaction="{% url 'common:kakao_logout' %}" formnovalidate class="tc-cs-out" style="border:0;background:none;width:100%;cursor:pointer;">동의하지 않고 로그아웃</button>
     </form>
 </div>
 {% endblock %}

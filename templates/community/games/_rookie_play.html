@@ -78,7 +78,7 @@
                 <span class="rk-check" aria-hidden="true">{% if e.done %}✓{% endif %}</span>
                 <span class="rk-earn-main"><b>{{ e.label|baseball_text }}</b><small>+{{ e.tp }} TP{% if e.cap > 1 %}, 오늘 {{ e.count }}/{{ e.cap }}{% endif %}</small></span>
                 {% if not e.done %}
-                    {% if e.source == 'checkin' %}<a class="gm-btn rk-go" href="{% url 'common:daily_checkin' %}" data-rk-checkin rel="nofollow">출석하기</a>
+                    {% if e.source == 'checkin' %}<form method="post" action="{% url 'common:daily_checkin' %}" data-rk-checkin>{% csrf_token %}<button type="submit" class="gm-btn rk-go">출석하기</button></form>
                     {% elif e.source == 'column' %}<a class="gm-btn rk-go" href="{% url 'community:column_map' %}">칼럼 읽기</a>
                     {% else %}<a class="gm-btn rk-go" href="{% url 'community:board_main' %}">댓글 달기</a>{% endif %}
                 {% endif %}

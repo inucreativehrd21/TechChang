@@ -208,13 +208,13 @@
                 .catch(function () { location.reload(); });   // 응답이 깨져도 같은 훈련을 다시 보내지 않는다(TP 이중 차감 방지)
         });
         // 출석 체크: 출석 기록이 생기면 서버가 TP 를 준다 — 끝나면 새로고침
-        play.addEventListener('click', function (e) {
-            var a = e.target.closest('[data-rk-checkin]');
-            if (!a || !window.fetch) return;
+        play.addEventListener('submit', function (e) {
+            var form = e.target.closest('form[data-rk-checkin]');
+            if (!form || !window.fetch) return;
             e.preventDefault();
-            fetch(a.href, { credentials: 'same-origin', headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+            fetch(form.action, { method: 'POST', credentials: 'same-origin', body: new FormData(form), headers: { 'X-Requested-With': 'XMLHttpRequest' } })
                 .then(function () { location.reload(); })
-                .catch(function () { location.href = a.href; });
+                .catch(function () { form.submit(); });
         });
     }
 })();

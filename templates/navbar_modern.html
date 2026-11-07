@@ -48,9 +48,9 @@
                         <a href="#" onclick="checkAttendance(); return false;" style="display: block; padding: var(--space-4); color: var(--text-primary); text-decoration: none; border-bottom: 1px solid var(--border-light);">
                             <i class="fas fa-check-circle"></i> 출석체크
                         </a>
-                        <a href="{% url 'common:logout' %}" style="display: block; padding: var(--space-4); color: var(--text-primary); text-decoration: none;">
-                            <i class="fas fa-sign-out-alt"></i> 로그아웃
-                        </a>
+                        <form method="post" action="{% url 'common:logout' %}">{% csrf_token %}
+                            <button type="submit" style="display:block;width:100%;padding:var(--space-4);color:var(--text-primary);background:none;border:0;text-align:left;cursor:pointer;"><i class="fas fa-sign-out-alt"></i> 로그아웃</button>
+                        </form>
                     </div>
                 </div>
             {% else %}
@@ -92,7 +92,9 @@
             <a href="{% url 'community:portfolio_collection_list' %}" style="display: block; padding: var(--space-3) var(--space-6); color: var(--text-secondary); text-decoration: none;">포트폴리오 관리</a>
             <a href="{% url 'common:emoticon_shop' %}" style="display: block; padding: var(--space-3) var(--space-6); color: var(--text-secondary); text-decoration: none;">이모티콘 상점</a>
             <a href="#" onclick="checkAttendance(); return false;" style="display: block; padding: var(--space-3) var(--space-6); color: var(--text-secondary); text-decoration: none;">출석체크</a>
-            <a href="{% url 'common:logout' %}" style="display: block; padding: var(--space-3) var(--space-6); color: var(--text-secondary); text-decoration: none;">로그아웃</a>
+            <form method="post" action="{% url 'common:logout' %}">{% csrf_token %}
+                <button type="submit" style="display:block;width:100%;padding:var(--space-3) var(--space-6);color:var(--text-secondary);background:none;border:0;text-align:left;cursor:pointer;">로그아웃</button>
+            </form>
         {% else %}
             <a href="{% url 'common:login' %}" style="display: block; padding: var(--space-3) var(--space-6); color: var(--text-secondary); text-decoration: none;">로그인</a>
             <a href="{% url 'common:signup' %}" style="display: block; padding: var(--space-3) var(--space-6); color: var(--text-secondary); text-decoration: none;">회원가입</a>

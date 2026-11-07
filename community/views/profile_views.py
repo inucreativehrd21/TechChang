@@ -5,7 +5,9 @@ from django.contrib.auth.models import User
 from django.contrib import messages
 from django.contrib.auth import update_session_auth_hash
 from django.contrib.auth.forms import PasswordChangeForm
+from django.http import HttpResponseBadRequest
 from common.models import Profile
+from common.forms import ProfileForm
 
 from ..models import Question, Answer
 
@@ -38,18 +40,11 @@ def profile(request, user_id):
 def profile_update(request):
     """개인정보 수정"""
     if request.method == 'POST':
-        # 프로필 가져오기 또는 생성
-        profile, created = Profile.objects.get_or_create(user=request.user)
-
-        # 닉네임 업데이트
-        nickname = request.POST.get('nickname', '')
-        profile.nickname = nickname
-
-        # 프로필 이미지 업데이트
-        if 'profile_image' in request.FILES:
-            profile.profile_image = request.FILES['profile_image']
-
-        profile.save()
+        profile, _ = Profile.objects.get_or_create(user=request.user)
+        form = ProfileForm(request.POST, request.FILES, instance=profile)
+        if not form.is_valid():
+            return HttpResponseBadRequest('닉네임 또는 프로필 이미지를 확인해 주세요.')
+        form.save()
 
         messages.success(request, '개인정보가 성공적으로 수정되었습니다.')
         return redirect('community:profile', user_id=request.user.id)

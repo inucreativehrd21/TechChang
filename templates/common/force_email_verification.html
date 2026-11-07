@@ -52,9 +52,9 @@
           <div id="statusMsg" class="small mt-2" role="status" aria-live="polite"></div>
 
           <div class="text-center mt-4">
-            <a href="{% url 'common:logout' %}" class="text-muted small">
-              <i class="fas fa-sign-out-alt me-1"></i>로그아웃
-            </a>
+            <form method="post" action="{% url 'common:logout' %}">{% csrf_token %}
+              <button type="submit" class="text-muted small" style="border:0;background:none;cursor:pointer;"><i class="fas fa-sign-out-alt me-1"></i>로그아웃</button>
+            </form>
           </div>
         </div>
       </div>
