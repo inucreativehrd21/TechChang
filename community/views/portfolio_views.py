@@ -6,6 +6,9 @@ from django.utils import timezone
 from django.views.decorators.clickjacking import xframe_options_sameorigin
 from django.db import models
 from django.db.models import F, Max
+from django.core.exceptions import ValidationError
+from django.http import HttpResponseBadRequest
+from functools import wraps
 import json
 import re
 import posixpath
@@ -53,6 +56,22 @@ def _rewrite_asset_refs(html, asset_map):
 from django.urls import reverse
 
 from ..models import Portfolio, Project, Experience, PortfolioCollection, CollectionProject, CollectionExperience, PortfolioAsset
+from ..validators import validate_image_file
+
+
+def validated_portfolio_images(view):
+    """Validate every image before a portfolio POST can write files or records."""
+    @wraps(view)
+    def wrapped(request, *args, **kwargs):
+        if request.method == 'POST':
+            for field in ('hero_background_image', 'profile_image', 'image', 'asset_files'):
+                for upload in request.FILES.getlist(field):
+                    try:
+                        validate_image_file(upload)
+                    except ValidationError:
+                        return HttpResponseBadRequest('JPEG, PNG, GIF, WebP 이미지(최대 5MB)만 업로드할 수 있습니다.')
+        return view(request, *args, **kwargs)
+    return wrapped
 
 
 def get_background_css(portfolio, section='hero'):
@@ -171,6 +190,7 @@ def portfolio_view(request, user_id):
 
 
 @login_required
+@validated_portfolio_images
 def portfolio_edit(request):
     """
     포트폴리오 편집
@@ -302,6 +322,7 @@ def portfolio_edit(request):
 
 
 @login_required
+@validated_portfolio_images
 def project_create(request):
     """
     프로젝트 생성
@@ -354,6 +375,7 @@ def project_create(request):
 
 
 @login_required
+@validated_portfolio_images
 def project_edit(request, project_id):
     """
     프로젝트 편집
@@ -990,6 +1012,7 @@ def _reset_approval_on_change(collection, request):
 
 
 @login_required
+@validated_portfolio_images
 def portfolio_collection_edit(request, slug):
     """포트폴리오 컬렉션 편집"""
     collection = get_object_or_404(PortfolioCollection, slug=slug, user=request.user)
@@ -1272,6 +1295,7 @@ def portfolio_collection_delete(request, slug):
 # ==================== 컬렉션 프로젝트 CRUD ====================
 
 @login_required
+@validated_portfolio_images
 def collection_project_create(request, slug):
     """컬렉션 프로젝트 생성"""
     collection = get_object_or_404(PortfolioCollection, slug=slug, user=request.user)
@@ -1313,6 +1337,7 @@ def collection_project_create(request, slug):
 
 
 @login_required
+@validated_portfolio_images
 def collection_project_edit(request, slug, project_id):
     """컬렉션 프로젝트 편집"""
     collection = get_object_or_404(PortfolioCollection, slug=slug, user=request.user)

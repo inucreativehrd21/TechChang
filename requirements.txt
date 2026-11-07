@@ -1,5 +1,5 @@
 # Django 웹앱 필수
-Django==5.2.6
+Django==5.2.19
 
 # 프로덕션 WSGI 서버 (Gunicorn 서비스 유닛에서 사용)
 gunicorn>=21.2,<22

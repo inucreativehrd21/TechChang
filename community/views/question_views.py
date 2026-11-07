@@ -2,6 +2,7 @@
 from django.contrib import messages
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.decorators import login_required
+from django.views.decorators.http import require_POST
 from django.utils import timezone
 
 from django.core.exceptions import ValidationError
@@ -146,6 +147,7 @@ def question_operator_pick(request, question_id):
 
 
 @login_required(login_url='common:login')
+@require_POST
 def question_vote(request, question_id):
     question = get_object_or_404(Question, pk=question_id)
     if request.user == question.author:

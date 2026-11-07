@@ -23,6 +23,7 @@ from django.views.generic import RedirectView
 from django.contrib.sitemaps.views import index as sitemap_index, sitemap
 from community.views import base_views
 from community.feeds import ColumnFeed, NoticeFeed
+from community.media_auth import media_authorization
 from common import legal_views
 from common.csp import csp_report
 from community.sitemaps import (StaticViewSitemap, ColumnSitemap, PostSitemap, SeriesSitemap,
@@ -38,6 +39,8 @@ sitemaps = {
 }
 
 urlpatterns = [
+    # Nginx 내부 auth_request만 이 URL에 접근할 수 있게 운영 설정에서 차단한다.
+    path('media/_authorize/', media_authorization, name='media_authorization'),
     # 보안: Admin URL을 추측하기 어려운 경로로 변경
     # 환경변수 DJANGO_ADMIN_URL로 커스터마이징 가능 (기본: secret-control-panel/)
     path(

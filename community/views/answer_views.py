@@ -2,6 +2,7 @@
 from django.contrib import messages
 from django.shortcuts import render, get_object_or_404, redirect, resolve_url
 from django.contrib.auth.decorators import login_required
+from django.views.decorators.http import require_POST
 from django.utils import timezone
 
 from ..forms import AnswerForm
@@ -80,6 +81,7 @@ def answer_delete(request, answer_id):
     return redirect('community:detail', question_id=answer.question.id)
 
 @login_required(login_url='common:login')
+@require_POST
 def answer_vote(request, answer_id):
     answer = get_object_or_404(Answer, pk=answer_id)
     if request.user == answer.author:
