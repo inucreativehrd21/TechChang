@@ -4,7 +4,7 @@
 > 운영 사이트: **[techchang.com](https://techchang.com)**
 
 ![Python](https://img.shields.io/badge/Python-3.12+-blue.svg)
-![Django](https://img.shields.io/badge/Django-5.2.6-green.svg)
+![Django](https://img.shields.io/badge/Django-5.2.19-green.svg)
 ![Bootstrap](https://img.shields.io/badge/Bootstrap-5.3-7952B3.svg)
 
 ---
@@ -61,7 +61,7 @@ TechChang는 Stack Overflow 스타일의 질문/답변 커뮤니티에 인터랙
 
 ## 🔧 기술 스택
 
-**Backend** — Django 5.2.6, Python 3.12+, MySQL 8 (운영) / SQLite3 (로컬·CI), Channels(Daphne, WebSocket)
+**Backend** — Django 5.2.19, Python 3.12+, MySQL 8 (운영) / SQLite3 (로컬·CI), Channels(Daphne, WebSocket)
 **AI** — Claude Code 구독 CLI → Codex 구독 CLI 폴백. Anthropic SDK는 선택 경로만 남기고 운영 API 과금은 차단
 **Frontend** — Bootstrap 5.3, Vanilla JavaScript, Django Templates
 **인증** — Django 계정·프로필 공용, 카카오/Google OAuth 식별자 연결, 이메일 인증 코드

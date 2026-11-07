@@ -2,7 +2,7 @@
 
 ## WHAT (기술 스택)
 
-**Backend**: Django 5.2.6, Python 3.12+, MySQL 8 (운영, `DJANGO_DB_ENGINE=mysql`) / SQLite3 (로컬·CI)
+**Backend**: Django 5.2.19, Python 3.12+, MySQL 8 (운영, `DJANGO_DB_ENGINE=mysql`) / SQLite3 (로컬·CI)
 **Frontend**: Bootstrap 5.3, Vanilla JavaScript, Django Templates
 **서버**: Ubuntu 24.04 (OCI A1 aarch64), Nginx, Gunicorn(WSGI)
 **배포**: 161.118.232.178 (techchang.com)
@@ -78,6 +78,7 @@ sudo systemctl status mysite nginx
 - **Nginx**: `/etc/nginx/sites-available/techchang`
 - **로그**: `sudo journalctl -u mysite -n 50`, `logs/django.log`
 - **정적파일**: `python manage.py collectstatic --clear`
+- **비공개 미디어**: `/media/question_files/`, `/media/questions/`, `/media/answers/`, `/media/comments/`, `/media/portfolio/`는 Nginx `auth_request`로 Django 권한을 확인한다. 운영 설정을 바꿀 때 [접근제어 문서](docs/private-media-access.md)를 따른다.
 - **DB 백업**: `python manage.py backup_db` → `backups/db_<ts>.sql.gz` (cron 매일 03:00)
 - **cron**: ubuntu 계정 `crontab -l` (backup_db, send_log_report, send_visitor_report, hold_meeting 일 20:00, 칼럼·연재 **예약 공개**: 전날 13·22시 `--prepare` → 공개 대기 → `office_release` 10분마다 / 당일 10시 `--if-missing` 안전망(office/schedule.py), make_newsletter 금 10:00, 야구 `rookie_daily` 00:10·`rookie_tick` 11~23시 5분마다)
 - **AI 호출**: `common.services.claude.ask` → Claude Code 구독(`claude-sonnet-5-5`) 우선, 명시적인 한도 오류만 Codex 구독(`gpt-6.1-sol`, medium)으로 전환해요. 실제 전환은 `common/services/subscriptions.py`, Codex 제약은 `common/services/codex.py`에 있어요.
