@@ -56,7 +56,7 @@ class PremiumTests(TestCase):
         self.assertEqual(res.status_code, 200)
         html = res.content.decode()
         self.assertEqual(html.count('class="tc-pick"'), 2)        # 인기 레일 + 게시글 카드 (일반 칼럼엔 없음)
-        self.assertIn('연구팀 편집 심사 92점 — 프리미엄 칼럼(90점 이상)', html)
+        self.assertIn('title="프리미엄 칼럼"', html)
         self.assertIn('누구나 무료로 읽을 수 있습니다', html)
         self.assertNotIn('질문하고 답하며 함께 성장하는', html)
 
@@ -72,8 +72,8 @@ class PremiumTests(TestCase):
         plain = column('일반 상세', 72)
         for ua in ('Mozilla/5.0 (Windows NT 10.0) Chrome/130',
                    'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) Mobile/15E148'):
-            self.assertContains(self.client.get(f'/{top.id}/', HTTP_USER_AGENT=ua), '프리미엄 칼럼 · 93점')
-            self.assertNotContains(self.client.get(f'/{plain.id}/', HTTP_USER_AGENT=ua), '프리미엄 칼럼 ·')
+            self.assertContains(self.client.get(f'/{top.id}/', HTTP_USER_AGENT=ua), 'class="tc-premium"')
+            self.assertNotContains(self.client.get(f'/{plain.id}/', HTTP_USER_AGENT=ua), 'class="tc-premium"')
 
     def test_publish_log_scores_count_and_latest_wins(self):
         bot, _ = User.objects.get_or_create(username='techchang연구팀')

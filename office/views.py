@@ -176,6 +176,8 @@ def office_state(request):
 # ───────────────────────────── 관리자
 @admin_required
 def office_admin(request):
+    from common.models import LogFinding
+
     meetings = Meeting.objects.prefetch_related('decisions').order_by('-held_at')[:8]
     held = ColumnDraft.objects.filter(
         status__in=[ColumnDraft.STATUS_HOLD, ColumnDraft.STATUS_REVISING]).select_related('decision')
@@ -199,6 +201,10 @@ def office_admin(request):
         ]
     tasks = list(Task.objects.exclude(status__in=[Task.ST_DONE, Task.ST_REJECTED])
                  .select_related('decision', 'finding')[:30])
+    pending_findings = list(LogFinding.objects.filter(status=LogFinding.STATUS_PENDING))
+    recent_findings = list(LogFinding.objects.exclude(status=LogFinding.STATUS_PENDING)
+                           .prefetch_related('tasks')[:10])
+    crew_pending = sum(1 for t in tasks if t.status == Task.ST_BACKLOG) + len(pending_findings)
     done_tasks = list(Task.objects.filter(status__in=[Task.ST_DONE, Task.ST_REJECTED, Task.ST_PR])
                       .select_related('decision')[:10])
     job_log = _job_log_tail()
@@ -211,13 +217,14 @@ def office_admin(request):
          'note': f'재작성 중 {len(revising)}' if revising else ''},
         {'tab': 'drafts', 'label': '공개 대기', 'n': len(ready),
          'note': f'다음 {timezone.localtime(ready[0].publish_at):%m/%d %H:%M}' if ready and ready[0].publish_at else ''},
-        {'tab': 'crew', 'label': '정비 백로그', 'n': sum(1 for t in tasks if t.status == Task.ST_BACKLOG)},
+        {'tab': 'crew', 'label': '정비·지적사항', 'n': crew_pending},
     ]
     return render(request, 'office/admin.html', {
         'status': status, 'switch_groups': SW.panel(), 'switch_summary': SW.summary(),
         'meetings': meetings, 'held': held, 'ready': ready, 'jobs': jobs, 'recent_drafts': recent_drafts, 'logs': logs,
         'tasks': tasks, 'done_tasks': done_tasks, 'github_ok': github.available(),
-        'crew_pending': sum(1 for t in tasks if t.status == Task.ST_BACKLOG),
+        'pending_findings': pending_findings, 'recent_findings': recent_findings,
+        'crew_pending': crew_pending,
         'agents': AGENTS, 'topic_label': TOPIC_LABEL, 'job_log': job_log,
         'manual_jobs_available': (os.environ.get('CLAUDE_BACKEND', 'api').lower() == 'cli'
                                   or (bool(getattr(settings, 'ANTHROPIC_API_KEY', ''))

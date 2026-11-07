@@ -2,7 +2,7 @@
 {% load static social_tags %}
 {% block title %}서버 모니터 - 테크창{% endblock %}
 {% block admin_heading %}서버 모니터{% endblock %}
-{% block admin_description %}서비스·트래픽·보안 로그와 처리할 지적사항을 확인해요.{% endblock %}
+{% block admin_description %}서비스·트래픽·보안 로그를 확인해요. 지적사항 처리는 연구실 관리에서 해요.{% endblock %}
 {% block admin_content %}
 <div class="monitor-wrap"><div class="ad-toolbar"><div class="hours-filter"><a href="?hours=6" class="h-btn {% if hours == 6 %}active{% endif %}">6시간</a><a href="?hours=24" class="h-btn {% if hours == 24 %}active{% endif %}">24시간</a><a href="?hours=72" class="h-btn {% if hours == 72 %}active{% endif %}">3일</a><a href="?hours=168" class="h-btn {% if hours == 168 %}active{% endif %}">7일</a></div><form method="post" action="{% url 'common:send_monitor_email' %}">{% csrf_token %}<input type="hidden" name="hours" value="{{ hours }}"><button class="btn" type="submit">리포트 이메일 보내기</button></form></div><div class="ad-toolbar"><span class="ad-muted">마지막 갱신 <span id="last-update"></span></span><label class="ad-check"><input type="checkbox" id="ad-monitor-auto" checked> 60초마다 갱신 <span id="ad-monitor-countdown"></span></label></div><div class="ad-refresh-track"><div id="refresh-bar"></div></div><div class="ad-monitor-grid">
 
@@ -170,70 +170,11 @@
         {% endif %}
       </div>
 
-      <!-- AI 지적사항 승인 (→ 자동 수정 PR) -->
+      <!-- 지적사항과 정비 작업은 연구실 관리에서 함께 처리 -->
       <div class="mon-card">
-        <h2>
-          <i class="fas fa-code-pull-request"></i> 지적사항 승인 → 자동 수정 PR
-          {% if pending_findings %}
-          <span>대기 {{ pending_findings|length }}</span>
-          {% endif %}
-        </h2>
-
-        {% for f in pending_findings %}
-        <div class="ai-finding">
-          <div class="t">{{ f.title }}</div>
-          {% if f.cause %}<div class="d"><span class="k">원인&nbsp;</span>{{ f.cause }}</div>{% endif %}
-          {% if f.action %}<div class="d"><span class="k">조치&nbsp;</span>{{ f.action }}</div>{% endif %}
-          <div>
-            <form method="post" action="{% url 'common:finding_approve' f.id %}"
-                  onsubmit="return confirm('이 지적사항을 승인하고 자동 수정 PR을 생성할까요?');">
-              {% csrf_token %}
-              <button class="btn btn-sm" type="submit">
-                <i class="fas fa-check me-1"></i> 승인 → PR 생성
-              </button>
-            </form>
-            <form method="post" action="{% url 'common:finding_reject' f.id %}"
-                  onsubmit="return confirm('이 지적사항을 거부할까요?');">
-              {% csrf_token %}
-              <button class="btn btn-sm" type="submit">
-                <i class="fas fa-times me-1"></i> 거부
-              </button>
-            </form>
-          </div>
-        </div>
-        {% empty %}
-        <div>
-          <i class="fas fa-check-circle me-1"></i> 승인 대기 중인 지적사항이 없어요.
-        </div>
-        {% endfor %}
-
-        {% if recent_decided %}
-        <div>
-          <div>최근 처리 내역</div>
-          {% for f in recent_decided %}
-          <div class="ai-finding">
-            <div>
-              <div class="t">{{ f.title }}</div>
-              {% if f.status == 'dispatched' %}
-              <span>
-                <i class="fas fa-check-circle"></i> 처리 완료
-                {% if f.pr_url %}<a href="{{ f.pr_url }}" target="_blank" rel="noopener">진행/PR&nbsp;보기 <i class="fas fa-arrow-up-right-from-square"></i></a>{% endif %}
-              </span>
-              {% elif f.status == 'approved' %}
-              <span>
-                <i class="fas fa-clock"></i> 승인됨
-              </span>
-              {% elif f.status == 'rejected' %}
-              <span>
-                <i class="fas fa-times-circle"></i> 거부됨
-              </span>
-              {% endif %}
-            </div>
-            {% if f.note %}<div class="d">{{ f.note }}</div>{% endif %}
-          </div>
-          {% endfor %}
-        </div>
-        {% endif %}
+        <h2><i class="fas fa-list-check"></i> 정비·지적사항{% if pending_finding_count %} <span>대기 {{ pending_finding_count }}</span>{% endif %}</h2>
+        <p>승인 대기 지적사항과 정비 작업을 한 곳에서 확인하고 처리해요.</p>
+        <a href="{% url 'office:admin' %}#crew">연구실 관리에서 보기</a>
       </div>
 
     </div><!-- /왼쪽 -->

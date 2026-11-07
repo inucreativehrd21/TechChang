@@ -309,14 +309,14 @@ class BlockedIP(models.Model):
 class LogFinding(models.Model):
     """AI 로그 분석관(send_log_report/대시보드)이 도출한 지적사항.
 
-    관리자가 대시보드에서 승인하면 GitHub repository_dispatch 로 자동 수정
-    PR 생성 워크플로를 트리거한다. fingerprint 로 같은 지적의 재생성을 막고,
+    관리자가 승인하면 office.Task 정비 백로그로 전달한다. 작업 카드에서
+    별도로 패치 실행을 승인한다. fingerprint 로 같은 지적의 재생성을 막고,
     한 번 결정(승인/거부)된 항목은 다시 pending 으로 되살리지 않는다.
     """
     STATUS_PENDING = 'pending'
     STATUS_APPROVED = 'approved'
     STATUS_REJECTED = 'rejected'
-    STATUS_DISPATCHED = 'dispatched'   # 승인 후 GitHub 워크플로 트리거 완료
+    STATUS_DISPATCHED = 'dispatched'   # 승인 후 정비 작업으로 전달됨
     STATUS_CHOICES = [
         (STATUS_PENDING, '대기'),
         (STATUS_APPROVED, '승인'),

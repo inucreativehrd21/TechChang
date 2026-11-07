@@ -2,6 +2,7 @@
 # from django.shortcuts import render
 from django.contrib.auth import authenticate, login, logout
 from django.shortcuts import render, redirect, get_object_or_404
+from django.urls import reverse
 from django.http import JsonResponse
 from django.views.decorators.http import require_POST
 from django.contrib.auth.decorators import login_required
@@ -907,13 +908,17 @@ def admin_portfolio_reject(request, kind, obj_id):
 @admin_required
 @require_POST
 def finding_approve(request, finding_id):
-    """AI 지적사항 승인 → GitHub auto-fix 워크플로 트리거."""
+    """AI 지적사항을 정비 작업으로 등록한다."""
     from .models import LogFinding
 
     finding = LogFinding.objects.filter(pk=finding_id).first()
     if finding is None:
         messages.error(request, '존재하지 않는 지적사항입니다.')
-        return redirect('common:server_monitor')
+        return redirect(reverse('office:admin') + '#crew')
+
+    if finding.status != LogFinding.STATUS_PENDING:
+        messages.info(request, '이미 처리한 지적사항입니다.')
+        return redirect(reverse('office:admin') + '#crew')
 
     finding.status = LogFinding.STATUS_APPROVED
     finding.decided_at = timezone.now()
@@ -936,20 +941,24 @@ def finding_approve(request, finding_id):
     finding.note = f'정비반 작업 카드 #{task.id} 등록'
     finding.pr_url = ''
     finding.save(update_fields=['status', 'decided_at', 'decided_by', 'note', 'pr_url'])
-    messages.success(request, f'"{finding.title}" 승인 — 정비 백로그 #{task.id} 에 등록했습니다 (/lab/admin/ 정비 탭)')
-    return redirect('common:server_monitor')
+    messages.success(request, f'"{finding.title}"을(를) 정비 작업 #{task.id}로 등록했습니다.')
+    return redirect(reverse('office:admin') + '#crew')
 
 
 @admin_required
 @require_POST
 def finding_reject(request, finding_id):
-    """AI 지적사항 거부 (PR 생성 안 함)."""
+    """AI 지적사항 거부."""
     from .models import LogFinding
 
     finding = LogFinding.objects.filter(pk=finding_id).first()
     if finding is None:
         messages.error(request, '존재하지 않는 지적사항입니다.')
-        return redirect('common:server_monitor')
+        return redirect(reverse('office:admin') + '#crew')
+
+    if finding.status != LogFinding.STATUS_PENDING:
+        messages.info(request, '이미 처리한 지적사항입니다.')
+        return redirect(reverse('office:admin') + '#crew')
 
     finding.status = LogFinding.STATUS_REJECTED
     finding.decided_at = timezone.now()
@@ -957,7 +966,7 @@ def finding_reject(request, finding_id):
     finding.note = request.POST.get('reason', '').strip()[:300]
     finding.save(update_fields=['status', 'decided_at', 'decided_by', 'note'])
     messages.success(request, f'"{finding.title}"을(를) 거부했습니다.')
-    return redirect('common:server_monitor')
+    return redirect(reverse('office:admin') + '#crew')
 
 
 @admin_required
@@ -1535,8 +1544,7 @@ def server_monitor(request):
         for f in ai_analysis.get('findings', []):
             if isinstance(f, dict):
                 LogFinding.record(f, ai_analysis.get('severity', ''), ai_analysis.get('overview', ''))
-    pending_findings = LogFinding.objects.filter(status=LogFinding.STATUS_PENDING)
-    recent_decided = LogFinding.objects.exclude(status=LogFinding.STATUS_PENDING)[:10]
+    pending_finding_count = LogFinding.objects.filter(status=LogFinding.STATUS_PENDING).count()
 
     # 최근 7일 방문자 추이
     today = date.today()
@@ -1565,8 +1573,7 @@ def server_monitor(request):
         'ai': ai_analysis,
         'visitor_trend': visitor_trend,
         'question_trend': question_trend,
-        'pending_findings': pending_findings,
-        'recent_decided': recent_decided,
+        'pending_finding_count': pending_finding_count,
     }
     return render(request, 'common/server_monitor.html', context)
 

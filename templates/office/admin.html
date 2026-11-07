@@ -40,7 +40,7 @@
     <div class="tabs" role="tablist" aria-label="연구실 관리">
       <button type="button" class="tab active" data-tab="decisions" role="tab">안건 결정 {% for m in meetings %}{% if m.status == 'open' and forloop.first %}<span class="badge-n">{{ m.pending_count }}</span>{% endif %}{% endfor %}</button>
       <button type="button" class="tab" data-tab="drafts" role="tab">원고 {% if held %}<span class="badge-n">{{ held|length }}</span>{% endif %}</button>
-      <button type="button" class="tab" data-tab="crew" role="tab">정비 백로그 {% if crew_pending %}<span class="badge-n">{{ crew_pending }}</span>{% endif %}</button>
+      <button type="button" class="tab" data-tab="crew" role="tab">정비·지적사항 {% if crew_pending %}<span class="badge-n">{{ crew_pending }}</span>{% endif %}</button>
       <button type="button" class="tab" data-tab="records" role="tab">기록</button>
       <button type="button" class="tab" data-tab="settings" role="tab">설정</button>
     </div>
@@ -157,13 +157,31 @@
 
     <section class="tab-pane narrow" data-pane="crew" hidden>
       <p class="muted">
-        편집회의의 개발·운영 결정과 서버 로그 지적사항이 여기로 모입니다. 승인하면 연구팀이 서버에서 수정안을 만들고
-        검증(<code>check</code>+<code>test</code>)을 통과한 것만 PR 로 올립니다. <b>머지와 배포는 사람이 합니다.</b>
-        {% if not github_ok %}<br><b>GITHUB_DISPATCH_TOKEN 미설정 — 이슈·PR 생성은 건너뜁니다.</b>{% endif %}
+        서버 로그 지적사항을 승인하면 아래 정비 작업으로 등록돼요. 작업 카드에서 패치를 시작하면 수정·검증 후 PR을 올립니다.
+        <b>머지와 배포는 사람이 합니다.</b>
+        {% if not github_ok %}<br><b>GitHub 인증 미설정 — 이슈·PR 생성은 건너뜁니다.</b>{% endif %}
       </p>
 
+      <h2 class="pane-title">승인 대기 지적사항 {% if pending_findings %}<small class="muted">{{ pending_findings|length }}건</small>{% endif %}</h2>
+      {% for f in pending_findings %}
+      <div class="task" data-finding="{{ f.id }}">
+        <div class="t-head"><span class="pri p-P2">로그</span><b>{{ f.title }}</b><span class="st">검토 대기</span></div>
+        <div class="meta"><span>심각도 {{ f.severity|default:"미분류" }}</span><span>{{ f.created_at|date:"m/d H:i" }}</span></div>
+        {% if f.cause %}<div class="t-body"><b>추정 원인</b><br>{{ f.cause|linebreaksbr }}</div>{% endif %}
+        {% if f.action %}<div class="t-body"><b>권장 조치</b><br>{{ f.action|linebreaksbr }}</div>{% endif %}
+        <div class="t-actions">
+          <form method="post" action="{% url 'common:finding_approve' f.id %}">{% csrf_token %}
+            <button class="btn-sm go" type="submit" data-confirm="이 지적사항을 정비 작업으로 등록할까요?">승인 → 작업 등록</button></form>
+          <form method="post" action="{% url 'common:finding_reject' f.id %}">{% csrf_token %}
+            <button class="btn-sm rej" type="submit" data-confirm="이 지적사항을 거부할까요?">거부</button></form>
+        </div>
+      </div>
+      {% empty %}<p class="muted">승인 대기 중인 지적사항이 없어요.</p>{% endfor %}
+
+      <h2 class="pane-title">정비 작업</h2>
+
       {% for t in tasks %}
-      <div class="task" data-task="{{ t.id }}">
+      <div class="task" id="task-{{ t.id }}" data-task="{{ t.id }}">
         <div class="t-head">
           <span class="pri p-{{ t.priority }}">{{ t.priority }}</span>
           <b>{{ t.title }}</b>
@@ -240,10 +258,21 @@
       <h2 class="pane-title">최근 처리</h2>
       <table class="logs">
         {% for t in done_tasks %}
-        <tr><td>{{ t.created_at|date:"m/d" }}</td><td>{{ t.get_status_display }}</td>
+        <tr{% if t.status != 'pr_open' %} id="task-{{ t.id }}"{% endif %}><td>{{ t.created_at|date:"m/d" }}</td><td>{{ t.get_status_display }}</td>
           <td>{{ t.title }}</td>
           <td>{% if t.pr_url %}<a href="{{ t.pr_url }}" target="_blank" rel="noopener">PR</a>{% endif %}
               {% if t.issue_url %}<a href="{{ t.issue_url }}" target="_blank" rel="noopener">이슈</a>{% endif %}</td></tr>
+        {% endfor %}
+      </table>
+      {% endif %}
+
+      {% if recent_findings %}
+      <h2 class="pane-title">최근 지적사항 결정</h2>
+      <table class="logs">
+        {% for f in recent_findings %}
+        <tr><td>{{ f.decided_at|date:"m/d" }}</td><td>{{ f.get_status_display }}</td>
+          <td>{{ f.title }}{% if f.note %}<small class="muted"> · {{ f.note }}</small>{% endif %}</td>
+          <td>{% for t in f.tasks.all %}<a href="#task-{{ t.id }}">작업 #{{ t.id }}</a>{% empty %}{% if f.pr_url %}<a href="{{ f.pr_url }}" target="_blank" rel="noopener">PR</a>{% endif %}{% endfor %}</td></tr>
         {% endfor %}
       </table>
       {% endif %}

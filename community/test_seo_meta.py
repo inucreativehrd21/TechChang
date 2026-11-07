@@ -148,7 +148,7 @@ class MobileFirstIndexingTests(TestCase):
 
     def test_sitemap_index_splits_sections_and_drops_thin_posts(self):
         index = self.client.get('/sitemap.xml').content.decode()
-        for section in ('static', 'columns', 'series', 'posts', 'making', 'portfolios'):
+        for section in ('static', 'columns', 'series', 'posts', 'portfolios', 'newsletter'):
             self.assertIn(f'/sitemap-{section}.xml', index)
         columns = self.client.get('/sitemap-columns.xml').content.decode()
         self.assertIn(f'https://techchang.com/{self.column.id}/', columns)
