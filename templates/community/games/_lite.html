@@ -526,7 +526,8 @@
             warn.hidden = !same;
             var intlLeft = Array.prototype.some.call(plan.querySelectorAll('.rl-tourney'), function (t) { return !t.querySelector('input:checked'); });
             var eventLeft = plan.querySelector('input[name=event_choice]') && !plan.querySelector('input[name=event_choice]:checked');
-            var need = intlLeft ? '먼저 국가대표 소집에 답해 주세요' : eventLeft ? '먼저 이벤트에 답해 주세요'
+            var extremeLeft = !!document.querySelector('[data-extreme-pending]');
+            var need = extremeLeft ? '익스트림 사건에 먼저 답해 주세요' : intlLeft ? '먼저 국가대표 소집에 답해 주세요' : eventLeft ? '먼저 이벤트에 답해 주세요'
                 : on < max ? '훈련 프로그램을 ' + (max - on) + '개 더 골라 주세요' : same ? '지난 비시즌과 다른 조합으로 골라 주세요' : '';
             go.disabled = !!need;
             go.textContent = need || go.dataset.ready;
@@ -562,4 +563,4 @@
     }
 })();
 </script>
-{% if c and mode != 'create' %}<script src="{% static 'js/rookie-flow.js' %}?v={{ STATIC_VERSION }}&amp;flow=4" defer></script>{% endif %}
+{% if c and mode != 'create' %}<script src="{% static 'js/rookie-flow.js' %}?v={{ STATIC_VERSION }}&amp;flow=5" defer></script>{% endif %}

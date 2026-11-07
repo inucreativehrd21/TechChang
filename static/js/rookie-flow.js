@@ -139,7 +139,9 @@
             if (host === stage && plan) plan.hidden = !plan.contains(screens[index]);
             viewport.scrollTop = 0;
             select.value = String(index); prev.disabled = index === 0; next.disabled = index === screens.length - 1;
-            announcement.textContent = (index + 1) + ' / ' + screens.length + ' · ' + titleOf(screens[index]);
+            announcement.textContent = host === stage && plan ? titleOf(screens[index])
+                : (index + 1) + ' / ' + screens.length + ' · ' + titleOf(screens[index]);
+            host.dispatchEvent(new CustomEvent('rl:scenechange', {detail: {index: index, screen: screens[index]}}));
             if (storageKey) {
                 var data = getStored(); data.scene = titleOf(screens[index]);
                 try { sessionStorage.setItem(storageKey, JSON.stringify(data)); } catch (_) {}
@@ -319,13 +321,125 @@
         }
         return '';
     };
-    var mainDeck = deck(stage, screens, key ? key + ':scene' : '', validation);
-    if (plan && mainDeck) plan.addEventListener('change', function (event) {
-        if (event.target.name === 'event_choice' || event.target.name.indexOf('intl_') === 0 || event.target.name === 'program') {
-            var screen = event.target.closest('section');
-            if (screen && !validation(screen)) mainDeck.advance();
+    var initialScene = key ? read().scene : '';
+    var mainDeck = deck(stage, screens, key ? key + ':scene' : '', plan ? null : validation);
+    if (plan && mainDeck) {
+        stage.classList.add('rl-prep-mode');
+        var screenId = function (screen) {
+            if (screen.hasAttribute('data-extreme-pending')) return 'extreme';
+            if (screen.classList.contains('rl-shop')) return 'shop';
+            if (screen.classList.contains('rl-callup')) return 'intl';
+            if (screen.classList.contains('rl-event')) return 'event';
+            if (screen.classList.contains('rl-train')) return 'train';
+            if (screen.classList.contains('rl-prep-board')) return 'start';
+            if (screen.classList.contains('rl-paper')) return 'news';
+            if (screen === info) return 'info';
+            return 'strategy';
+        };
+        var labels = {extreme: '익스트림 사건', shop: '장비·생활', intl: '국가대표', event: '비시즌 선택',
+            train: '훈련', strategy: '강도·루틴', start: '시즌 시작', news: '팀 소식', info: '선수 정보'};
+        var map = document.createElement('nav');
+        map.className = 'rl-prep-map'; map.setAttribute('aria-label', '시즌 준비 미니맵');
+        var heading = document.createElement('div'); heading.className = 'rl-prep-map-head';
+        var headingTitle = document.createElement('b'); headingTitle.textContent = '시즌 준비 미니맵';
+        var headingStatus = document.createElement('span'); headingStatus.setAttribute('aria-live', 'polite');
+        heading.append(headingTitle, headingStatus); map.appendChild(heading);
+        var nodes = document.createElement('div'); nodes.className = 'rl-prep-map-nodes'; map.appendChild(nodes);
+        var visited = read().visited || {};
+        var entries = screens.map(function (screen, index) {
+            var id = screenId(screen), button = document.createElement('button');
+            button.type = 'button'; button.className = 'rl-prep-node'; button.dataset.prepId = id;
+            var name = document.createElement('b'), state = document.createElement('small');
+            name.textContent = labels[id]; state.className = 'rl-prep-node-state';
+            button.append(name, state);
+            button.addEventListener('click', function () { mainDeck.show(index, true, true); });
+            nodes.appendChild(button);
+            return {id: id, index: index, screen: screen, button: button, state: state};
+        });
+        var order = ['extreme', 'intl', 'event', 'train', 'strategy', 'shop', 'news', 'info', 'start'];
+        entries.slice().sort(function (a, b) { return order.indexOf(a.id) - order.indexOf(b.id); })
+            .forEach(function (entry) { nodes.appendChild(entry.button); });
+        stage.insertBefore(map, stage.querySelector(':scope > .rl-deck-status'));
+        var reminder = document.createElement('div'); reminder.className = 'rl-prep-reminders';
+        reminder.setAttribute('role', 'status');
+        confirm.insertBefore(reminder, confirm.querySelector('[data-rl-go]'));
+        var goTo = function (entry) { mainDeck.show(entry.index, true, true); };
+        var refreshMap = function () {
+            var required = [], optional = [];
+            entries.forEach(function (entry) {
+                var id = entry.id, state = '둘러보지 않음', kind = 'optional';
+                if (id === 'extreme') { state = '선택 필요'; kind = 'required'; }
+                else if (id === 'intl') {
+                    var offers = entry.screen.querySelectorAll('.rl-tourney').length;
+                    var answered = entry.screen.querySelectorAll('.rl-tourney input:checked').length;
+                    state = answered === offers ? '선택 완료' : (offers - answered) + '건 남음';
+                    kind = answered === offers ? 'done' : 'required';
+                } else if (id === 'event') {
+                    var picked = !!plan.querySelector('input[name="event_choice"]:checked');
+                    state = picked ? '선택 완료' : '선택 필요'; kind = picked ? 'done' : 'required';
+                } else if (id === 'train') {
+                    var count = plan.querySelectorAll('input[name="program"]:checked').length;
+                    var same = count === 2 && !plan.querySelector('[data-rl-banned]').hidden;
+                    state = same ? '조합 변경 필요' : count === 2 ? '선택 완료' : count + ' / 2 선택';
+                    kind = count === 2 && !same ? 'done' : 'required';
+                } else if (id === 'strategy') {
+                    state = visited[id] ? '확인했어요' : '기본값 적용 · 미확인';
+                    kind = visited[id] ? 'done' : 'optional';
+                } else if (id === 'shop') {
+                    state = visited[id] ? '둘러봤어요' : '둘러보지 않음';
+                    kind = visited[id] ? 'done' : 'optional';
+                } else if (id === 'start') {
+                    state = '선택 확인'; kind = 'start';
+                } else {
+                    state = visited[id] ? '확인했어요' : '둘러보지 않음';
+                    kind = visited[id] ? 'done' : 'optional';
+                }
+                entry.state.textContent = state;
+                entry.button.dataset.state = kind;
+                if (kind === 'required') required.push(entry);
+                if (kind === 'optional') optional.push(entry);
+            });
+            headingStatus.textContent = required.length ? '필수 선택 ' + required.length + '곳 남음' : '필수 선택 완료';
+            reminder.replaceChildren();
+            var addReminder = function (title, items, css) {
+                if (!items.length) return;
+                var row = document.createElement('div'); row.className = css;
+                var message = document.createElement('p'); message.textContent = title; row.appendChild(message);
+                items.forEach(function (entry) {
+                    var button = document.createElement('button'); button.type = 'button';
+                    button.textContent = labels[entry.id]; button.addEventListener('click', function () { goTo(entry); });
+                    row.appendChild(button);
+                });
+                reminder.appendChild(row);
+            };
+            addReminder('시작 전에 선택해 주세요.', required, 'is-required');
+            addReminder('아직 둘러보지 않은 메뉴예요. 이번 시즌에는 건너뛰어도 돼요.', optional, 'is-optional');
+        };
+        stage.addEventListener('rl:scenechange', function (event) {
+            var entry = entries[event.detail.index];
+            if (!entry) return;
+            entries.forEach(function (item) {
+                var active = item === entry;
+                item.button.classList.toggle('is-current', active);
+                if (active) item.button.setAttribute('aria-current', 'location');
+                else item.button.removeAttribute('aria-current');
+            });
+            if (entry.id !== 'start' && !visited[entry.id]) {
+                visited[entry.id] = true;
+                var data = read(); data.visited = visited; write(data);
+            }
+            refreshMap();
+        });
+        plan.addEventListener('change', refreshMap);
+        refreshMap();
+        var restoreFound = initialScene && screens.some(function (screen) { return titleOf(screen) === initialScene; });
+        var firstRequired = entries.find(function (entry) { return entry.button.dataset.state === 'required'; });
+        if (!restoreFound && firstRequired) mainDeck.show(firstRequired.index, false, false);
+        else {
+            var visibleIndex = screens.findIndex(function (screen) { return !screen.hidden; });
+            if (visibleIndex >= 0) stage.dispatchEvent(new CustomEvent('rl:scenechange', {detail: {index: visibleIndex, screen: screens[visibleIndex]}}));
         }
-    });
+    }
     var shop = stage.querySelector('.rl-shop');
     if (shop) {
         shop.open = true;
