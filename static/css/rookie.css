@@ -86,6 +86,34 @@
 .rk-nav a[aria-current="page"]::after { content: ""; position: absolute; left: 10px; right: 10px; bottom: -1px; height: 3px; border-radius: 3px 3px 0 0; background: var(--rk-accent); }
 .rk-nav a:focus-visible { outline: 2px solid var(--rk-accent); outline-offset: -2px; border-radius: 8px; }
 
+/* 팝업에서도 게임 화면 이동과 모드 전환을 분리해 읽기 쉽게 둔다. */
+.rk .rk-menu-row { position: relative; z-index: 5; display: flex; align-items: stretch; gap: 16px; margin: 0 0 20px; border-bottom: 1px solid var(--rk-line); }
+.rk .rk-menu-row .rk-nav { flex: 1 1 auto; min-width: 0; margin: 0; border: 0; gap: 6px; overflow-x: auto; scrollbar-width: thin; }
+.rk .rk-menu-row .rk-nav a { padding: 10px 9px 12px; white-space: nowrap; }
+.rk .rk-menu-row .rk-nav a[aria-current="page"]::after { left: 9px; right: 9px; }
+.rk .rk-menu-row .rl-flow-menu { flex: 1 1 auto; min-width: 0; margin: 0; }
+.rk .rk-menu-row .rl-flow-menu > summary { width: fit-content; margin-bottom: 7px; padding: 7px 11px; border: 1px solid var(--rk-line); border-radius: 8px; background: #fff; color: var(--rk-ink); font-weight: 700; cursor: pointer; }
+.rk .rk-menu-row .rl-flow-menu > summary:focus-visible { outline: 2px solid var(--rk-accent); outline-offset: 2px; }
+.rk-mode-switch { position: relative; flex: none; align-self: center; margin: 0 0 6px; }
+.rk-mode-switch > summary { list-style: none; padding: 7px 11px; border: 1px solid var(--rk-line); border-radius: 8px; background: #fff; color: var(--rk-ink); font-size: .82rem; font-weight: 700; cursor: pointer; white-space: nowrap; }
+.rk-mode-switch > summary::-webkit-details-marker { display: none; }
+.rk-mode-switch > summary::after { content: '⌄'; display: inline-block; margin-left: 7px; font-size: 1rem; line-height: .6; vertical-align: 2px; }
+.rk-mode-switch[open] > summary::after { transform: rotate(180deg); }
+.rk-mode-switch > summary:hover, .rk-mode-switch[open] > summary { border-color: var(--rk-accent); color: var(--rk-accent); }
+.rk-mode-switch > summary:focus-visible, .rk-mode-options a:focus-visible { outline: 2px solid var(--rk-accent); outline-offset: 2px; }
+.rk-mode-options { position: absolute; top: calc(100% + 6px); right: 0; min-width: 190px; padding: 5px; border: 1px solid var(--rk-line); border-radius: 10px; background: #fff; box-shadow: 0 10px 24px rgba(24, 24, 27, .12); }
+.rk-mode-options a { display: block; padding: 9px 11px; border-radius: 6px; color: var(--rk-ink); font-size: .86rem; font-weight: 650; text-decoration: none; white-space: nowrap; }
+.rk-mode-options a:hover { background: var(--rk-accent-wash); color: var(--rk-accent); }
+@media (max-width: 767px) {
+    .rk .rk-menu-row { display: grid; grid-template-columns: minmax(0, 1fr); gap: 6px; margin-bottom: 16px; padding-bottom: 7px; }
+    .rk .rk-menu-row .rk-nav { display: flex; flex-wrap: wrap; gap: 4px 8px; overflow: visible; }
+    .rk .rk-menu-row .rk-nav a { flex: 1 1 calc(33.333% - 8px); min-width: 0; min-height: 42px; padding: 10px 6px; border-radius: 7px; font-size: .82rem; text-align: center; white-space: normal; }
+    .rk .rk-menu-row .rk-nav-career a { flex-basis: calc(50% - 8px); }
+    .rk .rk-menu-row .rk-nav a[aria-current="page"] { background: var(--rk-accent-wash); color: var(--rk-accent); }
+    .rk .rk-menu-row .rk-nav a[aria-current="page"]::after { display: none; }
+    .rk-mode-switch { justify-self: end; margin: 0; }
+}
+
 .rk-h2 { margin: 30px 0 10px; font-size: 1.15rem; font-weight: 800; letter-spacing: -0.01em; }
 .rk-note { margin: -4px 0 12px; font-size: 0.82rem; line-height: 1.6; color: var(--rk-ink-3); }
 .rk-note.is-flush { margin: 0 0 8px; }

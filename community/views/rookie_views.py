@@ -29,6 +29,7 @@ from .. import rookie_legacy as G
 from .. import rookie_versions as Versions
 from .. import rookie_world as W
 from .. import rookie_matchups as Matchups
+from .. import rookie_modes as Modes
 from ..game_visibility import rookie_hidden as is_hidden, rookie_visible as visible   # 야구는 운영자도 보인다
 from ..rookie_card import render_png   # noqa: F401 — 테스트가 바꿔 끼운다
 from ..models import RookieAward, RookieGame, RookiePlayer, RookieSeason, RookieSeasonStat
@@ -69,7 +70,7 @@ def _choices(codes) -> list:
 
 def _base_ctx(request, section: str) -> dict:
     me = R.current(request.user.id)
-    return {'section': section, 'season_now': L.season_state(),
+    return {'section': section, 'season_now': L.season_state(), 'extreme_public': Modes.public_enabled(),
             'teams': [R.TEAM[c] for c, _n, _c in R.TEAMS], 'roles': R.ROLES, 'earn': R.EARN,
             'welcome': R.WELCOME_TP, 'cost': R.TRAIN_COST, 'daily_max': R.DAILY_MAX, 'fatigue_at': R.FATIGUE_AT,
             'focus_bonus': int(round((R.FOCUS_BONUS - 1) * 100)), 'positions': L.POSITIONS, 'regions': W.REGIONS,
