@@ -17,6 +17,7 @@ import json
 import logging
 import os
 import re
+import tempfile
 from datetime import date, datetime, time, timedelta
 
 from django.conf import settings
@@ -230,24 +231,24 @@ def _picks(published) -> list[dict]:
 
 
 def _meeting_talk(picks) -> dict:
-    """추천 글들의 주제를 정한 편집회의 — 팀장의 지표 브리핑, 제안자의 이유, 다른 연구원의 반응(회의 순서대로)."""
+    """추천 글의 실제 안건을 다룬 편집회의 발언만 모은다."""
     from collections import Counter
 
     from office.models import Decision
     ids = [p['origin']['decision_id'] for p in picks if p['origin'].get('decision_id')]
     if not ids:
         return {}
-    meeting = Counter(d.meeting for d in Decision.objects.filter(pk__in=ids).select_related('meeting')).most_common(1)[0][0]
+    counts = Counter(d.meeting for d in Decision.objects.filter(pk__in=ids).select_related('meeting'))
+    meeting = max(counts, key=lambda m: (counts[m], m.held_at))
     turns = [t for t in (meeting.transcript or []) if isinstance(t, dict) and t.get('text') and t.get('agent')]
-    heads = {(p['origin']['pitch'] or '')[:8]: p['origin']['proposer'] for p in picks if p['origin'].get('decision_id')}
+    heads = [(p['origin']['pitch'] or '').split()[0].strip('「"')
+             for p in picks if p['origin'].get('decision_id') and
+             Decision.objects.filter(pk=p['origin']['decision_id'], meeting=meeting).exists()]
     picked = []
     for t in turns:
-        hit = next((h for h in heads if h and h in t['text']), None)
-        if hit:     # 팀장의 지표 브리핑(방문·클릭·추천 수)은 싣지 않는다 — 독자에게 내부 운영 수치다
-            picked.append({'agent': t['agent'], 'text': _around(t['text'], hit, 140, 300)})
-    if len(picked) < 2:   # 제목이 그대로 안 나오면 제안자 발언으로
-        props = set(heads.values())
-        picked = [{'agent': t['agent'], 'text': _clip(t['text'], 380)} for t in turns if t['agent'] in props][:6]
+        hit = next((h for h in heads if len(h) >= 3 and h in t['text']), None)
+        if hit and t['agent'] != 'lead':
+            picked.append({'agent': t['agent'], 'text': _around(t['text'], hit, 100, 380)})
     picked = [{**ln, 'text': _scrub(ln['text'])} for ln in picked]
     picked = [ln for ln in picked if len(ln['text']) >= 20]
     return {'date': f"{timezone.localtime(meeting.held_at):%m.%d}", 'lines': picked[:6]}
@@ -322,7 +323,7 @@ def _problems(copy: dict, facts: dict) -> list[str]:
         out.append(f"intro 를 {LIMITS['intro']}자 이내로")
     chat = copy.get('chat') or []
     usable = len((facts.get('meeting') or {}).get('lines') or [])
-    if usable >= CHAT_RANGE[0]:
+    if usable >= CHAT_RANGE[0] and copy.get('source') != 'default':
         if not CHAT_RANGE[0] <= len(chat) <= CHAT_RANGE[1]:
             out.append(f'chat 은 {CHAT_RANGE[0]}~{CHAT_RANGE[1]}줄로')
     elif chat:      # 쓸 만한 회의 발언이 적으면 회의실 카드를 빼는 게 낫다(말풍선 한두 개는 빈약해 보인다)
@@ -330,6 +331,12 @@ def _problems(copy: dict, facts: dict) -> list[str]:
     if usable:
         if any(c.get('agent') not in AGENT_ORDER or _too_long(c.get('line'), LIMITS['chat']) for c in chat if isinstance(c, dict)):
             out.append(f"chat 의 agent 는 정해진 키, line 은 {LIMITS['chat']}자 이내로")
+        source_agents = {ln['agent'] for ln in facts['meeting']['lines']}
+        if any(not isinstance(c, dict) or c.get('agent') not in source_agents for c in chat):
+            out.append('chat 의 연구원은 실제 회의 발언자만')
+        lines = [re.sub(r'\s+', '', str(c.get('line', ''))) for c in chat if isinstance(c, dict)]
+        if len(lines) != len(set(lines)) or any(re.fullmatch(r'[^\s]{1,12}입니다[.!]?', c.get('line', '').strip()) for c in chat if isinstance(c, dict)):
+            out.append('chat 에 자기소개나 중복 대사 대신 주제에 관한 서로 다른 발언을')
     texts = [copy.get('theme', ''), copy.get('intro', '')] + [str(c.get('line', '')) for c in chat if isinstance(c, dict)]
     for p in facts.get('picks') or []:
         c = _pick_copy(copy, p['id'])
@@ -399,17 +406,12 @@ _GENERIC_HEADING = re.compile(r'왜\s*지금인가|숫자로\s*보는\s*현황|�
 
 
 def default_copy(facts: dict) -> dict:
-    """모델 없이 사실만으로 만드는 문구 — 호출 실패·검사 실패 때의 안전판."""
+    """모델 없이 사실만으로 만드는 비공개 검토용 문구."""
     picks = facts.get('picks') or []
     theme = '이번 주 읽을 만한 *연구실 칼럼*' if picks else '다음 주를 준비한 *연구실*'
-    intro = (f'연구실이 이번 주 고른 칼럼 {len(picks)}편을 소개해요. 회의에서 왜 이 주제를 골랐는지도 함께 적었어요.'
+    intro = (f'연구실이 이번 주 고른 칼럼 {len(picks)}편을 소개해요. 각 글에서 확인할 내용을 정리했어요.'
              if picks else '이번 주에는 새 글 대신 다음 주제를 준비했어요. 다음 주 일정을 확인해 주세요.')
-    lines = (facts.get('meeting') or {}).get('lines') or []
-    chat = [{'agent': ln['agent'],
-             'line': _shortest_fit(_sentences(ln['text']), LIMITS['chat'], (_sentences(ln['text']) or [''])[0])}
-            for ln in lines[:CHAT_RANGE[1]]]
-    if lines and len(chat) < CHAT_RANGE[0]:
-        chat = []
+    chat = []  # 회의록의 첫 문장은 인사말일 수 있어 자동 발췌하지 않는다.
     out = {}
     for p in picks:
         sents = _sentences(p['summary'])
@@ -616,7 +618,7 @@ def _fix_layout(issues: list, copy: dict) -> bool:
 
 
 def make(run_date: date | None = None, *, dry: bool = False, ask_json=None, renderer=None, use_model: bool = True,
-         out=print):
+         copy_override: dict | None = None, out=print):
     """한 호를 만든다. dry 면 저장하지 않고 카드만 media/newsletter/_dry/ 에 찍는다. 반환: Newsletter 또는 dict."""
     from office.models import Newsletter
     run_date = run_date or timezone.localdate()
@@ -628,15 +630,20 @@ def make(run_date: date | None = None, *, dry: bool = False, ask_json=None, rend
     facts = collect(run_date)
     out(f'{code} · {facts["start"]}~{facts["end"]} · 발행 {len(facts["published"])}편 · 추천 {len(facts["picks"])}편'
         f' · 회의 발언 {len((facts["meeting"] or {}).get("lines") or [])}')
-    copy = curate(facts, ask_json=ask_json) if use_model else default_copy(facts)
+    copy = copy_override if copy_override is not None else (curate(facts, ask_json=ask_json) if use_model else default_copy(facts))
+    if copy_override is not None:
+        problems = _problems(copy, facts)
+        if problems:
+            raise ValueError('수동 문구 검사 실패: ' + '; '.join(problems))
+        copy['source'] = 'editorial'
     nl = context(facts, copy, issue_no, run_date)
     over = [k for k in renderer(nl, None) if CURATED_KEYS.match(k)]
-    if over and use_model:
+    if over and use_model and copy_override is None:
         out(f'  글자 넘침 {over} — 큐레이터에게 줄이게 합니다')
         copy = curate(facts, ask_json=ask_json, shorten=over)
         nl = context(facts, copy, issue_no, run_date)
         over = [k for k in renderer(nl, None) if CURATED_KEYS.match(k)]
-    if over:
+    if over and copy_override is None:
         out(f'  여전히 넘침 {over} — 기본 문구로 대신합니다')
         copy = default_copy(facts)
         nl = context(facts, copy, issue_no, run_date)
@@ -649,9 +656,21 @@ def make(run_date: date | None = None, *, dry: bool = False, ask_json=None, rend
         nl = context(facts, copy, issue_no, run_date)
         issues = renderer(nl, None)
     blockers = [k for k in issues if k.startswith('layout:') or CURATED_KEYS.match(k)] + public_problems(copy, facts)
+    if copy.get('source') == 'default' and facts['picks']:
+        blockers.append('큐레이터 문구 생성 실패 — 기본 문구는 공개하지 않음')
 
     rel = f"newsletter/{'_dry' if dry else slug}"          # URL 에도 쓰므로 os.path.join 이 아닌 '/'
-    renderer(nl, os.path.join(settings.MEDIA_ROOT, 'newsletter', '_dry' if dry else slug))
+    media_dir = os.path.join(settings.MEDIA_ROOT, 'newsletter')
+    os.makedirs(media_dir, exist_ok=True)
+    with tempfile.TemporaryDirectory(prefix='_stage-', dir=media_dir) as stage:
+        renderer(nl, stage)
+        if not blockers or dry:
+            final_dir = os.path.join(media_dir, '_dry' if dry else slug)
+            os.makedirs(final_dir, exist_ok=True)
+            for cid in nl['card_ids']:
+                source = os.path.join(stage, f'{cid}.png')
+                if os.path.exists(source):
+                    os.replace(source, os.path.join(final_dir, f'{cid}.png'))
     stamp = timezone.now().strftime('%Y%m%d%H%M')
     urls = [f"{settings.MEDIA_URL}{rel}/{cid}.png?v={stamp}" for cid in nl['card_ids']]
     out(f"  문구 출처: {copy.get('source')} · 제목: {nl['theme_plain']}")

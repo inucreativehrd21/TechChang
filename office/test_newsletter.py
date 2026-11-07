@@ -78,9 +78,9 @@ class CollectTests(TestCase):
         copy = N.default_copy(facts)
         self.assertEqual(N._problems(copy, facts), [])
         nl = N.context(facts, copy, 1, self.run)
-        self.assertEqual(nl['card_ids'], ['cover', 'meeting', 'pick-1', 'next', 'og'])
-        self.assertEqual(nl['picks'][0]['page'], 3)
-        self.assertEqual(len(nl['alts']), 4)
+        self.assertEqual(nl['card_ids'], ['cover', 'pick-1', 'next', 'og'])
+        self.assertEqual(nl['picks'][0]['page'], 2)
+        self.assertEqual(len(nl['alts']), 3)
 
     def test_without_meeting_default_copy_still_passes(self):
         facts = N.collect(self.run)
@@ -265,7 +265,7 @@ class MakeTests(TestCase):
         self.assertEqual([u.split('?')[0].rsplit('/', 1)[1] for u in b.cards], ['cover.png', 'next.png'])  # 추천·회의 없는 주
         self.assertIn('/newsletter/2026-w42/og.png', b.og_image)
         self.assertEqual(len(b.data['alts']), 2)
-        self.assertTrue(state['dirs'][0].endswith('2026-w42'))
+        self.assertIn('_stage-', state['dirs'][0])
 
     def test_overflow_asks_curator_to_shorten(self):
         r, _ = self.fake_renderer(overflow_first=['theme'])
@@ -284,8 +284,34 @@ class MakeTests(TestCase):
         r, state = self.fake_renderer()
         res = N.make(self.run, dry=True, renderer=r, use_model=False, out=lambda *_: None)
         self.assertEqual(Newsletter.objects.count(), 0)
-        self.assertTrue(state['dirs'][0].endswith('_dry'))
+        self.assertIn('_stage-', state['dirs'][0])
         self.assertEqual(len(res['cards']), 3)
+
+    def test_failed_curator_does_not_publish_generic_copy(self):
+        with mock.patch.object(N, 'collect', return_value=FACTS), mock.patch('office.jobmail.send'):
+            obj = N.make(self.run, renderer=lambda nl, d: [], use_model=False, out=lambda *_: None)
+        self.assertEqual(obj.status, Newsletter.STATUS_HOLD)
+        self.assertNotIn('meeting', obj.cards)
+
+    def test_blocked_rerun_keeps_live_card_files(self):
+        from pathlib import Path
+        from tempfile import TemporaryDirectory
+        from django.test import override_settings
+        with TemporaryDirectory() as root, override_settings(MEDIA_ROOT=root):
+            dest = Path(root) / 'newsletter' / '2026-w42'
+            dest.mkdir(parents=True)
+            (dest / 'cover.png').write_bytes(b'original')
+            Newsletter.objects.create(issue_no=1, slug='2026-w42', week_start=date(2026, 10, 9),
+                                      week_end=date(2026, 10, 15), status=Newsletter.STATUS_PUBLISHED)
+
+            def blocked(nl, out_dir):
+                if out_dir:
+                    (Path(out_dir) / 'cover.png').write_bytes(b'bad-rerun')
+                return ['layout:cover']
+
+            with mock.patch('office.jobmail.send'):
+                N.make(self.run, renderer=blocked, use_model=False, out=lambda *_: None)
+            self.assertEqual((dest / 'cover.png').read_bytes(), b'original')
 
 
 class PageTests(TestCase):
@@ -341,6 +367,12 @@ class PublicGuardTests(TestCase):
         self.assertTrue(any('chat[1]' in p and '운영 사정' in p for p in probs))
         self.assertTrue(any('why_now' in p and '회의에서' in p for p in probs))
         self.assertEqual(N.public_problems(good(), FACTS), [])
+
+    def test_greeting_and_duplicate_meeting_lines_are_rejected(self):
+        bad = good(chat=[{'agent': 'hrd', 'line': '한빈입니다.'},
+                         {'agent': 'data', 'line': '효과를 재야 해요.'},
+                         {'agent': 'critic', 'line': '효과를 재야 해요.'}])
+        self.assertTrue(any('자기소개나 중복' in p for p in N._problems(bad, FACTS)))
 
     def test_meeting_scrub_drops_metric_sentences(self):
         text = '방문자는 3301명으로 늘었습니다. 현장에서는 교육 뒤 적용이 안 된다는 고민이 많습니다. 최근 HRD 칼럼 중 같은 주제는 없었습니다.'
