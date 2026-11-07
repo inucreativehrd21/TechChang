@@ -185,25 +185,6 @@ class SeriesSitemap(Sitemap):
         return reverse('community:series_detail', kwargs={'slug': obj.slug})
 
 
-class MakingSitemap(Sitemap):
-    """칼럼 메이킹 오브 — 검증 과정을 공개한 페이지(신뢰 신호)"""
-    protocol = 'https'
-    changefreq = 'monthly'
-    priority = 0.4
-
-    def items(self):
-        from office.models import ColumnDraft
-        return list(ColumnDraft.objects.filter(status=ColumnDraft.STATUS_PUBLISHED, question__isnull=False,
-                                               question__in=QuestionSitemap().public_queryset())
-                    .select_related('question').order_by('-question__create_date')[:500])
-
-    def lastmod(self, obj):
-        return obj.question.modify_date or obj.question.create_date
-
-    def location(self, obj):
-        return reverse('office:making', kwargs={'question_id': obj.question_id})
-
-
 class PortfolioCollectionSitemap(Sitemap):
     """공개 포트폴리오 (slug 기반)"""
     protocol = 'https'

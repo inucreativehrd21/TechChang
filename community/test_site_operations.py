@@ -88,7 +88,8 @@ class OperationsPageTests(TestCase):
                                   create_date=timezone.now(),is_locked=True)
         ColumnDraft.objects.create(topic='hrd',status='published',question=q)
         self.assertNotContains(self.client.get('/sitemap-columns.xml'),f'https://techchang.com/{q.pk}/')
-        self.assertNotContains(self.client.get('/sitemap-making.xml'),f'/lab/making/{q.pk}/')
+        self.assertNotContains(self.client.get('/sitemap.xml'),'sitemap-making.xml')
+        self.assertEqual(self.client.get('/sitemap-making.xml').status_code,404)
 
     def test_robots_keeps_public_games_crawlable_and_auth_paths_restricted(self):
         text=self.client.get('/robots.txt').content.decode()

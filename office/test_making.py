@@ -70,6 +70,7 @@ class ParserTests(TestCase):
 class BuildAndViewTests(TestCase):
     def setUp(self):
         bot = User.objects.create(username='bot')
+        self.staff = User.objects.create_user(username='editor', password='test', is_staff=True)
         cat = Category.objects.create(name='칼럼')
         self.q = Question.objects.create(author=bot, category=cat, subject='Git 20년', content='본문',
                                          create_date=timezone.now())
@@ -108,9 +109,19 @@ class BuildAndViewTests(TestCase):
         self.draft.status = ColumnDraft.STATUS_HOLD
         self.assertIsNone(build_making(self.draft))
 
-    def test_making_page_renders_without_secrets(self):
+    def test_making_page_is_staff_only_and_keeps_secrets_hidden(self):
+        guest_res = self.client.get(f'/lab/making/{self.q.id}/', HTTP_USER_AGENT='Mozilla/5.0')
+        self.assertEqual(guest_res.status_code, 404, guest_res.get('Location'))
+        reader = User.objects.create_user(username='reader', password='test')
+        reader.profile.is_email_verified = True
+        reader.profile.save(update_fields=['is_email_verified'])
+        self.client.force_login(reader)
+        self.assertEqual(self.client.get(f'/lab/making/{self.q.id}/', HTTP_USER_AGENT='Mozilla/5.0').status_code, 404)
+        self.client.force_login(self.staff)
         res = self.client.get(f'/lab/making/{self.q.id}/', HTTP_USER_AGENT='Mozilla/5.0')
         self.assertEqual(res.status_code, 200)
+        self.assertIn('noindex', res['X-Robots-Tag'])
+        self.assertIn('no-store', res['Cache-Control'])
         body = res.content.decode()
         for expected in ('Git 20년', '54점', '100점', '확인되지 않은 수치', '핵심은 불만이', '운영자 검토',
                          'Git은 2005년에 나왔다', '연혁을 바로잡음'):
@@ -119,15 +130,21 @@ class BuildAndViewTests(TestCase):
             self.assertNotIn(secret, body)
 
     def test_making_page_404_for_hold_draft(self):
+        self.client.force_login(self.staff)
         self.draft.status = ColumnDraft.STATUS_HOLD
         self.draft.save()
         res = self.client.get(f'/lab/making/{self.q.id}/', HTTP_USER_AGENT='Mozilla/5.0')
         self.assertEqual(res.status_code, 404)
 
-    def test_column_detail_shows_card_and_plain_post_does_not(self):
-        res = self.client.get(f'/{self.q.id}/', HTTP_USER_AGENT='Mozilla/5.0')
-        self.assertContains(res, 'mk-card')
-        self.assertContains(res, f'/lab/making/{self.q.id}/')
+    def test_column_detail_hides_editing_history_on_desktop_and_mobile(self):
+        for ua in ('Mozilla/5.0', 'Mozilla/5.0 (iPhone)'):
+            res = self.client.get(f'/{self.q.id}/', HTTP_USER_AGENT=ua)
+            self.assertEqual(res.status_code, 200)
+            self.assertNotContains(res, 'mk-card')
+            self.assertNotContains(res, f'/lab/making/{self.q.id}/')
+            self.assertNotContains(res, '심사 점수')
+        self.client.force_login(self.staff)
+        self.assertNotContains(self.client.get(f'/{self.q.id}/'), 'mk-card')
         plain = Question.objects.create(author=self.q.author, category=self.q.category, subject='일반 글',
                                         content='x', create_date=timezone.now())
         res = self.client.get(f'/{plain.id}/', HTTP_USER_AGENT='Mozilla/5.0')
@@ -180,6 +197,7 @@ class AfterPublishTests(BuildAndViewTests):
         self.assertEqual(mk['events'][-1]['stage'], '갱신')
         self.assertEqual(mk['claims'][0]['claim'], '갱신판 주장')
         self.assertTrue(any(e['agent']['key'] == 'operator' and '교열본' in e['summary'] for e in mk['events']))
+        self.client.force_login(self.staff)
         res = self.client.get(f'/lab/making/{self.q.id}/', HTTP_USER_AGENT='Mozilla/5.0')
         body = res.content.decode()
         self.assertIn('고친 판으로 갱신했습니다', body)
@@ -196,6 +214,7 @@ class AfterPublishTests(BuildAndViewTests):
     def test_premium_line_replaces_publish_line(self):
         self.add_run(applied=True, scores=[56, 75, 68], offset=2)
         self.assertFalse(build_making(self.draft)['premium'])          # 68점 — 발행은 됐지만 프리미엄 아님
+        self.client.force_login(self.staff)
         body = self.client.get(f'/lab/making/{self.q.id}/', HTTP_USER_AGENT='Mozilla/5.0').content.decode()
         self.assertIn('프리미엄 기준 90', body)
         self.assertIn('90점 이상이면 프리미엄 칼럼입니다', body)

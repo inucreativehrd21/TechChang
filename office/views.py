@@ -13,6 +13,7 @@ from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
+from django.views.decorators.cache import never_cache
 from django.views.decorators.http import require_POST
 
 from common.views import admin_required
@@ -100,8 +101,12 @@ def _lab_assets_url():
     return f"{settings.MEDIA_URL.rstrip('/')}/lab/manifest.json?v={ver}"
 
 
+@never_cache
 def making(request, question_id):
-    """칼럼 메이킹 오브 — 발행 칼럼이 기획·집필·검증·심사를 거쳐 나온 과정 (공개 범위는 office.making)."""
+    """발행 칼럼의 제작·심사 기록 — 운영진에게만 공개."""
+    if not request.user.is_staff:
+        from django.http import Http404
+        raise Http404
     from .making import build_making
     draft = get_object_or_404(ColumnDraft.objects.select_related('question', 'decision__meeting'),
                               question_id=question_id, question__is_deleted=False,
@@ -110,7 +115,9 @@ def making(request, question_id):
     if data is None:
         from django.http import Http404
         raise Http404
-    return render(request, 'office/making.html', {'mk': data, 'question': draft.question})
+    response = render(request, 'office/making.html', {'mk': data, 'question': draft.question})
+    response['X-Robots-Tag'] = 'noindex, nofollow, noarchive'
+    return response
 
 
 def office_home(request):

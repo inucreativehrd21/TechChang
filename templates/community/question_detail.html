@@ -21,7 +21,6 @@
 {% block jsonld %}{% include 'community/_question_jsonld.html' %}{% endblock %}
 
 {% block extra_css %}
-{% if making %}<link href="{% static 'css/making.css' %}?v={{ STATIC_VERSION }}" rel="stylesheet">{% endif %}
 {% include 'community/_title_badges_style.html' %}
 <style>
 /* Premium Detail Page Styles */
@@ -682,7 +681,6 @@
             </div>
             {% endif %}
 
-            {% if making %}{% include 'office/_making_card.html' %}{% endif %}
             {% if related %}{% include 'community/_related_columns.html' %}{% endif %}
 
             <!-- Author Section -->

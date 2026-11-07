@@ -4,7 +4,6 @@ from django.shortcuts import render, get_object_or_404, redirect
 from django.db.models import Q, Count, F, Sum
 from django.http import Http404, FileResponse, HttpResponse
 from django.core.cache import cache
-from django.core.exceptions import ObjectDoesNotExist
 from django.utils import timezone
 from django.conf import settings
 from django.contrib.auth.models import User
@@ -410,16 +409,6 @@ def detail(request, question_id):
                 'total': len(episodes),
             }
 
-    # 연구팀이 만든 칼럼이면 제작 과정 요약 (본문 아래 카드 → /lab/making/<id>/)
-    making = None
-    try:
-        from office.making import build_making
-        making = build_making(question.office_draft)
-    except ObjectDoesNotExist:  # 연구팀 칼럼이 아님
-        pass
-    except Exception:  # noqa: BLE001 — 부가 카드 하나 때문에 본문 페이지가 500 이 나면 안 된다
-        logging.getLogger(__name__).exception('메이킹 카드 생성 실패: question=%s', question.id)
-
     # 프리미엄 칼럼(최종 편집 심사 80점 이상) — 제목 옆 배지
     premium_score = _pick_scores().get(question.id)
 
@@ -432,7 +421,6 @@ def detail(request, question_id):
         'answer_list': answer_list,  # 템플릿에서 for answer in answer_list
         'sort': sort,
         'series_nav': series_nav,
-        'making': making,
         'premium_score': premium_score,
         'related': related,
     }

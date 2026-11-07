@@ -26,14 +26,13 @@ from community.feeds import ColumnFeed, NoticeFeed
 from common import legal_views
 from common.csp import csp_report
 from community.sitemaps import (StaticViewSitemap, ColumnSitemap, PostSitemap, SeriesSitemap,
-                                MakingSitemap, PortfolioCollectionSitemap, NewsletterSitemap)
+                                PortfolioCollectionSitemap, NewsletterSitemap)
 
 sitemaps = {
     'static': StaticViewSitemap,
     'columns': ColumnSitemap,
     'series': SeriesSitemap,
     'posts': PostSitemap,
-    'making': MakingSitemap,
     'portfolios': PortfolioCollectionSitemap,
     'newsletter': NewsletterSitemap,
 }
