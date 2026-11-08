@@ -350,8 +350,9 @@ class LogFinding(models.Model):
     def make_fingerprint(title: str, cause: str = '') -> str:
         """오류 '종류' 기반 안정 시그니처. AI가 문구를 바꿔 써도 같은 종류는 같은 지문.
 
-        제목을 우선순위로 분류해 하나의 버킷에 매핑한다(500/4xx/Warning/스캔/기타).
+        제목을 우선순위로 분류해 하나의 버킷에 매핑한다(502~504/500/4xx/Warning/스캔/기타).
         500 은 경로(숫자→:id 정규화)까지 포함해 서로 다른 깨진 URL 을 구분한다.
+        502~504 는 업스트림 상태별로 묶어 AI 제목·경로 표현이 달라도 중복 등록하지 않는다.
         """
         import hashlib
         import re
@@ -359,7 +360,10 @@ class LogFinding(models.Model):
         t = (title or '').lower()
         blob = f"{title or ''} {cause or ''}"
 
-        if '500' in t or 'internal server' in t:
+        upstream_code = re.search(r'(?<!\d)(502|503|504)(?!\d)', t)
+        if upstream_code or 'bad gateway' in t:
+            sig = f'error{upstream_code.group(1) if upstream_code else "502"}'
+        elif '500' in t or 'internal server' in t:
             m = re.search(r'/\S*\d\S*/?', blob)               # 예: /32/
             path = re.sub(r'\d+', ':id', m.group(0).rstrip('/')) if m else ''
             sig = f'error500|{path}'
