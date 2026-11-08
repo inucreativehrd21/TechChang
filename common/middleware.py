@@ -106,12 +106,12 @@ class SecurityMiddleware:
         if is_game_path:
             if self.detect_game_ddos_pattern(client_ip):
                 self.block_ip(client_ip, "Game DDoS pattern detected")
-                logger.error(f"Game DDoS pattern detected from IP: {client_ip}")
+                logger.warning(f"Game DDoS pattern detected from IP: {client_ip}")
                 return HttpResponse("비정상적인 게임 플레이가 감지되었습니다.", status=403)
         else:
             if self.detect_ddos_pattern(client_ip):
                 self.block_ip(client_ip, "DDoS pattern detected")
-                logger.error(f"DDoS pattern detected from IP: {client_ip}")
+                logger.warning(f"DDoS pattern detected from IP: {client_ip}")
                 return HttpResponse("Suspicious activity detected", status=403)
 
         # 4. 설정/비밀정보 탐색 스캐너 — UA 와 무관하게 경로로 잡는다.

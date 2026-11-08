@@ -1,11 +1,11 @@
 {% extends 'base_mobile.html' %}
 {% load static %}
 
-{% block title %}야구선수 키우기 {{ game_label|default:'라이트 모드' }} - 테크창{% endblock %}
+{% block title %}{% if game_mode == 'extreme' %}야구선수 키우기 익스트림 모드 - 테크창{% else %}야구선수 키우기 라이트 | 30분 야구 커리어 게임 - 테크창{% endif %}{% endblock %}
 {% block tab_games %}active{% endblock %}
-{% block meta_description %}{% if game_mode == 'extreme' %}높은 시작 능력과 훈련 효율, 전용 이벤트 12종과 강화된 상대를 만나는 테크창 야구선수 키우기 익스트림 모드. 라이트와 기록을 따로 쌓아요.{% else %}고1부터 은퇴까지 한 판 30분 — 진로와 훈련을 골라 가며 KBO·메이저리그·일본·대만을 누비는 야구선수 커리어 시뮬레이터.{% endif %}{% endblock %}
+{% block meta_description %}{% if game_mode == 'extreme' %}높은 시작 능력과 훈련 효율, 전용 이벤트 12종과 강화된 상대를 만나는 테크창 야구선수 키우기 익스트림 모드. 라이트와 기록을 따로 쌓아요.{% else %}야구선수 키우기 라이트 모드는 로그인 없이 바로 시작해요. 고1부터 은퇴까지 한 판 30분, 훈련과 진로를 골라 KBO·메이저리그에 도전해요.{% endif %}{% endblock %}
 
-{% block og_title %}야구선수 키우기 {{ game_label|default:'라이트 모드' }} - 테크창{% endblock %}
+{% block og_title %}{% if game_mode == 'extreme' %}야구선수 키우기 익스트림 모드 - 테크창{% else %}야구선수 키우기 라이트 | 30분 야구 커리어 게임 - 테크창{% endif %}{% endblock %}
 {% block og_description %}{% if game_mode == 'extreme' %}더 높은 시작 능력과 훈련 효율, 전용 이벤트와 강해진 상대를 만나는 익스트림 모드예요.{% else %}고1부터 은퇴까지 훈련과 진로를 고르는 한 판 30분 야구 커리어 게임이에요.{% endif %}{% endblock %}
 
 {% block extra_css %}

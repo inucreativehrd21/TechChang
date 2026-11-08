@@ -9,6 +9,8 @@ from common.management.commands.send_log_report import Command
 # 운영 journalctl 에서 실제로 나온 형태의 줄들
 OLD_BLOCK = 'Oct 04 10:00:01 host gunicorn[1]: ERROR 2026-10-04 10:00:01,1 middleware IP 1.2.3.4 blocked for 3600 seconds. Reason: Suspicious'
 NEW_BLOCK = 'Oct 04 10:00:02 host gunicorn[1]: WARNING 2026-10-04 10:00:02,1 middleware IP 5.6.7.8 blocked for 3600 seconds. Reason: Rate limit'
+OLD_DDOS = 'Oct 04 10:00:07 host gunicorn[1]: ERROR 2026-10-04 10:00:07,1 middleware DDoS pattern detected from IP: 1.2.3.4'
+NEW_GAME_DDOS = 'Oct 04 10:00:08 host gunicorn[1]: WARNING 2026-10-04 10:00:08,1 middleware Game DDoS pattern detected from IP: 5.6.7.8'
 SCANNER_404 = 'Sep 29 06:16:22 host gunicorn[1]: WARNING 2026-09-29 06:16:22,496 log Not Found: /manager.php/error.php'
 SCANNER_403 = 'Oct 04 01:56:01 host gunicorn[1]: WARNING 2026-10-04 01:56:01,232 log Forbidden: /wp-includes/error-protection-sample.php'
 DJANGO_500 = 'Oct 04 10:00:03 host gunicorn[1]: ERROR 2026-10-04 10:00:03,1 log Internal Server Error: /broken/'
@@ -41,6 +43,19 @@ class LogClassificationTests(SimpleTestCase):
         self.assertEqual(stats['security_blocks'], 2)
         self.assertEqual(stats['error_count'], 1)
         self.assertTrue(all('blocked for' not in e for e in stats['top_errors']))
+
+    def test_ddos_defense_logs_are_warnings_including_old_error_level(self):
+        with fake_journal(OLD_BLOCK, OLD_DDOS, NEW_GAME_DDOS):
+            stats = Command()._collect_journal(hours=24)
+        self.assertEqual(stats['security_blocks'], 1)
+        self.assertEqual(stats['warning_count'], 2)
+        self.assertEqual(stats['error_count'], 0)
+        self.assertEqual(Command._classify_level(OLD_DDOS), 'warn')
+        self.assertEqual(Command._classify_level(NEW_GAME_DDOS), 'warn')
+        with mock.patch('common.services.claude.ask_json') as ask:
+            result = Command()._analyze_errors(24, stats)
+        self.assertTrue(result.get('skipped'))
+        ask.assert_not_called()
 
     def test_paths_containing_error_are_not_errors(self):
         with fake_journal(SCANNER_404, SCANNER_403, INFO_LINE):

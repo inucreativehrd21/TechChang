@@ -21,6 +21,8 @@ COLUMN_BOT_USERNAME = 'techchang연구팀'
 
 # common.middleware.SecurityMiddleware.block_ip() 가 남기는 문구
 SECURITY_BLOCK_RE = re.compile(r'IP \S+ blocked for \d+ seconds')
+# 과거에는 차단 직후 DDoS 감지를 ERROR 로도 기록했다. 회전 전 로그까지 방어 이벤트로 분류한다.
+SECURITY_ALERT_RE = re.compile(r'(?:Game )?DDoS pattern detected from IP:')
 # 로그 레벨 표시(Django 포맷 'ERROR 2026-..', gunicorn '[ERROR]')와 예외 줄로만 판별한다.
 # 'error' 글자 포함 여부로 세면 스캐너가 찌른 /error.php 같은 경로(404 WARNING)까지 에러가 된다.
 ERROR_LINE_RE = re.compile(r'\b(?:ERROR|CRITICAL)\b|Traceback \(most recent call last\)|\b\w+(?:Error|Exception):')
@@ -282,7 +284,7 @@ class Command(BaseCommand):
     @staticmethod
     def _classify_level(line):
         # 집계(_collect_journal)와 같은 기준: IP 자동 차단은 경고, 'error' 가 든 경로는 에러가 아니다
-        if SECURITY_BLOCK_RE.search(line):
+        if SECURITY_BLOCK_RE.search(line) or SECURITY_ALERT_RE.search(line):
             return 'warn'
         if ERROR_LINE_RE.search(line) or '" 5' in line:
             return 'error'
@@ -503,6 +505,12 @@ class Command(BaseCommand):
                 # 레벨과 무관하게 문구로 판별 (예전 ERROR 레벨로 찍힌 줄도 에러로 세지 않는다)
                 if SECURITY_BLOCK_RE.search(line):
                     stats['security_blocks'] += 1
+                    continue
+                if SECURITY_ALERT_RE.search(line):
+                    stats['warning_count'] += 1
+                    key, rep = self._warn_key(line)
+                    warn_counter[key] += 1
+                    warn_repr.setdefault(key, rep)
                     continue
                 if ERROR_LINE_RE.search(line):
                     stats['error_count'] += 1
