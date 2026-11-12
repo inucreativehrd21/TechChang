@@ -1,6 +1,7 @@
 """공개 모드·회원 비교·전 리그 기록·일일 리포트의 사용자 경로와 기록 보존 검사."""
 from copy import deepcopy
 from datetime import timedelta
+from html.parser import HTMLParser
 import random
 from types import SimpleNamespace
 from unittest import mock
@@ -20,6 +21,43 @@ from . import rookie_world_hub as Hub
 from .models import LiteCareer, LiteSeason, RookieGame, RookieSeasonStat
 from .test_rookie_lite import member, new, PC, MOBILE
 from .test_rookie_league import player
+
+
+class _ExtremePendingParser(HTMLParser):
+    def __init__(self):
+        super().__init__()
+        self.count = 0
+
+    def handle_starttag(self, tag, attrs):
+        if any(name == 'data-extreme-pending' for name, _ in attrs):
+            self.count += 1
+
+
+def pending_extreme_event_count(html):
+    parser = _ExtremePendingParser()
+    parser.feed(html)
+    parser.close()
+    return parser.count
+
+
+class ExtremeEventMarkupTests(SimpleTestCase):
+    def test_script_comments_and_escaped_markup_are_not_pending_elements(self):
+        html = '''<script>document.querySelector('[data-extreme-pending]');
+            const example = '<section data-extreme-pending></section>';</script>
+            <!-- <section data-extreme-pending></section> -->
+            <p>&lt;section data-extreme-pending&gt;</p>
+            <section data-extreme-pending-copy></section>'''
+        self.assertEqual(pending_extreme_event_count(html), 0)
+
+    def test_pending_attribute_is_detected_regardless_of_position_or_value(self):
+        for html in (
+            '<section data-extreme-pending></section>',
+            '<section data-extreme-pending class="event"></section>',
+            '<section class="event" data-extreme-pending=""></section>',
+            '<SECTION DATA-EXTREME-PENDING="true" class="event"/>',
+        ):
+            with self.subTest(html=html):
+                self.assertEqual(pending_extreme_event_count(html), 1)
 
 
 class WorldReadTests(SimpleTestCase):
@@ -171,6 +209,8 @@ class PublicExtremeTests(TestCase):
 
     def test_guest_public_play_csrf_event_replay_and_all_public_views(self):
         c = self.create_guest()
+        pending_page = self.client.get('/rookie/extreme/')
+        self.assertEqual(pending_extreme_event_count(pending_page.content.decode(pending_page.charset)), 1)
         event = E.event_view(c)
         data = dict(action='extreme_event', event_id=event['id'], choice=event['choices'][0]['key'])
         self.client.post('/rookie/extreme/act/', data, HTTP_X_CSRFTOKEN=self.csrf)
@@ -181,7 +221,8 @@ class PublicExtremeTests(TestCase):
         self.assertEqual(c.flags, before)
         page = self.client.get('/rookie/extreme/')
         self.assertContains(page, 'data-rl-flow')
-        self.assertNotContains(page, 'data-extreme-pending')
+        # 실제 요소만 검사해 스크립트의 선택자 문자열과 속성 순서에 영향을 받지 않아요.
+        self.assertEqual(pending_extreme_event_count(page.content.decode(page.charset)), 0)
         for suffix in ('hall/', 'today/', 'cards/', f'c/{c.pk}/'):
             self.assertEqual(self.client.get('/rookie/extreme/' + suffix).status_code, 200, suffix)
         self.assertEqual(self.client.get('/rookie/extreme/world/?lg=kbo1').status_code, 404)
