@@ -86,3 +86,4 @@ sudo systemctl status mysite nginx
 - **개인정보 경계**: 2026-10-29 시행 처리방침 이전에는 `send_log_report`의 Codex 폴백을 차단해요(`common/legal.py`). 시행일·현재 적용 버전을 구분하고, 비밀값·개인정보를 일반 콘텐츠 프롬프트에 넣지 않아요.
 - **최신 운영 문서**: `docs/site-operations.md`, `docs/codex-subscription-fallback.md`, `docs/social-login-setup.md`. 연구실의 단일 관리자 운영·감사 정책은 `docs/lab-operator-hardening.md`, 구현 검증과 남은 실환경 검증은 `docs/lab-operator-validation-20261110.md`를 참고해요. 이전 구조 개편 이력은 `docs/lab-handoff-20261101.md`에 있어요.
 - **관리자 수정 요청**: B 기본 전환은 보류해요. A의 요청별 이행 검증·품질 하락 시 원고 보존·글쓰기 기준과 검증 결과는 `docs/lab-admin-revision-20261111.md`를 참고해요.
+- **연구실 운영 반영(2026-11-12)**: 심화·실용 편성, 회의 선택·의견 일괄 저장, 승인·감사·systemd 실행기까지 적용했어요. 현재 운영 상태와 남은 CI 항목은 `docs/lab-production-release-20261112.md`를 참고해요.

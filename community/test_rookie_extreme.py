@@ -214,8 +214,9 @@ class ExtremeTests(TestCase):
 class ModeMigrationTests(TransactionTestCase):
     def test_existing_career_is_lite_and_data_is_preserved(self):
         executor = MigrationExecutor(connection)
-        executor.migrate([('community', '0051_lite_splits_press')])
+        restore_targets = executor.loader.graph.leaf_nodes()
         try:
+            executor.migrate([('community', '0051_lite_splits_press')])
             apps = executor.loader.project_state([('community', '0051_lite_splits_press')]).apps
             Career = apps.get_model('community', 'LiteCareer')
             old = Career.objects.create(name='기존선수', role='batter', position='SS', style='contact',
@@ -230,4 +231,5 @@ class ModeMigrationTests(TransactionTestCase):
                                                      region='서울', team='lg')
             self.assertEqual(LiteCareer.objects.get(pk=from_old_process.pk).mode, 'lite')
         finally:
-            MigrationExecutor(connection).migrate([('community', '0052_litecareer_mode')])
+            # 이 앱을 참조하는 다른 앱도 함께 되돌아가므로 전체 최신 스키마를 복원해요.
+            MigrationExecutor(connection).migrate(restore_targets)
