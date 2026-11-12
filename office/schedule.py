@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 PUBLISH_HOUR = 10
 COLUMN_WEEKDAY = {'hrd': 1, 'data': 3, 'coding': 5}      # 화·목·토 (월=0)
 SERIES_WEEKDAY = 0                                         # 월 — 시리즈는 ISO 주 홀짝(series_catalog.SCHEDULE)
-# 이 상태의 원고가 이미 있으면 그 시각 몫은 '찼다' — 같은 시각에 두 편을 만들지 않는다
+# 이 상태의 원고가 있으면 해당 유형의 시각 몫은 찼다. 유형별로 하나씩만 만든다.
 TAKEN = ('ready', 'published', 'hold', 'revising')
 
 
@@ -57,12 +57,40 @@ def series_slot(now=None, *, upcoming: bool = True):
     return key, at
 
 
-def taken(at, *, topic: str | None = None, series_key: str | None = None):
+def taken(at, *, topic: str | None = None, series_key: str | None = None, track: str | None = None):
     """그 시각 몫으로 이미 진행 중이거나 끝난 원고(없으면 None)."""
     from office.models import ColumnDraft
     qs = ColumnDraft.objects.filter(publish_at=at, status__in=TAKEN)
     qs = qs.filter(series_key=series_key) if series_key else qs.filter(topic=topic, series_key='')
+    if track is not None and not series_key:
+        from community.column_tracks import PRACTICAL
+        qs = qs.filter(column_track__in=[track, ''] if track == PRACTICAL else [track])
     return qs.order_by('-created_at').first()
+
+
+def reserve_column(at, *, topic, track, decision=None):
+    """MySQL·SQLite 공통 unique 키로 유형별 한 제작만 예약한다. 실패한 예약만 재사용해요."""
+    from django.db import transaction
+    from .models import ColumnDraft
+    from .editorial import TRACKS
+    if track not in TRACKS:
+        raise ValueError('예약 제작에는 명시적인 칼럼 유형이 필요해요.')
+    from datetime import timezone as dt_timezone
+    key = f'{topic}:{track}:{at.astimezone(dt_timezone.utc).isoformat()}'
+    with transaction.atomic():
+        draft, created = ColumnDraft.objects.get_or_create(slot_key=key, defaults={
+            'topic': topic, 'column_track': track, 'publish_at': at,
+            'status': ColumnDraft.STATUS_REVISING, 'decision': decision,
+            'brief': (decision.chosen or {}).get('title', '') if decision else '',
+        })
+        if created:
+            return draft
+        draft = ColumnDraft.objects.select_for_update().get(pk=draft.pk)
+        if draft.status != ColumnDraft.STATUS_FAILED:
+            return None
+        draft.status = ColumnDraft.STATUS_REVISING
+        draft.save(update_fields=['status'])
+        return draft
 
 
 def finish_accepted(draft, publish, *, by=None):
@@ -71,6 +99,11 @@ def finish_accepted(draft, publish, *, by=None):
     from .review_protocol import publishable
     if not publishable(draft.qa_report or {}):
         raise ValueError('필수 결함이 없고 심사를 통과한 원고만 공개 대기로 보낼 수 있어요.')
+    from .approval import valid
+    if not valid(draft):
+        draft.status = ColumnDraft.STATUS_HOLD
+        draft.save()
+        return None
     if draft.publish_at and draft.publish_at > timezone.now() and not draft.target_question_id:
         draft.status = ColumnDraft.STATUS_READY
         if by is not None:
@@ -90,9 +123,10 @@ def publish_now(draft, *, by=None):
     from office import pipeline as P
     from office.services import log
     from .review_protocol import publishable
-    manual_approval = bool(draft.decided_by_id and draft.decided_at
-                           and getattr(draft.decided_by, 'is_staff', False)
-                           and not publishable(draft.qa_report or {}))
+    from .approval import valid
+    manual_approval = valid(draft)
+    if not manual_approval:
+        raise ValueError('현재 제목·본문에 대한 운영자 승인이 필요해요.')
     if not publishable(draft.qa_report or {}) and not manual_approval:
         raise ValueError('심사 미통과 또는 필수 결함이 남은 원고는 공개할 수 없어요.')
     extra = {'manual': True} if manual_approval else {}
@@ -117,6 +151,11 @@ def release_due(now=None, out=print) -> list:
             done.append(q)
             out(f'예약 공개: #{q.pk} {d.subject}')
         except Exception:  # noqa: BLE001 — 한 편이 실패해도 다음 편은 낸다
+            from .approval import valid
+            if not valid(d):
+                d.status = ColumnDraft.STATUS_HOLD
+                d.save(update_fields=['status'])
+                alert('예약 원고 승인 필요', [f'원고 #{d.pk}를 검수 대기로 돌렸어요.'])
             logger.exception('예약 공개 실패: draft=%s', d.pk)
             out(f'예약 공개 실패: draft {d.pk} {d.subject}')
     return done

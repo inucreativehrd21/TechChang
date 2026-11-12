@@ -6,6 +6,7 @@
 """
 import shutil
 import tempfile
+from unittest import mock
 from pathlib import Path
 
 from django.test import TestCase, override_settings
@@ -321,6 +322,10 @@ class LengthRuleTests(TestCase):
 
 
 class ReviewEnforcesStyleAndLengthTests(TestCase):
+    def setUp(self):
+        gate = mock.patch('office.review_protocol.require_check')
+        gate.start()
+        self.addCleanup(gate.stop)
     LONG_PLAIN = '## 본론\n\n' + ('형식은 갖췄는데 효과는 나지 않는다. ' * 260) + \
                  '\n\n| 항목 | 값 |\n|---|---|\n| 가 | 1 |\n'
     LONG_POLITE = '## 본론\n\n' + ('형식은 갖췄는데 효과는 나지 않습니다. ' * 260) + \

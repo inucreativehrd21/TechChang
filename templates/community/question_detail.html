@@ -599,6 +599,7 @@
 
             {% include 'community/_title_badges.html' %}
             <h1 class="question-title">{{ question.subject }}</h1>
+            {% if question.is_column and not question.series_id %}<p><a class="text-muted small" href="{% url 'community:column_map' %}?track={{ question.column_track|default:'legacy' }}">{{ question.get_column_track_display }}</a></p>{% endif %}
             {% include 'community/_ai_notice.html' %}
 
             <div class="question-meta">

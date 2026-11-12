@@ -144,20 +144,19 @@ def finalize(qa: dict, previous: dict | None = None) -> dict:
 
 
 def require_check(qa: dict, check: dict, content: str, subject: str = '') -> None:
-    """B의 독립 검증 차단은 편집장 점수로 무효화할 수 없다."""
+    """모든 프로필에서 현재 제목·본문의 사실 검증을 편집 점수와 독립적으로 강제한다."""
     from .model_router import profile
-    if profile() != 'b':
-        return
     from .pipeline import verification_hash
     stale = (check.get('verification_hash') != verification_hash(content)
              or check.get('subject') != subject)
     if stale or check.get('verdict') != 'pass':
         qa.setdefault('fatal', []).append('verification_stale' if stale else 'unverified_data')
         qa.setdefault('must_fix', []).append({
-            'where': '독립 검증', 'problem': '현재 원고 버전의 독립 검증이 완료되지 않았어요.',
+            'where': '사실 검증', 'problem': '현재 원고 버전의 사실 검증이 완료되지 않았어요.',
             'fix': '해당 버전의 주장·출처를 다시 검증해요.', 'done_when': '현재 content_hash로 pass 판정'})
     else:
         from .recorder import digest
+        qa['review_contract_version'] = 2 if profile() == 'b' else 1
         qa['verified_content_hash'] = verification_hash(content)
         qa['reviewed_full_hash'] = digest(content)
         qa['verified_subject'] = subject
@@ -173,6 +172,7 @@ def as_line(m: dict) -> str:
 def normalize(qa: dict) -> dict:
     """must_fix·suggestions 를 정리하고, issues(관리 화면·메이킹 오브가 읽는 목록)를 그 순서로 맞춘다.
     모델이 새 필드를 안 주면 기존 issues 를 must_fix 로 본다 — 예전 동작과 같다."""
+    qa.pop('human_approval', None)  # 모델 출력으로 사람 승인 기록을 만들 수 없다.
     items = must_fix_items(qa)
     sugg = [str(s).strip() for s in (qa.get('suggestions') or []) if str(s).strip()]
     if items or sugg:

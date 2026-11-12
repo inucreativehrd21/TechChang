@@ -11,8 +11,10 @@ urlpatterns = [
     path('making/<int:question_id>/', views.making, name='making'),
     path('admin/', views.office_admin, name='admin'),
     path('admin/decision/<int:decision_id>/choose/', views.decision_choose, name='decision_choose'),
+    path('admin/meeting/<int:meeting_id>/decisions/', views.meeting_decisions_save, name='meeting_decisions_save'),
     path('admin/draft/<int:draft_id>/publish/', views.draft_publish, name='draft_publish'),
     path('admin/activity.json', views.admin_activity, name='admin_activity'),
+    path('admin/draft/<int:draft_id>/audit.json', views.audit_export, name='audit_export'),
     path('admin/draft/<int:draft_id>/revise/', views.draft_revise, name='draft_revise'),
     path('admin/draft/<int:draft_id>/reject/', views.draft_reject, name='draft_reject'),
     path('admin/task/new/', views.task_create, name='task_create'),
@@ -21,5 +23,6 @@ urlpatterns = [
     path('admin/switch/<str:key>/', views.switch_set, name='switch_set'),
     path('job/<str:token>/', views.job_request, name='job_request'),          # 운영자 메일 버튼(서명 링크)
     path('admin/job/<int:job_id>/cancel/', views.job_cancel, name='job_cancel'),
+    path('admin/job/<int:job_id>/restart/', views.job_restart, name='job_restart'),
     path('admin/column-map/', views.column_map, name='column_map'),
 ]

@@ -45,6 +45,9 @@ def exemplar(topic_key: str = '') -> dict | None:
     try:
         qs = ColumnDraft.objects.filter(status=ColumnDraft.STATUS_PUBLISHED, question__isnull=False,
                                         question__is_deleted=False).select_related('question')
+        from .editorial import current_track
+        if current_track():
+            qs = qs.filter(question__column_track=current_track())
         best = None
         for d in qs:
             score = d.qa_score or 0
@@ -62,7 +65,7 @@ def exemplar(topic_key: str = '') -> dict | None:
             'title': d.question.subject, 'score': d.qa_score, 'same_topic': d.topic == topic_key,
             'lede': re.sub(r'\s+', ' ', lede)[:300],
             'headings': re.findall(r'^##\s+(.+)$', content, re.M)[:10],
-            'data_para': _section(content, '숫자로 보는 현황', 350),
+            'data_para': _section(content, '근거와 방법' if current_track() == 'research' else '숫자로 보는 현황', 350),
             'strengths': str((d.qa_report or {}).get('strengths', ''))[:300],
         }
     except Exception:  # noqa: BLE001 — 서고 조회 실패가 집필을 막으면 안 된다

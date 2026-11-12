@@ -14,6 +14,7 @@ from office import schedule as S
 from office.models import ColumnDraft, WorkLog
 from office.publiclog import public_line
 from office.test_publish_flow import column, qa
+from office.recorder import digest
 
 
 def kst(*a):
@@ -45,9 +46,18 @@ class ReadyAndReleaseTests(TestCase):
         Category.objects.get_or_create(name='HRD')
 
     def draft(self, at, **kw):
-        return ColumnDraft.objects.create(topic='hrd', subject='미리 만든 칼럼', content=column(30), publish_at=at,
+        body = column(30)
+        report = {'score': 84, 'verdict': 'accept', 'verified_subject': '미리 만든 칼럼',
+                  'verified_content_hash': P.verification_hash(body), 'reviewed_full_hash': digest(body)}
+        draft = ColumnDraft.objects.create(topic='hrd', subject='미리 만든 칼럼', content=column(30), publish_at=at,
                                           status=kw.pop('status', ColumnDraft.STATUS_HOLD),
-                                          qa_report={'score': 84, 'verdict': 'accept'}, **kw)
+                                          qa_report=report, **kw)
+        from office.approval import approve
+        reviewer, _ = User.objects.get_or_create(username='reviewer', defaults={'is_staff': True, 'is_superuser': True})
+        from office.test_lab_safety import certified
+        certified(draft)
+        approve(draft, reviewer)
+        return draft
 
     def test_future_slot_waits_and_past_slot_publishes(self):
         d = self.draft(timezone.now() + timedelta(hours=20))
@@ -84,12 +94,13 @@ class ReadyAndReleaseTests(TestCase):
         admin = User.objects.create_superuser('admin', 'a@example.com', 'x')
         self.client.force_login(admin)
         d = self.draft(timezone.now() + timedelta(hours=20), status=ColumnDraft.STATUS_READY)
-        self.client.post(f'/lab/admin/draft/{d.id}/publish/', {'now': '1'}, HTTP_USER_AGENT='Mozilla/5.0')
+        from office.audit import snapshot, fingerprint
+        self.client.post(f'/lab/admin/draft/{d.id}/publish/', {'now': '1', 'version': fingerprint(snapshot(d))}, HTTP_USER_AGENT='Mozilla/5.0')
         d.refresh_from_db()
         self.assertEqual(d.status, ColumnDraft.STATUS_PUBLISHED)
         # 검수 대기 원고를 '그대로 발행' — 예정 시각 전이면 공개 대기로
         h = self.draft(timezone.now() + timedelta(hours=20))
-        self.client.post(f'/lab/admin/draft/{h.id}/publish/', HTTP_USER_AGENT='Mozilla/5.0')
+        self.client.post(f'/lab/admin/draft/{h.id}/publish/', {'version': fingerprint(snapshot(h))}, HTTP_USER_AGENT='Mozilla/5.0')
         h.refresh_from_db()
         self.assertEqual(h.status, ColumnDraft.STATUS_READY)
 
@@ -98,6 +109,12 @@ class PrepareFlowTests(TestCase):
     """office_publish --prepare / --if-missing (모델 호출은 가짜, test_publish_flow 와 같은 방식)."""
 
     def run_cmd(self, reviews, **kw):
+        kw.setdefault('track', 'legacy')  # 기존 단편 예약 계약 검사는 명시적으로 기존 유형을 사용해요.
+        remaining = iter(reviews)
+        def review(subject, content, *args, **kwargs):
+            return {**next(remaining), 'verified_subject': subject,
+                    'verified_content_hash': P.verification_hash(content),
+                    'reviewed_full_hash': digest(content)}
         patches = [
             mock.patch.object(P, 'step_brief', return_value={'angle': '각도'}),
             mock.patch.object(P, 'step_blueprint', return_value=({}, {})),
@@ -105,7 +122,7 @@ class PrepareFlowTests(TestCase):
             mock.patch.object(P, 'precheck_draft', return_value=[]),
             mock.patch.object(P, 'step_check', return_value={'verdict': 'pass', 'claims': []}),
             mock.patch.object(P, 'step_critique', return_value={'verdict': 'recommend', 'issues': [], 'reason': ''}),
-            mock.patch.object(P, 'step_review', side_effect=list(reviews)),
+            mock.patch.object(P, 'step_review', side_effect=review),
             mock.patch.object(P, 'step_headline', side_effect=lambda s, c, **k: (s, '')),
             mock.patch('office.management.commands.office_publish.ask_agent', return_value=''),
             mock.patch('office.management.commands.office_publish.patch_revise',
@@ -125,14 +142,28 @@ class PrepareFlowTests(TestCase):
     def test_prepare_passes_and_waits_for_its_slot(self):
         out, alert = self.run_cmd([qa('accept', 86)], prepare=True)
         d = ColumnDraft.objects.latest('id')
-        self.assertEqual(d.status, ColumnDraft.STATUS_READY)
+        self.assertEqual(d.status, ColumnDraft.STATUS_HOLD)
         self.assertEqual(d.publish_at, S.column_slot('data'))
         self.assertFalse(Question.objects.exists())
-        self.assertTrue(WorkLog.objects.filter(draft=d, action='ready').exists())
+        self.assertTrue(WorkLog.objects.filter(draft=d, action='hold').exists())
         alert.assert_not_called()
         out2, _ = self.run_cmd([], prepare=True)                  # 같은 시각 몫이 있으면 다시 만들지 않는다
         self.assertIn('이미 있습니다', out2)
         self.assertEqual(ColumnDraft.objects.count(), 1)
+
+    def test_two_tracks_are_created_once_and_retry_only_fills_missing_track(self):
+        self.run_cmd([qa('accept', 86), qa('accept', 87)], prepare=True, track='both')
+        self.assertEqual(set(ColumnDraft.objects.values_list('column_track', flat=True)), {'research', 'practical'})
+        self.assertEqual(ColumnDraft.objects.count(), 2)
+        self.run_cmd([], prepare=True, track='both')
+        self.assertEqual(ColumnDraft.objects.count(), 2)
+        research = ColumnDraft.objects.get(column_track='research')
+        research.status = 'failed'
+        research.save(update_fields=['status'])
+        self.run_cmd([qa('accept', 88)], prepare=True, track='both')
+        self.assertEqual(ColumnDraft.objects.count(), 2)
+        research.refresh_from_db()
+        self.assertEqual(research.qa_report['score'], 88)
 
     def test_prepare_hold_alerts_operator_and_blocks_retry(self):
         left = {**qa('minor', 70), 'must_fix': [{'where': '서두', 'problem': '조건 개수 불일치', 'fix': '다섯 개로'}]}
@@ -149,7 +180,7 @@ class PrepareFlowTests(TestCase):
         with mock.patch.object(S, 'column_slot', return_value=past):
             self.run_cmd([qa('accept', 85)], if_missing=True)
             d = ColumnDraft.objects.latest('id')
-            self.assertEqual(d.status, ColumnDraft.STATUS_PUBLISHED)
+            self.assertEqual(d.status, ColumnDraft.STATUS_HOLD)
             out2, _ = self.run_cmd([], if_missing=True)
         self.assertIn('이미 있습니다', out2)
 

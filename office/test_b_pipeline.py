@@ -49,6 +49,9 @@ class BPipelineTests(TestCase):
         draft = self.run_pipeline()
         self.assertTrue(R.publishable(draft.qa_report), draft.qa_report)
         self.assertEqual(draft.qa_report['review_contract_version'], 2)
+        from django.contrib.auth.models import User
+        from office.approval import approve
+        approve(draft, User.objects.create_user('reviewer', is_staff=True, is_superuser=True))
         with mock.patch('office.live.mark'):
             first = P.publish_draft(draft)
             second = P.publish_draft(draft)

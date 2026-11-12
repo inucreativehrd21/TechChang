@@ -35,8 +35,17 @@
     <input id="cm-q" type="search" name="q" value="{{ q }}" maxlength="100"
            placeholder="제목·키워드·요약에서 찾기 (예: 메타분석, Rust, 이직 예측)">
     {% if cat %}<input type="hidden" name="cat" value="{{ cat }}">{% endif %}
+    {% if track %}<input type="hidden" name="track" value="{{ track }}">{% endif %}
     <button type="submit" class="cm-btn primary"><i class="fas fa-magnifying-glass"></i> 검색</button>
   </form>
+
+  <nav class="cm-tabs" aria-label="칼럼 유형">
+    <a class="cm-tab{% if not track %} on{% endif %}" href="{% querystring track=None sub=None %}"{% if not track %} aria-current="page"{% endif %}>모든 유형</a>
+    {% for f in facet_tracks %}
+    <a class="cm-tab{% if track == f.key %} on{% endif %}" href="{% querystring track=f.key sub=None %}"{% if track == f.key %} aria-current="page"{% endif %}>{{ f.label }} <span class="cm-n">{{ f.count }}</span></a>
+    {% endfor %}
+  </nav>
+  <p class="cm-sum">학술·기술 심화는 연구와 원리를 탐구하고, 일상·실용 팁은 생활과 업무의 문제를 풀어요. 기존 칼럼은 본문 검토 후 유형을 나눠요.</p>
 
   <nav class="cm-tabs" aria-label="카테고리">
     <a class="cm-tab{% if not cat %} on{% endif %}" href="{% querystring cat=None sub=None %}">전체 <span class="cm-n">{{ total_matched|default:"" }}</span></a>
@@ -60,7 +69,7 @@
     <main>
       <div class="cm-print-head">
         <h1>테크창 칼럼 지도</h1>
-        <p>{% now "Y-m-d" %} 기준 · {{ shown }}편{% if q %} · 검색어 「{{ q }}」{% endif %}{% if cat %} · {{ cat_label }}{% endif %}{% if sub %} · {{ sub }}{% endif %} · techchang.com</p>
+        <p>{% now "Y-m-d" %} 기준 · {{ shown }}편{% if track %} · {{ track_label }}{% endif %}{% if q %} · 검색어 「{{ q }}」{% endif %}{% if cat %} · {{ cat_label }}{% endif %}{% if sub %} · {{ sub }}{% endif %} · techchang.com</p>
       </div>
 
       {% if searching %}

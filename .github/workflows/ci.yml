@@ -36,3 +36,41 @@ jobs:
 
       - name: Run tests
         run: python manage.py test --verbosity 2
+
+  lab-mysql:
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: ci-local-only
+          MYSQL_DATABASE: techchang
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -pci-local-only"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+    env:
+      DJANGO_SETTINGS_MODULE: config.settings
+      DJANGO_SECRET_KEY: ci-local-only-secret
+      DJANGO_DB_ENGINE: mysql
+      DJANGO_DB_NAME: techchang
+      DJANGO_DB_USER: root
+      DJANGO_DB_PASSWORD: ci-local-only
+      DJANGO_DB_HOST: 127.0.0.1
+      DJANGO_DB_PORT: '3306'
+      DEBUG: 'False'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install database client and dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y default-libmysqlclient-dev pkg-config
+          python -m pip install -r requirements.txt mysqlclient
+      - name: Check lab safety on MySQL
+        run: python manage.py test office.test_lab_safety office.test_lab_transactions office.test_priority_hardening --noinput --verbosity 2

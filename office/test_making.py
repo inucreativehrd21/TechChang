@@ -70,7 +70,7 @@ class ParserTests(TestCase):
 class BuildAndViewTests(TestCase):
     def setUp(self):
         bot = User.objects.create(username='bot')
-        self.staff = User.objects.create_user(username='editor', password='test', is_staff=True)
+        self.staff = User.objects.create_user(username='editor', password='test', is_staff=True, is_superuser=True)
         cat = Category.objects.create(name='칼럼')
         self.q = Question.objects.create(author=bot, category=cat, subject='Git 20년', content='본문',
                                          create_date=timezone.now())

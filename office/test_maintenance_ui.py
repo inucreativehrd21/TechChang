@@ -9,7 +9,7 @@ from office.models import Task, WorkLog
 
 class MaintenanceReviewTests(TestCase):
     def setUp(self):
-        self.admin = User.objects.create_user('maintenance-admin', password='x', is_staff=True)
+        self.admin = User.objects.create_user('maintenance-admin', password='x', is_staff=True, is_superuser=True)
         self.client.force_login(self.admin)
         self.finding = LogFinding.objects.create(
             fingerprint='maintenance-review-test', title='로그 오류 조사',

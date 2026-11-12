@@ -1,9 +1,49 @@
 from django.contrib.auth.models import User
 from django.db import models
 from django.utils import timezone
+from community.column_tracks import TRACK_CHOICES
 
 
-class Meeting(models.Model):
+class ExecutionQuerySet(models.QuerySet):
+    def update(self, **kwargs):
+        from .execution import commit_guard
+        with commit_guard():
+            return super().update(**kwargs)
+
+    def delete(self):
+        from .execution import commit_guard
+        with commit_guard():
+            return super().delete()
+
+    def bulk_create(self, *args, **kwargs):
+        from .execution import commit_guard
+        with commit_guard():
+            return super().bulk_create(*args, **kwargs)
+
+    def bulk_update(self, *args, **kwargs):
+        from .execution import commit_guard
+        with commit_guard():
+            return super().bulk_update(*args, **kwargs)
+
+
+class ExecutionBoundModel(models.Model):
+    objects = ExecutionQuerySet.as_manager()
+
+    class Meta:
+        abstract = True
+
+    def save(self, *args, **kwargs):
+        from .execution import commit_guard
+        with commit_guard():
+            return super().save(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        from .execution import commit_guard
+        with commit_guard():
+            return super().delete(*args, **kwargs)
+
+
+class Meeting(ExecutionBoundModel):
     """주간 편집회의 1회분. transcript 는 [{agent, round, text}] 목록."""
     STATUS_OPEN = 'open'          # 관리자 결정 대기
     STATUS_CLOSED = 'closed'      # 모든 안건 결정됨
@@ -33,7 +73,7 @@ class Meeting(models.Model):
         return self.decisions.filter(chosen_key='').count()
 
 
-class Decision(models.Model):
+class Decision(ExecutionBoundModel):
     """회의 안건 하나. options 는 [{key, title, detail, proposed_by}] — 관리자가 하나를 고른다."""
     KIND_COLUMN = 'column'     # topic 필드로 hrd/data/coding 구분
     KIND_SERIES = 'series'
@@ -47,6 +87,8 @@ class Decision(models.Model):
     meeting = models.ForeignKey(Meeting, on_delete=models.CASCADE, related_name='decisions')
     kind = models.CharField(max_length=10, choices=KIND_CHOICES, db_index=True)
     topic = models.CharField(max_length=10, blank=True, db_index=True, verbose_name='칼럼 분야 키')
+    column_track = models.CharField(max_length=12, choices=TRACK_CHOICES, blank=True, default='',
+                                    db_index=True, verbose_name='칼럼 유형')
     question = models.CharField(max_length=300, verbose_name='안건')
     options = models.JSONField(default=list)
     chosen_key = models.CharField(max_length=20, blank=True, db_index=True)
@@ -76,7 +118,7 @@ class Decision(models.Model):
         return self.kind != self.KIND_OPS
 
 
-class ColumnDraft(models.Model):
+class ColumnDraft(ExecutionBoundModel):
     """연구팀이 제작한 칼럼 1편의 작업 기록. 발행되면 question 이 채워진다."""
     STATUS_PUBLISHED = 'published'
     STATUS_HOLD = 'hold'          # 편집 심사 미달 → 운영자 검수 대기
@@ -90,6 +132,10 @@ class ColumnDraft(models.Model):
     ]
 
     topic = models.CharField(max_length=10, db_index=True)
+    column_track = models.CharField(max_length=12, choices=TRACK_CHOICES, blank=True, default='',
+                                    db_index=True, verbose_name='칼럼 유형')
+    slot_key = models.CharField(max_length=100, null=True, blank=True, unique=True,
+                                verbose_name='유형별 예약 제작 키')
     brief = models.CharField(max_length=300, blank=True, verbose_name='회의에서 정한 주제')
     decision = models.ForeignKey(Decision, null=True, blank=True, on_delete=models.SET_NULL, related_name='drafts')
     subject = models.CharField(max_length=200, blank=True)
@@ -149,7 +195,7 @@ class ColumnDraft(models.Model):
         return [(desc.split(' — ')[0], scores.get(k)) for k, (_, desc) in RUBRIC.items() if scores.get(k) is not None]
 
 
-class WorkLog(models.Model):
+class WorkLog(ExecutionBoundModel):
     """에이전트 활동 한 줄. 연구실 페이지 말풍선과 관리자 작업 로그의 원천."""
     agent = models.CharField(max_length=10, db_index=True)
     action = models.CharField(max_length=40, db_index=True)   # meeting/draft/chart/check/qa/publish/hold ...
@@ -244,7 +290,7 @@ class Task(models.Model):
         return [('조사', done('plan')), ('패치', done('edits')), ('검증', done('verify')), ('PR', 'ok' if self.pr_url else '')]
 
 
-class StageRun(models.Model):
+class StageRun(ExecutionBoundModel):
     """칼럼 제작·회의의 단계별 산출물 기록 (내부 전용 — 공개 페이지에 내보내지 않는다).
 
     ColumnDraft 는 최종본만 담아, 평론·1차 심사·초고·자료집이 덮어써져 사라졌다.
@@ -281,7 +327,7 @@ class StageRun(models.Model):
         return f'{self.stage}#{self.seq} ({self.agent or "-"}, {self.status})'
 
 
-class VerifiedFact(models.Model):
+class VerifiedFact(ExecutionBoundModel):
     """검증 원장 — 검증관이 웹에서 원문을 대조한 주장(office.ledger).
 
     같은 통계가 칼럼마다 다시 나오는데, 매번 처음부터 확인하면 판정이 흔들린다(같은 수치가 한 번은
@@ -306,7 +352,7 @@ class VerifiedFact(models.Model):
         return f'[{self.status}] {self.claim[:60]}'
 
 
-class ColumnDigest(models.Model):
+class ColumnDigest(ExecutionBoundModel):
     """칼럼 지도의 한 칸 — 칼럼별 소주제·키워드·요약(office.digest).
 
     칼럼이 발행·수정되면 저장 신호(office.signals)가 본문 해시를 비교해, 바뀌었으면 백그라운드로
@@ -328,7 +374,7 @@ class ColumnDigest(models.Model):
         return f'[{self.subtopic}] {self.question_id}'
 
 
-class Newsletter(models.Model):
+class Newsletter(ExecutionBoundModel):
     """연구실 위클리 — 매주 금요일 한 주(금~목)의 연구실 활동·발행을 카드뉴스와 웹 페이지로 엮는다(office.newsletter).
 
     data 에 모은 사실(발행 글·연구실 기록·지표)과 큐레이터가 쓴 문구가 함께 담기고, 카드 PNG 는
@@ -385,24 +431,60 @@ class JobRequest(models.Model):
     KIND_RERUN, KIND_REVISE = 'rerun', 'revise'
     KIND_CHOICES = [(KIND_RERUN, '다시 실행'), (KIND_REVISE, '재심 요청')]
     ST_PENDING, ST_STARTED, ST_SKIPPED, ST_CANCELLED = 'pending', 'started', 'skipped', 'cancelled'
-    ST_CHOICES = [(ST_PENDING, '대기'), (ST_STARTED, '실행함'), (ST_SKIPPED, '건너뜀'), (ST_CANCELLED, '취소')]
+    ST_CHOICES = [(ST_PENDING, '대기'), (ST_STARTED, '실행 중'), (ST_SKIPPED, '건너뜀'), (ST_CANCELLED, '취소'),
+                  ('completed', '실행 종료'), ('failed', '실패'), ('interrupted', '중단'), ('quarantined', '종료 확인 필요')]
 
     kind = models.CharField(max_length=10, choices=KIND_CHOICES)
     args = models.JSONField(default=list, verbose_name='manage.py 인자')
     label = models.CharField(max_length=200, blank=True, verbose_name='무엇을')
     draft = models.ForeignKey(ColumnDraft, null=True, blank=True, on_delete=models.SET_NULL, related_name='job_requests')
     run_after = models.DateTimeField(db_index=True, verbose_name='실행 예정')
-    status = models.CharField(max_length=10, choices=ST_CHOICES, default=ST_PENDING, db_index=True)
+    status = models.CharField(max_length=20, choices=ST_CHOICES, default=ST_PENDING, db_index=True)
     note = models.CharField(max_length=300, blank=True)
     requested_via = models.CharField(max_length=20, default='mail')
+    requested_by = models.ForeignKey(User, null=True, blank=True, on_delete=models.PROTECT, related_name='+')
     created_at = models.DateTimeField(auto_now_add=True)
     started_at = models.DateTimeField(null=True, blank=True)
+    finished_at = models.DateTimeField(null=True, blank=True)
+    heartbeat_at = models.DateTimeField(null=True, blank=True)
+    process_id = models.PositiveIntegerField(null=True, blank=True)
+    exit_code = models.IntegerField(null=True, blank=True)
+    attempts = models.PositiveSmallIntegerField(default=0)
+    active_key = models.CharField(max_length=64, unique=True, null=True, blank=True)
+    execution_id = models.UUIDField(null=True, blank=True)
+    lease_until = models.DateTimeField(null=True, blank=True)
+    process_identity = models.CharField(max_length=100, blank=True)
+    business_result = models.CharField(max_length=30, blank=True)
+    checkpoint_run_id = models.UUIDField(null=True, blank=True)
 
     class Meta:
         ordering = ['run_after']
 
+    @property
+    def business_label(self):
+        return dict(ColumnDraft.STATUS_CHOICES).get(self.business_result, '원고 미연결')
 
-class LabSwitch(models.Model):
+
+class HumanReview(models.Model):
+    """모델 점수와 구별해 저장하는 비공개 사람 평가."""
+    run_id = models.UUIDField(db_index=True)
+    reviewer = models.ForeignKey(User, on_delete=models.PROTECT)
+    usefulness = models.PositiveSmallIntegerField(choices=[(i, str(i)) for i in range(1, 6)])
+    factual_errors = models.JSONField(default=list, help_text='위치·내용·심각도(minor/major) 목록')
+    approved = models.BooleanField(default=False)
+    review_minutes = models.PositiveIntegerField()
+    corrected_after_publish = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def clean(self):
+        from django.core.exceptions import ValidationError
+        if (not isinstance(self.factual_errors, list) or any(
+                not isinstance(item, dict) or item.get('severity') not in ('minor', 'major')
+                or not item.get('description') for item in self.factual_errors)):
+            raise ValidationError({'factual_errors': 'description과 severity(minor/major)를 가진 목록을 입력해 주세요.'})
+
+
+class LabSwitch(ExecutionBoundModel):
     """연구실 기능 스위치 — 관리 화면에서 바꾼 값(office.switches). 서버 .env 에 같은 이름이 있으면 그쪽이 우선한다."""
     key = models.CharField(max_length=40, unique=True)
     value = models.CharField(max_length=40)
@@ -415,3 +497,48 @@ class LabSwitch(models.Model):
 
     def __str__(self):
         return f'{self.key}={self.value}'
+
+
+class AuditHead(models.Model):
+    id = models.PositiveSmallIntegerField(primary_key=True, default=1)
+    sequence = models.PositiveBigIntegerField(default=0)
+    digest = models.CharField(max_length=64, blank=True)
+
+
+class JobReceipt(models.Model):
+    key = models.CharField(max_length=64, primary_key=True)
+    job = models.ForeignKey(JobRequest, on_delete=models.PROTECT)
+
+
+class AuditQuerySet(models.QuerySet):
+    def update(self, **kwargs):
+        raise ValueError('감사 기록은 수정할 수 없어요.')
+
+    def delete(self):
+        raise ValueError('감사 기록은 삭제할 수 없어요.')
+
+
+class AuditEvent(models.Model):
+    sequence = models.PositiveBigIntegerField(primary_key=True)
+    created_at = models.DateTimeField()
+    action = models.CharField(max_length=40)
+    actor_id = models.PositiveBigIntegerField(null=True)
+    draft_id = models.PositiveBigIntegerField(null=True)
+    payload = models.JSONField(default=dict)
+    previous_digest = models.CharField(max_length=64, blank=True)
+    digest = models.CharField(max_length=64)
+    objects = AuditQuerySet.as_manager()
+
+    def save(self, *args, **kwargs):
+        if not self._state.adding:
+            raise ValueError('감사 기록은 수정할 수 없어요.')
+        kwargs['force_insert'] = True
+        return super().save(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        raise ValueError('감사 기록은 삭제할 수 없어요.')
+
+    class Meta:
+        ordering = ['sequence']
+        verbose_name = '연구실 감사 기록'
+        verbose_name_plural = '연구실 감사 기록'

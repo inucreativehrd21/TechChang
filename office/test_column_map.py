@@ -80,31 +80,31 @@ class SignalTests(TestCase):
         self.bot = User.objects.create_user(Question.BOT_USERNAME, password='x')
         self.cat = Category.objects.create(name='HRD')
 
-    def test_new_or_changed_column_launches_refresh_after_commit(self):
-        with mock.patch('office.jobs.spawn') as spawn:
+    def test_new_or_changed_column_queues_refresh_after_commit(self):
+        with mock.patch('office.jobs.enqueue') as enqueue:
             with self.captureOnCommitCallbacks(execute=True):
                 q = Question.objects.create(author=self.bot, category=self.cat, subject='새 칼럼', content=BODY,
                                             create_date=timezone.now())
-            self.assertEqual(spawn.call_args.args[0][0], 'update_column_map')
-            self.assertEqual(spawn.call_args.kwargs['env'], {'CLAUDE_CLI_FALLBACK': 'false'})   # 유료 API 쓰지 않음
+            self.assertEqual(enqueue.call_args.args[0][0], 'update_column_map')
+            self.assertTrue(enqueue.call_args.kwargs['dedupe'])
             D.save(q, reply())
-            spawn.reset_mock()
+            enqueue.reset_mock()
             with self.captureOnCommitCallbacks(execute=True):
                 q.save()                                            # 내용이 같으면 띄우지 않는다
                 q.save(update_fields=['view_count'])
-            spawn.assert_not_called()
+            enqueue.assert_not_called()
             with self.captureOnCommitCallbacks(execute=True):
                 q.content = BODY + '\n고친 문단입니다.'
                 q.save()
-            spawn.assert_called_once()
+            enqueue.assert_called_once()
 
     def test_member_posts_are_ignored(self):
         member = User.objects.create_user('member', password='x')
-        with mock.patch('office.jobs.spawn') as spawn:
+        with mock.patch('office.jobs.enqueue') as enqueue:
             with self.captureOnCommitCallbacks(execute=True):
                 Question.objects.create(author=member, category=self.cat, subject='질문', content='본문',
                                         create_date=timezone.now())
-        spawn.assert_not_called()
+        enqueue.assert_not_called()
 
 
 class ColumnMapAdminTests(TestCase):
@@ -118,16 +118,16 @@ class ColumnMapAdminTests(TestCase):
         r = self.client.get(reverse('office:column_map'), HTTP_USER_AGENT='Mozilla/5.0')
         self.assertRedirects(r, reverse('community:column_map'), fetch_redirect_response=False)
 
-    def test_refresh_button_launches_job_and_returns_to_map(self):
+    def test_refresh_button_queues_job_and_returns_to_map(self):
         self.client.login(username='boss', password='x')
-        with mock.patch('office.jobs.spawn') as spawn:
+        with mock.patch('office.jobs.enqueue') as enqueue:
             r = self.client.post(reverse('office:run_job'), {'job': 'column_map'}, HTTP_USER_AGENT='Mozilla/5.0')
         self.assertRedirects(r, reverse('community:column_map'), fetch_redirect_response=False)
-        self.assertEqual(spawn.call_args.args[0], ['update_column_map'])
+        self.assertEqual(enqueue.call_args.args[0], ['update_column_map'])
 
     def test_members_cannot_launch_refresh(self):
         User.objects.create_user('member', password='x')
         self.client.login(username='member', password='x')
-        with mock.patch('office.jobs.spawn') as spawn:
+        with mock.patch('office.jobs.enqueue') as enqueue:
             self.client.post(reverse('office:run_job'), {'job': 'column_map'}, HTTP_USER_AGENT='Mozilla/5.0')
-        spawn.assert_not_called()
+        enqueue.assert_not_called()

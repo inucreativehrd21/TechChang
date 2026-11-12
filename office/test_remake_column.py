@@ -11,6 +11,7 @@ from django.test import TestCase
 from django.utils import timezone
 
 from community.models import Category, Question
+from office.models import ColumnDraft
 
 CMD = 'office.management.commands.remake_column'
 EDITED = ('교육 담당자의 실제 장면으로 시작하는 도입 문단입니다.\n\n## 숫자로 보는 현황\n\n'
@@ -50,7 +51,9 @@ class HandEditReviewTests(TestCase):
     def test_accepted_edit_replaces_in_place_without_rewriting(self):
         check, rv, visual, writer, patch = self.run_cmd([qa('accept', 82)])
         self.q.refresh_from_db()
-        self.assertEqual((self.q.subject, self.q.content), ('새 제목', EDITED.strip()))
+        self.assertEqual((self.q.subject, self.q.content), ('옛 제목', '옛 본문'))
+        held = ColumnDraft.objects.get(target_question=self.q)
+        self.assertEqual((held.subject, held.content, held.status), ('새 제목', EDITED.strip(), 'hold'))
         writer.assert_not_called()
         patch.assert_not_called()
         visual.assert_not_called()          # 교열본의 표를 그대로 심사
@@ -61,7 +64,8 @@ class HandEditReviewTests(TestCase):
         # 발행 규칙과 같게 — 필수 수정·미해결 지적 없이 제안만 남으면 80점 아래여도 반영(#115·#116)
         self.run_cmd([{**qa('minor', 74), 'resolved': [True]}])
         self.q.refresh_from_db()
-        self.assertEqual(self.q.subject, '새 제목')
+        self.assertEqual(self.q.subject, '옛 제목')
+        self.assertEqual(ColumnDraft.objects.get(target_question=self.q).subject, '새 제목')
 
     def test_minor_edit_is_patched_and_numbers_from_memory_are_dropped(self):
         # 보완 패치가 근거에 없는 수치(10,035건)를 들여와도 그 문장은 지워지고, 재심 통과면 갱신된다
@@ -70,8 +74,10 @@ class HandEditReviewTests(TestCase):
                                                  patch_result=('새 제목', patched, True, '패치 1건'))
         self.q.refresh_from_db()
         patch.assert_called_once()
-        self.assertIn('122,974명으로 집계했습니다.', self.q.content)
-        self.assertNotIn('10,035', self.q.content)
+        held = ColumnDraft.objects.get(target_question=self.q)
+        self.assertIn('122,974명으로 집계했습니다.', held.content)
+        self.assertNotIn('10,035', held.content)
+        self.assertEqual(self.q.content, '옛 본문')
         visual.assert_not_called()          # 보완 뒤에도 교열본 표를 지킨다
         self.assertEqual(rv.call_args.kwargs['previous_content'].strip(), EDITED.strip())
 

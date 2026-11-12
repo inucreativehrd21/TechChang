@@ -249,6 +249,9 @@ class MakeTests(TestCase):
         def r(nl, out_dir):
             if out_dir:
                 state['dirs'].append(out_dir)
+                from pathlib import Path
+                for cid in nl['card_ids']:
+                    Path(out_dir, cid+'.png').write_bytes(b'fixture-image')
                 return []
             state['n'] += 1
             return list(overflow_first) if state['n'] == 1 else []
@@ -263,7 +266,7 @@ class MakeTests(TestCase):
         b.refresh_from_db()
         self.assertEqual(b.status, Newsletter.STATUS_PUBLISHED)
         self.assertEqual([u.split('?')[0].rsplit('/', 1)[1] for u in b.cards], ['cover.png', 'next.png'])  # 추천·회의 없는 주
-        self.assertIn('/newsletter/2026-w42/og.png', b.og_image)
+        self.assertRegex(b.og_image, r'/newsletter/2026-w42/[0-9a-f]{64}/og\.png')
         self.assertEqual(len(b.data['alts']), 2)
         self.assertIn('_stage-', state['dirs'][0])
 
@@ -398,7 +401,8 @@ class PublicGuardTests(TestCase):
 
     def test_rerun_with_problems_keeps_the_published_issue(self):
         run = date(2026, 10, 16)
-        ok = N.make(run, renderer=lambda nl, d: [], use_model=False, out=lambda *_: None)
+        renderer, _ = MakeTests().fake_renderer()
+        ok = N.make(run, renderer=renderer, use_model=False, out=lambda *_: None)
         with mock.patch('office.jobmail.send'):
             again = N.make(run, renderer=lambda nl, d: ['layout:cover'], use_model=False, out=lambda *_: None)
         self.assertEqual(again.pk, ok.pk)

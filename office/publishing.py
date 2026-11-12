@@ -18,15 +18,18 @@ def guarded_publication(fn):
             # 호출자가 방금 심사한 원고는 아직 저장 전일 수 있다. DB 잠금은 중복 공개를 막고,
             # 검증·발행 대상은 호출자가 넘긴 같은 버전으로 유지한다.
             qa = draft.qa_report or {}
-            approved = manual and bool(getattr(kwargs.get('by'), 'is_staff', False))
-            if blocked(qa) and not approved:
-                raise ValueError('필수 결함 또는 미해결 심사가 남아 발행할 수 없어요.')
-            if qa.get('review_contract_version') == 2 and not approved:
-                if (not publishable(qa) or qa.get('verified_content_hash') != verification_hash(draft.content)
-                        or qa.get('reviewed_full_hash') != digest(draft.content)
-                        or qa.get('verified_subject') != draft.subject):
-                    raise ValueError('현재 원고의 독립 검증과 편집 심사가 필요해요.')
+            from .approval import valid, policy
+            from .execution import assert_current
+            assert_current()
+            approved = (valid(locked) and valid(draft)
+                        and (locked.qa_report or {}).get('human_approval') == qa.get('human_approval'))
+            if not approved:
+                raise ValueError('현재 제목·본문에 대한 운영자 승인이 필요해요.')
+            policy(draft, qa.get('human_approval', {}).get('mode', 'normal'))
             result = fn(draft, *args, **kwargs)
+            from .audit import append
+            append('published', actor_id=draft.decided_by_id, draft_id=draft.pk,
+                   payload={'approval': qa.get('human_approval', {}).get('audit_sequence'), 'question_id': result.pk})
             draft.refresh_from_db()
             return result
     return publish

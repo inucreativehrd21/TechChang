@@ -16,6 +16,15 @@ SYNTHESIS = {
                                {'key': 'b', 'title': '내일배움카드 개편 총정리', 'detail': '11월 바뀌는 것', 'proposed_by': '한빈',
                                 'keywords': ['내일배움카드']}]}],
 }
+SYNTHESIS['decisions'][0]['column_track'] = 'practical'
+for topic in ('hrd', 'data', 'coding'):
+    for track in ('research', 'practical'):
+        if (topic, track) == ('hrd', 'practical'):
+            continue
+        SYNTHESIS['decisions'].append({'kind': 'column', 'topic': topic, 'column_track': track,
+            'question': f'{topic} {track} 주제', 'options': [
+                {'key': 'a', 'title': f'{topic} {track} 탐구 A', 'keywords': []},
+                {'key': 'b', 'title': f'{topic} {track} 탐구 B', 'keywords': []}]})
 TRENDS = {'unit': 'volume', 'note': '', 'sources': {'geeknews': 20, 'google_trends': 20},
           'fields': {'hrd': [{'topic': '내일배움카드 개편', 'why': '11월 제도 변경', 'url': '', 'keywords': ['내일배움카드'],
                               'demand_kw': '내일배움카드', 'demand': 90000, 'demand_note': '월 90,000회 검색'}]}}
@@ -25,7 +34,7 @@ def fake_cli(fail_on=()):
     """n번째 호출(0부터)이 fail_on 에 있으면 CLI 실패 → API 폴백을 흉내 낸다."""
     count = {'n': 0}
 
-    def run(prompt, *, system, model):
+    def run(prompt, *, system, model, **kwargs):
         n = count['n']
         count['n'] += 1
         if n in fail_on:
@@ -76,7 +85,7 @@ class MeetingMailTests(TestCase):
         self.assertIn('폴백 없음', msg.body)
 
     def test_failure_mid_meeting_still_sends_mail(self):
-        def broken(prompt, *, system, model):
+        def broken(prompt, *, system, model, **kwargs):
             if 'JSON 스키마' in prompt:
                 raise RuntimeError('결론 정리 중 오류')
             return '발언', {'input_tokens': 1, 'output_tokens': 1}
@@ -98,7 +107,7 @@ class MeetingMailTests(TestCase):
             call_command('hold_meeting', email='admin@example.com', stdout=mock.MagicMock())
         meeting = Meeting.objects.get()
         self.assertEqual(meeting.snapshot['trends']['fields']['hrd'][0]['demand'], 90000)
-        opts = Decision.objects.get().options
+        opts = Decision.objects.get(topic='hrd', column_track='practical').options
         self.assertEqual([(o['key'], o['title']) for o in opts], [('a', '내일배움카드 개편 총정리'), ('b', '사내 AI 교육의 ROI')])
         self.assertTrue(opts[0]['recommended'])
         self.assertEqual(opts[0]['demand'], 90000)

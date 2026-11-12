@@ -66,6 +66,18 @@ class CliBackendTests(SimpleTestCase):
         self.assertEqual(calls[0]['fallback'], '')
         self.assertEqual(len(mail.outbox), 0)
 
+    def test_cached_tokens_are_recorded_separately(self):
+        result = cli_result()
+        payload = json.loads(result.stdout)
+        payload['usage'].update(cache_read_input_tokens=5000, cache_creation_input_tokens=1000)
+        result.stdout = json.dumps(payload)
+        with cli_env(), mock.patch('common.services.claude.subprocess.run', return_value=result):
+            with claude.track_calls() as calls:
+                claude.ask('q')
+        self.assertEqual(calls[0]['input_tokens'], 10)
+        self.assertEqual(calls[0]['cache_read_input_tokens'], 5000)
+        self.assertEqual(calls[0]['cache_creation_input_tokens'], 1000)
+
     def test_fallback_can_be_disabled(self):
         limited = cli_result('', returncode=1, is_error=True)
         with cli_env(CLAUDE_CLI_FALLBACK='false'), \

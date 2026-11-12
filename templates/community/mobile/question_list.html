@@ -64,7 +64,7 @@
         {% endif %}
         {% if next_slot %}
         <div class="tc-mh-lab-row">
-            <span class="tc-mh-lab-key">다음 칼럼 · {{ next_slot.when }} {{ next_slot.label }}</span>
+            <span class="tc-mh-lab-key">다음 칼럼 · {{ next_slot.when }} {{ next_slot.label }} · 심화·실용 각 1편</span>
             <span class="tc-mh-lab-title">{% if next_slot.title %}{{ next_slot.title }}{% else %}주제 회의 중{% endif %}</span>
         </div>
         {% endif %}
@@ -132,6 +132,7 @@
         <span class="tc-m-badge tc-m-badge-{{ question.category.name|category_slug }}">{{ question.category.name }}</span>
         {% endif %}
         <div class="tc-m-qcard-title">{{ question.subject }}</div>
+        {% if question.is_column and question.column_track and not question.series_id %}<span class="small text-muted">{{ question.get_column_track_display }}</span>{% endif %}
         <div class="tc-m-qcard-meta">
             <span class="tc-m-stat"><i class="far fa-thumbs-up" aria-hidden="true"></i> {{ question.voter_count }}</span>
             <span class="tc-m-stat"><i class="far fa-comment" aria-hidden="true"></i> {{ question.answer_count }}</span>

@@ -98,3 +98,46 @@
   .ad-console .oa .oa-status { order: 1; } .ad-console .oa .tabs-panel { order: 2; } .ad-console .oa .oa-run { order: 3; }
 }
 .ad-console .oa table.logs td:nth-child(2) { white-space: nowrap; }
+.ad-console .oa, .ad-console .oa .tabs-panel, .ad-console .oa .tab-pane, .ad-console .oa .draft { min-width: 0; }
+.ad-console .oa { grid-template-columns: minmax(0, 1fr); }
+.ad-console .oa .tabs { overflow-x: auto; }
+.ad-console .oa .draft .btns { flex-wrap: wrap; align-items: end; }
+.ad-console .oa .draft .btns form { min-width: 0; max-width: 100%; }
+.ad-console .oa .draft .btns input { width: 100%; box-sizing: border-box; }
+.ad-console .oa .oa-jobs { table-layout: fixed; overflow-wrap: anywhere; }
+.ad-console .oa .oa-jobs td:first-child { width: 90px; }
+.ad-console .oa .oa-jobs td:nth-child(2) { width: 60px; }
+.ad-console .oa .oa-jobs td:last-child { width: 64px; }
+.ad-console .oa .oa-jobs small { display: block; }
+.ad-console .oa .meeting-review { min-width: 0; }
+.ad-console .oa .mr-intro h2 { font-size: 1.05rem; margin: 20px 0 6px; }
+.ad-console .oa .mr-intro p { font-size: .85rem; color: var(--ad-muted); line-height: 1.65; }
+.ad-console .oa .mr-decision { min-width: 0; padding: 18px; margin: 22px 0; border: 1px solid var(--ad-line); border-radius: 10px; }
+.ad-console .oa .mr-decision legend { float: none; width: auto; max-width: 100%; padding: 0 6px; font-size: 1rem; font-weight: 750; line-height: 1.5; overflow-wrap: anywhere; }
+.ad-console .oa .mr-decision .kind { margin: 0 0 12px; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.ad-console .oa .mr-state { margin-left: auto; font-size: .75rem; color: var(--ad-muted); }
+.ad-console .oa .mr-modified .mr-state { color: var(--ad-accent); font-weight: 700; }
+.ad-console .oa .mr-option { display: flex; align-items: flex-start; gap: 10px; padding: 12px; margin: 8px 0; border: 1px solid var(--ad-line); border-radius: 8px; cursor: pointer; min-height: 44px; }
+.ad-console .oa .mr-option > span { min-width: 0; overflow-wrap: anywhere; }
+.ad-console .oa .mr-option input { flex: none; width: 18px; height: 18px; margin-top: 3px; accent-color: var(--ad-accent); }
+.ad-console .oa .mr-option:focus-within { outline: 2px solid var(--ad-accent); outline-offset: 2px; }
+.ad-console .oa .mr-option.mr-selected, .ad-console .oa .mr-option:has(input:checked) { border-color: var(--ad-accent); background: var(--ad-wash); }
+.ad-console .oa .mr-option:hover { border-color: var(--ad-accent); }
+.ad-console .oa .mr-option small { display: block; font-size: .8rem; line-height: 1.65; margin-top: 3px; }
+.ad-console .oa .mr-note-label { display: block; margin: 14px 0 6px; font-size: .84rem; font-weight: 650; }
+.ad-console .oa .mr-note-label .muted { font-weight: 400; font-size: .76rem; }
+.ad-console .oa .mr-decision textarea { width: 100%; padding: 10px 12px; border: 1px solid var(--ad-line); border-radius: 8px; resize: vertical; font: inherit; font-size: .85rem; line-height: 1.6; }
+.ad-console .oa .mr-decision textarea:focus-visible { outline: 2px solid var(--ad-accent); outline-offset: 2px; }
+.ad-console .oa .mr-lock, .ad-console .oa .mr-error { font-size: .84rem; line-height: 1.6; }
+.ad-console .oa .mr-error { padding: 10px; border-left: 3px solid var(--ad-accent); background: var(--ad-wash); overflow-wrap: anywhere; }
+.ad-console .oa .mr-summary { border-top: 1px solid var(--ad-line); padding: 16px 0; }
+.ad-console .oa .mr-summary h3 { font-size: .95rem; margin-bottom: 12px; }
+.ad-console .oa .mr-summary ul { padding-left: 20px; font-size: .84rem; line-height: 1.65; }
+.ad-console .oa .mr-summary li { margin: 10px 0; overflow-wrap: anywhere; }
+.ad-console .oa .mr-summary p { margin: 3px 0; color: var(--ad-muted); white-space: pre-wrap; }
+.ad-console .oa .mr-savebar { position: sticky; bottom: 16px; z-index: 10; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; background: #fff; border: 1px solid var(--ad-line); border-radius: 10px; padding: 12px 14px; box-shadow: 0 3px 12px rgba(24,24,27,.08); }
+.ad-console .oa .mr-savebar p { margin: 0; font-size: .8rem; color: var(--ad-muted); font-variant-numeric: tabular-nums; }
+.ad-console .oa .mr-decision, .ad-console .oa .mr-error { scroll-margin-block: 90px 150px; }
+.ad-console .oa .mr-decision :is(textarea,input[type=radio]) { scroll-margin-block: 100px 220px; }
+@media (max-width: 600px) { .ad-console .oa .mr-decision { padding: 12px; } .ad-console .oa .mr-savebar { bottom: 84px; } .ad-console .oa .mr-savebar button { width: 100%; } }
+.ad-console .oa .panel h2 { flex-wrap: wrap; }

@@ -1,8 +1,4 @@
-"""연구실 백그라운드 작업 띄우기 — manage.py <명령> 을 따로 프로세스로 실행하고 출력을 logs/office_jobs.log 에 쌓는다.
-
-관리 화면의 '작업 실행'(office.views.run_job)과 칼럼 저장 신호(office.signals)가 함께 쓴다. 모델 호출은 수 분이
-걸려 요청·저장 안에서 돌릴 수 없다.
-"""
+"""웹 요청은 DB에 예약하고, cron 실행기만 manage.py 자식 프로세스를 시작한다."""
 from __future__ import annotations
 
 import os
@@ -11,6 +7,34 @@ import sys
 
 from django.conf import settings
 from django.utils import timezone
+
+
+def enqueue(args: list, *, by: str = 'system', draft=None, via: str = 'admin', dedupe=False, actor=None):
+    """웹 서비스 재시작과 분리되도록 office_release(cron)가 집을 작업을 저장한다."""
+    from .models import JobRequest
+    from .security import validate_args
+    validate_args(args)
+    from .models import ColumnDraft
+    for flag in ('--draft', '--revise-draft'):
+        if flag in args and args.index(flag) + 1 < len(args):
+            draft = ColumnDraft.objects.filter(pk=args[args.index(flag) + 1]).first()
+    if dedupe:
+        existing = next((job for job in JobRequest.objects.filter(status=JobRequest.ST_PENDING,
+                                                                   requested_via=via)
+                         if job.args == args), None)
+        if existing:
+            return existing
+    from .recorder import digest
+    from django.db import IntegrityError, transaction
+    import json
+    key = digest(json.dumps([args[0], draft.pk] if draft else list(args), ensure_ascii=False))
+    try:
+        with transaction.atomic():
+            return JobRequest.objects.create(kind=JobRequest.KIND_RERUN, args=list(args), active_key=key,
+                                     label=' '.join(args)[:200], draft=draft,
+                                     run_after=timezone.now(), requested_via=via, requested_by=actor, note=f'요청: {by}'[:300])
+    except IntegrityError:
+        return JobRequest.objects.get(active_key=key)
 
 
 def spawn(args: list, *, by: str = 'system', env: dict | None = None):

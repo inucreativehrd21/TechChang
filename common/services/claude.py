@@ -357,7 +357,8 @@ def _cli_ask(prompt: str, *, system: str, model: ClaudeModel | str,
     if system:
         cmd += ['--system-prompt', system]
 
-    env = os.environ.copy()
+    from office.environment import claude_environment
+    env = claude_environment()
     # API 키가 보이면 CLI 가 구독 대신 API 키로 과금한다 → 반드시 지운다
     env.pop('ANTHROPIC_API_KEY', None)
     env.pop(BACKEND_ENV, None)
@@ -385,7 +386,9 @@ def _cli_ask(prompt: str, *, system: str, model: ClaudeModel | str,
         raise CliUnavailable(f"exit={proc.returncode} subtype={data.get('subtype')} {detail[:1500]}")
 
     usage = data.get('usage') or {}
-    return out, {'input_tokens': usage.get('input_tokens'), 'output_tokens': usage.get('output_tokens')}
+    return out, {'input_tokens': usage.get('input_tokens'), 'output_tokens': usage.get('output_tokens'),
+                 'cache_read_input_tokens': usage.get('cache_read_input_tokens'),
+                 'cache_creation_input_tokens': usage.get('cache_creation_input_tokens')}
 
 
 def ask_stream(

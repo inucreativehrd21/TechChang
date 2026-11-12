@@ -2,7 +2,7 @@
 
 차트 spec 은 따로 저장하지 않지만, 칼럼 본문에 차트와 **같은 값의 표**가 함께 들어가므로
 거기서 spec 을 복원할 수 있다. 덕분에 Claude API 를 부르지 않고(=추가 과금 없이) 그림만
-다시 만든다. 파일명을 그대로 쓰므로 본문은 건드리지 않고 이미지가 교체된다.
+다시 만든다. 새 파일의 검수 대기 원고를 만들고, 공개된 원문과 파일은 유지한다.
 
 사용법:
   python manage.py redraw_chart --question 104
@@ -112,11 +112,16 @@ class Command(BaseCommand):
                 failed += 1
                 continue
             done += 1
-            out(self.style.SUCCESS(f'    다시 그림: /media/{rel}'))
-            ColumnDraft.objects.filter(question=q).update(
-                chart_note=f"차트 재렌더({kind}, 항목 {len(spec['labels'])}개)"[:300])
-            WorkLog.objects.create(agent='charter', action='chart',
-                                   text=f'#{q.id} 차트 재렌더: {q.subject[:40]} ({kind})')
+            from office.digest import category_key
+            draft = ColumnDraft.objects.create(topic=category_key(q), target_question=q, status='hold',
+                subject=q.subject, content=q.content.replace('/media/'+info, '/media/'+rel), chart_path=rel,
+                chart_note=f"차트 재렌더({kind}, 항목 {len(spec['labels'])}개)",
+                admin_note='새 차트와 현재 원고를 검증·심사한 뒤 승인해 주세요.')
+            out(self.style.SUCCESS(f'    새 차트 검수 대기: draft={draft.pk} /media/{rel}'))
+            from office.audit import append
+            append('chart_revision_created', draft_id=draft.pk, payload={'question': q.pk, 'asset': rel})
+            WorkLog.objects.create(agent='charter', action='chart', draft=draft,
+                                   text=f'#{q.id} 차트 재렌더 검수 대기: {q.subject[:40]} ({kind})')
 
         if not opts['dry_run']:
             out(f'\n완료 {done}건' + (f' · 실패·건너뜀 {failed}건' if failed else ''))

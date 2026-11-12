@@ -51,9 +51,9 @@ class ReviewOnlyTests(TestCase):
         self.assertEqual(self.draft.subject, '새 제목')
         self.assertIn('사람이 교열한 본문입니다.', self.draft.content)
 
-    def test_accept_publishes(self):
+    def test_accept_waits_for_human_approval(self):
         *_rest, publish = self.run_cmd('accept')
-        publish.assert_called_once()
+        publish.assert_not_called()
 
     def test_content_file_requires_review_only(self):
         from django.core.management.base import CommandError

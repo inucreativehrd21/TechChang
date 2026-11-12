@@ -486,3 +486,5 @@ ACCOUNT_RATE_LIMITS = {
 # 사이트 주인 — 구성원 목록 첫 자리를 차지하고, HTML 포트폴리오에 사이트 통계(data-tc-stat)를 받아 쓸 수 있는
 # 유일한 계정(community.site_stats). 운영자 문승현의 관리자 계정(2026-10-12 sh → admin 으로 이전).
 SITE_OWNER_USERNAME = os.environ.get('SITE_OWNER_USERNAME', 'admin')
+LAB_OPERATOR_IDS = tuple(int(value.strip()) for value in os.environ.get('LAB_OPERATOR_IDS', '').split(',') if value.strip())
+LAB_JOB_SUPERVISOR = os.environ.get('LAB_JOB_SUPERVISOR', 'process')

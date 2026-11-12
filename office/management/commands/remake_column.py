@@ -85,7 +85,10 @@ class Command(BaseCommand):
     def handle(self, *args, **opts):
         # 어떻게 끝나든(발행·보류·실패) 연구실 라이브 표시를 정리한다
         try:
-            return self._run(*args, **opts)
+            from office.editorial import use_track
+            track = Question.objects.filter(pk=opts['question']).values_list('column_track', flat=True).first() or ''
+            with use_track(track):
+                return self._run(*args, **opts)
         finally:
             live.finish()
 
@@ -111,7 +114,10 @@ class Command(BaseCommand):
             out(self.style.SUCCESS('  이미 현재 기준을 통과합니다 — 손대지 않습니다.'))
             return
 
-        standard = P.writing_standard(topic_key, 'data')   # 리메이크는 옛 칼럼을 데이터 틀(COLUMN_STRUCTURE)로 다시 쓴다
+        from office import genres as G
+        from office.editorial import current_track
+        genre = G.genre_for(topic_key, content=q.content) if current_track() else 'data'
+        standard = P.writing_standard(topic_key, genre)
         # 단계별 산출물 기록 (내부 전용). 발행된 글을 갱신하므로 question 에 묶는다
         stages = StageRecorder(question=q, dry=opts['dry_run'])
         stages.record('audit', 'editor', {'flaws': flaws}, text=q.content)
@@ -151,9 +157,14 @@ class Command(BaseCommand):
 
         # 1) 재집필
         live.mark('revise', writer, topic_key)
-        raw = ask_agent(writer, REMAKE_PROMPT.format(
+        remake_prompt = REMAKE_PROMPT
+        if genre == 'research':
+            remake_prompt = ('발행된 심화 칼럼의 주제·논지를 보존하고 지적만 고치세요. '
+                '통계 섹션을 강제하지 말고 1차 자료·방법·원리·비교·한계를 보존하세요.\n'
+                '[지적]\n{flaws}\n[현재 원고]\nTITLE: {subject}\n---\n{content}\n{structure}\n{standard}')
+        raw = ask_agent(writer, remake_prompt.format(
             flaws='\n'.join(f'- {f}' for f in flaws), subject=q.subject, content=q.content,
-            structure=COLUMN_STRUCTURE, standard=standard) + B.block(bp, ver), max_tokens=P.COLUMN_MAX_TOKENS)
+            structure=G.structure(genre), standard=standard) + B.block(bp, ver), max_tokens=P.COLUMN_MAX_TOKENS)
         subject, content, ok, why = P.safe_rewrite(raw, q.subject, q.content)
         stages.record('draft', writer, {'subject': subject, 'content': content, 'ok': ok, 'why': why},
                       status='ok' if ok else 'failed', text=content)
@@ -208,8 +219,6 @@ class Command(BaseCommand):
 
         qa = P.step_review(subject, content, check, chart_rel, visual_report, critique, verified=pack)
         stages.record('review', 'editor', qa)
-        stages.record('final', 'editor', {'verdict': qa['verdict'], 'score': qa.get('score'),
-                                          'quality': quality.report(subject, content)}, text=content)
         rec('editor', 'qa', f"심사 {qa['score']}/100 ({qa['length']}자) → {qa['verdict']}"
                             + (f" · 치명 {','.join(qa['fatal'])}" if qa.get('fatal') else ''))
 
@@ -266,6 +275,9 @@ class Command(BaseCommand):
         if qa['verdict'] == 'minor' and R.accept_after_revision(qa):
             qa['verdict'], qa['accepted_after_revision'] = 'accept', True
             rec('editor', 'qa', f"남은 것은 제안뿐 — {qa['score']}점으로 반영")
+        stages.record('check', 'checker', check)
+        stages.record('review', 'editor', qa)
+        stages.complete(subject, content, check, qa, quality=quality.report(subject, content))
         if qa['verdict'] != 'accept':
             out(self.style.WARNING(
                 f"  기준 미달({qa['score']}점) — 원문을 그대로 둡니다. 발행된 글을 더 나쁜 "
@@ -278,14 +290,11 @@ class Command(BaseCommand):
             out(self.style.WARNING(f'\n[dry-run] {qa["score"]}점 통과 — 저장하지 않았습니다.'))
             return
 
-        q.subject, q.content = subject, content
-        q.modify_date = timezone.now()
-        q.save(update_fields=['subject', 'content', 'modify_date'])
-        rec('editor', 'publish', f'리메이크 반영(제자리 갱신): {subject} (id={q.pk}, {qa["score"]}점)')
-        # 메이킹 오브가 '발행 뒤 다듬기'로 이 실행을 보여 준다(반영 안 된 시도는 비공개)
-        stages.record('applied', 'editor', {'score': qa.get('score'), 'verdict': qa['verdict']})
-        out(self.style.SUCCESS(f'\n갱신 완료 — #{q.pk} {subject} ({qa["score"]}점)'))
-        try:
-            call_command('polish_logs', limit=12, verbosity=0)
-        except Exception:  # noqa: BLE001
-            pass
+        from office.models import ColumnDraft
+        draft = ColumnDraft.objects.create(topic=topic_key, target_question=q,
+            column_track=q.column_track,
+            status=ColumnDraft.STATUS_HOLD, subject=subject, content=content,
+            check_report=check, qa_report=qa, chart_path=chart_rel)
+        from office.models import StageRun
+        StageRun.objects.filter(run_id=stages.run_id).update(draft=draft)
+        rec('editor', 'hold', f'리메이크 검수 대기: draft={draft.pk} — 원문은 승인 후 갱신해요.')

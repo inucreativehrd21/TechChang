@@ -50,7 +50,7 @@ def _spool_refresh_index(spool: str) -> None:
     for n in sorted(os.listdir(spool)):
         if n.startswith('req.') and n.endswith('.json'):
             try:
-                metas.append(_json.load(open(os.path.join(spool, n), encoding='utf-8')))
+                metas.append(_json.loads(Path(spool, n).read_text(encoding='utf-8')))
             except (OSError, ValueError):
                 continue
     metas.sort(key=lambda m: m['seq'])
@@ -61,7 +61,7 @@ def _spool_refresh_index(spool: str) -> None:
                 os.remove(f)
         return
     if len(metas) == 1:
-        body = open(os.path.join(spool, f"req.{metas[0]['seq']}.md"), encoding='utf-8').read()
+        body = Path(spool, f"req.{metas[0]['seq']}.md").read_text(encoding='utf-8')
         index_json = metas[0]
     else:
         body = '# 열린 요청 %d건 — 각각 reply.<seq>.md 로 답하세요\n\n' % len(metas) + ''.join(
@@ -89,7 +89,9 @@ def _spool_ask(spool: str, key: str, prompt: str, max_tokens: int, tools: tuple 
 
     from common.services.claude import _call_tags
 
-    os.makedirs(spool, exist_ok=True)
+    os.makedirs(spool, mode=0o700, exist_ok=True)
+    if os.name == 'posix':
+        os.chmod(spool, 0o700)
     agent = execution_agent(key)
     with _spool_lock:
         seq = _spool_next_seq(spool)
@@ -127,10 +129,10 @@ def _spool_ask(spool: str, key: str, prompt: str, max_tokens: int, tools: tuple 
             break
         last_size = size
         time.sleep(0.5)
-    out = open(reply, encoding='utf-8').read().strip()
+    out = Path(reply).read_text(encoding='utf-8').strip()
     if not out:   # 안정화 이후에도 비면 마지막으로 한 번 더 — 느린 네트워크 대비 안전망
         time.sleep(1.5)
-        out = open(reply, encoding='utf-8').read().strip()
+        out = Path(reply).read_text(encoding='utf-8').strip()
     with _spool_lock:
         os.replace(os.path.join(spool, f'req.{seq}.md'), os.path.join(spool, f'done.{seq}.prompt.md'))
         os.replace(os.path.join(spool, f'req.{seq}.json'), os.path.join(spool, f'done.{seq}.meta.json'))
@@ -147,6 +149,8 @@ WEB_TOOLS = ('WebSearch', 'WebFetch')
 def ask_agent(key: str, prompt: str, *, max_tokens: int = 2000, tools: tuple = ()) -> str:
     """에이전트 1회 호출. 적응형 thinking 이 출력 예산을 다 써서 본문이 비면 예산 2배로 1회 재시도한다.
     tools: 이 호출에만 허용할 도구(WEB_TOOLS). spool 이면 요청 파일에 '허용 도구'로 실린다."""
+    from .editorial import guidance
+    prompt += guidance()
     spool = os.environ.get(SPOOL_ENV)
     if spool:
         return _spool_ask(spool, key, prompt, max_tokens, tools=tuple(tools))
@@ -158,7 +162,8 @@ def ask_agent(key: str, prompt: str, *, max_tokens: int = 2000, tools: tuple = (
     context = current()
     def request(tokens):
         payload = {'agent': key, 'system': execution_agent(key)['system'], 'prompt': prompt,
-                   'route': route.kwargs(), 'tools': list(tools), 'max_tokens': tokens}
+                   'route': route.kwargs(), 'tools': list(tools), 'max_tokens': tokens,
+                   'sample': tags.get('sample')}
         sig = signature(payload)
         if context:
             cached = context.cached(sig)
@@ -374,10 +379,13 @@ def snapshot_as_text(snap: dict) -> str:
 
 
 # ───────────────────────────── 회의 결정 → 칼럼 브리프
-def take_column_brief(topic: str) -> Decision | None:
+def take_column_brief(topic: str, *, track: str | None = None) -> Decision | None:
     """해당 분야의 가장 최근 '선택됐고 아직 쓰지 않은' 칼럼 안건. 없으면 None."""
-    return (Decision.objects.filter(kind=Decision.KIND_COLUMN, topic=topic, consumed_at__isnull=True)
-            .exclude(chosen_key='').select_related('meeting').order_by('-meeting__held_at').first())
+    qs = Decision.objects.filter(kind=Decision.KIND_COLUMN, topic=topic, consumed_at__isnull=True).exclude(chosen_key='')
+    if track is not None:
+        from community.column_tracks import PRACTICAL
+        qs = qs.filter(column_track__in=[track, ''] if track == PRACTICAL else [track])
+    return qs.select_related('meeting').order_by('-meeting__held_at', '-id').first()
 
 
 def week_monday(d: date | None = None) -> date:
@@ -471,7 +479,9 @@ def audit_chart(spec: dict, content: str, chart_rel: str, caption: str = "") -> 
                          '작은 막대가 보이지 않으니 나누거나 로그 축을 고려하세요')
 
     # 본문에 없는 수치가 차트에 있으면 출처 불명 데이터다
-    missing = [f'{v:g}' for v in values if f'{v:g}' not in content]
+    from .quantities import extract, decimal_key
+    present = {decimal_key(q.raw) for q in extract(content)}
+    missing = [chart_number(v) for v in values if decimal_key(str(v)) not in present]
     if missing:
         errors.append(f'차트 수치 {", ".join(missing[:5])}이(가) 본문에 없습니다 — 근거 없는 값입니다')
 
@@ -487,7 +497,7 @@ def audit_chart(spec: dict, content: str, chart_rel: str, caption: str = "") -> 
         warns.append('캡션이 너무 짧아 그림을 설명하지 못합니다')
 
     kind = effective_chart_type(spec.get('type', 'bar'), labels)
-    pairs = ', '.join(f'{lab}={v:g}' for lab, v in zip(labels, series[0].get('values', []))) if series else ''
+    pairs = ', '.join(f'{lab}={chart_number(v)}' for lab, v in zip(labels, series[0].get('values', []))) if series else ''
     lines = [
         f"차트: {spec.get('title', '(제목 없음)')} · {kind} · 항목 {len(labels)}개 · "
         f"계열 {len(series)}개 · 단위 {spec.get('unit') or '없음'}",
@@ -569,6 +579,19 @@ def _wrap_label(text: str, width: int) -> str:
     return f'{head}\n{tail if len(tail) <= width else tail[:width - 1] + "…"}'
 
 
+def chart_number(value) -> str:
+    """차트·표·대체 텍스트에 같은 값을 반올림이나 지수 표기 없이 표시한다."""
+    from decimal import Decimal, InvalidOperation
+    try:
+        number = Decimal(str(value))
+    except (InvalidOperation, ValueError):
+        return str(value)
+    if not number.is_finite():
+        return str(value)
+    text = format(number, ',f')
+    return text.rstrip('0').rstrip('.') if '.' in text else text
+
+
 def render_chart(spec: dict, filename_stem: str) -> tuple:
     """
     charter 에이전트의 spec 으로 PNG 를 만들어 media/columns/ 에 저장한다.
@@ -616,7 +639,7 @@ def render_chart(spec: dict, filename_stem: str) -> tuple:
 
     def fmt(v):
         """값 라벨. 축을 지웠으므로 단위를 값에 붙여 읽는 사람이 헷갈리지 않게 한다."""
-        return f'{v:g}{unit}' if unit and len(unit) <= 3 else f'{v:g}'
+        return chart_number(v)+(unit if unit and len(unit) <= 3 else '')
 
     if kind == 'line':
         for i, s in enumerate(series):
@@ -627,6 +650,7 @@ def render_chart(spec: dict, filename_stem: str) -> tuple:
         ax.spines[['top', 'right', 'left']].set_visible(False)
         ax.spines['bottom'].set_color(GRID)
         ax.tick_params(length=0, labelsize=10.5, colors=INK_SOFT)
+        ax.ticklabel_format(axis='y', style='plain', useOffset=False)
         if unit:
             ax.set_ylabel(unit, fontsize=10, color=INK_SOFT)
     elif kind == 'hbar':
@@ -677,12 +701,14 @@ def render_chart(spec: dict, filename_stem: str) -> tuple:
         fig.text(0.012, 0.975, _wrap_label(title, 46).replace('\n', ' '),
                  fontsize=12, fontweight='bold', ha='left', va='top', color=INK)
 
-    out_dir = Path(settings.MEDIA_ROOT) / 'columns'
-    out_dir.mkdir(parents=True, exist_ok=True)
-    rel = f'columns/{filename_stem}.png'
-    fig.savefig(out_dir / f'{filename_stem}.png', facecolor='white', bbox_inches='tight',
-                pad_inches=0.22)
-    plt.close(fig)
+    from io import BytesIO
+    from .artifacts import store_chart
+    buffer = BytesIO()
+    try:
+        fig.savefig(buffer, format='png', facecolor='white', bbox_inches='tight', pad_inches=0.22)
+        rel = store_chart(buffer.getvalue())
+    finally:
+        plt.close(fig)
     return rel, ''
 
 
@@ -703,7 +729,7 @@ def chart_markdown(rel_path: str, spec: dict, caption: str = '', figure_no: int 
         vals = []
         for s in series:
             v = s['values'][i]
-            vals.append(f'{v:g}' if isinstance(v, (int, float)) else str(v))
+            vals.append(chart_number(v))
         rows.append(f'| {lab} | ' + ' | '.join(vals) + ' |')
 
     title = (spec.get('title') or '').strip()
@@ -714,7 +740,7 @@ def chart_markdown(rel_path: str, spec: dict, caption: str = '', figure_no: int 
         # (원고 #8). 값은 대체 텍스트에 담아 화면낭독기·이미지 미표시 환경에서도 읽히게 한다.
         unit = spec.get('unit') or ''
         first = (series[0].get('values') or []) if series else []
-        values = ', '.join(f"{lab} {v:g}{unit}" if isinstance(v, (int, float)) else f'{lab} {v}'
+        values = ', '.join(f"{lab} {chart_number(v)}{unit}" if isinstance(v, (int, float)) else f'{lab} {v}'
                            for lab, v in zip(labels, first))
         alt = f"{label}. {title}" + (f" — {values}" if values else '')
         url = f"{settings.MEDIA_URL.rstrip('/')}/{rel_path}"

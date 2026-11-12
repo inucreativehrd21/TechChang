@@ -83,13 +83,22 @@ def column_map(request):
     sort = request.GET.get('sort') or ('rel' if q else 'new')
     sort = sort if sort in SORTS else 'new'
     terms = _terms(q)
+    from community.column_tracks import TRACK_CHOICES
+    track = request.GET.get('track') or ''
+    track_labels = {key or 'legacy': label for key, label in TRACK_CHOICES}
+    track = track if track in track_labels else ''
 
     entries = _entries()
     is_admin = request.user.is_authenticated and (request.user.is_staff or request.user.is_superuser)
     stale = sum(e['stale'] for e in entries) if is_admin else 0
 
     # 검색어에 맞는 글 → 카테고리·소주제 집계(왼쪽 패싯)는 검색어만 반영한다
-    matched = [e for e in entries if not terms or _score(e, terms)]
+    text_matched = [e for e in entries if not terms or _score(e, terms)]
+    facet_tracks = [{'key': key, 'label': label, 'count': sum(
+        1 for e in text_matched if not e['q'].series_id and (e['q'].column_track or 'legacy') == key)}
+        for key, label in track_labels.items()]
+    matched = [e for e in text_matched if not track or (
+        not e['q'].series_id and (e['q'].column_track or 'legacy') == track)]
     facet_cats = [{'key': k, 'label': label, 'count': sum(1 for e in matched if e['cat'] == k)} for k, label, _ in CATS]
     sub_counts = OrderedDict()
     for e in matched:
@@ -137,4 +146,5 @@ def column_map(request):
         'searching': searching, 'results': results, 'groups': groups, 'total': len(entries),
         'facet_cats': facet_cats, 'facet_subs': facet_subs, 'is_admin': is_admin, 'stale': stale,
         'shown': len(results), 'total_matched': len(matched),
+        'track': track, 'track_label': track_labels.get(track, ''), 'facet_tracks': facet_tracks,
     })

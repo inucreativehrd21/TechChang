@@ -73,6 +73,9 @@ class MailTests(TestCase):
 
 
 class TokenAndPageTests(TestCase):
+    def setUp(self):
+        from django.contrib.auth.models import User
+        self.client.force_login(User.objects.create_superuser('admin', '', 'x'))
     def test_tokens_only_carry_allowed_commands(self):
         ok = J.make_token('rerun', ['office_publish', '--topic', 'hrd', '--prepare'], '다시 실행')
         self.assertEqual(J.read_token(ok)['a'][0], 'office_publish')
@@ -118,6 +121,25 @@ class RunnerTests(TestCase):
         self.assertEqual(sp.call_args.args[0], ['make_newsletter'])
         j.refresh_from_db(); later.refresh_from_db()
         self.assertEqual((j.status, later.status), (JobRequest.ST_STARTED, JobRequest.ST_PENDING))
+
+    def test_process_start_failure_returns_job_to_queue(self):
+        j = self.job()
+        with mock.patch('office.jobs.spawn', side_effect=OSError('start denied')):
+            self.assertEqual(J.run_due(out=lambda _: None), [])
+        j.refresh_from_db()
+        self.assertEqual(j.status, JobRequest.ST_PENDING)
+        self.assertGreater(j.run_after, timezone.now())
+
+    def test_web_job_is_queued_until_cron_runs_and_duplicate_signal_is_coalesced(self):
+        from office.jobs import enqueue
+        args = ['update_column_map', '--settle', '15']
+        first = enqueue(args, by='column_saved', via='column_saved', dedupe=True)
+        second = enqueue(args, by='column_saved', via='column_saved', dedupe=True)
+        self.assertEqual(first.pk, second.pk)
+        self.assertEqual(first.status, JobRequest.ST_PENDING)
+        with mock.patch('office.jobs.spawn') as spawn:
+            J.run_due(out=lambda _: None)
+        spawn.assert_called_once()
 
     def test_limit_defers_and_handled_draft_is_skipped(self):
         CliLimit.objects.create(reset_at=timezone.now() + timedelta(hours=1))

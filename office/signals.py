@@ -28,7 +28,7 @@ def column_saved(sender, instance, created, update_fields=None, **kwargs):
         return
 
     def launch():
-        from .jobs import spawn
-        spawn(['update_column_map', '--settle', '15'], by='column_saved', env={'CLAUDE_CLI_FALLBACK': 'false'})
+        from .jobs import enqueue
+        enqueue(['update_column_map', '--settle', '15'], by='column_saved', via='column_saved', dedupe=True)
 
     transaction.on_commit(launch)

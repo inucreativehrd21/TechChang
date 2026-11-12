@@ -5,6 +5,7 @@
   관리자: /lab/admin/      회의 안건 선택 · 보류 칼럼 검수 · 작업 로그 · 수동 소집
 """
 import os
+import json
 from datetime import timedelta
 
 from django.conf import settings
@@ -16,7 +17,8 @@ from django.utils import timezone
 from django.views.decorators.cache import never_cache
 from django.views.decorators.http import require_POST
 
-from common.views import admin_required
+from .security import operator_required as admin_required
+from common.views import admin_otp_required, _admin_otp_session_ok
 from . import github
 from .agents import AGENTS, MEETING_ORDER, public_roster, public_roster_groups
 from .models import ColumnDraft, Decision, Meeting, Task, WorkLog
@@ -28,14 +30,20 @@ TOPIC_LABEL = {'hrd': 'HRD', 'data': '데이터분석', 'coding': '프로그래�
 def _public_meeting(meeting):
     if meeting is None:
         return None
+    from .agenda import public_item
+    decisions = []
+    for decision in meeting.decisions.all():
+        if decision.kind not in (Decision.KIND_COLUMN, Decision.KIND_SERIES) or not decision.chosen_key:
+            continue
+        item = public_item(decision)
+        if item:
+            decisions.append(item)
     return {
         'id': meeting.id, 'week_start': meeting.week_start.isoformat(), 'held_at': meeting.held_at.isoformat(),
-        'summary': meeting.summary,
-        'transcript': [{'agent': t['agent'], 'name': AGENTS.get(t['agent'], {}).get('name', ''), 'round': t.get('round', 1),
-                        'text': t['text']} for t in meeting.transcript if t.get('agent') in AGENTS],
-        'decisions': [{'kind': d.kind, 'kind_label': d.get_kind_display(), 'topic': TOPIC_LABEL.get(d.topic, ''),
-                       'question': d.question, 'options': d.options, 'chosen_key': d.chosen_key,
-                       'chosen': d.chosen} for d in meeting.decisions.all() if d.is_public],
+        'summary': meeting.public_summary,
+        'transcript': ([{'agent': 'lead', 'name': AGENTS['lead']['name'], 'round': 1,
+                         'text': meeting.public_summary}] if meeting.public_summary else []),
+        'decisions': decisions,
     }
 
 
@@ -104,7 +112,8 @@ def _lab_assets_url():
 @never_cache
 def making(request, question_id):
     """발행 칼럼의 제작·심사 기록 — 운영진에게만 공개."""
-    if not request.user.is_staff:
+    from .security import is_operator
+    if not is_operator(request.user):
         from django.http import Http404
         raise Http404
     from .making import build_making
@@ -175,24 +184,34 @@ def office_state(request):
 
 # ───────────────────────────── 관리자
 @admin_required
-def office_admin(request):
+def office_admin(request, *, decision_payload=None, decision_errors=None, decision_meeting_id=None, response_status=200):
     from common.models import LogFinding
 
-    meetings = Meeting.objects.prefetch_related('decisions').order_by('-held_at')[:8]
+    meetings = list(Meeting.objects.prefetch_related('decisions').order_by('-held_at')[:8])
+    if decision_meeting_id and (not meetings or meetings[0].pk != decision_meeting_id):
+        selected = get_object_or_404(Meeting.objects.prefetch_related('decisions'), pk=decision_meeting_id)
+        meetings = [selected] + [m for m in meetings if m.pk != selected.pk]
     held = ColumnDraft.objects.filter(
         status__in=[ColumnDraft.STATUS_HOLD, ColumnDraft.STATUS_REVISING]).select_related('decision')
     ready = list(ColumnDraft.objects.filter(status=ColumnDraft.STATUS_READY).order_by('publish_at'))
     from .models import JobRequest
-    jobs = list(JobRequest.objects.filter(status=JobRequest.ST_PENDING).select_related('draft'))
+    jobs = list(JobRequest.objects.select_related('draft').order_by('-created_at')[:30])
     recent_drafts = ColumnDraft.objects.exclude(
         status__in=[ColumnDraft.STATUS_HOLD, ColumnDraft.STATUS_REVISING, ColumnDraft.STATUS_READY]
     ).select_related('question')[:12]
     logs = decorate_logs(WorkLog.objects.select_related('draft', 'meeting')[:80])
+    from .audit import snapshot, fingerprint
     for d in list(held) + list(recent_drafts) + ready:
         d.topic_name = TOPIC_LABEL.get(d.topic, '')
+        if d.status in (ColumnDraft.STATUS_HOLD, ColumnDraft.STATUS_READY):
+            d.approval_version = fingerprint(snapshot(d))
     for m in meetings:
         for d in m.decisions.all():
             d.topic_name = TOPIC_LABEL.get(d.topic, '')
+            if m == meetings[0]:
+                from .decision_review import decorate
+                decorate(d, decision_payload if m.pk == decision_meeting_id else None,
+                         (decision_errors or {}).get(d.pk, ''))
         # 회의록 탭용: 발언에 이름·색 부여
         m.turns = [
             {'name': AGENTS[t['agent']]['name'], 'title': AGENTS[t['agent']]['title'],
@@ -207,7 +226,7 @@ def office_admin(request):
     crew_pending = sum(1 for t in tasks if t.status == Task.ST_BACKLOG) + len(pending_findings)
     done_tasks = list(Task.objects.filter(status__in=[Task.ST_DONE, Task.ST_REJECTED, Task.ST_PR])
                       .select_related('decision')[:10])
-    job_log = _job_log_tail()
+    job_log = _job_log_tail() if _admin_otp_session_ok(request) else '원본 작업 로그는 관리자 재인증 후 확인할 수 있어요.'
     from . import switches as SW
     open_meeting = next((m for m in meetings if m.status == Meeting.STATUS_OPEN), None)
     revising = [d for d in held if d.status == ColumnDraft.STATUS_REVISING]
@@ -229,7 +248,7 @@ def office_admin(request):
         'manual_jobs_available': (os.environ.get('CLAUDE_BACKEND', 'api').lower() == 'cli'
                                   or (bool(getattr(settings, 'ANTHROPIC_API_KEY', ''))
                                       and os.environ.get('AI_ALLOW_PAID_API', 'false').lower() == 'true')),
-    })
+    }, status=response_status)
 
 
 @admin_required
@@ -260,79 +279,70 @@ def switch_set(request, key):
 @admin_required
 @require_POST
 def decision_choose(request, decision_id):
+    """이전 개별 저장 주소도 같은 검증·잠금 규칙을 사용해요."""
     d = get_object_or_404(Decision, pk=decision_id)
-    key = request.POST.get('key', '')
-    if key not in {o.get('key') for o in d.options}:
-        messages.error(request, '선택지가 올바르지 않습니다.')
-        return redirect('office:admin')
-    d.chosen_key, d.chosen_by, d.chosen_at = key, request.user, timezone.now()
-    d.note = request.POST.get('note', '').strip()[:300]
-    d.save(update_fields=['chosen_key', 'chosen_by', 'chosen_at', 'note'])
-    m = d.meeting
-    if m.pending_count == 0 and m.status != Meeting.STATUS_CLOSED:
-        m.status = Meeting.STATUS_CLOSED
-        m.save(update_fields=['status'])
-        # 안건이 다 정해진 지금이 공개용 문장을 만들 시점이다. 회의 직후에는 아직
-        # 고른 주제가 없어 다듬을 내용이 없다. 회의당 한 번만 돌아간다.
-        _spawn(request, ['polish_meeting', '--meeting', str(m.id)])
-    WorkLog.objects.create(agent='lead', action='decision', meeting=m,
-                           text=f"관리자 결정: {d.question} → {(d.chosen or {}).get('title', '')}")
-    msg = f'결정 저장: {(d.chosen or {}).get("title", "")}'
-    # 개발·운영 안건은 정비반 백로그로 넘긴다 (회의 결정이 작업으로 이어지게)
-    if d.kind in (Decision.KIND_DEV, Decision.KIND_OPS) and not d.tasks.exists():
-        ch = d.chosen or {}
-        t = Task.objects.create(
-            source=Task.SRC_MEETING, decision=d,
-            title=ch.get('title', d.question)[:300],
-            body=f"{ch.get('detail', '')}\n\n안건: {d.question}\n제안: {ch.get('proposed_by', '')}",
-            kind=Task.KIND_OPS if d.kind == Decision.KIND_OPS else Task.KIND_DEV,
-        )
-        WorkLog.objects.create(agent='coding', action='crew', text=f'정비 백로그 등록 #{t.id}: {t.title}')
-        msg += ' · 정비 백로그에 등록했습니다'
-    messages.success(request, msg)
-    return redirect('office:admin')
+    from django.http import QueryDict
+    from .decision_review import decorate
+    payload = QueryDict(mutable=True)
+    for item in d.meeting.decisions.all():
+        decorate(item)
+        payload.appendlist('decision_ids', str(item.pk))
+        payload[f'version_{item.pk}'] = item.review_token
+    payload[f'choice_{d.pk}'] = request.POST.get('key', '')
+    payload[f'note_{d.pk}'] = request.POST.get('note', d.note)
+    return _save_meeting_decisions(request, d.meeting_id, payload)
+
+
+@admin_required
+@require_POST
+def meeting_decisions_save(request, meeting_id):
+    get_object_or_404(Meeting, pk=meeting_id)
+    return _save_meeting_decisions(request, meeting_id, request.POST)
+
+
+def _save_meeting_decisions(request, meeting_id, payload):
+    from .decision_review import save_review, ReviewError
+    try:
+        result = save_review(meeting_id, payload, request.user)
+    except ReviewError as exc:
+        messages.error(request, str(exc))
+        return office_admin(request, decision_payload=payload, decision_errors=exc.errors,
+                            decision_meeting_id=meeting_id, response_status=409)
+    if result['polish']:
+        # 전체 저장 트랜잭션이 끝난 뒤에 한 번만 후속 요약을 예약해요.
+        _spawn(request, ['polish_meeting', '--meeting', str(meeting_id)])
+    messages.success(request, f"선택·의견 {result['changed']}개 안건을 저장했어요. 미결정 {result['pending']}개예요.")
+    return redirect(reverse('office:admin') + '#decisions')
 
 
 @admin_required
 @require_POST
 def draft_publish(request, draft_id):
-    from common.management.commands.auto_write_columns import TOPICS, _get_or_create_bot_user
-    from community.models import Category, Question
-
+    from .approval import approve, valid
     from . import schedule as S
-    if request.POST.get('now'):        # 공개 대기 원고를 예정 시각 전에 바로 공개
-        draft = get_object_or_404(ColumnDraft, pk=draft_id, status=ColumnDraft.STATUS_READY)
-        q = S.publish_now(draft, by=request.user)
-        messages.success(request, f'바로 공개: {draft.subject} (#{q.pk})')
-        return redirect('office:admin')
-    draft = get_object_or_404(ColumnDraft, pk=draft_id, status=ColumnDraft.STATUS_HOLD)
-    if draft.publish_at and draft.publish_at > timezone.now() and not draft.target_question_id:
-        draft.status, draft.decided_by, draft.decided_at = ColumnDraft.STATUS_READY, request.user, timezone.now()
-        draft.save(update_fields=['status', 'decided_by', 'decided_at'])
-        WorkLog.objects.create(agent='lead', action='ready', draft=draft, text=S.ready_line(draft))
-        messages.success(request, f'공개 대기: {draft.subject} — {timezone.localtime(draft.publish_at):%m.%d %H:%M}에 공개됩니다')
-        return redirect('office:admin')
-    if draft.series_key:      # 연재 원고 — 새 회차로 발행하거나, 리메이크면 대상 글을 제자리 갱신
-        from office.series_pipeline import publish as publish_series
-        q = publish_series(draft, by=request.user, manual=True)
-        WorkLog.objects.create(agent='lead', action='publish', draft=draft,
-                               text=f'관리자 검수 후 발행: {draft.subject} (id={q.pk})')
-        messages.success(request, f'발행: {draft.subject}')
-        return redirect('office:admin')
-    category = Category.objects.filter(name=TOPICS[draft.topic]['category_name']).first()
-    if category is None:
-        messages.error(request, '카테고리를 찾을 수 없습니다.')
-        return redirect('office:admin')
-    q = Question.objects.create(author=_get_or_create_bot_user(), subject=draft.subject, content=draft.content,
-                                create_date=timezone.now(), category=category)
-    draft.question, draft.status = q, ColumnDraft.STATUS_PUBLISHED
-    draft.decided_by, draft.decided_at = request.user, timezone.now()
-    draft.save(update_fields=['question', 'status', 'decided_by', 'decided_at'])
-    if draft.decision and draft.decision.consumed_at is None:
-        draft.decision.consumed_at = timezone.now()
-        draft.decision.save(update_fields=['consumed_at'])
-    WorkLog.objects.create(agent='lead', action='publish', draft=draft, text=f'관리자 검수 후 발행: {draft.subject}')
-    messages.success(request, f'발행: {draft.subject}')
+    draft = get_object_or_404(ColumnDraft, pk=draft_id, status__in=[ColumnDraft.STATUS_HOLD, ColumnDraft.STATUS_READY])
+    mode = request.POST.get('mode', 'normal')
+    if mode == 'exception' and not _admin_otp_session_ok(request):
+        request.session['admin_otp_next'] = reverse('office:admin') + '#drafts'
+        return redirect('common:admin_otp')
+    try:
+        from .audit import snapshot, fingerprint
+        version = request.POST.get('version')
+        if not version or version != fingerprint(snapshot(draft)):
+            raise ValueError('검수 화면을 연 뒤 원고나 검증 자료가 바뀌었어요. 새로고침 후 다시 확인해 주세요.')
+        if not request.POST.get('now'):
+            approve(draft, request.user, request.POST.get('reason', ''), mode=mode, expected_snapshot=version)
+        if not valid(draft):
+            raise ValueError('현재 원고를 먼저 검수하고 승인해 주세요.')
+        if draft.publish_at and draft.publish_at > timezone.now() and not request.POST.get('now'):
+            draft.status = ColumnDraft.STATUS_READY
+            draft.save(update_fields=['status'])
+            messages.success(request, '승인한 원고를 예약 공개해요.')
+        else:
+            S.publish_now(draft, by=request.user)
+            messages.success(request, '검수한 원고를 공개했어요.')
+    except ValueError as exc:
+        messages.error(request, str(exc))
     return redirect('office:admin')
 
 
@@ -340,6 +350,8 @@ def draft_publish(request, draft_id):
 @require_POST
 def draft_reject(request, draft_id):
     draft = get_object_or_404(ColumnDraft, pk=draft_id, status=ColumnDraft.STATUS_HOLD)
+    from .approval import revoke
+    revoke(draft, request.user, '반려')
     draft.status, draft.decided_by, draft.decided_at = ColumnDraft.STATUS_REJECTED, request.user, timezone.now()
     draft.save(update_fields=['status', 'decided_by', 'decided_at'])
     WorkLog.objects.create(agent='lead', action='reject', draft=draft, text=f'관리자 반려: {draft.subject}')
@@ -348,9 +360,9 @@ def draft_reject(request, draft_id):
 
 
 def _spawn(request, args: list):
-    """manage.py <args> 를 백그라운드로 실행하고 출력을 logs/office_jobs.log 에 이어 쓴다(office.jobs)."""
-    from .jobs import spawn
-    spawn(args, by=request.user.username)
+    """웹 서비스의 자식 프로세스로 만들지 않고 cron 작업 대기열에 넣는다."""
+    from .jobs import enqueue
+    enqueue(args, by=request.user.username, actor=request.user)
 
 
 def _job_log_tail(lines: int = 60) -> str:
@@ -362,6 +374,7 @@ def _job_log_tail(lines: int = 60) -> str:
 
 
 @admin_required
+@admin_otp_required
 def admin_activity(request):
     """관리 화면이 폴링하는 실시간 활동 — 작업 로그 · 진행 중 작업 · 프로세스 출력."""
     since_id = request.GET.get('since')
@@ -401,6 +414,10 @@ def admin_activity(request):
 def draft_revise(request, draft_id):
     """운영자 코멘트를 반영해 다시 쓰도록 연구팀에 되돌린다 (백그라운드 실행)."""
     draft = get_object_or_404(ColumnDraft, pk=draft_id)
+    from .models import JobRequest
+    if JobRequest.objects.filter(draft=draft, status__in=['pending', 'started']).exists():
+        messages.info(request, '이미 이 원고의 수정 작업을 기다리고 있어요.')
+        return redirect('office:admin')
     note = request.POST.get('note', '').strip()
     if not note:
         messages.error(request, '수정 지시 내용을 입력하세요.')
@@ -409,8 +426,13 @@ def draft_revise(request, draft_id):
         messages.error(request, '검수 대기 중인 칼럼만 재작성할 수 있습니다.')
         return redirect('office:admin')
 
+    from .approval import revoke
+    revoke(draft, request.user, '수정 지시')
     draft.admin_note = note
-    draft.status = ColumnDraft.STATUS_REVISING
+    from .audit import append, snapshot
+    append('revision_requested', actor_id=request.user.pk, draft_id=draft.pk,
+           payload={'note': note, 'before': snapshot(draft)})
+    draft.status = ColumnDraft.STATUS_HOLD
     draft.decided_by, draft.decided_at = request.user, timezone.now()
     draft.save(update_fields=['admin_note', 'status', 'decided_by', 'decided_at'])
     if draft.series_key:      # 연재 원고는 연재 기준(골격·기준표)으로 다시 검증한다
@@ -449,15 +471,8 @@ def task_action(request, task_id):
             messages.error(request, f'이슈 생성 실패: {err}')
 
     elif act == 'start':
-        t.status = Task.ST_APPROVED
-        t.decided_by, t.decided_at = request.user, timezone.now()
-        t.note = request.POST.get('note', '')[:300]
-        t.save(update_fields=['status', 'decided_by', 'decided_at', 'note'])
-        args = ['crew_work', '--task', str(t.id), '--by', request.user.username]
-        if request.POST.get('dry'):
-            args.append('--dry-run')
-        _spawn(request, args)
-        messages.success(request, '정비반이 작업을 시작했습니다. 진행 상황은 작업 로그에서 확인하세요.')
+        messages.error(request, '서버에서는 정비반을 실행하지 않아요. 로컬에서 처리해 주세요.')
+        return redirect('office:admin')
 
     elif act == 'reject':
         t.status = Task.ST_REJECTED
@@ -506,18 +521,22 @@ def run_job(request):
         if admin_email:
             cmd += ['--email', admin_email]
     elif job == 'publish' and request.POST.get('topic') in TOPIC_LABEL:
-        cmd = ['office_publish', '--topic', request.POST['topic']]
+        track = request.POST.get('track', 'both')
+        if track not in ('research', 'practical', 'both'):
+            messages.error(request, '올바른 칼럼 유형을 골라 주세요.')
+            return redirect('office:admin')
+        cmd = ['office_publish', '--topic', request.POST['topic'], '--track', track]
     elif job == 'column_map':
-        from .jobs import spawn
-        spawn(['update_column_map'], by=request.user.username, env={'CLAUDE_CLI_FALLBACK': 'false'})
-        messages.success(request, '칼럼 지도 갱신을 시작했습니다. 요약이 없거나 바뀐 칼럼만 다시 만들고, 몇 분 뒤 새로고침하면 반영됩니다.')
+        from .jobs import enqueue
+        enqueue(['update_column_map'], by=request.user.username, dedupe=True, actor=request.user)
+        messages.success(request, '칼럼 지도 갱신을 예약했습니다. 요약이 없거나 바뀐 칼럼만 다시 만들고, 몇 분 뒤 새로고침하면 반영됩니다.')
         return redirect('community:column_map')
     else:
         messages.error(request, '알 수 없는 작업입니다.')
         return redirect('office:admin')
 
     _spawn(request, cmd)
-    messages.success(request, '작업을 시작했습니다. 작업 로그 탭에서 진행 상황이 실시간으로 갱신됩니다.')
+    messages.success(request, '작업을 예약했습니다. 다음 실행 때 작업 로그 탭에서 진행 상황을 확인할 수 있습니다.')
     return redirect('office:admin')
 
 
@@ -561,6 +580,7 @@ def newsletter_detail(request, slug):
 
 
 # ───────────────────────────── 운영자 메일 버튼(재실행·재심 요청)
+@admin_required
 def job_request(request, token):
     """메일의 서명 링크 — GET 은 무엇을 언제 할지 보여 주고, POST 해야 예약한다(링크를 미리 여는 메일 검사기 대비)."""
     from django.core import signing
@@ -575,7 +595,7 @@ def job_request(request, token):
         return render(request, 'office/job_request.html', {'error': '올바르지 않은 링크입니다.'}, status=400)
     job, created = None, False
     if request.method == 'POST':
-        job, created = jobmail.enqueue(data)
+        job, created = jobmail.enqueue(data, actor=request.user)
     from datetime import datetime
     wanted = datetime.fromisoformat(data['r']) if data.get('r') else None
     planned = max(wanted, jobmail.earliest_run()) if wanted else jobmail.earliest_run()
@@ -589,7 +609,34 @@ def job_request(request, token):
 @require_POST
 def job_cancel(request, job_id):
     from .models import JobRequest
-    JobRequest.objects.filter(pk=job_id, status=JobRequest.ST_PENDING).update(status=JobRequest.ST_CANCELLED)
+    get_object_or_404(JobRequest, pk=job_id)
+    from .job_control import cancel
+    cancel(job_id, request.user.pk)
     messages.info(request, '예약을 취소했습니다.')
     return redirect('office:admin')
+
+
+@admin_required
+@require_POST
+def job_restart(request, job_id):
+    from .job_control import restart
+    from .models import JobRequest
+    get_object_or_404(JobRequest, pk=job_id)
+    try:
+        new = restart(job_id, request.user.pk)
+        messages.success(request, f'작업 #{new.pk}로 다시 예약했어요.')
+    except ValueError as exc:
+        messages.error(request, str(exc))
+    return redirect('office:admin')
+
+
+@admin_required
+@admin_otp_required
+def audit_export(request, draft_id):
+    from .models import AuditEvent
+    from django.http import HttpResponse
+    rows = list(AuditEvent.objects.filter(draft_id=draft_id).values())
+    response = HttpResponse(json.dumps({'events': rows}, ensure_ascii=False, default=str), content_type='application/json')
+    response['Cache-Control'] = 'no-store'
+    return response
 

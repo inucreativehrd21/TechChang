@@ -18,6 +18,8 @@ from datetime import timedelta
 from django.conf import settings
 from django.core.mail import EmailMultiAlternatives
 from django.core.management.base import BaseCommand
+from django.db import transaction
+from office.execution import commit_guard
 from django.utils import timezone
 from django.utils.html import escape
 
@@ -40,20 +42,18 @@ ROUND2 = (
     '[사이트 지표·현황]\n{brief}\n\n[발언 기록]\n{transcript}'
 )
 
-# 검색 유입을 늘리는 것이 이번 분기 목표다(2026-10-09 → 10-16 '공격적으로'). 회의 전 정찰한
-# [이번 주 트렌드·검색 수요](office/trends.py)와 [검색 기회]를 주제 선정의 근거로 쓰게 한다.
-COLUMN_TASK = ('당신 분야에서 다음 주 칼럼으로 다룰 주제 2개를 각각 한 줄 근거와 함께 제안하세요. 목표는 검색 유입을 공격적으로 '
-               '늘리는 것입니다 — 사람들이 지금 실제로 많이 찾는 주제를 먼저 잡으세요. '
-               '2개 중 1개는 반드시 [이번 주 트렌드·검색 수요]의 당신 분야 후보 가운데 수요가 높은 것을 정면으로 다루고, '
-               '겨냥할 검색어와 그 수요를 밝히세요. 나머지 1개는 [검색 기회]에 당신 분야 검색어가 있으면 그 검색어를 겨냥하고'
-               '(이미 그 검색어로 걸리는 우리 칼럼이 있으면 새 글이 어떻게 다른지도), 없으면 트렌드 후보를 하나 더 쓰거나 '
-               '독자가 꾸준히 찾는 검색어를 제안하세요. 제목은 겨냥한 검색어를 앞쪽에 그대로 넣어 무엇을 답하는 글인지 '
-               '검색 결과에서 바로 보이게 하세요. 최근 발행 칼럼과 겹치지 않게.')
+# 심화·실용을 각각 편성한다. 검색 수요는 실용 안건에서만 순위 근거로 쓴다.
+COLUMN_TASK = ('당신 분야에서 같은 발행일에 올릴 두 유형을 따로 제안하세요. '
+               'research(학술·기술 심화)는 연구 질문·원리·대안·한계를 탐구하는 후보 2개와 직접 확인할 '
+               '논문·공식 기술 문서 등 1차 자료를 제시하세요. 실제 기술 변화와 기초 심화 모두 가능하며 검색량으로 순위를 정하지 마세요. '
+               'practical(일상·실용 팁)는 독자가 당장 해결할 문제 후보 2개와 적용 대상·구체적 효용·근거를 제시하세요. '
+               '이 유형에만 검색 수요·검색 기회를 소재 선정 참고로 쓰세요. 두 글은 같은 내용의 재포장이면 안 돼요. '
+               '최근 발행 칼럼과 무엇이 다른지도 밝히세요.')
 
 TASKS = {
     'lead': ('회의를 열며 지표를 해석해 주세요: 무엇이 늘고 줄었는지, 어떤 분야·형식의 글이 반응이 좋았는지, '
-             '이번 주 팀이 집중해야 할 한두 가지. 회의 전에 정리한 [이번 주 트렌드·검색 수요]에서 수요가 큰 후보를 '
-             '분야별로 짚고, 마지막에 각 칼럼니스트에게 그 수요를 겨냥한 주제 제안을 요청하세요.'),
+             '이번 주 팀이 탐구할 연구·기술 쟁점과 독자의 실용 문제를 따로 짚으세요. '
+             '각 분야에 심화와 실용 1편씩 필요하며 검색 수요로 심화 안건을 밀어내지 마세요.'),
     'hrd': COLUMN_TASK,
     'data': COLUMN_TASK,
     'coding': COLUMN_TASK,
@@ -69,18 +69,24 @@ SYNTHESIS = (
     '{{\n'
     '  "summary": "회의 결론 3~4문장",\n'
     '  "decisions": [\n'
-    '    {{"kind": "column", "topic": "hrd", "question": "다음 주 HRD 칼럼 주제",\n'
+    '    {{"kind": "column", "topic": "hrd", "column_track": "research", "question": "다음 주 HRD 심화 주제",\n'
     '      "options": [{{"key": "a", "title": "칼럼 주제(구체적)", "detail": "다룰 관점·근거·예상 출처 한두 문장", "proposed_by": "한빈", '
     '"keywords": ["독자가 네이버에 실제로 칠 검색어 2~3개"]}}, ...2~3개]}},\n'
-    '    {{"kind": "column", "topic": "data", ...}},\n'
-    '    {{"kind": "column", "topic": "coding", ...}},\n'
+    '    {{"kind": "column", "topic": "hrd", "column_track": "practical", ...}},\n'
+    '    {{"kind": "column", "topic": "data", "column_track": "research", ...}},\n'
+    '    {{"kind": "column", "topic": "data", "column_track": "practical", ...}},\n'
+    '    {{"kind": "column", "topic": "coding", "column_track": "research", ...}},\n'
+    '    {{"kind": "column", "topic": "coding", "column_track": "practical", ...}},\n'
     '    {{"kind": "series", "topic": "", "question": "연재 시리즈 다음 방향", "options": [...2개]}},\n'
     '    {{"kind": "dev", "topic": "", "question": "사이트 개발·개선 우선 과제", "options": [...2~3개]}},\n'
     '    {{"kind": "ops", "topic": "", "question": "운영·보안 점검 과제", "options": [...1~2개]}}\n'
     '  ]\n'
     '}}\n'
     '규칙: 검증관이 중복·검증 불가로 지목한 주제는 options 에 넣지 않는다. 각 option.key 는 a,b,c. '
-    '[검색 기회]에 그 분야 검색어가 있으면 그 칼럼 안건의 options 중 최소 1개는 그 검색어를 keywords 에 글자 그대로 넣은 주제로 한다. '
+    '세 분야 각각 research/practical 안건 하나씩 총 6개를 반드시 만들고 서로 중복하지 않는다. '
+    'research 선택지는 연구 중요성·검증 가능한 1차 자료·원리·비교·한계로 정하고 생활 팁으로 대체하지 않는다. '
+    '이후 검색 수요 규칙은 practical 안건에만 적용한다. '
+    '[검색 기회]에 그 분야 검색어가 있으면 실용 칼럼 안건의 options 중 최소 1개는 그 검색어를 keywords 에 글자 그대로 넣은 주제로 한다. '
     '[이번 주 트렌드·검색 수요]에 그 분야 후보가 있으면 options 중 최소 1개는 발언에서 나온 트렌드 주제로 하고, 그 후보의 '
     '검색어를 keywords 에 글자 그대로 넣는다. keywords 는 독자가 검색창에 실제로 치는 짧은 한국어 검색어(문장 말고). '
     'dev/ops 는 지표·지적사항에 근거한 구체적 작업으로. 발언에 근거 없는 항목을 만들지 않는다.'
@@ -96,6 +102,8 @@ def mark_gsc_targets(decisions, gaps) -> list:
     queries = [g['query'] for g in gaps if g.get('query')]
     hit = []
     for d in decisions:
+        if d.get('column_track') == 'research':
+            continue
         for o in d.get('options') or []:
             if not isinstance(o, dict):
                 continue
@@ -107,6 +115,24 @@ def mark_gsc_targets(decisions, gaps) -> list:
                     hit.append(q)
                     break
     return list(dict.fromkeys(hit))
+
+
+def validate_column_agenda(decisions):
+    """한 유형을 생략하거나 제목을 복제해 여섯 안건을 채운 회의는 저장하지 않아요."""
+    from community.column_tracks import TRACKS
+    expected = {(topic, track) for topic in ('hrd', 'data', 'coding') for track in TRACKS}
+    columns = [d for d in decisions if d.get('kind') == 'column']
+    pairs = [(d.get('topic'), d.get('column_track')) for d in columns]
+    if len(pairs) != 6 or set(pairs) != expected:
+        raise ValueError('세 분야의 심화·실용 안건 6개를 각각 한 번씩 정리해야 해요.')
+    titles = []
+    for d in columns:
+        options = [o for o in d.get('options', []) if isinstance(o, dict) and o.get('title')]
+        if len(options) < 2:
+            raise ValueError('유형별 안건에 서로 다른 선택지가 2개 이상 필요해요.')
+        titles.extend(_norm(o['title']) for o in options)
+    if len(titles) != len(set(titles)):
+        raise ValueError('심화·실용 안건의 제목을 복제해 채울 수 없어요.')
 
 
 class Command(BaseCommand):
@@ -202,6 +228,7 @@ class Command(BaseCommand):
         result = self._step('결론 정리 · ' + who('lead'),
                             lambda: ask_agent_json('lead', SYNTHESIS.format(brief=brief, transcript=tx()), max_tokens=8000))
         decisions = [d for d in result.get('decisions', []) if isinstance(d, dict) and d.get('options')]
+        validate_column_agenda(decisions)
         self._step('검색 수요 측정·추천', lambda: self._rank(decisions))
         self._step('검색 기회 반영 점검', lambda: self._attach_gsc_targets(decisions, snap.get('gsc_gaps') or []))
         summary = str(result.get('summary', '')).strip()
@@ -239,6 +266,8 @@ class Command(BaseCommand):
         elif targets:
             self.steps[-1]['note'] = '반영: ' + ', '.join(targets)[:200]
 
+    @transaction.atomic
+    @commit_guard()
     def _save(self, week, brief, transcript, snap, summary, decisions):
         meeting = Meeting.objects.create(week_start=week, briefing=brief, transcript=transcript,
                                          snapshot=snap, summary=summary)
@@ -259,6 +288,7 @@ class Command(BaseCommand):
             Decision.objects.create(
                 meeting=meeting, kind=d.get('kind', 'dev') if d.get('kind') in dict(Decision.KIND_CHOICES) else 'dev',
                 topic=d.get('topic', '') if d.get('topic') in ('hrd', 'data', 'coding') else '',
+                column_track=d.get('column_track', '') if d.get('kind') == 'column' else '',
                 question=str(d.get('question', ''))[:300], options=opts_clean,
             )
         # 연구원별 1라운드 발언을 작업 기록으로 (연구실 말풍선에서 "회의에서 한 말"로 보이게)
@@ -366,7 +396,7 @@ class Command(BaseCommand):
     def _decisions_section(self, decisions):
         txt, html = [], []
         for d in decisions:
-            label = f"[{d.get_kind_display()}{' · ' + d.topic if d.topic else ''}] {d.question}"
+            label = f"[{d.get_kind_display()}{' · ' + d.topic if d.topic else ''}{' · ' + d.get_column_track_display() if d.kind == 'column' else ''}] {d.question}"
             txt.append(label)
             html.append(f'<p style="margin:14px 0 4px;font-weight:600">{escape(label)}</p><ul style="margin:0;padding-left:20px">')
             for o in d.options:

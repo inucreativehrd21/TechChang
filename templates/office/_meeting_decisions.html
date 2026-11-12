@@ -1,0 +1,42 @@
+<form method="post" action="{% url 'office:meeting_decisions_save' m.id %}" class="meeting-review" data-meeting-review>
+  {% csrf_token %}
+  <div class="mr-intro">
+    <h2>주제와 의견을 한 번에 정해요</h2>
+    <p>안건마다 주제 하나를 고르고 의견을 남긴 뒤 아래에서 한 번에 저장해요. 일부만 정해도 저장할 수 있어요. 칼럼 의견은 집필 의뢰에 함께 전달해요.</p>
+  </div>
+  {% for d in m.decisions.all %}
+  <fieldset class="decision mr-decision" data-decision="{{ d.pk }}" data-saved-key="{{ d.chosen_key }}" data-title="{{ d.question }}"{% if d.review_locked %} data-locked="true"{% endif %}>
+    <legend>{{ d.question }}</legend>
+    <input type="hidden" name="decision_ids" value="{{ d.pk }}">
+    <input type="hidden" name="version_{{ d.pk }}" value="{{ d.review_token }}">
+    <p class="kind">{{ d.get_kind_display }}{% if d.topic_name %} · {{ d.topic_name }}{% endif %}{% if d.kind == 'column' %} · {{ d.get_column_track_display }}{% endif %}
+      <span class="mr-state">{% if d.chosen_key %}저장됨{% else %}미결정{% endif %}</span>
+    </p>
+    {% if d.review_error %}<p class="mr-error" id="mr-error-{{ d.pk }}" role="alert">{{ d.review_error }}{% if d.chosen %} 현재 저장: {{ d.chosen.title }}{% endif %}{% if d.note %} · 저장된 의견: {{ d.note }}{% endif %}</p>{% endif %}
+    {% if d.attempted_note %}<p class="mr-lock">저장하지 않은 입력 의견: {{ d.attempted_note }}</p>{% endif %}
+    {% if d.review_locked %}<p class="mr-lock">{{ d.review_locked }}</p>{% endif %}
+    <div class="mr-options">
+      {% for o in d.options %}
+      <label class="opt mr-option">
+        <input type="radio" name="choice_{{ d.pk }}" value="{{ o.key }}"{% if o.key == d.form_key %} checked{% endif %}{% if d.review_locked %} disabled{% endif %}{% if d.review_error %} aria-describedby="mr-error-{{ d.pk }}"{% endif %}>
+        <span><b>{% if o.recommended %}<span class="rec">추천</span> {% endif %}<span data-option-title>{{ o.title }}</span></b>
+          {% if o.detail %}<small>{{ o.detail }}</small>{% endif %}
+          {% if o.proposed_by %}<small>제안 {{ o.proposed_by }}</small>{% endif %}
+          {% if o.demand_note %}<small>{{ o.demand_note }}{% if d.column_track == 'research' %} · 참고 수치예요. 심화 선정 순위에는 쓰지 않아요.{% endif %}</small>{% endif %}
+        </span>
+      </label>
+      {% endfor %}
+    </div>
+    <label class="mr-note-label" for="note-{{ d.pk }}">{% if d.kind == 'column' %}집필에 반영할 의견{% else %}운영자 의견{% endif %} <span class="muted">선택 · 최대 300자</span></label>
+    <textarea name="note_{{ d.pk }}" id="note-{{ d.pk }}" rows="2" maxlength="300" data-saved-note="{{ d.note }}"{% if d.review_locked %} readonly{% endif %} placeholder="예: 국내 사례를 비교하고, 적용이 어려운 조건도 설명해 주세요…">{{ d.form_note }}</textarea>
+  </fieldset>
+  {% endfor %}
+  <section class="mr-summary" aria-label="선택한 주제 요약" data-review-summary hidden>
+    <h3>저장할 선택 한눈에 보기</h3>
+    <ul data-review-summary-list></ul>
+  </section>
+  <div class="mr-savebar">
+    <p data-review-status role="status" aria-live="polite">선택·의견을 모두 확인한 뒤 저장해 주세요.</p>
+    <button type="submit" class="go" data-review-save>선택·의견 한 번에 저장</button>
+  </div>
+</form>

@@ -14,6 +14,7 @@
 from django.contrib.auth.models import User
 from django.core.management.base import BaseCommand, CommandError
 from django.utils import timezone
+from contextlib import nullcontext
 
 from common.management.commands.auto_write_columns import TOPICS
 from office import genres as G
@@ -26,6 +27,7 @@ from office.agents import AGENTS, TOPIC_AGENT
 from office.models import ColumnDraft
 from office.services import ask_agent, log
 from office.run_context import bounded_run
+from office.recorder import StageRecorder
 
 
 class Command(BaseCommand):
@@ -45,7 +47,10 @@ class Command(BaseCommand):
     def handle(self, *args, **opts):
         # 어떻게 끝나든(발행·보류·실패) 연구실 라이브 표시를 정리한다
         try:
-            return self._run(*args, **opts)
+            from office.editorial import use_track
+            track = ColumnDraft.objects.filter(pk=opts['draft']).values_list('column_track', flat=True).first() or ''
+            with use_track(track):
+                return self._run(*args, **opts)
         finally:
             live.finish()
 
@@ -76,6 +81,7 @@ class Command(BaseCommand):
         label = TOPICS[topic_key]['label']
         out = self.stdout.write
         by = User.objects.filter(username=opts['by']).first() if opts['by'] else None
+        stages = StageRecorder(draft=draft)
 
         def rec(agent, action, text):
             out(f'  [{AGENTS[agent]["name"]}] {text[:100]}')
@@ -86,6 +92,7 @@ class Command(BaseCommand):
         draft.save(update_fields=['admin_note', 'status'])
         rec('lead', 'admin_note', f'운영자 수정 지시 접수: {admin_note[:150]}')
 
+        revision = None
         try:
             recent = P.recent_titles(topic_key)
             prev_qa = draft.qa_report or {}
@@ -100,27 +107,24 @@ class Command(BaseCommand):
                 content = edited if edited is not None else draft.content
                 rec('lead', 'revise', f'운영자 직접 교열본으로 재심 요청: {subject} ({P.body_length(content)}자)')
             else:
-                # 1) 운영자 지시 반영 재작성 — 원고가 따르는 틀(office.genres)을 유지한다
+                # 요청에 연결된 편집만 적용하고, 독립 검증으로 빠진 요구를 확인한다.
+                from office.revision_requests import RevisionRequests
                 genre = G.genre_for(topic_key, content=draft.content)
                 live.mark('revise', writer, topic_key)
-                raw = ask_agent(writer, P.ADMIN_REVISE_PROMPT.format(
-                    admin_note=admin_note + (f'\n\n[운영자가 원문을 확인한 사실 — 이것만 새로 쓸 수 있습니다]\n{facts}'
-                                             if facts else ''),
-                    qa_issues='\n'.join(f'- {i}' for i in R.revision_notes(prev_qa)) or '(없음)',
-                    check_notes=prev_check.get('notes', '') or '(없음)',
-                    subject=draft.subject, content=draft.content, structure=G.structure(genre),
-                    standard=P.writing_standard(topic_key, genre)) + P.pack_block(pack),
-                    max_tokens=P.COLUMN_MAX_TOKENS)
-                subject, content, ok, why = P.safe_rewrite(raw, draft.subject, draft.content)
-                if not ok:
-                    rec(writer, 'revise', f'재작성 실패 — {why}. 원고를 그대로 두고 검수 대기로 되돌립니다')
-                    draft.status = ColumnDraft.STATUS_HOLD
-                    draft.save(update_fields=['status'])
+                revision = RevisionRequests(draft, admin_note, writer, stages,
+                    guide=G.structure(genre)+'\n'+P.writing_standard(topic_key, genre)
+                    +P.pack_block(pack)+'\n[참고: 기존 필수 지적]\n'+'\n'.join(R.revision_notes(prev_qa)))
+                candidate = revision.generate()
+                if candidate is None:
+                    revision.retain()
+                    rec(writer, 'hold', '수정 요청의 반영을 확인하지 못해 기존 원고를 유지해요.')
                     return
-                rec(writer, 'revise', f'운영자 지시 반영해 재작성: {subject} ({P.body_length(content)}자)')
+                subject, content = candidate
+                rec(writer, 'revise', f'요청별 편집 후보 검증: {subject} ({P.body_length(content)}자)')
 
             # 2) 팩트체크
             check = P.step_check(subject, content, recent, verified=pack)
+            stages.record('check', 'checker', check)
             bad = [c for c in check.get('claims', []) if c.get('status') in P.BAD_CLAIMS]
             rec('checker', 'check', f"팩트체크 {check.get('verdict')}: 확인 필요 {len(bad)}건")
             pack = E.merge(pack, E.from_check(check))
@@ -135,15 +139,32 @@ class Command(BaseCommand):
             #    사람이 교열하며 기존 그림을 남겼으면 손대지 않는다(교열본을 그대로 심사받는 게 목적).
             #    교열본에 그림이 없어도 표가 있으면 그대로 심사받는다 — 예전엔 사람이 일부러 뺀 그림 자리에
             #    차트 담당이 옛 그림을 다시 넣어, 교열 의도와 다른 원고가 심사됐다(#36).
-            if review_only and P.has_visual(content):
-                keep_img = '![' in content and draft.chart_path
+            render_requested = revision and any(r.get('visual_action') == 'render' for r in revision.requirements)
+            if render_requested:
+                content = P.strip_visual_block(content)
+                content, chart_rel, chart_note, visual_report = P.step_visual(
+                    content, topic_key, rec=rec, feedback=admin_note+'\n'+'\n'.join(
+                        r['request']+' / 완료 기준: '+r['done_when'] for r in revision.requirements
+                        if r.get('visual_action') == 'render'))
+            elif P.has_visual(content):
+                keep_img = draft.chart_path and '/media/'+draft.chart_path in content
                 chart_rel = draft.chart_path if keep_img else ''
-                chart_note = draft.chart_note if keep_img else '운영자 교열본의 표를 핵심 도판으로 사용'
-                visual_report = f'운영자 교열본 — 도판 그대로 심사: {chart_note}'
+                chart_note = draft.chart_note if keep_img else '수정본의 표를 핵심 도판으로 사용'
+                visual_report = f'수정본 — 도판 그대로 심사: {chart_note}'
+            elif revision:
+                # 요청으로 지운 도판을 자동 생성으로 되살리지 않는다.
+                chart_rel, chart_note, visual_report = '', '수정 요청의 도판 구성을 유지해요.', '도판 없음'
             else:
                 content = P.strip_visual_block(content)
                 content, chart_rel, chart_note, visual_report = P.step_visual(
                     content, topic_key, rec=rec, feedback=P.visual_feedback(draft.qa_report))
+
+            if review_only and not opts['no_publish']:
+                keywords = P.headline_keywords((draft.decision.chosen or {}) if draft.decision else {})
+                subject, _why = P.step_headline(subject, content, keywords=keywords, recent=recent)
+            if check.get('subject') != subject or check.get('verification_hash') != P.verification_hash(content):
+                check = P.step_check(subject, content, recent, verified=pack)
+                stages.record('recheck', 'checker', check)
 
             # 4) 재심
             critique = P.step_critique(subject, content)
@@ -151,32 +172,40 @@ class Command(BaseCommand):
                                       f"{critique.get('reason', '')[:100]}")
             qa = P.step_review(subject, content, check, chart_rel, visual_report, critique, verified=pack,
                                previous=draft.qa_report or None, previous_content=draft.content)
+            if revision and not revision.finish(subject, content, qa, check):
+                rec('editor', 'hold', '미반영·품질 하락으로 보완본을 채택하지 않고 기존 원고를 유지해요.')
+                out(self.style.WARNING('수정 결과 보류 — 요청별 결과를 확인해 주세요. 기존 원고를 유지했어요.'))
+                return
+            stages.record('review', 'editor', qa)
+            stages.complete(subject, content, check, qa)
             verdict_ko = {'accept': '발행', 'minor': '수정 요청', 'major': '보류'}.get(qa['verdict'], qa['verdict'])
             rec('editor', 'qa', f"재심 {qa['score']}/100 ({qa['length']}자) → {verdict_ko}: {qa.get('notes', '')}")
 
-            draft.subject, draft.content, draft.chart_path, draft.chart_note = subject, content, chart_rel, chart_note
-            draft.check_report, draft.qa_report = check, qa
-            draft.revisions += 1
+            with revision.commit() if revision else nullcontext():
+                draft.subject, draft.content, draft.chart_path, draft.chart_note = subject, content, chart_rel, chart_note
+                draft.check_report, draft.qa_report = check, qa
+                draft.revisions += 1
 
-            if qa['verdict'] == 'accept' and not opts['no_publish']:
-                keywords = P.headline_keywords((draft.decision.chosen or {}) if draft.decision else {})
-                new_title, why = P.step_headline(subject, content, keywords=keywords, recent=recent)
-                if new_title != subject:
-                    rec('editor', 'headline', f'제목 다듬기: 「{subject}」 → 「{new_title}」 — {why}'[:300])
-                    subject = draft.subject = new_title
-                q = S.finish_accepted(draft, P.publish_draft, by=by)
-                if q is None:       # 공개 예정 시각 전 — 그 시각에 공개(office.schedule)
-                    rec('lead', 'ready', S.ready_line(draft))
-                    out(self.style.SUCCESS(f'공개 대기 [{label}] {subject} ({qa["score"]}점)'))
+                if qa['verdict'] == 'accept' and not opts['no_publish']:
+                    q = S.finish_accepted(draft, P.publish_draft, by=by)
+                    if draft.status == ColumnDraft.STATUS_HOLD:
+                        rec('lead', 'hold', '재작성 심사를 통과했어요. 새 원고의 승인을 기다려요.')
+                        return
+                    if q is None:
+                        rec('lead', 'ready', S.ready_line(draft))
+                        out(self.style.SUCCESS(f'공개 대기 [{label}] {subject} ({qa["score"]}점)'))
+                    else:
+                        rec('lead', 'publish', f'운영자 지시 반영 후 발행: {subject} (id={q.pk}, {qa["score"]}점)')
+                        out(self.style.SUCCESS(f'발행 완료 [{label}] {subject} (id={q.pk}, {qa["score"]}점)'))
                 else:
-                    rec('lead', 'publish', f'운영자 지시 반영 후 발행: {subject} (id={q.pk}, {qa["score"]}점)')
-                    out(self.style.SUCCESS(f'발행 완료 [{label}] {subject} (id={q.pk}, {qa["score"]}점)'))
-            else:
-                draft.status = ColumnDraft.STATUS_HOLD
-                draft.save()
-                out(self.style.WARNING(f'재작성 완료 — 여전히 검수 대기 [{label}] {subject} ({qa["score"]}점)'))
+                    draft.status = ColumnDraft.STATUS_HOLD
+                    draft.save()
+                    out(self.style.WARNING(f'재작성 완료 — 여전히 검수 대기 [{label}] {subject} ({qa["score"]}점)'))
 
         except Exception as ex:  # noqa: BLE001
+            if revision:
+                revision.retain('수정 작업을 완료하지 못했어요: '+str(ex))
+                stages.record('fail', 'lead', {'reason': str(ex)[:300]}, status='failed')
             draft.status = ColumnDraft.STATUS_HOLD
             draft.save(update_fields=['status'])
             log('lead', 'fail', f'재작성 실패: {str(ex)[:200]}', draft=draft)

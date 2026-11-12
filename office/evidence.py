@@ -99,6 +99,55 @@ def keys_in(text: str) -> set:
     return {k for k in (key(m.group(0)) for m in _NUM.finditer(_clean(text))) if k}
 
 
+def _sentence_parts(text: str) -> list[str]:
+    """마크다운 링크·이미지·인라인 코드 안의 마침표에서 문장을 자르지 않는다."""
+    protected = []
+    i = 0
+    while i < len(text):
+        if text[i] == '\\':
+            i += 2
+            continue
+        if text[i] == '`':
+            end = i + 1
+            while end < len(text) and text[end] == '`':
+                end += 1
+            close = text.find(text[i:end], end)
+            stop = close + end - i if close >= 0 else len(text)
+            protected.append((i, stop))
+            i = stop
+            continue
+        if text[i] != '[':
+            i += 1
+            continue
+        start, stop, depth = i, i + 1, 1
+        while stop < len(text) and depth:
+            if text[stop] == '\\':
+                stop += 2
+                continue
+            depth += (text[stop] == '[') - (text[stop] == ']')
+            stop += 1
+        if not depth and stop < len(text) and text[stop] in '([':
+            opening = text[stop]
+            closing = ')' if opening == '(' else ']'
+            depth, stop = 1, stop + 1
+            while stop < len(text) and depth:
+                if text[stop] == '\\':
+                    stop += 2
+                    continue
+                depth += (text[stop] == opening) - (text[stop] == closing)
+                stop += 1
+        protected.append((start, stop))
+        i = stop
+    parts, begin = [], 0
+    for match in re.finditer(r'(?<=[.?!])\s+', text):
+        if any(start <= match.start() < end for start, end in protected):
+            continue
+        parts.append(text[begin:match.start()])
+        begin = match.end()
+    parts.append(text[begin:])
+    return parts
+
+
 def _sentences(content: str):
     """(줄 번호, 문장) — 본문만(참고 자료 앞까지), 코드·제목 줄 제외. 표 행은 행 전체를 한 문장으로."""
     body = _REFS.sub('', _CODE.sub(lambda m: '\n' * m.group(0).count('\n'), content or ''))
@@ -109,7 +158,7 @@ def _sentences(content: str):
         if s.startswith('|'):
             yield i, s
             continue
-        for sent in re.split(r'(?<=[.?!])\s+', s):
+        for sent in _sentence_parts(s):
             if sent.strip():
                 yield i, sent.strip()
 
@@ -168,12 +217,12 @@ def drop_sentences(content: str, nums: list[str], *, stats_only: bool = False) -
         quote = '> ' if s.startswith('> ') else ''
         body = s[len(quote):]
         kept = []
-        for sent in re.split(r'(?<=[.?!])\s+', body):
+        for sent in _sentence_parts(body):
             if {key(n) for n in significant(sent, stats_only)} & targets:
                 removed.append(sent)
             else:
                 kept.append(sent)
-        if len(kept) != len(re.split(r'(?<=[.?!])\s+', body)):
+        if len(kept) != len(_sentence_parts(body)):
             lines[i] = (prefix + quote + ' '.join(kept)) if kept else ''
     text = re.sub(r'\n{3,}', '\n\n', '\n'.join(lines))
     return text, removed

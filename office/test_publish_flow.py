@@ -4,6 +4,7 @@ import shutil
 import tempfile
 import threading
 import time
+from pathlib import Path
 from io import StringIO
 from unittest import mock
 
@@ -12,6 +13,8 @@ from django.test import TestCase
 
 from office import pipeline as P
 from office.models import ColumnDraft, StageRun
+from office.model_router import use_profile
+from office import review_protocol as R
 
 REFS = '\n\n## 참고 자료\n- 고용노동부, 2024\n- OECD, 2023\n- Gallup, 2024\n\n*테크창 연구팀*'
 
@@ -78,11 +81,19 @@ class PublishFlowTests(TestCase):
             self.assertIn(s, stages)
         self.assertEqual(draft.status, ColumnDraft.STATUS_HOLD)   # --no-publish
 
-    def test_unchanged_figures_skip_the_recheck(self):
+    def test_nonnumeric_edit_is_rechecked(self):
         rewritten = 'TITLE: 제목\n---\n' + column(30).replace('리드 문단입니다.', '고친 리드입니다.')
         draft, checks = self.run_publish(editor_raw=rewritten, reviews=[qa('minor', 70), qa('accept', 85)])
-        self.assertEqual(len(checks), 1)
-        self.assertFalse(StageRun.objects.filter(draft=draft, stage='reverify').exists())
+        self.assertEqual(len(checks), 2)
+        self.assertTrue(StageRun.objects.filter(draft=draft, stage='reverify').exists())
+
+    def test_numeric_lock_after_reverification_gets_a_fresh_check(self):
+        rewritten = 'TITLE: 제목\n---\n' + column(45)
+        pruned = column(45).replace('리드 문단입니다.', '수치 잠금 뒤 원고입니다.')
+        with mock.patch.object(P, 'lock_numbers', side_effect=[(column(30), []), (pruned, ['삭제된 수치 문장'])]):
+            draft, checks = self.run_publish(editor_raw=rewritten, reviews=[qa('minor', 70), qa('accept', 85)])
+        self.assertEqual(len(checks), 3)
+        self.assertEqual(checks[-1], draft.content)
 
     def test_last_review_with_must_fix_left_is_not_accepted(self):
         rewritten = 'TITLE: 제목\n---\n' + column(30).replace('리드 문단입니다.', '고친 리드입니다.')
@@ -116,12 +127,11 @@ class ConcurrentSpoolTests(TestCase):
             while not stop.is_set():
                 for n in os.listdir(self.spool):
                     if n.startswith('req.') and n.endswith('.json'):
-                        meta = json.load(open(os.path.join(self.spool, n), encoding='utf-8'))
+                        meta = json.loads(Path(self.spool, n).read_text(encoding='utf-8'))
                         if meta['seq'] in answered:
                             continue
                         answered.add(meta['seq'])
-                        open(os.path.join(self.spool, f"reply.{meta['seq']}.md"), 'w',
-                             encoding='utf-8').write(f"{meta['agent']} 답")
+                        Path(self.spool, f"reply.{meta['seq']}.md").write_text(f"{meta['agent']} 답", encoding='utf-8')
                 time.sleep(0.02)
 
         results = {}
@@ -157,3 +167,20 @@ class AcceptAfterRevisionTests(TestCase):
         self.assertFalse(R.accept_after_revision({'verdict': 'minor', 'fatal': [], 'must_fix': left}))
         self.assertFalse(R.accept_after_revision({'verdict': 'minor', 'fatal': ['unverified_data'], 'must_fix': []}))
         self.assertFalse(R.accept_after_revision({'verdict': 'major', 'fatal': [], 'must_fix': []}))
+
+    def test_a_profile_needs_current_factual_pass_even_with_high_editor_score(self):
+        body = column(30)
+        base = {'verdict': 'accept', 'score': 100, 'fatal': [], 'must_fix': []}
+        check = {'verdict': 'revise', 'verification_hash': P.verification_hash(body), 'subject': '제목'}
+        with use_profile('a'):
+            from copy import deepcopy
+            qa_bad = deepcopy(base)
+            R.require_check(qa_bad, check, body, '제목')
+            self.assertFalse(R.publishable(R.finalize(qa_bad)))
+            qa_stale = deepcopy(base)
+            R.require_check(qa_stale, {**check, 'verdict': 'pass'}, body, '바뀐 제목')
+            self.assertFalse(R.publishable(R.finalize(qa_stale)))
+            qa_good = deepcopy(base)
+            R.require_check(qa_good, {**check, 'verdict': 'pass'}, body, '제목')
+            self.assertTrue(R.publishable(R.finalize(qa_good)))
+            self.assertEqual(qa_good['review_contract_version'], 1)

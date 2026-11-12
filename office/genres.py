@@ -65,7 +65,28 @@ TITLE: [칼럼 제목 - 구체적이고 흥미를 끄는 한국어 제목, 30자
 
 """ + _SHARED_TAIL
 
+RESEARCH_STRUCTURE = """
+학술·기술 심화 탐구 칼럼이에요. 첫 줄은 TITLE: 제목, 둘째 줄은 ---로 출력하고 본문은 마크다운으로 작성하세요.
+리드는 탐구할 질문과 확인된 답을 2~3문장으로 제시하세요. 다음 절을 순서대로 구성하세요.
+## 탐구 질문 — 무엇이 알려져 있고 어떤 쟁점이 남아 있는지, 이번 글이 답할 범위를 좁히세요.
+## 근거와 방법 — 실제 열람한 1차 자료 2개 이상을 대조하고, 출처·방법·성립 조건을 3행 이상 비교표로 정리하세요.
+통계가 없는 주제에는 자료·방법·스펙 비교표를 사용하고 출처 없는 숫자를 채워 넣지 마세요.
+## 동작 원리 — 왜 그 결과가 생기는지 인과 경로·알고리즘·연구 방법을 구체적으로 설명하세요.
+필요한 수식·코드·작은 예시를 사용하되 실행하지 않은 예제를 재현했다고 쓰지 마세요.
+## 비교와 한계 — 대안, 반례, 측정 조건, 연구 한계와 일반화할 수 없는 범위를 검토하세요.
+## 시사점 — 확인된 변화가 연구·설계·실무 판단에 주는 의미와 아직 열린 질문을 연결하세요.
+## 맺음말 — 탐구 질문의 답과 그 답이 성립하는 조건을 마무리하세요.
+## 참고 자료 — 본문에서 대조한 논문·공식 문서·표준·원자료의 실제 주소를 적으세요.
+마지막에 ---와 *테크창 연구팀* 서명을 넣으세요.
+""" + _SHARED_TAIL
+
 GENRES = {
+    'research': {
+        'label': '학술·기술 심화', 'structure': RESEARCH_STRUCTURE,
+        'required': ['탐구 질문', '근거와 방법', '동작 원리', '비교와 한계', '시사점', '맺음말', '참고 자료'],
+        'evidence_section': '근거와 방법',
+        'outline': '리드·탐구 질문·근거와 방법·동작 원리·비교와 한계·시사점·맺음말·참고 자료',
+    },
     'data': {
         'label': '데이터 칼럼',
         'structure': COLUMN_STRUCTURE,
@@ -88,6 +109,9 @@ DEFAULT_BY_TOPIC = {'coding': 'tutorial'}
 def genre_for(topic_key: str = '', brief: dict | None = None, content: str = '') -> str:
     """기획서가 고른 장르 → 이미 쓴 원고의 근거 소제목 → 분야 기본값 순.
     재심·운영자 수정처럼 기획서가 없는 단계에서도 원고가 따르는 틀을 유지한다(옛 코딩 칼럼은 데이터 틀)."""
+    from .editorial import current_track, RESEARCH
+    if current_track() == RESEARCH or '## 근거와 방법' in (content or ''):
+        return 'research'
     from .switches import get
     if not get('genres'):                                   # .env OFFICE_GENRES → 관리 화면 설정 → 기본 꺼짐
         return 'data'

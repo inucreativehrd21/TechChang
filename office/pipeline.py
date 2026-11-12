@@ -284,6 +284,13 @@ QA_PROMPT = (
 # ───────────────────────────── 보조
 # 장르마다 구조·근거 항목의 설명만 바뀐다(가중치는 같다 — 점수 기준선 80·65를 그대로 쓴다)
 RUBRIC_BY_GENRE = {
+    'research': {
+        'depth': '심층성 — 연구 질문, 인과 경로·알고리즘·방법론, 대안 비교와 반례·한계를 구체적으로 탐구했는가',
+        'evidence': '근거 — 실제 대조한 1차 자료의 방법·조건·결과와 필자 해석을 구분했는가. 출처 있는 방법·스펙 '
+                    '비교표도 근거이며, 통계가 없는 기술·학술 주제에 통계를 요구하지 마세요',
+        'visual': '시각 자료 — 연구·설계 판단에 쓰이는 비교표·구조도·차트가 명료한가. 적절한 비교표만 있어도 '
+                  '충족하며 장식용 통계 차트를 강제하지 마세요',
+    },
     'tutorial': {
         'evidence': '근거 — 공식 문서·스펙 비교표와 출처, 실행 확인된 예제 결과, 팩트체크 통과 여부. '
                     '통계가 없는 주제에 통계를 요구하지 마세요',
@@ -316,7 +323,7 @@ def visual_feedback(qa: dict | None) -> str:
     return '\n'.join(f'- {i}' for i in items[:4])
 
 
-def strip_visual_block(content: str) -> str:
+def strip_visual_block(content: str, *, only_images: set[str] | None = None) -> str:
     """앞서 차트 담당이 삽입한 도판(그림·머리·캡션·단위·출처·도판 표)을 걷어낸다.
 
     본문이 다시 쓰였을 때 옛 수치의 그림이 남지 않도록 지우고 새로 만든다.
@@ -328,6 +335,7 @@ def strip_visual_block(content: str) -> str:
     """
     from .services import FIGURE_MARK
     IMG = re.compile(r'^!\[[^\]]*\]\([^)]*\)\s*$')
+    BROKEN_IMG = re.compile(r'^!\[(?:그림|차트|도표)\s*\d+[^\n]*$')
     HEAD = re.compile(r'^\*\*(?:그림|표)\s*\d+\.?[^\n]*\*\*\s*$')     # 도판 머리(**그림 N. 제목**)
     OLD_HEAD = re.compile(r'^\*\*[^\n]{2,80}\*\*\s*(?:\(단위:[^\n]*\))?\s*$')  # 옛 도판 제목 — 블록 안에서만 인정
     NOTE = re.compile(r'^\*[^\n]*(?:출처|단위)[^\n]*\*\s*$')
@@ -348,7 +356,7 @@ def strip_visual_block(content: str) -> str:
         lines = chunk.splitlines()
         if len(lines) == 1 and lines[0].strip() == FIGURE_MARK:
             return 'mark'
-        if len(lines) == 1 and IMG.match(lines[0]):
+        if len(lines) == 1 and (IMG.match(lines[0]) or BROKEN_IMG.match(lines[0])):
             return 'img'
         if len(lines) == 1 and (HEAD.match(lines[0]) or OLD_HEAD.match(lines[0])):
             return 'head'
@@ -366,11 +374,15 @@ def strip_visual_block(content: str) -> str:
             continue
         # 도판 블록: 표식/이미지 → 머리 → 캡션(머리 바로 뒤 한 문단) → 단위·출처 → 도판 표
         j, after_head, caption_used, table_used = i + 1, False, False, False
+        image_used = kind(chunks[i]) == 'img'
         while j < len(chunks):
             k = kind(chunks[j])
+            if k == 'img' and image_used:
+                break
             if k == 'table' and table_used:    # 도판 표는 하나 — 바로 뒤에 붙은 작가 표까지 먹지 않는다
                 break
             if k in ('img', 'note', 'table'):
+                image_used = image_used or k == 'img'
                 table_used = table_used or k == 'table'
                 after_head = False
             elif k == 'head':
@@ -380,13 +392,16 @@ def strip_visual_block(content: str) -> str:
             else:
                 break
             j += 1
+        if only_images is not None and not any(c.strip() in only_images for c in chunks[i:j]):
+            out.extend(chunks[i:j])
         i = j
     text = '\n\n'.join(out).strip('\n') + '\n'
     return re.sub(r'\x00CODE(\d+)\x00', lambda m: codes[int(m.group(1))], text)
 
 
 def has_visual(content: str) -> bool:
-    return '![' in content or bool(re.search(r'^\|.*\|$', content, flags=re.M))
+    return bool(re.search(r'!\[[^\]\n]*\]\([^\n]+\)', content)
+                or re.search(r'^\|.*\|$', content, flags=re.M))
 
 
 def compute_score(scores: dict) -> int:
@@ -562,6 +577,15 @@ def recent_titles(topic_key: str, limit: int = 20) -> list:
 
 
 # ───────────────────────────── 단계
+def decision_choice(brief_decision):
+    """선택 근거와 운영자 의견을 함께 집필에 전달하되 공개 안건 데이터는 바꾸지 않아요."""
+    chosen = dict(brief_decision.chosen or {}) if brief_decision else {}
+    note = (getattr(brief_decision, 'note', '') or '').strip()
+    if note:
+        chosen['detail'] = str(chosen.get('detail', ''))+'\n[운영자 집필 의견 — 사실 주장은 별도 검증]\n'+note
+    return chosen
+
+
 @live_step('brief', 'lead')
 def step_brief(topic_key: str, brief_decision, recent: list, *, rec=None) -> dict:
     """1) 기획서 — 팀장이 집필 지시를 만들고, 데이터 담당이 필요한 지표를 얹는다.
@@ -572,7 +596,7 @@ def step_brief(topic_key: str, brief_decision, recent: list, *, rec=None) -> dic
     그것을 그리기만 하면 된다.
     """
     topic = TOPICS[topic_key]
-    chosen = (brief_decision.chosen or {}) if brief_decision else {}
+    chosen = decision_choice(brief_decision)
     subject = chosen.get('title', '(편집회의 결정 없음 — 칼럼니스트가 직접 선정)')
     brief = ask_agent_json('lead', BRIEF_PROMPT.format(
         topic_hint=topic['topic_hint'], audience=topic['audience'], subject=subject,
@@ -709,6 +733,9 @@ def headline_keywords(chosen: dict) -> list:
 
 def search_target_rule(chosen: dict) -> str:
     """회의가 GSC [검색 기회] 검색어를 겨냥해 고른 주제면, 그 검색어로 찾아온 독자를 맞이하는 글이 되게 한다."""
+    from .editorial import current_track, RESEARCH
+    if current_track() == RESEARCH:
+        return ''
     q = (chosen or {}).get('gsc_target', '')
     if not q:
         return ''
@@ -721,7 +748,7 @@ def search_target_rule(chosen: dict) -> str:
 def step_blueprint(topic_key: str, brief_decision, brief: dict, recent: list) -> tuple:
     """1.5) 집필 설계도 + 검증관 사전 검증(office.blueprint). 반환 (설계도, 검증 결과) — 실패하면 ({}, {})."""
     from . import blueprint as B
-    chosen = (brief_decision.chosen or {}) if brief_decision else {}
+    chosen = decision_choice(brief_decision)
 
     def lst(key):
         v = brief.get(key) or []
@@ -743,7 +770,7 @@ def step_draft(topic_key: str, brief_decision, brief: dict, recent: list, bluepr
     from . import genres as G
     topic = TOPICS[topic_key]
     genre = G.genre_for(topic_key, brief)
-    chosen = (brief_decision.chosen or {}) if brief_decision else {}
+    chosen = decision_choice(brief_decision)
     if chosen:
         subject_block = ('이번 칼럼 주제는 편집회의에서 결정되었습니다. 이 주제로 작성하세요.\n'
                          f"- 주제: {chosen.get('title', '')}\n- 관점·근거: {chosen.get('detail', '')}\n\n")
@@ -818,7 +845,13 @@ def lock_numbers(content: str, pack: str, *, baseline: str | None = None,
         bad = [(n, sent) for n, sent in bad if E.key(n) not in old]
     if not bad:
         return content, []
-    new, removed = E.drop_sentences(content, [n for n, _ in bad], stats_only=stats_only)
+    targets = {E.key(n) for n, _ in bad}
+    bad_images = {line.strip() for line in content.splitlines() if line.lstrip().startswith('![')
+                  and {E.key(n) for n in E.significant(line, stats_only)} & targets}
+    # 이미지 일부를 자르지 않고 해당 도판과 캡션을 한 단위로 걷어낸다.
+    cleaned = strip_visual_block(content, only_images=bad_images) if bad_images else content
+    new, removed = E.drop_sentences(cleaned, [n for n, _ in bad], stats_only=stats_only)
+    removed = sorted(bad_images) + removed
     if len(removed) > LOCK_MAX_DROP:
         # 이만큼 걸리면 작가가 지어낸 게 아니라 근거 모으기가 실패한 쪽이다 — 글을 비우지 말고 심사에 맡긴다
         logger.warning('수치 잠금 생략: 근거 없는 수치 문장 %d개(상한 %d)', len(removed), LOCK_MAX_DROP)
@@ -914,6 +947,8 @@ def writing_standard(topic_key: str = '', genre: str | None = None) -> str:
     base = WRITING_STANDARD.format(min_chars=MIN_CHARS, rubric=rubric_text(genre), recency=recency_rule(),
                                    sections=' / '.join(spec(genre)['required']),
                                    evidence_rule=EVIDENCE_RULES.get(genre, EVIDENCE_RULES['data']))
+    from .writing_craft import GUIDE
+    base += '\n\n' + GUIDE
     if not topic_key:
         return base
     from .arsenal import exemplar_block, knowledge_pack
@@ -1206,6 +1241,10 @@ def step_review(subject: str, content: str, check: dict, chart_rel: str,
         critique=critique_text(critique), length=length, length_rule=length_rule(length),
         style=style_note, visual=visual, subject=subject, content=content,
         rubric=rubric_text(genre)) + verified_block(verified, 'editor')
+    from .writing_craft import REVIEW_GUIDE
+    prompt += REVIEW_GUIDE
+    from .editorial import review_rule, review_failures, current_track
+    prompt += review_rule()
     from .arsenal import exemplar_block
     from . import review_protocol as R
     prompt += exemplar_block(for_editor=True)      # 채점 기준점 — 발행된 모범 칼럼과 비교해 매긴다
@@ -1219,7 +1258,11 @@ def step_review(subject: str, content: str, check: dict, chart_rel: str,
                                    ask_json=ask_agent_json, score=first)
     from .model_router import profile
     if profile() != 'b' and abs(first - ACCEPT_SCORE) <= REVIEW_PANEL_BAND:
-        panel = [qa] + [ask_agent_json('editor', prompt, max_tokens=3000) for _ in range(2)]
+        from common.services.claude import call_tags
+        panel = [qa]
+        for sample in ('panel_2', 'panel_3'):
+            with call_tags(sample=sample):
+                panel.append(ask_agent_json('editor', prompt, max_tokens=3000))
         qa = merge_reviews(panel)
 
     qa = R.normalize(qa)                     # must_fix·suggestions 정리, issues 순서 맞춤
@@ -1230,6 +1273,12 @@ def step_review(subject: str, content: str, check: dict, chart_rel: str,
     model_issues = list(qa['issues'])
     scores = qa.get('scores') if isinstance(qa.get('scores'), dict) else {}
     fatal = [f for f in (qa.get('fatal') or []) if isinstance(f, str)]
+    track_flaws = review_failures(qa, content)
+    if current_track():
+        qa['column_track'] = current_track()
+    if track_flaws:
+        fatal.append('editorial_mismatch')
+        qa.setdefault('issues', []).extend(track_flaws)
     # 시스템이 직접 확인하는 결함 (모델이 놓쳐도 강제)
     if length < MIN_CHARS and 'too_short' not in fatal:
         fatal.append('too_short')
@@ -1290,8 +1339,13 @@ def publish_draft(draft: ColumnDraft, *, by=None):
     from community.models import Category, Question
 
     category = Category.objects.get(name=TOPICS[draft.topic]['category_name'])
-    q = Question.objects.create(author=_get_or_create_bot_user(), subject=draft.subject, content=draft.content,
-                                create_date=timezone.now(), category=category)
+    if draft.target_question_id:
+        q = draft.target_question
+        q.subject, q.content, q.modify_date = draft.subject, draft.content, timezone.now()
+        q.save(update_fields=['subject', 'content', 'modify_date'])
+    else:
+        q = Question.objects.create(author=_get_or_create_bot_user(), subject=draft.subject, content=draft.content,
+                                    create_date=timezone.now(), category=category, column_track=draft.column_track)
     draft.question, draft.status = q, ColumnDraft.STATUS_PUBLISHED
     if by is not None:
         draft.decided_by, draft.decided_at = by, timezone.now()

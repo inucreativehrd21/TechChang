@@ -1,6 +1,7 @@
 from django.db import models
 from django.contrib.auth.models import User
 from .validators import validate_image_file, validate_question_file
+from .column_tracks import TRACK_CHOICES
 
 # Create your models here.
 class Category(models.Model):
@@ -78,6 +79,8 @@ class Question(models.Model):
     # 운영자 픽 — 관리자(superuser)가 직접 고른 글. 카드가 짙은 인디고로 돋보인다(home.css .is-op-pick)
     operator_pick = models.BooleanField(default=False, db_index=True, verbose_name='운영자 픽')
     operator_pick_at = models.DateTimeField(null=True, blank=True, verbose_name='운영자 픽 지정 시각')
+    column_track = models.CharField(max_length=12, choices=TRACK_CHOICES, blank=True, default='',
+                                    db_index=True, verbose_name='칼럼 유형')
     # 시리즈 연재 (단편 칼럼은 둘 다 NULL)
     series = models.ForeignKey(
         'ColumnSeries', on_delete=models.SET_NULL, null=True, blank=True, related_name='episodes'

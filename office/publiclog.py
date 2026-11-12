@@ -60,7 +60,7 @@ def _title_of(log) -> str:
     """로그에 딸린 칼럼 제목. 없으면 빈 문자열."""
     draft = getattr(log, 'draft', None)
     # 예약 공개 원고는 공개 시각 전까지 제목을 내보내지 않는다 — 전날 물밑에서 만든다(office.schedule)
-    if draft is not None and getattr(draft, 'publish_at', None) and getattr(draft, 'status', '') != 'published':
+    if draft is not None and getattr(draft, 'status', '') != 'published':
         return ''
     if draft is not None and getattr(draft, 'subject', ''):
         return draft.subject
@@ -134,7 +134,9 @@ def public_logs(qs, limit: int = 20) -> list:
         fallback = public_line(log)
         if not fallback:
             continue
-        line = (log.public_text or '').strip() or fallback
+        draft = getattr(log, 'draft', None)
+        unpublished = draft is not None and getattr(draft, 'status', '') != 'published'
+        line = fallback if unpublished else ((log.public_text or '').strip() or fallback)
         key = line
         if key in seen:
             continue

@@ -38,6 +38,10 @@ CRITIQUE = {'verdict': 'recommend', 'reason': '따라 하기 쉽다', 'issues': 
 
 class SeriesPipelineTests(TestCase):
     def setUp(self):
+        # 이 테스트 묶음은 제작·편집 규약을 분리 검증한다. 사람 승인은 test_maturity에서 검증한다.
+        approval = mock.patch('office.approval.valid', return_value=True)
+        approval.start()
+        self.addCleanup(approval.stop)
         self.cat = Category.objects.create(name='프로그래밍')
         self.bot = User.objects.create_user(Question.BOT_USERNAME, password='x')
         cfg = C.SERIES['django']
@@ -65,7 +69,7 @@ class SeriesPipelineTests(TestCase):
         self.assertEqual([r['label'] for r in mk['rubric']][0], '정확성')
         self.assertTrue(WorkLog.objects.filter(draft=draft, action='check').exists())
 
-    def test_failing_episode_is_held_and_admin_can_publish_it(self):
+    def test_failing_episode_is_held_until_editorial_issues_are_resolved(self):
         res = self.run_new(score=3)
         self.assertEqual(res['status'], 'hold')
         self.assertFalse(Question.objects.filter(series=self.series).exists())
@@ -74,12 +78,13 @@ class SeriesPipelineTests(TestCase):
         with mock.patch('office.views.admin_required', lambda f: f):
             from office.views import draft_publish
             from django.test import RequestFactory
-            req = RequestFactory().post('/')
+            from office.audit import snapshot, fingerprint
+            req = RequestFactory().post('/', {'reason': '운영자가 근거를 직접 대조했어요.',
+                                             'version': fingerprint(snapshot(res['draft']))})
             req.user = admin
             req._messages = mock.MagicMock()
             draft_publish(req, res['draft'].id)
-        q = Question.objects.get(series=self.series)
-        self.assertEqual(q.episode_number, 2)
+        self.assertFalse(Question.objects.filter(series=self.series).exists())
 
     def test_critical_code_issue_left_unresolved_blocks_publishing(self):
         res = self.run_new(score=5, critical=['views.index 가 정의되지 않아 실행 불가'])
@@ -213,6 +218,47 @@ class SeriesPipelineTests(TestCase):
             res = S.revise_draft(draft, out=lambda *_: None)
         draft.refresh_from_db()
         self.assertEqual((res['status'], res.get('keep'), draft.status), ('failed', True, 'hold'))
+
+    def request_case(self):
+        subject, content = S.P.parse_output(episode())
+        subject = S.normalize_title(2, subject, 'django')
+        old_lead = '리드 문단입니다. 오늘은 주소와 함수의 연결을 살펴보겠습니다.'
+        new_lead = '주소 한 줄이 어떤 함수로 이어지는지 확인하고 싶으신가요?'
+        note = '리드 첫 문장을 구체적인 질문으로 바꾸고 나머지는 유지해 주세요.'
+        draft = ColumnDraft.objects.create(topic='coding', status='hold', series_key='django', episode_number=2,
+            subject=subject, content=content, qa_report={'score': 71, 'verdict': 'minor'}, check_report={'verdict': 'pass'})
+        plan = {'requirements': [{'id': 'R1', 'source_quote': note, 'request': note, 'done_when': '리드 질문 교체와 나머지 보존', 'kind': 'body'}],
+                'edits': [{'request_ids': ['R1'], 'find': old_lead, 'replace': new_lead}], 'title': ''}
+        report = {'coverage_complete': True, 'missing_requests': [], 'unrelated_changes': [], 'regressions': [],
+                  'items': [{'id': 'R1', 'status': 'met', 'evidence': new_lead, 'reason': '요청한 리드만 바뀌었어요.'}]}
+        return draft, note, plan, report, content.replace(old_lead, new_lead)
+
+    def test_admin_series_request_is_verified_and_waits_for_real_approval(self):
+        draft, note, plan, report, expected = self.request_case()
+        with mock.patch('office.revision_requests.ask_agent_json', side_effect=[plan, report]), \
+             mock.patch('office.series_pipeline.ask_agent_json', side_effect=fake_json(5)), \
+             mock.patch('office.approval.valid', return_value=False):
+            result = S.revise_draft(draft, note, out=lambda *_: None)
+        draft.refresh_from_db()
+        self.assertEqual(result['status'], 'hold')
+        self.assertEqual(draft.content, expected)
+        self.assertEqual(draft.qa_report['admin_revision']['status'], 'adopted')
+        self.assertFalse(Question.objects.filter(series=self.series).exists())
+
+    def test_series_automatic_repair_cannot_undo_the_admin_request(self):
+        draft, note, plan, report, expected = self.request_case()
+        original = draft.content
+        bad = {**report, 'items': [{**report['items'][0], 'status': 'unmet', 'evidence': '', 'reason': '후속 수정에서 리드가 되돌아갔어요.'}]}
+        with mock.patch('office.revision_requests.ask_agent_json', side_effect=[plan, report, bad]), \
+             mock.patch('office.series_pipeline.ask_agent_json', side_effect=fake_json(3)), \
+             mock.patch('office.series_pipeline._fix', return_value=(draft.subject, original, True, '자동 보완')), \
+             mock.patch('office.approval.valid', return_value=False):
+            result = S.revise_draft(draft, note, out=lambda *_: None)
+        draft.refresh_from_db()
+        self.assertEqual(result['status'], 'hold')
+        self.assertEqual(draft.content, original)
+        self.assertEqual(draft.qa_report['admin_revision']['status'], 'retained')
+        self.assertFalse(Question.objects.filter(series=self.series).exists())
 
     def test_precheck_catches_leftover_memos_and_full_function_excerpt(self):
         for memo in ('<!-- 편집 메모: 교체 -->', '완성 예제 저장소(링크는 게시 시 삽입)', 'TODO: 화면 캡처'):

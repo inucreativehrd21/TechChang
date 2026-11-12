@@ -28,7 +28,7 @@ import json
 import time
 
 from django.core.management import call_command
-from django.core.management.base import BaseCommand
+from django.core.management.base import BaseCommand, CommandError
 from django.utils import timezone
 from django.conf import settings
 from pathlib import Path
@@ -54,6 +54,7 @@ from office.services import ask_agent, log, take_column_brief
 from office.model_router import profile, use_profile
 from office.run_context import run_context, current, RunBudgetExceeded
 from office.review_batch import run as review_batch, ReviewIncomplete
+from office.editorial import TRACKS, LABELS, use_track
 
 
 # 검증관이 요약해 적은 주장과 원고 문장의 유사도 기준 — atomic 2·4차 기록에서 같은 문장은 0.6 이상, 다른 문장은 0.5 미만
@@ -65,8 +66,11 @@ class Command(BaseCommand):
 
     def add_arguments(self, parser):
         parser.add_argument('--topic', choices=['hrd', 'data', 'coding'], required=True)
+        parser.add_argument('--track', choices=[*TRACKS, 'both', 'legacy'],
+                            help='예약 제작은 기본 두 유형 각 1편. 수동 제작·기존 파일럿은 미지정 시 기존 칼럼이에요.')
         parser.add_argument('--dry-run', action='store_true')
         parser.add_argument('--profile', choices=['legacy', 'a', 'b'])
+        parser.add_argument('--pilot-title', help='로컬 dry-run에서 동일한 회의 주제로 기획부터 비교해요.')
         parser.add_argument('--resume-run', help='B안 체크포인트 UUID. 동일 원고의 완료 응답을 재사용해요.')
         parser.add_argument('--no-chart', action='store_true')
         parser.add_argument('--no-publish', action='store_true',
@@ -77,11 +81,30 @@ class Command(BaseCommand):
                             help='오늘 공개 시각 몫의 원고가 없을 때만 만든다(당일 안전망)')
 
     def handle(self, *args, **opts):
+        selection = opts.get('track') or ('both' if opts.get('prepare') or opts.get('if_missing') else 'legacy')
+        if selection == 'both' and opts.get('resume_run'):
+            raise CommandError('유형별 체크포인트는 --track research 또는 practical로 따로 재개해 주세요.')
+        tracks = TRACKS if selection == 'both' else ('' if selection == 'legacy' else selection,)
+        failures = []
+        for track in tracks:
+            self.stdout.write(f"{LABELS[track]} — 제작 확인")
+            try:
+                self._handle_one(*args, **{**opts, 'track': track})
+            except Exception as exc:
+                if len(tracks) == 1:
+                    raise
+                # 한 유형의 실패·한도가 다른 유형의 슬롯을 채우거나 이미 만든 원고를 되돌리지 않아요.
+                failures.append(f'{LABELS[track]}: {type(exc).__name__}: {exc}')
+                self.stderr.write(failures[-1])
+        if failures:
+            raise CommandError('유형별 제작 중단: '+' / '.join(failures))
+
+    def _handle_one(self, *args, **opts):
+        if opts.get('pilot_title') and (not opts['dry_run'] or not settings.DEBUG):
+            raise ValueError('파일럿 주제는 로컬 dry-run에서만 지정할 수 있어요.')
         # 어떻게 끝나든(발행·보류·실패) 연구실 라이브 표시를 정리한다
         try:
-            with use_profile(opts.get('profile') or profile()):
-                if opts.get('resume_run') and profile() != 'b':
-                    raise ValueError('체크포인트 재개는 B 프로필에서만 가능해요.')
+            with use_profile(opts.get('profile') or profile()), use_track(opts['track']):
                 if opts.get('resume_run') and opts['dry_run']:
                     raise ValueError('dry-run은 체크포인트를 저장하거나 재개하지 않아요.')
                 checkpoint_root = Path(settings.BASE_DIR)/'logs/lab-runs'
@@ -103,10 +126,13 @@ class Command(BaseCommand):
         dry = opts['dry_run']
         context = current()
         saved = context.data['metadata'] if context else {}
+        track = opts.get('track', '')
         if saved.get('topic') and saved['topic'] != topic_key:
             raise ValueError('체크포인트의 원고 주제와 요청이 달라요.')
+        if opts.get('resume_run') and saved.get('column_track', '') != track:
+            raise ValueError('체크포인트의 칼럼 유형과 요청이 달라요. 해당 --track으로 재개해 주세요.')
         writer = TOPIC_AGENT[topic_key]
-        label = TOPICS[topic_key]['label']
+        label = TOPICS[topic_key]['label']+' · '+LABELS[track]
         out = self.stdout.write
 
         prepare = opts.get('prepare')
@@ -116,25 +142,39 @@ class Command(BaseCommand):
             if slot is None:
                 out(f'{label} — 오늘은 공개 요일이 아닙니다. 건너뜁니다.')
                 return
-            have = S.taken(slot, topic=topic_key)
+            have = S.taken(slot, topic=topic_key, track=track or None)
             if have is not None:
                 out(f'{label} — {timezone.localtime(slot):%m.%d %H:%M} 몫이 이미 있습니다'
                     f'({have.get_status_display()}: {have.subject or have.brief}). 건너뜁니다.')
                 return
 
         if saved.get('draft_id') and not dry:
-            draft = ColumnDraft.objects.get(pk=saved['draft_id'], topic=topic_key)
+            draft = ColumnDraft.objects.get(pk=saved['draft_id'], topic=topic_key, column_track=track)
             if draft.status in (ColumnDraft.STATUS_PUBLISHED, ColumnDraft.STATUS_READY):
                 raise ValueError('이미 발행되거나 공개 대기 중인 실행은 재개하지 않아요.')
             brief_decision = draft.decision
         else:
-            brief_decision = take_column_brief(topic_key)
-            draft = None if dry else ColumnDraft.objects.create(
-                topic=topic_key, decision=brief_decision, status=ColumnDraft.STATUS_FAILED, publish_at=slot,
-                brief=(brief_decision.chosen or {}).get('title', '') if brief_decision else '')
+            brief_decision = take_column_brief(topic_key, track=track)
+            if not dry and slot and track:
+                draft = S.reserve_column(slot, topic=topic_key, track=track, decision=brief_decision)
+                if draft is None:
+                    out(f'{label} — 유형별 예약이 이미 있습니다. 건너뜁니다.')
+                    return
+                brief_decision = draft.decision
+            else:
+                draft = None if dry else ColumnDraft.objects.create(
+                    topic=topic_key, column_track=track, decision=brief_decision,
+                    status=ColumnDraft.STATUS_FAILED, publish_at=slot,
+                    brief=(brief_decision.chosen or {}).get('title', '') if brief_decision else '')
         if context:
-            context.metadata(topic=topic_key, draft_id=draft.pk if draft else None)
+            context.metadata(topic=topic_key, column_track=track, draft_id=draft.pk if draft else None)
         stages = StageRecorder(draft=draft, dry=dry, run_id=context.run_id if context else None)
+        if opts.get('pilot_title'):
+            if not dry or not settings.DEBUG:
+                raise ValueError('파일럿 주제는 로컬 dry-run에서만 지정할 수 있어요.')
+            from office.models import Decision
+            brief_decision = Decision(chosen_key='pilot', options=[{'key': 'pilot', 'title': opts['pilot_title'],
+                'detail': '공식 원문을 우선하고 실행 환경 버전을 명시해요. 확인하지 못한 주장은 쓰지 않아요.'}])
 
         def rec(agent, action, text):
             out(f'  [{AGENTS[agent]["name"]}] {text[:100]}')
@@ -210,6 +250,13 @@ class Command(BaseCommand):
             if profile() == 'b' and genre == 'tutorial' and SW.get('run_first'):
                 subject, content, pack = self._run_first(stages, rec, timed, topic_key, writer, subject, content,
                                                          pack, genre)
+            # 제목도 사실 검증의 대상이다. A의 제목 실험실은 검증·심사보다 먼저 실행한다.
+            if profile() != 'b' and not dry and not opts['no_publish']:
+                keywords = P.headline_keywords((brief_decision.chosen or {}) if brief_decision else {})
+                new_title, why = P.step_headline(subject, content, keywords=keywords, recent=recent)
+                if new_title != subject:
+                    rec('editor', 'headline', f'제목 다듬기: 「{subject}」 → 「{new_title}」 — {why}'[:300])
+                    subject = new_title
 
             # 3) 팩트체크 → 4) 수정
             parallel_reviews = {}
@@ -252,6 +299,7 @@ class Command(BaseCommand):
                 check = E.prune_check(check, content)
                 stages.record('lock', 'checker', {'removed': dropped}, text=content)
                 rec('checker', 'check', f'근거 없는 수치 문장 {len(dropped)}개 삭제: {dropped[0][:60]}')
+                check = timed('recheck', 'checker', lambda: P.step_check(subject, content, recent, verified=pack))
 
             # 5) 평론 — 읽을 이유가 있는 글인지
             if profile() == 'b':
@@ -336,7 +384,8 @@ class Command(BaseCommand):
                 # 재작성으로 수치 문장이 바뀌었으면 팩트체크를 다시 한다 — 예전엔 옛 보고서로 재심해,
                 # 새로 들어온 숫자가 검증 없이 발행될 수 있었다.
                 changed = P.new_numeric_sentences(prev_content, content)
-                if changed or profile() == 'b':
+                if (P.verification_hash(prev_content) != P.verification_hash(content)
+                        or check.get('subject') != subject or profile() == 'b'):
                     check2 = timed('reverify', 'checker', lambda: P.step_check(subject, content, recent, verified=pack,
                                         previous=check, previous_content=prev_content, evidence=evidence())
                                         if profile() == 'b' else P.step_check(subject, content, recent, verified=pack),
@@ -351,6 +400,7 @@ class Command(BaseCommand):
                 if dropped:
                     check = E.prune_check(check, content)
                     rec('checker', 'check', f'재작성이 들여온 근거 없는 수치 문장 {len(dropped)}개 삭제')
+                    check = timed('recheck', 'checker', lambda: P.step_check(subject, content, recent, verified=pack))
 
                 # 본문이 통째로 다시 쓰였으므로 도판도 다시 만든다. 옛 블록을 남겨 두면
                 # 표의 숫자만 고쳐지고 그림은 예전 수치 그대로 남는다.
@@ -398,9 +448,8 @@ class Command(BaseCommand):
                     qa['accepted_after_revision'] = True
                 rec('editor', 'qa', '재심 ' + self._qa_line(qa))
 
-            stages.record('final', 'editor', {'verdict': qa['verdict'], 'score': qa.get('score'),
-                                              'revisions': revisions,
-                                              'quality': quality.report(subject, content)}, text=content)
+            stages.complete(subject, content, check, qa, revisions=revisions,
+                            quality=quality.report(subject, content))
 
             if dry:
                 out('=' * 60 + f'\nTITLE: {subject}\n' + content[:2000] + '\n' + '=' * 60)
@@ -412,13 +461,10 @@ class Command(BaseCommand):
             draft.chart_note = chart_note
 
             if qa['verdict'] == 'accept' and not opts['no_publish']:
-                # 발행 직전 제목 실험실 — 코드 검사를 통과한 후보만 쓴다
-                keywords = P.headline_keywords((brief_decision.chosen or {}) if brief_decision else {})
-                new_title, why = P.step_headline(subject, content, keywords=keywords, recent=recent)
-                if new_title != subject:
-                    rec('editor', 'headline', f'제목 다듬기: 「{subject}」 → 「{new_title}」 — {why}'[:300])
-                    subject = draft.subject = new_title
                 q = S.finish_accepted(draft, P.publish_draft)
+                if draft.status == ColumnDraft.STATUS_HOLD:
+                    rec('lead', 'hold', '심사를 통과했어요. 운영자 검수와 승인을 기다려요.')
+                    return
                 if q is None:       # 공개 예정 시각 전 — 공개 대기
                     rec('lead', 'ready', S.ready_line(draft))
                     out(self.style.SUCCESS(f'공개 대기 [{label}] {subject} — '

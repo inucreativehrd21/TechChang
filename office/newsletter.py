@@ -621,6 +621,8 @@ def make(run_date: date | None = None, *, dry: bool = False, ask_json=None, rend
          copy_override: dict | None = None, out=print):
     """한 호를 만든다. dry 면 저장하지 않고 카드만 media/newsletter/_dry/ 에 찍는다. 반환: Newsletter 또는 dict."""
     from office.models import Newsletter
+    from .execution import assert_current
+    assert_current()
     run_date = run_date or timezone.localdate()
     renderer = renderer or render
     code, slug = week_code(run_date)
@@ -659,18 +661,25 @@ def make(run_date: date | None = None, *, dry: bool = False, ask_json=None, rend
     if copy.get('source') == 'default' and facts['picks']:
         blockers.append('큐레이터 문구 생성 실패 — 기본 문구는 공개하지 않음')
 
-    rel = f"newsletter/{'_dry' if dry else slug}"          # URL 에도 쓰므로 os.path.join 이 아닌 '/'
+    rel = f"newsletter/{'_dry' if dry else slug}"          # 새 판은 기존 공개 파일을 덮어쓰지 않는다.
     media_dir = os.path.join(settings.MEDIA_ROOT, 'newsletter')
     os.makedirs(media_dir, exist_ok=True)
     with tempfile.TemporaryDirectory(prefix='_stage-', dir=media_dir) as stage:
         renderer(nl, stage)
+        from pathlib import Path
+        if any(not Path(stage, f'{cid}.png').is_file() for cid in nl['card_ids']):
+            blockers.append('카드 이미지 파일이 일부 누락됐어요.')
         if not blockers or dry:
-            final_dir = os.path.join(media_dir, '_dry' if dry else slug)
-            os.makedirs(final_dir, exist_ok=True)
+            import hashlib
+            from .artifacts import atomic_write
+            images = {cid: Path(stage, f'{cid}.png').read_bytes() for cid in nl['card_ids']
+                      if Path(stage, f'{cid}.png').exists()}
+            version = hashlib.sha256(b''.join(cid.encode()+images[cid] for cid in sorted(images))).hexdigest()
+            rel += '/'+version
+            final_dir = os.path.join(settings.MEDIA_ROOT, *rel.split('/'))
             for cid in nl['card_ids']:
-                source = os.path.join(stage, f'{cid}.png')
-                if os.path.exists(source):
-                    os.replace(source, os.path.join(final_dir, f'{cid}.png'))
+                if cid in images:
+                    atomic_write(os.path.join(final_dir, f'{cid}.png'), images[cid])
     stamp = timezone.now().strftime('%Y%m%d%H%M')
     urls = [f"{settings.MEDIA_URL}{rel}/{cid}.png?v={stamp}" for cid in nl['card_ids']]
     out(f"  문구 출처: {copy.get('source')} · 제목: {nl['theme_plain']}")

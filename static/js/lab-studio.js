@@ -75,7 +75,7 @@ async function loadState() {
     state = await json(root.dataset.stateUrl);
     stateFailed = false;
     $('lab-replay').disabled = !(state.meeting?.transcript?.length);
-    $('lab-replay').title = $('lab-replay').disabled ? '공개된 회의 기록이 아직 없어요.' : '지난 회의 기록을 재생해요.';
+    $('lab-replay').title = $('lab-replay').disabled ? '공개된 회의 요약이 아직 없어요.' : '지난 회의의 공개 요약을 보여줘요.';
     renderPerson();
   } catch {
     stateFailed = true;
@@ -172,7 +172,7 @@ function showTurn(index) {
   const t = turns[replayIndex];
   const a = people.get(t.agent);
   const date = new Date(state.meeting.held_at).toLocaleDateString('ko-KR');
-  $('lab-replay-heading').textContent = `${date} 회의 기록 · ${a.name}`;
+  $('lab-replay-heading').textContent = `${date} 공개 회의 요약 · ${a.name}`;
   $('lab-replay-progress').textContent = `${replayIndex + 1} / ${turns.length}`;
   $('lab-replay-text').textContent = t.text;
   $('lab-replay-panel').hidden = false;

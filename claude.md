@@ -84,4 +84,5 @@ sudo systemctl status mysite nginx
 - **AI 호출**: `common.services.claude.ask` → Claude Code 구독(`claude-sonnet-5-5`) 우선, 명시적인 한도 오류만 Codex 구독(`gpt-6.1-sol`, medium)으로 전환해요. 실제 전환은 `common/services/subscriptions.py`, Codex 제약은 `common/services/codex.py`에 있어요.
 - **비용 정책**: 운영은 `CLAUDE_BACKEND=cli`, `CLAUDE_CLI_FALLBACK=false`, `AI_ALLOW_PAID_API=false`, `AI_FALLBACK_BACKEND=codex_cli`예요. 두 구독 모두 불가하면 보류해요. API 과금이나 `crew_work` 서버 실행으로 우회하지 않아요.
 - **개인정보 경계**: 2026-10-29 시행 처리방침 이전에는 `send_log_report`의 Codex 폴백을 차단해요(`common/legal.py`). 시행일·현재 적용 버전을 구분하고, 비밀값·개인정보를 일반 콘텐츠 프롬프트에 넣지 않아요.
-- **최신 운영 문서**: `docs/site-operations.md`, `docs/codex-subscription-fallback.md`, `docs/social-login-setup.md`. 연구실의 현행 변경·남은 검증은 `docs/lab-handoff-20261101.md`를 참고해요.
+- **최신 운영 문서**: `docs/site-operations.md`, `docs/codex-subscription-fallback.md`, `docs/social-login-setup.md`. 연구실의 단일 관리자 운영·감사 정책은 `docs/lab-operator-hardening.md`, 구현 검증과 남은 실환경 검증은 `docs/lab-operator-validation-20261110.md`를 참고해요. 이전 구조 개편 이력은 `docs/lab-handoff-20261101.md`에 있어요.
+- **관리자 수정 요청**: B 기본 전환은 보류해요. A의 요청별 이행 검증·품질 하락 시 원고 보존·글쓰기 기준과 검증 결과는 `docs/lab-admin-revision-20261111.md`를 참고해요.

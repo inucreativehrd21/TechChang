@@ -37,6 +37,16 @@ class RunContext:
             self.data = json.loads(self.path.read_text(encoding='utf-8'))
             if self.data.get('version') != 1 or self.data.get('run_id') != self.run_id:
                 raise ValueError('지원하지 않는 연구실 체크포인트예요.')
+            from .release import code_fingerprint
+            if self.data.get('metadata', {}).get('code_fingerprint') != code_fingerprint():
+                raise ValueError('체크포인트와 현재 소스 버전이 달라요. 이전 원고를 확인한 뒤 새 실행을 시작해 주세요.')
+        from .release import code_fingerprint
+        self.data['metadata']['code_fingerprint'] = code_fingerprint()
+        from .model_router import profile
+        saved_profile = self.data['metadata'].get('profile')
+        if saved_profile and saved_profile != profile():
+            raise ValueError('체크포인트의 제작 프로필과 현재 프로필이 달라요.')
+        self.data['metadata']['profile'] = profile()
         self.previous_seconds = float(self.data['spent_seconds'])
         self.active_calls = []
         self.previous_calls = list(self.data.get('call_records', []))
@@ -51,6 +61,8 @@ class RunContext:
                    if isinstance(c, dict) and (c.get('direct_provider') == 'codex' or c.get('backend') == 'codex_cli'))
 
     def reserve(self):
+        from .execution import assert_current
+        assert_current()
         with self.lock:
             if self.data['calls'] >= self.max_calls or self.remaining() <= 0:
                 raise RunBudgetExceeded('연구실 실행 예산을 소진했어요. 검증 기준을 낮추지 않고 보류해요.')
@@ -80,6 +92,11 @@ class RunContext:
         with self.lock:
             self.data['metadata'].update(values)
             self.save()
+        if os.environ.get('LAB_JOB_ID') and values.get('draft_id'):
+            from .models import JobRequest
+            from django.utils import timezone
+            JobRequest.objects.filter(pk=os.environ['LAB_JOB_ID'], execution_id=os.environ.get('LAB_EXECUTION_ID'),
+                  status='started', lease_until__gt=timezone.now()).update(draft_id=values['draft_id'], checkpoint_run_id=self.run_id)
 
     def save(self):
         if not self.path:
@@ -87,11 +104,8 @@ class RunContext:
         self.data['spent_seconds'] = round(self.previous_seconds + time.monotonic()-self.started, 2)
         self.data['call_records'] = self.previous_calls + list(self.active_calls)
         self.path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
-        temporary = self.path.with_suffix('.tmp')
-        with temporary.open('w', encoding='utf-8') as out:
-            os.chmod(temporary, 0o600)
-            json.dump(self.data, out, ensure_ascii=False)
-        os.replace(temporary, self.path)
+        from .artifacts import atomic_write
+        atomic_write(self.path, json.dumps(self.data, ensure_ascii=False).encode('utf-8'), private=True)
 
 
 def current():
@@ -144,7 +158,7 @@ def bounded_run(fn):
 @contextmanager
 def run_context(*, run_id=None, root=None, dry=False):
     from .model_router import profile
-    if profile() != 'b' or current() is not None:
+    if current() is not None:
         yield current()
         return
     rid = str(uuid.UUID(str(run_id))) if run_id else str(uuid.uuid4())
@@ -154,7 +168,7 @@ def run_context(*, run_id=None, root=None, dry=False):
         token = _current.set(context)
         try:
             from common.services.claude import call_tags, track_calls
-            with call_tags(run_id=rid, profile='b'), track_calls(alert=False, filter={'run_id': rid}) as calls:
+            with call_tags(run_id=rid, profile=profile()), track_calls(alert=False, filter={'run_id': rid}) as calls:
                 context.active_calls = calls
                 yield context
         finally:

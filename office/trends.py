@@ -223,21 +223,22 @@ def best_keyword(keywords: list, values: dict) -> tuple[str, float | None]:
 
 # ───────────────────────────── 정찰(회의 전)
 SCOUT = (
-    '{who} — 오늘 저녁 편집회의 전에 "이번 주 트렌드"를 정리해 주세요. 이번 분기 목표는 유입입니다: '
-    '지금 사람들이 실제로 많이 찾는 주제를 우리 세 분야(HRD·데이터분석·프로그래밍) 칼럼으로 먼저 잡는 것.\n\n'
+    '{who} — 편집회의 전 세 분야(HRD·데이터분석·프로그래밍)의 심화 탐구와 실용 문제를 따로 정찰하세요. '
+    '심화는 연구·기술 중요성, 실용은 구체적 효용과 검색 수요를 기준으로 삼으세요.\n\n'
     '[국내 개발 커뮤니티 최신 글 — GeekNews]\n{geek}\n\n'
     '[구글 한국 급상승 검색어(어림 검색량) — 대부분 시사라 우리 분야와 이어지는 것만 쓰세요]\n{gt}\n\n'
     '[우리가 이미 쓴 칼럼 제목(최근)]\n{titles}\n\n'
     'WebSearch 로 최근 2주 국내외 뉴스·커뮤니티에서 세 분야와 이어지는 화제를 더 찾아보세요 '
     '(예: 새 AI 도구·모델 출시와 사용법, 채용·HR 제도 변화, 정부 직업훈련·국민내일배움카드 정책, 자격증 시험 일정, '
     '개발 도구 업데이트, 직장인 업무 자동화).\n'
-    '분야별로 후보 3개씩 고르세요. 기준: (1) 지금 화제다 (2) 일반 독자가 검색창에 실제로 칠 한국어 검색어가 있다 '
-    '(3) 우리가 이미 쓴 소재와 겹치지 않는다(겹치면 새 각도가 분명할 때만).\n'
+    '분야별 후보 4개: column_track=research 2개, practical 2개. research는 논문·공식 기술 문서의 '
+    '실제 발표·기술 변화 또는 기초 원리를 탐구할 질문과 1차 자료를 찾고 검색량 때문에 탈락시키지 마세요. '
+    'practical은 생활·업무 문제의 실행 가능한 해결책을 찾으세요. 이미 다룬 주제면 새로운 질문이 분명해야 해요.\n'
     '검색어는 후보마다 2~3개 — 사람들이 실제로 치는 표기·띄어쓰기 그대로(영어 제품명은 한국 사람이 치는 표기도 함께, '
     '예: "클로드 코드", "제미나이"). 문장형 말고 검색창에 넣는 짧은 말로.\n'
     'JSON 으로만 답하세요:\n'
     '{{"hrd": [{{"topic": "주제 한 줄", "why": "왜 지금 뜨는지 한 문장", "url": "근거 URL", '
-    '"keywords": ["검색어", "검색어"]}}, ...3개], "data": [...3개], "coding": [...3개]}}'
+    '"column_track": "research|practical", "keywords": ["검색어", "검색어"]}}, ...4개], "data": [...4개], "coding": [...4개]}}'
 )
 
 
@@ -269,14 +270,18 @@ def scout(recent_titles: list, *, ask_json, who: str = '', tools: tuple = ()) ->
                 continue
             kws = [str(k).strip()[:30] for k in (it.get('keywords') or []) if str(k).strip()][:3]
             items.append({'topic': str(it['topic']).strip()[:120], 'why': str(it.get('why', '')).strip()[:240],
-                          'url': str(it.get('url', '')).strip()[:300], 'keywords': kws})
+                          'url': str(it.get('url', '')).strip()[:300], 'keywords': kws,
+                          'column_track': it.get('column_track', '')})
         fields[key] = items
     values, unit = measure([k for items in fields.values() for it in items for k in it['keywords']])
     for items in fields.values():
         for it in items:
             it['demand_kw'], it['demand'] = best_keyword(it['keywords'], values)
             it['demand_note'] = demand_label(it['demand'], unit)
-        items.sort(key=lambda it: -1 if it['demand'] is None else it['demand'], reverse=True)
+        research = [it for it in items if it['column_track'] == 'research']
+        practical = [it for it in items if it['column_track'] != 'research']
+        practical.sort(key=lambda it: -1 if it['demand'] is None else it['demand'], reverse=True)
+        items[:] = research + practical
     result.update(unit=unit if values else '', fields=fields)
     if not values:
         result['note'] = '검색 수요 측정 실패(키 없음 또는 호출 실패) — 후보는 수요 없이 정리'
@@ -289,7 +294,7 @@ def brief_lines(tr: dict) -> list:
     if not any(fields.values()):
         return []
     unit = tr.get('unit')
-    head = ('[이번 주 트렌드·검색 수요] 팀장이 회의 전에 정리한 지금 뜨는 후보 — 분야마다 검색 수요 높은 순'
+    head = ('[이번 주 트렌드·검색 수요] 심화는 연구·기술 가치 순, 실용만 검색 수요순'
             + (f' (기준: {UNIT_LABEL[unit]})' if unit else ' (검색 수요 측정 실패 — 순서는 의미 없음)') + ':')
     lines = [head]
     for key, label in FIELDS:
@@ -300,7 +305,8 @@ def brief_lines(tr: dict) -> list:
         for it in items:
             kw = f" | 검색어 '{it['demand_kw']}' {it['demand_note']}" if it.get('demand_note') else (
                 f" | 검색어 {', '.join(it['keywords'])}" if it['keywords'] else '')
-            lines.append(f"    - {it['topic']} — {it['why']}{kw}")
+            from .editorial import LABELS
+            lines.append(f"    - [{LABELS.get(it.get('column_track', ''), '기존 후보')}] {it['topic']} — {it['why']}{kw}")
     return lines
 
 
@@ -322,6 +328,12 @@ def rank_options(decisions: list) -> dict:
             o['demand'], o['demand_kw'] = v, kw
             o['demand_note'] = f"네이버 검색어 '{kw}' {demand_label(v, unit)}" if v is not None else ''
             measured += v is not None
+        from community.column_tracks import RESEARCH
+        if d.get('column_track') == RESEARCH:
+            # 연구 안건은 모델이 제안한 연구 가치 순서를 유지하며 검색량으로 추천하지 않아요.
+            for o in opts:
+                o['recommended'] = False
+            continue
         if d.get('kind') != 'column' or not any(o['demand'] is not None for o in opts):
             continue
         opts.sort(key=lambda o: -1 if o['demand'] is None else o['demand'], reverse=True)

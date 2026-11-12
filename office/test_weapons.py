@@ -107,6 +107,10 @@ class CriticCompetitionTests(TestCase):
 
 
 class ReviewPanelTests(TestCase):
+    def setUp(self):
+        gate = mock.patch('office.review_protocol.require_check')
+        gate.start()
+        self.addCleanup(gate.stop)
     def review(self, sequence):
         calls = []
 

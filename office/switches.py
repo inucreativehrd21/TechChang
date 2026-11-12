@@ -66,7 +66,7 @@ SWITCHES = (
            'gate', minimum=0, maximum=10, needs_b=True, unit='개'),
     Switch('run_max_codex_tokens', 'OFFICE_RUN_MAX_CODEX_TOKENS', 'int', 1_000_000, '한 편당 Codex 입력 상한',
            '한 번의 제작에서 Codex 입력이 이만큼을 넘으면 멈추고 보류해요. 0이면 상한 없음이에요.',
-           'gate', minimum=0, maximum=5_000_000, needs_b=True, unit='토큰'),
+           'gate', minimum=0, maximum=5_000_000, unit='토큰'),
     Switch('run_first', 'OFFICE_RUN_FIRST', 'bool', True, '사실 검증 전에 실행 예제 고치기',
            '실행할 수 없는 예제·실패한 테스트·단정 문장이 있으면 사실 검증에 들어가기 전에 한 번 고쳐요.',
            'tutorial', needs_b=True, needs_genres=True),
@@ -159,6 +159,8 @@ def set_value(key: str, raw, user=None):
         raise ValueError(f'{spec.label} 값이 올바르지 않아요.')
     stored = ('on' if value else 'off') if spec.kind == 'bool' else str(value)
     LabSwitch.objects.update_or_create(key=key, defaults={'value': stored, 'updated_by': user})
+    from .audit import append
+    append('setting_changed', actor_id=getattr(user, 'pk', None), payload={'key': key, 'value': stored})
     clear_cache()
     logger.info('연구실 스위치 변경: %s=%s (by %s)', key, stored, getattr(user, 'username', '-'))
     return value

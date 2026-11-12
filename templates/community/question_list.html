@@ -101,7 +101,7 @@
                         <div class="tc-lab-row">
                             <dt>다음 칼럼</dt>
                             <dd>
-                                <span class="tc-lab-when">{{ next_slot.when }} 10:00 · {{ next_slot.label }}</span>
+                                <span class="tc-lab-when">{{ next_slot.when }} 10:00 · {{ next_slot.label }} · 심화·실용 각 1편</span>
                                 <span class="tc-lab-title">{% if next_slot.title %}{{ next_slot.title }}{% else %}주제 회의 중{% endif %}</span>
                             </dd>
                         </div>
@@ -219,6 +219,7 @@
                 <span class="tc-card-tags">{% if question.operator_pick %}<span class="tc-op-pick" title="운영자가 직접 고른 글"><i class="fas fa-crown" aria-hidden="true"></i> 운영자 픽</span>{% endif %}{% if question.id in picks %}<span class="tc-pick" title="프리미엄 칼럼"><i class="fas fa-gem" aria-hidden="true"></i> 프리미엄</span>{% endif %}{% if question.category %}<span class="tc-card-badge tc-badge-{{ question.category.name|category_slug }}">{{ question.category.name }}</span>{% endif %}</span>
 
                 <h3 class="tc-card-title">{{ question.subject }}</h3>
+                {% if question.is_column and question.column_track and not question.series_id %}<span class="small text-muted">{{ question.get_column_track_display }}</span>{% endif %}
 
                 <div class="tc-card-meta">
                     <span><i class="far fa-thumbs-up" aria-hidden="true"></i> {{ question.voter_count }}</span>

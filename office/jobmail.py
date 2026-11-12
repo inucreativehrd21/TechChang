@@ -96,20 +96,35 @@ def link(token: str) -> str:
     return SITE + reverse('office:job_request', args=[token])
 
 
-def enqueue(data: dict, *, via: str = 'mail'):
+def enqueue(data: dict, *, via: str = 'mail', actor=None):
+    from django.db import transaction
+    with transaction.atomic():
+        return _enqueue_once(data, via=via, actor=actor)
+
+
+def _enqueue_once(data: dict, *, via: str, actor=None):
     """서명 확인된 요청을 예약한다. 같은 인자의 대기 요청이 있으면 그것을 돌려준다(두 번 눌러도 한 번)."""
     from datetime import datetime
 
-    from office.models import JobRequest
+    from office.models import JobRequest, JobReceipt
+    from .audit import fingerprint
+    from .security import validate_args
+    validate_args(data['a'])
+    key = fingerprint(data)
+    receipt = JobReceipt.objects.filter(pk=key).select_related('job').first()
+    if receipt:
+        return receipt.job, False
     # JSON 필드 비교는 DB 마다 다르게 굴어(MySQL/SQLite) 파이썬에서 맞춘다 — 대기 요청은 몇 건뿐이다
     have = next((j for j in JobRequest.objects.filter(status=JobRequest.ST_PENDING) if list(j.args) == list(data['a'])),
                 None)
     if have:
+        JobReceipt.objects.get_or_create(key=key, defaults={'job': have})
         return have, False
     wanted = datetime.fromisoformat(data['r']) if data.get('r') else None
     run_after = max(wanted, earliest_run()) if wanted else earliest_run()
     job = JobRequest.objects.create(kind=data['k'], args=data['a'], label=data.get('l', ''), draft_id=data.get('d'),
-                                    run_after=run_after, requested_via=via)
+                                    run_after=run_after, requested_via=via, requested_by=actor)
+    JobReceipt.objects.create(key=key, job=job)
     return job, True
 
 
@@ -134,7 +149,15 @@ def run_due(now=None, out=print) -> list:
         if not JobRequest.objects.filter(pk=job.pk, status=JobRequest.ST_PENDING).update(
                 status=JobRequest.ST_STARTED, started_at=now):
             continue
-        spawn(list(job.args), by=f'jobrequest#{job.pk}', env={'CLAUDE_CLI_FALLBACK': 'false'})
+        try:
+            spawn(list(job.args), by=f'jobrequest#{job.pk}', env={'CLAUDE_CLI_FALLBACK': 'false'})
+        except OSError as exc:
+            job.status = JobRequest.ST_PENDING
+            job.run_after = now + timedelta(minutes=5)
+            job.note = f'프로세스 시작 실패: {exc}'[:300]
+            job.save(update_fields=['status', 'run_after', 'note'])
+            out(f'작업 시작 실패: #{job.pk} — 5분 뒤 재시도')
+            continue
         started.append(job)
         out(f'재실행: #{job.pk} {" ".join(job.args)}')
     return started

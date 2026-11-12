@@ -18,6 +18,7 @@ import logging
 import re
 import statistics
 import textwrap
+from contextlib import nullcontext
 
 from django.utils import timezone
 
@@ -315,7 +316,11 @@ def review_episode(key: str, no: int, subject: str, content: str, check: dict, c
                                    ask_json=ask_agent_json, score=first)
     from .model_router import profile
     if profile() != 'b' and abs(first - P.ACCEPT_SCORE) <= P.REVIEW_PANEL_BAND:
-        panel = [qa] + [ask_agent_json('editor', prompt, max_tokens=3000) for _ in range(2)]
+        from common.services.claude import call_tags
+        panel = [qa]
+        for sample in ('panel_2', 'panel_3'):
+            with call_tags(sample=sample):
+                panel.append(ask_agent_json('editor', prompt, max_tokens=3000))
         qa = dict(qa, scores=_median_scores(panel))
     scores = qa.get('scores') if isinstance(qa.get('scores'), dict) else {}
     fatal = [f for f in (qa.get('fatal') or []) if isinstance(f, str)]
@@ -491,12 +496,14 @@ def feedback_notes(draft: ColumnDraft) -> list:
     return drop_length_notes(notes)
 
 
+@bounded_run
 def revise_draft(draft: ColumnDraft, note: str = '', *, by=None, out=print) -> dict:
     """보류된 연재 원고를 고쳐 다시 검증한다. note 가 있으면 운영자 지시(관리 화면 '수정 지시'),
     없으면 그 원고가 받은 편집장·검증관 지적(feedback_notes)으로 고친다."""
     key, no = draft.series_key, draft.episode_number
     writer = TOPIC_AGENT[TOPIC_KEY]
     rec = _recorder(draft, False, out)
+    revision = None
     try:
         if note:
             log('lead', 'admin_note', f'운영자 지시: {note}'[:300], draft=draft)
@@ -506,7 +513,19 @@ def revise_draft(draft: ColumnDraft, note: str = '', *, by=None, out=print) -> d
         live.mark('revise', writer, TOPIC_KEY)
         from . import evidence as E
         pack = E.from_check(draft.check_report or {})
-        subject, content, ok, why = _fix(writer, key, no, draft.subject, draft.content, who, notes, pack)
+        if note:
+            from .revision_requests import RevisionRequests
+            revision = RevisionRequests(draft, note, writer, StageRecorder(draft=draft),
+                guide=structure(key, no)+'\n'+SERIES[key]['system_prompt']+'\n'
+                +P.writing_standard(TOPIC_KEY, 'tutorial')+P.pack_block(pack))
+            candidate = revision.generate()
+            if candidate is None:
+                revision.retain()
+                return {'status': 'hold', 'draft': draft, 'keep': True}
+            subject, content = candidate
+            ok, why = True, '요청별 편집·독립 검증'
+        else:
+            subject, content, ok, why = _fix(writer, key, no, draft.subject, draft.content, who, notes, pack)
         if not ok:
             rec(writer, 'revise', f'{label} 재작성 실패 — {why}')
             draft.status = ColumnDraft.STATUS_HOLD
@@ -514,10 +533,14 @@ def revise_draft(draft: ColumnDraft, note: str = '', *, by=None, out=print) -> d
             return {'status': 'hold', 'draft': draft}
         subject = normalize_title(no, subject, key)
         rec(writer, 'revise', f'{label} 반영해 재작성: {subject} ({P.body_length(content)}자)')
-        return gate(draft, key, no, subject, content, target=draft.target_question, by=by, out=out, pack=pack)
+        return gate(draft, key, no, subject, content, target=draft.target_question, by=by, out=out, pack=pack,
+                    revision=revision)
     except Exception as exc:
         # 보류 원고는 잃지 않는다 — 호출 실패(구독 한도 등)면 보류 상태로 되돌려 다시 시도할 수 있게
         logger.exception('연재 원고 재작성 실패: %s %s편 (draft=%s)', key, no, draft.pk)
+        if revision:
+            revision.retain('수정 작업을 완료하지 못했어요: '+str(exc))
+            revision.stages.record('fail', 'lead', {'reason': str(exc)[:300]}, status='failed')
         draft.status = ColumnDraft.STATUS_HOLD
         draft.save(update_fields=['status'])
         return {'status': 'failed', 'reason': str(exc)[:200], 'draft': draft, 'keep': True}
@@ -537,7 +560,7 @@ def _failed(draft, key, no, exc) -> dict:
 
 
 def gate(draft, key: str, no: int, subject: str, content: str, *, target=None, by=None, dry: bool = False,
-         out=print, pack: str = '') -> dict:
+         out=print, pack: str = '', revision=None) -> dict:
     """연구실 검증과 판정 — 자동 점검 → 팩트체크 → 수치 잠금 → 평론 → 편집 심사(→ 1회 보완·재심) → 발행·갱신·보류.
 
     pack: 근거 묶음(office.evidence). 연재는 통계 단위가 붙은 수치만 잠근다(stats_only) — 본문에 버전·포트·
@@ -548,7 +571,7 @@ def gate(draft, key: str, no: int, subject: str, content: str, *, target=None, b
     from .review_batch import run as review_batch
     writer = TOPIC_AGENT[TOPIC_KEY]
     rec = _recorder(draft, dry, out)
-    stages = StageRecorder(draft=draft, dry=dry)
+    stages = revision.stages if revision else StageRecorder(draft=draft, dry=dry)
 
     # 1) 자동 점검(코드)
     flaws = precheck(key, content, pack)
@@ -556,6 +579,7 @@ def gate(draft, key: str, no: int, subject: str, content: str, *, target=None, b
     if flaws and profile() != 'b':
         rec('editor', 'precheck', f'초안 자동 점검 {len(flaws)}건: {flaws[0][:90]}')
         subject, content, ok, why = _fix(writer, key, no, subject, content, '자동 점검에서', flaws, pack)
+        subject = normalize_title(no, subject, key)
         rec(writer, 'revise', f'자동 점검 지적 반영해 재작성 ({P.body_length(content)}자)' if ok
             else f'재작성 실패 — {why}')
     elif not flaws:
@@ -579,6 +603,7 @@ def gate(draft, key: str, no: int, subject: str, content: str, *, target=None, b
     if check['verdict'] == 'revise' and profile() != 'b':
         notes = [f"{c.get('claim', '')}: {c.get('note', '')}" for c in check['bad']] + check['critical']
         subject, content, ok, why = _fix(writer, key, no, subject, content, '팩트체크(검증관)에서', notes, pack)
+        subject = normalize_title(no, subject, key)
         if ok:
             rec(writer, 'revise', f"팩트체크 {len(notes)}건 반영해 재작성 ({P.body_length(content)}자)")
             live.mark('check', 'checker', TOPIC_KEY)
@@ -596,6 +621,10 @@ def gate(draft, key: str, no: int, subject: str, content: str, *, target=None, b
         check = _repruned(check, content)
         stages.record('lock', 'checker', {'removed': dropped}, text=content)
         rec('checker', 'check', f'근거 없는 수치 문장 {len(dropped)}개 삭제: {dropped[0][:60]}')
+    if (profile() != 'b' and (check.get('verification_hash') != P.verification_hash(content)
+                              or check.get('subject') != subject)):
+        check = check_episode(key, no, subject, content, pack)
+        stages.record('recheck', 'checker', check)
 
     # 3) 평론 → 4) 편집 심사 → 미달이면 1회 보완·재심
     if profile() == 'b':
@@ -620,10 +649,13 @@ def gate(draft, key: str, no: int, subject: str, content: str, *, target=None, b
                                 for i in (critique.get('issues') or [])[:3] if isinstance(i, dict)]
         before_code, prev_content = code_blocks(content), content
         subject, content, ok, why = _fix(writer, key, no, subject, content, '편집 심사에서', notes, pack)
+        subject = normalize_title(no, subject, key)
         if ok:
             rec(writer, 'revise', f'편집 심사 지적 반영해 재작성 ({P.body_length(content)}자)')
             # 코드가 바뀌었으면 검증관이 다시 본다 — 검증받지 않은 코드가 그대로 나가지 않게
-            if check.get('critical') or code_blocks(content) != before_code or profile() == 'b':
+            if (check.get('critical') or code_blocks(content) != before_code
+                    or check.get('verification_hash') != P.verification_hash(content)
+                    or check.get('subject') != subject or profile() == 'b'):
                 live.mark('check', 'checker', TOPIC_KEY)
                 check = (check_episode(key, no, subject, content, pack, previous=check, previous_content=prev_content)
                          if profile() == 'b' else check_episode(key, no, subject, content, pack))
@@ -635,6 +667,10 @@ def gate(draft, key: str, no: int, subject: str, content: str, *, target=None, b
             if dropped:
                 check = _repruned(check, content)
                 rec('checker', 'check', f'보완이 들여온 근거 없는 수치 문장 {len(dropped)}개 삭제')
+            if (profile() != 'b' and (check.get('verification_hash') != P.verification_hash(content)
+                                      or check.get('subject') != subject)):
+                check = check_episode(key, no, subject, content, pack)
+                rec('checker', 'check', f"재검증 {check['verdict']}")
             if profile() == 'b' and check.get('verdict') != 'pass':
                 qa = {**prev_qa, 'verdict': 'major', 'fatal': ['unverified_data'],
                       'notes': '부분 수정 1회 뒤에도 독립 검증이 완료되지 않아 보류해요.'}
@@ -656,29 +692,40 @@ def gate(draft, key: str, no: int, subject: str, content: str, *, target=None, b
             rec(writer, 'revise', f'편집 심사 재작성 실패 — {why}')
 
     subject = normalize_title(no, subject, key)
+    # 최종 검증 결과를 기록한 뒤 심사·최종 증거를 같은 실행에 묶는다.
+    if revision and not revision.finish(subject, content, qa, check):
+        rec('lead', 'hold', '수정 요청 미반영·품질 하락으로 기존 연재 원고를 유지해요.')
+        return {'status': 'hold', 'draft': draft, 'score': revision.qa.get('score'),
+                'candidate_score': qa.get('score'), 'keep': True}
+    stages.record('check', 'checker', check)
+    stages.record('review', 'editor', qa)
+    stages.complete(subject, content, check, qa)
     result = {'score': qa['score'], 'verdict': qa['verdict'], 'subject': subject}
     if dry:
         out(f'\n[dry-run] {qa["score"]}점 · {qa["verdict"]}\nTITLE: {subject}\n{content}')
         return {**result, 'status': 'dry', 'content': content}
 
-    draft.subject, draft.content = subject, content
-    draft.check_report, draft.qa_report = check, qa
-    draft.revisions = (draft.revisions or 0) + reviews - 1
-    if qa['verdict'] == 'accept':
-        from . import schedule as S
-        if target is None:
-            q = S.finish_accepted(draft, publish, by=by)
-            if q is None:          # 공개 예정 시각 전 — 그 시각에 공개(office.schedule)
-                rec('lead', 'ready', S.ready_line(draft))
-                return {**result, 'status': 'ready', 'draft': draft}
-        else:
-            q = publish(draft, by=by)
-        live.mark('publish', 'lead', TOPIC_KEY)
-        rec('lead', 'publish', (f'리메이크 반영(제자리 갱신): {subject} (id={q.pk}, {qa["score"]}점)' if target
-                                else f'발행: {subject} (id={q.pk}, {qa["score"]}점)'))
-        return {**result, 'status': 'updated' if target else 'published', 'question': q, 'draft': draft}
-    draft.status = ColumnDraft.STATUS_HOLD
-    draft.save()
-    why = '; '.join(qa['issues'][:2])[:150]
-    rec('lead', 'hold', f'보류({qa["verdict"]}, {qa["score"]}점): {subject} — {why}')
-    return {**result, 'status': 'hold', 'draft': draft}
+    with revision.commit() if revision else nullcontext():
+        draft.subject, draft.content = subject, content
+        draft.check_report, draft.qa_report = check, qa
+        draft.revisions = (draft.revisions or 0) + reviews - 1
+        if qa['verdict'] == 'accept':
+            from . import schedule as S
+            if target is None:
+                q = S.finish_accepted(draft, publish, by=by)
+                if draft.status == ColumnDraft.STATUS_HOLD:
+                    return {**result, 'status': 'hold', 'draft': draft}
+                if q is None:
+                    rec('lead', 'ready', S.ready_line(draft))
+                    return {**result, 'status': 'ready', 'draft': draft}
+            else:
+                q = publish(draft, by=by)
+            live.mark('publish', 'lead', TOPIC_KEY)
+            rec('lead', 'publish', (f'리메이크 반영(제자리 갱신): {subject} (id={q.pk}, {qa["score"]}점)' if target
+                                    else f'발행: {subject} (id={q.pk}, {qa["score"]}점)'))
+            return {**result, 'status': 'updated' if target else 'published', 'question': q, 'draft': draft}
+        draft.status = ColumnDraft.STATUS_HOLD
+        draft.save()
+        why = '; '.join(qa['issues'][:2])[:150]
+        rec('lead', 'hold', f'보류({qa["verdict"]}, {qa["score"]}점): {subject} — {why}')
+        return {**result, 'status': 'hold', 'draft': draft}
