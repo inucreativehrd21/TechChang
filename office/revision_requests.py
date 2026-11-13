@@ -1,6 +1,7 @@
 """관리자 수정 요청을 항목별로 검증하고, 검증되지 않은 후보가 원고를 덮지 못하게 해요."""
 from copy import deepcopy
 from contextlib import contextmanager
+import difflib
 import json
 import re
 
@@ -138,6 +139,28 @@ class RevisionRequests:
         self.cached_verification = None
         return title.strip() or self.subject, content
 
+    @staticmethod
+    def _quote_found(evidence: str, haystack: str, threshold: float = 0.82) -> bool:
+        """evidence 문장이 haystack(최종 원고)에 '거의 그대로' 있는지 확인해요.
+
+        완전 일치(substring)만 인정하면 공백·줄바꿈 차이에도 깨지고, 평론가 모델이 인용하면서
+        조사·어미를 사소하게 바꿔 쓰는 흔한 습관에도 깨진다 — 실제로 요청대로 고쳐진 수정 요구가
+        '미반영'으로 오탐됐다(2026-11-13, #59·#60: 본문을 직접 대조하면 토씨만 다르고 요청대로 돼 있었다).
+        가장 긴 공통 구간이 인용문 길이의 threshold 이상이면 '본문에 실제로 있다'로 인정한다 —
+        완전히 지어낸 인용(연관된 공통 구간이 거의 없는 경우)은 여전히 걸러낸다.
+        """
+        ev = re.sub(r'\s+', ' ', evidence or '').strip()
+        hay = re.sub(r'\s+', ' ', haystack or '').strip()
+        if not ev:
+            return False
+        if ev in hay:
+            return True
+        # find_longest_match 하나만 보면 인용 중간 한 글자만 달라도(예: 어미 하나) 앞뒤 일치 구간이
+        # 둘로 쪼개져 비율이 낮게 나온다. get_matching_blocks 로 일치하는 조각을 모두 합산해 잰다.
+        matcher = difflib.SequenceMatcher(None, hay, ev, autojunk=False)
+        matched = sum(block.size for block in matcher.get_matching_blocks())
+        return matched / len(ev) >= threshold
+
     def verify(self, subject, content):
         key = digest(subject+'\n'+content)
         if self.cached_verification and self.cached_verification[0] == key:
@@ -165,12 +188,14 @@ class RevisionRequests:
             row = next((r for r in rows if isinstance(r, dict) and r.get('id') == requirement['id']), {})
             evidence = row.get('evidence')
             met = (row.get('status') == 'met' and isinstance(evidence, str) and bool(evidence.strip())
-                   and evidence in subject+'\n'+content)
+                   and self._quote_found(evidence, subject+'\n'+content))
             reason = str(row.get('reason') or '완료 근거가 없거나 최종 원고와 일치하지 않아요.')[:1000]
+            # met 이 아니어도 인용은 남긴다 — 운영자가 /lab/admin/ 에서 모델이 무엇을 근거로 들었는지
+            # 보고 판단할 수 있어야 한다(전에는 비워서 '왜 거부됐는지'를 알 방법이 없었다).
             items.append({'id': requirement['id'], 'request': requirement['request'],
                           'done_when': requirement['done_when'], 'met': met,
                           'status_label': '반영 확인' if met else '미반영·확인 필요',
-                          'evidence': evidence if met else '', 'reason': reason})
+                          'evidence': evidence if isinstance(evidence, str) else '', 'reason': reason})
         if any(not r['met'] for r in items) or not items:
             reasons.append('완료가 확인되지 않은 수정 요구가 있어요.')
         report = {**self.report, 'candidate_hash': key, 'items': items, 'reasons': reasons,

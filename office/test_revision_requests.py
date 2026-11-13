@@ -95,6 +95,41 @@ class RequestVerificationTests(SimpleTestCase):
                 session._parse(plan())
                 self.assertFalse(session.verify('기존 제목', AFTER)['verified'])
 
+    def test_evidence_differing_only_by_whitespace_still_counts_as_met(self):
+        """2026-11-13 #59·#60 — 완전 일치(substring)만 인정하다 보니 줄바꿈·공백만 다른 인용도
+        '미반영'으로 오탐됐다(본문을 직접 대조하면 요청대로 돼 있었다). 공백 차이는 인정한다."""
+        report = verified()
+        report['items'][0]['evidence'] = '첫 문장은\n구체적인  선택 기준이에요.'   # 줄바꿈·중복 공백만 다름
+        with patch('office.revision_requests.ask_agent_json', return_value=report):
+            session = self.session()
+            session._parse(plan())
+            result = session.verify('기존 제목', AFTER)
+        self.assertTrue(result['items'][0]['met'])
+        self.assertTrue(result['verified'])
+
+    def test_evidence_with_one_word_swapped_in_the_middle_still_counts_as_met(self):
+        """인용 중간 한 단어(어미)만 달라도 앞뒤 일치 구간을 합쳐서 본다 — find_longest_match 하나만
+        쓰면 중간이 끊겨 비율이 낮게 나오던 문제(2026-11-13)."""
+        report = verified()
+        report['items'][0]['evidence'] = '첫 문장은 구체적인 선택 기준입니다.'   # '이에요' → '입니다'만 다름
+        with patch('office.revision_requests.ask_agent_json', return_value=report):
+            session = self.session()
+            session._parse(plan())
+            result = session.verify('기존 제목', AFTER)
+        self.assertTrue(result['items'][0]['met'])
+        self.assertTrue(result['verified'])
+
+    def test_barely_related_evidence_is_still_rejected(self):
+        """완전 일치는 아니어도 '거의 같은 문장'만 통과해야 한다 — 겹치는 낱말 몇 개뿐인 꾸며낸 인용은 계속 막는다."""
+        report = verified()
+        report['items'][0]['evidence'] = '최종 원고에는 이런 문장이 전혀 없습니다'
+        with patch('office.revision_requests.ask_agent_json', return_value=report):
+            session = self.session()
+            session._parse(plan())
+            result = session.verify('기존 제목', AFTER)
+        self.assertFalse(result['items'][0]['met'])
+        self.assertFalse(result['verified'])
+
     def test_invalid_anchor_does_not_leave_partial_edits_or_change_title(self):
         session = self.session()
         value = plan()
