@@ -60,3 +60,11 @@ class ReviewOnlyTests(TestCase):
         with self.assertRaises(CommandError):
             call_command('office_revise', draft=self.draft.id, note='x', content_file=str(self.file),
                          stdout=mock.MagicMock())
+
+    def test_empty_draft_stops_before_any_model_call(self):
+        from django.core.management.base import CommandError
+        self.draft.content = ''
+        self.draft.save(update_fields=['content'])
+        with mock.patch('office.services.ask') as ask, self.assertRaisesRegex(CommandError, '본문이 비어'):
+            call_command('office_revise', draft=self.draft.id, note='고쳐 주세요')
+        ask.assert_not_called()

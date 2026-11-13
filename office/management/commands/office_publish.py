@@ -229,6 +229,10 @@ class Command(BaseCommand):
                                      lambda: P.step_draft(topic_key, brief_decision, brief, recent,
                                                           blueprint=B.block(bp, ver)))
             self._update_last(stages, {'subject': subject, 'content': content}, text=content)
+            # 첫 심사 전에 멈춰도 재심할 본문은 남긴다. 재개 시 기존 검수본은 지킨다.
+            if draft and not draft.content:
+                draft.subject, draft.content = subject, content
+                draft.save(update_fields=['subject', 'content'])
             rec(writer, 'draft', f'초안 완성: {subject} ({P.body_length(content)}자)')
             flaws = P.precheck_draft(content, pack, genre)
             stages.record('precheck', 'editor', {'issues': flaws, 'quality': quality.report(subject, content),
@@ -332,6 +336,7 @@ class Command(BaseCommand):
                        lambda: P.step_review(subject, content, check, chart_rel, visual_report, critique,
                                              verified=pack, genre=genre))
             rec('editor', 'qa', self._qa_line(qa))
+            self._save_reviewed(draft, subject, content, check, qa, chart_rel, chart_note, revisions)
 
             # 기준 미달이면 — 보류든 수정 요청이든 — 자동으로 MAX_AUTO_REVISIONS 번까지 다시 쓴다.
             # 편집장 지적·팩트체크·평론을 함께 물려 준다. 그 뒤로는 사람이 /lab/admin/ 에서 지시한다.
@@ -345,6 +350,13 @@ class Command(BaseCommand):
                 rec('editor', 'qa', f'{hold} — 자동 수정 대신 운영자 검수로 넘겨요.')
             for attempt in range(1, max_rev + 1):
                 if qa['verdict'] not in ('minor', 'major'):
+                    break
+                if context and not context.can_start_revision(calls=9 if not opts['no_chart'] else 8):
+                    budget = context.budget()
+                    stages.record('revision_deferred', 'lead', {'budget': budget, 'attempt': attempt},
+                                  status='skipped')
+                    rec('lead', 'hold', f"자동 보완을 끝낼 예산이 부족해 검수본을 보존해요 "
+                        f"(남은 호출 {budget['remaining_calls']}회). 운영자 재심으로 이어가요.")
                     break
                 prev_content, prev_qa = content, qa
                 live.mark('editor_revise', writer, topic_key)
@@ -447,6 +459,7 @@ class Command(BaseCommand):
                     qa['verdict'] = 'accept'
                     qa['accepted_after_revision'] = True
                 rec('editor', 'qa', '재심 ' + self._qa_line(qa))
+                self._save_reviewed(draft, subject, content, check, qa, chart_rel, chart_note, revisions)
 
             stages.complete(subject, content, check, qa, revisions=revisions,
                             quality=quality.report(subject, content))
@@ -490,7 +503,8 @@ class Command(BaseCommand):
                 out(self.style.WARNING(f'활동 문장 다듬기 건너뜀: {str(ex)[:120]}'))
 
         except Exception as ex:  # noqa: BLE001 — 실패도 기록해 연구실에 보이게
-            stages.record('fail', 'lead', status='failed', error=str(ex))
+            stages.record('fail', 'lead', {'budget': context.budget() if context else {}},
+                          status='failed', error=str(ex))
             if draft:
                 from common.services.cli_errors import ProviderUnavailable
                 from office.research_contract import ContractIncomplete
@@ -498,10 +512,23 @@ class Command(BaseCommand):
                 draft.save(update_fields=['status'])
                 log('lead', 'fail', f'{label} 제작 실패: {str(ex)[:200]}', draft=draft)
                 if slot is not None:
-                    S.alert_not_ready(draft, label, f'제작 중 오류로 멈췄습니다({type(ex).__name__})',
+                    reason = str(ex) if isinstance(ex, RunBudgetExceeded) else f'제작 중 오류로 멈췄습니다({type(ex).__name__})'
+                    S.alert_not_ready(draft, label, reason,
                                       rerun_args=['office_publish', '--topic', topic_key,
                                                   '--prepare' if prepare else '--if-missing'])
             raise
+
+    @staticmethod
+    def _save_reviewed(draft, subject, content, check, qa, chart_rel, chart_note, revisions):
+        """검수를 끝낸 동일 버전의 본문·보고서를 함께 보존한다. 공개·승인은 하지 않는다."""
+        if draft is None:
+            return
+        from copy import deepcopy
+        draft.subject, draft.content = subject, content
+        draft.check_report, draft.qa_report = deepcopy(check), deepcopy(qa)
+        draft.chart_path, draft.chart_note, draft.revisions = chart_rel, chart_note, revisions
+        draft.save(update_fields=['subject', 'content', 'check_report', 'qa_report',
+                                  'chart_path', 'chart_note', 'revisions'])
 
     @staticmethod
     def _code_facts(stages: StageRecorder, rec, content: str, pack: str, *, attempt: int = 1) -> str:

@@ -61,6 +61,11 @@ class Command(BaseCommand):
             raise CommandError(f"ColumnDraft {opts['draft']} 를 찾을 수 없습니다.")
         if draft.status == ColumnDraft.STATUS_PUBLISHED:
             raise CommandError('이미 발행된 칼럼입니다.')
+        from office.run_context import current
+        if current():
+            current().metadata(draft_id=draft.pk, topic=draft.topic, column_track=draft.column_track)
+        if not draft.content.strip() and not opts['content_file']:
+            raise CommandError('재심할 본문이 비어 있어요. 제작 기록에서 원고를 복구한 뒤 다시 요청해 주세요.')
 
         admin_note = (opts['note'] or draft.admin_note or '').strip()
         facts = (opts['facts'] or '').strip()

@@ -55,6 +55,24 @@ class RunContext:
     def remaining(self):
         return self.max_seconds - self.previous_seconds - (time.monotonic()-self.started)
 
+    def budget(self):
+        """중단 원인과 자동 보완 착수 판단에 같은 잔여 예산을 쓴다."""
+        with self.lock:
+            return {'calls': self.data['calls'], 'max_calls': self.max_calls,
+                    'remaining_calls': max(0, self.max_calls - self.data['calls']),
+                    'remaining_seconds': max(0, round(self.remaining(), 2)),
+                    'max_seconds': self.max_seconds, 'codex_tokens': self.codex_tokens(),
+                    'max_codex_tokens': self.max_codex_tokens}
+
+    def can_start_revision(self, *, calls=9, seconds=600):
+        """패치·재검증·도판·평론·3인 심사까지 마칠 여유가 있을 때만 보완한다.
+
+        재시도까지 보장하는 예약은 아니다. 실제 호출의 hard cap은 reserve가 계속 검사한다.
+        """
+        budget = self.budget()
+        return (budget['remaining_calls'] >= calls and budget['remaining_seconds'] >= seconds
+                and (not self.max_codex_tokens or budget['codex_tokens'] < self.max_codex_tokens))
+
     def codex_tokens(self) -> int:
         """이 실행이 Codex 구독에 보낸 입력 토큰(재개 전 기록 포함). 끝난 호출만 센다."""
         return sum(int(c.get('input_tokens') or 0) for c in [*self.previous_calls, *self.active_calls]
@@ -64,8 +82,12 @@ class RunContext:
         from .execution import assert_current
         assert_current()
         with self.lock:
-            if self.data['calls'] >= self.max_calls or self.remaining() <= 0:
-                raise RunBudgetExceeded('연구실 실행 예산을 소진했어요. 검증 기준을 낮추지 않고 보류해요.')
+            if self.data['calls'] >= self.max_calls:
+                raise RunBudgetExceeded(f"연구실 호출 예산 {self.data['calls']}/{self.max_calls}회를 소진했어요. "
+                                        '검증 기준을 낮추지 않고 보류해요.')
+            if self.remaining() <= 0:
+                raise RunBudgetExceeded(f'연구실 시간 예산 {self.max_seconds}초를 소진했어요. '
+                                        '검증 기준을 낮추지 않고 보류해요.')
             if self.max_codex_tokens and self.codex_tokens() >= self.max_codex_tokens:
                 # 2026-10-31: 보류된 글 한 편이 Codex 5시간 한도의 절반 가까이를 썼다. 호출 수·시간만으로는 못 막는다.
                 raise RunBudgetExceeded(f'Codex 입력 {self.codex_tokens():,}토큰으로 실행 상한'

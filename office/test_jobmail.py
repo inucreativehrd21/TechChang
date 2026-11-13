@@ -44,7 +44,7 @@ class MailTests(TestCase):
         self.assertNotIn('/lab/job/', mail.outbox[0].body)
 
     def test_not_ready_mail_offers_review_or_retry(self):
-        held = ColumnDraft.objects.create(topic='data', subject='보류 원고', status=ColumnDraft.STATUS_HOLD,
+        held = ColumnDraft.objects.create(topic='data', subject='보류 원고', content='검수할 본문', status=ColumnDraft.STATUS_HOLD,
                                           publish_at=timezone.now() + timedelta(hours=10),
                                           qa_report={'score': 68, 'verdict': 'minor',
                                                      'must_fix': [{'where': '서두', 'problem': '논지 끊김', 'fix': '잇기'}]})
@@ -59,6 +59,12 @@ class MailTests(TestCase):
         J.not_ready_mail(failed, '데이터분석 칼럼', '제작 중 오류로 멈췄습니다',
                          rerun_args=['office_publish', '--topic', 'data', '--prepare'])
         self.assertIn('다시 준비', mail.outbox[1].body)
+
+    def test_empty_held_draft_does_not_offer_unusable_revision(self):
+        held = ColumnDraft.objects.create(topic='data', status=ColumnDraft.STATUS_HOLD)
+        J.not_ready_mail(held, '칼럼', '실행 예산 소진')
+        self.assertNotIn('지적대로 고쳐 재심 요청', mail.outbox[0].body)
+        self.assertIn('복구한 뒤 재심', mail.outbox[0].body)
 
     def test_claude_alert_uses_the_button_mail_when_fallback_is_off(self):
         from common.services import claude as C

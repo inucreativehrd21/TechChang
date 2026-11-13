@@ -87,6 +87,11 @@ def patch_revise(agent: str, subject: str, content: str, issues: list, *, who: s
             who=who, issues='\n'.join(f'- {i}' for i in issues), subject=subject, content=content, guide=guide),
             max_tokens=max_tokens, tools=tools)
     except Exception as exc:  # noqa: BLE001 — 패치가 안 되면 전체 재작성으로 넘어간다
+        from .run_context import RunBudgetExceeded
+        from .execution import LeaseLost
+        from common.services.cli_errors import ProviderUnavailable
+        if isinstance(exc, (RunBudgetExceeded, LeaseLost, ProviderUnavailable)):
+            raise
         logger.warning('패치 수정 호출 실패: %s', exc)
         return subject, content, False, f'패치 호출 실패: {exc}'[:200]
     edits = [e for e in (res.get('edits') or []) if isinstance(e, dict)]

@@ -342,11 +342,13 @@ def not_ready_mail(draft, label: str, reason: str, *, rerun_args: list | None = 
         lines += ['', f'지금은 구독 한도 중입니다(해제 {_fmt(until)}). 버튼을 누르면 해제 뒤에 실행됩니다.']
     lines += ['', '공개 시각 전에 통과하면 공개 대기로 들어가 그 시각에 공개되고, 지났으면 바로 발행됩니다.']
     buttons = []
-    if draft.status == ColumnDraft.STATUS_HOLD:
+    if draft.status == ColumnDraft.STATUS_HOLD and draft.content.strip():
         buttons.append(('지적대로 고쳐 재심 요청',
                         link(make_token('revise', revise_args(draft), f'재심 요청: {draft.subject or draft.brief}',
                                         draft_id=draft.pk)),
                         '담당 연구원이 남은 필수 수정을 고치고 편집장이 다시 심사합니다.'))
+    elif draft.status == ColumnDraft.STATUS_HOLD:
+        lines += ['', '저장된 본문이 비어 있어요. 제작 기록에서 원고를 복구한 뒤 재심해 주세요.']
     elif rerun_args and rerun_args[0] in RERUNNABLE:
         buttons.append(('다시 준비', link(make_token('rerun', rerun_args, f'다시 준비: {label}')),
                         '같은 공개 시각 몫을 처음부터 다시 만듭니다.'))

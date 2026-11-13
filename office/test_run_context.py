@@ -11,6 +11,26 @@ from office.delta_review import scope_check
 
 
 class RunRecoveryTests(SimpleTestCase):
+    def test_revision_admission_preserves_hard_cap_and_resume_budget(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            ctx = RunContext(root=tmp, max_calls=24)
+            ctx.data['calls'] = 15
+            self.assertTrue(ctx.can_start_revision())
+            ctx.data['calls'] = 16
+            ctx.save()
+            resumed = RunContext(root=tmp, run_id=ctx.run_id)
+            self.assertFalse(resumed.can_start_revision())
+            self.assertEqual(resumed.budget()['remaining_calls'], 8)
+            resumed.reserve()  # 임의로 예산을 늘리거나 호출을 미리 소모하지 않는다
+            self.assertEqual(resumed.data['calls'], 17)
+
+    def test_budget_errors_identify_call_or_time_limit(self):
+        with self.assertRaisesRegex(RunBudgetExceeded, '호출 예산 0/0회'):
+            RunContext(dry=True, max_calls=0).reserve()
+        with self.assertRaisesRegex(RunBudgetExceeded, '시간 예산 0초'):
+            RunContext(dry=True, max_seconds=0).reserve()
+        self.assertFalse(RunContext(dry=True, max_seconds=599).can_start_revision())
+
     def test_same_request_reuses_completed_response_after_restart(self):
         with tempfile.TemporaryDirectory() as tmp, use_profile('b'), \
                 mock.patch('office.services.ask', return_value='검증된 응답') as ask:

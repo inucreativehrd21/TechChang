@@ -12,6 +12,12 @@ DOC = ('첫 문단입니다. 이미 검증된 수치 45%가 들어 있습니다.
 
 
 class ApplyEditsTests(SimpleTestCase):
+    def test_budget_stop_is_not_converted_to_full_rewrite(self):
+        from office.run_context import RunBudgetExceeded
+        with self.assertRaises(RunBudgetExceeded):
+            PT.patch_revise('coding', '제목', DOC, ['수정'], who='심사에서',
+                            ask_json=mock.Mock(side_effect=RunBudgetExceeded('호출 상한')))
+
     def test_only_unique_matches_are_applied(self):
         out, applied, failed = PT.apply_edits(DOC, [
             {'find': '대안 없이 막힙니다.', 'replace': '공식 문서상 대안 안내가 없습니다.'},

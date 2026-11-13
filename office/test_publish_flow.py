@@ -71,6 +71,38 @@ class PublishFlowTests(TestCase):
         self.assertEqual(failed.status, 'failed')
         self.assertEqual(len(checks), 1)      # 재검증하지 않음
 
+    def test_low_budget_defers_optional_revision_with_reviewed_body(self):
+        with mock.patch('office.run_context.RunContext.can_start_revision', return_value=False):
+            draft, checks = self.run_publish(editor_raw='쓰면 안 되는 수정본', reviews=[qa('minor', 70)])
+        self.assertEqual(draft.status, ColumnDraft.STATUS_HOLD)
+        self.assertEqual(draft.content, column(30))
+        self.assertEqual(draft.qa_report['score'], 70)
+        self.assertEqual(draft.revisions, 0)
+        self.assertEqual(len(checks), 1)
+        self.assertTrue(StageRun.objects.filter(draft=draft, stage='revision_deferred').exists())
+        self.assertTrue(StageRun.objects.filter(draft=draft, stage='final').exists())
+
+    def test_budget_failure_after_first_review_keeps_matching_reviewed_version(self):
+        from office.run_context import RunBudgetExceeded
+        rewritten = 'TITLE: 제목\n---\n' + column(45)
+        with self.assertRaises(RunBudgetExceeded):
+            self.run_publish(editor_raw=rewritten, reviews=[qa('minor', 70), RunBudgetExceeded('호출 상한')])
+        draft = ColumnDraft.objects.latest('id')
+        self.assertEqual(draft.status, ColumnDraft.STATUS_HOLD)
+        self.assertEqual(draft.content, column(30))
+        self.assertEqual(draft.qa_report['score'], 70)
+        self.assertEqual(draft.revisions, 0)
+        self.assertFalse(StageRun.objects.filter(draft=draft, stage='final').exists())
+
+    def test_budget_failure_before_first_review_still_leaves_body_for_revision(self):
+        from office.run_context import RunBudgetExceeded
+        with self.assertRaises(RunBudgetExceeded):
+            self.run_publish(editor_raw='', reviews=[RunBudgetExceeded('호출 상한')])
+        draft = ColumnDraft.objects.latest('id')
+        self.assertEqual(draft.content, column(30))
+        self.assertEqual(draft.qa_report, {})
+        self.assertEqual(draft.status, ColumnDraft.STATUS_HOLD)
+
     def test_changed_figures_trigger_a_recheck(self):
         rewritten = 'TITLE: 제목\n---\n' + column(45)
         draft, checks = self.run_publish(editor_raw=rewritten, reviews=[qa('minor', 70), qa('accept', 85)])
