@@ -166,9 +166,13 @@ class RevisionRequests:
         if self.cached_verification and self.cached_verification[0] == key:
             return deepcopy(self.cached_verification[1])
         from common.services.claude import call_tags
+        # 수정 전·후 본문을 통째로 주고 요구마다 근거 문장을 쓰게 한다 — 요구가 많으면(최대 16개)
+        # 적응형 thinking 이 5000 토큰 예산을 다 써서 뒤쪽 항목의 evidence 가 빈 채로 나왔다
+        # (2026-11-13 #59·#60: reason 은 멀쩡한데 evidence 가 전부 빈 문자열). 요구 수에 맞춰 늘린다.
+        verify_tokens = max(5000, 900 * len(self.requirements))
         with call_tags(stage='revision_verify'):
             raw = ask_agent_json('editor', VERIFY_RULE+'\n'+json.dumps(self._data(subject, content), ensure_ascii=False),
-                                 max_tokens=5000)
+                                 max_tokens=verify_tokens)
         reasons, items = [], []
         if not isinstance(raw, dict):
             raw = {}
