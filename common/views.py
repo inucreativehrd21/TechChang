@@ -12,6 +12,8 @@ from django.utils import timezone
 from django.utils.http import url_has_allowed_host_and_scheme
 from django.core.mail import send_mail
 from django.core.cache import cache
+from django.core.exceptions import ValidationError
+from django.core.validators import validate_email
 import json
 import logging
 import secrets
@@ -24,6 +26,19 @@ from community.utils import award_points, deduct_points
 
 
 logger = logging.getLogger(__name__)
+
+EMAIL_SENDING_LIMIT_MESSAGE = (
+    '메일 발송 한도에 도달해 지금은 인증 메일을 보낼 수 없어요. '
+    '제한 해제까지 최대 24시간이 걸릴 수 있어요. 나중에 다시 요청해 주세요.'
+)
+
+
+def _email_sending_limit_reached(exc):
+    reply = getattr(exc, 'smtp_error', b'')
+    if isinstance(reply, bytes):
+        reply = reply.decode('utf-8', errors='replace')
+    return (getattr(exc, 'smtp_code', None) == 550
+            and ('5.4.5' in reply or 'daily user sending limit' in reply.lower()))
 
 
 @require_POST
@@ -141,9 +156,16 @@ def send_verification_email(request):
     except json.JSONDecodeError:
         return JsonResponse({'success': False, 'message': '요청 형식이 올바르지 않습니다.'}, status=400)
 
-    email = data.get('email', '').strip().lower()
+    if not isinstance(data, dict):
+        return JsonResponse({'success': False, 'message': '요청 형식이 올바르지 않습니다.'}, status=400)
+    email_value = data.get('email', '')
+    email = email_value.strip().lower() if isinstance(email_value, str) else ''
     if not email:
         return JsonResponse({'success': False, 'message': '이메일을 입력해주세요.'}, status=400)
+    try:
+        validate_email(email)
+    except ValidationError:
+        return JsonResponse({'success': False, 'message': '올바른 이메일 주소를 입력해 주세요.'}, status=400)
 
     if User.objects.filter(email=email).exists():
         return JsonResponse({'success': False, 'message': '이미 사용 중인 이메일입니다.'}, status=400)
@@ -159,6 +181,11 @@ def send_verification_email(request):
         ip_cooldown_key = f"email_verification:cooldown_ip:{ip_address}"
         if cache.get(ip_cooldown_key):
             return JsonResponse({'success': False, 'message': '요청이 너무 빈번합니다. 잠시 후 다시 시도해주세요.'}, status=429)
+
+    # 발송 실패에도 대기 시간을 적용해 반복 클릭으로 SMTP 요청이 쌓이지 않게 한다.
+    cache.set(cooldown_key, True, timeout=EmailVerification.RESEND_COOLDOWN_SECONDS)
+    if ip_address:
+        cache.set(ip_cooldown_key, True, timeout=EmailVerification.RESEND_COOLDOWN_SECONDS)
 
     # 진행 중인 인증 레코드 정리
     EmailVerification.objects.filter(email=email, is_verified=False).delete()
@@ -190,6 +217,9 @@ def send_verification_email(request):
     except Exception as exc:
         logger.exception("Failed to send verification email to %s", email)
         verification.delete()
+        if _email_sending_limit_reached(exc):
+            return JsonResponse({'success': False, 'message': EMAIL_SENDING_LIMIT_MESSAGE,
+                                 'error_code': 'email_sending_limit'}, status=503)
         if settings.DEBUG:
             return JsonResponse({'success': True, 'message': f'개발 모드: 인증코드는 {code}입니다.', 'code': code})
         # 에러 타입과 메시지를 더 자세히 반환 (프로덕션에서 디버깅용)
@@ -198,10 +228,6 @@ def send_verification_email(request):
             'success': False,
             'message': '이메일 발송 중 문제가 발생했습니다. 관리자에게 문의해주세요.',
         }, status=500)
-
-    cache.set(cooldown_key, True, timeout=EmailVerification.RESEND_COOLDOWN_SECONDS)
-    if ip_address:
-        cache.set(f"email_verification:cooldown_ip:{ip_address}", True, timeout=EmailVerification.RESEND_COOLDOWN_SECONDS)
 
     return JsonResponse({'success': True, 'message': f'인증 코드가 {email}로 발송되었습니다.'})
 
@@ -258,9 +284,16 @@ def send_profile_verification_email(request):
     except json.JSONDecodeError:
         return JsonResponse({'success': False, 'message': '요청 형식이 올바르지 않습니다.'}, status=400)
 
-    email = data.get('email', '').strip().lower()
+    if not isinstance(data, dict):
+        return JsonResponse({'success': False, 'message': '요청 형식이 올바르지 않습니다.'}, status=400)
+    email_value = data.get('email', '')
+    email = email_value.strip().lower() if isinstance(email_value, str) else ''
     if not email:
         return JsonResponse({'success': False, 'message': '이메일을 입력해주세요.'}, status=400)
+    try:
+        validate_email(email)
+    except ValidationError:
+        return JsonResponse({'success': False, 'message': '올바른 이메일 주소를 입력해 주세요.'}, status=400)
 
     # 이메일이 다른 사용자에게 사용 중인지 확인 (자신의 이메일은 허용)
     existing_user = User.objects.filter(email=email).exclude(id=request.user.id).first()
@@ -278,6 +311,11 @@ def send_profile_verification_email(request):
         ip_cooldown_key = f"email_verification:cooldown_ip:{ip_address}"
         if cache.get(ip_cooldown_key):
             return JsonResponse({'success': False, 'message': '요청이 너무 빈번합니다. 잠시 후 다시 시도해주세요.'}, status=429)
+
+    # 실패한 발송 시도도 대기 시간에 포함한다.
+    cache.set(cooldown_key, True, timeout=EmailVerification.RESEND_COOLDOWN_SECONDS)
+    if ip_address:
+        cache.set(ip_cooldown_key, True, timeout=EmailVerification.RESEND_COOLDOWN_SECONDS)
 
     # 진행 중인 인증 레코드 정리
     EmailVerification.objects.filter(email=email, is_verified=False).delete()
@@ -314,6 +352,9 @@ def send_profile_verification_email(request):
     except Exception as exc:
         logger.exception("Failed to send profile verification email to %s", email)
         verification.delete()
+        if _email_sending_limit_reached(exc):
+            return JsonResponse({'success': False, 'message': EMAIL_SENDING_LIMIT_MESSAGE,
+                                 'error_code': 'email_sending_limit'}, status=503)
         if settings.DEBUG:
             return JsonResponse({'success': True, 'message': f'개발 모드: 인증코드는 {code}입니다.', 'code': code})
         error_type = type(exc).__name__
@@ -324,10 +365,6 @@ def send_profile_verification_email(request):
             'message': f'이메일 발송 중 문제가 발생했습니다. 관리자에게 문의해주세요. (Error: {error_type})',
             'debug_info': error_msg if settings.DEBUG else None
         }, status=500)
-
-    cache.set(cooldown_key, True, timeout=EmailVerification.RESEND_COOLDOWN_SECONDS)
-    if ip_address:
-        cache.set(f"email_verification:cooldown_ip:{ip_address}", True, timeout=EmailVerification.RESEND_COOLDOWN_SECONDS)
 
     return JsonResponse({'success': True, 'message': f'인증 코드가 {email}로 발송되었습니다.'})
 
@@ -599,9 +636,11 @@ def admin_otp(request):
         if not recipient:
             messages.error(request, '관리자 수신 이메일(.env DJANGO_ADMIN_EMAIL)이 설정되지 않았습니다.')
             return 'nomail'
-        last_sent = request.session.get('admin_otp_sent_at', 0)
-        if not force and (time.time() - last_sent) < ADMIN_OTP_RESEND_COOLDOWN:
+        last_attempt = max(request.session.get('admin_otp_sent_at', 0),
+                           request.session.get('admin_otp_attempted_at', 0))
+        if not force and (time.time() - last_attempt) < ADMIN_OTP_RESEND_COOLDOWN:
             return 'cooldown'  # 쿨다운 중 — 기존 코드 유지(새로고침 시 메일 폭주 방지)
+        request.session['admin_otp_attempted_at'] = time.time()
         code = _generate_admin_otp()
         request.session['admin_otp_pending'] = {
             'code': code, 'ip': ip, 'attempts': 0,
@@ -622,10 +661,12 @@ def admin_otp(request):
                 recipient_list=[recipient],
                 fail_silently=False,
             )
-        except Exception:
+        except Exception as exc:
             logger.exception('관리자 OTP 이메일 발송 실패')
             request.session.pop('admin_otp_pending', None)
-            messages.error(request, '인증 코드 발송에 실패했습니다. 잠시 후 다시 시도해주세요.')
+            message = (EMAIL_SENDING_LIMIT_MESSAGE if _email_sending_limit_reached(exc)
+                       else '인증 코드 발송에 실패했습니다. 잠시 후 다시 시도해주세요.')
+            messages.error(request, message)
             return 'error'
         request.session['admin_otp_sent_at'] = time.time()
         logger.warning('관리자 OTP 발송: user=%s ip=%s', request.user.username, ip)
@@ -648,7 +689,7 @@ def admin_otp(request):
             if status == 'sent':
                 messages.success(request, '인증 코드를 발송했습니다. 이메일을 확인해주세요.')
             elif status == 'cooldown':
-                messages.info(request, '이미 코드를 발송했습니다. 이메일을 확인하거나 잠시 후 다시 시도해주세요.')
+                messages.info(request, '발송 요청 후 60초가 지나야 다시 요청할 수 있어요. 이메일을 확인하거나 잠시 후 다시 시도해 주세요.')
             return redirect('common:admin_otp')
 
         # 코드 검증

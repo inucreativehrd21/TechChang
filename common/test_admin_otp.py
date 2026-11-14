@@ -1,5 +1,6 @@
 """관리자 인증 메일은 최초 한 번과 명시적인 재발송 요청에만 발송해요."""
 import time
+from smtplib import SMTPDataError
 from unittest.mock import patch
 
 from django.contrib.auth.models import User
@@ -87,6 +88,23 @@ class AdminOTPDeliveryTests(TestCase):
             self.assertEqual(send.call_count, 1)
         self.client.post(self.url, {'action': 'resend'}, follow=True)
         self.assertEqual(len(mail.outbox), 1)
+
+    def test_failed_send_also_throttles_manual_resends_and_explains_quota(self):
+        with patch('common.views.send_mail', side_effect=SMTPDataError(
+                550, b'5.4.5 Daily user sending limit exceeded')) as smtp:
+            response = self.client.get(self.url)
+            self.assertContains(response, '메일 발송 한도')
+            self.assertNotIn('admin_otp_pending', self.client.session)
+            response = self.client.post(self.url, {'action': 'resend'}, follow=True)
+            self.assertContains(response, '60초')
+            self.assertEqual(smtp.call_count, 1)
+            self.advance(61)
+            self.client.post(self.url, {'action': 'resend'}, follow=True)
+            self.assertEqual(smtp.call_count, 2)
+            self.advance(61)
+            self.client.get(self.url)
+            self.assertEqual(smtp.call_count, 2)
+            self.assertNotIn('admin_otp_until', self.client.session)
 
     def test_legacy_pending_or_sent_sessions_do_not_auto_resend(self):
         for key, value in (
