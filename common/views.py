@@ -590,8 +590,12 @@ def admin_otp(request):
     # 펜딩 코드/쿨다운은 세션(DB 백엔드, 워커 간 공유)에 저장한다.
     # CACHES가 LocMemCache(프로세스별)라 gunicorn 멀티워커에서는 발송 워커와
     # 검증 워커가 달라 캐시 기반 코드가 유실될 수 있으므로 세션을 사용한다.
+    if request.session.get('admin_otp_sent_at') or request.session.get('admin_otp_pending'):
+        request.session['admin_otp_auto_send_attempted'] = True
 
     def _send_code(force=False):
+        # 실패한 첫 발송도 자동 재시도하지 않는다. 이후 발송은 재발송 POST로만 한다.
+        request.session['admin_otp_auto_send_attempted'] = True
         if not recipient:
             messages.error(request, '관리자 수신 이메일(.env DJANGO_ADMIN_EMAIL)이 설정되지 않았습니다.')
             return 'nomail'
@@ -671,7 +675,7 @@ def admin_otp(request):
             request.session['admin_otp_ip'] = ip
             request.session.pop('admin_otp_next', None)
             request.session.pop('admin_otp_pending', None)
-            request.session.pop('admin_otp_sent_at', None)
+            # 발송 이력은 로그아웃까지 유지해 인증 만료 후에도 자동 재발송하지 않는다.
             messages.success(request, '인증되었습니다.')
             return redirect(next_url)
 
@@ -681,8 +685,13 @@ def admin_otp(request):
         messages.error(request, f'인증 코드가 올바르지 않습니다. (남은 시도 {remaining}회)')
         return redirect('common:admin_otp')
 
-    # GET — 코드 발송(쿨다운 고려) 후 폼 표시
-    _send_code(force=False)
+    # 같은 로그인 세션에서 최초 진입 때만 자동 발송한다.
+    # 기존 세션의 발송 이력도 존중하며, 만료·실패·새로고침은 재발송 사유가 아니다.
+    if (request.method == 'GET'
+            and not request.session.get('admin_otp_auto_send_attempted')
+            and not request.session.get('admin_otp_sent_at')
+            and not request.session.get('admin_otp_pending')):
+        _send_code(force=False)
 
     masked = ''
     if recipient and '@' in recipient:
