@@ -738,6 +738,22 @@ a.tc-lab-title:hover { color: var(--tc-accent); }
     overflow: hidden;
 }
 .tc-card:hover .tc-card-title { color: var(--tc-accent); }
+/* 제목 줄 수와 무관하게 칼럼 유형·메타 정보를 카드 하단에 함께 정렬해요. */
+.tc-home .tc-card-title { min-height: 2.9em; }
+.tc-card-footer {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    margin-top: auto;
+}
+.tc-card-track {
+    display: block;
+    font-size: 0.8125rem;
+    line-height: 1.5;
+    color: var(--tc-ink-3);
+    white-space: nowrap;
+}
+.tc-card-footer .tc-card-meta { margin-top: 0; }
 .tc-card-meta {
     display: flex;
     align-items: center;

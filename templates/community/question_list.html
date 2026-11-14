@@ -219,13 +219,15 @@
                 <span class="tc-card-tags">{% if question.operator_pick %}<span class="tc-op-pick" title="운영자가 직접 고른 글"><i class="fas fa-crown" aria-hidden="true"></i> 운영자 픽</span>{% endif %}{% if question.id in picks %}<span class="tc-pick" title="프리미엄 칼럼"><i class="fas fa-gem" aria-hidden="true"></i> 프리미엄</span>{% endif %}{% if question.category %}<span class="tc-card-badge tc-badge-{{ question.category.name|category_slug }}">{{ question.category.name }}</span>{% endif %}</span>
 
                 <h3 class="tc-card-title">{{ question.subject }}</h3>
-                {% if question.is_column and question.column_track and not question.series_id %}<span class="small text-muted">{{ question.get_column_track_display }}</span>{% endif %}
 
-                <div class="tc-card-meta">
-                    <span><i class="far fa-thumbs-up" aria-hidden="true"></i> {{ question.voter_count }}</span>
-                    <span><i class="far fa-comment" aria-hidden="true"></i> {{ question.answer_count }}</span>
-                    {% if question.is_locked and not user.is_authenticated %}<span class="tc-member-only"><i class="fas fa-lock" aria-hidden="true"></i> 회원 전용</span>{% endif %}
-                    <time class="tc-date" datetime="{{ question.create_date|date:'c' }}">{{ question.create_date|date:"Y.m.d" }}</time>
+                <div class="tc-card-footer">
+                    {% if question.is_column and question.column_track and not question.series_id %}<span class="tc-card-track">{{ question.get_column_track_display }}</span>{% endif %}
+                    <div class="tc-card-meta">
+                        <span><i class="far fa-thumbs-up" aria-hidden="true"></i> {{ question.voter_count }}</span>
+                        <span><i class="far fa-comment" aria-hidden="true"></i> {{ question.answer_count }}</span>
+                        {% if question.is_locked and not user.is_authenticated %}<span class="tc-member-only"><i class="fas fa-lock" aria-hidden="true"></i> 회원 전용</span>{% endif %}
+                        <time class="tc-date" datetime="{{ question.create_date|date:'c' }}">{{ question.create_date|date:"Y.m.d" }}</time>
+                    </div>
                 </div>
             </a>
             {% empty %}

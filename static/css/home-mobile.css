@@ -310,6 +310,19 @@
 .tc-mh-member-only i { font-size: 0.85em; }
 
 /* ── 공유 목록 위젯의 홈 한정 보정 ── */
+.tc-mh .tc-m-qcard-title { min-height: 2.9em; }
+.tc-mh-qcard-footer {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+.tc-mh-qcard-track {
+    display: block;
+    font-size: 0.8125rem;
+    line-height: 1.5;
+    color: var(--tc-ink-3);
+    white-space: nowrap;
+}
 #tc-mh-board { scroll-margin-top: 56px; }
 .tc-mh .tc-m-search-input { -webkit-appearance: none; appearance: none; }
 .tc-mh .tc-m-badge::before { display: none; }
