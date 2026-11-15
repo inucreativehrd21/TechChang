@@ -110,6 +110,16 @@ class PortfolioUploadSecurityTests(TestCase):
         self.assertNotIn('Content-Security-Policy-Report-Only', raw)
         self.assertEqual(raw['Cache-Control'], 'private, no-store')
 
+    def test_external_links_open_through_parent_bridge_not_popups(self):
+        raw = self.client.get(reverse('community:portfolio_collection_raw', args=[self.collection.slug]), HTTP_USER_AGENT=UA)
+        self.assertContains(raw, 'tc:open-link')
+        self.assertNotIn('allow-popups', raw['Content-Security-Policy'])
+        detail = self.client.get(reverse('community:portfolio_collection_detail', args=[self.collection.slug]),
+                                 HTTP_USER_AGENT=UA, follow=True)
+        self.assertContains(detail, 'sandbox="allow-scripts"')
+        self.assertContains(detail, "'tc:open-link'")
+        self.assertContains(detail, "'noopener,noreferrer'")
+
     def test_source_is_text_attachment_only_for_owner_or_staff(self):
         url = reverse('community:portfolio_collection_source', args=[self.collection.slug])
         r = self.client.get(url, HTTP_USER_AGENT=UA)

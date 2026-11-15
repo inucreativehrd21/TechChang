@@ -847,10 +847,15 @@ def _build_raw_html_csp(request):
 # 업로드 HTML 은 샌드박스 iframe(외부 통신·폼 전송 금지)이라 mailto·폼이 제대로 동작하지 않는다.
 # HTML 안의 [data-tc-coffee-chat] 또는 href="#coffee-chat" 를 누르면 부모 페이지에 신호만 보내고,
 # 부모(portfolio_view.html)가 사이트의 폼을 띄워 portfolio_coffee_chat 으로 보낸다 → 주인 이메일로 전달.
+# 샌드박스에 팝업 권한이 없어 외부 링크(github 등)는 iframe 안에서 열리지 않는다.
+# 절대 http(s) 링크를 누르면 주소만 부모에 넘기고, 부모가 noopener 새 탭으로 연다(사용자 클릭일 때만 브라우저가 허용).
 COFFEE_BRIDGE = (
     '<script>(function(){document.addEventListener("click",function(e){'
-    'var t=e.target&&e.target.closest&&e.target.closest(\'[data-tc-coffee-chat],a[href="#coffee-chat"]\');'
-    'if(!t)return;e.preventDefault();try{parent.postMessage({type:"tc:coffee-chat"},"*")}catch(_){}},true)})();</script>'
+    'var c=e.target&&e.target.closest;if(!c)return;'
+    'var t=e.target.closest(\'[data-tc-coffee-chat],a[href="#coffee-chat"]\');'
+    'if(t){e.preventDefault();try{parent.postMessage({type:"tc:coffee-chat"},"*")}catch(_){}return;}'
+    'var a=e.target.closest("a[href]");if(!a||!/^https?:\\/\\//i.test(a.getAttribute("href")||""))return;'
+    'e.preventDefault();try{parent.postMessage({type:"tc:open-link",href:a.href},"*")}catch(_){}},true)})();</script>'
 )
 COFFEE_LIMITS = {'name': 40, 'email': 120, 'org': 60, 'message': 2000}
 COFFEE_PER_IP_HOUR = 3

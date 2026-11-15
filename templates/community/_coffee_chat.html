@@ -108,7 +108,13 @@ portfolio_view.html 의 HTML 모드에서 include. iframe 은 .portfolio-html-em
 
   // 포트폴리오(iframe) 안의 '커피챗 제안하기' — 샌드박스라 출처가 null 이므로 보낸 창으로 확인한다
   window.addEventListener('message', function (e) {
-    if (frame && e.source === frame.contentWindow && e.data && e.data.type === 'tc:coffee-chat') open();
+    if (!frame || e.source !== frame.contentWindow || !e.data) return;
+    if (e.data.type === 'tc:coffee-chat') { open(); return; }
+    // 샌드박스 안 외부 링크 — http(s) 주소만, 원래 창과 끊긴 새 탭으로 연다
+    if (e.data.type === 'tc:open-link' && typeof e.data.href === 'string') {
+      var u; try { u = new URL(e.data.href); } catch (_) { return; }
+      if (u.protocol === 'https:' || u.protocol === 'http:') window.open(u.href, '_blank', 'noopener,noreferrer');
+    }
   });
   // 같은 페이지에서 직접 여는 링크도 지원(#coffee-chat)
   if (location.hash === '#coffee-chat') open();
