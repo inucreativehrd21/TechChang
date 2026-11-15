@@ -1080,6 +1080,20 @@ a.tc-lab-title:hover { color: var(--tc-accent); }
 .fl-home-actions a:hover { color: var(--tc-accent); background: var(--tc-bg-soft); }
 .fl-home-actions a:hover .fl-go { color: var(--tc-accent); transform: translateX(2px); }
 
+/* 첫 화면 = 소개 + 처음 글. 옛 .tc-hero 처럼 화면 높이를 채우고 세로 가운데 정렬 →
+   다음 섹션은 첫 화면 밖에서 시작. 내용이 화면보다 크면 min-height 는 무시되고 그대로 흐른다. */
+@media (min-width: 901px) and (min-height: 760px) {
+    .fl-home-fold {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        min-height: calc(100vh - var(--tc-nav));
+        min-height: calc(100dvh - var(--tc-nav));
+        padding-bottom: 1.5rem;
+        box-sizing: border-box;
+    }
+}
+
 /* 소개 바로 아래 첫 섹션은 머리 여백을 줄여 첫 화면 안에 */
 .fl-home .fl-home-intro + section .fl-section-head { margin-top: 2.25rem; }
 

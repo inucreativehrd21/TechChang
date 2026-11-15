@@ -1,7 +1,8 @@
 {% load static %}
 <main class="tc-home fl-page fl-home">
 
-    <!-- ===== 소개 + 찾기 패널 ===== -->
+    <!-- ===== 첫 화면: 소개 + 찾기 패널 + 처음 글 ===== -->
+    <div class="fl-home-fold">
     <header class="fl-home-intro">
         <div class="fl-home-lead">
             <div class="fl-head">
@@ -34,6 +35,7 @@
         <div class="fl-section-head"><h2 id="fl-start">처음이라면 이 글부터</h2><a href="{% url 'community:explore' %}?kind=column">칼럼 더 보기 <i class="fas fa-arrow-right" aria-hidden="true"></i></a></div>
         <div class="fl-results fl-lead">{% for question in start_posts %}{% include 'community/_flow_post.html' with summary=True %}{% empty %}<p class="fl-empty">새 칼럼을 준비하고 있어요. <a href="{% url 'community:explore' %}">커뮤니티 글도 둘러보세요.</a></p>{% endfor %}</div>
     </section>
+    </div>
 
     {% include 'community/_flow_interests.html' %}
 
