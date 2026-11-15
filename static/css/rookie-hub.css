@@ -14,6 +14,8 @@
 .rk-world__members { list-style: none; padding: 0; }
 .rk-world__members li { display: flex; gap: 16px; flex-wrap: wrap; padding: 12px 0; border-bottom: 1px solid #eef0f6; }
 .rk-world .rk-table { font-variant-numeric: tabular-nums; }
+.rk-world .rk-table th[scope=row] { white-space: nowrap; }
+.rk-world__nation { display: block; margin-top: 2px; color: #6b7280; font-size: .7rem; font-weight: 500; }
 .rk-peers { margin: 20px 0; }
 .rk-peers__grid { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 14px; }
 .rk-peer { min-width: 0; padding: 16px; border: 1px solid #dce1ec; border-radius: 8px; }
@@ -69,4 +71,15 @@
  .rk-club-report__notes { grid-template-columns: 1fr; }
  .rl-receipt dl { grid-template-columns: 1fr; gap: 5px; }
  .rl-receipt dd + dt { margin-top: 10px; }
+}
+
+/* 시즌 2 개막 전 정렬 정돈(2026-11-16) — 같은 나이 비교는 카드 수만큼 열(빈 셋째 칸 없이), 전체 리그 순위 머리·라운드 줄 정렬 */
+.rk-peers__grid.is-1 { grid-template-columns: minmax(0, 1fr); max-width: 420px; }
+.rk-peers__grid.is-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.rk-world .rk-table .is-rank { width: 4.5em; text-align: center; }
+.rk-world .rk-table th[scope="row"] a { color: var(--rk-ink); font-weight: 800; text-decoration: none; }
+.rk-world .rk-table th[scope="row"] a:hover { color: var(--rk-accent); text-decoration: underline; text-underline-offset: 3px; }
+.rk-world__round label { margin: 0; }
+@media (max-width: 760px) {
+    .rk-peers__grid.is-2 { grid-template-columns: minmax(0, 1fr); }
 }

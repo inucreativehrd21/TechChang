@@ -6,6 +6,7 @@ from django.shortcuts import render
 from django.urls import reverse
 
 from .. import rookie as R
+from .. import rookie_nations as Nations
 from .. import rookie_world as W
 from .. import rookie_world_hub as Hub
 from .. import rookie_universe as Universe
@@ -66,4 +67,5 @@ def world_hub(request, edition='daily'):
         fixtures=[row for row in data['fixtures'] if row['round'] == round_],
         batters=[row for row in roster if row['role'] == 'batter'], pitchers=[row for row in roster if row['role'] == 'pitcher'],
         members=Hub.member_stats(league, club, data['year'], mode=edition),
+        nation_note=Nations.NOTE.get(league, ''),
     ))

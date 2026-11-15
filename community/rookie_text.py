@@ -66,8 +66,9 @@ def josa(word: str, pair: str) -> str:
 
 # ───────────────────────────── 가상 인물 이름 안전망(실존 정치인·이름난 야구인과 겹치지 않게)
 def is_real_person(name: str) -> bool:
-    """가상 경쟁자·로스터 이름이 막아 둔 실존 인물(정치인·역대 대통령, 이름난 야구인)과 겹치는지."""
+    """가상 경쟁자·로스터 이름이 막아 둔 실존 인물(정치인·역대 대통령, 이름난 야구인·해외 스타)과 겹치는지."""
     from . import rookie_names as N          # 지연 import — 이 모듈은 다른 모듈에 기대지 않게 둔다
     from . import rookie_staff as S
+    from . import rookie_nations as F
     name = (name or '').strip()
-    return bool(name) and (N.blocked(name) or name in S.FAMOUS)
+    return bool(name) and (N.blocked(name) or name in S.FAMOUS or name in F.FAMOUS)

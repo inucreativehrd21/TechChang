@@ -14,6 +14,7 @@ from django.urls import reverse
 from django.utils import timezone
 
 from . import rookie_league as L
+from . import rookie_nations as N
 from . import rookie_sim as M
 from . import rookie_universe as U
 from . import rookie_world as W
@@ -109,7 +110,7 @@ def roster(league, club, year=1):
     all_names = [a + b for a in SURNAMES for b in GIVEN]
     names = rng.sample(all_names, 20)
     age_base = 12 if league == 'little' else 14 if league == 'middle' else 17 if league == 'hs' else 21 if league == 'univ' else 26
-    out, used = [], set()
+    out, used, talents, gens = [], set(), [], []
     for i, name in enumerate(names):
         raw_age = age_base + rng.randint(-5, 8) if W.is_pro(league) else age_base + rng.randint(-1, 1)
         talent = W.level(league) + rng.gauss(0, 4)
@@ -125,10 +126,40 @@ def roster(league, club, year=1):
             while name in used or is_real_person(name):
                 name = fix.choice(all_names)
         used.add(name)
-        out.append(dict(id=f'{i}:{generation}', name=name, role='batter' if i < 12 else 'pitcher',
+        talents.append(talent)
+        gens.append(generation)
+        out.append(dict(id=f'{i}:{generation}', name=name, nation='', tag='', role='batter' if i < 12 else 'pitcher',
                         position=POSITIONS[i] if i < 12 else 'SP' if i < 17 else 'RP', age=age,
                         ovr=round(max(25, min(99, talent + min(3, max(-8, (28 - age) * .3)))), 1), totals={}))
+    _nationalize(out, league, club, talents, gens, used)
     return out
+
+
+def _nationalize(out, league, club, talents, gens, used):
+    """리그 국적 구성대로 이름을 바꾼다 — 해외 리그 자국 선수는 그 나라 이름, 외국인 자리는 출신 나라 이름(rookie_nations).
+    한국 이름 로스터를 먼저 다 뽑은 뒤 덧칠하므로 나이·OVR·한국 선수 이름은 그대로다."""
+    if not W.is_pro(league):
+        return
+    seed = f'{league}:{club}'
+    foreign = N.plan(league, talents, gens, seed)
+    home_country, home_pool = N.HOME[W.system_of(league)]
+    families = set()
+    for i, row in enumerate(out):
+        country, pool, tag = foreign.get(i, (home_country, home_pool, ''))
+        if i in foreign:
+            row['nation'], row['tag'] = country, tag
+        if pool == 'kr':
+            continue                                   # 한국 이름은 위에서 이미 안전하게 뽑았다
+        rng = random.Random(f'name:{seed}:{i}:{gens[i]}')
+        for tries in range(200):                       # 한 팀에 같은 성이 겹치지 않게(대만은 성이 적어 조금 늦게 포기)
+            name = N.name(pool, rng)
+            if name in used or is_real_person(name):
+                continue
+            if N.family(pool, name) not in families or tries >= (60 if pool == 'tw' else 40):
+                break
+        used.add(name)
+        families.add(N.family(pool, name))
+        row['name'] = name
 
 
 def team_stats(data, club):
