@@ -1119,15 +1119,14 @@ a.tc-lab-title:hover { color: var(--tc-accent); }
 /* ── 야구 런칭 칸: 본문 폭에 맞춤 (.tc-section 자체 여백 제거) ── */
 .fl-home .fl-home-game { max-width: none; margin-top: 24px; padding: 0; }
 
-/* ── 운영 현황 (옛 히어로 지표를 맨 아래로) ── */
-.fl-home .fl-home-stats { max-width: none; margin: 48px 0 0; padding-top: 28px; }
-.fl-home .fl-home-stats dd { font-size: clamp(1.625rem, 2.6vw, 2.125rem); }
+/* 운영 현황은 소개 문구 아래 옛 히어로 지표(.tc-hero-stats) 그대로 */
 
 /* 첫 화면만 한 번 순차 등장 */
 @media (prefers-reduced-motion: no-preference) {
     .fl-home .fl-head > *,
     .fl-finder { animation: tcRise 0.7s var(--tc-ease) backwards; }
     .fl-home .fl-head > :nth-child(2) { animation-delay: 60ms; }
+    .fl-home .fl-head > :nth-child(3) { animation-delay: 120ms; }
     .fl-finder { animation-delay: 160ms; }
 }
 
@@ -1171,6 +1170,16 @@ a.tc-lab-title:hover { color: var(--tc-accent); }
     .fl-rail .fl-post { flex-basis: 85%; }
     .fl-home .fl-lab { margin-top: 40px; padding: 1.25rem; }
     .fl-home .fl-home-game .tc-ball-crew { display: none; }
-    .fl-home .fl-home-stats { gap: 1rem 1.75rem; margin-top: 36px; padding-top: 20px; }
-    .fl-home .fl-home-stats dd { font-size: 1.5rem; }
+    /* 옛 모바일 홈 지표(.tc-mh-stats)와 같은 값: 3칸 균등, 숫자 1.5rem */
+    .fl-home .tc-hero-stats {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 8px;
+        margin: 16px 0 0;
+        padding: 14px 0 2px;
+    }
+    .fl-home .tc-hero-stats > div { min-width: 0; }
+    .fl-home .tc-hero-stats dd { font-size: 1.5rem; line-height: 1.15; letter-spacing: -0.03em; }
+    .fl-home .tc-hero-stats dd small { margin-left: 1px; font-size: 0.55em; }
+    .fl-home .tc-hero-stats dt { margin-top: 2px; font-size: 0.75rem; }
 }

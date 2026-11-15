@@ -7,6 +7,11 @@
             <div class="fl-head">
                 <h1>HRD와 테크놀로지를<br><span class="fl-accent-text">잇는 지식 플랫폼</span></h1>
                 <p><span>팩트체크와 편집 심사를 거친 칼럼을 무료로 읽고,</span> <span>궁금한 점을 함께 나눠요.</span></p>
+                <dl class="tc-hero-stats" aria-label="테크창 운영 현황">
+                    <div><dt>운영</dt><dd>{{ launch_days }}<small>일</small></dd></div>
+                    <div><dt>누적 방문</dt><dd>{{ visitors_total }}</dd></div>
+                    <div><dt>오늘 방문</dt><dd>{{ visitors_today }}</dd></div>
+                </dl>
             </div>
             <aside class="fl-resume" data-reading-home hidden><p>최근 읽던 글</p><a data-reading-home-link href="{% url 'community:reading_list' %}"></a></aside>
         </div>
@@ -102,12 +107,5 @@
             <p class="tc-ball-more">숫자야구·2048·지뢰찾기는 <a href="{% url 'community:games_index' %}">게임센터</a>에 있어요.</p>
         </div>
     </section>
-
-    <!-- ===== 운영 현황 ===== -->
-    <dl class="tc-hero-stats fl-home-stats" aria-label="테크창 운영 현황">
-        <div><dt>운영</dt><dd>{{ launch_days }}<small>일</small></dd></div>
-        <div><dt>누적 방문</dt><dd>{{ visitors_total }}</dd></div>
-        <div><dt>오늘 방문</dt><dd>{{ visitors_today }}</dd></div>
-    </dl>
 </main>
 {% include 'community/_home_mode_picker.html' %}
