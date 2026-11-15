@@ -24,10 +24,12 @@
             <a href="{% url 'community:games_index' %}" class="premium-nav-link">게임</a>
             <a href="{% url 'office:home' %}" class="premium-nav-link">연구실</a>
             <a href="{% url 'community:reading_list' %}" class="premium-nav-link">내 활동</a>
+            {% comment "며칠 서비스 재개 시 상단 링크 복구" %}
             <a href="https://www.myochil.com/" class="premium-nav-link" target="_blank" rel="noopener noreferrer" style="display:inline-flex;align-items:center;gap:4px;">
                 <i class="fas fa-calendar-check" style="font-size:0.85em;color:#7c3aed;"></i>며칠
                 <i class="fas fa-external-link-alt" style="font-size:0.6em;opacity:0.5;"></i>
             </a>
+            {% endcomment %}
 
             {% if user.is_authenticated %}
                 <a href="{% url 'community:question_create' %}" class="btn-premium btn-premium-primary" style="padding: 0.45rem 1.05rem; font-size: 0.9375rem;">
@@ -85,9 +87,11 @@
         <a href="{% url 'community:members_list' %}" style="display:block;padding:var(--space-3) var(--space-6);color:var(--text-secondary);text-decoration:none;">구성원</a>
         <a href="{% url 'community:games_index' %}" style="display: block; padding: var(--space-3) var(--space-6); color: var(--text-secondary); text-decoration: none;">게임</a>
         <a href="{% url 'office:home' %}" style="display: block; padding: var(--space-3) var(--space-6); color: var(--text-secondary); text-decoration: none;">연구실</a>
+        {% comment "며칠 서비스 재개 시 접힌 메뉴 링크 복구" %}
         <a href="https://www.myochil.com/" target="_blank" rel="noopener noreferrer" style="display: block; padding: var(--space-3) var(--space-6); color: var(--text-secondary); text-decoration: none;">
             <i class="fas fa-calendar-check" style="color:#7c3aed;margin-right:4px;"></i>며칠 <i class="fas fa-external-link-alt" style="font-size:0.65em;opacity:0.5;"></i>
         </a>
+        {% endcomment %}
         {% if user.is_authenticated %}
             <a href="{% url 'community:question_create' %}" style="display: block; padding: var(--space-3) var(--space-6); color: var(--text-secondary); text-decoration: none;">글쓰기</a>
             <a href="{% url 'community:profile' user.id %}" style="display: block; padding: var(--space-3) var(--space-6); color: var(--text-secondary); text-decoration: none;">마이페이지</a>
