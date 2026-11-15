@@ -194,7 +194,7 @@ class PortfolioCollectionSitemap(Sitemap):
     def items(self):
         portfolios = PortfolioCollection.objects.filter(
             is_published=True, approval_status='approved'
-        ).select_related('user').order_by('-modify_date')
+        ).select_related('user').defer('html_content').order_by('-modify_date')
         from .portfolio_urls import portfolio_key, public_portfolio_urls
         urls = public_portfolio_urls()
         for portfolio in portfolios:

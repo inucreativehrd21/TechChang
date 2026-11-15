@@ -56,7 +56,10 @@ def named_portfolio(slug):
     for (kind, pk), url in urls.items():
         if unquote(urlsplit(url).path).rstrip('/').rsplit('/', 1)[-1] == slug:
             model = PortfolioCollection if kind == 'collection' else Portfolio
-            portfolio = model.objects.select_related('user').filter(pk=pk).first()
+            queryset = model.objects.select_related('user')
+            if kind == 'collection':
+                queryset = queryset.defer('html_content')
+            portfolio = queryset.filter(pk=pk).first()
             if portfolio is None:
                 return None
             portfolio._public_url = url

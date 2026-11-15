@@ -37,13 +37,14 @@
         <div class="mt-3 p-2 rounded">
           <div>
             <i class="fas fa-file-code me-1"></i><strong>HTML 직접 업로드</strong>
-            {% if c.html_filename %} · {{ c.html_filename }}{% endif %} · {{ c.html_content|length }}자
-            <a href="{% url 'community:portfolio_collection_raw' c.slug %}" target="_blank" rel="noopener"><i class="fas fa-external-link-alt me-1"></i>원본 새 탭</a>
+            {% if c.html_filename %} · {{ c.html_filename }}{% endif %} · {{ c.html_bytes|filesizeformat }}
+            <a href="{% url 'community:portfolio_collection_source' c.slug %}">전체 소스 받기</a>
           </div>
           <div><i class="fas fa-exclamation-triangle me-1"></i>승인 전 아래 소스에 피싱·악성 스크립트·외부 유출 시도가 없는지 검토하세요. (표시 시 샌드박스 격리되지만, 부적절한 콘텐츠는 반려하세요.)</div>
           <details>
             <summary>소스 코드 검토 (펼치기)</summary>
-            <pre>{{ c.html_content }}</pre>
+            <pre>{{ c.html_preview }}</pre>
+            {% if c.html_chars > 65536 %}<p>앞부분 65,536자만 표시해요. 전체 소스는 위에서 내려받을 수 있어요.</p>{% endif %}
           </details>
           {% if c.html_assets.all %}
           <div class="mt-2">
@@ -148,12 +149,13 @@
         <div class="mt-3 p-2 rounded">
           <div>
             <i class="fas fa-file-code me-1"></i><strong>HTML 직접 업로드</strong>
-            {% if c.html_filename %} · {{ c.html_filename }}{% endif %} · {{ c.html_content|length }}자
-            <a href="{% url 'community:portfolio_collection_raw' c.slug %}" target="_blank" rel="noopener"><i class="fas fa-external-link-alt me-1"></i>원본 새 탭</a>
+            {% if c.html_filename %} · {{ c.html_filename }}{% endif %} · {{ c.html_bytes|filesizeformat }}
+            <a href="{% url 'community:portfolio_collection_source' c.slug %}">전체 소스 받기</a>
           </div>
           <details>
             <summary>소스 코드 검토 (펼치기)</summary>
-            <pre>{{ c.html_content }}</pre>
+            <pre>{{ c.html_preview }}</pre>
+            {% if c.html_chars > 65536 %}<p>앞부분 65,536자만 표시해요. 전체 소스는 위에서 내려받을 수 있어요.</p>{% endif %}
           </details>
           {% if c.html_assets.all %}
           <div class="mt-2">

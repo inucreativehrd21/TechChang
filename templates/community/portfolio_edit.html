@@ -39,18 +39,19 @@
             <!-- ===== HTML 업로드 패널 (html 모드일 때만 표시) ===== -->
             <div id="htmlModePanel" style="margin-bottom: var(--space-8); {% if portfolio.content_mode != 'html' %}display: none;{% endif %}">
                 <div style="padding: var(--space-4); background: #fffbeb; border: 1px solid #fde68a; border-radius: var(--radius-md); color: #92400e; font-size: 0.85rem; line-height: 1.6; margin-bottom: var(--space-4);">
-                    <i class="fas fa-shield-alt"></i> 업로드한 HTML은 <strong>격리된 샌드박스</strong>에서 표시되어 사이트 로그인·쿠키에 접근할 수 없습니다. 외부 통신·폼 전송은 차단되며, 이미지/스타일/스크립트는 페이지 안에서만 동작합니다. 게시 전 <strong>관리자가 소스 코드를 검토</strong>합니다.
+                    <i class="fas fa-shield-alt"></i> 업로드한 HTML은 <strong>격리된 샌드박스</strong>에서 표시돼요. 포함된 이미지·인라인 스타일·스크립트와 지정된 글꼴을 사용할 수 있고, 외부 스크립트·폼 전송·팝업은 제한돼요. 게시 전 <strong>관리자가 내용을 검토</strong>해요.
                 </div>
                 <div style="padding: var(--space-3); background: #f0f9ff; border: 1px solid #bae6fd; border-radius: var(--radius-md); color: #0369a1; font-size: 0.82rem; line-height: 1.6; margin-bottom: var(--space-4);">
                     <i class="fas fa-id-badge"></i> <strong>구성원 목록</strong>에 표시되는 이름·프로필 사진은 아래 <strong>기본 정보</strong> 항목에서 설정하세요. (업로드한 HTML 내용과 별개로 관리됩니다.)
                 </div>
-                <label style="display: block; font-weight: 700; margin-bottom: var(--space-3); color: var(--text-primary);">HTML 파일 업로드 <small style="font-weight: 400; color: var(--text-tertiary);">(.html, 최대 512KB)</small></label>
+                <label style="display: block; font-weight: 700; margin-bottom: var(--space-3); color: var(--text-primary);">HTML 파일 업로드 <small style="font-weight: 400; color: var(--text-tertiary);">(.html, 최대 20MiB · 계정 합계 50MiB)</small></label>
                 <input type="file" name="html_file" accept=".html,.htm,text/html" style="width: 100%; padding: var(--space-3); border: 1px solid var(--border-light); border-radius: var(--radius-md); margin-bottom: var(--space-4);">
                 {% if portfolio.html_filename %}
-                <p style="font-size: 0.8rem; color: var(--text-tertiary); margin-bottom: var(--space-4);"><i class="fas fa-check-circle" style="color:#059669;"></i> 현재 저장된 파일: <strong>{{ portfolio.html_filename }}</strong> ({{ portfolio.html_content|length }}자)</p>
+                <p style="font-size: 0.8rem; color: var(--text-tertiary); margin-bottom: var(--space-4);"><i class="fas fa-check-circle" style="color:#059669;"></i> 현재 저장된 파일: <strong>{{ portfolio.html_filename }}</strong> ({{ portfolio.html_bytes|filesizeformat }}) · <a href="{% url 'community:portfolio_collection_source' portfolio.slug %}">원본 받기</a></p>
                 {% endif %}
-                <label style="display: block; font-weight: 700; margin-bottom: var(--space-3); color: var(--text-primary);">또는 HTML 코드 직접 붙여넣기</label>
-                <textarea name="html_content" rows="14" placeholder="<!DOCTYPE html>&#10;<html>...&#10;</html>&#10;&#10;(파일을 업로드하면 이 내용은 무시됩니다. 비워두고 저장하면 기존 내용이 유지됩니다.)" style="width: 100%; padding: var(--space-4); border: 1px solid var(--border-light); border-radius: var(--radius-md); font-family: 'Courier New', monospace; font-size: 0.85rem; line-height: 1.5; resize: vertical;">{{ portfolio.html_content }}</textarea>
+                <label style="display: block; font-weight: 700; margin-bottom: var(--space-3); color: var(--text-primary);">또는 HTML 코드 직접 붙여넣기 (최대 512KiB)</label>
+                {% if portfolio.html_bytes > 524288 %}<p>큰 HTML은 편집창에 표시하지 않아요. 새 파일을 올리면 교체하고, 비워 두면 기존 원본을 유지해요.</p>{% endif %}
+                <textarea name="html_content" rows="14" placeholder="<!DOCTYPE html>&#10;<html>...&#10;</html>&#10;&#10;(파일을 업로드하면 이 내용은 무시됩니다. 비워두고 저장하면 기존 내용이 유지됩니다.)" style="width: 100%; padding: var(--space-4); border: 1px solid var(--border-light); border-radius: var(--radius-md); font-family: 'Courier New', monospace; font-size: 0.85rem; line-height: 1.5; resize: vertical;">{{ portfolio.html_editor }}</textarea>
 
                 <hr style="margin: var(--space-6) 0; border: none; border-top: 1px solid var(--border-light);">
                 <label style="display: block; font-weight: 700; margin-bottom: var(--space-3); color: var(--text-primary);">

@@ -68,6 +68,7 @@ MIDDLEWARE = [
     'csp.contrib.rate_limiting.RateLimitedCSPMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
+    'common.portfolio_uploads.PortfolioUploadMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'common.game_controls.GameControlMiddleware',

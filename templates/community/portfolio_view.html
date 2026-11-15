@@ -953,7 +953,7 @@ body { padding-top: var(--nav-height) !important; }
 </style>
 <iframe class="portfolio-html-embed"
         src="{% url 'community:portfolio_collection_raw' portfolio.slug %}"
-        sandbox="allow-scripts allow-popups allow-popups-to-escape-sandbox"
+        sandbox="allow-scripts"
         title="{{ portfolio.get_display_name }}의 포트폴리오"
         loading="lazy"></iframe>
 {% include 'community/_coffee_chat.html' %}

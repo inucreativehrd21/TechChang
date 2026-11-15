@@ -832,19 +832,20 @@ def _get_portfolio_for_review(kind, obj_id):
 def admin_portfolio_approval(request):
     """포트폴리오 게시 승인 대기 목록"""
     from community.models import Portfolio, PortfolioCollection
+    from community.portfolio_security import with_html_summary
 
-    pending_collections = PortfolioCollection.objects.filter(
+    pending_collections = with_html_summary(PortfolioCollection.objects.filter(
         approval_status='pending'
-    ).select_related('user').order_by('approval_requested_at')
+    )).select_related('user').order_by('approval_requested_at')
 
     pending_legacy = Portfolio.objects.filter(
         approval_status='pending'
     ).select_related('user').order_by('approval_requested_at')
 
     # 현재 승인되어 공개 중인 포트폴리오 (사유와 함께 회수 가능)
-    approved_collections = PortfolioCollection.objects.filter(
+    approved_collections = with_html_summary(PortfolioCollection.objects.filter(
         approval_status='approved'
-    ).select_related('user', 'reviewed_by').order_by('-reviewed_at')
+    )).select_related('user', 'reviewed_by').order_by('-reviewed_at')
 
     approved_legacy = Portfolio.objects.filter(
         approval_status='approved'
@@ -853,7 +854,7 @@ def admin_portfolio_approval(request):
     # 최근 처리 내역 (승인/반려) - 신규 컬렉션 + 레거시 포트폴리오 통합
     recent_collections = PortfolioCollection.objects.filter(
         approval_status__in=['approved', 'rejected']
-    ).select_related('user', 'reviewed_by').order_by('-reviewed_at')
+    ).select_related('user', 'reviewed_by').defer('html_content').order_by('-reviewed_at')
 
     recent_legacy = Portfolio.objects.filter(
         approval_status__in=['approved', 'rejected']

@@ -74,3 +74,5 @@ jobs:
           python -m pip install -r requirements.txt mysqlclient
       - name: Check lab safety on MySQL
         run: python manage.py test office.test_lab_safety office.test_lab_transactions office.test_priority_hardening --noinput --verbosity 2
+      - name: Check portfolio uploads on MySQL
+        run: python manage.py test community.test_portfolio_upload_security --noinput --verbosity 2

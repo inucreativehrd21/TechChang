@@ -3,6 +3,12 @@ from django.contrib.auth.models import User
 from .validators import validate_image_file, validate_question_file
 from .column_tracks import TRACK_CHOICES
 
+class PortfolioUploadBudget(models.Model):
+    user = models.OneToOneField(User, primary_key=True, on_delete=models.CASCADE)
+    window_start = models.DateTimeField()
+    requests = models.PositiveSmallIntegerField(default=0)
+
+
 # Create your models here.
 class Category(models.Model):
     name = models.CharField(max_length=25, unique=True)
