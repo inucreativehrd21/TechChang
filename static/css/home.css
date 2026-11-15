@@ -963,3 +963,202 @@ a.tc-lab-title:hover { color: var(--tc-accent); }
     box-shadow: 0 2px 8px -3px rgba(79, 70, 229, 0.35);
 }
 .tc-op-pick i { font-size: 0.625rem; color: #4f46e5; }
+
+/* ============================================
+   홈 새 배치 (_home_content.html — PC·모바일 공용, 2026-11-15)
+   순서: 소개·찾기 → 처음 글 → 주제 → 읽는 방법 → 최신 글 → 인기 → 연구실 → 야구 → 운영 현황.
+   카드·칩·섹션 머리는 reading-flow.css(.fl-*), 여기는 홈에만 있는 칸.
+   ============================================ */
+/* 본문 칸은 1120px 이지만 바탕은 옛 홈처럼 화면 끝까지 흰색 */
+.fl-home {
+    padding-top: 0;
+    box-shadow: 0 0 0 100vmax var(--tc-bg);
+    clip-path: inset(0 -100vmax);
+}
+
+/* ── 소개 + 찾기 패널 (옛 .tc-hero 재질: 도트 그리드 + 떠 있는 패널) ── */
+.fl-home .fl-home-intro {
+    position: relative;
+    display: grid;
+    grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
+    gap: clamp(2rem, 5vw, 4rem);
+    align-items: center;
+    padding: clamp(2.5rem, 6vw, 4.5rem) 0 clamp(1rem, 2vw, 1.5rem);
+}
+.fl-home .fl-home-intro::before {
+    content: "";
+    position: absolute;
+    inset: 0 -24px;
+    background-image: radial-gradient(circle at center, var(--tc-line) 1px, transparent 1px);
+    background-size: 26px 26px;
+    -webkit-mask-image: radial-gradient(ellipse 55% 75% at 22% 50%, #000 0%, transparent 75%);
+            mask-image: radial-gradient(ellipse 55% 75% at 22% 50%, #000 0%, transparent 75%);
+    opacity: 0.6;
+    pointer-events: none;
+}
+.fl-home .fl-head { position: relative; margin: 0; }
+.fl-home .fl-head h1 {
+    margin: 0 0 1.25rem;
+    font-size: clamp(2.25rem, 4.5vw, 3.5rem);
+    line-height: 1.15;
+    letter-spacing: -0.035em;
+}
+.fl-home .fl-accent-text { color: var(--tc-accent); }
+.fl-home .fl-head p {
+    max-width: 32em;
+    font-size: clamp(1rem, 1.6vw, 1.125rem);
+    font-weight: 500;
+    color: var(--tc-ink-2);
+}
+.fl-home .fl-head p span { display: inline-block; }
+
+.fl-finder {
+    position: relative;
+    background: var(--tc-bg);
+    border: 1px solid var(--tc-line);
+    border-radius: var(--tc-r-lg);
+    box-shadow: var(--tc-shadow-lg);
+    overflow: hidden;
+}
+.fl-home .fl-search {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 0.625rem 0.5rem;
+    margin: 0;
+    padding: 1.125rem 1.25rem 1.25rem;
+}
+.fl-finder-label {
+    grid-column: 1 / -1;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: var(--tc-ink-3);
+}
+.fl-search-field { position: relative; min-width: 0; }
+.fl-search-field i {
+    position: absolute;
+    left: 15px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 0.875rem;
+    color: var(--tc-ink-3);
+    pointer-events: none;
+}
+.fl-home .fl-search-field input { padding-left: 40px; background: var(--tc-bg-soft); box-shadow: none; }
+.fl-home .fl-search-field input:focus { background: var(--tc-bg); }
+.fl-home .fl-search .fl-button { min-height: 48px; padding: 0 20px; }
+
+.fl-home-actions { border-top: 1px solid var(--tc-line-soft); }
+.fl-home-actions a {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.8125rem 1.25rem;
+    font-size: 0.9375rem;
+    font-weight: 600;
+    color: var(--tc-ink-2);
+    transition: background-color 0.15s ease, color 0.15s ease;
+}
+.fl-home-actions a + a { border-top: 1px solid var(--tc-line-soft); }
+.fl-home-actions a > i:first-child {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    width: 32px;
+    height: 32px;
+    font-size: 0.8125rem;
+    color: var(--tc-accent);
+    background: var(--tc-accent-wash);
+    border-radius: 10px;
+}
+.fl-home-actions span { flex: 1; min-width: 0; }
+.fl-home-actions .fl-go { font-size: 0.6875rem; color: var(--tc-ink-4); transition: transform 0.15s ease, color 0.15s ease; }
+.fl-home-actions a:hover { color: var(--tc-accent); background: var(--tc-bg-soft); }
+.fl-home-actions a:hover .fl-go { color: var(--tc-accent); transform: translateX(2px); }
+
+/* ── 처음 글: 요약까지 보이는 큰 카드 ── */
+.fl-home .fl-lead .fl-post { min-height: 232px; padding: 24px; }
+.fl-home .fl-lead .fl-post h3 { font-size: 1.1875rem; line-height: 1.4; }
+
+/* ── 최근 인기: 3칸 순위 → 좁은 화면에선 가로 레일(고아 카드 방지) ── */
+.fl-rail { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+
+/* ── 연구실: 소개 왼쪽 / 소식 목록 오른쪽 한 판 ── */
+.fl-home .fl-lab {
+    display: grid;
+    grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+    gap: clamp(1.5rem, 4vw, 3rem);
+    align-items: center;
+    margin-top: 56px;
+    padding: clamp(1.5rem, 3vw, 2rem) clamp(1.5rem, 3vw, 2.25rem);
+    background: var(--tc-bg);
+    border: 1px solid var(--tc-line);
+    border-radius: var(--tc-r-lg);
+    box-shadow: var(--tc-shadow-sm);
+}
+.fl-lab-copy h2 {
+    margin: 0 0 0.5rem;
+    font-size: 1.375rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    color: var(--tc-ink);
+    word-break: keep-all;
+}
+.fl-lab-copy p { margin: 0 0 1.25rem; font-size: 0.9375rem; line-height: 1.7; color: var(--tc-ink-3); word-break: keep-all; }
+.fl-home .fl-lab .tc-lab-list { padding-left: clamp(1.5rem, 4vw, 3rem); border-left: 1px solid var(--tc-line-soft); }
+.fl-home .fl-lab .tc-lab-row { grid-template-columns: 4.75rem 1fr; padding: 0.75rem 0; }
+.fl-home .fl-lab .tc-lab-title { white-space: normal; word-break: keep-all; }
+
+/* ── 야구 런칭 칸: 본문 폭에 맞춤 (.tc-section 자체 여백 제거) ── */
+.fl-home .fl-home-game { max-width: none; margin-top: 24px; padding: 0; }
+
+/* ── 운영 현황 (옛 히어로 지표를 맨 아래로) ── */
+.fl-home .fl-home-stats { max-width: none; margin: 48px 0 0; padding-top: 28px; }
+.fl-home .fl-home-stats dd { font-size: clamp(1.625rem, 2.6vw, 2.125rem); }
+
+/* 첫 화면만 한 번 순차 등장 */
+@media (prefers-reduced-motion: no-preference) {
+    .fl-home .fl-head > *,
+    .fl-finder { animation: tcRise 0.7s var(--tc-ease) backwards; }
+    .fl-home .fl-head > :nth-child(2) { animation-delay: 60ms; }
+    .fl-finder { animation-delay: 160ms; }
+}
+
+@media (max-width: 900px) {
+    .fl-home .fl-home-intro { grid-template-columns: 1fr; }
+    /* 2열에서 3장이면 마지막이 혼자 남으니 첫 추천을 한 줄 전체로 */
+    .fl-home .fl-lead .fl-post:first-child:nth-last-child(3) { grid-column: 1 / -1; min-height: 0; }
+    .fl-rail {
+        display: flex;
+        overflow-x: auto;
+        scroll-snap-type: x proximity;
+        padding: 4px 2px 10px;
+        margin: -4px -2px 0;
+    }
+    .fl-rail .fl-post { flex: 0 0 72%; scroll-snap-align: start; }
+    .fl-home .fl-lab { grid-template-columns: 1fr; }
+    .fl-home .fl-lab .tc-lab-list { padding: 1rem 0 0; border-left: 0; border-top: 1px solid var(--tc-line-soft); }
+}
+
+@media (max-width: 600px) {
+    .fl-home .fl-home-intro { gap: 1.5rem; padding: 1.25rem 0 0.5rem; }
+    .fl-home .fl-home-intro::before { inset: 0 -16px; }
+    .fl-home .fl-head h1 { margin-bottom: 0.875rem; font-size: 1.875rem; }
+    .fl-home .fl-head p { font-size: 0.9375rem; }
+    .fl-finder { box-shadow: var(--tc-shadow-md); }
+    .fl-home .fl-search { padding: 1rem; }
+    .fl-home-actions a { padding: 0.75rem 1rem; font-size: 0.875rem; }
+    .fl-home .fl-lead .fl-post { min-height: 0; padding: 18px; }
+    .fl-home .fl-lead .fl-post h3 { font-size: 1.0625rem; }
+    /* 최신 글은 목록처럼 촘촘하게 */
+    .fl-home #tc-board .fl-results { gap: 10px; }
+    .fl-home #tc-board .fl-post { padding: 14px 16px; }
+    .fl-home #tc-board .fl-tags { margin-bottom: 8px; }
+    .fl-home #tc-board .fl-post h3 { margin-bottom: 10px; font-size: 0.9375rem; }
+    .fl-home #tc-board .fl-post-foot { padding-top: 0; border-top: 0; font-size: 0.75rem; }
+    .fl-rail .fl-post { flex-basis: 85%; }
+    .fl-home .fl-lab { margin-top: 40px; padding: 1.25rem; }
+    .fl-home .fl-home-game .tc-ball-crew { display: none; }
+    .fl-home .fl-home-stats { gap: 1rem 1.75rem; margin-top: 36px; padding-top: 20px; }
+    .fl-home .fl-home-stats dd { font-size: 1.5rem; }
+}

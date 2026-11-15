@@ -1,6 +1,9 @@
-<a class="fl-post{% if question.operator_pick %} fl-picked is-op-pick{% endif %}{% if question.id in picks %} is-pick{% endif %}" href="{% url 'community:detail' question.id %}">
-    <span class="fl-meta">{% if question.series_id %}연재{% elif question.is_column %}칼럼{% else %}커뮤니티{% endif %} · {{ question.category.name }}{% if question.operator_pick %} · <span class="{% if is_mobile %}tc-m-op-pick{% else %}tc-op-pick{% endif %}">운영자 픽</span>{% endif %}{% if question.id in picks %} · <span class="{% if is_mobile %}tc-m-pick{% else %}tc-pick{% endif %}" title="프리미엄 칼럼">프리미엄</span>{% endif %}{% if question.is_locked %} · 회원 전용{% endif %}</span>
-    <h3>{{ question.subject }}</h3>
-    {% if summary and not question.is_locked %}<p>{{ question.seo_description|truncatechars:125 }}</p>{% endif %}
-    <span class="fl-meta">{% if question.series_id %}{{ question.series.title }} · {% endif %}{{ question.create_date|date:'Y.m.d' }}</span>
+{% load pybo_filter %}<a class="fl-post{% if rank %} fl-post-ranked{% endif %}{% if question.operator_pick %} is-op-pick{% endif %}{% if question.id in picks %} is-pick{% endif %}" href="{% url 'community:detail' question.id %}">
+    {% if rank %}<span class="fl-rank" aria-hidden="true">{{ rank|stringformat:"02d" }}</span>{% endif %}
+    <div class="fl-post-body">
+        <div class="fl-tags">{% if question.operator_pick %}<span class="{% if is_mobile %}tc-m-op-pick{% else %}tc-op-pick{% endif %}" title="운영자가 직접 고른 글"><i class="fas fa-crown" aria-hidden="true"></i> 운영자 픽</span>{% endif %}{% if question.id in picks %}<span class="{% if is_mobile %}tc-m-pick{% else %}tc-pick{% endif %}" title="프리미엄 칼럼"><i class="fas fa-gem" aria-hidden="true"></i> 프리미엄</span>{% endif %}{% if question.category %}<span class="fl-badge fl-badge-{{ question.category.name|category_slug }}">{{ question.category.name }}</span>{% endif %}</div>
+        <h3>{{ question.subject }}</h3>
+        {% if summary and not question.is_locked %}<p>{{ question.seo_description|truncatechars:125 }}</p>{% endif %}
+        <div class="fl-post-foot"><span class="fl-kind">{% if question.series_id %}연재 · {{ question.series.title }}{% elif question.is_column %}칼럼{% else %}커뮤니티{% endif %}</span>{% if question.is_locked %}<span class="fl-lock"><i class="fas fa-lock" aria-hidden="true"></i> 회원 전용</span>{% endif %}<time datetime="{{ question.create_date|date:'c' }}">{{ question.create_date|date:'Y.m.d' }}</time></div>
+    </div>
 </a>

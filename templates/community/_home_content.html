@@ -1,29 +1,82 @@
 {% load static %}
 <main class="tc-home fl-page fl-home">
+
+    <!-- ===== 소개 + 찾기 패널 ===== -->
     <header class="fl-home-intro">
-        <div class="fl-head"><h1>HRD와 테크놀로지를<br>잇는 지식 플랫폼</h1><p>팩트체크와 편집 심사를 거친 칼럼을 무료로 읽고,<br>궁금한 점을 함께 나눠요.</p></div>
-        <div><form class="fl-search" action="{% url 'community:explore' %}" method="get" role="search"><label class="visually-hidden" for="fl-home-query">전체 콘텐츠 검색</label><input id="fl-home-query" type="search" name="q" placeholder="궁금한 주제나 제목을 찾아보세요" maxlength="100" autocomplete="off"><button type="submit" class="fl-button fl-primary">검색</button></form>
-            <div class="fl-home-actions"><a href="{% url 'community:explore' %}" class="fl-button">칼럼 둘러보기</a><a href="{% url 'community:series_index' %}">시리즈로 시작하기</a><a href="{% url 'community:reading_list' %}">내 읽기 목록</a></div>
+        <div class="fl-head">
+            <h1>HRD와 테크놀로지를<br><span class="fl-accent-text">잇는 지식 플랫폼</span></h1>
+            <p><span>팩트체크와 편집 심사를 거친 칼럼을 무료로 읽고,</span> <span>궁금한 점을 함께 나눠요.</span></p>
+        </div>
+        <div class="fl-finder">
+            <form class="fl-search" action="{% url 'community:explore' %}" method="get" role="search">
+                <label class="fl-finder-label" for="fl-home-query">칼럼·연재·커뮤니티 글 검색</label>
+                <div class="fl-search-field"><i class="fas fa-magnifying-glass" aria-hidden="true"></i><input id="fl-home-query" type="search" name="q" placeholder="궁금한 주제나 제목을 찾아보세요" maxlength="100" autocomplete="off"></div>
+                <button type="submit" class="fl-button fl-primary">검색</button>
+            </form>
+            <nav class="fl-home-actions" aria-label="바로 가기">
+                <a href="{% url 'community:explore' %}"><i class="fas fa-newspaper" aria-hidden="true"></i><span>칼럼 둘러보기</span><i class="fas fa-chevron-right fl-go" aria-hidden="true"></i></a>
+                <a href="{% url 'community:series_index' %}"><i class="fas fa-layer-group" aria-hidden="true"></i><span>시리즈로 시작하기</span><i class="fas fa-chevron-right fl-go" aria-hidden="true"></i></a>
+                <a href="{% url 'community:reading_list' %}"><i class="fas fa-bookmark" aria-hidden="true"></i><span>내 읽기 목록</span><i class="fas fa-chevron-right fl-go" aria-hidden="true"></i></a>
+            </nav>
         </div>
     </header>
+
     <aside class="fl-resume" data-reading-home hidden><p>최근 읽던 글</p><a data-reading-home-link href="{% url 'community:reading_list' %}"></a></aside>
-    <section aria-labelledby="fl-start"><div class="fl-section-head"><h2 id="fl-start">처음이라면 이 글부터</h2><a href="{% url 'community:explore' %}?kind=column">칼럼 더 보기</a></div>
-        <div class="fl-results">{% for question in start_posts %}{% include 'community/_flow_post.html' with summary=True %}{% empty %}<p class="fl-empty">새 칼럼을 준비하고 있어요. <a href="{% url 'community:explore' %}">커뮤니티 글도 둘러보세요.</a></p>{% endfor %}</div>
+
+    <!-- ===== 처음이라면 이 글부터 ===== -->
+    <section aria-labelledby="fl-start">
+        <div class="fl-section-head"><h2 id="fl-start">처음이라면 이 글부터</h2><a href="{% url 'community:explore' %}?kind=column">칼럼 더 보기 <i class="fas fa-arrow-right" aria-hidden="true"></i></a></div>
+        <div class="fl-results fl-lead">{% for question in start_posts %}{% include 'community/_flow_post.html' with summary=True %}{% empty %}<p class="fl-empty">새 칼럼을 준비하고 있어요. <a href="{% url 'community:explore' %}">커뮤니티 글도 둘러보세요.</a></p>{% endfor %}</div>
     </section>
+
     {% include 'community/_flow_interests.html' %}
-    <nav class="fl-links" aria-label="읽는 방법"><a href="{% url 'community:series_index' %}">처음부터 차근차근, 연재 시리즈</a><a href="{% url 'community:column_map' %}">요약과 키워드로 찾는 칼럼 지도</a><a href="{% url 'community:board_main' %}">궁금한 점을 나누는 커뮤니티</a></nav>
-    <section id="tc-board"><div class="fl-section-head"><h2>최신 글</h2><a href="{% url 'community:explore' %}">전체 콘텐츠</a></div>
+
+    <nav class="fl-links" aria-label="읽는 방법">
+        <a href="{% url 'community:series_index' %}"><i class="fas fa-layer-group" aria-hidden="true"></i><span>연재 시리즈<small>처음부터 차근차근</small></span></a>
+        <a href="{% url 'community:column_map' %}"><i class="fas fa-map" aria-hidden="true"></i><span>칼럼 지도<small>요약과 키워드로 찾기</small></span></a>
+        <a href="{% url 'community:board_main' %}"><i class="fas fa-comments" aria-hidden="true"></i><span>커뮤니티<small>궁금한 점을 함께 나눠요</small></span></a>
+    </nav>
+
+    <!-- ===== 최신 글 (12개/페이지 = 3열·2열 공배수) ===== -->
+    <section id="tc-board" aria-labelledby="fl-latest">
+        <div class="fl-section-head"><h2 id="fl-latest">최신 글</h2><a href="{% url 'community:explore' %}">전체 콘텐츠 <i class="fas fa-arrow-right" aria-hidden="true"></i></a></div>
         <div class="fl-results">{% for question in question_list %}{% include 'community/_flow_post.html' %}{% empty %}<p class="fl-empty">아직 글이 없어요. <a href="{% url 'community:question_create' %}">첫 글을 남겨 주세요.</a></p>{% endfor %}</div>
-        {% if question_list.has_other_pages %}<nav class="fl-pagination" aria-label="글 목록 페이지">{% if question_list.has_previous %}<a href="?page={{ question_list.previous_page_number }}{% if page_qs %}&{{ page_qs }}{% endif %}#tc-board">이전</a>{% endif %}<span aria-current="page">{{ question_list.number }} / {{ question_list.paginator.num_pages }}</span>{% if question_list.has_next %}<a href="?page={{ question_list.next_page_number }}{% if page_qs %}&{{ page_qs }}{% endif %}#tc-board">다음</a>{% endif %}</nav>{% endif %}
+        {% if question_list.has_other_pages %}<nav class="fl-pagination" aria-label="글 목록 페이지">{% if question_list.has_previous %}<a href="?page={{ question_list.previous_page_number }}{% if page_qs %}&{{ page_qs }}{% endif %}#tc-board" aria-label="이전 페이지"><i class="fas fa-chevron-left" aria-hidden="true"></i></a>{% endif %}<span aria-current="page">{{ question_list.number }} / {{ question_list.paginator.num_pages }}</span>{% if question_list.has_next %}<a href="?page={{ question_list.next_page_number }}{% if page_qs %}&{{ page_qs }}{% endif %}#tc-board" aria-label="다음 페이지"><i class="fas fa-chevron-right" aria-hidden="true"></i></a>{% endif %}</nav>{% endif %}
     </section>
-    {% if recent_popular %}<section><div class="fl-section-head"><h2>최근 30일 발행 칼럼 중 인기 글</h2></div><div class="fl-results">{% for question in recent_popular|slice:':3' %}{% include 'community/_flow_post.html' %}{% endfor %}</div></section>{% endif %}
-    {% if lab %}<section class="fl-section fl-lab tc-lab"><div class="fl-section-head"><h2>칼럼이 만들어지는 연구실</h2><a href="{% url 'office:home' %}">연구실 둘러보기</a></div><p>AI 연구원 {{ lab.agents }}명이 기획하고, 사실 확인과 편집 심사를 거쳐 글을 발행해요.</p>
-        {% if lab.weekly %}<p>연구실 위클리 · <a href="{% url 'newsletter_detail' lab.weekly.slug %}">{{ lab.weekly.title }}</a></p>{% endif %}
-        {% if next_slot %}<p>다음 칼럼 · {{ next_slot.when }} 10:00 · {{ next_slot.label }} · 심화·실용 각 1편{% if next_slot.title %}<br>{{ next_slot.title }}{% endif %}</p>{% endif %}
-    </section>{% endif %}
-    <div class="fl-home-game">    <!-- ===== 야구선수 키우기 — 배너에서 모드 선택 ===== -->
-    <section class="tc-section" aria-labelledby="tc-ball-title">
-        <div class="tc-ball" data-reveal>
+
+    <!-- ===== 최근 30일 인기: 순위 레일 ===== -->
+    {% if recent_popular %}
+    <section aria-labelledby="fl-popular">
+        <div class="fl-section-head"><h2 id="fl-popular">최근 30일 발행 칼럼 중 인기 글</h2></div>
+        <div class="fl-rail">{% for question in recent_popular|slice:':3' %}{% include 'community/_flow_post.html' with rank=forloop.counter %}{% endfor %}</div>
+    </section>
+    {% endif %}
+
+    <!-- ===== 연구실 ===== -->
+    {% if lab %}
+    <section class="fl-section fl-lab tc-lab" aria-labelledby="fl-lab-title">
+        <div class="fl-lab-copy">
+            <h2 id="fl-lab-title">칼럼이 만들어지는 연구실</h2>
+            <p>AI 연구원 {{ lab.agents }}명이 기획하고, 사실 확인과 편집 심사를 거쳐 글을 발행해요.</p>
+            <a href="{% url 'office:home' %}" class="fl-button">연구실 둘러보기</a>
+        </div>
+        <dl class="tc-lab-list">
+            {% if lab.weekly %}
+            <div class="tc-lab-row"><dt>위클리</dt><dd><span class="tc-lab-when">No.{{ lab.weekly.issue_no }} · 매주 금요일</span><a class="tc-lab-title" href="{% url 'newsletter_detail' lab.weekly.slug %}">{{ lab.weekly.title }}</a></dd></div>
+            {% endif %}
+            {% if next_slot %}
+            <div class="tc-lab-row"><dt>다음 칼럼</dt><dd><span class="tc-lab-when">{{ next_slot.when }} 10:00 · {{ next_slot.label }} · 심화·실용 각 1편</span><span class="tc-lab-title">{% if next_slot.title %}{{ next_slot.title }}{% else %}주제 회의 중{% endif %}</span></dd></div>
+            {% endif %}
+            {% if lab.series %}
+            <div class="tc-lab-row"><dt>연재 중</dt><dd><a class="tc-lab-title" href="{% url 'community:series_detail' lab.series.slug %}">{{ lab.series.title }}</a><span class="tc-lab-when">{{ lab.series.published }}{% if lab.series.planned %}/{{ lab.series.planned }}{% endif %}화</span></dd></div>
+            {% endif %}
+        </dl>
+    </section>
+    {% endif %}
+
+    <!-- ===== 야구선수 키우기 — 배너에서 모드 선택 ===== -->
+    <section class="tc-section fl-home-game" aria-labelledby="tc-ball-title">
+        <div class="tc-ball">
             <div class="tc-ball-board">
                 <div class="tc-ball-copy">
                     <p class="tc-ball-live">{% include 'community/_ball_season.html' with s=ball.season %}</p>
@@ -49,7 +102,11 @@
         </div>
     </section>
 
-</div>
-    <p class="fl-stat-line">운영 {{ launch_days }}일 · 누적 방문 {{ visitors_total }} · 오늘 방문 {{ visitors_today }}</p>
+    <!-- ===== 운영 현황 ===== -->
+    <dl class="tc-hero-stats fl-home-stats" aria-label="테크창 운영 현황">
+        <div><dt>운영</dt><dd>{{ launch_days }}<small>일</small></dd></div>
+        <div><dt>누적 방문</dt><dd>{{ visitors_total }}</dd></div>
+        <div><dt>오늘 방문</dt><dd>{{ visitors_today }}</dd></div>
+    </dl>
 </main>
 {% include 'community/_home_mode_picker.html' %}
