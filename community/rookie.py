@@ -270,9 +270,12 @@ def create(user, *, name: str, role: str, team: str, number: int = 0, focus: str
 
 def inherits_from(user):
     """짧게 뛰고(30일 미만) 은퇴한 지 14일이 안 된 선수 — 새 선수가 잠재력·숨은 특성을 이어받는다.
-    입단하자마자 은퇴·재입단을 되풀이해 좋은 자질만 골라 뽑지 못하게(오래 뛴 뒤의 새 출발은 새로 뽑는다)."""
+    입단하자마자 은퇴·재입단을 되풀이해 좋은 자질만 골라 뽑지 못하게(오래 뛴 뒤의 새 출발은 새로 뽑는다).
+    시즌 개막 전 새 출발(rookie_reset, 시즌마다 한 번)로 은퇴한 선수는 이어받지 않는다 — 새 출발은 자질도 새로."""
     from .models import RookiePlayer
     last = RookiePlayer.objects.filter(user=user, retired_at__isnull=False).order_by('-retired_at').first()
+    if last and (last.career or {}).get('season_reset'):
+        return None
     if last and timezone.now() - last.retired_at < timedelta(days=REROLL_GUARD_DAYS) \
             and last.retired_at - last.created_at < timedelta(days=SHORT_CAREER_DAYS):
         return last

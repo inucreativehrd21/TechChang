@@ -1,0 +1,16 @@
+{% comment %}시즌 개막 전 선택(2026-11-16 사용자 요청) — 휴식기마다 한 번, 이 선수로 계속 / 새 선수로 처음부터.
+맥락: rookie_views._play_ctx season_offer(season, deadline, name). 규칙 community/rookie_reset.py{% endcomment %}
+<div class="rl">
+<section class="rk-panel rk-season-choice" aria-labelledby="rk-season-choice-title">
+    <p class="rk-season-choice-tag">시즌 {{ season_offer.season }} 개막 전 · {{ season_offer.deadline|date:'n월 j일 H:i' }}까지</p>
+    <h2 id="rk-season-choice-title">{{ season_offer.name }} 선수와 시즌 {{ season_offer.season }}도 함께할까요?</h2>
+    <p class="rk-hint">새 시즌 첫 경기 전까지 한 번 고를 수 있어요. 고르지 않으면 지금 선수로 이어서 뛰어요.</p>
+    <div class="rl-replies" role="group" aria-label="시즌 {{ season_offer.season }} 선수 선택">
+        <form method="post" action="{% url 'community:rookie_season_choice' %}">{% csrf_token %}<input type="hidden" name="choice" value="keep">
+            <button type="submit" class="rl-reply"><em class="rl-tone">계속</em><b>이 선수로 이어서 뛸게요</b><small>능력치·진로·기록이 그대로 이어져요</small></button></form>
+        <form method="post" action="{% url 'community:rookie_season_choice' %}" class="rk-season-reset">{% csrf_token %}<input type="hidden" name="choice" value="reset">
+            <label class="rk-season-check"><input type="checkbox" name="confirm" value="yes" required> <span>지금 선수가 은퇴하는 걸 확인했어요. 되돌릴 수 없어요.</span></label>
+            <button type="submit" class="rl-reply is-modest"><em class="rl-tone">새 출발</em><b>새 선수로 처음부터 할게요</b><small>지금 선수는 은퇴하고 기록·수상·은퇴 카드는 남아요 · 새 선수는 리틀야구부터, 잠재력·숨은 특성을 새로 뽑아요</small></button></form>
+    </div>
+</section>
+</div>

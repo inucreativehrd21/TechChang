@@ -1424,6 +1424,17 @@ a.rk-rank-main:hover b { color: var(--rk-accent); }
 .rl-years td.is-text:nth-of-type(6) { min-width: 0; }
 .rl-years td.is-text:last-child { white-space: normal; min-width: 10em; }
 
+/* 시즌 개막 전 선택 — 이 선수로 계속 / 새 출발(rookie_reset) */
+.rk-season-choice { margin-bottom: 12px; border-color: var(--rk-accent-line); }
+.rk-season-choice-tag { margin: 0 0 4px; font-size: 0.76rem; font-weight: 800; color: var(--rk-accent); }
+.rk-season-choice h2 { margin: 0 0 4px; font-size: 1.1rem; font-weight: 900; }
+.rk-season-choice .rl-replies { padding: 12px 0 0; }
+.rk-season-check { display: flex; align-items: flex-start; gap: 8px; margin: 2px 0 8px; font-size: 0.8rem; color: var(--rk-ink-2); cursor: pointer; }
+.rk-season-check input { margin-top: 3px; accent-color: var(--rk-accent); }
+
+/* 정식 기록실 — 보기(커리어 하이·통산 순위·명예의 전당) 아래 라이트 명예의 전당과 같은 거르기 카드 */
+.rk-rec-views { margin-bottom: 12px; }
+
 /* 명예의 전당 — 순위는 이름 칸 안에, 이름 칸은 옆으로 밀어도 붙어 있다 */
 .rl-hall .rl-hall-name { position: sticky; left: 0; z-index: 1; min-width: 8.5em; background: #fff; box-shadow: 1px 0 0 var(--rk-line-soft); }
 .rl-hall thead .rl-hall-name { background: #fafbfd; }

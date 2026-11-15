@@ -166,7 +166,10 @@ class HallVersionTests(TestCase):
                                                HTTP_USER_AGENT=ua)
                     self.assertContains(response, expected.name)
                     self.assertNotContains(response, excluded.name)
-                    self.assertContains(response, f'?view=hof&amp;lg=mlb&amp;version={version}', html=False)
+                    # 리그를 바꿔도 버전이 이어진다 — 라이트 명예의 전당처럼 한 거르기 폼 안에 버전·리그 선택이 함께 있다
+                    self.assertContains(response, '<input type="hidden" name="view" value="hof">', html=False)
+                    self.assertContains(response, f'<option value="{version}" selected>', html=False)
+                    self.assertContains(response, '<option value="mlb">', html=False)
                     self.assertEqual([r['p'].pk for r in response.context['rows']], [expected.pk])
                     self.assertEqual(response.context['lineup']['filled'], 1)
 

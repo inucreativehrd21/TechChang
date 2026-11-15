@@ -84,9 +84,11 @@ def _play_ctx(request, p) -> dict:
     from .. import rookie_peers as Peers
     from .. import rookie_fan_reactions as Fans
     from .. import rookie_playback as Playback
+    from .. import rookie_reset as Reset
     report = Reports.daily(p)
     return dict(_base_ctx(request, 'home'), mode='play', daily_report=report, daily_reactions=Fans.daily(p, report),
-                peers=Peers.comparisons(p), member_history=Matchups.history(p), md=Playback.stadium(p), **R.dashboard(p))
+                peers=Peers.comparisons(p), member_history=Matchups.history(p), md=Playback.stadium(p),
+                season_offer=Reset.offer(p), **R.dashboard(p))
 
 
 @login_required
@@ -202,6 +204,30 @@ def rookie_awaken(request):
         r = R.awaken(request.user, request.POST.get('choice', ''))
         messages.info(request, r['text'])
     except R.GameError as ex:
+        messages.warning(request, str(ex))
+    return redirect('community:rookie_home')
+
+
+@login_required
+@require_POST
+def rookie_season_choice(request):
+    """시즌 개막 전 선택 — 이 선수로 계속 / 새 출발(은퇴 후 새 선수, 자질도 새로). 규칙 community/rookie_reset.py"""
+    from .. import rookie_reset as Reset
+    choice = request.POST.get('choice', '')
+    try:
+        if choice == Reset.KEEP:
+            r = Reset.keep(request.user)
+            messages.info(request, f"{r['name']} 선수와 시즌 {r['season']}도 함께 뛰어요.")
+        elif choice == Reset.RESET:
+            if request.POST.get('confirm') != 'yes':
+                messages.warning(request, '새로 시작하려면 확인 칸에 체크해 주세요.')
+                return redirect('community:rookie_home')
+            r = Reset.reset(request.user)
+            messages.info(request, f"{r['name']} 선수는 은퇴했어요. 선수 페이지와 기록·수상·은퇴 카드는 그대로 남아요. "
+                                   f"시즌 {r['season']}에 함께할 새 선수를 리틀야구부터 만들어 주세요. 잠재력과 숨은 특성은 새로 정해져요.")
+        else:
+            messages.warning(request, '선택지를 다시 골라 주세요.')
+    except Reset.ResetError as ex:
         messages.warning(request, str(ex))
     return redirect('community:rookie_home')
 
@@ -489,7 +515,11 @@ def rookie_records(request):
     _catch_up(request)
     view = request.GET.get('view') if request.GET.get('view') in ('highs', 'career', 'hof') else 'highs'
     version = Versions.selected(request.GET.get('version'))
-    role = 'pitcher' if request.GET.get('role') == 'pitcher' else 'batter'
+    want = request.GET.get('role')
+    if view == 'highs':                                   # 커리어 하이는 타자·투수 따로만 견준다
+        role = 'pitcher' if want == 'pitcher' else 'batter'
+    else:                                                 # 통산 순위·명예의 전당은 라이트 명예의 전당처럼 '전체'부터
+        role = want if want in ('batter', 'pitcher') else ''
     if view == 'hof':
         choices = _choices(W.TOP_LEAGUES)
     else:
@@ -497,7 +527,8 @@ def rookie_records(request):
     lg = _pick_league(request, choices)
     ctx = dict(_base_ctx(request, 'records'), view=view, role=role, lg=lg, lg_name=W.league(lg)['name'],
                lg_short=W.short(lg), lg_choices=choices, miles=G.recent_milestones(),
-               hall_version=version, version_tabs=Versions.CHOICES)
+               hall_version=version, version_tabs=Versions.CHOICES,
+               view_tabs=RECORD_VIEWS, role_tabs=RECORD_ROLES if view != 'highs' else RECORD_ROLES[1:])
     if view == 'highs':
         highs = L.career_highs(role, lg)
         ctx.update(highs=highs, top=highs[0] if highs else None, rest=highs[1:],
@@ -505,10 +536,16 @@ def rookie_records(request):
         if ctx['my_id']:
             ctx['mine'] = next((i for i, h in enumerate(highs, 1) if h['s'].player_id == ctx['my_id']), None)
     else:
-        ctx['rows'] = G.league_career(lg, retired_only=view == 'hof', version=version if view == 'hof' else None)
-        if view == 'hof':
-            ctx['lineup'] = _lineup(G.league_career(lg, retired_only=True, limit=2000, version=version), lg)
+        every = G.league_career(lg, retired_only=view == 'hof', limit=2000, version=version if view == 'hof' else None)
+        ctx['rows'] = [r for r in every if not role or r['p'].role == role][:RECORD_LIMIT]
+        if view == 'hof' and not role:                    # 라인업은 투수·타자 '전체'일 때(라이트와 같다)
+            ctx['lineup'] = _lineup(every, lg)
     return render(request, 'community/rookie_records.html', ctx)
+
+
+RECORD_VIEWS = (('highs', '커리어 하이'), ('career', '통산 순위'), ('hof', '명예의 전당'))
+RECORD_ROLES = (('', '전체'), ('batter', '타자'), ('pitcher', '투수'))
+RECORD_LIMIT = 50
 
 
 def _lineup(rows, lg: str) -> dict:

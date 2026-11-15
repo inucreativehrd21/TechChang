@@ -4,30 +4,20 @@
 <div class="gm-wrap is-wide">
     {% include 'community/games/_rookie_top.html' with h1='기록실' %}
 
-    <div class="rk-controls">
-        <nav class="rk-seg" aria-label="기록실 화면">
-            <a href="?view=highs&amp;lg={{ lg }}" {% if view == 'highs' %}aria-current="page"{% endif %}>커리어 하이</a>
-            <a href="?view=career&amp;lg={{ lg }}" {% if view == 'career' %}aria-current="page"{% endif %}>통산 순위</a>
-            <a href="?view=hof&amp;version={{ hall_version }}" {% if view == 'hof' %}aria-current="page"{% endif %}>명예의 전당</a>
-        </nav>
-        {% if lg_choices|length > 1 %}
-        <nav class="rk-seg is-quiet" aria-label="리그">
-            {% for c in lg_choices %}<a href="?view={{ view }}&amp;lg={{ c.code }}{% if view == 'highs' %}&amp;role={{ role }}{% elif view == 'hof' %}&amp;version={{ hall_version }}{% endif %}" {% if lg == c.code %}aria-current="page"{% endif %} title="{{ c.name }}">{{ c.short }}</a>{% endfor %}
-        </nav>
-        {% endif %}
-        {% if view == 'hof' %}
-        <nav class="rk-seg is-quiet" aria-label="명예의 전당 버전">
-            {% for code, label in version_tabs %}<a href="?view=hof&amp;lg={{ lg }}&amp;version={{ code }}" {% if hall_version == code %}aria-current="page"{% endif %}>{{ label }}</a>{% endfor %}
-        </nav>
-        {% endif %}
-        {% if view == 'highs' %}
-        <nav class="rk-seg is-quiet" aria-label="타자·투수">
-            <a href="?view=highs&amp;lg={{ lg }}&amp;role=batter" {% if role == 'batter' %}aria-current="page"{% endif %}>타자</a>
-            <a href="?view=highs&amp;lg={{ lg }}&amp;role=pitcher" {% if role == 'pitcher' %}aria-current="page"{% endif %}>투수</a>
-        </nav>
-        {% if mine %}<p class="rk-note is-inline">내 커리어 하이는 {{ mine }}위예요.</p>{% endif %}
-        {% endif %}
-    </div>
+    <nav class="rk-seg rk-rec-views" aria-label="기록실 화면">
+        {% for code, label in view_tabs %}<a href="?view={{ code }}&amp;lg={{ lg }}" {% if view == code %}aria-current="page"{% endif %}>{{ label }}</a>{% endfor %}
+    </nav>
+    <form class="rl-filter" method="get" action="" data-rl-filter aria-label="{% if view == 'hof' %}명예의 전당{% elif view == 'career' %}통산 순위{% else %}커리어 하이{% endif %} 거르기">
+        <input type="hidden" name="view" value="{{ view }}">
+        {% if view == 'hof' %}<label class="rl-select"><span>버전</span>
+            <select name="version">{% for code, label in version_tabs %}<option value="{{ code }}"{% if hall_version == code %} selected{% endif %}>{{ label }}</option>{% endfor %}</select></label>{% endif %}
+        <label class="rl-select"><span>투수·타자</span>
+            <select name="role">{% for code, label in role_tabs %}<option value="{{ code }}"{% if role == code %} selected{% endif %}>{{ label }}</option>{% endfor %}</select></label>
+        <label class="rl-select"><span>리그</span>
+            <select name="lg">{% for c in lg_choices %}<option value="{{ c.code }}"{% if lg == c.code %} selected{% endif %}>{{ c.short }}</option>{% endfor %}</select></label>
+        <button type="submit" class="gm-btn rl-filter-go" data-rl-filter-go>보기</button>
+        <p class="rl-filter-count" aria-live="polite">{% if view == 'highs' %}{% if mine %}내 커리어 하이 {{ mine }}위 · {% endif %}{% if role == 'pitcher' %}투수{% else %}타자{% endif %} {{ highs|length }}명{% else %}{% if role == 'pitcher' %}투수{% elif role == 'batter' %}타자{% else %}선수{% endif %} {{ rows|length }}명{% endif %}</p>
+    </form>
 
     {% if view == 'highs' %}
     <h2 class="rk-h2">커리어 하이 · {{ lg_name }}</h2>
@@ -81,30 +71,37 @@
     </ul>
 
     {% else %}
-    {% if view == 'hof' %}<p class="rk-note">게임 업데이트 버전(1.0, 1.1)을 기준으로 기록을 나눠요. {{ hall_version }} 버전에서 시작한 선수의 기록이고, 1.1 업데이트 전에 시작한 선수는 끝까지 1.0에 남아요.</p>{% endif %}
+    <h2 class="rk-h2">{% if view == 'hof' %}{{ hall_version }} · {{ lg_name }}{% else %}통산 순위 · {{ lg_name }}{% endif %}</h2>
+    {% if view == 'hof' %}<p class="rk-note">게임 업데이트 버전(1.0, 1.1)을 기준으로 기록을 나눠요. 선수를 시작한 때의 버전이 끝까지 따라가서, 1.1 업데이트 전에 시작한 선수는 1.0에 남아요.</p>{% endif %}
     {% if view == 'hof' and lineup and lineup.filled %}{% include 'community/games/_lite_lineup.html' with tab_name=lg_name %}{% endif %}
-    <h2 class="rk-h2">{% if view == 'hof' %}명예의 전당 · {{ hall_version }}{% else %}통산 순위{% endif %} · {{ lg_name }}</h2>
-    <p class="rk-note">{% if view == 'hof' %}은퇴한 선수 가운데 {{ lg_name }}에서 반 시즌 이상 뛰었거나 상을 받은 선수예요. {% endif %}MVP 수 → 이 리그에서의 최고 OVR → 수상 수 → 프로 통산 WAR 순서로 정해요.</p>
+    <p class="rk-note">{{ lg_name }}에서 뛴 시즌만 집계해서 MVP → 최고 OVR → 수상 → 프로 통산 WAR 순으로 순위를 매겨요.{% if view == 'hof' %} 은퇴한 선수 가운데 이 리그에서 반 시즌 이상 뛰었거나 상을 받은 선수가 올라요.{% else %} 현역과 은퇴 선수를 함께 보여 줘요.{% endif %}</p>
     {% if rows %}
     <div class="rk-table-wrap">
-        <table class="rk-table rk-career-table">
-            <thead><tr><th scope="col">#</th><th scope="col" class="is-text">선수</th><th scope="col" class="is-text">소속</th><th>MVP</th><th>최고 OVR</th><th>수상</th><th>WAR</th><th>시즌</th><th scope="col" class="is-text">통산</th></tr></thead>
+        <table class="rk-table rk-career-table rl-hall">
+            <thead><tr><th scope="col" class="is-text rl-hall-name">선수</th><th scope="col" class="is-text">소속</th><th scope="col">MVP</th><th scope="col">최고 OVR</th>
+                {% if role == 'pitcher' %}<th scope="col">승</th><th scope="col">패</th><th scope="col">세이브</th><th scope="col">평균자책점</th><th scope="col">탈삼진</th>
+                {% elif role == 'batter' %}<th scope="col">타율</th><th scope="col">안타</th><th scope="col">홈런</th><th scope="col">타점</th><th scope="col">OPS</th>
+                {% else %}<th scope="col">수상</th><th scope="col">경기</th>{% endif %}
+                <th scope="col">WAR</th><th scope="col">시즌</th></tr></thead>
             <tbody>
                 {% for r in rows %}
-                <tr class="{% if r.p.id == my_id %}is-first{% endif %}">
-                    <td>{{ forloop.counter }}</td>
-                    <th scope="row"><a href="{% url 'community:rookie_player' r.p.pk %}">{{ r.p.name }}</a>{% if r.p.retired_at and view != 'hof' %} <small class="rk-fine">은퇴</small>{% endif %}</th>
+                <tr class="{% if my_id and r.p.id == my_id %}is-first{% endif %}">
+                    <th scope="row" class="rl-hall-name"><span class="rl-hall-no">{{ forloop.counter }}</span><a href="{% url 'community:rookie_player' r.p.pk %}">{{ r.p.name }}</a><small class="rl-hall-who">{% if r.p.role == 'pitcher' %}투수{% else %}타자{% endif %} · {{ r.age }}세 {% if r.p.retired_at %}은퇴{% else %}현역{% endif %}</small></th>
                     <td class="is-text"><i class="rk-dot" style="--team: {{ r.team|team_color }}" aria-hidden="true"></i> {{ r.team|team_short }}</td>
-                    <td>{{ r.mvp }}</td><td>{{ r.best|floatformat:1 }}</td><td>{{ r.awards }}</td><td class="is-war">{{ r.war }}</td><td>{{ r.seasons }}</td>
-                    <td class="is-text">{% if r.p.role == 'pitcher' %}{{ r.v.g|default:0|comma }}경기 {{ r.v.w|default:0|comma }}승 {{ r.v.sv|default:0|comma }}세이브, 평균자책점 {{ r.v.era_text }}, {{ r.v.so|default:0|comma }}탈삼진{% else %}{{ r.v.g|default:0|comma }}경기 타율 {{ r.v.avg_text }}, {{ r.v.h|default:0|comma }}안타 {{ r.v.hr|default:0|comma }}홈런 {{ r.v.rbi|default:0|comma }}타점{% endif %}</td>
+                    <td>{{ r.mvp }}</td><td>{{ r.best|floatformat:1 }}</td>
+                    {% if role == 'pitcher' %}<td>{{ r.v.w|default:0|comma }}</td><td>{{ r.v.l|default:0|comma }}</td><td>{{ r.v.sv|default:0|comma }}</td><td>{{ r.v.era_text }}</td><td>{{ r.v.so|default:0|comma }}</td>
+                    {% elif role == 'batter' %}<td>{{ r.v.avg_text }}</td><td>{{ r.v.h|default:0|comma }}</td><td>{{ r.v.hr|default:0|comma }}</td><td>{{ r.v.rbi|default:0|comma }}</td><td>{{ r.v.ops_text }}</td>
+                    {% else %}<td>{{ r.awards }}</td><td>{{ r.v.g|default:0|comma }}</td>{% endif %}
+                    <td class="is-war">{{ r.war }}</td><td>{{ r.seasons }}</td>
                 </tr>
                 {% endfor %}
             </tbody>
         </table>
     </div>
     {% else %}
-    <section class="rk-panel"><p class="rk-empty">{% if view == 'hof' %}아직 {{ lg_name }} 명예의 전당에 오른 선수가 없어요. 은퇴한 선수가 생기면 이곳에 이름이 걸려요.{% else %}아직 {{ lg_name }} 기록이 없어요.{% endif %}</p></section>
+    <section class="rk-panel"><p class="rk-empty">{% if view == 'hof' %}아직 {{ lg_name }} 명예의 전당에 오른 {% if role == 'pitcher' %}투수{% elif role == 'batter' %}타자{% else %}선수{% endif %}가 없어요. 첫 번째 전설이 되어 보세요.{% else %}아직 {{ lg_name }} {% if role == 'pitcher' %}투수 {% elif role == 'batter' %}타자 {% endif %}기록이 없어요.{% endif %}</p></section>
     {% endif %}
+    <div class="gm-actions"><a class="gm-btn is-primary" href="{% url 'community:rookie_home' %}">내 선수 보기</a></div>
     {% endif %}
 
     {% if miles %}
@@ -116,3 +113,17 @@
     {% include 'community/games/_rookie_rights.html' %}
 </div>
 </div>
+<script nonce="{{ csp_nonce }}">
+(function () {
+    // 고르면 바로 거른다(자바스크립트가 없으면 '보기' 버튼으로). 빈 값은 주소에서 뺀다 — 라이트 명예의 전당과 같다
+    var f = document.querySelector('[data-rl-filter]');
+    if (!f) return;
+    var go = f.querySelector('[data-rl-filter-go]');
+    if (go) go.hidden = true;
+    f.addEventListener('change', function () {
+        var q = [];
+        f.querySelectorAll('input[type=hidden], select').forEach(function (s) { if (s.value) q.push(s.name + '=' + encodeURIComponent(s.value)); });
+        location.search = q.join('&');
+    });
+})();
+</script>
