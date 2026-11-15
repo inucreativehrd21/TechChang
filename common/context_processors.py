@@ -76,7 +76,7 @@ def seo(request):
         session = getattr(request, 'session', {})
         private = private or bool(getattr(user, 'is_authenticated', False) or
                                   session.get('lite_guest') or session.get('extreme_guest'))
-    noindex = noindex or private
+    noindex = noindex or private or path in ('/explore/', '/my/')
     return {
         'canonical_url': canonical,
         'seo_robots': 'noindex, follow' if noindex else 'index, follow',

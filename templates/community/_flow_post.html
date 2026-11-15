@@ -1,0 +1,6 @@
+<a class="fl-post{% if question.operator_pick %} fl-picked is-op-pick{% endif %}" href="{% url 'community:detail' question.id %}">
+    <span class="fl-meta">{% if question.series_id %}연재{% elif question.is_column %}칼럼{% else %}커뮤니티{% endif %} · {{ question.category.name }}{% if question.operator_pick %} · <span class="{% if is_mobile %}tc-m-op-pick{% else %}tc-op-pick{% endif %}">운영자 픽</span>{% endif %}{% if question.is_locked %} · 회원 전용{% endif %}</span>
+    <h3>{{ question.subject }}</h3>
+    {% if summary and not question.is_locked %}<p>{{ question.seo_description|truncatechars:125 }}</p>{% endif %}
+    <span class="fl-meta">{% if question.series_id %}{{ question.series.title }} · {% endif %}{{ question.create_date|date:'Y.m.d' }}</span>
+</a>

@@ -1,6 +1,7 @@
 
 from django.urls import path, re_path
 from .views import rookie_world_views
+from .views import explore_views
 
 # 실시간 게임 비활성화 (나중을 위해 파일은 유지)
 # from .views import wordchain_views, tictactoe_views
@@ -10,6 +11,8 @@ from .views import base_views, question_views, answer_views, comment_views, prof
 app_name = 'community'
 
 urlpatterns = [
+    path('explore/', explore_views.explore, name='explore'),
+    path('my/', explore_views.reading_list, name='reading_list'),
     # base_views.py
     path('',
          base_views.index, name='index'),

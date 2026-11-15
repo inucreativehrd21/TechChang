@@ -20,14 +20,15 @@
 {% block jsonld %}{% include 'community/_question_jsonld.html' %}{% endblock %}
 
 {% block extra_css %}
+<link href="{% static 'css/reading-flow.css' %}?v={{ STATIC_VERSION }}" rel="stylesheet">
 {% include 'community/_title_badges_style.html' %}
 {% endblock %}
 
 {% block content %}
 <!-- 질문 헤더 -->
 <div class="tc-m-detail-head">
-    <a href="{% url 'community:index' %}" class="tc-m-back" id="tc-m-back">
-        <i class="fas fa-arrow-left" aria-hidden="true"></i> 목록
+    <a href="{{ back_url }}" class="tc-m-back" id="tc-m-back">
+        <i class="fas fa-arrow-left" aria-hidden="true"></i> {{ back_label }}
     </a>
     {% if question.category %}
     <div>
@@ -48,6 +49,7 @@
     <h1 class="tc-m-detail-title">{{ question.subject }}</h1>
     {% if question.is_column and not question.series_id %}<p><a class="text-muted small" href="{% url 'community:column_map' %}?track={{ question.column_track|default:'legacy' }}">{{ question.get_column_track_display }}</a></p>{% endif %}
     {% include 'community/_ai_notice.html' %}
+    {% include 'community/_reading_tools.html' %}
     <div class="tc-m-detail-meta">
         <span><i class="fas fa-user fa-xs"></i> {{ question.author.username }}</span>
         <span><i class="fas fa-clock fa-xs"></i> {{ question.create_date|date:"m.d H:i" }}</span>
@@ -72,7 +74,7 @@
                      padding:3px 10px; border-radius:999px; font-size:0.8rem;">{{ series_nav.position }}/{{ series_nav.total }}</span>
     </a>
     {% endif %}
-    <div class="tc-m-md">{{ question.content|mark }}</div>
+    <div class="tc-m-md" id="reading-body" data-reading-body>{{ question.content|mark }}</div>
     {% include 'community/_column_takeaway.html' %}
     {% if question.all_images %}
     <div class="tc-m-gallery">
@@ -125,10 +127,10 @@
 
 <!-- 답변 목록 -->
 <div class="tc-m-answers-head">
-    <span class="tc-m-answers-title">답변 {{ answer_list|length }}개</span>
+    <span class="tc-m-answers-title">댓글 {{ answer_list|length }}개</span>
     <div class="tc-m-sortlinks">
-        <a rel="nofollow" href="?sort=recent" class="{% if sort == 'recent' or not sort %}is-active{% endif %}">최신</a>
-        <a rel="nofollow" href="?sort=recommend" class="{% if sort == 'recommend' %}is-active{% endif %}">추천순</a>
+        <a rel="nofollow" href="{% querystring sort='recent' %}" class="{% if sort == 'recent' or not sort %}is-active{% endif %}">최신</a>
+        <a rel="nofollow" href="{% querystring sort='recommend' %}" class="{% if sort == 'recommend' %}is-active{% endif %}">추천순</a>
     </div>
 </div>
 
@@ -165,40 +167,25 @@
 </div>
 {% empty %}
 <div class="tc-m-empty" style="background:var(--bg-primary);border-top:1px solid var(--border-light);">
-    아직 답변이 없습니다. 첫 번째로 답변해보세요!
+    아직 댓글이 없어요. 첫 댓글을 남겨 주세요.
 </div>
 {% endfor %}
 
 <!-- 답변 작성 -->
 {% if user.is_authenticated %}
 <div class="tc-m-form">
-    <div class="tc-m-form-title">답변 작성</div>
+    <div class="tc-m-form-title">댓글 작성</div>
     <form method="post" action="{% url 'community:answer_create' question.id %}" enctype="multipart/form-data">
         {% csrf_token %}
-        <textarea name="content" class="tc-m-textarea" placeholder="답변을 작성해주세요..."></textarea>
-        <button type="submit" class="tc-m-btn tc-m-btn-ink tc-m-btn-block" style="margin-top:10px;">답변 등록</button>
+        <textarea name="content" class="tc-m-textarea" placeholder="댓글을 남겨 주세요"></textarea>
+        <button type="submit" class="tc-m-btn tc-m-btn-ink tc-m-btn-block" style="margin-top:10px;">댓글 등록</button>
     </form>
 </div>
 {% else %}
 <div class="tc-m-login-cta">
-    <a rel="nofollow" href="{% url 'common:login' %}?next={{ request.get_full_path|urlencode }}">로그인 후 답변 작성</a>
+    <a rel="nofollow" href="{% url 'common:login' %}?next={{ request.get_full_path|urlencode }}">로그인 후 댓글 작성</a>
 </div>
 {% endif %}
 {% endblock %}
 
-{% block script %}
-<script>
-// 사이트 안에서 들어왔으면 이전 화면(스크롤 위치 유지)으로, 공유 링크로 바로 들어왔으면 홈으로
-(function () {
-    var back = document.getElementById('tc-m-back');
-    if (!back) return;
-    back.addEventListener('click', function (e) {
-        var ref = document.referrer;
-        if (ref && ref.indexOf(location.origin + '/') === 0 && history.length > 1) {
-            e.preventDefault();
-            history.back();
-        }
-    });
-})();
-</script>
-{% endblock %}
+{% block script %}{{ block.super }}{% endblock %}

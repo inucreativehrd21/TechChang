@@ -1,0 +1,20 @@
+{% extends is_mobile|yesno:'base_mobile.html,base.html' %}
+{% load static %}
+{% block title %}내 활동 - 테크창{% endblock %}
+{% block tab_activity %}active{% endblock %}
+{% block extra_css %}<link href="{% static 'css/reading-flow.css' %}?v={{ STATIC_VERSION }}" rel="stylesheet">{% endblock %}
+{% block content %}
+<main class="fl-page" data-reading-library>
+    <header class="fl-head"><h1>내 활동</h1><p>저장한 칼럼과 읽던 글을 이어서 만나요.</p></header>
+    <p class="fl-note">읽기 목록과 관심 주제는 이 브라우저에만 보관돼요. 다른 기기나 브라우저에는 연결되지 않아요.</p>
+    <p class="fl-note" data-reading-status role="status" aria-live="polite"></p>
+    <noscript><p>저장한 글과 읽던 위치를 보려면 JavaScript를 켜 주세요. <a href="{% url 'community:explore' %}">콘텐츠 탐색</a>은 바로 이용할 수 있어요.</p></noscript>
+    {% include 'community/_flow_interests.html' %}
+    <section class="fl-section"><div class="fl-section-head"><h2>저장한 글</h2><button class="fl-button" type="button" data-reading-clear="saved">저장 목록 비우기</button></div><div class="fl-results" data-reading-saved><p class="fl-empty">아직 저장한 글이 없어요. 칼럼에서 ‘글 저장’을 눌러 보세요.</p></div></section>
+    <section class="fl-section"><div class="fl-section-head"><h2>최근 읽던 글</h2><button class="fl-button" type="button" data-reading-clear="recent">읽기 목록 비우기</button></div><div class="fl-results" data-reading-recent><p class="fl-empty">칼럼을 읽으면 이곳에서 이어 읽을 수 있어요.</p></div></section>
+    <nav class="fl-links" aria-label="내 계정과 커뮤니티">
+        {% if user.is_authenticated %}<a href="{% url 'common:profile_edit' %}">내 계정</a><a href="{% url 'community:portfolio_collection_list' %}">내 포트폴리오</a><a href="{% url 'common:point_history' %}">포인트 내역</a>{% else %}<a href="{% url 'common:login' %}?next={{ request.get_full_path|urlencode }}">로그인</a>{% endif %}
+        <a href="{% url 'community:members_list' %}">구성원</a><a href="{% url 'common:point_ranking' %}">포인트 랭킹</a><a href="{% url 'community:guestbook_list' %}">방명록</a>
+    </nav>
+</main>
+{% endblock %}

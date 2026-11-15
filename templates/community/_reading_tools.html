@@ -1,0 +1,8 @@
+{% if can_keep_reading %}
+<div class="fl-reading-tools" data-reading-article data-id="{{ question.id }}" data-title="{{ question.subject }}" data-url="{% url 'community:detail' question.id %}" data-category="{{ question.category.name }}"{% if series_nav.next %} data-next="{% url 'community:detail' series_nav.next.id %}" data-next-title="{{ series_nav.next.subject }}"{% endif %}>
+    <button type="button" class="fl-button" data-reading-save aria-pressed="false" hidden>글 저장</button>
+    <button type="button" class="fl-button" data-reading-resume hidden>읽던 위치로 이동</button>
+    <a href="{% url 'community:reading_list' %}">내 읽기 목록</a>
+    <span class="fl-note" data-reading-status role="status" aria-live="polite">읽기 목록은 이 브라우저에만 보관돼요.</span>
+</div>
+{% endif %}

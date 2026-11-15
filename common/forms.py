@@ -18,7 +18,7 @@ class UserForm(UserCreationForm):
         help_text="이메일 인증이 필요합니다.",
         widget=forms.EmailInput(attrs={
             'class': 'form-control',
-            'placeholder': 'example@email.com'
+            'placeholder': 'example@email.com', 'autocomplete': 'email', 'spellcheck': 'false',
         })
     )
     nickname = forms.CharField(
@@ -32,13 +32,14 @@ class UserForm(UserCreationForm):
         })
     )
     email_code = forms.CharField(
-        max_length=4,
+        max_length=EmailVerification.CODE_LENGTH,
         label="이메일 인증코드",
-        help_text="이메일로 받은 4자리 인증코드를 입력하세요.",
+        help_text=f"이메일로 받은 {EmailVerification.CODE_LENGTH}자리 인증코드를 입력해 주세요.",
         required=False,
         widget=forms.TextInput(attrs={
             'class': 'form-control',
-            'placeholder': '4자리 숫자'
+            'placeholder': f'{EmailVerification.CODE_LENGTH}자리 숫자',
+            'inputmode': 'numeric', 'autocomplete': 'one-time-code',
         })
     )
 
@@ -48,7 +49,7 @@ class UserForm(UserCreationForm):
         widgets = {
             'username': forms.TextInput(attrs={
                 'class': 'form-control',
-                'placeholder': '영문, 숫자, 특수문자'
+                'placeholder': '영문, 숫자, 특수문자', 'autocomplete': 'username', 'spellcheck': 'false',
             }),
         }
 
@@ -57,7 +58,7 @@ class UserForm(UserCreationForm):
         # 비밀번호 필드에 Bootstrap 클래스 추가
         self.fields['password1'].widget.attrs.update({
             'class': 'form-control',
-            'placeholder': '8자리 이상'
+            'placeholder': '10자리 이상'
         })
         self.fields['password2'].widget.attrs.update({
             'class': 'form-control',
@@ -65,8 +66,8 @@ class UserForm(UserCreationForm):
         })
 
     def clean_email(self):
-        email = self.cleaned_data.get('email')
-        if User.objects.filter(email=email).exists():
+        email = self.cleaned_data.get('email', '').strip().lower()
+        if User.objects.filter(email__iexact=email).exists():
             raise forms.ValidationError("이미 사용 중인 이메일입니다.")
         return email
 

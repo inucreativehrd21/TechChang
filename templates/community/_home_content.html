@@ -1,0 +1,55 @@
+{% load static %}
+<main class="tc-home fl-page fl-home">
+    <header class="fl-home-intro">
+        <div class="fl-head"><h1>HRD와 테크놀로지를<br>잇는 지식 플랫폼</h1><p>팩트체크와 편집 심사를 거친 칼럼을 무료로 읽고,<br>궁금한 점을 함께 나눠요.</p></div>
+        <div><form class="fl-search" action="{% url 'community:explore' %}" method="get" role="search"><label class="visually-hidden" for="fl-home-query">전체 콘텐츠 검색</label><input id="fl-home-query" type="search" name="q" placeholder="궁금한 주제나 제목을 찾아보세요" maxlength="100" autocomplete="off"><button type="submit" class="fl-button fl-primary">검색</button></form>
+            <div class="fl-home-actions"><a href="{% url 'community:explore' %}" class="fl-button">칼럼 둘러보기</a><a href="{% url 'community:series_index' %}">시리즈로 시작하기</a><a href="{% url 'community:reading_list' %}">내 읽기 목록</a></div>
+        </div>
+    </header>
+    <aside class="fl-resume" data-reading-home hidden><p>최근 읽던 글</p><a data-reading-home-link href="{% url 'community:reading_list' %}"></a></aside>
+    <section aria-labelledby="fl-start"><div class="fl-section-head"><h2 id="fl-start">처음이라면 이 글부터</h2><a href="{% url 'community:explore' %}?kind=column">칼럼 더 보기</a></div>
+        <div class="fl-results">{% for question in start_posts %}{% include 'community/_flow_post.html' with summary=True %}{% empty %}<p class="fl-empty">새 칼럼을 준비하고 있어요. <a href="{% url 'community:explore' %}">커뮤니티 글도 둘러보세요.</a></p>{% endfor %}</div>
+    </section>
+    {% include 'community/_flow_interests.html' %}
+    <nav class="fl-links" aria-label="읽는 방법"><a href="{% url 'community:series_index' %}">처음부터 차근차근, 연재 시리즈</a><a href="{% url 'community:column_map' %}">요약과 키워드로 찾는 칼럼 지도</a><a href="{% url 'community:board_main' %}">궁금한 점을 나누는 커뮤니티</a></nav>
+    <section id="tc-board"><div class="fl-section-head"><h2>최신 글</h2><a href="{% url 'community:explore' %}">전체 콘텐츠</a></div>
+        <div class="fl-results">{% for question in question_list %}{% include 'community/_flow_post.html' %}{% empty %}<p class="fl-empty">아직 글이 없어요. <a href="{% url 'community:question_create' %}">첫 글을 남겨 주세요.</a></p>{% endfor %}</div>
+        {% if question_list.has_other_pages %}<nav class="fl-pagination" aria-label="글 목록 페이지">{% if question_list.has_previous %}<a href="?page={{ question_list.previous_page_number }}{% if page_qs %}&{{ page_qs }}{% endif %}#tc-board">이전</a>{% endif %}<span aria-current="page">{{ question_list.number }} / {{ question_list.paginator.num_pages }}</span>{% if question_list.has_next %}<a href="?page={{ question_list.next_page_number }}{% if page_qs %}&{{ page_qs }}{% endif %}#tc-board">다음</a>{% endif %}</nav>{% endif %}
+    </section>
+    {% if recent_popular %}<section><div class="fl-section-head"><h2>최근 30일 발행 칼럼 중 인기 글</h2></div><div class="fl-results">{% for question in recent_popular|slice:':3' %}{% include 'community/_flow_post.html' %}{% endfor %}</div></section>{% endif %}
+    {% if lab %}<section class="fl-section fl-lab tc-lab"><div class="fl-section-head"><h2>칼럼이 만들어지는 연구실</h2><a href="{% url 'office:home' %}">연구실 둘러보기</a></div><p>AI 연구원 {{ lab.agents }}명이 기획하고, 사실 확인과 편집 심사를 거쳐 글을 발행해요.</p>
+        {% if lab.weekly %}<p>연구실 위클리 · <a href="{% url 'newsletter_detail' lab.weekly.slug %}">{{ lab.weekly.title }}</a></p>{% endif %}
+        {% if next_slot %}<p>다음 칼럼 · {{ next_slot.when }} 10:00 · {{ next_slot.label }} · 심화·실용 각 1편{% if next_slot.title %}<br>{{ next_slot.title }}{% endif %}</p>{% endif %}
+    </section>{% endif %}
+    <div class="fl-home-game">    <!-- ===== 야구선수 키우기 — 배너에서 모드 선택 ===== -->
+    <section class="tc-section" aria-labelledby="tc-ball-title">
+        <div class="tc-ball" data-reveal>
+            <div class="tc-ball-board">
+                <div class="tc-ball-copy">
+                    <p class="tc-ball-live">{% include 'community/_ball_season.html' with s=ball.season %}</p>
+                    <h2 class="tc-ball-title" id="tc-ball-title">야구선수 키우기, 문을 열었어요</h2>
+                    <p class="tc-ball-lede">리틀야구부터 드래프트, 프로 무대와 은퇴까지. 훈련과 진로를 직접 골라 한 선수의 야구 인생을 키워 보세요.</p>
+                    {% if ball %}
+                    <dl class="tc-ball-nums">
+                        <div><dt>정식 모드 현역</dt><dd>{{ ball.players }}<small>명</small></dd></div>
+                        <div><dt>전체 커리어</dt><dd>{{ ball.careers }}<small>개</small></dd></div>
+                    </dl>
+                    {% endif %}
+                    <span class="tc-mode-invite" aria-hidden="true">플레이할 모드 선택 <i class="fas fa-arrow-right"></i></span>
+                </div>
+                <ul class="tc-ball-crew" aria-label="코칭스태프">
+                    {% for who, name, role in ball_crew %}
+                    <li><span class="tc-ball-sprite" style="--sprite: url('/media/lab/chars/{{ who }}_idle.png')" aria-hidden="true"></span><b>{{ name }}</b><small>{{ role }}</small></li>
+                    {% endfor %}
+                </ul>
+                <button type="button" class="tc-mode-trigger" data-tc-mode-open aria-haspopup="dialog" aria-controls="tc-mode-picker" aria-expanded="false"><span class="visually-hidden">야구선수 키우기 모드 선택</span></button>
+            </div>
+            <noscript><p><a href="{% url 'community:games_index' %}">게임센터에서 플레이할 모드를 골라 주세요.</a></p></noscript>
+            <p class="tc-ball-more">숫자야구·2048·지뢰찾기는 <a href="{% url 'community:games_index' %}">게임센터</a>에 있어요.</p>
+        </div>
+    </section>
+
+</div>
+    <p class="fl-stat-line">운영 {{ launch_days }}일 · 누적 방문 {{ visitors_total }} · 오늘 방문 {{ visitors_today }}</p>
+</main>
+{% include 'community/_home_mode_picker.html' %}

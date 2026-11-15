@@ -1,5 +1,7 @@
 {% load common_tags %}
 {% load static %}
+{% load navigation_tags %}
+{% navigation_next as navigation_next %}
 
 <!-- Premium Navigation -->
 <nav class="premium-nav">
@@ -13,15 +15,14 @@
         <!-- Desktop Links -->
         <div class="premium-nav-links d-none d-lg-flex">
             <a href="{% url 'community:index' %}" class="premium-nav-link">홈</a>
+            <a href="{% url 'community:explore' %}" class="premium-nav-link">탐색</a>
             <a href="{% url 'community:board_main' %}" class="premium-nav-link">커뮤니티</a>
             <a href="{% url 'community:series_index' %}" class="premium-nav-link">시리즈</a>
             <a href="{% url 'community:column_map' %}" class="premium-nav-link">칼럼 지도</a>
             <a href="#" class="premium-nav-link" data-bs-toggle="modal" data-bs-target="#aboutModal">소개</a>
-            <a href="{% url 'community:members_list' %}" class="premium-nav-link">구성원</a>
             <a href="{% url 'community:games_index' %}" class="premium-nav-link">게임</a>
-            <a href="{% url 'common:point_ranking' %}" class="premium-nav-link">랭킹</a>
-            <a href="{% url 'community:guestbook_list' %}" class="premium-nav-link">방명록</a>
             <a href="{% url 'office:home' %}" class="premium-nav-link">연구실</a>
+            <a href="{% url 'community:reading_list' %}" class="premium-nav-link">내 활동</a>
             <a href="https://www.myochil.com/" class="premium-nav-link" target="_blank" rel="noopener noreferrer" style="display:inline-flex;align-items:center;gap:4px;">
                 <i class="fas fa-calendar-check" style="font-size:0.85em;color:#7c3aed;"></i>며칠
                 <i class="fas fa-external-link-alt" style="font-size:0.6em;opacity:0.5;"></i>
@@ -54,15 +55,15 @@
                     </div>
                 </div>
             {% else %}
-                <a href="{% url 'common:login' %}" class="premium-nav-link">로그인</a>
-                <a href="{% url 'common:signup' %}" class="btn-premium btn-premium-primary" style="padding: 0.45rem 1.05rem; font-size: 0.9375rem;">
+                <a href="{% url 'common:login' %}?next={{ navigation_next|urlencode }}" class="premium-nav-link">로그인</a>
+                <a href="{% url 'common:signup' %}?next={{ navigation_next|urlencode }}" class="btn-premium btn-premium-primary" style="padding: 0.45rem 1.05rem; font-size: 0.9375rem;">
                     회원가입
                 </a>
             {% endif %}
         </div>
 
         <!-- Mobile Menu Button -->
-        <button class="navbar-toggler d-lg-none" type="button" data-bs-toggle="collapse" data-bs-target="#mobileNav" style="background: none; border: none; padding: var(--space-2);">
+        <button class="navbar-toggler d-lg-none" type="button" aria-label="메뉴 열기" aria-controls="mobileNav" aria-expanded="false" data-bs-toggle="collapse" data-bs-target="#mobileNav" style="background: none; border: none; padding: var(--space-2);">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <line x1="3" y1="12" x2="21" y2="12"></line>
                 <line x1="3" y1="6" x2="21" y2="6"></line>
@@ -73,15 +74,14 @@
 
     <!-- Mobile Nav -->
     <div class="collapse d-lg-none" id="mobileNav" style="padding: var(--space-4) 0; border-top: 1px solid rgba(226, 232, 240, 0.5);">
+        <a href="{% url 'community:reading_list' %}" style="display:block;padding:var(--space-3) var(--space-6);color:var(--text-secondary);text-decoration:none;">내 활동</a>
         <a href="{% url 'community:index' %}" style="display: block; padding: var(--space-3) var(--space-6); color: var(--text-secondary); text-decoration: none;">홈</a>
-        <a href="{% url 'community:board_main' %}" style="display: block; padding: var(--space-3) var(--space-6); color: var(--text-secondary); text-decoration: none;">커뮤니티</a>
+        <a href="{% url 'community:explore' %}" style="display: block; padding: var(--space-3) var(--space-6); color: var(--text-secondary); text-decoration: none;">탐색</a>
+            <a href="{% url 'community:board_main' %}" style="display: block; padding: var(--space-3) var(--space-6); color: var(--text-secondary); text-decoration: none;">커뮤니티</a>
         <a href="{% url 'community:series_index' %}" style="display: block; padding: var(--space-3) var(--space-6); color: var(--text-secondary); text-decoration: none;">시리즈</a>
         <a href="{% url 'community:column_map' %}" style="display: block; padding: var(--space-3) var(--space-6); color: var(--text-secondary); text-decoration: none;">칼럼 지도</a>
         <a href="#" data-bs-toggle="modal" data-bs-target="#aboutModal" style="display: block; padding: var(--space-3) var(--space-6); color: var(--text-secondary); text-decoration: none;">소개</a>
-        <a href="{% url 'community:members_list' %}" style="display: block; padding: var(--space-3) var(--space-6); color: var(--text-secondary); text-decoration: none;">구성원</a>
         <a href="{% url 'community:games_index' %}" style="display: block; padding: var(--space-3) var(--space-6); color: var(--text-secondary); text-decoration: none;">게임</a>
-        <a href="{% url 'common:point_ranking' %}" style="display: block; padding: var(--space-3) var(--space-6); color: var(--text-secondary); text-decoration: none;">랭킹</a>
-        <a href="{% url 'community:guestbook_list' %}" style="display: block; padding: var(--space-3) var(--space-6); color: var(--text-secondary); text-decoration: none;">방명록</a>
         <a href="{% url 'office:home' %}" style="display: block; padding: var(--space-3) var(--space-6); color: var(--text-secondary); text-decoration: none;">연구실</a>
         <a href="https://www.myochil.com/" target="_blank" rel="noopener noreferrer" style="display: block; padding: var(--space-3) var(--space-6); color: var(--text-secondary); text-decoration: none;">
             <i class="fas fa-calendar-check" style="color:#7c3aed;margin-right:4px;"></i>며칠 <i class="fas fa-external-link-alt" style="font-size:0.65em;opacity:0.5;"></i>
@@ -96,8 +96,8 @@
                 <button type="submit" style="display:block;width:100%;padding:var(--space-3) var(--space-6);color:var(--text-secondary);background:none;border:0;text-align:left;cursor:pointer;">로그아웃</button>
             </form>
         {% else %}
-            <a href="{% url 'common:login' %}" style="display: block; padding: var(--space-3) var(--space-6); color: var(--text-secondary); text-decoration: none;">로그인</a>
-            <a href="{% url 'common:signup' %}" style="display: block; padding: var(--space-3) var(--space-6); color: var(--text-secondary); text-decoration: none;">회원가입</a>
+            <a href="{% url 'common:login' %}?next={{ navigation_next|urlencode }}" style="display: block; padding: var(--space-3) var(--space-6); color: var(--text-secondary); text-decoration: none;">로그인</a>
+            <a href="{% url 'common:signup' %}?next={{ navigation_next|urlencode }}" style="display: block; padding: var(--space-3) var(--space-6); color: var(--text-secondary); text-decoration: none;">회원가입</a>
         {% endif %}
     </div>
 </nav>

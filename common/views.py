@@ -22,6 +22,7 @@ from django.contrib.auth.models import User
 from common.forms import UserForm, ProfileForm
 from . import legal
 from .models import Profile, EmailVerification
+from .navigation import auth_destination
 from community.utils import award_points, deduct_points
 
 
@@ -447,19 +448,22 @@ def force_email_verification(request):
     })
 
 
-def _signup_ctx(form):
+def _signup_ctx(form, next_url='/'):
     """가입 화면 컨텍스트 — 약관 본문은 common.legal 의 최신 공고본."""
-    return {'form': form, 'terms_template': legal.info('terms', legal.latest('terms'))['template']}
+    return {'form': form, 'next': next_url,
+            'verification_code_length': EmailVerification.CODE_LENGTH,
+            'terms_template': legal.info('terms', legal.latest('terms'))['template']}
 
 
 def signup_with_email_verification(request):
     """이메일 인증이 포함된 회원가입"""
+    next_url = auth_destination(request)
     if request.method == "POST":
         form = UserForm(request.POST)
         # 필수 동의(만 14세 이상·이용약관·개인정보 수집·이용)는 화면 체크와 별개로 서버에서도 확인한다
         if not all(request.POST.get(k) for k in ('agree_age', 'agree_terms', 'agree_privacy')):
             messages.error(request, '만 14세 이상 확인, 이용약관, 개인정보 수집·이용에 모두 동의해야 가입할 수 있습니다.')
-            return render(request, 'common/signup_with_verification.html', _signup_ctx(form))
+            return render(request, 'common/signup_with_verification.html', _signup_ctx(form, next_url))
         if form.is_valid():
             email = form.cleaned_data.get('email')
 
@@ -471,14 +475,14 @@ def signup_with_email_verification(request):
 
             if not verification:
                 messages.error(request, '이메일 인증을 먼저 완료해주세요.')
-                return render(request, 'common/signup_with_verification.html', _signup_ctx(form))
+                return render(request, 'common/signup_with_verification.html', _signup_ctx(form, next_url))
 
             # 인증 후 30분 이내인지 확인 (보안상)
             from datetime import timedelta
             if timezone.now() > verification.verified_at + timedelta(minutes=30):
                 messages.error(request, '이메일 인증이 만료되었습니다. 다시 인증해주세요.')
                 verification.delete()
-                return render(request, 'common/signup_with_verification.html', _signup_ctx(form))
+                return render(request, 'common/signup_with_verification.html', _signup_ctx(form, next_url))
 
             # 사용자 생성
             user = form.save()
@@ -503,11 +507,11 @@ def signup_with_email_verification(request):
             login(request, user)
 
             messages.success(request, '회원가입이 완료되었습니다! 테크창에 오신 것을 환영합니다.')
-            return redirect('community:index')
+            return redirect(next_url)
     else:
         form = UserForm()
 
-    return render(request, 'common/signup_with_verification.html', _signup_ctx(form))
+    return render(request, 'common/signup_with_verification.html', _signup_ctx(form, next_url))
 
 
 # ==================== 관리자 기능 ====================

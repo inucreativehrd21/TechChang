@@ -1,0 +1,39 @@
+{% extends is_mobile|yesno:'base_mobile.html,base.html' %}
+{% load static %}
+{% block title %}{% if query %}{{ query }} 검색 결과{% else %}콘텐츠 탐색{% endif %} - 테크창{% endblock %}
+{% block meta_description %}칼럼, 연재와 커뮤니티 글을 한곳에서 찾아보세요.{% endblock %}
+{% block tab_explore %}active{% endblock %}
+{% block extra_css %}<link href="{% static 'css/reading-flow.css' %}?v={{ STATIC_VERSION }}" rel="stylesheet">{% endblock %}
+{% block content %}
+<main class="fl-page" id="fl-results">
+    <header class="fl-head"><h1>콘텐츠 탐색</h1><p>칼럼·연재·커뮤니티 글을 함께 찾아요.</p></header>
+    <form action="{% url 'community:explore' %}" method="get" class="fl-search" role="search">
+        <label class="visually-hidden" for="fl-query">전체 콘텐츠 검색</label>
+        <input id="fl-query" type="search" name="q" value="{{ query }}" maxlength="100" placeholder="궁금한 주제나 제목을 입력해 주세요" autocomplete="off">
+        {% if selected_category %}<input type="hidden" name="category" value="{{ selected_category }}">{% endif %}
+        {% if kind %}<input type="hidden" name="kind" value="{{ kind }}">{% endif %}
+        <button type="submit" class="fl-button fl-primary">검색</button>
+    </form>
+    <nav class="fl-chips" aria-label="콘텐츠 유형">
+        <a href="{% querystring kind=None page=None %}"{% if not kind %} aria-current="page"{% endif %}>전체</a>
+        <a href="{% querystring kind='column' page=None %}"{% if kind == 'column' %} aria-current="page"{% endif %}>칼럼</a>
+        <a href="{% querystring kind='series' page=None %}"{% if kind == 'series' %} aria-current="page"{% endif %}>연재</a>
+        <a href="{% querystring kind='post' page=None %}"{% if kind == 'post' %} aria-current="page"{% endif %}>커뮤니티 글</a>
+    </nav>
+    <nav class="fl-chips" aria-label="주제">
+        <a href="{% querystring category=None page=None %}"{% if not selected_category %} aria-current="page"{% endif %}>모든 주제</a>
+        {% for category in explore_categories %}<a href="{% querystring category=category.name page=None %}"{% if selected_category == category.name %} aria-current="page"{% endif %}>{{ category.name }}</a>{% endfor %}
+    </nav>
+    <div class="fl-section-head"><h2>{% if query %}“{{ query }}” 검색 결과{% else %}최신 콘텐츠{% endif %} <small>{{ results.paginator.count }}건</small></h2></div>
+    <div class="fl-results">
+        {% for question in results %}{% include 'community/_flow_post.html' with summary=True %}
+        {% empty %}<div class="fl-empty"><p>조건에 맞는 글이 없어요. 검색어를 줄이거나 다른 주제를 골라 보세요.</p><a href="{% url 'community:explore' %}">전체 콘텐츠 보기</a> · <a href="{% url 'community:question_create' %}">커뮤니티에 질문하기</a></div>{% endfor %}
+    </div>
+    {% if results.has_other_pages %}<nav class="fl-pagination" aria-label="탐색 결과 페이지">
+        {% if results.has_previous %}<a href="{% querystring page=results.previous_page_number %}#fl-results">이전</a>{% endif %}
+        <span aria-current="page">{{ results.number }} / {{ results.paginator.num_pages }}</span>
+        {% if results.has_next %}<a href="{% querystring page=results.next_page_number %}#fl-results">다음</a>{% endif %}
+    </nav>{% endif %}
+    <section class="fl-links" aria-label="다른 탐색 방법"><a href="{% url 'community:column_map' %}">요약과 키워드로 찾는 칼럼 지도</a><a href="{% url 'community:series_index' %}">처음부터 따라가는 연재 시리즈</a></section>
+</main>
+{% endblock %}

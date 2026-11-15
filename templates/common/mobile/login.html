@@ -126,7 +126,7 @@
     {% social_enabled 'google' as google_ready %}
     {% if google_ready %}<a class="btn btn-outline-secondary w-100 mt-3 py-3" href="{% url 'common:google_login' %}?next={{ next|urlencode }}">Google로 계속하기</a>{% endif %}
     <p class="small text-muted mt-3">기존 회원은 아이디로 로그인한 뒤 프로필의 ‘로그인 계정 연결’에서 연결해 주세요.</p>
-    <div class="m-divider">일반/관리자 로그인</div>
+    <div class="m-divider">아이디로 로그인</div>
 
     <!-- ID/PW 로그인 (접기/펼치기) -->
     <button class="m-accordion-header" id="adminToggle" type="button">
@@ -168,7 +168,7 @@
 
     <!-- 회원가입 링크 -->
     <div class="m-link-row">
-        아직 계정이 없으신가요? <a href="{% url 'common:signup' %}">회원가입</a>
+        아직 계정이 없으신가요? <a href="{% url 'common:signup' %}?next={{ next|urlencode }}">회원가입</a>
     </div>
 </div>
 {% endblock %}

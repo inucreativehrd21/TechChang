@@ -21,6 +21,7 @@
 {% block jsonld %}{% include 'community/_question_jsonld.html' %}{% endblock %}
 
 {% block extra_css %}
+<link href="{% static 'css/reading-flow.css' %}?v={{ STATIC_VERSION }}" rel="stylesheet">
 {% include 'community/_title_badges_style.html' %}
 <style>
 /* Premium Detail Page Styles */
@@ -586,6 +587,7 @@
 
 {% block content %}
 <div class="detail-container">
+    <a class="fl-back" href="{{ back_url }}">← {{ back_label }}</a>
     <!-- Question Card -->
     <article class="question-card">
         <header class="question-header">
@@ -601,6 +603,7 @@
             <h1 class="question-title">{{ question.subject }}</h1>
             {% if question.is_column and not question.series_id %}<p><a class="text-muted small" href="{% url 'community:column_map' %}?track={{ question.column_track|default:'legacy' }}">{{ question.get_column_track_display }}</a></p>{% endif %}
             {% include 'community/_ai_notice.html' %}
+            {% include 'community/_reading_tools.html' %}
 
             <div class="question-meta">
                 <div class="meta-item">
@@ -650,7 +653,7 @@
             {% endif %}
 
             <!-- Content -->
-            <div class="question-content">
+            <div class="question-content" id="reading-body" data-reading-body>
                 {{ question.content|mark }}
             </div>
             {% include 'community/_column_takeaway.html' %}
@@ -761,10 +764,10 @@
             </h2>
 
             <div class="sort-buttons">
-                <a rel="nofollow" href="?sort=recent" class="sort-btn {% if sort == 'recent' or not sort %}active{% endif %}">
+                <a rel="nofollow" href="{% querystring sort='recent' %}" class="sort-btn {% if sort == 'recent' or not sort %}active{% endif %}">
                     <i class="fas fa-clock"></i> 최신순
                 </a>
-                <a rel="nofollow" href="?sort=recommend" class="sort-btn {% if sort == 'recommend' %}active{% endif %}">
+                <a rel="nofollow" href="{% querystring sort='recommend' %}" class="sort-btn {% if sort == 'recommend' %}active{% endif %}">
                     <i class="fas fa-fire"></i> 추천순
                 </a>
             </div>

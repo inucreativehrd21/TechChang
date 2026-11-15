@@ -218,6 +218,10 @@ def index(request):
         page = 1
     
     kw = request.GET.get('kw', '').strip()  # 검색어
+    # 기존 홈 검색 주소도 연재를 포함한 통합 검색으로 이어져요.
+    if kw:
+        from .explore_views import explore
+        return explore(request)
     category_name = request.GET.get('category', '').strip()  # 카테고리
     sort = request.GET.get('sort', 'recent')
     if sort not in ('recent', 'recommend', 'popular'):
@@ -278,6 +282,16 @@ def index(request):
         .select_related('author', 'category')\
         .order_by('-view_count', '-create_date')[:5]
 
+    # 홈의 첫 추천은 공개 칼럼으로 골라요. 운영자 픽을 우선하고 최신 글로 채워요.
+    columns = readable_questions(request.user).filter(
+        author__username=Question.BOT_USERNAME, is_locked=False,
+    ).exclude(category__name='문의').select_related('author', 'category', 'series')
+    start_posts = list(columns.filter(Q(series__isnull=True) | Q(episode_number=0))
+                       .order_by('-operator_pick', '-operator_pick_at', '-create_date', '-pk')[:3])
+    from datetime import timedelta
+    recent_popular = list(columns.filter(create_date__gte=timezone.now() - timedelta(days=30))
+                          .order_by('-view_count', '-create_date')[:5])
+
     # 히어로 라이브 패널용 최신 글 (문의글 제목은 새 노출면에 내보내지 않음)
     recent_posts = Question.objects.filter(is_deleted=False, series__isnull=True)\
         .exclude(category__name='문의')\
@@ -336,6 +350,8 @@ def index(request):
         'category_counts': category_counts,
         'total_count': total_count,
         'popular_posts': popular_posts,
+        'start_posts': start_posts,
+        'recent_popular': recent_popular,
         'recent_posts': recent_posts,
         'picks': _pick_scores(),       # {question_id: 점수} — 편집 심사 85점 이상 칼럼에 '추천' 표시
         'lab': live['lab'],
@@ -437,6 +453,10 @@ def detail(request, question_id):
         'premium_score': premium_score,
         'related': related,
     }
+    from .explore_views import detail_return
+    context['back_url'], context['back_label'] = detail_return(request, question)
+    context['can_keep_reading'] = (question.is_column and not question.is_locked
+                                   and question.category.name != '문의')
     template = 'community/mobile/question_detail.html' if getattr(request, 'is_mobile', False) else 'community/question_detail.html'
     return render(request, template, context)
 

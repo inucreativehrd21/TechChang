@@ -84,6 +84,7 @@
 {% endblock %}
 
 {% block content %}
+<div style="padding:16px 16px 0;display:flex;gap:12px;"><a class="tc-m-btn tc-m-btn-ink" href="{% url 'community:question_create' %}">글쓰기</a><a class="tc-m-btn" href="{% url 'community:explore' %}">전체 글 검색</a></div>
 <div class="m-board-head">
     <h1 class="m-board-title">커뮤니티</h1>
     <p class="m-board-sub">게시글 {{ total_questions }}개</p>
