@@ -117,7 +117,6 @@ urlpatterns = [
     path('rookie/apply/', rookie_views.rookie_apply, name='rookie_apply'),         # 진학 지원
     path('rookie/decide/', rookie_views.rookie_decide, name='rookie_decide'),      # 드래프트 뒤 진로
     path('rookie/retire/', rookie_views.rookie_retire, name='rookie_retire'),
-    path('rookie/season-choice/', rookie_views.rookie_season_choice, name='rookie_season_choice'),   # 시즌 개막 전 계속·새 출발
     path('rookie/ranking/', rookie_views.rookie_ranking, name='rookie_ranking'),   # 예전 주소 → 리그
     path('rookie/league/', rookie_views.rookie_league, name='rookie_league'),
     path('rookie/world/', rookie_world_views.world_hub, name='rookie_world'),
