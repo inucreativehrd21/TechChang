@@ -45,7 +45,7 @@ cd ~/projects/mysite && git pull origin main
 ~/venvs/mysite/bin/pip install -r requirements-prod.txt
 DJANGO_SETTINGS_MODULE=config.settings.prod ~/venvs/mysite/bin/python3 manage.py migrate
 DJANGO_SETTINGS_MODULE=config.settings.prod ~/venvs/mysite/bin/python3 manage.py collectstatic --noinput
-sudo systemctl restart mysite
+DJANGO_SETTINGS_MODULE=config.settings.prod ~/venvs/mysite/bin/python3 manage.py check && sudo systemctl restart mysite   # check 실패면 재시작하지 않는다(11-16 기동 실패 40초)
 ```
 
 **검증**:

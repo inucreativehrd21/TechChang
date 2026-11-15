@@ -176,8 +176,10 @@ cd ~/projects/mysite && git pull origin main
 export DJANGO_SETTINGS_MODULE=config.settings.prod
 ~/venvs/mysite/bin/python3 manage.py migrate
 ~/venvs/mysite/bin/python3 manage.py collectstatic --noinput
-sudo systemctl restart mysite && systemctl is-active mysite
+~/venvs/mysite/bin/python3 manage.py check && sudo systemctl restart mysite && systemctl is-active mysite
 ```
+
+> 재시작 전 `check` 를 꼭 돌립니다. 2026-11-16 01:20 URL 이 없는 뷰를 가리킨 커밋을 그대로 재시작해 gunicorn 이 4번 기동에 실패했고(약 40초 502), `check` 는 이 오류를 재시작 전에 잡습니다. CI(GitHub Actions)가 빨간불인 커밋은 배포하지 않습니다.
 
 > `staticfiles/` 는 `collectstatic` 산출물이므로 저장소에서 추적하지 않습니다(서버에서 생성).
 

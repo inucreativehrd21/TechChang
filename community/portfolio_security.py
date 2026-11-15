@@ -8,8 +8,8 @@ import tempfile
 from django.conf import settings
 from django.contrib.auth.models import User
 from django.db import transaction
-from django.db.models import BinaryField, Case, F, TextField, Value, When
-from django.db.models.functions import Cast, Length, Substr
+from django.db.models import Case, F, Func, IntegerField, TextField, Value, When
+from django.db.models.functions import Length, Substr
 from django.utils import timezone
 
 MAX_HTML_BYTES = 20 * 1024 * 1024
@@ -19,8 +19,18 @@ MAX_ACCOUNT_HTML_BYTES = 50 * 1024 * 1024
 MAX_PREVIEW_CHARS = 64 * 1024
 
 
+class OctetLength(Func):
+    """문자열의 UTF-8 바이트 수 — MySQL·PostgreSQL 은 OCTET_LENGTH, SQLite 는 BLOB 으로 바꿔 LENGTH.
+    예전 Length(Cast(..., BinaryField())) 는 MySQL 에서 'CAST(... AS longblob)' 문법 오류(1064)였다(CI·운영 MySQL)."""
+    function = 'OCTET_LENGTH'
+    output_field = IntegerField()
+
+    def as_sqlite(self, compiler, connection, **extra):
+        return self.as_sql(compiler, connection, template='LENGTH(CAST(%(expressions)s AS BLOB))', **extra)
+
+
 def html_byte_length():
-    return Length(Cast('html_content', output_field=BinaryField()))
+    return OctetLength('html_content')
 
 
 def with_html_summary(queryset, *, editor=False):
