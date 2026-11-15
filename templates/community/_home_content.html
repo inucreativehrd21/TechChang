@@ -3,9 +3,12 @@
 
     <!-- ===== 소개 + 찾기 패널 ===== -->
     <header class="fl-home-intro">
-        <div class="fl-head">
-            <h1>HRD와 테크놀로지를<br><span class="fl-accent-text">잇는 지식 플랫폼</span></h1>
-            <p><span>팩트체크와 편집 심사를 거친 칼럼을 무료로 읽고,</span> <span>궁금한 점을 함께 나눠요.</span></p>
+        <div class="fl-home-lead">
+            <div class="fl-head">
+                <h1>HRD와 테크놀로지를<br><span class="fl-accent-text">잇는 지식 플랫폼</span></h1>
+                <p><span>팩트체크와 편집 심사를 거친 칼럼을 무료로 읽고,</span> <span>궁금한 점을 함께 나눠요.</span></p>
+            </div>
+            <aside class="fl-resume" data-reading-home hidden><p>최근 읽던 글</p><a data-reading-home-link href="{% url 'community:reading_list' %}"></a></aside>
         </div>
         <div class="fl-finder">
             <form class="fl-search" action="{% url 'community:explore' %}" method="get" role="search">
@@ -20,8 +23,6 @@
             </nav>
         </div>
     </header>
-
-    <aside class="fl-resume" data-reading-home hidden><p>최근 읽던 글</p><a data-reading-home-link href="{% url 'community:reading_list' %}"></a></aside>
 
     <!-- ===== 처음이라면 이 글부터 ===== -->
     <section aria-labelledby="fl-start">

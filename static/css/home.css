@@ -970,7 +970,7 @@ a.tc-lab-title:hover { color: var(--tc-accent); }
    카드·칩·섹션 머리는 reading-flow.css(.fl-*), 여기는 홈에만 있는 칸.
    ============================================ */
 /* 본문 칸은 1120px 이지만 바탕은 옛 홈처럼 화면 끝까지 흰색 */
-.fl-home {
+.fl-page.fl-home {   /* reading-flow.css(.fl-page 40px)가 뒤에 로드되므로 두 클래스로 */
     padding-top: 0;
     box-shadow: 0 0 0 100vmax var(--tc-bg);
     clip-path: inset(0 -100vmax);
@@ -983,8 +983,12 @@ a.tc-lab-title:hover { color: var(--tc-accent); }
     grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
     gap: clamp(2rem, 5vw, 4rem);
     align-items: center;
-    padding: clamp(2.5rem, 6vw, 4.5rem) 0 clamp(1rem, 2vw, 1.5rem);
+    /* 첫 화면에 '처음이라면 이 글부터' 카드까지 들어오도록 위아래를 짧게 */
+    padding: clamp(1.5rem, 3vw, 2.25rem) 0 0.5rem;
 }
+/* 왼쪽 칸: 제목 + (있으면) 최근 읽던 글 */
+.fl-home-lead { position: relative; display: flex; flex-direction: column; gap: 1.5rem; min-width: 0; }
+.fl-home .fl-home-lead .fl-resume { margin: 0; max-width: 34rem; }
 .fl-home .fl-home-intro::before {
     content: "";
     position: absolute;
@@ -998,8 +1002,8 @@ a.tc-lab-title:hover { color: var(--tc-accent); }
 }
 .fl-home .fl-head { position: relative; margin: 0; }
 .fl-home .fl-head h1 {
-    margin: 0 0 1.25rem;
-    font-size: clamp(2.25rem, 4.5vw, 3.5rem);
+    margin: 0 0 1rem;
+    font-size: clamp(2.125rem, 3.8vw, 3.125rem);
     line-height: 1.15;
     letter-spacing: -0.035em;
 }
@@ -1025,7 +1029,7 @@ a.tc-lab-title:hover { color: var(--tc-accent); }
     grid-template-columns: minmax(0, 1fr) auto;
     gap: 0.625rem 0.5rem;
     margin: 0;
-    padding: 1.125rem 1.25rem 1.25rem;
+    padding: 1rem 1.25rem 1.125rem;
 }
 .fl-finder-label {
     grid-column: 1 / -1;
@@ -1052,7 +1056,7 @@ a.tc-lab-title:hover { color: var(--tc-accent); }
     display: flex;
     align-items: center;
     gap: 0.75rem;
-    padding: 0.8125rem 1.25rem;
+    padding: 0.6875rem 1.25rem;
     font-size: 0.9375rem;
     font-weight: 600;
     color: var(--tc-ink-2);
@@ -1075,6 +1079,9 @@ a.tc-lab-title:hover { color: var(--tc-accent); }
 .fl-home-actions .fl-go { font-size: 0.6875rem; color: var(--tc-ink-4); transition: transform 0.15s ease, color 0.15s ease; }
 .fl-home-actions a:hover { color: var(--tc-accent); background: var(--tc-bg-soft); }
 .fl-home-actions a:hover .fl-go { color: var(--tc-accent); transform: translateX(2px); }
+
+/* 소개 바로 아래 첫 섹션은 머리 여백을 줄여 첫 화면 안에 */
+.fl-home .fl-home-intro + section .fl-section-head { margin-top: 2.25rem; }
 
 /* ── 처음 글: 요약까지 보이는 큰 카드 ── */
 .fl-home .fl-lead .fl-post { min-height: 232px; padding: 24px; }
@@ -1125,7 +1132,12 @@ a.tc-lab-title:hover { color: var(--tc-accent); }
 }
 
 @media (max-width: 900px) {
-    .fl-home .fl-home-intro { grid-template-columns: 1fr; }
+    .fl-home .fl-home-intro { grid-template-columns: 1fr; gap: 1.5rem; }
+    /* 한 열에선 제목 → 검색 → 최근 읽던 글 순서 */
+    .fl-home-lead { display: contents; }
+    .fl-home .fl-home-lead .fl-head { order: 1; }
+    .fl-finder { order: 2; }
+    .fl-home .fl-home-lead .fl-resume { order: 3; max-width: none; }
     /* 2열에서 3장이면 마지막이 혼자 남으니 첫 추천을 한 줄 전체로 */
     .fl-home .fl-lead .fl-post:first-child:nth-last-child(3) { grid-column: 1 / -1; min-height: 0; }
     .fl-rail {
