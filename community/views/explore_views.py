@@ -8,7 +8,7 @@ from django.urls import Resolver404, resolve, reverse
 
 from common.navigation import safe_destination
 from ..models import Category, Question
-from .base_views import readable_questions
+from .base_views import _pick_scores, readable_questions
 
 
 def explore(request):
@@ -43,6 +43,7 @@ def explore(request):
     return render(request, 'community/explore.html', {
         'query': query, 'selected_category': category, 'kind': kind,
         'explore_categories': categories, 'results': page,
+        'picks': _pick_scores(),
     })
 
 

@@ -24,6 +24,7 @@
 .fl-post p { font-size: .875rem; margin: 0 0 16px; }
 .fl-meta { font-size: .75rem; color: var(--text-secondary); line-height: 1.7; }
 .fl-picked { border-top: 3px solid var(--accent-primary); }
+.fl-post .tc-pick, .fl-post .tc-m-pick { display: inline-block; margin: 0; padding: 2px 7px; border-radius: 999px; color: white; background: var(--accent-primary); font-size: .6875rem; font-weight: 700; line-height: 1.5; box-shadow: none; }
 .fl-empty { grid-column: 1 / -1; padding: 24px 0; color: var(--text-secondary); }
 .fl-pagination { display: flex; justify-content: center; gap: 24px; align-items: center; margin: 28px 0; }
 .fl-pagination a { color: var(--accent-primary); padding: 8px; }

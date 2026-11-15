@@ -1,6 +1,7 @@
 """프리미엄 칼럼 — 최종 편집 심사 90점 이상(office.picks). 발행 기준(필수 수정·치명 결함 없음)과 따로 간다."""
 import uuid
 from datetime import timedelta
+from html.parser import HTMLParser
 
 from django.contrib.auth.models import User
 from django.core.cache import cache
@@ -10,6 +11,27 @@ from django.utils import timezone
 from community.models import Category, Question
 from office.models import ColumnDraft, StageRun, WorkLog
 from office.picks import PREMIUM_SCORE, final_scores, premium_scores
+
+
+class FlowCards(HTMLParser):
+    """같은 글이 여러 섹션에 있어도 각 카드의 배지 자격을 확인해요."""
+    def __init__(self, html):
+        super().__init__()
+        self.cards = {}
+        self.current = None
+        self.feed(html)
+
+    def handle_starttag(self, tag, attrs):
+        attrs = dict(attrs)
+        if tag == 'a' and 'fl-post' in attrs.get('class', '').split():
+            self.current = set()
+            self.cards.setdefault(attrs.get('href'), []).append(self.current)
+        elif tag == 'span' and self.current is not None:
+            self.current.update(attrs.get('class', '').split())
+
+    def handle_endtag(self, tag):
+        if tag == 'a':
+            self.current = None
 
 
 def column(subject, score, status=ColumnDraft.STATUS_PUBLISHED):
@@ -50,22 +72,44 @@ class PremiumTests(TestCase):
         self.assertEqual(premium_scores(), {up.id: 93, old.id: 95, rejected.id: 91})
 
     def test_home_shows_premium_badge_only_on_premium(self):
-        column('프리미엄 칼럼입니다', 92)
-        column('발행됐지만 90 미만', 89)
+        top = column('프리미엄 칼럼입니다', 92)
+        plain = column('발행됐지만 90 미만', 89)
         res = self.client.get('/', HTTP_USER_AGENT='Mozilla/5.0 (Windows NT 10.0) Chrome/130')
         self.assertEqual(res.status_code, 200)
         html = res.content.decode()
-        self.assertEqual(html.count('class="tc-pick"'), 2)        # 인기 레일 + 게시글 카드 (일반 칼럼엔 없음)
+        cards = FlowCards(html).cards
+        for question, expected in ((top, True), (plain, False)):
+            copies = cards.get(f'/{question.pk}/', [])
+            self.assertTrue(copies)
+            for badges in copies:
+                self.assertEqual('tc-pick' in badges, expected)
         self.assertIn('title="프리미엄 칼럼"', html)
-        self.assertIn('누구나 무료로 읽을 수 있습니다', html)
+        self.assertIn('무료', html)
         self.assertNotIn('질문하고 답하며 함께 성장하는', html)
 
     def test_mobile_home_shows_badge(self):
-        column('프리미엄 칼럼입니다', 92)
+        top = column('프리미엄 칼럼입니다', 92)
+        plain = column('일반 칼럼입니다', PREMIUM_SCORE - 1)
         res = self.client.get('/', HTTP_USER_AGENT='Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) Mobile/15E148')
         self.assertContains(res, 'class="tc-m-pick"')
         self.assertContains(res, '프리미엄</span>')
-        self.assertContains(res, 'tc-mh-sub')
+        cards = FlowCards(res.content.decode()).cards
+        for question, expected in ((top, True), (plain, False)):
+            copies = cards.get(f'/{question.pk}/', [])
+            self.assertTrue(copies)
+            for badges in copies:
+                self.assertEqual('tc-m-pick' in badges, expected)
+        self.assertContains(res, '칼럼 둘러보기')
+
+    def test_explore_preserves_the_same_premium_qualification(self):
+        top = column('프리미엄 탐색', PREMIUM_SCORE)
+        plain = column('일반 탐색', PREMIUM_SCORE - 1)
+        for ua, badge in (('Mozilla/5.0 Windows Chrome/130', 'tc-pick'),
+                          ('Mozilla/5.0 (iPhone) Mobile', 'tc-m-pick')):
+            response = self.client.get('/explore/', {'q': '탐색'}, HTTP_USER_AGENT=ua)
+            cards = FlowCards(response.content.decode()).cards
+            self.assertEqual(badge in cards[f'/{top.pk}/'][0], True)
+            self.assertEqual(badge in cards[f'/{plain.pk}/'][0], False)
 
     def test_detail_page_badge(self):
         top = column('프리미엄 상세', 93)
