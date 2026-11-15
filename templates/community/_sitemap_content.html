@@ -46,7 +46,7 @@
       <h2>공개 포트폴리오 <span class="count">{{ portfolios|length }}개</span></h2>
       <ul class="sitemap-links">
         {% for p in portfolios %}
-          <li><a href="{% url 'community:portfolio_collection_detail' p.slug %}">{{ p.portfolio_name|default:p.slug }}</a></li>
+          <li><a href="{{ p.get_absolute_url }}">{{ p.portfolio_name|default:p.slug }}</a></li>
         {% endfor %}
       </ul>
     </section>

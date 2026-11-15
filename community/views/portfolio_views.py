@@ -8,6 +8,8 @@ from django.db import models
 from django.db.models import F, Max
 from django.core.exceptions import ValidationError
 from django.http import HttpResponseBadRequest
+from django.http import HttpResponsePermanentRedirect
+from urllib.parse import unquote, urlsplit
 from functools import wraps
 import json
 import re
@@ -135,6 +137,11 @@ def members_list(request):
         public_collections = public_collections.exclude(pk=owner_collection.pk)
         public_portfolios = public_portfolios.exclude(user=owner_collection.user)   # 한 사람은 한 번만
 
+    from community.portfolio_urls import portfolio_key, public_portfolio_urls
+    public_urls = public_portfolio_urls()
+    for portfolio in list(public_portfolios) + list(public_collections) + ([owner_collection] if owner_collection else []):
+        portfolio._public_url = public_urls[portfolio_key(portfolio)]
+
     context = {
         'portfolios': public_portfolios,
         'collections': public_collections,
@@ -145,7 +152,7 @@ def members_list(request):
     return render(request, 'community/members_list.html', context)
 
 
-def portfolio_view(request, user_id):
+def portfolio_view(request, user_id, _canonical=False):
     """
     포트폴리오 보기
 
@@ -163,6 +170,9 @@ def portfolio_view(request, user_id):
     # 존재 자체도 드러난다. 404 면 색인 대상에서 빠지고 정보 노출도 없다.
     if not portfolio.is_publicly_visible() and request.user != user and not request.user.is_staff:
         raise Http404("이 포트폴리오는 비공개이거나 관리자 승인 대기 중입니다.")
+
+    if portfolio.is_publicly_visible() and not _canonical:
+        return _canonical_portfolio_redirect(request, portfolio)
 
     # 조회수 증가 (본인 제외)
     if request.user != user:
@@ -747,11 +757,23 @@ def portfolio_collection_create(request):
 
 def portfolio_collection_detail(request, slug):
     """포트폴리오 컬렉션 상세 (공개 페이지)"""
-    collection = get_object_or_404(PortfolioCollection, slug=slug)
+    collection = PortfolioCollection.objects.select_related('user').filter(slug=slug).first()
+    if collection is None:
+        from community.portfolio_urls import named_portfolio
+        collection = named_portfolio(slug)
+        if collection is None:
+            raise Http404('포트폴리오를 찾을 수 없어요.')
+        if isinstance(collection, Portfolio):
+            return portfolio_view(request, collection.user_id, _canonical=True)
 
     # 승인되지 않았거나 비공개인 포트폴리오는 본인과 관리자만 조회
     if not collection.is_publicly_visible() and request.user != collection.user and not request.user.is_staff:
         return HttpResponseForbidden("비공개이거나 관리자 승인 대기 중인 포트폴리오입니다.")
+
+    if collection.is_publicly_visible():
+        canonical = collection.get_absolute_url()
+        if request.path != unquote(urlsplit(canonical).path):
+            return _canonical_portfolio_redirect(request, collection)
 
     # 조회수 증가 (본인 제외)
     if request.user != collection.user:
@@ -773,6 +795,13 @@ def portfolio_collection_detail(request, slug):
         'is_collection': True,
     }
     return render(request, 'community/portfolio_view.html', context)
+
+
+def _canonical_portfolio_redirect(request, portfolio):
+    destination = portfolio.get_absolute_url()
+    if request.META.get('QUERY_STRING'):
+        destination += '?' + request.META['QUERY_STRING']
+    return HttpResponsePermanentRedirect(destination)
 
 
 def _can_view_collection(request, collection):
@@ -885,7 +914,7 @@ def portfolio_coffee_chat(request, slug):
         '─' * 30,
         '',
         '이 메일에 회신하면 보낸 분에게 바로 전달됩니다.',
-        f'포트폴리오: {request.build_absolute_uri(reverse("community:portfolio_collection_detail", args=[collection.slug]))}',
+        f'포트폴리오: {request.build_absolute_uri(collection.get_absolute_url())}',
         '— 테크창(techchang.com) 커피챗. 보낸 내용은 사이트에 저장하지 않습니다.',
     ])
     msg = EmailMessage(subject=f'[테크창] 커피챗 제안 — {data["name"]}', body=body,

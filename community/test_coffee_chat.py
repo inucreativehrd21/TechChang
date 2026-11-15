@@ -74,7 +74,7 @@ class CoffeeChatTests(TestCase):
         body = raw.content.decode()
         self.assertIn('tc:coffee-chat', body)
         self.assertLess(body.index('tc:coffee-chat'), body.index('</body>'))
-        page = self.client.get(reverse('community:portfolio_collection_detail', args=[self.pf.slug]),
+        page = self.client.get(self.pf.get_absolute_url(),
                                HTTP_USER_AGENT=PC).content.decode()
         self.assertIn('id="tc-cc"', page)
         self.assertIn(self.url, page)

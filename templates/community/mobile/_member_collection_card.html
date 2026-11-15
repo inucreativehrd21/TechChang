@@ -1,6 +1,6 @@
 {% comment %}구성원 목록의 포트폴리오 컬렉션 카드(모바일). is_owner_card 면 사이트 주인 자리 표시.{% endcomment %}
 {% load common_tags %}
-<a href="{% url 'community:portfolio_collection_detail' collection.slug %}" class="m-member-card{% if is_owner_card %} m-member-card--owner{% endif %}">
+<a href="{{ collection.get_absolute_url }}" class="m-member-card{% if is_owner_card %} m-member-card--owner{% endif %}">
     <div class="m-member-avatar">
         {% if collection.profile_image %}
         <img src="{{ collection.profile_image.url }}" alt="">

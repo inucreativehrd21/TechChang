@@ -29,7 +29,7 @@
             </div>
             {% if c.bio %}<p class="mb-0 mt-2">{{ c.bio|truncatechars:120 }}</p>{% endif %}
           </div>
-          <a href="{% url 'community:portfolio_collection_detail' c.slug %}" target="_blank" rel="noopener" class="btn btn-sm">
+          <a href="{{ c.get_absolute_url }}" target="_blank" rel="noopener" class="btn btn-sm">
             <i class="fas fa-external-link-alt me-1"></i>내용 보기
           </a>
         </div>
@@ -140,7 +140,7 @@
               {% if c.reviewed_at %}· <i class="fas fa-check me-1"></i>{{ c.reviewed_at|date:"Y.m.d H:i" }} 승인{% endif %}
             </div>
           </div>
-          <a href="{% url 'community:portfolio_collection_detail' c.slug %}" target="_blank" rel="noopener" class="btn btn-sm">
+          <a href="{{ c.get_absolute_url }}" target="_blank" rel="noopener" class="btn btn-sm">
             <i class="fas fa-external-link-alt me-1"></i>내용 보기
           </a>
         </div>

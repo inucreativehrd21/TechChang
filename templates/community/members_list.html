@@ -355,7 +355,7 @@
         {% if owner_collection %}{% include 'community/_member_collection_card.html' with collection=owner_collection is_owner_card=True %}{% endif %}
         <!-- Legacy Portfolios -->
         {% for portfolio in portfolios %}
-        <a href="{% url 'community:portfolio_view' portfolio.user.id %}" class="member-card">
+        <a href="{{ portfolio.get_absolute_url }}" class="member-card">
             <div class="member-avatar-section">
                 {% if portfolio.profile_image %}
                 <img src="{{ portfolio.profile_image.url }}" alt="{{ portfolio.get_display_name }}" class="member-avatar">

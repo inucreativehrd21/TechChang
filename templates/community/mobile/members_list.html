@@ -96,7 +96,7 @@
 {% if portfolios %}
 <div class="m-section-label">포트폴리오</div>
 {% for portfolio in portfolios %}
-<a href="{% url 'community:portfolio_view' portfolio.user.id %}" class="m-member-card">
+<a href="{{ portfolio.get_absolute_url }}" class="m-member-card">
     <div class="m-member-avatar">
         {% if portfolio.profile_image %}
         <img src="{{ portfolio.profile_image.url }}" alt="">

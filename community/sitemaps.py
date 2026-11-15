@@ -192,15 +192,20 @@ class PortfolioCollectionSitemap(Sitemap):
     priority = 0.8
 
     def items(self):
-        return PortfolioCollection.objects.filter(
+        portfolios = PortfolioCollection.objects.filter(
             is_published=True, approval_status='approved'
         ).select_related('user').order_by('-modify_date')
+        from .portfolio_urls import portfolio_key, public_portfolio_urls
+        urls = public_portfolio_urls()
+        for portfolio in portfolios:
+            portfolio._public_url = urls[portfolio_key(portfolio)]
+        return portfolios
 
     def lastmod(self, obj):
         return obj.modify_date
 
     def location(self, obj):
-        return reverse('community:portfolio_collection_detail', kwargs={'slug': obj.slug})
+        return obj.get_absolute_url()
 
 
 class NewsletterSitemap(Sitemap):

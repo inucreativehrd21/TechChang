@@ -1,5 +1,5 @@
 {% comment %}구성원 목록의 포트폴리오 컬렉션 카드(PC). is_owner_card 면 사이트 주인 자리(첫 칸) 표시.{% endcomment %}
-<a href="{% url 'community:portfolio_collection_detail' collection.slug %}" class="member-card{% if is_owner_card %} member-card--owner{% endif %}">
+<a href="{{ collection.get_absolute_url }}" class="member-card{% if is_owner_card %} member-card--owner{% endif %}">
     <div class="member-avatar-section">
         {% if collection.profile_image %}
         <img src="{{ collection.profile_image.url }}" alt="{{ collection.get_display_name }}" class="member-avatar">

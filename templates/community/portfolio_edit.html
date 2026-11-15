@@ -496,7 +496,7 @@
             <!-- Actions -->
             <div style="display: flex; gap: var(--space-4); justify-content: flex-end; flex-wrap: wrap;">
                 {% if is_collection %}
-                <a href="{% url 'community:portfolio_collection_detail' portfolio.slug %}" class="btn-premium btn-premium-secondary">
+                <a href="{{ portfolio.get_absolute_url }}" class="btn-premium btn-premium-secondary">
                     취소
                 </a>
                 {% else %}

@@ -493,7 +493,7 @@
             {% endif %}
 
             <div class="card-actions">
-                <a href="{% url 'community:portfolio_collection_detail' collection.slug %}" class="btn-action btn-view">
+                <a href="{{ collection.get_absolute_url }}" class="btn-action btn-view">
                     <i class="fas fa-eye"></i> 보기
                 </a>
                 <a href="{% url 'community:portfolio_collection_edit' collection.slug %}" class="btn-action btn-edit">

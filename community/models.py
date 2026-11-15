@@ -778,6 +778,10 @@ class Portfolio(models.Model):
         """포트폴리오 표시 이름 반환 (설정된 display_name이 있으면 사용, 없으면 사용자명)"""
         return self.display_name if self.display_name else self.user.username
 
+    def get_absolute_url(self):
+        from .portfolio_urls import portfolio_url
+        return portfolio_url(self)
+
     def is_publicly_visible(self):
         """공개 노출 가능 여부 - 관리자 승인 + 공개 설정이 모두 충족되어야 함"""
         return self.approval_status == 'approved' and self.is_public
@@ -1004,6 +1008,10 @@ class PortfolioCollection(models.Model):
 
     def get_display_name(self):
         return self.display_name if self.display_name else self.user.username
+
+    def get_absolute_url(self):
+        from .portfolio_urls import portfolio_url
+        return portfolio_url(self)
 
     def is_publicly_visible(self):
         """공개 노출 가능 여부 - 관리자 승인 + 게시 설정이 모두 충족되어야 함"""

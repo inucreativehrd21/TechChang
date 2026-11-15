@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
 {% load static %}
 
-{% block title %}{{ portfolio.user|default:"Portfolio" }}의 포트폴리오{% endblock %}
+{% block title %}{{ portfolio.get_display_name }}의 포트폴리오{% endblock %}
 
 {% block extra_css %}
 <style>

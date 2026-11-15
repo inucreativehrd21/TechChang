@@ -40,9 +40,9 @@ class OwnerFirstInMembersTests(TestCase):
             html = r.content.decode()
             self.assertEqual(r.context['owner_collection'], self.own)
             self.assertNotIn(self.own, list(r.context['collections']))
-            self.assertEqual(html.count(f'/portfolios/{self.own.slug}/'), 1)
+            self.assertEqual(html.count(self.own.get_absolute_url()), 1)
             first_card = html.index('/portfolios/')
-            self.assertIn(self.own.slug, html[first_card:first_card + 80])   # 첫 카드가 주인
+            self.assertTrue(html[first_card:].startswith(self.own.get_absolute_url()))   # 첫 카드가 주인
             self.assertIn('운영자', html)
         self.assertEqual(r.context['member_total'], 4)
 
@@ -106,7 +106,7 @@ class PortfolioExitButtonTests(TestCase):
     """HTML 포트폴리오는 장 넘김마다 브라우저 기록이 쌓여 history.back() 으론 나갈 수 없다 → 나가기는 들어오기 전 페이지로 곧장."""
 
     def page(self, c):
-        return self.client.get(reverse('community:portfolio_collection_detail', args=[c.slug]), HTTP_USER_AGENT=PC).content.decode()
+        return self.client.get(c.get_absolute_url(), HTTP_USER_AGENT=PC).content.decode()
 
     def exit_link(self, c):
         html = self.page(c)
