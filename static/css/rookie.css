@@ -591,7 +591,7 @@ a.rk-rank-main:hover b { color: var(--rk-accent); }
     .rk-line-main dd { font-size: 1.45rem; }
     .rk-panel { padding: 16px; }
     /* 리더는 가로 레일(design-guardrails 5) */
-    .rk-leads { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; margin: 0 -16px; padding: 0 16px 6px; gap: 10px; scrollbar-width: none; }
+    .rk-leads { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; margin: 0 -16px; padding: 0 16px 6px; gap: 10px; scrollbar-width: none; scroll-padding-inline: 16px; }
     .rk-leads::-webkit-scrollbar { display: none; }
     .rk-lead { flex: 0 0 78%; scroll-snap-align: start; }
     .rk-hof-rank { font-size: 3rem; }
@@ -1930,3 +1930,9 @@ a.rl-spot.is-bench:hover { transform: none; box-shadow: inset 0 0 0 1px var(--rk
 
 /* 모바일 — 떠 있는 'PC 버전' 버튼이 마지막 줄(상점 가격·푸터)을 덮지 않게 아래 여백을 더 둔다(2026-10-24) */
 @media (max-width: 767.98px) { .gm.rk, .gm-wrap.rk { padding-bottom: 3.5rem; } }
+
+/* ══ 시즌 2 개막 전 정렬 정돈(2026-11-16) ═════════════════════════════════════════════════════════════════
+ * 두 칸 격자에서 홀로 남은 마지막 카드는 한 줄 전체로(design-guardrails 5). 시상식은 rookie-awards.css 로 옮겼다. */
+@media (max-width: 900px) {
+    .rk-titles > li:last-child:nth-child(odd) { grid-column: 1 / -1; }
+}

@@ -201,6 +201,17 @@ class SeasonTwoTransitionTests(TestCase):
         self.assertTrue(world['leagues']['kbo1'].get('split'))      # 시즌 2 개인 세계는 전·후기 대진
         self.assertTrue(world['leagues']['kbo1']['scores'])
 
+    def test_off_days_show_last_game_with_opening_notes(self):
+        self.run_at(at(S1_END + timedelta(days=1), 0, 10), 'rookie_daily')     # 시즌 1 마지막 경기·시상
+        self.client.force_login(self.pro.user)
+        for ua in (PC, MOBILE):
+            cache.clear()
+            with mock.patch('django.utils.timezone.now', return_value=at(S2 - timedelta(days=1), 15)):
+                r = self.client.get('/rookie/', HTTP_USER_AGENT=ua)
+            self.assertContains(r, 'rk-board-off')                              # 경기 결과 칸: 휴식기 안내 + 마지막 경기
+            self.assertContains(r, '시즌 2 개막(11월 18일)부터 새 중계가 올라와요')  # '오늘 경기가 끝나면'이 아니다
+            self.assertNotContains(r, '오늘 경기가 끝나면 새 중계로 바뀌어요')
+
     def test_pages_render_across_the_boundary(self):
         pages = ['/rookie/', '/rookie/league/', '/rookie/world/', '/rookie/awards/', '/rookie/records/',
                  '/rookie/records/?view=career', '/rookie/records/?view=hof&version=1.0', '/rookie/report/']
@@ -313,3 +324,94 @@ class SeasonResetChoiceTests(TestCase):
                 with self.now(at(S2, 12)):
                     r = self.client.get('/rookie/', HTTP_USER_AGENT=ua)
                 self.assertNotContains(r, 'rk-season-choice')
+
+
+# ───────────────────────────── 시즌 2 개막 전 화면 정돈(2026-11-16)
+import importlib  # noqa: E402
+from types import SimpleNamespace  # noqa: E402
+
+
+class AwardTextTests(TestCase):
+    def test_award_title_names_league_once(self):
+        self.assertEqual(L.award_title(SimpleNamespace(league='ms', label='중학 최우수선수')), '중학 최우수선수')
+        self.assertEqual(L.award_title(SimpleNamespace(league='ms', label='홈런상')), '중학 홈런상')
+
+    def test_migration_fixes_doubled_league_and_is_idempotent(self):
+        from django.apps import apps
+        p = player('기록정리', 'batter', 'lg', 'SS')
+        bad = RookieLog.objects.create(player=p, kind='award', text='시즌 1 중학 중학 최우수선수 수상 — 타율 .306', day=S1_END)
+        ok = RookieLog.objects.create(player=p, kind='award', text='시즌 1 중학 홈런상 수상 — 3홈런', day=S1_END)
+        other = RookieLog.objects.create(player=p, kind='mile', text='중학 중학 이정표', day=S1_END)
+        m = importlib.import_module('community.migrations.0058_rookie_award_log_text')
+        for _ in range(2):
+            m.dedupe(apps, None)
+        for log, text in ((bad, '시즌 1 중학 최우수선수 수상 — 타율 .306'), (ok, '시즌 1 중학 홈런상 수상 — 3홈런'),
+                          (other, '중학 중학 이정표')):
+            log.refresh_from_db()
+            self.assertEqual(log.text, text)
+
+
+@override_settings(**PROD)
+class LayoutPolishTests(TestCase):
+    def setUp(self):
+        cache.clear()
+        self.p = player('정돈선수', 'batter', 'lg', 'SS')
+        self.client.force_login(self.p.user)
+
+    def get(self, url, ua=PC, when=None):
+        cache.clear()
+        with mock.patch('django.utils.timezone.now', return_value=when or at(S2 - timedelta(days=1), 21)):
+            return self.client.get(url, HTTP_USER_AGENT=ua)
+
+    def test_report_page_uses_game_header_and_filter(self):
+        for ua in (PC, MOBILE):
+            r = self.get('/rookie/report/', ua)
+            self.assertContains(r, 'class="rk-nav"')
+            self.assertContains(r, 'aria-current="page">선수 리포트</a>', html=False)
+            self.assertContains(r, 'rl-filter rk-report-filter')
+            self.assertContains(r, 'css/game.css')
+
+    def test_own_player_page_marks_my_player_tab(self):
+        r = self.get(f'/rookie/p/{self.p.pk}/')
+        self.assertContains(r, 'aria-current="page">내 선수</a>', html=False)
+        other = player('남의선수', 'batter', 'kia', 'SS')
+        r = self.get(f'/rookie/p/{other.pk}/')
+        self.assertContains(r, 'aria-current="page">리그</a>', html=False)
+
+    def test_league_opens_on_last_league_with_records(self):
+        RookieSeasonStat.objects.create(season=L.get_season(1), user=self.p.user, player=self.p, league='ms', name=self.p.name,
+                                        team='건대부중', role='batter', position='SS', totals={'g': 20, 'pa': 80})
+        path = [{'league': 'ms', 'club': '건대부중', 'age': 13, 'day': '2026-10-20'},
+                {'league': 'hs', 'club': '소래고', 'age': 16, 'day': '2026-11-16'}]
+        RookiePlayer.objects.filter(pk=self.p.pk).update(league='hs', career=dict(self.p.career, path=path))
+        r = self.get('/rookie/league/')
+        self.assertEqual(r.context['lg'], 'ms')
+
+    def test_card_keeps_avatar_number_block(self):
+        r = self.get('/rookie/')
+        self.assertContains(r, 'class="rk-card-avatar-number"')
+
+    def test_awards_board_plates_and_roll(self):
+        s = L.get_season(1)
+        s.closed = True
+        s.save()
+        st = RookieSeasonStat.objects.create(season=s, user=self.p.user, player=self.p, league='kbo1', name=self.p.name,
+                                             team='lg', role='batter', position='SS',
+                                             totals={'g': 120, 'pa': 500, 'ab': 450, 'h': 140, 'hr': 20, 'rbi': 70}, war=5.0)
+        mk = dict(season=s, user=self.p.user, player=self.p, league='kbo1', name=self.p.name, team='lg', role='batter')
+        RookieAward.objects.create(stat=st, kind='mvp', label='MVP', value='WAR 5.0', **mk)
+        RookieAward.objects.create(kind='rookie', label='신인왕', value='타율 .311', order=1, **mk)
+        RookieAward.objects.create(kind='title', label='홈런왕', value='20홈런', order=10, **mk)
+        for ua in (PC, MOBILE):
+            r = self.get('/rookie/awards/?lg=kbo1', ua, when=at(S2 - timedelta(days=1), 21))
+            self.assertContains(r, 'class="rk-aw-board"')
+            self.assertContains(r, 'rk-aw-plate')
+            self.assertContains(r, '<ol class="rk-aw-roll">', html=False)
+            self.assertContains(r, 'css/rookie-awards.css')
+            self.assertNotContains(r, 'rk-plaque is-mvp')
+
+    def test_report_date_moves_without_button(self):
+        r = self.get('/rookie/report/')
+        self.assertContains(r, 'data-rk-report-day')
+        self.assertContains(r, 'min="2026-10-19"', html=False)
+        self.assertContains(r, '<noscript><button', html=False)      # 버튼은 자바스크립트가 꺼진 때만

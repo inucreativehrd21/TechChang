@@ -14,6 +14,7 @@
         {% endif %}
     </header>
     {% if games %}
+    {% if season.phase == 'off' %}<p class="rk-board-off">시즌 {{ season.number }} 일정이 끝났어요. 시즌 {{ season.next }} 개막은 {{ season.opening|date:'n월 j일' }}이에요. 아래는 마지막 경기예요.</p>{% endif %}
     <ol class="rk-board-rows{% if p.role == 'pitcher' %} is-pitcher{% endif %}">
         {% for g in games %}
         <li class="rk-game-card {% if g.win %}is-win{% endif %}">

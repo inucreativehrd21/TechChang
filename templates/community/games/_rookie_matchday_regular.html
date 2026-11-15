@@ -18,4 +18,4 @@
             {% for r in md.replays %}{% include 'community/games/_rookie_replay.html' with r=r shown=md.shown %}{% empty %}
             <div class="rk-board rk-md-empty"><p>{% if md.next %}첫 경기를 기다리고 있어요. {{ md.next.label }} 경기가 끝나면 여기서 중계를 볼 수 있어요.{% else %}아직 치른 경기가 없어요. 시즌이 시작되면 경기마다 중계가 올라와요.{% endif %}</p></div>
             {% endfor %}
-            {% if md.replays and not md.is_today %}<p class="rk-hint">{{ md.games_day|date:'n월 j일' }} 경기예요. 오늘 경기가 끝나면 새 중계로 바뀌어요.</p>{% endif %}
+            {% if md.replays and not md.is_today %}<p class="rk-hint">{{ md.games_day|date:'n월 j일' }} 경기예요. {% if season.phase == 'off' %}시즌 {{ season.next }} 개막({{ season.opening|date:'n월 j일' }})부터 새 중계가 올라와요.{% else %}오늘 경기가 끝나면 새 중계로 바뀌어요.{% endif %}</p>{% endif %}

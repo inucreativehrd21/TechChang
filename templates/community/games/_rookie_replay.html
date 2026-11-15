@@ -4,6 +4,7 @@
 <section class="rk-board rl-ticker rk-replay" data-rk-replay="{{ r.id }}" aria-label="{% if r.at %}{{ r.at }} {% endif %}경기 중계">
     <header class="rk-board-head"><span><i class="rk-replay-label">경기 기록</i>{% if r.at %}{{ r.at }} · {% endif %}{{ r.day|date:'n월 j일' }} · {{ r.no }}경기</span><span>{{ r.vs|baseball_text }}</span></header>
     <div class="rk-linescore" role="img" aria-label="이닝별 점수 {{ r.score }}">
+        <span class="rk-ls-name rk-ls-head" aria-hidden="true"></span>{% for i in '123456789' %}<span class="rk-ls-head">{{ i }}</span>{% endfor %}<b class="rk-ls-head">R</b>
         <span class="rk-ls-name">우리</span>{% for x in r.us_line %}<span data-rk-inn="{{ forloop.counter0 }}">{{ x }}</span>{% endfor %}<b data-rk-inn="9">{{ r.us }}</b>
         <span class="rk-ls-name">상대</span>{% for x in r.them_line %}<span data-rk-inn="{{ forloop.counter0 }}">{{ x }}</span>{% endfor %}<b data-rk-inn="9">{{ r.them }}</b>
     </div>

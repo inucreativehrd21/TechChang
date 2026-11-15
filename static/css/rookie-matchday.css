@@ -152,3 +152,11 @@
     .rk-md-clock { margin-top: 12px; }
 }
 @media (prefers-reduced-motion: reduce) { .rk-md-home.is-lighting .rk-md-lights, .rk-post.is-new-result { animation: none; } }
+
+/* 다음 경기·순위 레이스가 없는 때(휴식기·개막 전) — 오른쪽 빈 열 없이 한 열로(2026-11-16) */
+.rk-md-grid.is-solo { grid-template-columns: minmax(0, 1fr); }
+
+/* 이닝 점수판 — 이닝 머리(1~9·R)를 두고, 넓은 화면에서 숫자가 끝까지 흩어지지 않게 폭을 묶는다. 합계 앞은 구분선 */
+.rk-linescore { max-width: 560px; }
+.rk-linescore .rk-ls-head { font-size: 0.68rem; font-weight: 600; color: var(--rk-board-dim); }
+.rk-linescore b { box-shadow: inset 1px 0 0 var(--rk-line); }

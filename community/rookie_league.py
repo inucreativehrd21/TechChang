@@ -933,8 +933,14 @@ def close_season(season) -> list:
         s.save(update_fields=['closed', 'closed_at'])
         for a in awards:
             if a.player_id:
-                R._log(a.player, 'award', f'시즌 {s.number} {W.short(a.league)} {a.label} 수상 — {a.value}')
+                R._log(a.player, 'award', f'시즌 {s.number} {award_title(a)} 수상 — {a.value}')
     return awards
+
+
+def award_title(a) -> str:
+    """'중학 홈런상'처럼 리그를 앞에 붙인 상 이름 — 이미 리그 이름으로 시작하는 상('중학 최우수선수')은 그대로."""
+    lg = W.short(a.league)
+    return a.label if a.label.startswith(lg) else f'{lg} {a.label}'
 
 
 # ───────────────────────────── 화면용 묶음

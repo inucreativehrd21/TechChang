@@ -19,42 +19,48 @@
             {% endif %}
         </div>
 
-        <div class="rk-podium">
+        <div class="rk-aw-podium{% if not roy and not ace %} is-solo{% endif %}">
             {% if mvp %}
-            <section class="rk-plaque is-mvp" style="--team: {{ mvp.team|team_color }}">
-                {% if mvp.player_id %}<span class="rk-plaque-avatar">{% player_avatar mvp.player state='award' size=4 %}</span>{% endif %}
-                <p class="rk-plaque-kind">{% include 'community/games/_rookie_glove.html' %}시즌 {{ cur.number }} {% if mvp.kind == 'mvp' %}{{ lg_name }} MVP{% else %}{{ mvp.label|baseball_text }}{% endif %}</p>
-                <h2>{% if mvp.player_id %}<a href="{% url 'community:rookie_player' mvp.player_id %}">{{ mvp.name }}</a>{% else %}{{ mvp.name }}{% endif %}</h2>
-                <p class="rk-plaque-team"><i class="rk-dot" aria-hidden="true"></i>{{ mvp.team|team_name }}</p>
+            <section class="rk-aw-board" style="--team: {{ mvp.team|team_color }}" aria-label="시즌 {{ cur.number }} {{ lg_name }} 최고 선수">
+                <div class="rk-aw-stage" aria-hidden="true">
+                    <span class="rk-aw-spot"></span>
+                    {% if mvp.player_id %}<span class="rk-aw-figure">{% player_avatar mvp.player state='award' size=4 %}</span>{% endif %}
+                    <span class="rk-aw-floor"></span>
+                </div>
+                <div class="rk-aw-call">
+                    <p class="rk-aw-kind">{% include 'community/games/_rookie_glove.html' %}시즌 {{ cur.number }} {% if mvp.kind == 'mvp' %}{{ lg_name }} MVP{% else %}{{ mvp.label|baseball_text }}{% endif %}</p>
+                    <h2 class="rk-aw-name">{% if mvp.player_id %}<a href="{% url 'community:rookie_player' mvp.player_id %}">{{ mvp.name }}</a>{% else %}{{ mvp.name }}{% endif %}</h2>
+                    <p class="rk-aw-team"><i class="rk-dot" aria-hidden="true"></i>{{ mvp.team|team_name }}</p>
+                </div>
                 {% if mvp_nums %}
-                <dl class="rk-plaque-nums">
+                <dl class="rk-aw-led">
                     {% for label, value in mvp_nums %}<div{% if label == 'WAR' %} class="is-war"{% endif %}><dt>{{ label|baseball_text }}</dt><dd>{{ value }}</dd></div>{% endfor %}
                 </dl>
                 {% else %}
-                <p class="rk-plaque-value">{{ mvp.value }}</p>
+                <p class="rk-aw-line">{{ mvp.value }}</p>
                 {% endif %}
             </section>
             {% else %}
-            <section class="rk-plaque is-mvp"><p class="rk-plaque-kind">시즌 {{ cur.number }} {{ lg_name }}</p><h3>수상자 없음</h3><p class="rk-plaque-value">후보 기준(타석·이닝)을 채운 선수가 없었어요.</p></section>
+            <section class="rk-aw-board is-empty" aria-label="시즌 {{ cur.number }} {{ lg_name }} 최고 선수">
+                <div class="rk-aw-call">
+                    <p class="rk-aw-kind">시즌 {{ cur.number }} {{ lg_name }}</p>
+                    <h2 class="rk-aw-name">수상자 없음</h2>
+                    <p class="rk-aw-team">후보 기준(타석·이닝)을 채운 선수가 없었어요.</p>
+                </div>
+            </section>
             {% endif %}
-            <div class="rk-podium-side">
-                {% if roy %}
-                <section class="rk-plaque" style="--team: {{ roy.team|team_color }}">
-                    <p class="rk-plaque-kind">신인왕</p>
-                    <h3>{% if roy.player_id %}<a href="{% url 'community:rookie_player' roy.player_id %}">{{ roy.name }}</a>{% else %}{{ roy.name }}{% endif %}</h3>
-                    <p class="rk-plaque-team"><i class="rk-dot" aria-hidden="true"></i>{{ roy.team|team_name }}</p>
-                    <p class="rk-plaque-value">{{ roy.value }}</p>
+            {% if roy or ace %}
+            <div class="rk-aw-plates">
+                {% for a in plates %}{% if a %}
+                <section class="rk-aw-plate" style="--team: {{ a.team|team_color }}">
+                    <p class="rk-aw-plate-kind">{% if a == roy %}신인왕{% else %}{{ a.label|baseball_text }}{% endif %}</p>
+                    <h3>{% if a.player_id %}<a href="{% url 'community:rookie_player' a.player_id %}">{{ a.name }}</a>{% else %}{{ a.name }}{% endif %}</h3>
+                    <p class="rk-aw-plate-team"><i class="rk-dot" aria-hidden="true"></i>{{ a.team|team_name }}</p>
+                    <p class="rk-aw-plate-line">{{ a.value }}</p>
                 </section>
-                {% endif %}
-                {% if ace %}
-                <section class="rk-plaque" style="--team: {{ ace.team|team_color }}">
-                    <p class="rk-plaque-kind">{{ ace.label|baseball_text }}</p>
-                    <h3>{% if ace.player_id %}<a href="{% url 'community:rookie_player' ace.player_id %}">{{ ace.name }}</a>{% else %}{{ ace.name }}{% endif %}</h3>
-                    <p class="rk-plaque-team"><i class="rk-dot" aria-hidden="true"></i>{{ ace.team|team_name }}</p>
-                    <p class="rk-plaque-value">{{ ace.value }}</p>
-                </section>
-                {% endif %}
+                {% endif %}{% endfor %}
             </div>
+            {% endif %}
         </div>
 
         {% if style %}
@@ -83,15 +89,15 @@
 
         {% if others %}
         <h2 class="rk-h2">다른 리그 MVP</h2>
-        <ul class="rk-titles is-others">
+        <ol class="rk-aw-roll is-others">
             {% for a in others %}
             <li style="--team: {{ a.team|team_color }}">
-                <span class="rk-title-name">{{ a.league|league_name|baseball_text }}</span>
-                <b>{% if a.player_id %}<a href="{% url 'community:rookie_player' a.player_id %}">{{ a.name }}</a>{% else %}{{ a.name }}{% endif %}</b>
-                <span class="rk-title-who"><i class="rk-dot" aria-hidden="true"></i>{{ a.team|team_short }} · <a href="?season={{ cur.number }}&amp;lg={{ a.league|baseball_text }}">시상 보기</a></span>
+                <span class="rk-aw-roll-award">{{ a.league|league_name|baseball_text }}</span>
+                <b class="rk-aw-roll-mark">{% if a.player_id %}<a href="{% url 'community:rookie_player' a.player_id %}">{{ a.name }}</a>{% else %}{{ a.name }}{% endif %}</b>
+                <span class="rk-aw-roll-who"><i class="rk-dot" aria-hidden="true"></i>{{ a.team|team_short }}<a href="?season={{ cur.number }}&amp;lg={{ a.league }}">시상 보기</a></span>
             </li>
             {% endfor %}
-        </ul>
+        </ol>
         {% endif %}
 
         {% if half_awards %}
@@ -108,15 +114,15 @@
 
         {% if titles %}
         <h2 class="rk-h2">{% if style %}개인 타이틀{% else %}부문별 수상{% endif %}</h2>
-        <ul class="rk-titles">
+        <ol class="rk-aw-roll">
             {% for a in titles %}
             <li style="--team: {{ a.team|team_color }}">
-                <span class="rk-title-name">{{ a.label|baseball_text }}</span>
-                <b>{{ a.value }}</b>
-                <span class="rk-title-who"><i class="rk-dot" aria-hidden="true"></i>{{ a.name }}</span>
+                <span class="rk-aw-roll-award">{{ a.label|baseball_text }}</span>
+                <b class="rk-aw-roll-mark">{{ a.value }}</b>
+                <span class="rk-aw-roll-who"><i class="rk-dot" aria-hidden="true"></i>{% if a.player_id %}<a class="is-name" href="{% url 'community:rookie_player' a.player_id %}">{{ a.name }}</a>{% else %}{{ a.name }}{% endif %}</span>
             </li>
             {% endfor %}
-        </ul>
+        </ol>
         {% endif %}
 
     {% else %}

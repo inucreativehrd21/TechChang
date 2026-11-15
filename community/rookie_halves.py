@@ -73,7 +73,7 @@ def close_half(s, day: date) -> list:
                 position=r.position, name=r.name, team=r.team, role=r.role, value=L.award_val(m), order=60 + half))
     for award in out:
         if award.player_id:
-            R._log(award.player, 'award', f'시즌 {s.number} {W.short(award.league)} {award.label} 수상 — {award.value}')
+            R._log(award.player, 'award', f'시즌 {s.number} {L.award_title(award)} 수상 — {award.value}')
     return out
 
 

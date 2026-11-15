@@ -111,3 +111,41 @@
     .rk-daily .rk-club-report__metrics dd { font-size: 1.5rem; }
     .rk-daily .rk-club-report__notes { grid-template-columns: minmax(0, 1fr); gap: 20px; }
 }
+
+/* ══ 시즌 2 개막 전 정렬 정돈(2026-11-16 사용자 요청: 선수 카드 레이아웃·정렬) ═══════════════════════════
+ * 선수 카드 — 아바타가 들어오며 등번호가 .rk-card-avatar-number 안으로 옮겨졌는데(rookie-avatar.css) 위 규칙은
+ * 예전 구조(등번호만, 왼쪽 정렬 + 오른쪽 세로선) 그대로라 '등번호' 글자·아바타·숫자가 서로 다른 축에 섰다.
+ * 아바타·등번호를 한 세로 묶음으로 가운데 맞추고, 세로선은 묶음 전체 높이로 긋는다. */
+.rk-daily .rk-card-main { grid-template-columns: 76px minmax(0, 1fr) auto; }
+.rk-daily .rk-card-main .rk-card-avatar-number { align-self: stretch; justify-content: flex-start; gap: 6px; padding-right: 14px; border-right: 1px solid var(--rk-line); }
+.rk-daily .rk-card-main .rk-card-avatar-number .rk-number { width: auto; padding: 0; border: 0; text-align: center; font-size: 2rem; line-height: 1; }
+.rk-daily .rk-card-avatar-number .rk-number small { margin: 0 0 6px; text-align: center; }
+.rk-daily .rk-card-main .rk-ovr { margin-top: 4px; }
+.rk-daily .rk-trophies { margin: 0 0 20px; }                       /* 수상 줄과 아래 진급 줄 사이가 붙지 않게 */
+.rk-daily .rk-hero:not(.is-profile) { align-items: stretch; }      /* 카드와 경기 결과 칸 높이를 맞춘다 */
+.rk-daily .rk-board { display: flex; flex-direction: column; }
+.rk-board-off { margin: 14px 0 0; padding: 10px 12px; border-radius: 8px; font-size: .78rem; line-height: 1.6; color: var(--rk-ink-2); background: var(--rk-line-soft); }
+
+/* 진로 칸 — '16세 나이 한계' 같은 이름표가 두 줄로 꺾이지 않게 */
+.rk-facts dt { flex: none; white-space: nowrap; }
+
+/* 회원 이름 링크 — 브라우저 기본 파란 밑줄 대신 인디고, 가리키면 밑줄 */
+.rk-peer header a, .rk-member-who a, .rk-member-game-row a { color: var(--rk-accent); font-weight: 800; text-decoration: none; }
+.rk-peer header a:hover, .rk-member-who a:hover, .rk-member-game-row a:hover { text-decoration: underline; text-underline-offset: 3px; }
+
+/* 선수 리포트 — 날짜 거르기 카드(라이트 명예의 전당과 같은 rl-filter) */
+.rk-report-filter { align-items: flex-end; }
+.rl-select input[type="date"] { min-width: 168px; height: 40px; padding: 0 12px; border: 1px solid var(--rk-line); border-radius: 10px; font: inherit; font-size: .9rem; font-weight: 800; color: var(--rk-ink); background: #fff; }
+.rl-select input[type="date"]:focus-visible { outline: 2px solid var(--rk-accent); outline-offset: 1px; border-color: var(--rk-accent); }
+.rk-report-pager { display: flex; gap: 8px; margin-left: auto; }
+.rk-report-pager .gm-btn { height: 40px; }
+
+@media (max-width: 600px) {
+    .rk-daily .rk-card-main { grid-template-columns: 62px minmax(0, 1fr) auto; }
+    .rk-daily .rk-card-main .rk-card-avatar-number { padding-right: 10px; }
+    .rk-daily .rk-card-main .rk-card-avatar-number .rk-number { font-size: 1.7rem; }
+    .rk-report-filter { display: grid; grid-template-columns: minmax(0, 1fr); }
+    .rk-report-filter .rl-select input[type="date"] { width: 100%; min-width: 0; }
+    .rk-report-pager { grid-column: 1 / -1; margin-left: 0; }
+    .rk-report-pager .gm-btn { flex: 1; justify-content: center; }
+}

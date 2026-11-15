@@ -104,7 +104,7 @@ def rookie_report(request):
     except (ValueError, TypeError):
         day = yesterday
     return render(request, 'community/rookie_report.html',
-                  dict(report=Reports.daily(p, day), yesterday=yesterday))
+                  dict(_base_ctx(request, 'report'), report=Reports.daily(p, day), yesterday=yesterday, first_day=L.EPOCH))
 
 
 def _seasons():
@@ -129,6 +129,10 @@ def _pick_league(request, choices: list, default: str = 'kbo1') -> str:
     mine = R.current(request.user.id)
     if mine and mine.league in codes:
         return mine.league
+    if mine:                                   # 지금 리그 기록이 아직 없으면(진학·이적 직후) 직전에 뛴 리그부터
+        for step in reversed((mine.career or {}).get('path') or []):
+            if step.get('league') in codes:
+                return step['league']
     return default if default in codes or not codes else codes[0]
 
 
@@ -379,7 +383,7 @@ def rookie_player(request, pk: int):
     career = sorted(RookieSeasonStat.objects.filter(player=p).select_related('season'),
                     key=lambda r: (-r.season.number, -W.level(r.league)))
     games = [L.game_view(g, p.club, p.role) for g in RookieGame.objects.filter(player=p).order_by('-day', '-no')[:20]]
-    ctx = dict(_base_ctx(request, 'league'), p=p, **R.identity(p), path=C.career_view(p),
+    ctx = dict(_base_ctx(request, 'home' if p.user_id == request.user.id else 'league'), p=p, **R.identity(p), path=C.career_view(p),
                ladder=None if p.retired_at else L.ladder_of(p), stats=R.stat_rows(p), career=L.season_lines(career),
                life=G.lifetime(p), games=games, member_history=Matchups.history(p),
                trophies=list(RookieAward.objects.filter(player=p).select_related('season')
@@ -487,6 +491,7 @@ def rookie_awards(request):
                    others=sorted([a for a in everyone if a.league != lg and a.kind in ('mvp', 'minor')],
                                  key=lambda a: _league_order(a.league)))
         ctx['mvp_nums'] = L.highlights(ctx['mvp'].stat) if ctx['mvp'] else []
+        ctx['plates'] = [a for a in (ctx['roy'], ctx['ace']) if a]          # 전광판 옆 명패(신인왕·사이영상 등)
         from .. import rookie_clock as Clock, rookie_matchday_presentation as MatchUI
         ctx['half_awards'] = MatchUI.half_awards(ctx['halves']) if ctx['halves'] and Clock.split_season(season.number) else []
         gg = [a for a in awards if a.kind == 'gg']

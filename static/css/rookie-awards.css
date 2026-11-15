@@ -1,0 +1,101 @@
+/* 시상식(정식) — 2026-11-16 개편: 흰 카드 묶음 대신 '구장 전광판이 발표하는 MVP' 하나에 힘을 주고,
+ * 나머지는 조용한 명패와 명예의 벽 명단으로. 어두운 면은 이 화면에서 MVP 전광판 하나(rookie.css 원칙).
+ * 색은 rookie.css 토큰만 — 전광판 남색 --rk-board, LED --rk-led, 금색은 장갑 아이콘만, 구단 색은 점(정체성)만. */
+
+.rk-aw-podium { display: grid; grid-template-columns: minmax(0, 1.65fr) minmax(0, 1fr); gap: 14px; align-items: stretch; }
+.rk-aw-podium.is-solo { grid-template-columns: minmax(0, 1fr); }
+
+/* ── MVP 전광판 ── */
+.rk-aw-board {
+    position: relative; overflow: hidden; display: grid;
+    grid-template-columns: minmax(0, 1fr) 230px; grid-template-areas: "call stage" "led led";
+    min-height: 300px; border-radius: 18px; color: var(--rk-board-ink);
+    background-color: var(--rk-board);
+    background-image: radial-gradient(rgba(255, 255, 255, .055) 1px, transparent 1.3px);
+    background-size: 6px 6px;
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .06), 0 18px 40px -22px rgba(21, 24, 61, .7);
+}
+.rk-aw-stage { grid-area: stage; position: relative; display: flex; align-items: flex-end; justify-content: center; padding-bottom: 22px; }
+.rk-aw-spot {                                    /* 위에서 떨어지는 조명 줄기 */
+    position: absolute; inset: 0 0 12px;
+    background: linear-gradient(180deg, rgba(165, 180, 252, .42), rgba(165, 180, 252, .05) 85%);
+    clip-path: polygon(41% 0, 59% 0, 92% 100%, 8% 100%);
+}
+.rk-aw-floor {                                   /* 조명이 닿은 바닥 */
+    position: absolute; left: 50%; bottom: 14px; width: 170px; height: 26px; transform: translateX(-50%);
+    border-radius: 50%; background: radial-gradient(closest-side, rgba(165, 180, 252, .55), rgba(165, 180, 252, 0));
+}
+.rk-aw-figure { position: relative; z-index: 1; line-height: 0; }
+.rk-aw-call { grid-area: call; align-self: center; min-width: 0; padding: 32px 0 8px 32px; }
+.rk-aw-kind { display: flex; align-items: center; gap: 8px; margin: 0; font-size: 0.84rem; font-weight: 800; color: var(--rk-board-dim); }
+.rk-aw-kind .rk-glove { width: 20px; height: 20px; flex: none; }
+.rk .rk-aw-name { margin: 14px 0 10px; font-size: clamp(2.3rem, 4.4vw, 3.5rem); font-weight: 900; line-height: 1.04; letter-spacing: -0.035em; color: #fff; overflow-wrap: anywhere; }
+.rk-aw-name a { color: inherit; text-decoration: none; }
+.rk-aw-name a:hover { text-decoration: underline; text-decoration-color: var(--rk-led); text-underline-offset: 6px; }
+.rk-aw-name a:focus-visible { outline: 2px solid var(--rk-led); outline-offset: 4px; border-radius: 4px; }
+.rk-aw-team { display: flex; align-items: center; gap: 8px; margin: 0; font-size: 0.92rem; font-weight: 700; color: var(--rk-board-ink); }
+.rk-aw-board .rk-dot { box-shadow: 0 0 0 2px rgba(255, 255, 255, .22); }   /* 짙은 구단 색도 남색 위에서 보이게 */
+.rk-aw-led { grid-area: led; display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); margin: 0; padding: 18px 32px 24px; border-top: 1px solid rgba(255, 255, 255, .09); }
+.rk-aw-led > div { min-width: 0; padding-left: 16px; }
+.rk-aw-led > div + div { border-left: 1px solid rgba(255, 255, 255, .08); }
+.rk-aw-led > div:first-child { padding-left: 0; }
+.rk-aw-led dt { font-size: 0.74rem; font-weight: 600; color: var(--rk-board-dim); }
+.rk-aw-led dd { margin: 4px 0 0; font-size: 1.75rem; font-weight: 900; letter-spacing: -0.02em; line-height: 1.1; color: #fff; font-variant-numeric: tabular-nums; }
+.rk-aw-led .is-war dd { color: var(--rk-led); text-shadow: 0 0 16px rgba(165, 180, 252, .55); }
+.rk-aw-line { grid-area: led; margin: 0; padding: 18px 32px 24px; border-top: 1px solid rgba(255, 255, 255, .09); font-weight: 800; color: var(--rk-led); font-variant-numeric: tabular-nums; }
+.rk-aw-board.is-empty { grid-template-columns: minmax(0, 1fr); grid-template-areas: "call"; min-height: 0; }
+.rk-aw-board.is-empty .rk-aw-call { padding: 28px 32px; }
+.rk .rk-aw-board.is-empty .rk-aw-name { font-size: 1.8rem; }
+
+/* ── 명패(신인왕·사이영상 등) — 새긴 듯한 이중 테두리 ── */
+.rk-aw-plates { display: flex; flex-direction: column; gap: 14px; }
+.rk-aw-plate {
+    flex: 1; display: flex; flex-direction: column; justify-content: center; padding: 20px 22px;
+    border: 1px solid var(--rk-line); border-radius: 14px; background: #fff;
+    box-shadow: inset 0 0 0 5px #fff, inset 0 0 0 6px var(--rk-line-soft);
+}
+.rk-aw-plate-kind { margin: 0; font-size: 0.8rem; font-weight: 800; color: var(--rk-ink-3); }
+.rk .rk-aw-plate h3 { margin: 6px 0 4px; font-size: 1.45rem; font-weight: 900; letter-spacing: -0.02em; }
+.rk-aw-plate h3 a { color: inherit; text-decoration: none; }
+.rk-aw-plate h3 a:hover { color: var(--rk-accent); }
+.rk-aw-plate-team { display: flex; align-items: center; gap: 6px; margin: 0; font-size: 0.84rem; color: var(--rk-ink-2); }
+.rk-aw-plate-line { margin: 10px 0 0; font-size: 0.9rem; font-weight: 700; color: var(--rk-ink-2); font-variant-numeric: tabular-nums; }
+
+/* ── 명예의 벽 명단(부문별 수상·다른 리그 MVP) — 카드 대신 한 판에 줄로 새긴다 ── */
+.rk-aw-roll { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 44px; margin: 0; padding: 4px 24px; list-style: none; border: 1px solid var(--rk-line); border-radius: 14px; background: #fff; }
+.rk-aw-roll:has(> li:only-child) { grid-template-columns: minmax(0, 1fr); }
+.rk-aw-roll li { display: grid; grid-template-columns: 8em minmax(0, 1fr) auto; align-items: baseline; gap: 14px; padding: 16px 0; border-bottom: 1px solid var(--rk-line-soft); }
+.rk-aw-roll li:last-child, .rk-aw-roll li:nth-last-child(2):nth-child(odd) { border-bottom: 0; }
+.rk-aw-roll-award { font-size: 0.82rem; font-weight: 800; color: var(--rk-ink-3); }
+.rk-aw-roll-mark { min-width: 0; font-size: 1.3rem; font-weight: 900; letter-spacing: -0.02em; color: var(--rk-ink); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.rk-aw-roll-mark a, .rk-aw-roll-who a.is-name { color: inherit; text-decoration: none; }
+.rk-aw-roll-mark a:hover, .rk-aw-roll-who a.is-name:hover { color: var(--rk-accent); }
+.rk-aw-roll-who { display: inline-flex; align-items: center; gap: 6px; font-size: 0.86rem; font-weight: 700; color: var(--rk-ink-2); white-space: nowrap; }
+.rk-aw-roll-who a:not(.is-name) { margin-left: 10px; font-size: 0.78rem; font-weight: 600; color: var(--rk-ink-3); text-underline-offset: 3px; }
+.rk-aw-roll-who a:not(.is-name):hover { color: var(--rk-accent); }
+.rk-aw-roll a:focus-visible { outline: 2px solid var(--rk-accent); outline-offset: 2px; border-radius: 3px; }
+
+@media (max-width: 900px) {
+    .rk-aw-podium { grid-template-columns: minmax(0, 1fr); }
+    .rk-aw-plates { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .rk-aw-plates > :only-child { grid-column: 1 / -1; }
+}
+@media (max-width: 700px) {
+    .rk-aw-board { grid-template-columns: minmax(0, 1fr); grid-template-areas: "stage" "call" "led"; min-height: 0; }
+    .rk-aw-stage { height: 200px; padding-bottom: 18px; }
+    .rk-aw-call { padding: 4px 20px 6px; }
+    .rk .rk-aw-name { margin: 10px 0 8px; font-size: 2.2rem; }
+    .rk-aw-led { grid-auto-flow: row; grid-template-columns: repeat(3, minmax(0, 1fr)); row-gap: 14px; padding: 16px 20px 20px; }
+    .rk-aw-led > div:nth-child(3n + 1) { padding-left: 0; border-left: 0; }
+    .rk-aw-led dd { font-size: 1.4rem; }
+    .rk-aw-line { padding: 16px 20px 20px; }
+    .rk-aw-plates { grid-template-columns: minmax(0, 1fr); }
+    .rk-aw-roll { grid-template-columns: minmax(0, 1fr); padding: 2px 18px; }
+    .rk-aw-roll li { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "award who" "mark who"; row-gap: 2px; align-items: center; padding: 14px 0; }
+    .rk-aw-roll li:nth-last-child(2):nth-child(odd) { border-bottom: 1px solid var(--rk-line-soft); }
+    .rk-aw-roll li:last-child { border-bottom: 0; }
+    .rk-aw-roll-award { grid-area: award; }
+    .rk-aw-roll-mark { grid-area: mark; font-size: 1.2rem; }
+    .rk-aw-roll-who { grid-area: who; flex-wrap: wrap; justify-content: flex-end; row-gap: 2px; max-width: 11em; }
+    .rk-aw-roll-who a:not(.is-name) { flex-basis: 100%; margin-left: 0; text-align: right; }
+}
