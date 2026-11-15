@@ -245,6 +245,55 @@ class SeriesPipelineTests(TestCase):
         self.assertEqual(draft.qa_report['admin_revision']['status'], 'adopted')
         self.assertFalse(Question.objects.filter(series=self.series).exists())
 
+    def test_followup_repair_keeps_admin_requests_and_its_scope_is_not_unrelated(self):
+        """#61(2026-11-16): 요청 반영 뒤 심사 미달 → 자동 보완. 보완 지시에 운영자 요구가 '유지 조건'으로 가고,
+        검증자는 보완 지적으로 바뀐 부분을 알고 판정한다 — 그래야 요구를 지킨 보완본이 채택된다."""
+        draft, note, plan, report, expected = self.request_case()
+        repaired = expected + '\n\n## 덧붙임\n\n편집장 지적대로 점검표를 덧붙였어요.\n'
+        prompts, fix_calls = [], []
+
+        def verify_ask(agent, prompt, **kw):
+            prompts.append(prompt)
+            return plan if len(prompts) == 1 else report
+
+        def fake_fix(*args, **kw):
+            fix_calls.append((args, kw))
+            return draft.subject, repaired, True, '자동 보완'
+
+        critique = {**CRITIQUE, 'issues': [{'quote': '마지막 소절', 'why': '마무리 회차인데 옮겨 쓸 틀이 없어요.', 'fix': '점검표를 덧붙이세요.'}]}
+
+        def series_ask(key, prompt, **kw):                       # 보완 전 미달(#61 77점) → 보완 뒤 통과(91점)
+            return (fake_json(5) if fix_calls else fake_json(3))(key, prompt, **kw)
+
+        with mock.patch('office.revision_requests.ask_agent_json', side_effect=verify_ask), \
+             mock.patch('office.series_pipeline.ask_agent_json', side_effect=series_ask), \
+             mock.patch('office.pipeline.step_critique', return_value=critique), \
+             mock.patch('office.series_pipeline._fix', side_effect=fake_fix), \
+             mock.patch('office.approval.valid', return_value=False):
+            result = S.revise_draft(draft, note, out=lambda *_: None)
+        draft.refresh_from_db()
+        self.assertTrue(fix_calls, f'심사 미달이면 자동 보완이 돌아야 해요: {result}')
+        self.assertIn('점검표를 덧붙이세요', prompts[-1])
+        keep = fix_calls[-1][1].get('keep')
+        self.assertTrue(keep and 'R1' in keep[0] and '리드 질문 교체와 나머지 보존' in keep[0])
+        self.assertIn('"followup_review_notes":', prompts[-1])
+        self.assertNotIn('"followup_review_notes":', prompts[1])   # 첫 후보 검증은 보완 전이라 범위가 없다
+        self.assertEqual(result['status'], 'hold')
+        self.assertEqual(draft.content, repaired)
+        self.assertEqual(draft.qa_report['admin_revision']['status'], 'adopted')
+
+    def test_keep_block_lists_requirements_for_patch_and_full_rewrite(self):
+        block = S._keep_block(['R1 리드를 질문으로 (완료 기준: 질문형 리드)'])
+        self.assertIn('그대로 유지하세요', block)
+        self.assertIn('R1 리드를 질문으로', block)
+        self.assertEqual(S._keep_block(()), '')
+        seen = {}
+        with mock.patch('office.patching.patch_revise', side_effect=lambda *a, **kw: seen.update(kw) or (a[1], a[2], False, 'x')), \
+             mock.patch('office.series_pipeline.ask_agent', side_effect=lambda key, prompt, **kw: seen.update(full=prompt) or episode()):
+            S._fix('coding', 'django', 2, '제목', episode(), '편집 심사에서', ['지적'], '', keep=['R1 유지 조건'])
+        self.assertIn('R1 유지 조건', seen['guide'])
+        self.assertIn('R1 유지 조건', seen['full'])
+
     def test_series_automatic_repair_cannot_undo_the_admin_request(self):
         draft, note, plan, report, expected = self.request_case()
         original = draft.content

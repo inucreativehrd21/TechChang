@@ -253,13 +253,23 @@ def safe_rewrite(key: str, raw: str, prev_subject: str, prev_content: str) -> tu
     return subject, content, True, ''
 
 
-def _fix(writer, key, no, subject, content, who, issues, pack: str = '') -> tuple:
+def _keep_block(keep) -> str:
+    if not keep:
+        return ''
+    return ('\n\n[이미 반영된 운영자 수정 요청 — 그대로 유지하세요]\n'
+            '아래 요구는 지금 원고에 반영돼 있어요. 지적을 고치면서 이 부분을 지우거나 되돌리지 마세요.\n'
+            + '\n'.join(f'- {k}' for k in keep))
+
+
+def _fix(writer, key, no, subject, content, who, issues, pack: str = '', keep=()) -> tuple:
     """지적 반영. 먼저 고칠 곳만 바꾸는 패치(office.patching)를 시도하고, 원고와 맞지 않으면 전체 재작성.
-    pack: 근거 묶음 — 고칠 때 쓸 수 있는 확인된 수치."""
+    pack: 근거 묶음 — 고칠 때 쓸 수 있는 확인된 수치.
+    keep: 운영자 수정 요청을 반영한 뒤의 보완이면 그 요구 목록 — 고칠 지적이 아니라 지킬 조건으로 넘긴다."""
     from .patching import patch_revise
     p_subject, p_content, ok, why = patch_revise(
         writer, subject, content, issues, who=who, tools=tuple(SERIES[key].get('tools', ())),
-        guide=f'[회차 골격 — 지켜야 할 구조]\n{structure(key, no)}' + P.pack_block(pack), ask_json=ask_agent_json)
+        guide=f'[회차 골격 — 지켜야 할 구조]\n{structure(key, no)}' + P.pack_block(pack) + _keep_block(keep),
+        ask_json=ask_agent_json)
     if ok and not looks_truncated(key, p_content):
         return p_subject, p_content, True, why
     from .model_router import profile
@@ -267,7 +277,8 @@ def _fix(writer, key, no, subject, content, who, issues, pack: str = '') -> tupl
         return subject, content, False, '부분 수정 실패로 검증된 원고를 보존해요. ' + why
     raw = ask_agent(writer, FIX_PROMPT.format(who=who, issues='\n'.join(f'- {i}' for i in issues),
                                               subject=subject, content=content, structure=structure(key, no))
-                    + P.pack_block(pack), max_tokens=MAX_TOKENS, tools=tuple(SERIES[key].get('tools', ())))
+                    + P.pack_block(pack) + _keep_block(keep), max_tokens=MAX_TOKENS,
+                    tools=tuple(SERIES[key].get('tools', ())))
     return safe_rewrite(key, raw, subject, content)
 
 
@@ -572,13 +583,21 @@ def gate(draft, key: str, no: int, subject: str, content: str, *, target=None, b
     writer = TOPIC_AGENT[TOPIC_KEY]
     rec = _recorder(draft, dry, out)
     stages = revision.stages if revision else StageRecorder(draft=draft, dry=dry)
+    # 운영자 수정 요청을 반영한 원고면, 아래 자동 보완들이 그 요구를 지키고(keep) 검증자는 보완 지적으로
+    # 바뀐 부분을 무관한 변경으로 보지 않는다(allow_followup) — 둘 다 없으면 보완본이 늘 버려진다.
+    keep = revision.keep_notes() if revision else ()
+
+    def fix(who, issues):
+        if revision:
+            revision.allow_followup(issues)
+        return _fix(writer, key, no, subject, content, who, issues, pack, keep=keep)
 
     # 1) 자동 점검(코드)
     flaws = precheck(key, content, pack)
     stages.record('precheck', 'editor', {'issues': flaws}, text=content)
     if flaws and profile() != 'b':
         rec('editor', 'precheck', f'초안 자동 점검 {len(flaws)}건: {flaws[0][:90]}')
-        subject, content, ok, why = _fix(writer, key, no, subject, content, '자동 점검에서', flaws, pack)
+        subject, content, ok, why = fix('자동 점검에서', flaws)
         subject = normalize_title(no, subject, key)
         rec(writer, 'revise', f'자동 점검 지적 반영해 재작성 ({P.body_length(content)}자)' if ok
             else f'재작성 실패 — {why}')
@@ -602,7 +621,7 @@ def gate(draft, key: str, no: int, subject: str, content: str, *, target=None, b
         + (f", 치명 {len(check['critical'])}건" if check['critical'] else ''))
     if check['verdict'] == 'revise' and profile() != 'b':
         notes = [f"{c.get('claim', '')}: {c.get('note', '')}" for c in check['bad']] + check['critical']
-        subject, content, ok, why = _fix(writer, key, no, subject, content, '팩트체크(검증관)에서', notes, pack)
+        subject, content, ok, why = fix('팩트체크(검증관)에서', notes)
         subject = normalize_title(no, subject, key)
         if ok:
             rec(writer, 'revise', f"팩트체크 {len(notes)}건 반영해 재작성 ({P.body_length(content)}자)")
@@ -648,7 +667,7 @@ def gate(draft, key: str, no: int, subject: str, content: str, *, target=None, b
         notes = drop_length_notes(R.revision_notes(qa)) + [f"평론: 「{i.get('quote', '')[:40]}」 — {i.get('fix', '')}"
                                 for i in (critique.get('issues') or [])[:3] if isinstance(i, dict)]
         before_code, prev_content = code_blocks(content), content
-        subject, content, ok, why = _fix(writer, key, no, subject, content, '편집 심사에서', notes, pack)
+        subject, content, ok, why = fix('편집 심사에서', notes)
         subject = normalize_title(no, subject, key)
         if ok:
             rec(writer, 'revise', f'편집 심사 지적 반영해 재작성 ({P.body_length(content)}자)')

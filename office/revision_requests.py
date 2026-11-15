@@ -45,6 +45,9 @@ VERIFY_RULE = '''작성자와 독립적으로 관리자 수정 요청이 반영�
 요청 누락은 missing_requests에 원래 요청의 해당 부분을 적고 coverage_complete=false로 해요.
 unrelated_changes는 요청과 무관하게 바뀐 부분, regressions는 새로 깨진 사실·코드·문맥을 구체적으로 적어요.
 사실의 외부 진위는 별도의 팩트체크가 담당해요. 여기서는 요구 이행과 수정 전후 보존을 확인해요.
+followup_review_notes가 있으면 관리자 요청 반영 뒤 파이프라인이 편집 심사·점검 지적으로 한 번 더 보완한 거예요.
+그 지적을 고치려고 바뀐 부분은 unrelated_changes에 넣지 않아요. 다만 그 보완이 요구 이행을 되돌렸으면
+해당 요구를 unmet으로, 보완 중 새로 깨진 사실·코드·문맥은 regressions로 그대로 판정해요.
 '''
 
 
@@ -77,6 +80,25 @@ class RevisionRequests:
                        'baseline_hash': digest(self.subject+'\n'+self.content), 'items': [], 'reasons': []}
         self.cached_verification = None
         self.candidate = None
+        self.followup = []
+
+    def keep_notes(self) -> list:
+        """요청 반영 뒤 자동 보완이 되돌리면 안 되는 요구 — 보완 지시에 '유지 조건'으로 함께 넘겨요.
+
+        연재 gate 는 심사가 accept 가 아니면 한 번 더 보완하는데, 그 지시에 관리자 요구가 없어서 보완본이
+        이미 충족한 요구를 되돌렸다(2026-11-16 #61: 91점 보완본이 R4·R5를 잃어 기존 79점 원고로 유지됨)."""
+        return [f"{r['id']} {r['request']} (완료 기준: {r['done_when']})" for r in self.requirements]
+
+    def allow_followup(self, notes) -> None:
+        """자동 보완이 고치려는 지적을 기록해요. 검증자는 이 지적 때문에 바뀐 부분을 무관한 변경으로 보지 않아요."""
+        seen = set(self.followup)
+        for note in notes or ():
+            text = str(note).strip()[:600]
+            if text and text not in seen:
+                self.followup.append(text)
+                seen.add(text)
+        self.followup = self.followup[:40]
+        self.cached_verification = None
 
     @contextmanager
     def commit(self):
@@ -91,10 +113,13 @@ class RevisionRequests:
             yield
 
     def _data(self, subject, content):
-        return {'original_request': self.note, 'requirements': self.requirements,
+        data = {'original_request': self.note, 'requirements': self.requirements,
                 'referenced_feedback': self.references,
                 'before': {'title': self.subject, 'content': self.content},
                 'after': {'title': subject, 'content': content}}
+        if self.followup:
+            data['followup_review_notes'] = self.followup
+        return data
 
     def _parse(self, value):
         if not isinstance(value, dict):
