@@ -1,0 +1,12 @@
+{# 작업 한 줄 — 무엇을(원고 제목)·상태·원고 상태·동작. 맥락: j(action_label), 원본 명령은 title 로만 둔다 #}
+<li>
+  <span class="dr-job-time">{{ j.created_at|date:"m/d H:i" }}</span>
+  <span class="dr-job-state is-{{ j.status }}">{{ j.get_status_display }}</span>
+  <div class="dr-job-what"><b title="{{ j.label }}">{{ j.action_label }}{% if j.draft %} · {{ j.draft.subject|default:j.draft.brief|default:"(제목 없음)"|truncatechars:48 }}{% endif %}</b>
+    <small>{% if j.business_result %}원고 {{ j.business_label }}{% if j.note %} · {% endif %}{% endif %}{{ j.note }}</small></div>
+  {% if j.status == 'pending' or j.status == 'started' or j.status == 'quarantined' %}
+  <form method="post" action="{% url 'office:job_cancel' j.id %}">{% csrf_token %}<button type="submit" data-confirm="{% if j.status == 'pending' %}대기 중인 작업을 취소할까요?{% else %}이 작업을 중단하고 종료를 확인할까요?{% endif %}">{% if j.status == 'pending' %}요청 취소{% elif j.status == 'started' %}중단{% else %}종료 확인{% endif %}</button></form>
+  {% elif j.status == 'failed' or j.status == 'interrupted' %}
+  <form method="post" action="{% url 'office:job_restart' j.id %}">{% csrf_token %}<button type="submit">다시 실행</button></form>
+  {% endif %}
+</li>

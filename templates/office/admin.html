@@ -3,7 +3,8 @@
 {% block title %}연구실 관리 - 테크창{% endblock %}
 {% block admin_heading %}연구실 관리{% endblock %}
 {% block admin_description %}회의 안건·칼럼 검수·예약 발행·작업 진행을 관리해요.{% endblock %}
-{% block admin_css %}<link href="{% static 'css/admin-office.css' %}?v={{ STATIC_VERSION }}" rel="stylesheet">{% endblock %}
+{% block admin_css %}<link href="{% static 'css/admin-office.css' %}?v={{ STATIC_VERSION }}" rel="stylesheet">
+<link href="{% static 'css/admin-office-review.css' %}?v={{ STATIC_VERSION }}" rel="stylesheet">{% endblock %}
 {% block admin_content %}
 
 <div class="oa">
@@ -58,91 +59,34 @@
       {% endfor %}
     </section>
 
-    <section class="tab-pane narrow" data-pane="drafts" hidden>
-      {% if jobs %}
-      <h2 class="pane-title">작업 상태 <small class="muted">실행 종료와 원고의 검수 상태를 따로 확인해요</small></h2>
-      <table class="logs oa-jobs">
-        {% for j in jobs %}
-        <tr><td>{{ j.run_after|date:"m/d H:i" }}</td><td>{{ j.get_status_display }}{% if j.business_result %}<small>원고: {{ j.business_label }}</small>{% endif %}</td><td>{{ j.label }}{% if j.note %}<small>{{ j.note }}</small>{% endif %}</td>
-          <td>{% if j.status == 'pending' or j.status == 'started' or j.status == 'quarantined' %}<form method="post" action="{% url 'office:job_cancel' j.id %}">{% csrf_token %}<button class="rej" type="submit">취소·종료 확인</button></form>{% elif j.status == 'failed' or j.status == 'interrupted' %}<form method="post" action="{% url 'office:job_restart' j.id %}">{% csrf_token %}<button type="submit">다시 실행</button></form>{% endif %}</td></tr>
-        {% endfor %}
-      </table>
-      {% endif %}
+    <section class="tab-pane" data-pane="drafts" hidden>
+      <div class="dr-sec"><h2>검수 대기</h2>{% if held %}<span class="dr-count">{{ held|length }}</span>{% endif %}<p>읽어 보고 승인·재작성·반려를 정해요. 재작성이 시작된 원고는 끝날 때까지 잠겨요.</p></div>
+      {% for d in held %}{% include 'office/_draft_card.html' with d=d kind='held' %}
+      {% empty %}<p class="dr-empty">검수 대기 칼럼이 없어요.</p>{% endfor %}
+
       {% if ready %}
-      <h2 class="pane-title">공개 대기 <small class="muted">심사를 통과해 예정 시각에 자동 공개됩니다</small></h2>
-      {% for d in ready %}
-      <div class="draft" data-draft="{{ d.id }}">
-        <div><b>{{ d.subject }}</b> <span class="chip">{{ d.publish_at|date:"m/d(D) H:i" }} 공개</span></div>
-        <div class="meta">
-          <span>{{ d.topic_name }}{% if d.series_key %} · 연재 {{ d.episode_number }}편{% else %} · {{ d.get_column_track_display }}{% endif %}</span>
-          <span>편집 심사 <span class="score {% if d.qa_score >= 85 %}ok{% endif %}">{{ d.qa_score|default:"-" }}/100</span></span>
-          <span>재작성 {{ d.revisions }}회</span>
-          <span>준비 {{ d.created_at|date:"m/d H:i" }}</span>
-        </div>
-        <details><summary>본문 미리보기</summary><div class="preview">{{ d.content|mark }}</div></details>
-        <div class="btns">
-          <form method="post" action="{% url 'office:draft_publish' d.id %}">{% csrf_token %}<input type="hidden" name="version" value="{{ d.approval_version }}"><input type="hidden" name="now" value="1"><button class="pub" type="submit" data-confirm="예정 시각 전에 지금 바로 공개할까요?">지금 공개</button></form>
-        </div>
-      </div>
-      {% endfor %}
-      <h2 class="pane-title">검수 대기</h2>
+      <div class="dr-sec"><h2>공개 대기</h2><span class="dr-count">{{ ready|length }}</span><p>심사를 통과해 예정 시각에 자동으로 공개돼요.</p></div>
+      {% for d in ready %}{% include 'office/_draft_card.html' with d=d kind='ready' %}{% endfor %}
       {% endif %}
-      {% for d in held %}
-      <div class="draft" data-draft="{{ d.id }}">
-        <div><b>{{ d.subject }}</b>{% if d.status == 'revising' %} <span class="chip live">재작성 중</span>{% endif %}</div>
-        <div class="meta">
-          <span>{{ d.topic_name }}{% if not d.series_key %} · {{ d.get_column_track_display }}{% endif %}</span>
-          <span>편집 심사 <span class="score {% if d.qa_score >= 85 %}ok{% endif %}">{{ d.qa_score|default:"-" }}/100</span></span>
-          {% if d.qa_verdict %}<span>판정 {{ d.qa_verdict }}</span>{% endif %}
-          <span>본문 {{ d.qa_report.length|default:"?" }}자</span>
-          <span>재작성 {{ d.revisions }}회</span>
-          <span>{{ d.created_at|date:"m/d H:i" }}</span>
-        </div>
-        {% if d.qa_fatal %}<div class="fatal">치명 결함: {% for f in d.qa_fatal %}<code>{{ f }}</code> {% endfor %}</div>{% endif %}
-        {% if d.rubric_rows %}
-        <div class="rubric">{% for name, sc in d.rubric_rows %}<span class="r"><b>{{ name }}</b> {{ sc }}/5</span>{% endfor %}</div>
-        {% endif %}
-        <div class="viz">시각화: {{ d.chart_note|default:"(기록 없음)" }}</div>
-        {% if d.qa_report.issues %}<ul class="issues">{% for i in d.qa_report.issues %}<li>{{ i }}</li>{% endfor %}</ul>{% endif %}
-        {% if d.qa_report.notes %}<div>편집장: {{ d.qa_report.notes }}</div>{% endif %}
-        {% if d.check_report.notes %}<div>팩트체크: {{ d.check_report.notes }}</div>{% endif %}
-        {% if d.admin_note %}<div class="admin-note">직전 운영자 지시: {{ d.admin_note }}</div>{% endif %}
-        {% with revision=d.qa_report.admin_revision %}{% if revision %}
-        <details open class="admin-note">
-          <summary>수정 요청 반영 결과 — {% if revision.status == 'adopted' %}보완본 채택{% else %}기존 원고 유지{% endif %}</summary>
-          {% if revision.candidate_score != None %}<p>심사 점수: 기존 {{ revision.previous_score|default_if_none:"미측정" }} → 보완본 {{ revision.candidate_score }}점</p>{% endif %}
-          {% if revision.reasons %}<ul>{% for reason in revision.reasons %}<li>{{ reason }}</li>{% endfor %}</ul>{% endif %}
-          <ol>{% for item in revision.items %}<li><strong>{{ item.status_label }}</strong> — {{ item.request }}<br>{{ item.reason }}{% if item.evidence %}<blockquote>{{ item.evidence }}</blockquote>{% endif %}</li>{% endfor %}</ol>
-          {% if revision.candidate_content %}<details><summary>미채택 보완본 보기</summary><p>{{ revision.candidate_subject }}</p><div class="preview">{{ revision.candidate_content|linebreaksbr }}</div></details>{% endif %}
-        </details>
-        {% endif %}{% endwith %}
-        <details><summary>본문 미리보기</summary><div class="preview">{{ d.content|mark }}</div></details>
 
-        {% if d.status == 'revising' %}
-          <div class="progress" data-progress="{{ d.id }}"><span class="spin"></span> 연구팀이 재작성 중입니다… <small class="muted">진행 상황은 아래 작업 로그에 실시간으로 표시됩니다</small></div>
-        {% else %}
-          <form method="post" action="{% url 'office:draft_revise' d.id %}" class="revise-form">{% csrf_token %}
-            <label for="note-{{ d.id }}" class="rv-label">수정 지시 — 요청별 반영을 확인해요. 미반영이나 점수 하락이 있으면 기존 원고를 유지해요.</label>
-            <textarea id="note-{{ d.id }}" name="note" rows="3" placeholder="예) 사례를 국내 중심으로 바꾸고, 3번 섹션의 통계는 최신 조사로 교체해 주세요. 분량은 조금 더 늘려도 됩니다." required></textarea>
-            <button type="submit" class="rev">코멘트 반영해 재작성</button>
-          </form>
-          <div class="btns">
-            <form method="post" action="{% url 'office:draft_publish' d.id %}">{% csrf_token %}<input type="hidden" name="version" value="{{ d.approval_version }}"><label for="approval-mode-{{ d.id }}">승인 방식</label><select class="form-control" id="approval-mode-{{ d.id }}" name="mode"><option value="normal">검증·심사를 통과한 원고 승인</option><option value="exception">문체·형식만 예외 승인 (재인증 필요)</option></select><label for="approval-{{ d.id }}">검수 사유 (예외 승인 시 필수)</label><input class="form-control" id="approval-{{ d.id }}" name="reason" maxlength="1000" autocomplete="off"><button class="pub" type="submit">검수 승인 후 공개</button></form>
-            <a href="{% url 'office:audit_export' d.id %}">감사 기록 확인</a>
-            <form method="post" action="{% url 'office:draft_reject' d.id %}">{% csrf_token %}<button class="rej" type="submit" data-confirm="반려할까요?">반려</button></form>
-          </div>
-        {% endif %}
-      </div>
-      {% empty %}<p>검수 대기 칼럼이 없어요.</p>{% endfor %}
+      {% if jobs %}
+      <div class="dr-sec"><h2>작업 상태</h2>{% if jobs_active %}<span class="dr-count">{{ jobs_active|length }}</span>{% endif %}<p>실행이 끝난 것과 원고의 검수 상태는 따로 확인해요.</p></div>
+      {% if jobs_active %}<ul class="dr-jobs">{% for j in jobs_active %}{% include 'office/_job_row.html' %}{% endfor %}</ul>
+      {% else %}<p class="dr-empty">지금 실행 중이거나 기다리는 작업이 없어요.</p>{% endif %}
+      {% if jobs_past %}
+      <details class="dr-fold dr-past"><summary>지난 작업 <em>{{ jobs_past|length }}건</em></summary>
+        <ul class="dr-jobs">{% for j in jobs_past %}{% include 'office/_job_row.html' %}{% endfor %}</ul></details>
+      {% endif %}
+      {% endif %}
 
-      <h2 class="pane-title">최근 제작 결과</h2>
-      <table class="logs">
+      <div class="dr-sec"><h2>최근 제작 결과</h2></div>
+      <ul class="dr-recent">
         {% for d in recent_drafts %}
-        <tr><td>{{ d.created_at|date:"m/d" }}</td><td>{{ d.topic_name }}</td>
-          <td>{% if d.question %}<a href="{% url 'community:detail' d.question.id %}">{{ d.subject }}</a>{% else %}{{ d.subject|default:d.brief|default:"(실패)" }}{% endif %}</td>
-          <td>{{ d.get_status_display }} · {{ d.qa_score|default:"-" }}점</td></tr>
-        {% empty %}<tr><td colspan="4">없음</td></tr>{% endfor %}
-      </table>
+        <li><span class="is-muted">{{ d.created_at|date:"m/d" }}</span><span class="is-muted">{{ d.topic_name }}</span>
+          <span>{% if d.question %}<a href="{% url 'community:detail' d.question.id %}">{{ d.subject }}</a>{% else %}{{ d.subject|default:d.brief|default:"(실패)" }}{% endif %}</span>
+          <span class="is-muted">{{ d.get_status_display }} · {{ d.qa_score|default:"-" }}점</span></li>
+        {% empty %}<li class="is-muted">없음</li>{% endfor %}
+      </ul>
     </section>
 
 
@@ -345,6 +289,18 @@
   document.querySelectorAll('button[data-confirm]').forEach(function (b) {
     b.addEventListener('click', function (e) { if (!confirm(b.dataset.confirm)) e.preventDefault(); });
   });
+  // 원고 카드: 요청을 한 번 보내면 응답이 오기 전에도 수정 지시·승인·반려를 숨기고 다시 보낼 수 없게 한다(더블클릭·Enter 연타).
+  // submit 이벤트 안에서 바로 숨기면 입력값이 빠질 수 있어 한 박자 뒤에 잠근다. 확인창에서 취소하면 submit 자체가 일어나지 않는다.
+  document.querySelectorAll('.dr form[data-lock]').forEach(function (f) {
+    f.addEventListener('submit', function (e) {
+      var card = f.closest('.dr');
+      if (card.dataset.sending) { e.preventDefault(); return; }      // 같은 순간에 연달아 오는 제출까지 막는 동기 플래그
+      card.dataset.sending = '1';
+      setTimeout(function () { card.classList.add('is-sending'); card.setAttribute('aria-busy', 'true'); }, 0);
+    });
+  });
+  // 뒤로가기로 잠긴 채 되살아난 화면은 서버 상태로 다시 그린다
+  window.addEventListener('pageshow', function (e) { if (e.persisted) location.reload(); });
   // 탭 (마지막 탭은 기억). 예전 탭 이름(보류 칼럼·회의록·작업 로그·프로세스 출력)은 새 묶음으로 잇는다
   var tabs = document.querySelectorAll('.tabs .tab'), panes = document.querySelectorAll('.tab-pane');
   var ALIAS = {held: 'drafts', minutes: 'records', worklog: 'records', joblog: 'records'};
@@ -407,6 +363,10 @@
   lastId = lastId ? lastId.log : '0';
   var timer = null;
 
+  function typing() {
+    return Array.prototype.some.call(document.querySelectorAll('.dr-revise textarea, .dr-reason input'), function (x) { return x.value.trim(); });
+  }
+
   function renderLogs(data) {
     if (!tbl) return;
     if (data.logs.length && data.logs[0].id != lastId) {
@@ -425,12 +385,18 @@
       ? '진행 중: ' + data.running.map(function (r) { return r.topic + ' 「' + r.subject + '」 (' + r.since + '~)'; }).join(', ')
       : '';
     if (jobEl && data.job_log) jobEl.textContent = data.job_log;
-    document.querySelectorAll('.progress[data-progress]').forEach(function (el) {
-      var id = el.dataset.progress;
+    document.querySelectorAll('[data-progress]').forEach(function (el) {
+      var id = el.dataset.progress, text = el.querySelector('[data-progress-text]');
       var mine = data.logs.filter(function (l) { return String(l.draft_id) === String(id); })[0];
-      if (mine) el.childNodes[2].textContent = ' ' + mine.name + ': ' + mine.text + ' ';
-      if (!data.running.some(function (r) { return String(r.id) === String(id); }) &&
-          !(window.officeMeetingReview && window.officeMeetingReview.dirty())) location.reload();
+      // 대기열에 있는 동안은 옛 작업 로그가 남아 있어 진행처럼 보이므로, 실제로 재작성 중일 때만 한 줄을 갈아 끼운다
+      if (mine && text && el.hasAttribute('data-progress-live')) text.textContent = mine.name + ': ' + mine.text;
+      if (data.running.some(function (r) { return String(r.id) === String(id); })) return;
+      if ((window.officeMeetingReview && window.officeMeetingReview.dirty()) || typing()) {
+        // 다른 칸에 쓰던 글을 새로고침으로 지우지 않는다 — 끝났다는 것만 알리고 보낸 뒤 새로고침하게 둔다
+        if (text) text.textContent = '재작성이 끝났어요. 작성 중인 내용을 보낸 뒤 새로고침하면 결과를 볼 수 있어요.';
+        return;
+      }
+      location.reload();
     });
     return data.running.length > 0;
   }
@@ -443,7 +409,7 @@
       .catch(function () { schedule(20000); });
   }
   function schedule(ms) { clearTimeout(timer); timer = setTimeout(poll, ms); }
-  if (tbl) { schedule(document.querySelector('.progress') ? 3000 : 15000); }
+  if (tbl) { schedule(document.querySelector('[data-progress]') ? 3000 : 15000); }
   if (liveCb) liveCb.addEventListener('change', function () { if (liveCb.checked) poll(); });
 
   // 회의록 접기/펴기

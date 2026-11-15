@@ -134,7 +134,8 @@ class LabIsolationTests(TestCase):
     def test_nonoperators_cannot_read_or_trigger_admin_surfaces(self):
         from office.jobmail import make_token
         token = make_token('rerun', ['make_newsletter'], '숨겨야 하는 작업')
-        urls = ['/lab/admin/', '/lab/admin/activity.json', '/lab/admin/draft/1/audit.json', f'/lab/job/{token}/']
+        urls = ['/lab/admin/', '/lab/admin/activity.json', '/lab/admin/draft/1/audit.json', '/lab/admin/draft/1/audit/',
+                f'/lab/job/{token}/']
         for user in (None, self.member, self.staff):
             self.client.logout()
             if user:

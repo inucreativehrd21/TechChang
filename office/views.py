@@ -183,6 +183,11 @@ def office_state(request):
 
 
 # ───────────────────────────── 관리자
+JOB_LABEL = {'office_revise': '재작성', 'auto_write_series': '연재 재작성', 'office_publish': '칼럼 제작',
+             'hold_meeting': '편집회의', 'make_newsletter': '연구실 위클리', 'polish_meeting': '회의록 다듬기',
+             'update_column_map': '칼럼 지도 갱신', 'remake_column': '칼럼 리메이크'}
+
+
 @admin_required
 def office_admin(request, *, decision_payload=None, decision_errors=None, decision_meeting_id=None, response_status=200):
     from common.models import LogFinding
@@ -191,19 +196,28 @@ def office_admin(request, *, decision_payload=None, decision_errors=None, decisi
     if decision_meeting_id and (not meetings or meetings[0].pk != decision_meeting_id):
         selected = get_object_or_404(Meeting.objects.prefetch_related('decisions'), pk=decision_meeting_id)
         meetings = [selected] + [m for m in meetings if m.pk != selected.pk]
-    held = ColumnDraft.objects.filter(
-        status__in=[ColumnDraft.STATUS_HOLD, ColumnDraft.STATUS_REVISING]).select_related('decision')
+    held = list(ColumnDraft.objects.filter(
+        status__in=[ColumnDraft.STATUS_HOLD, ColumnDraft.STATUS_REVISING]).select_related('decision'))
     ready = list(ColumnDraft.objects.filter(status=ColumnDraft.STATUS_READY).order_by('publish_at'))
     from .models import JobRequest
+    from .draft_state import active_jobs, state_of
+    busy = active_jobs([d.pk for d in held + ready])       # 재작성이 대기열·실행 중인 원고는 입력·승인·반려를 숨긴다
+    for d in held + ready:
+        d.busy_job = busy.get(d.pk)
+        d.busy_state = state_of(d, d.busy_job)
     jobs = list(JobRequest.objects.select_related('draft').order_by('-created_at')[:30])
+    for j in jobs:       # 작업 목록에는 명령어(office_revise --draft 9) 대신 사람이 읽는 이름과 원고 제목을 보인다
+        j.action_label = JOB_LABEL.get((j.args or [''])[0], j.label or '작업')
+    jobs_active = [j for j in jobs if j.status in ('pending', 'started', 'quarantined')]
+    jobs_past = [j for j in jobs if j.status not in ('pending', 'started', 'quarantined')]
     recent_drafts = ColumnDraft.objects.exclude(
         status__in=[ColumnDraft.STATUS_HOLD, ColumnDraft.STATUS_REVISING, ColumnDraft.STATUS_READY]
     ).select_related('question')[:12]
     logs = decorate_logs(WorkLog.objects.select_related('draft', 'meeting')[:80])
     from .audit import snapshot, fingerprint
-    for d in list(held) + list(recent_drafts) + ready:
+    for d in held + list(recent_drafts) + ready:
         d.topic_name = TOPIC_LABEL.get(d.topic, '')
-        if d.status in (ColumnDraft.STATUS_HOLD, ColumnDraft.STATUS_READY):
+        if d.status in (ColumnDraft.STATUS_HOLD, ColumnDraft.STATUS_READY) and not getattr(d, 'busy_state', None):
             d.approval_version = fingerprint(snapshot(d))
     for m in meetings:
         for d in m.decisions.all():
@@ -229,18 +243,22 @@ def office_admin(request, *, decision_payload=None, decision_errors=None, decisi
     job_log = _job_log_tail() if _admin_otp_session_ok(request) else '원본 작업 로그는 관리자 재인증 후 확인할 수 있어요.'
     from . import switches as SW
     open_meeting = next((m for m in meetings if m.status == Meeting.STATUS_OPEN), None)
-    revising = [d for d in held if d.status == ColumnDraft.STATUS_REVISING]
+    from .draft_state import ATTENTION
+    working = [d for d in held if d.busy_state and d.busy_state != ATTENTION]       # 재작성 대기·진행 중
+    attention = [d for d in held if d.busy_state == ATTENTION]                      # 종료 확인이 필요한 작업
+    note = ' · '.join(x for x in (f'재작성 중 {len(working)}' if working else '',
+                                  f'종료 확인 {len(attention)}' if attention else '') if x)
     status = [   # 위쪽 상태 줄 — 누르면 해당 탭으로
         {'tab': 'decisions', 'label': '결정 대기 안건', 'n': open_meeting.pending_count if open_meeting else 0},
-        {'tab': 'drafts', 'label': '검수 대기 원고', 'n': len(held) - len(revising),
-         'note': f'재작성 중 {len(revising)}' if revising else ''},
+        {'tab': 'drafts', 'label': '검수 대기 원고', 'n': len(held) - len(working) - len(attention), 'note': note},
         {'tab': 'drafts', 'label': '공개 대기', 'n': len(ready),
          'note': f'다음 {timezone.localtime(ready[0].publish_at):%m/%d %H:%M}' if ready and ready[0].publish_at else ''},
         {'tab': 'crew', 'label': '정비·지적사항', 'n': crew_pending},
     ]
     return render(request, 'office/admin.html', {
         'status': status, 'switch_groups': SW.panel(), 'switch_summary': SW.summary(),
-        'meetings': meetings, 'held': held, 'ready': ready, 'jobs': jobs, 'recent_drafts': recent_drafts, 'logs': logs,
+        'meetings': meetings, 'held': held, 'ready': ready, 'jobs': jobs, 'jobs_active': jobs_active, 'jobs_past': jobs_past,
+        'recent_drafts': recent_drafts, 'logs': logs,
         'tasks': tasks, 'done_tasks': done_tasks, 'github_ok': github.available(),
         'pending_findings': pending_findings, 'recent_findings': recent_findings,
         'crew_pending': crew_pending,
@@ -321,6 +339,11 @@ def draft_publish(request, draft_id):
     from .approval import approve, valid
     from . import schedule as S
     draft = get_object_or_404(ColumnDraft, pk=draft_id, status__in=[ColumnDraft.STATUS_HOLD, ColumnDraft.STATUS_READY])
+    from .draft_state import guard
+    busy = guard(draft, '승인·공개')
+    if busy:        # 재작성이 대기·진행 중이면 곧 덮어쓸 옛 원고를 공개하지 않는다
+        messages.error(request, busy)
+        return redirect('office:admin')
     mode = request.POST.get('mode', 'normal')
     if mode == 'exception' and not _admin_otp_session_ok(request):
         request.session['admin_otp_next'] = reverse('office:admin') + '#drafts'
@@ -350,10 +373,17 @@ def draft_publish(request, draft_id):
 @require_POST
 def draft_reject(request, draft_id):
     draft = get_object_or_404(ColumnDraft, pk=draft_id, status=ColumnDraft.STATUS_HOLD)
+    from .draft_state import guard
+    busy = guard(draft, '반려')
+    if busy:        # 재작성이 대기 중일 때 반려하면 작업이 반려한 원고를 다시 검수 대기로 되살린다
+        messages.error(request, busy)
+        return redirect('office:admin')
     from .approval import revoke
     revoke(draft, request.user, '반려')
     draft.status, draft.decided_by, draft.decided_at = ColumnDraft.STATUS_REJECTED, request.user, timezone.now()
     draft.save(update_fields=['status', 'decided_by', 'decided_at'])
+    from .audit import append
+    append('rejected', actor_id=request.user.pk, draft_id=draft.pk, payload={'subject': draft.subject})
     WorkLog.objects.create(agent='lead', action='reject', draft=draft, text=f'관리자 반려: {draft.subject}')
     messages.info(request, f'반려: {draft.subject}')
     return redirect('office:admin')
@@ -389,10 +419,14 @@ def admin_activity(request):
             'action': l.action, 'text': l.text, 'draft_id': l.draft_id,
             'at': timezone.localtime(l.created_at).strftime('%m/%d %H:%M:%S'),
         })
+    from django.db.models import Q
+    # 재작성이 아직 대기열에 있어 원고 상태가 검수 대기 그대로여도 '진행 중'이다 — 화면이 이 목록으로 자동 갱신을 판단한다
     running = [
         {'id': d.id, 'subject': d.subject or d.brief, 'topic': TOPIC_LABEL.get(d.topic, ''),
          'since': timezone.localtime(d.decided_at or d.created_at).strftime('%H:%M')}
-        for d in ColumnDraft.objects.filter(status=ColumnDraft.STATUS_REVISING)
+        for d in ColumnDraft.objects.filter(
+            Q(status=ColumnDraft.STATUS_REVISING)
+            | Q(status=ColumnDraft.STATUS_HOLD, job_requests__status__in=('pending', 'started'))).distinct()
     ]
     running += [
         {'id': f'T{t.id}', 'subject': t.title, 'topic': '정비',
@@ -412,35 +446,42 @@ def admin_activity(request):
 @admin_required
 @require_POST
 def draft_revise(request, draft_id):
-    """운영자 코멘트를 반영해 다시 쓰도록 연구팀에 되돌린다 (백그라운드 실행)."""
-    draft = get_object_or_404(ColumnDraft, pk=draft_id)
-    from .models import JobRequest
-    if JobRequest.objects.filter(draft=draft, status__in=['pending', 'started']).exists():
-        messages.info(request, '이미 이 원고의 수정 작업을 기다리고 있어요.')
-        return redirect('office:admin')
-    note = request.POST.get('note', '').strip()
-    if not note:
-        messages.error(request, '수정 지시 내용을 입력하세요.')
-        return redirect('office:admin')
-    if draft.status not in (ColumnDraft.STATUS_HOLD, ColumnDraft.STATUS_REJECTED):
-        messages.error(request, '검수 대기 중인 칼럼만 재작성할 수 있습니다.')
-        return redirect('office:admin')
+    """운영자 코멘트를 반영해 다시 쓰도록 연구팀에 되돌린다 (작업 대기열 → cron 실행기가 실행).
 
-    from .approval import revoke
-    revoke(draft, request.user, '수정 지시')
-    draft.admin_note = note
-    from .audit import append, snapshot
-    append('revision_requested', actor_id=request.user.pk, draft_id=draft.pk,
-           payload={'note': note, 'before': snapshot(draft)})
-    draft.status = ColumnDraft.STATUS_HOLD
-    draft.decided_by, draft.decided_at = request.user, timezone.now()
-    draft.save(update_fields=['admin_note', 'status', 'decided_by', 'decided_at'])
-    if draft.series_key:      # 연재 원고는 연재 기준(골격·기준표)으로 다시 검증한다
-        _spawn(request, ['auto_write_series', '--revise-draft', str(draft.id), '--note', note,
-                         '--by', request.user.username])
-    else:
-        _spawn(request, ['office_revise', '--draft', str(draft.id), '--note', note, '--by', request.user.username])
-    messages.success(request, '수정 지시를 전달했습니다. 작업 로그에서 진행 상황이 실시간으로 갱신됩니다.')
+    같은 원고에 요청이 두 번 들어가지 않게 원고 행을 잠근 채 '진행 중 작업'을 확인하고 저장한다 — 더블클릭·새로고침 재전송·
+    두 탭에서 동시에 눌러도 수정 지시·감사 기록·작업이 한 번만 만들어진다."""
+    get_object_or_404(ColumnDraft, pk=draft_id)
+    from django.db import transaction
+    from .draft_state import guard
+    note = request.POST.get('note', '').strip()
+    with transaction.atomic():
+        draft = ColumnDraft.objects.select_for_update().get(pk=draft_id)
+        busy = guard(draft, '재요청')
+        if busy:
+            messages.info(request, '이미 재작성을 요청했어요. ' + busy)
+            return redirect('office:admin')
+        if not note:
+            messages.error(request, '수정 지시 내용을 입력하세요.')
+            return redirect('office:admin')
+        if draft.status not in (ColumnDraft.STATUS_HOLD, ColumnDraft.STATUS_REJECTED):
+            messages.error(request, '검수 대기 중인 칼럼만 재작성할 수 있습니다.')
+            return redirect('office:admin')
+
+        from .approval import revoke
+        revoke(draft, request.user, '수정 지시')
+        draft.admin_note = note
+        from .audit import append, snapshot
+        append('revision_requested', actor_id=request.user.pk, draft_id=draft.pk,
+               payload={'note': note, 'before': snapshot(draft)})
+        draft.status = ColumnDraft.STATUS_HOLD
+        draft.decided_by, draft.decided_at = request.user, timezone.now()
+        draft.save(update_fields=['admin_note', 'status', 'decided_by', 'decided_at'])
+        if draft.series_key:      # 연재 원고는 연재 기준(골격·기준표)으로 다시 검증한다
+            _spawn(request, ['auto_write_series', '--revise-draft', str(draft.id), '--note', note,
+                             '--by', request.user.username])
+        else:
+            _spawn(request, ['office_revise', '--draft', str(draft.id), '--note', note, '--by', request.user.username])
+    messages.success(request, '재작성을 요청했어요. 연구팀이 이어서 작성하고, 끝나면 이 화면이 저절로 갱신돼요.')
     return redirect('office:admin')
 
 
@@ -628,6 +669,23 @@ def job_restart(request, job_id):
     except ValueError as exc:
         messages.error(request, str(exc))
     return redirect('office:admin')
+
+
+@admin_required
+@admin_otp_required
+def audit_view(request, draft_id):
+    """원고 하나의 감사 기록을 타임라인으로 보여 준다(원본 JSON 은 audit_export)."""
+    from .audit_timeline import build
+    from .draft_state import busy_job, state_of
+    draft = ColumnDraft.objects.filter(pk=draft_id).first()
+    timeline = build(draft_id)
+    if draft is None and not timeline['total']:
+        from django.http import Http404
+        raise Http404
+    state = state_of(draft, busy_job(draft)) if draft else None
+    return render(request, 'office/audit.html', dict(
+        timeline, draft=draft, draft_id=draft_id, busy_state=state,
+        topic_name=TOPIC_LABEL.get(draft.topic, '') if draft else ''))
 
 
 @admin_required

@@ -14,6 +14,7 @@ urlpatterns = [
     path('admin/meeting/<int:meeting_id>/decisions/', views.meeting_decisions_save, name='meeting_decisions_save'),
     path('admin/draft/<int:draft_id>/publish/', views.draft_publish, name='draft_publish'),
     path('admin/activity.json', views.admin_activity, name='admin_activity'),
+    path('admin/draft/<int:draft_id>/audit/', views.audit_view, name='audit_view'),
     path('admin/draft/<int:draft_id>/audit.json', views.audit_export, name='audit_export'),
     path('admin/draft/<int:draft_id>/revise/', views.draft_revise, name='draft_revise'),
     path('admin/draft/<int:draft_id>/reject/', views.draft_reject, name='draft_reject'),

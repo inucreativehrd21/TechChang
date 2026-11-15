@@ -1,0 +1,132 @@
+{% load pybo_filter %}{% comment %}
+원고 검수 카드 — 검수 대기(kind='held')·공개 대기(kind='ready') 공용. 맥락: d(busy_state·busy_job·approval_version), kind.
+작업 중(busy_state: queued 대기열 / running 재작성 중 / attention 종료 확인 필요)이면 수정 지시·승인·반려를 통째로 숨기고 상태 패널만 보인다.
+(서버도 같은 판정으로 막는다 — office.draft_state). 한 번 보낸 요청은 data-lock 스크립트가 응답 전에도 카드를 잠근다.{% endcomment %}
+<article class="dr{% if d.busy_state %} is-busy is-{{ d.busy_state }}{% endif %}" data-draft="{{ d.id }}" aria-labelledby="dr-title-{{ d.id }}">
+  <header class="dr-head">
+    <div class="dr-chips">
+      {% if d.busy_state == 'queued' %}<span class="dr-chip is-state is-live">재작성 대기</span>
+      {% elif d.busy_state == 'running' %}<span class="dr-chip is-state is-live">재작성 중</span>
+      {% elif d.busy_state == 'attention' %}<span class="dr-chip is-attention">종료 확인 필요</span>
+      {% elif kind == 'ready' %}<span class="dr-chip is-ready">{{ d.publish_at|date:"m/d H:i" }} 공개 예정</span>
+      {% else %}<span class="dr-chip is-state">검수 대기</span>{% endif %}
+      <span class="dr-chip">{{ d.topic_name }}</span>
+      <span class="dr-chip">{% if d.series_key %}연재 {{ d.episode_number }}편{% else %}{{ d.get_column_track_display|default:"기존 칼럼" }}{% endif %}</span>
+    </div>
+    <h3 class="dr-title" id="dr-title-{{ d.id }}">{{ d.subject|default:d.brief|default:"(제목 없음)" }}</h3>
+    <p class="dr-sub">
+      <span>{{ d.created_at|date:"m/d H:i" }} 준비</span>
+      <span>재작성 {{ d.revisions }}회</span>
+      <a href="{% url 'office:audit_view' d.id %}">감사 기록 보기</a>
+    </p>
+  </header>
+
+  <div class="dr-body">
+    <div class="dr-score{% if d.qa_score >= 85 %} is-pass{% endif %}">
+      <b>{{ d.qa_score|default:"-" }}</b><span>/100</span>
+      <small>편집 심사{% if d.qa_verdict %} · {{ d.qa_verdict }}{% endif %}<br>본문 {{ d.qa_report.length|default:"?" }}자</small>
+    </div>
+    <div class="dr-review">
+      {% if d.qa_fatal %}<p class="dr-fatal"><b>치명 결함</b>{% for f in d.qa_fatal %}<code>{{ f }}</code>{% endfor %}</p>{% endif %}
+      {% if d.rubric_rows %}<div class="dr-rubric">{% for name, sc in d.rubric_rows %}<span><b>{{ name }}</b>{{ sc }}/5</span>{% endfor %}</div>{% endif %}
+      {% if d.qa_report.notes or d.check_report.notes %}
+      <dl class="dr-notes">
+        {% if d.qa_report.notes %}<dt>편집장</dt><dd>{% if d.qa_report.notes|length > 220 %}<details class="dr-more"><summary>{{ d.qa_report.notes|truncatechars:110 }}</summary>{{ d.qa_report.notes }}</details>{% else %}{{ d.qa_report.notes }}{% endif %}</dd>{% endif %}
+        {% if d.check_report.notes %}<dt>팩트체크</dt><dd>{% if d.check_report.notes|length > 220 %}<details class="dr-more"><summary>{{ d.check_report.notes|truncatechars:110 }}</summary>{{ d.check_report.notes }}</details>{% else %}{{ d.check_report.notes }}{% endif %}</dd>{% endif %}
+      </dl>
+      {% endif %}
+      <p class="dr-viz">시각화 — {{ d.chart_note|default:"(기록 없음)" }}</p>
+    </div>
+  </div>
+
+  <div class="dr-folds">
+    {% if d.qa_report.issues %}
+    <details class="dr-fold"{% if d.qa_report.issues|length <= 3 %} open{% endif %}>
+      <summary>편집 심사 지적 <em>{{ d.qa_report.issues|length }}건</em></summary>
+      <div class="dr-fold-body"><ul>{% for i in d.qa_report.issues %}<li>{{ i }}</li>{% endfor %}</ul></div>
+    </details>
+    {% endif %}
+    {% with revision=d.qa_report.admin_revision %}{% if revision or d.admin_note %}
+    <details class="dr-fold"{% if revision %} open{% endif %}>
+      <summary>{% if revision %}수정 요청 반영 결과
+        <em class="{% if revision.status == 'adopted' %}is-ok{% else %}is-keep{% endif %}">{% if revision.status == 'adopted' %}보완본 채택{% else %}기존 원고 유지{% endif %}</em>
+        {% if revision.candidate_score != None %}<em>심사 {{ revision.previous_score|default_if_none:"?" }} → {{ revision.candidate_score }}점</em>{% endif %}
+        {% else %}보낸 수정 지시{% endif %}</summary>
+      <div class="dr-fold-body">
+        {% if d.admin_note %}<blockquote class="dr-quote"><span>운영자 지시</span>{{ d.admin_note }}</blockquote>{% endif %}
+        {% if revision %}
+          {% if revision.reasons %}<ul>{% for reason in revision.reasons %}<li>{{ reason }}</li>{% endfor %}</ul>{% endif %}
+          {% if revision.items %}<ol class="dr-items">{% for item in revision.items %}<li><strong{% if '미' in item.status_label %} class="is-bad"{% endif %}>{{ item.status_label }}</strong>{{ item.request }}<br>{{ item.reason }}{% if item.evidence %}<blockquote>{{ item.evidence }}</blockquote>{% endif %}</li>{% endfor %}</ol>{% endif %}
+          {% if revision.candidate_content %}<details class="dr-fold"><summary>미채택 보완본 보기</summary><p>{{ revision.candidate_subject }}</p><div class="preview">{{ revision.candidate_content|linebreaksbr }}</div></details>{% endif %}
+        {% endif %}
+      </div>
+    </details>
+    {% endif %}{% endwith %}
+    <details class="dr-fold">
+      <summary>본문 미리보기</summary>
+      <div class="preview">{{ d.content|mark }}</div>
+    </details>
+  </div>
+
+  {% if d.busy_state %}
+  <footer class="dr-status{% if d.busy_state == 'attention' %} is-attention{% endif %}" role="status"
+          {% if d.busy_state != 'attention' %}data-progress="{{ d.id }}"{% endif %}{% if d.busy_state == 'running' %} data-progress-live{% endif %}>
+    {% if d.busy_state == 'attention' %}<span class="dr-warn-mark" aria-hidden="true">!</span>{% else %}<span class="dr-spin" aria-hidden="true"></span>{% endif %}
+    <div class="dr-status-text">
+      {% if d.busy_state == 'queued' %}
+        <b>재작성 요청을 보냈어요</b>
+        <p data-progress-text>연구팀 차례를 기다리고 있어요. 시작하면 이 화면이 저절로 갱신돼요. 그동안 수정 지시·승인·반려는 잠가 뒀어요.</p>
+      {% elif d.busy_state == 'running' %}
+        <b>연구팀이 재작성 중이에요</b>
+        <p data-progress-text>진행 상황은 작업 로그에 실시간으로 올라와요. 끝나면 이 화면이 저절로 갱신돼요.</p>
+      {% else %}
+        <b>작업 종료 확인이 필요해요</b>
+        <p>멈춘 작업이 정말 끝났는지 확인되기 전에는 원고를 건드릴 수 없어요. 오른쪽 버튼으로 종료를 확인해 주세요.</p>
+      {% endif %}
+      {% if d.admin_note and d.busy_state != 'attention' %}<blockquote class="dr-sent"><span>보낸 수정 지시</span>{{ d.admin_note }}</blockquote>{% endif %}
+    </div>
+    {% if d.busy_job and d.busy_state == 'queued' %}
+    <form method="post" action="{% url 'office:job_cancel' d.busy_job.id %}">{% csrf_token %}
+      <button type="submit" class="dr-link" data-confirm="대기 중인 재작성 요청을 취소할까요? 수정 지시는 사라지고 원고는 그대로 남아요.">요청 취소</button></form>
+    {% elif d.busy_job and d.busy_state == 'attention' %}
+    <form method="post" action="{% url 'office:job_cancel' d.busy_job.id %}">{% csrf_token %}
+      <button type="submit" class="dr-btn" data-confirm="작업이 정말 멈췄는지 확인하고 종료할까요?">종료 확인</button></form>
+    {% endif %}
+  </footer>
+  {% else %}
+  <div class="dr-sending" role="status" aria-live="polite"><span class="dr-spin" aria-hidden="true"></span><div class="dr-status-text"><b>요청을 보내고 있어요</b><p>잠시만 기다려 주세요. 같은 요청이 두 번 가지 않게 이 카드를 잠갔어요.</p></div></div>
+  <footer class="dr-actions{% if kind == 'ready' %} is-single{% endif %}">
+    {% if kind == 'held' %}
+    <form class="dr-revise" method="post" action="{% url 'office:draft_revise' d.id %}" data-lock>{% csrf_token %}
+      <label class="dr-label" for="note-{{ d.id }}">수정 지시</label>
+      <p class="dr-hint">요청별로 반영됐는지 확인해요. 미반영이나 점수 하락이 있으면 기존 원고를 유지해요.</p>
+      <textarea id="note-{{ d.id }}" name="note" rows="4" placeholder="예) 사례를 국내 중심으로 바꾸고, 3번 섹션의 통계는 최신 조사로 교체해 주세요. 분량은 조금 더 늘려도 됩니다." required></textarea>
+      <button type="submit" class="dr-btn">재작성 요청</button>
+    </form>
+    <div class="dr-decision">
+    <form class="dr-decide" method="post" action="{% url 'office:draft_publish' d.id %}" data-lock>{% csrf_token %}
+      <input type="hidden" name="version" value="{{ d.approval_version }}">
+      <label class="dr-label" for="approval-mode-{{ d.id }}">검수 결정</label>
+      <select id="approval-mode-{{ d.id }}" name="mode">
+        <option value="normal">검증·심사를 통과한 원고 승인</option>
+        <option value="exception">문체·형식만 예외 승인 (재인증 필요)</option>
+      </select>
+      <div class="dr-reason"><label for="approval-{{ d.id }}">예외 승인 사유 (필수)</label><input type="text" id="approval-{{ d.id }}" name="reason" maxlength="1000" autocomplete="off"></div>
+      <button type="submit" class="dr-btn is-primary">검수 승인 후 공개</button>
+    </form>
+    <form class="dr-reject" method="post" action="{% url 'office:draft_reject' d.id %}" data-lock>{% csrf_token %}
+      <button type="submit" class="dr-link is-danger" data-confirm="이 원고를 반려할까요?">반려</button>
+    </form>
+    </div>
+    {% else %}
+    <div class="dr-decision">
+    <form class="dr-decide" method="post" action="{% url 'office:draft_publish' d.id %}" data-lock>{% csrf_token %}
+      <input type="hidden" name="version" value="{{ d.approval_version }}"><input type="hidden" name="now" value="1">
+      <p class="dr-hint">심사를 통과해 예정 시각에 자동으로 공개돼요. 기다리지 않고 지금 올릴 수도 있어요.</p>
+      <button type="submit" class="dr-btn is-primary" data-confirm="예정 시각 전에 지금 바로 공개할까요?">지금 공개</button>
+    </form>
+    </div>
+    {% endif %}
+  </footer>
+  {% endif %}
+</article>

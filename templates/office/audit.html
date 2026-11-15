@@ -1,0 +1,65 @@
+{% extends 'common/admin_base.html' %}
+{% load static %}
+{% block title %}감사 기록 - 연구실 관리 - 테크창{% endblock %}
+{% block admin_heading %}감사 기록{% endblock %}
+{% block admin_description %}원고 하나가 걸어 온 길을 시간 순서로 보여요. 누가 언제 무엇을 했는지, 결과는 어땠는지 한눈에 확인해요.{% endblock %}
+{% block admin_css %}<link href="{% static 'css/admin-office.css' %}?v={{ STATIC_VERSION }}" rel="stylesheet">
+<link href="{% static 'css/admin-office-review.css' %}?v={{ STATIC_VERSION }}" rel="stylesheet">{% endblock %}
+{% block admin_content %}
+{# 감사 기록 — 원고 한 건의 이벤트 타임라인. 맥락: office.audit_timeline.build + draft·busy_state #}
+<div class="au">
+  <a class="au-back" href="{% url 'office:admin' %}#drafts">← 원고 검수로 돌아가기</a>
+
+  <header class="au-head">
+    <h2>{% if draft %}{{ draft.subject|default:draft.brief|default:"(제목이 없는 원고)" }}{% else %}(삭제됐거나 제목이 없는 원고){% endif %}</h2>
+    <p>{% if draft %}{{ topic_name }}{% if draft.series_key %} · 연재 {{ draft.episode_number }}편{% elif draft.column_track %} · {{ draft.get_column_track_display }}{% endif %}
+      · 지금 {% if busy_state == 'queued' %}재작성 대기 중{% elif busy_state == 'running' %}재작성 중{% elif busy_state == 'attention' %}작업 종료 확인 필요{% else %}{{ draft.get_status_display }}{% endif %}{% endif %}
+      {% if counts.last %}· 마지막 기록 {{ counts.last|date:"n월 j일 H:i" }}{% endif %}</p>
+  </header>
+
+  <section class="au-chain{% if not chain_ok %} is-bad{% endif %}" aria-label="기록 무결성">
+    <b aria-hidden="true"><span>{% if chain_ok %}✓{% else %}!{% endif %}</span></b>
+    <div>
+      {% if chain_ok %}
+      <strong>기록이 바뀐 흔적이 없어요</strong>
+      <p>기록은 앞 기록의 해시를 이어 받아 쌓여서 중간을 고치거나 지우면 바로 드러나요. 전체 {{ chain_total }}건이 처음부터 끝까지 이어져 있고, 이 원고의 기록은 {{ total }}건이에요.</p>
+      {% else %}
+      <strong>해시가 맞지 않는 기록이 있어요</strong>
+      <p>기록 사슬이 끊겼거나 내용이 바뀌었을 수 있어요{% if broken %}(이 원고에서는 #{% for n in broken %}{{ n }}{% if not forloop.last %}, #{% endif %}{% endfor %}){% endif %}. 아래 원본 JSON을 그대로 보관한 뒤 점검해 주세요.</p>
+      {% endif %}
+    </div>
+  </section>
+
+  <ul class="au-stats">
+    <li><b>{{ total }}</b><span>기록</span><small>이 원고에 남은 감사 기록</small></li>
+    <li><b>{{ counts.asked }}</b><span>수정 지시</span><small>재작성을 요청한 횟수</small></li>
+    <li><b>{{ counts.approved|add:counts.exception }}</b><span>승인</span><small>{% if counts.exception %}예외 승인 {{ counts.exception }}회 포함{% else %}예외 승인 없음{% endif %}</small></li>
+    <li>{% if counts.published %}<b class="is-text">{{ counts.published|date:"n/j H:i" }}</b><span>공개</span><small>칼럼으로 공개했어요</small>{% else %}<b class="is-text">아직</b><span>공개</span><small>공개 기록이 없어요</small>{% endif %}</li>
+  </ul>
+
+  {% if days %}
+  <ol class="au-line" aria-label="시간 순서 기록, 최신이 위">
+    {% for g in days %}
+    <li class="au-day" aria-hidden="true">{{ g.day|date:"n월 j일 l" }}</li>
+    {% for r in g.rows %}
+    <li class="au-item is-{{ r.tone }}">
+      <time class="au-time" datetime="{{ r.at|date:'c' }}">{{ r.at|date:"H:i" }}</time>
+      <div class="au-rail" aria-hidden="true"><span class="au-dot"></span></div>
+      <div class="au-card">
+        <div class="au-top"><span class="au-tag">{{ r.label }}</span><h3>{{ r.title }}</h3></div>
+        {% if r.quote %}<blockquote class="au-quote">{{ r.quote }}</blockquote>{% endif %}
+        {% if r.facts %}<dl class="au-facts">{% for k, v in r.facts %}<div><dt>{{ k }}</dt><dd>{{ v }}</dd></div>{% endfor %}</dl>{% endif %}
+        {% if r.link %}<a class="au-link" href="{{ r.link.1 }}">{{ r.link.0 }} ↗</a>{% endif %}
+        <p class="au-foot"><span>{{ r.actor }}</span><span>기록 #{{ r.sequence }}</span><code title="이 기록의 해시">{{ r.hash }}</code>{% if not r.intact %}<span class="is-bad">해시 불일치</span>{% endif %}</p>
+      </div>
+    </li>
+    {% endfor %}
+    {% endfor %}
+  </ol>
+  {% else %}
+  <p class="dr-empty" style="margin:0">이 원고의 감사 기록이 아직 없어요. 수정 지시·승인·반려·공개 같은 결정이 생기면 여기에 쌓여요.</p>
+  {% endif %}
+
+  <p class="au-raw"><a href="{% url 'office:audit_export' draft_id %}">원본 JSON 보기</a> · 해시 체인 원문이에요. 승인·수정 지시 기록에는 원고 전문이 들어 있어요.</p>
+</div>
+{% endblock %}
