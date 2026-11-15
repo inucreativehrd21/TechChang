@@ -84,6 +84,5 @@ sudo systemctl status mysite nginx
 - **AI 호출**: `common.services.claude.ask` → Claude Code 구독(`claude-sonnet-5-5`) 우선, 명시적인 한도 오류만 Codex 구독(`gpt-6.1-sol`, medium)으로 전환해요. 실제 전환은 `common/services/subscriptions.py`, Codex 제약은 `common/services/codex.py`에 있어요.
 - **비용 정책**: 운영은 `CLAUDE_BACKEND=cli`, `CLAUDE_CLI_FALLBACK=false`, `AI_ALLOW_PAID_API=false`, `AI_FALLBACK_BACKEND=codex_cli`예요. 두 구독 모두 불가하면 보류해요. API 과금이나 `crew_work` 서버 실행으로 우회하지 않아요.
 - **개인정보 경계**: 2026-10-29 시행 처리방침 이전에는 `send_log_report`의 Codex 폴백을 차단해요(`common/legal.py`). 시행일·현재 적용 버전을 구분하고, 비밀값·개인정보를 일반 콘텐츠 프롬프트에 넣지 않아요.
-- **최신 운영 문서**: `docs/site-operations.md`, `docs/codex-subscription-fallback.md`, `docs/social-login-setup.md`. 연구실의 단일 관리자 운영·감사 정책은 `docs/lab-operator-hardening.md`, 구현 검증과 남은 실환경 검증은 `docs/lab-operator-validation-20261110.md`를 참고해요. 이전 구조 개편 이력은 `docs/lab-handoff-20261101.md`에 있어요.
-- **관리자 수정 요청**: B 기본 전환은 보류해요. A의 요청별 이행 검증·품질 하락 시 원고 보존·글쓰기 기준과 검증 결과는 `docs/lab-admin-revision-20261111.md`를 참고해요.
-- **연구실 운영 반영(2026-11-12)**: 심화·실용 편성, 회의 선택·의견 일괄 저장, 승인·감사·systemd 실행기까지 적용했어요. 현재 운영 상태와 남은 CI 항목은 `docs/lab-production-release-20261112.md`를 참고해요.
+- **운영 참고 문서**: 구독 폴백은 `docs/codex-subscription-fallback.md`, 계정 연동은 `docs/social-login-setup.md`, 비공개 미디어는 `docs/private-media-access.md`를 참고해요.
+- **연구실 단일 인계(2026-11-12)**: [docs/lab-handoff.md](docs/lab-handoff.md)에 칼럼 변경 공지 작성 지침, 편성·집필·관리자 수정·회의 선택 변경, 운영·감사 정책, 배포와 CI 근거를 통합했어요. 심화·실용 각 1편 편성과 일괄 검토·systemd 실행기는 운영 적용 상태이며 **A 유지·B 기본 전환 보류**예요. 날짜별 연구실 문서는 이 문서로 대체했어요. 공지를 작성할 때 구현 사실과 아직 사람 평가가 필요한 성과를 구분해요.

@@ -121,8 +121,8 @@ python manage.py runserver
 
 구독 폴백의 인증·비공개 품질 비교·운영 적용·롤백 절차는
 [Codex 구독 폴백 운영 안내](docs/codex-subscription-fallback.md)를 참고하세요.
-최신 운영 점검은 [사이트 운영 런북](docs/site-operations.md), 구조 검토는
-[연구실 아키텍처 리포트](docs/lab-architecture-review-20261024.md)에 있어요.
+연구실의 현재 운영 상태와 칼럼 편성·집필·수정 검수 변경, 공지 작성 인계는
+[연구실 통합 인계](docs/lab-handoff.md)에 있어요.
 
 ---
 
