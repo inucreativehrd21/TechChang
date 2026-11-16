@@ -42,6 +42,8 @@ class Command(BaseCommand):
                             help='재작성 없이 심사만 다시 받는다(사람이 직접 교열한 원고용)')
         parser.add_argument('--content-file', default='', help='--review-only 때 쓸 교열본 마크다운 파일')
         parser.add_argument('--subject', default='', help='--review-only 때 바꿀 제목')
+        parser.add_argument('--feedback', default=None,
+                            help='반영할 기존 지적 id(E1,F2,S3…) — 관리 화면 체크 목록. 주면 그 지적을 빠짐없이 반영')
         parser.add_argument('--facts', default='', help='운영자가 원문을 확인한 사실 — 칼럼니스트·검증관·편집장에게 모두 전달')
 
     def handle(self, *args, **opts):
@@ -116,7 +118,8 @@ class Command(BaseCommand):
                 from office.revision_requests import RevisionRequests
                 genre = G.genre_for(topic_key, content=draft.content)
                 live.mark('revise', writer, topic_key)
-                revision = RevisionRequests(draft, admin_note, writer, stages,
+                from common.management.commands.auto_write_series import selected_feedback
+                revision = RevisionRequests(draft, admin_note, writer, stages, selected=selected_feedback(opts.get('feedback')),
                     guide=G.structure(genre)+'\n'+P.writing_standard(topic_key, genre)
                     +P.pack_block(pack)+'\n[참고: 기존 필수 지적]\n'+'\n'.join(R.revision_notes(prev_qa)))
                 candidate = revision.generate()

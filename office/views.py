@@ -201,10 +201,13 @@ def office_admin(request, *, decision_payload=None, decision_errors=None, decisi
     ready = list(ColumnDraft.objects.filter(status=ColumnDraft.STATUS_READY).order_by('publish_at'))
     from .models import JobRequest
     from .draft_state import active_jobs, state_of
+    from .revision_requests import feedback_references
     busy = active_jobs([d.pk for d in held + ready])       # 재작성이 대기열·실행 중인 원고는 입력·승인·반려를 숨긴다
     for d in held + ready:
         d.busy_job = busy.get(d.pk)
         d.busy_state = state_of(d, d.busy_job)
+        d.feedback_refs = feedback_references(d.qa_report, d.check_report)
+        d.busy_feedback = _picked_counts(d.busy_job, d.feedback_refs)
     jobs = list(JobRequest.objects.select_related('draft').order_by('-created_at')[:30])
     for j in jobs:       # 작업 목록에는 명령어(office_revise --draft 9) 대신 사람이 읽는 이름과 원고 제목을 보인다
         j.action_label = JOB_LABEL.get((j.args or [''])[0], j.label or '작업')
@@ -389,6 +392,19 @@ def draft_reject(request, draft_id):
     return redirect('office:admin')
 
 
+def _picked_counts(job, refs):
+    """대기·진행 중 재작성 작업이 반영하기로 한 지적 수 — 상태 패널에 '필수 2 · 제안 5'처럼 보인다."""
+    args = list(getattr(job, 'args', None) or [])
+    if '--feedback' not in args or args.index('--feedback') + 1 >= len(args):
+        return []
+    ids = set(filter(None, args[args.index('--feedback') + 1].split(',')))
+    kinds = {}
+    for r in refs:
+        if r['id'] in ids:
+            kinds[r['label']] = kinds.get(r['label'], 0) + 1
+    return list(kinds.items())
+
+
 def _spawn(request, args: list):
     """웹 서비스의 자식 프로세스로 만들지 않고 cron 작업 대기열에 넣는다."""
     from .jobs import enqueue
@@ -453,16 +469,25 @@ def draft_revise(request, draft_id):
     get_object_or_404(ColumnDraft, pk=draft_id)
     from django.db import transaction
     from .draft_state import guard
+    from .revision_requests import feedback_references, MAX_SELECTED_FEEDBACK
     note = request.POST.get('note', '').strip()
+    picked = set(request.POST.getlist('feedback'))
     with transaction.atomic():
         draft = ColumnDraft.objects.select_for_update().get(pk=draft_id)
         busy = guard(draft, '재요청')
         if busy:
             messages.info(request, '이미 재작성을 요청했어요. ' + busy)
             return redirect('office:admin')
-        if not note:
-            messages.error(request, '수정 지시 내용을 입력하세요.')
+        # 체크 목록에서 고른 지적(필수 수정·팩트체크·제안) — 화면과 같은 목록에서 id 로 고른다
+        refs = [r for r in feedback_references(draft.qa_report, draft.check_report) if r['id'] in picked]
+        if not note and not refs:
+            messages.error(request, '반영할 지적을 고르거나 수정 지시를 입력하세요.')
             return redirect('office:admin')
+        if len(refs) > MAX_SELECTED_FEEDBACK:
+            messages.error(request, f'한 번에 반영할 지적은 {MAX_SELECTED_FEEDBACK}건까지예요. 나눠서 요청해 주세요.')
+            return redirect('office:admin')
+        if not note:
+            note = f'체크한 지적 {len(refs)}건을 빠짐없이 반영해 주세요.'
         if draft.status not in (ColumnDraft.STATUS_HOLD, ColumnDraft.STATUS_REJECTED):
             messages.error(request, '검수 대기 중인 칼럼만 재작성할 수 있습니다.')
             return redirect('office:admin')
@@ -472,15 +497,17 @@ def draft_revise(request, draft_id):
         draft.admin_note = note
         from .audit import append, snapshot
         append('revision_requested', actor_id=request.user.pk, draft_id=draft.pk,
-               payload={'note': note, 'before': snapshot(draft)})
+               payload={'note': note, 'feedback': refs, 'before': snapshot(draft)})
         draft.status = ColumnDraft.STATUS_HOLD
         draft.decided_by, draft.decided_at = request.user, timezone.now()
         draft.save(update_fields=['admin_note', 'status', 'decided_by', 'decided_at'])
+        chosen = ['--feedback', ','.join(r['id'] for r in refs)]
         if draft.series_key:      # 연재 원고는 연재 기준(골격·기준표)으로 다시 검증한다
             _spawn(request, ['auto_write_series', '--revise-draft', str(draft.id), '--note', note,
-                             '--by', request.user.username])
+                             '--by', request.user.username] + chosen)
         else:
-            _spawn(request, ['office_revise', '--draft', str(draft.id), '--note', note, '--by', request.user.username])
+            _spawn(request, ['office_revise', '--draft', str(draft.id), '--note', note, '--by', request.user.username]
+                   + chosen)
     messages.success(request, '재작성을 요청했어요. 연구팀이 이어서 작성하고, 끝나면 이 화면이 저절로 갱신돼요.')
     return redirect('office:admin')
 

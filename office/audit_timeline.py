@@ -45,6 +45,12 @@ def describe(event, actor):
         out.update(tone='ask', label='수정 지시', title='재작성을 요청했어요', quote=p.get('note', ''))
         if score is not None:
             out['facts'].append(('요청 당시 심사', f'{score}점'))
+        picked = [r for r in p.get('feedback') or [] if isinstance(r, dict)]
+        if picked:
+            kinds = OrderedDict()
+            for r in picked:
+                kinds[r.get('label') or r.get('kind', '')] = kinds.get(r.get('label') or r.get('kind', ''), 0) + 1
+            out['facts'].append(('반영할 지적', ' · '.join(f'{k} {n}' for k, n in kinds.items())))
     elif action == 'job_started':
         out.update(label='연구팀 작업', title='재작성을 시작했어요')
         out['facts'].append(('작업', _job(p)))

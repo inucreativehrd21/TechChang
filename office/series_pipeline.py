@@ -508,7 +508,7 @@ def feedback_notes(draft: ColumnDraft) -> list:
 
 
 @bounded_run
-def revise_draft(draft: ColumnDraft, note: str = '', *, by=None, out=print) -> dict:
+def revise_draft(draft: ColumnDraft, note: str = '', *, by=None, out=print, feedback=None) -> dict:
     """보류된 연재 원고를 고쳐 다시 검증한다. note 가 있으면 운영자 지시(관리 화면 '수정 지시'),
     없으면 그 원고가 받은 편집장·검증관 지적(feedback_notes)으로 고친다."""
     key, no = draft.series_key, draft.episode_number
@@ -526,7 +526,7 @@ def revise_draft(draft: ColumnDraft, note: str = '', *, by=None, out=print) -> d
         pack = E.from_check(draft.check_report or {})
         if note:
             from .revision_requests import RevisionRequests
-            revision = RevisionRequests(draft, note, writer, StageRecorder(draft=draft),
+            revision = RevisionRequests(draft, note, writer, StageRecorder(draft=draft), selected=feedback,
                 guide=structure(key, no)+'\n'+SERIES[key]['system_prompt']+'\n'
                 +P.writing_standard(TOPIC_KEY, 'tutorial')+P.pack_block(pack))
             candidate = revision.generate()

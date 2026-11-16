@@ -299,6 +299,33 @@
       setTimeout(function () { card.classList.add('is-sending'); card.setAttribute('aria-busy', 'true'); }, 0);
     });
   });
+  // 재작성에 반영할 지적 고르기 — 고른 수를 보이고, 하나도 고르지 않으면 추가 지시를 필수로 바꾼다(빈 요청 방지)
+  document.querySelectorAll('[data-pick-root]').forEach(function (root) {
+    var card = root.closest('.dr'), form = card.querySelector('form.dr-revise'), note = form && form.querySelector('textarea');
+    var boxes = root.querySelectorAll('input[name=feedback]');
+    function picked() { return Array.prototype.filter.call(boxes, function (b) { return b.checked; }).length; }
+    function sync() {
+      var n = picked();
+      root.querySelector('[data-pick-count]').textContent = n + '건 선택' + (n > 20 ? ' · 20건까지만 보낼 수 있어요' : '');
+      var total = card.querySelector('[data-pick-total]'); if (total) total.textContent = n;
+      if (note) {
+        note.required = n === 0;
+        note.placeholder = n === 0 ? '지적을 하나도 고르지 않았어요. 수정 지시를 적어 주세요.' : '추가 지시 (선택) — 예) 사례를 국내 중심으로 바꿔 주세요.';
+      }
+    }
+    boxes.forEach(function (b) { b.addEventListener('change', sync); });
+    root.querySelectorAll('[data-pick]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        boxes.forEach(function (b) { b.checked = btn.dataset.pick === 'all' || (btn.dataset.pick === 'required' && b.dataset.kind !== 'suggestion'); });
+        sync();
+      });
+    });
+    // 20건을 넘으면 보내지 않는다 — 잠금 스크립트보다 먼저(capture) 막아야 카드가 잠기지 않는다
+    if (form) form.addEventListener('submit', function (e) {
+      if (picked() > 20) { e.preventDefault(); e.stopImmediatePropagation(); sync(); root.open = true; }
+    }, true);
+    sync();
+  });
   // 뒤로가기로 잠긴 채 되살아난 화면은 서버 상태로 다시 그린다
   window.addEventListener('pageshow', function (e) { if (e.persisted) location.reload(); });
   // 탭 (마지막 탭은 기억). 예전 탭 이름(보류 칼럼·회의록·작업 로그·프로세스 출력)은 새 묶음으로 잇는다

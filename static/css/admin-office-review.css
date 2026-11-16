@@ -233,3 +233,27 @@
     .ad-console .au-rail { grid-column: 1; grid-row: 1 / span 2; }
     .ad-console .au-card { grid-column: 2; grid-row: 2; }
 }
+
+/* 재작성에 반영할 지적 고르기 — 종류(필수·팩트체크·제안)를 색으로 구분, 긴 지적도 읽히게 한 줄에 하나 */
+.ad-console .oa .dr-pick-tools { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0 10px; }
+.ad-console .oa .dr-pick-tools button { padding: 4px 10px; min-height: 0; font-size: .76rem; font-weight: 650; color: #3f3f46; background: #fff; border: 1px solid var(--ad-line); border-radius: 99px; }
+.ad-console .oa .dr-pick-tools button:hover { border-color: var(--ad-accent); color: var(--ad-accent); }
+.ad-console .oa .dr-pick-list { list-style: none; margin: 0; padding: 0 !important; display: grid; gap: 6px; }
+.ad-console .oa .dr-pick-list li + li { margin-top: 0; }
+.ad-console .oa .dr-pick-list label { display: grid; grid-template-columns: 18px 104px 1fr; align-items: start; gap: 10px; padding: 9px 12px; border: 1px solid var(--dr-soft); border-radius: 8px; cursor: pointer; font-weight: 400; margin: 0; }
+.ad-console .oa .dr-pick-list label:hover { border-color: #c7d2fe; background: #fafaff; }
+.ad-console .oa .dr-pick-list input { margin-top: 4px; accent-color: var(--ad-accent); width: 16px; height: 16px; }
+.ad-console .oa .dr-pick-list input:not(:checked) ~ .dr-pick-text { color: var(--ad-muted); text-decoration: line-through; text-decoration-color: #d4d4d8; }
+.ad-console .oa .dr-kind { justify-self: start; display: inline-flex; align-items: center; justify-content: center; gap: 4px; padding: 2px 8px; border-radius: 99px; font-size: .72rem; font-weight: 700; white-space: nowrap; }
+.ad-console .oa .dr-kind small { font-size: .68rem; opacity: .7; }
+.ad-console .oa .dr-kind.is-must_fix { color: #b91c1c; background: #fef2f2; }
+.ad-console .oa .dr-kind.is-fact { color: #a16207; background: #fefce8; }
+.ad-console .oa .dr-kind.is-suggestion { color: var(--ad-accent); background: var(--ad-wash); }
+.ad-console .oa .dr-pick-text { line-height: 1.6; word-break: keep-all; overflow-wrap: anywhere; }
+.ad-console .oa .dr-refs { display: inline-block; margin: 0 6px 0 2px; padding: 0 7px; border-radius: 99px; font-size: .72rem; font-weight: 700; color: #52525b; background: var(--dr-soft); }
+.ad-console .oa .dr-sent-picks { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 8px 0 0; font-size: .8rem; color: var(--ad-muted); }
+.ad-console .oa .dr-sent-picks span { padding: 1px 8px; border-radius: 99px; background: #fff; border: 1px solid var(--dr-soft); color: #3f3f46; font-weight: 650; }
+@media (max-width: 640px) {
+  .ad-console .oa .dr-pick-list label { grid-template-columns: 18px 1fr; }
+  .ad-console .oa .dr-pick-list .dr-pick-text { grid-column: 2; }
+}

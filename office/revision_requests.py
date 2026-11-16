@@ -20,9 +20,13 @@ EDIT_RULE = '''관리자 수정 요청을 실제 편집으로 수행해요. 요�
  "visual_action": "visual일 때 keep 또는 remove 또는 render"}],
  "edits": [{"request_ids": ["R1"], "find": "원고에 정확히 한 번 있는 연속 문자열", "replace": "교체 문자열"}],
  "title": "제목 요청이 있을 때만 새 제목, 아니면 빈 문자열"}
-요구 id는 R1부터 연속으로 붙여요(최대 16개). 임의로 요구를 생략하거나 포괄적인 한 항목에 숨기지 않아요.
+요구 id는 R1부터 연속으로 붙여요(최대 24개). 임의로 요구를 생략하거나 포괄적인 한 항목에 숨기지 않아요.
 요청이 기존 심사·팩트체크를 모두 고치라는 뜻이면 referenced_feedback의 각 지적을 구체적인 요구로
 풀고 reference_ids에 해당 지적 id를 연결해요. 같은 문제의 중복 지적은 한 요구에 함께 연결해도 돼요.
+referenced_feedback에 kind가 있으면 운영자가 이번 재작성에 반영하라고 직접 고른 지적이에요
+(must_fix 필수 수정, fact 팩트체크, suggestion 편집 제안). 제안도 골랐으면 반드시 반영할 요구예요.
+고른 지적은 하나도 빼지 말고 각각 요구로 만들어 reference_ids로 연결해요. '고려하세요'·'확인하고
+다르면 맞추세요'처럼 열린 제안은 확인한 결과대로 고치고, 이미 맞으면 그 근거를 done_when에 적어요.
 편집은 find/replace만 사용해요. 삽입은 앞 문단을 find로 잡고 그 문단과 새 문단을 함께 replace에 써요.
 삭제는 replace를 빈 문자열로 해요. 모든 편집은 수행하는 요구 id와 연결해요.
 요구를 이미 충족한 경우에는 바꾸지 않아도 돼요. 작성 메모·수정 완료 설명은 본문에 넣지 않아요.
@@ -54,33 +58,73 @@ followup_review_notes가 있으면 관리자 요청 반영 뒤 파이프라인�
 '''
 
 
+MAX_REQUIREMENTS = 24
+MAX_SELECTED_FEEDBACK = 20
+KIND_LABEL = {'must_fix': '필수 수정', 'fact': '팩트체크', 'suggestion': '편집 제안'}
+
+
+def feedback_references(qa: dict | None, check: dict | None) -> list[dict]:
+    """재작성에 반영할 수 있는 기존 지적 — 관리 화면 체크 목록과 재작성 작업이 같은 목록·같은 id 를 쓴다.
+
+    E=편집 심사 필수 수정, F=팩트체크, S=편집 제안. 전에는 재작성에 필수 수정만 넘겨서, 운영자가
+    '지적대로 고쳐 달라'고 해도 제안은 작성자에게 보이지도 않았다(2026-11-16 #61: 제안 8건이 그대로 남음).
+    원고가 대기열에 있는 동안은 잠겨 있으므로(draft_state) 요청할 때와 실행할 때 목록이 같다."""
+    from .review_protocol import revision_notes
+    qa, check = qa or {}, check or {}
+    rows, seen = [], set()
+
+    def add(prefix, kind, text):
+        text = str(text or '').strip()
+        if not text or text in seen:
+            return
+        seen.add(text)
+        rows.append({'id': prefix+str(sum(r['kind'] == kind for r in rows)+1), 'kind': kind,
+                     'label': KIND_LABEL[kind], 'text': text})
+
+    for text in revision_notes(qa):
+        add('E', 'must_fix', text)
+    for c in check.get('claims') or []:
+        if isinstance(c, dict) and c.get('status') in ('wrong', 'unverifiable', 'outdated'):
+            add('F', 'fact', str(c.get('claim', ''))+' — '+str(c.get('note', '')))
+    for c in check.get('critical') or []:
+        add('F', 'fact', c)
+    for finding in check.get('bad') or []:
+        add('F', 'fact', (str(finding.get('claim', ''))+' — '+str(finding.get('note', ''))
+                          if isinstance(finding, dict) else finding))
+    if check.get('notes'):
+        add('F', 'fact', check['notes'])
+    suggestions = [str(x) for x in qa.get('suggestions') or []] or [
+        str(i)[len('(제안)'):] for i in qa.get('issues') or [] if str(i).startswith('(제안)')]
+    for text in suggestions:
+        add('S', 'suggestion', text)
+    return rows
+
+
 class RevisionRequests:
-    def __init__(self, draft, note, writer, stages, guide=''):
+    def __init__(self, draft, note, writer, stages, guide='', selected=None):
+        """selected: 운영자가 관리 화면에서 고른 지적 id 목록. 주면 그 지적만 넘기고 하나도 빠짐없이
+        요구로 만들게 한다(제안 포함). None 이면 예전 방식 — 필수 수정·팩트체크만 참고로 넘긴다."""
         self.draft, self.note, self.writer, self.stages, self.guide = draft, note, writer, stages, guide
         self.subject, self.content = draft.subject, draft.content
         self.column_track = getattr(draft, 'column_track', '')
         self.qa = deepcopy(draft.qa_report or {})
         self.check = deepcopy(draft.check_report or {})
-        from .review_protocol import revision_notes
-        references = [('E', text) for text in revision_notes(self.qa)]
-        references += [('F', str(c.get('claim', ''))+' — '+str(c.get('note', '')))
-                       for c in (self.check.get('claims') or []) if isinstance(c, dict)
-                       and c.get('status') in ('wrong', 'unverifiable', 'outdated')]
-        references += [('F', str(c)) for c in (self.check.get('critical') or [])]
-        for finding in self.check.get('bad') or []:
-            text = (str(finding.get('claim', ''))+' — '+str(finding.get('note', ''))
-                    if isinstance(finding, dict) else str(finding))
-            if text not in {text for _, text in references}:
-                references.append(('F', text))
-        if self.check.get('notes'):
-            references.append(('F', str(self.check['notes'])))
-        self.references = [{'id': prefix+str(i), 'text': text} for i, (prefix, text) in enumerate(references, 1)]
-        self.all_feedback = bool(re.search(r'모두|전부|전체|빠짐없이', note)
-                                 and re.search(r'편집장|심사|필수\s*수정|팩트\s*체크|검증관', note))
+        rows = feedback_references(self.qa, self.check)
+        self.selected = None if selected is None else [i for i in selected if i in {r['id'] for r in rows}]
+        if self.selected is None:
+            self.references = [{'id': r['id'], 'text': r['text']} for r in rows if r['kind'] != 'suggestion']
+            self.all_feedback = bool(re.search(r'모두|전부|전체|빠짐없이', note)
+                                     and re.search(r'편집장|심사|필수\s*수정|팩트\s*체크|검증관', note))
+        else:
+            self.references = [{'id': r['id'], 'kind': r['kind'], 'text': r['text']}
+                               for r in rows if r['id'] in self.selected]
+            self.all_feedback = bool(self.references)      # 고른 지적은 전부 요구로 연결돼야 한다
         self.chart_path, self.chart_note, self.revisions = draft.chart_path, draft.chart_note, draft.revisions
         self.requirements = []
         self.report = {'version': 1, 'status': 'retained', 'request_hash': digest(note),
                        'baseline_hash': digest(self.subject+'\n'+self.content), 'items': [], 'reasons': []}
+        if self.selected is not None:   # 관리 화면 결과 칸이 '고른 지적 → 어느 요구로 반영됐나'를 보여 준다
+            self.report['selected_feedback'] = [dict(r, label=KIND_LABEL[r['kind']]) for r in self.references]
         self.cached_verification = None
         self.candidate = None
         self.followup = []
@@ -128,7 +172,7 @@ class RevisionRequests:
         if not isinstance(value, dict):
             raise ValueError('수정 응답이 객체가 아니에요.')
         requirements, edits = value.get('requirements'), value.get('edits')
-        if not isinstance(requirements, list) or not 1 <= len(requirements) <= 16 or not isinstance(edits, list):
+        if not isinstance(requirements, list) or not 1 <= len(requirements) <= MAX_REQUIREMENTS or not isinstance(edits, list):
             raise ValueError('수정 요구 목록이나 편집 목록이 누락됐어요.')
         for i, item in enumerate(requirements, 1):
             if (not isinstance(item, dict) or item.get('id') != f'R{i}'
@@ -194,7 +238,7 @@ class RevisionRequests:
         if self.cached_verification and self.cached_verification[0] == key:
             return deepcopy(self.cached_verification[1])
         from common.services.claude import call_tags
-        # 수정 전·후 본문을 통째로 주고 요구마다 근거 문장을 쓰게 한다 — 요구가 많으면(최대 16개)
+        # 수정 전·후 본문을 통째로 주고 요구마다 근거 문장을 쓰게 한다 — 요구가 많으면(최대 24개)
         # 적응형 thinking 이 5000 토큰 예산을 다 써서 뒤쪽 항목의 evidence 가 빈 채로 나왔다
         # (2026-11-13 #59·#60: reason 은 멀쩡한데 evidence 가 전부 빈 문자열). 요구 수에 맞춰 늘린다.
         verify_tokens = max(5000, 900 * len(self.requirements))
@@ -224,6 +268,7 @@ class RevisionRequests:
                 # 전에는 이 요구가 매번 미반영으로 남아 팩트체크까지 가 보지도 못하고 기존 원고가 유지됐다
                 # (2026-11-16 #61: 나머지 다섯 요구를 다 고쳤는데 재작성 다섯 번이 모두 유지).
                 items.append({'id': requirement['id'], 'request': requirement['request'],
+                              'reference_ids': list(requirement.get('reference_ids') or []),
                               'done_when': requirement['done_when'], 'met': None, 'kind': 'check',
                               'status_label': '팩트체크 대기', 'evidence': '',
                               'reason': '고친 원고를 뒤 단계 독립 팩트체크로 판정해요.'})
@@ -234,6 +279,7 @@ class RevisionRequests:
             # met 이 아니어도 인용은 남긴다 — 운영자가 /lab/admin/ 에서 모델이 무엇을 근거로 들었는지
             # 보고 판단할 수 있어야 한다(전에는 비워서 '왜 거부됐는지'를 알 방법이 없었다).
             items.append({'id': requirement['id'], 'request': requirement['request'],
+                          'reference_ids': list(requirement.get('reference_ids') or []),
                           'done_when': requirement['done_when'], 'met': met,
                           'status_label': '반영 확인' if met else '미반영·확인 필요',
                           'evidence': evidence if isinstance(evidence, str) else '', 'reason': reason})

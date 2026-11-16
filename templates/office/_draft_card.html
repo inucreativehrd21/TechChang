@@ -40,7 +40,24 @@
   </div>
 
   <div class="dr-folds">
-    {% if d.qa_report.issues %}
+    {% if kind == 'held' and not d.busy_state and d.feedback_refs %}
+    {# 재작성에 넘길 지적을 고른다 — 체크박스는 아래 재작성 폼(form 속성)으로 함께 전송된다. 제안도 고르면 반드시 반영할 요구가 된다 #}
+    <details class="dr-fold dr-pick" open data-pick-root>
+      <summary>재작성에 반영할 지적 <em data-pick-count>{{ d.feedback_refs|length }}건 선택</em></summary>
+      <div class="dr-fold-body">
+        <p class="dr-hint">체크한 지적은 하나씩 수정 요구가 되고, 재작성 뒤 항목마다 반영됐는지 확인해요. 빠진 지적이 있으면 보완본을 채택하지 않아요. 이번에 다루지 않을 지적은 체크를 빼 주세요.</p>
+        <div class="dr-pick-tools" role="group" aria-label="지적 한꺼번에 고르기">
+          <button type="button" data-pick="all">모두 선택</button><button type="button" data-pick="none">모두 해제</button><button type="button" data-pick="required">필수·팩트체크만</button>
+        </div>
+        <ul class="dr-pick-list">
+          {% for r in d.feedback_refs %}
+          <li><label><input type="checkbox" name="feedback" value="{{ r.id }}" form="revise-{{ d.id }}" data-kind="{{ r.kind }}" checked>
+            <span class="dr-kind is-{{ r.kind }}">{{ r.label }} <small>{{ r.id }}</small></span><span class="dr-pick-text">{{ r.text }}</span></label></li>
+          {% endfor %}
+        </ul>
+      </div>
+    </details>
+    {% elif d.qa_report.issues %}
     <details class="dr-fold"{% if d.qa_report.issues|length <= 3 %} open{% endif %}>
       <summary>편집 심사 지적 <em>{{ d.qa_report.issues|length }}건</em></summary>
       <div class="dr-fold-body"><ul>{% for i in d.qa_report.issues %}<li>{{ i }}</li>{% endfor %}</ul></div>
@@ -56,7 +73,8 @@
         {% if d.admin_note %}<blockquote class="dr-quote"><span>운영자 지시</span>{{ d.admin_note }}</blockquote>{% endif %}
         {% if revision %}
           {% if revision.reasons %}<ul>{% for reason in revision.reasons %}<li>{{ reason }}</li>{% endfor %}</ul>{% endif %}
-          {% if revision.items %}<ol class="dr-items">{% for item in revision.items %}<li><strong{% if '미' in item.status_label %} class="is-bad"{% endif %}>{{ item.status_label }}</strong>{{ item.request }}<br>{{ item.reason }}{% if item.evidence %}<blockquote>{{ item.evidence }}</blockquote>{% endif %}</li>{% endfor %}</ol>{% endif %}
+          {% if revision.selected_feedback %}<p class="dr-hint">고른 지적 {{ revision.selected_feedback|length }}건 — 요구마다 연결된 지적 번호가 붙어 있어요.</p>{% endif %}
+          {% if revision.items %}<ol class="dr-items">{% for item in revision.items %}<li><strong{% if '미' in item.status_label %} class="is-bad"{% endif %}>{{ item.status_label }}</strong>{% if item.reference_ids %}<span class="dr-refs">{{ item.reference_ids|join:" · " }}</span>{% endif %}{{ item.request }}<br>{{ item.reason }}{% if item.evidence %}<blockquote>{{ item.evidence }}</blockquote>{% endif %}</li>{% endfor %}</ol>{% endif %}
           {% if revision.candidate_content %}<details class="dr-fold"><summary>미채택 보완본 보기</summary><p>{{ revision.candidate_subject }}</p><div class="preview">{{ revision.candidate_content|linebreaksbr }}</div></details>{% endif %}
         {% endif %}
       </div>
@@ -84,6 +102,7 @@
         <p>멈춘 작업이 정말 끝났는지 확인되기 전에는 원고를 건드릴 수 없어요. 오른쪽 버튼으로 종료를 확인해 주세요.</p>
       {% endif %}
       {% if d.admin_note and d.busy_state != 'attention' %}<blockquote class="dr-sent"><span>보낸 수정 지시</span>{{ d.admin_note }}</blockquote>{% endif %}
+      {% if d.busy_feedback and d.busy_state != 'attention' %}<p class="dr-sent-picks">반영할 지적 {% for label, n in d.busy_feedback %}<span>{{ label }} {{ n }}</span>{% endfor %}</p>{% endif %}
     </div>
     {% if d.busy_job and d.busy_state == 'queued' %}
     <form method="post" action="{% url 'office:job_cancel' d.busy_job.id %}">{% csrf_token %}
@@ -97,10 +116,16 @@
   <div class="dr-sending" role="status" aria-live="polite"><span class="dr-spin" aria-hidden="true"></span><div class="dr-status-text"><b>요청을 보내고 있어요</b><p>잠시만 기다려 주세요. 같은 요청이 두 번 가지 않게 이 카드를 잠갔어요.</p></div></div>
   <footer class="dr-actions{% if kind == 'ready' %} is-single{% endif %}">
     {% if kind == 'held' %}
-    <form class="dr-revise" method="post" action="{% url 'office:draft_revise' d.id %}" data-lock>{% csrf_token %}
+    <form class="dr-revise" id="revise-{{ d.id }}" method="post" action="{% url 'office:draft_revise' d.id %}" data-lock>{% csrf_token %}
+      {% if d.feedback_refs %}
+      <label class="dr-label" for="note-{{ d.id }}">재작성 요청</label>
+      <p class="dr-hint">위에서 체크한 지적 <b data-pick-total>{{ d.feedback_refs|length }}</b>건을 반영해요. 더 바라는 점이 있으면 아래에 적어 주세요. 미반영이나 점수 하락이 있으면 기존 원고를 유지해요.</p>
+      <textarea id="note-{{ d.id }}" name="note" rows="3" placeholder="추가 지시 (선택) — 예) 사례를 국내 중심으로 바꿔 주세요."></textarea>
+      {% else %}
       <label class="dr-label" for="note-{{ d.id }}">수정 지시</label>
       <p class="dr-hint">요청별로 반영됐는지 확인해요. 미반영이나 점수 하락이 있으면 기존 원고를 유지해요.</p>
       <textarea id="note-{{ d.id }}" name="note" rows="4" placeholder="예) 사례를 국내 중심으로 바꾸고, 3번 섹션의 통계는 최신 조사로 교체해 주세요. 분량은 조금 더 늘려도 됩니다." required></textarea>
+      {% endif %}
       <button type="submit" class="dr-btn">재작성 요청</button>
     </form>
     <div class="dr-decision">

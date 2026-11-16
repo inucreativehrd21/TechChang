@@ -32,6 +32,11 @@ from django.utils import timezone
 
 from community.series_catalog import MIN_GAP_DAYS, OUTLINES, SERIES, too_soon
 
+
+def selected_feedback(value):
+    """--feedback 'E1,S3' → ['E1', 'S3']. 옵션이 없으면 None(예전 방식)."""
+    return None if value is None else [x for x in value.split(',') if x]
+
 # 구독(CLI) 사용 한도 — 'You've hit your session limit · resets 1am (Asia/Seoul)'
 LIMIT_RE = re.compile(r'session limit|usage limit|rate limit|hit your .*limit', re.I)
 RESET_RE = re.compile(r'resets\s+(\d{1,2})(?::(\d{2}))?\s*(am|pm)', re.I)
@@ -69,6 +74,8 @@ class Command(BaseCommand):
                             help='보류된 연재 원고 전부를 각자 받은 편집장·검증관 지적으로 고쳐 다시 검증')
         parser.add_argument('--note', default='', help='--revise-draft 와 함께: 운영자 수정 지시')
         parser.add_argument('--by', default='', help='--revise-draft 와 함께: 지시한 운영자 아이디')
+        parser.add_argument('--feedback', default=None,
+                            help='--revise-draft 와 함께: 반영할 기존 지적 id(E1,F2,S3…). 주면 그 지적을 빠짐없이 반영')
         parser.add_argument('--dry-run', action='store_true', help='저장하지 않고 결과만 출력')
         parser.add_argument('--force', action='store_true',
                             help='직전 회차 후 최소 간격(MIN_GAP_DAYS)이 안 지났어도 발행')
@@ -203,7 +210,8 @@ class Command(BaseCommand):
         for draft in drafts:
             self.stdout.write(f'[{datetime.now():%H:%M:%S}] 원고 #{draft.id} {draft.series_key} '
                               f'{draft.episode_number}편 ({draft.qa_score}점) 재작성')
-            res = self._produce(opts, lambda d=draft: revise_draft(d, opts['note'], by=by, out=self.stdout.write))
+            res = self._produce(opts, lambda d=draft: revise_draft(d, opts['note'], by=by, out=self.stdout.write,
+                                                                          feedback=selected_feedback(opts.get('feedback'))))
             self._report(res, draft.series_key, draft.episode_number)
             if res.get('limit'):
                 self.stderr.write(self.style.ERROR('구독 사용 한도 — 남은 원고는 건너뜁니다(보류 상태 유지).'))

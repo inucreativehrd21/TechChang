@@ -1,4 +1,5 @@
 """연구실 전용 운영자 권한과 실행 인자 검증."""
+import re
 from functools import wraps
 from django.conf import settings
 from django.contrib import messages
@@ -27,8 +28,8 @@ def operator_required(view):
 
 COMMANDS = {
     'office_publish': {'--topic', '--profile', '--resume-run', '--track'},
-    'office_revise': {'--draft', '--note', '--by', '--facts'},
-    'auto_write_series': {'--series', '--revise-draft', '--note', '--by'},
+    'office_revise': {'--draft', '--note', '--by', '--facts', '--feedback'},
+    'auto_write_series': {'--series', '--revise-draft', '--note', '--by', '--feedback'},
     'hold_meeting': {'--email'}, 'make_newsletter': set(),
     'polish_meeting': {'--meeting'}, 'update_column_map': {'--settle'},
     'remake_column': {'--question', '--facts'},
@@ -49,6 +50,8 @@ def validate_args(args):
                 raise ValueError('작업 인자가 너무 길거나 올바르지 않아요.')
             if arg in ('--draft', '--revise-draft', '--question', '--meeting', '--settle') and not args[i+1].isdigit():
                 raise ValueError('작업 번호는 숫자여야 해요.')
+            if arg == '--feedback' and not re.fullmatch(r'([EFS]\d{1,3}(,[EFS]\d{1,3})*)?', args[i+1]):
+                raise ValueError('반영할 지적 목록이 올바르지 않아요.')
             if arg == '--track' and args[i+1] not in ('research', 'practical', 'both', 'legacy'):
                 raise ValueError('올바른 칼럼 유형이 필요해요.')
             i += 2
