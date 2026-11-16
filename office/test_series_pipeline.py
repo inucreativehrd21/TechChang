@@ -404,3 +404,32 @@ class SeriesPagesTests(TestCase):
         self.assertEqual(index.count('class="sr-dot"'), 2)
         self.assertLess(index.index(f'data-slug="{self.s.slug}"'), index.index(f'data-slug="{s2.slug}"'))  # 최근 시작한 연재가 첫 장
         self.assertNotIn(f'id="{self.s.slug}"', index)                      # 해시와 같은 id 가 있으면 브라우저가 스크롤한다
+
+
+class ReviseReportTests(TestCase):
+    """재작성 결과 보고가 점수 없는 보류 결과(보완본 미채택·재작성 실패·한도 보류)에서도 작업을 실패로 만들지 않는다.
+    2026-11-16 원고 #61: 보완본 미채택으로 정상 종료했는데 보고 줄의 res['score'] KeyError 로 네 번 '실패' 처리됐다."""
+
+    def setUp(self):
+        self.draft = ColumnDraft.objects.create(topic='coding', status=ColumnDraft.STATUS_HOLD, series_key='django',
+                                                episode_number=9, subject='9편', content='본문', qa_report={'score': 79})
+
+    def run_revise(self, result):
+        out, err = mock.MagicMock(), mock.MagicMock()
+        with mock.patch('office.series_pipeline.revise_draft', return_value=result), \
+             mock.patch('office.live.finish'), mock.patch('django.core.management.call_command'):
+            call_command('auto_write_series', '--revise-draft', str(self.draft.pk), '--note', '보완해 주세요',
+                         stdout=out, stderr=err)
+        return ' '.join(str(c.args[0]) for c in out.write.call_args_list)
+
+    def test_retained_revision_reports_kept_original(self):
+        self.draft.qa_report = {'score': 79, 'admin_revision': {'status': 'retained',
+                                                   'reasons': ['완료가 확인되지 않은 수정 요구가 있어요.']}}
+        text = self.run_revise({'status': 'hold', 'draft': self.draft, 'keep': True})
+        self.assertIn('보완본 미채택', text)
+        self.assertIn('79점', text)
+        self.assertIn('완료가 확인되지 않은 수정 요구', text)
+
+    def test_hold_without_score_or_draft_does_not_raise(self):
+        self.assertIn('79점', self.run_revise({'status': 'hold', 'draft': self.draft}))
+        self.assertIn('?점', self.run_revise({'status': 'hold', 'draft': None, 'reason': '구독 한도'}))

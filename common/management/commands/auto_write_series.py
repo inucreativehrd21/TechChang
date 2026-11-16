@@ -219,8 +219,21 @@ class Command(BaseCommand):
             self.stdout.write(self.style.SUCCESS(f"{head} 공개 대기 — {res['score']}점 · "
                                                  f"{timezone.localtime(res['draft'].publish_at):%m.%d %H:%M} 공개"))
         elif status == 'hold':
-            self.stdout.write(self.style.WARNING(f"{head} 기준 미달({res['score']}점) — 보류. /lab/admin/ 에서 검토"
-                                                 + (' (원문은 그대로 둡니다)' if res['draft'].target_question_id else '')))
+            # 보류 결과에는 점수가 없을 수 있다 — 보완본 미채택(revise 의 retain)·재작성 실패·구독 한도 보류.
+            # 여기서 KeyError 가 나면 작업은 끝까지 돌고도 '실패'로 기록된다(2026-11-16 원고 #61 네 번).
+            draft = res.get('draft')
+            score = res.get('score', getattr(draft, 'qa_score', None))
+            revision = ((getattr(draft, 'qa_report', None) or {}).get('admin_revision') or {}) if res.get('keep') else {}
+            if revision.get('status') == 'retained':
+                why = ' · '.join(revision.get('reasons') or []) or '수정 요구 반영을 확인하지 못했어요'
+                msg = f"{head} 보완본 미채택 — 기존 원고({score}점) 유지. {why} /lab/admin/ 에서 결과 확인"
+            else:
+                msg = f"{head} 기준 미달({score if score is not None else '?'}점) — 보류. /lab/admin/ 에서 검토"
+                if res.get('reason'):
+                    msg += f" ({res['reason']})"
+            if draft is not None and draft.target_question_id:
+                msg += ' (원문은 그대로 둡니다)'
+            self.stdout.write(self.style.WARNING(msg))
         elif status == 'dry':
             self.stdout.write(self.style.WARNING(f"{head} [dry-run] {res['score']}점 · {res['verdict']}"))
         else:
