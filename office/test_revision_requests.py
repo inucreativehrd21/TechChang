@@ -234,6 +234,65 @@ class RequestVerificationTests(SimpleTestCase):
         self.assertEqual(ask.call_count, 2)
 
 
+class FactCheckRequirementTests(SimpleTestCase):
+    """'고친 원고를 다시 사실 검증받기' 같은 요구는 편집 검증이 아니라 실제 팩트체크 결과로 판정한다.
+    2026-11-16 #61: 이 요구가 편집 단계에서 늘 미반영으로 남아 재작성 다섯 번이 팩트체크도 못 가고 유지됐다."""
+
+    def session(self):
+        return RequestVerificationTests.session(self)
+
+    @staticmethod
+    def plan_with_check():
+        value = plan()
+        value['requirements'].append({'id': 'R3', 'source_quote': '둘째 문장은 유지', 'request': '고친 원고 재검증',
+                                      'done_when': '현재 본문으로 사실 검증 pass', 'kind': 'check'})
+        return value
+
+    @staticmethod
+    def verified_with_check():
+        value = verified()
+        value['items'].append({'id': 'R3', 'status': 'blocked', 'evidence': '', 'reason': '편집 단계에서 판정 불가'})
+        return value
+
+    @patch('office.revision_requests.ask_agent_json')
+    def test_check_requirement_does_not_block_editing_and_passes_with_fact_check(self, ask):
+        from office.pipeline import verification_hash
+        ask.side_effect = [self.plan_with_check(), self.verified_with_check()]
+        session = self.session()
+        self.assertEqual(session.generate(), ('기존 제목', AFTER))
+        self.assertEqual(ask.call_count, 2)                       # 재시도 없이 후보 확정
+        qa = {'score': 74, 'fatal': []}
+        self.assertTrue(session.finish('기존 제목', AFTER, qa,
+                                       {'verdict': 'pass', 'verification_hash': verification_hash(AFTER)}))
+        row = qa['admin_revision']['items'][2]
+        self.assertEqual((row['met'], row['status_label']), (True, '팩트체크 통과'))
+        self.assertTrue(qa['admin_revision']['verified'])
+
+    @patch('office.revision_requests.ask_agent_json')
+    def test_failed_or_stale_fact_check_keeps_original(self, ask):
+        for check in ({'verdict': 'fail'}, {'verdict': 'pass', 'verification_hash': 'other-body'}):
+            ask.side_effect = [self.plan_with_check(), self.verified_with_check()]
+            session = self.session()
+            self.assertIsNotNone(session.generate())
+            self.assertFalse(session.finish('기존 제목', AFTER, {'score': 74, 'fatal': []}, check))
+            report = session.draft.qa_report['admin_revision']
+            self.assertEqual(report['status'], 'retained')
+            self.assertEqual(report['items'][2]['status_label'], '팩트체크 미통과')
+            self.assertIn('다시 받기로 한 사실 검증', ' '.join(report['reasons']))
+            self.assertEqual(session.draft.content, BEFORE)
+
+    @patch('office.revision_requests.ask_agent_json')
+    def test_body_requirement_still_needs_edit_evidence(self, ask):
+        missing = self.verified_with_check()
+        missing['items'][0]['status'] = 'unmet'
+        ask.side_effect = [self.plan_with_check(), missing, self.plan_with_check(), missing]
+        session = self.session()
+        self.assertIsNone(session.generate())
+        session.retain()
+        rows = session.draft.qa_report['admin_revision']['items']
+        self.assertEqual(rows[0]['status_label'], '미반영·확인 필요')
+        self.assertEqual(rows[2]['status_label'], '팩트체크 전 중단')
+
 class AdminRevisionFlowTests(TestCase):
     def setUp(self):
         from office.models import ColumnDraft
