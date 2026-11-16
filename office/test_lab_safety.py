@@ -34,6 +34,10 @@ def certified(draft):
 
 class PublicationSafetyTests(TestCase):
     def setUp(self):
+        from unittest import mock as _otp_mock   # 관리 화면은 모두 OTP 경계 — 여기서는 인증된 운영자로 본다
+        _otp = _otp_mock.patch('common.views._admin_otp_session_ok', return_value=True)
+        _otp.start()
+        self.addCleanup(_otp.stop)
         self.owner = User.objects.create_superuser('admin', '', 'x')
         self.draft = certified(ColumnDraft.objects.create(topic='data', status='hold', subject='원고', content='비공개 본문',
                                 qa_report={'verdict': 'accept', 'score': 90}))

@@ -187,3 +187,9 @@
     .ad-console .stat-grid { grid-template-columns: repeat(3,minmax(0,1fr)); }
 }
 @media (prefers-reduced-motion: reduce) { .ad-console *, .ad-console *::before, .ad-console *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; } }
+/* OTP 인증 시간 만료 안내 — 작성 중일 때만 뜬다(아니면 바로 재인증 화면으로 이동). body 직속이라 토큰 대신 값 */
+.ad-otp-expired { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); z-index: 1080; display: flex; align-items: center; gap: 14px; width: min(640px, calc(100vw - 32px)); padding: 14px 16px; border: 1px solid #fcd34d; border-radius: 10px; background: #fffbeb; color: #78350f; font-size: .85rem; line-height: 1.6; box-shadow: 0 10px 30px rgba(24, 24, 27, .14); word-break: keep-all; }
+.ad-otp-expired span { flex: 1; }
+.ad-otp-expired a { flex-shrink: 0; padding: 8px 14px; border-radius: 7px; background: #4f46e5; color: #fff; font-weight: 650; text-decoration: none; }
+.ad-otp-expired a:hover { background: #4338ca; color: #fff; }
+@media (max-width: 640px) { .ad-otp-expired { bottom: 86px; flex-direction: column; align-items: stretch; text-align: left; } .ad-otp-expired a { text-align: center; } }

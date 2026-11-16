@@ -522,7 +522,11 @@ from django.db.models import Q, Count
 
 
 def admin_required(view_func):
-    """관리자 권한이 필요한 뷰를 위한 데코레이터"""
+    """관리자 권한 + 이메일 OTP 재인증을 요구하는 데코레이터.
+
+    관리 화면은 모두 같은 경계다 — 전에는 대시보드·모니터·로그만 OTP 를 확인하고 회원·IP·포트폴리오
+    관리는 로그인만 봐서, 인증 시간이 지나도 이 화면들로는 계속 다닐 수 있었다(2026-11-16 확인).
+    """
     @wraps(view_func)
     def wrapper(request, *args, **kwargs):
         if not request.user.is_authenticated:
@@ -531,6 +535,9 @@ def admin_required(view_func):
         if not request.user.is_staff and not request.user.is_superuser:
             messages.error(request, '관리자 권한이 필요합니다.')
             return redirect('community:index')
+        expired = admin_otp_gate(request)
+        if expired is not None:
+            return expired
         return view_func(request, *args, **kwargs)
     return wrapper
 
@@ -589,21 +596,47 @@ def _admin_otp_session_ok(request):
     return admin_otp_session_valid(request.session, _client_ip(request))
 
 
+def _wants_json(request):
+    accept = request.headers.get('Accept', '')
+    return (request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+            or ('application/json' in accept and 'text/html' not in accept))
+
+
+def admin_otp_gate(request):
+    """OTP 인증이 유효하면 None(남은 시간을 request.admin_otp_left 에 둔다), 아니면 재인증으로 보내는 응답.
+
+    - 화면(GET): 인증 뒤 보던 주소로 돌아온다.
+    - 버튼(POST 등): 만료된 요청은 처리하지 않는다. 인증 뒤 원래 화면으로 돌아와 다시 누르게 한다
+      (POST 주소로 돌아가면 GET 이 되어 405 가 난다).
+    - 폴링(JSON): 리다이렉트 대신 403 JSON — 화면 스크립트가 받아 재인증 화면으로 보낸다.
+    """
+    import time
+    if _admin_otp_session_ok(request):
+        request.admin_otp_left = max(int(getattr(request, 'session', {}).get('admin_otp_until', 0) - time.time()), 0)
+        return None
+    otp_url = reverse('common:admin_otp')
+    if request.method in ('GET', 'HEAD') and not _wants_json(request):
+        request.session['admin_otp_next'] = request.get_full_path()
+        return redirect(otp_url)
+    referer = request.headers.get('Referer', '')
+    back = referer if referer and url_has_allowed_host_and_scheme(
+        referer, allowed_hosts={request.get_host()}, require_https=request.is_secure()) else ''
+    if back:
+        from urllib.parse import urlsplit
+        parts = urlsplit(back)
+        back = parts.path + (('?' + parts.query) if parts.query else '')
+    request.session['admin_otp_next'] = back or reverse('common:admin_dashboard')
+    if _wants_json(request):
+        return JsonResponse({'available': False, 'lines': [], 'success': False, 'error': 'reauth_required',
+                             'otp_required': True, 'redirect': otp_url,
+                             'message': '관리자 인증 시간이 지났어요. 다시 인증해 주세요.'}, status=403)
+    messages.warning(request, '관리자 인증 시간이 지나 요청을 처리하지 않았어요. 다시 인증한 뒤 한 번 더 진행해 주세요.')
+    return redirect(otp_url)
+
+
 def admin_otp_required(view_func):
-    """관리자 권한 + 이메일 OTP(IP 바인딩) 2차 인증을 요구하는 데코레이터."""
-    @wraps(view_func)
-    def wrapper(request, *args, **kwargs):
-        if not request.user.is_authenticated:
-            messages.error(request, '로그인이 필요합니다.')
-            return redirect('common:login')
-        if not request.user.is_staff and not request.user.is_superuser:
-            messages.error(request, '관리자 권한이 필요합니다.')
-            return redirect('community:index')
-        if not _admin_otp_session_ok(request):
-            request.session['admin_otp_next'] = request.get_full_path()
-            return redirect('common:admin_otp')
-        return view_func(request, *args, **kwargs)
-    return wrapper
+    """관리자 권한 + 이메일 OTP(IP 바인딩) 2차 인증을 요구하는 데코레이터(admin_required 와 같은 경계)."""
+    return admin_required(view_func)
 
 
 def admin_otp(request):

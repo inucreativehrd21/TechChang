@@ -167,3 +167,64 @@ class AdminOTPDeliveryTests(TestCase):
                 self.assertContains(response, '처음 한 번만 자동 발송해요')
                 self.assertContains(response, 'name="action" value="resend"')
         self.assertEqual(len(mail.outbox), 1)
+
+
+class AdminOTPExpiryTests(TestCase):
+    """OTP 인증 시간이 지나면 모든 관리 화면·동작·폴링이 재인증으로 간다(2026-11-16: 회원·IP·포트폴리오·연구실
+    관리는 로그인만 확인해서 시간이 지나도 계속 쓸 수 있었다)."""
+
+    def setUp(self):
+        self.client.defaults['HTTP_USER_AGENT'] = 'Mozilla/5.0'
+        self.clock = self.enterContext(patch('time.time', return_value=time.time()))
+        self.admin = User.objects.create_superuser('otp-expiry', password='x')
+        self.client.force_login(self.admin)
+        session = self.client.session
+        session['admin_otp_until'] = self.clock.return_value + ADMIN_OTP_WINDOW_SECONDS
+        session['admin_otp_ip'] = '127.0.0.1'
+        session.save()
+
+    def expire(self):
+        self.clock.return_value += ADMIN_OTP_WINDOW_SECONDS + 1
+
+    def test_every_admin_screen_requires_otp_after_the_window(self):
+        pages = [reverse('common:admin_dashboard'), reverse('common:admin_user_list'),
+                 reverse('common:admin_blocked_ip_list'), reverse('common:admin_portfolio_approval'), '/lab/admin/']
+        for url in pages:
+            self.assertEqual(self.client.get(url).status_code, 200, url)
+        self.expire()
+        for url in pages:
+            response = self.client.get(url)
+            self.assertRedirects(response, reverse('common:admin_otp'), fetch_redirect_response=False, msg_prefix=url)
+            self.assertEqual(self.client.session['admin_otp_next'], url)
+
+    def test_open_page_knows_how_long_the_otp_lasts(self):
+        response = self.client.get(reverse('common:admin_user_list'))
+        self.assertContains(response, f'data-otp-left="{ADMIN_OTP_WINDOW_SECONDS}"')
+        self.assertContains(response, 'data-otp-url="/common/admin/otp/"')
+
+    def test_expired_action_is_not_processed_and_returns_to_the_screen(self):
+        from .models import BlockedIP
+        self.expire()
+        response = self.client.post(reverse('common:admin_block_ip'), {'ip_address': '203.0.113.9'},
+                                    HTTP_REFERER='http://testserver/common/admin/ip/list/?page=2')
+        self.assertRedirects(response, reverse('common:admin_otp'), fetch_redirect_response=False)
+        self.assertFalse(BlockedIP.objects.filter(ip_address='203.0.113.9').exists())
+        self.assertEqual(self.client.session['admin_otp_next'], '/common/admin/ip/list/?page=2')
+
+    def test_foreign_referer_falls_back_to_dashboard(self):
+        self.expire()
+        self.client.post(reverse('common:admin_block_ip'), {'ip_address': '203.0.113.9'},
+                         HTTP_REFERER='https://evil.example/phish')
+        self.assertEqual(self.client.session['admin_otp_next'], reverse('common:admin_dashboard'))
+
+    def test_polling_gets_json_instead_of_a_redirect(self):
+        self.expire()
+        for url, headers in ((reverse('common:server_live_logs'), {'HTTP_X_REQUESTED_WITH': 'XMLHttpRequest'}),
+                             ('/lab/admin/activity.json', {'HTTP_ACCEPT': 'application/json'})):
+            response = self.client.get(url, **headers)
+            self.assertEqual(response.status_code, 403, url)
+            self.assertTrue(response.json()['otp_required'])
+
+    def test_otp_bound_to_another_ip_is_refused(self):
+        response = self.client.get(reverse('common:admin_user_list'), REMOTE_ADDR='198.51.100.7')
+        self.assertRedirects(response, reverse('common:admin_otp'), fetch_redirect_response=False)

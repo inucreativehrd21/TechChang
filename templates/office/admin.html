@@ -404,7 +404,10 @@
   function poll() {
     if (liveCb && !liveCb.checked) return schedule(15000);
     fetch(activityUrl + '?since=' + lastId, { headers: { Accept: 'application/json' } })
-      .then(function (r) { return r.json(); })
+      .then(function (r) { return r.json().then(function (d) {
+        // 인증 시간이 끝나면 폴링이 403 을 받는다 — 화면을 재인증으로 보낸다(작성 중이면 안내만)
+        if (r.status === 403 && d.otp_required) { if (window.tcAdminReauth) window.tcAdminReauth(); throw d; }
+        return d; }); })
       .then(function (d) { schedule(renderLogs(d) ? 3000 : 15000); })
       .catch(function () { schedule(20000); });
   }

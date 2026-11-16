@@ -111,6 +111,10 @@ class ColumnMapAdminTests(TestCase):
     """지도 자체는 공개(community.test_column_map_public). 연구실 쪽은 옛 주소 이동과 요약 갱신만."""
 
     def setUp(self):
+        from unittest import mock as _otp_mock   # 관리 화면은 모두 OTP 경계 — 여기서는 인증된 운영자로 본다
+        _otp = _otp_mock.patch('common.views._admin_otp_session_ok', return_value=True)
+        _otp.start()
+        self.addCleanup(_otp.stop)
         User.objects.create_superuser('boss', 'b@x.com', 'x')
 
     def test_old_admin_address_moves_to_public_map(self):

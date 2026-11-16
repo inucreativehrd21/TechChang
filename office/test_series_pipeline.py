@@ -38,6 +38,10 @@ CRITIQUE = {'verdict': 'recommend', 'reason': '따라 하기 쉽다', 'issues': 
 
 class SeriesPipelineTests(TestCase):
     def setUp(self):
+        from unittest import mock as _otp_mock   # 관리 화면은 모두 OTP 경계 — 여기서는 인증된 운영자로 본다
+        _otp = _otp_mock.patch('common.views._admin_otp_session_ok', return_value=True)
+        _otp.start()
+        self.addCleanup(_otp.stop)
         # 이 테스트 묶음은 제작·편집 규약을 분리 검증한다. 사람 승인은 test_maturity에서 검증한다.
         approval = mock.patch('office.approval.valid', return_value=True)
         approval.start()

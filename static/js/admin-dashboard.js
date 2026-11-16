@@ -15,8 +15,37 @@
             if (!window.confirm(el.dataset.confirm)) e.preventDefault();
         });
     });
+    // ── OTP 인증 시간이 끝나면 열어 둔 화면도 재인증으로 보낸다. 서버가 남은 초(data-otp-left)를 준다 —
+    //    브라우저 시계와 서버 시계가 달라도 '페이지를 받은 뒤 몇 초'로 계산한다. 작성 중인 글이 있으면
+    //    이동하지 않고 안내만 띄운다(새로고침하면 글이 사라진다).
+    function typing() {
+        return Array.prototype.some.call(document.querySelectorAll('.ad-console textarea, .ad-console input[type=text], .ad-console input:not([type])'),
+            function (el) { return el.value.trim() && el.value !== el.defaultValue; });
+    }
+    var otpBanner = null;
+    function reauth() {
+        if (!typing()) { location.replace(location.pathname + location.search); return; }
+        if (otpBanner) return;
+        otpBanner = document.createElement('div');
+        otpBanner.className = 'ad-otp-expired'; otpBanner.setAttribute('role', 'alert');
+        otpBanner.innerHTML = '<span>관리자 인증 시간이 끝났어요. 작성 중인 내용을 복사해 둔 뒤 다시 인증해 주세요.</span>';
+        var again = document.createElement('a');
+        again.href = location.pathname + location.search; again.textContent = '다시 인증';
+        otpBanner.appendChild(again); document.body.appendChild(otpBanner);
+    }
+    window.tcAdminReauth = reauth;
+    if (root.dataset.otpLeft) {
+        var otpDeadline = Date.now() + Number(root.dataset.otpLeft) * 1000;
+        var otpCheck = function () { if (Date.now() >= otpDeadline) { clearInterval(otpTimer); reauth(); } };
+        var otpTimer = setInterval(otpCheck, 5000);
+        document.addEventListener('visibilitychange', function () { if (!document.hidden) otpCheck(); });
+    }
     async function post(url, body) {
         var response = await fetch(url, {method: 'POST', headers: {'X-CSRFToken': token, 'X-Requested-With': 'XMLHttpRequest', 'Content-Type': 'application/x-www-form-urlencoded'}, body: body || ''});
+        if (response.status === 403) {
+            var denied = await response.json().catch(function () { return {}; });
+            if (denied.otp_required) { reauth(); throw new Error(denied.message); }
+        }
         if (!response.ok || response.redirected) throw new Error('로그인과 인증 상태를 확인하고 다시 시도해 주세요.');
         var data = await response.json();
         if (!data.success) throw new Error(data.message || '처리하지 못했어요. 다시 시도해 주세요.');

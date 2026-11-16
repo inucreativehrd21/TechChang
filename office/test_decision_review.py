@@ -13,6 +13,10 @@ from office.decision_review import decorate, save_review
 
 class MeetingDecisionReviewTests(TestCase):
     def setUp(self):
+        from unittest import mock as _otp_mock   # 관리 화면은 모두 OTP 경계 — 여기서는 인증된 운영자로 본다
+        _otp = _otp_mock.patch('common.views._admin_otp_session_ok', return_value=True)
+        _otp.start()
+        self.addCleanup(_otp.stop)
         self.owner = User.objects.create_superuser('meeting-owner', '', 'x')
         self.client.force_login(self.owner)
         self.meeting = Meeting.objects.create(week_start=timezone.localdate(), summary='심화와 실용을 독립 편성해요.')

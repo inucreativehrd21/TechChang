@@ -65,6 +65,10 @@ class DraftStateTests(TestCase):
 
 class ReviewGuardTests(TestCase):
     def setUp(self):
+        from unittest import mock as _otp_mock   # 관리 화면은 모두 OTP 경계 — 여기서는 인증된 운영자로 본다
+        _otp = _otp_mock.patch('common.views._admin_otp_session_ok', return_value=True)
+        _otp.start()
+        self.addCleanup(_otp.stop)
         self.owner = User.objects.create_superuser('admin', '', 'x')
         self.client.force_login(self.owner)
         self.draft = make_draft()
@@ -140,6 +144,10 @@ class ReviewGuardTests(TestCase):
 
 class ReviewPageTests(TestCase):
     def setUp(self):
+        from unittest import mock as _otp_mock   # 관리 화면은 모두 OTP 경계 — 여기서는 인증된 운영자로 본다
+        _otp = _otp_mock.patch('common.views._admin_otp_session_ok', return_value=True)
+        _otp.start()
+        self.addCleanup(_otp.stop)
         self.owner = User.objects.create_superuser('admin', '', 'x')
         self.client.force_login(self.owner)
 
@@ -230,6 +238,10 @@ class ReviewPageTests(TestCase):
 
 class AuditTimelineTests(TestCase):
     def setUp(self):
+        from unittest import mock as _otp_mock   # 관리 화면은 모두 OTP 경계 — 여기서는 인증된 운영자로 본다
+        _otp = _otp_mock.patch('common.views._admin_otp_session_ok', return_value=True)
+        _otp.start()
+        self.addCleanup(_otp.stop)
         self.owner = User.objects.create_superuser('admin', '', 'x')
         self.client.force_login(self.owner)
         self.draft = make_draft(subject='감사 대상 원고')
@@ -317,7 +329,8 @@ class AuditTimelineTests(TestCase):
             self.assertEqual(response.status_code, 302, user)
 
     def test_owner_without_otp_is_sent_to_verify(self):
-        response = self.client.get(self.url(), **UA)
+        with mock.patch('common.views._admin_otp_session_ok', return_value=False):
+            response = self.client.get(self.url(), **UA)
         self.assertEqual(response.status_code, 302)
         self.assertIn('otp', response.url)
 

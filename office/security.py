@@ -18,7 +18,8 @@ def operator_required(view):
         if not is_operator(request.user):
             messages.error(request, '연구실 운영자 계정으로 로그인해 주세요.')
             return redirect('common:login')
-        response = view(request, *args, **kwargs)
+        from common.views import admin_otp_gate   # 연구실 관리도 관리 화면과 같은 OTP 경계(만료되면 재인증)
+        response = admin_otp_gate(request) or view(request, *args, **kwargs)
         response['Cache-Control'] = 'no-store'
         return response
     return wrapped

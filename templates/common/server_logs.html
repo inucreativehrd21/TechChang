@@ -54,6 +54,7 @@
 
             if (res.status === 403) {
                 stop();
+                if (window.tcAdminReauth) window.tcAdminReauth();
                 statusEl.style.color = '#b91c1c';
                 statusEl.textContent = '● 재인증 필요';
                 box.innerHTML = '<div class="lv-empty"><i class="fas fa-lock me-1"></i> 세션이 만료되었거나 IP가 변경되었습니다.<br><br>'

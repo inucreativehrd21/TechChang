@@ -43,6 +43,10 @@ class SlotTests(TestCase):
 
 class ReadyAndReleaseTests(TestCase):
     def setUp(self):
+        from unittest import mock as _otp_mock   # 관리 화면은 모두 OTP 경계 — 여기서는 인증된 운영자로 본다
+        _otp = _otp_mock.patch('common.views._admin_otp_session_ok', return_value=True)
+        _otp.start()
+        self.addCleanup(_otp.stop)
         Category.objects.get_or_create(name='HRD')
 
     def draft(self, at, **kw):
