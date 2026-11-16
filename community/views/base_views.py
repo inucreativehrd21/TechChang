@@ -9,7 +9,7 @@ from django.conf import settings
 from django.contrib.auth.models import User
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
-from django.db import transaction
+from django.template.response import TemplateResponse
 from django.utils.http import urlencode
 import logging
 import time
@@ -17,7 +17,7 @@ import os
 import mimetypes
 
 
-from ..models import Question, Answer, Comment, Category, DailyVisitor
+from ..models import Question, Answer, Comment, Category
 
 DEFAULT_CATEGORIES = ['HRD', '데이터분석', '프로그래밍', '자유게시판', '앨범', '공지사항', '문의']
 
@@ -306,37 +306,11 @@ def index(request):
     ) if v})
 
     # 서비스 런칭일 기준 경과 일수 — 사이트 주인 포트폴리오와 같은 계산(community.site_stats)
-    from datetime import date
     from community import site_stats
     launch_days = site_stats.launch_days()
 
     # 총 회원 수
     total_users = User.objects.count()
-
-    # 오늘 방문자 수 (DB 기반)
-    today = date.today()
-    session_key = f'visited_{today}'
-
-    # 현재 사용자가 오늘 처음 방문했는지 확인
-    if not request.session.get(session_key):
-        request.session[session_key] = True
-
-        # DB에서 오늘 방문자 수 증가 (원자적 업데이트)
-        with transaction.atomic():
-            daily_visitor, created = DailyVisitor.objects.get_or_create(
-                date=today,
-                defaults={'visitor_count': 1}
-            )
-            if not created:
-                daily_visitor.visitor_count = F('visitor_count') + 1
-                daily_visitor.save(update_fields=['visitor_count'])
-
-    # 오늘 방문자 수 가져오기
-    try:
-        visitors_today = DailyVisitor.objects.get(date=today).visitor_count
-    except DailyVisitor.DoesNotExist:
-        visitors_today = 0
-    visitors_total = site_stats.visitors_total()
 
     from ..rookie_modes import public_enabled
     context = {
@@ -362,11 +336,10 @@ def index(request):
         'page_qs': page_qs,
         'launch_days': launch_days,
         'total_users': total_users,
-        'visitors_today': visitors_today,
-        'visitors_total': f'{visitors_total:,}',
     }
     template = 'community/mobile/question_list.html' if getattr(request, 'is_mobile', False) else 'community/question_list.html'
-    return render(request, template, context)
+    # 방문 집계 미들웨어가 이번 방문을 포함한 통계를 렌더링 전에 채워요.
+    return TemplateResponse(request, template, context)
 
 def detail(request, question_id):
     # 질문 객체 조회 (삭제되지 않은 것만)

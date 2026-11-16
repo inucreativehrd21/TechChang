@@ -363,8 +363,9 @@ class Command(BaseCommand):
             # 방문자 수
             try:
                 from community.models import DailyVisitor
-                vc  = DailyVisitor.objects.filter(date=today).first()
-                yvc = DailyVisitor.objects.filter(date=today - timedelta(days=1)).first()
+                visitor_date = timezone.localdate(now)
+                vc  = DailyVisitor.objects.filter(date=visitor_date).first()
+                yvc = DailyVisitor.objects.filter(date=visitor_date - timedelta(days=1)).first()
                 stats['visitors_today']     = vc.visitor_count  if vc  else 0
                 stats['visitors_yesterday'] = yvc.visitor_count if yvc else 0
             except Exception:
