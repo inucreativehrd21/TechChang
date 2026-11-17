@@ -90,6 +90,14 @@ class SecurityMiddleware:
         if request.path in self.RATE_LIMIT_EXEMPT_PATHS:
             return None
 
+        # 3초 폴링은 일반 요청 한도를 넘어요. OTP가 유효한 연구실 운영자의 읽기 요청만 제외해요.
+        if request.method == 'GET' and request.path in (
+                '/lab/admin/observatory/state.json', '/lab/admin/observatory/detail.json'):
+            from office.security import is_operator
+            from common.views import _admin_otp_session_ok
+            if is_operator(getattr(request, 'user', None)) and _admin_otp_session_ok(request):
+                return None
+
         # 2. Rate Limiting 확인 (게임 경로는 더 관대한 제한)
         if is_game_path:
             if self.is_game_rate_limited(client_ip):

@@ -142,6 +142,19 @@ class RequestVerificationTests(SimpleTestCase):
         with self.assertRaises(ValueError):
             session._parse(value)
 
+    def test_repair_cannot_weaken_requirements_or_rescore_an_unchanged_candidate(self):
+        session = self.session()
+        session.draft.topic = 'hrd'
+        session._parse(plan())
+        modified = plan()
+        modified['requirements'][0]['done_when'] = '무조건 통과'
+        with self.assertRaisesRegex(ValueError, '완료 기준'):
+            session._parse(modified, base=('기존 제목', AFTER), fixed_requirements=True)
+        unchanged = plan()
+        unchanged['edits'] = []
+        with patch('office.revision_requests.ask_agent_json', return_value=unchanged):
+            self.assertIsNone(session.repair('기존 제목', AFTER, {'score': 60}, {'verdict': 'pass'}))
+
     @patch('office.revision_requests.ask_agent_json')
     def test_postprocessing_that_undoes_an_edit_is_rechecked_and_keeps_baseline(self, ask):
         bad = verified()
@@ -303,17 +316,19 @@ class AdminRevisionFlowTests(TestCase):
         self.draft = ColumnDraft.objects.create(topic='hrd', status='hold', subject='기존 제목', content=BEFORE,
             qa_report={'score': 71, 'verdict': 'minor', 'issues': []}, check_report={'verdict': 'pass'})
 
-    def run_revision(self, score=74, check_status='pass', note=NOTE, responses=None):
+    def run_revision(self, score=74, check_status='pass', note=NOTE, responses=None, allow_repairs=False):
         from office.pipeline import verification_hash
         def check(subject, content, *args, **kwargs):
             return {'verdict': check_status, 'claims': [], 'subject': subject,
                     'verification_hash': verification_hash(content)}
-        with patch('office.revision_requests.ask_agent_json', side_effect=responses or [plan(), verified()]), \
+        reviews = [{'score': n, 'length': 100, 'fatal': [], 'verdict': 'accept', 'issues': []}
+                   for n in (score if isinstance(score, list) else [score]*3)]
+        with (nullcontext() if allow_repairs else patch.object(RevisionRequests, 'repair', return_value=None)), \
+             patch('office.revision_requests.ask_agent_json', side_effect=responses or [plan(), verified()]), \
              patch('office.pipeline.step_check', side_effect=check), \
              patch('office.pipeline.lock_numbers', side_effect=lambda content, *a, **k: (content, [])), \
              patch('office.pipeline.step_critique', return_value={'verdict': 'recommend', 'issues': []}), \
-             patch('office.pipeline.step_review', return_value={'score': score, 'length': 100, 'fatal': [],
-                                                               'verdict': 'accept', 'issues': []}), \
+             patch('office.pipeline.step_review', side_effect=reviews), \
              patch('office.pipeline.step_headline') as headline, \
              patch('office.pipeline.step_visual') as visual, \
              patch('office.pipeline.publish_draft') as publish:
@@ -322,6 +337,31 @@ class AdminRevisionFlowTests(TestCase):
         headline.assert_not_called()
         visual.assert_not_called()
         publish.assert_not_called()
+
+    def test_score_regression_is_repaired_and_rechecked_in_the_same_request(self):
+        from office.models import StageRun
+        repair = plan()
+        repair['edits'] = [{'request_ids': ['R1'], 'find': '첫 문장은 구체적인 선택 기준이에요.',
+                            'replace': '첫 문장은 구체적인 선택 기준이에요. 조건을 함께 확인해요.'}]
+        self.run_revision(score=[66, 78], responses=[plan(), verified(), repair, verified()], allow_repairs=True)
+        self.assertEqual(self.draft.qa_report['score'], 78)
+        self.assertIn('조건을 함께 확인해요.', self.draft.content)
+        self.assertEqual(self.draft.qa_report['admin_revision']['status'], 'adopted')
+        self.assertEqual(StageRun.objects.filter(draft=self.draft, stage='revision_repair').count(), 1)
+        self.assertEqual(StageRun.objects.filter(draft=self.draft, stage='check').count(), 2)
+
+    def test_repairs_stop_after_two_and_preserve_original_when_score_stays_lower(self):
+        from office.models import StageRun
+        repair = plan()
+        repair['edits'] = [{'request_ids': ['R1'], 'find': '첫 문장은 구체적인 선택 기준이에요.',
+                           'replace': '첫 문장은 구체적인 선택 기준이에요. 조건을 확인해요.'}]
+        again = deepcopy(repair)
+        again['edits'][0].update(find='조건을 확인해요.', replace='조건과 예외를 확인해요.')
+        self.run_revision(score=[66, 67, 68], responses=[plan(), verified(), repair, verified(), again, verified()],
+                          allow_repairs=True)
+        self.assertEqual(self.draft.content, BEFORE)
+        self.assertEqual(self.draft.qa_report['score'], 71)
+        self.assertEqual(StageRun.objects.filter(draft=self.draft, stage='revision_repair').count(), 2)
 
     def test_verified_edit_is_saved_and_still_waits_for_human_approval(self):
         from office.models import StageRun

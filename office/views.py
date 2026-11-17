@@ -183,6 +183,23 @@ def office_state(request):
 
 
 # ───────────────────────────── 관리자
+@admin_required
+def observatory(request):
+    return render(request, 'office/observatory.html')
+
+
+@admin_required
+def observatory_state(request):
+    from .observatory import snapshot
+    return JsonResponse(snapshot())
+
+
+@admin_required
+def observatory_detail(request):
+    from .observatory import detail
+    return JsonResponse(detail(request.GET.get('run', ''), request.GET.get('item', '')))
+
+
 JOB_LABEL = {'office_revise': '재작성', 'auto_write_series': '연재 재작성', 'office_publish': '칼럼 제작',
              'hold_meeting': '편집회의', 'make_newsletter': '연구실 위클리', 'polish_meeting': '회의록 다듬기',
              'update_column_map': '칼럼 지도 갱신', 'remake_column': '칼럼 리메이크'}

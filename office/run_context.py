@@ -47,6 +47,9 @@ class RunContext:
         if saved_profile and saved_profile != profile():
             raise ValueError('체크포인트의 제작 프로필과 현재 프로필이 달라요.')
         self.data['metadata']['profile'] = profile()
+        if os.environ.get('LAB_JOB_ID'):
+            self.data['metadata'].update(job_id=os.environ['LAB_JOB_ID'],
+                                         execution_id=os.environ.get('LAB_EXECUTION_ID', ''))
         self.previous_seconds = float(self.data['spent_seconds'])
         self.active_calls = []
         self.previous_calls = list(self.data.get('call_records', []))

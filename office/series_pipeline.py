@@ -512,6 +512,9 @@ def revise_draft(draft: ColumnDraft, note: str = '', *, by=None, out=print, feed
     """보류된 연재 원고를 고쳐 다시 검증한다. note 가 있으면 운영자 지시(관리 화면 '수정 지시'),
     없으면 그 원고가 받은 편집장·검증관 지적(feedback_notes)으로 고친다."""
     key, no = draft.series_key, draft.episode_number
+    from .run_context import current
+    if current():
+        current().metadata(draft_id=draft.pk, topic=draft.topic, column_track=draft.column_track)
     writer = TOPIC_AGENT[TOPIC_KEY]
     rec = _recorder(draft, False, out)
     revision = None
@@ -712,7 +715,12 @@ def gate(draft, key: str, no: int, subject: str, content: str, *, target=None, b
 
     subject = normalize_title(no, subject, key)
     # 최종 검증 결과를 기록한 뒤 심사·최종 증거를 같은 실행에 묶는다.
-    if revision and not revision.finish(subject, content, qa, check):
+    if revision and not revision.finish(subject, content, qa, check, retain=False):
+        candidate = revision.repair(subject, content, qa, check)
+        if candidate is not None:
+            return gate(draft, key, no, *candidate, target=target, by=by, dry=dry,
+                        out=out, pack=pack, revision=revision)
+        revision.retain()
         rec('lead', 'hold', '수정 요청 미반영·품질 하락으로 기존 연재 원고를 유지해요.')
         return {'status': 'hold', 'draft': draft, 'score': revision.qa.get('score'),
                 'candidate_score': qa.get('score'), 'keep': True}

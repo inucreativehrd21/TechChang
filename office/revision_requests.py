@@ -123,11 +123,58 @@ class RevisionRequests:
         self.requirements = []
         self.report = {'version': 1, 'status': 'retained', 'request_hash': digest(note),
                        'baseline_hash': digest(self.subject+'\n'+self.content), 'items': [], 'reasons': []}
+        self.report['run_id'] = str(stages.run_id)
         if self.selected is not None:   # 관리 화면 결과 칸이 '고른 지적 → 어느 요구로 반영됐나'를 보여 준다
             self.report['selected_feedback'] = [dict(r, label=KIND_LABEL[r['kind']]) for r in self.references]
         self.cached_verification = None
         self.candidate = None
         self.followup = []
+        self.quality_attempt = 0
+
+    def prepare_budget(self):
+        """관리자 재작성은 최종 검수 뒤 두 번 보완할 호출 여유를 둬요. 시간·구독 상한은 유지해요."""
+        from .run_context import current
+        context = current()
+        if context:
+            context.max_calls = max(context.max_calls, 40)
+            context.metadata(revision_policy='verified-repair-v2', revision_max_repairs=2)
+
+    def repair(self, subject, content, qa, check):
+        """직전 후보 위에서 미이행·품질 하락을 고쳐요. 완료한 요구는 고정하고 전부 재검증해요."""
+        from .run_context import current
+        context = current()
+        if self.quality_attempt >= 2 or (context and not context.can_start_revision(calls=10, seconds=240)):
+            return None
+        self.quality_attempt += 1
+        from .review_protocol import revision_notes
+        notes = revision_notes(qa) + [r['text'] for r in feedback_references({}, check)]
+        self.allow_followup(notes)
+        from common.services.claude import call_tags
+        from . import live
+        live.mark('revise', self.writer, self.draft.topic)
+        with call_tags(stage='revision_repair', attempt=self.quality_attempt):
+            value = ask_agent_json(self.writer, EDIT_RULE+'\n'+json.dumps({
+                **self._data(subject, content), 'guidance': self.guide,
+                'repair_instructions': 'after 원고 위에서 아래 미이행·품질 하락만 보완해요. '
+                    '완료한 요구·근거·예제·조건을 유지해요. requirements는 주어진 목록을 그대로 반환해요. '
+                    'find는 after 본문에서 찾아요. 점수만 높이려 의미를 바꾸지 않아요.',
+                'final_verification': self.report, 'current_review': qa, 'fact_check': check,
+                'baseline_review': {k: v for k, v in self.qa.items() if k != 'admin_revision'},
+                'minimum_score': self.qa.get('score')}, ensure_ascii=False),
+                max_tokens=24000, tools=WEB_TOOLS)
+        try:
+            candidate = self._parse(value, base=(subject, content), fixed_requirements=True)
+            if candidate == (subject, content):
+                raise ValueError('보완본에 실제 변경이 없어요. 같은 원고의 점수만 다시 받지 않아요.')
+        except ValueError as exc:
+            self.stages.record('revision_repair', self.writer, {'reason': str(exc)},
+                               status='failed', attempt=self.quality_attempt)
+            return None
+        self.candidate = candidate
+        self.stages.record('revision_repair', self.writer,
+                           {'subject': candidate[0], 'content': candidate[1], 'requirements': self.requirements},
+                           text=candidate[1], attempt=self.quality_attempt)
+        return candidate
 
     def keep_notes(self) -> list:
         """요청 반영 뒤 자동 보완이 되돌리면 안 되는 요구 — 보완 지시에 '유지 조건'으로 함께 넘겨요.
@@ -168,10 +215,12 @@ class RevisionRequests:
             data['followup_review_notes'] = self.followup
         return data
 
-    def _parse(self, value):
+    def _parse(self, value, *, base=None, fixed_requirements=False):
         if not isinstance(value, dict):
             raise ValueError('수정 응답이 객체가 아니에요.')
         requirements, edits = value.get('requirements'), value.get('edits')
+        if fixed_requirements and requirements != self.requirements:
+            raise ValueError('보완 중 원래 수정 요구나 완료 기준을 바꿀 수 없어요.')
         if not isinstance(requirements, list) or not 1 <= len(requirements) <= MAX_REQUIREMENTS or not isinstance(edits, list):
             raise ValueError('수정 요구 목록이나 편집 목록이 누락됐어요.')
         for i, item in enumerate(requirements, 1):
@@ -192,7 +241,7 @@ class RevisionRequests:
         if self.all_feedback and known - covered:
             raise ValueError('모두 반영 요청에서 누락된 기존 검수 지적: '+', '.join(sorted(known-covered)))
         ids = {r['id'] for r in requirements}
-        content = self.content
+        base_subject, content = base or (self.subject, self.content)
         for edit in edits:
             if (not isinstance(edit, dict) or not isinstance(edit.get('request_ids'), list)
                     or not edit['request_ids'] or any(not isinstance(k, str) or k not in ids for k in edit['request_ids'])
@@ -209,7 +258,7 @@ class RevisionRequests:
             raise ValueError('수정으로 원고 본문이 비었어요.')
         self.requirements = requirements
         self.cached_verification = None
-        return title.strip() or self.subject, content
+        return title.strip() or base_subject, content
 
     @staticmethod
     def _quote_found(evidence: str, haystack: str, threshold: float = 0.82) -> bool:
@@ -294,6 +343,7 @@ class RevisionRequests:
 
     def generate(self):
         """최대 두 번 편집해요. 호출 실패·한도 오류는 재시도하지 않아요."""
+        self.prepare_budget()
         feedback = ''
         for attempt in (1, 2):
             from common.services.claude import call_tags
@@ -301,6 +351,12 @@ class RevisionRequests:
                 value = ask_agent_json(self.writer, EDIT_RULE+'\n'+json.dumps({
                     'request': self.note, 'title': self.subject, 'content': self.content,
                     'referenced_feedback': self.references,
+                    'baseline_review': {k: v for k, v in self.qa.items() if k != 'admin_revision'},
+                    'previous_revision_problems': (self.qa.get('admin_revision') or {}).get('reasons', []),
+                    'previous_candidate': ({'title': self.candidate[0], 'content': self.candidate[1],
+                                             'requirements': self.requirements} if self.candidate else None),
+                    'preservation_rules': '기존 점수 이상을 유지하도록 확인된 근거·코드·예제·조건을 보존해요. '
+                        '지난 시도에서 미반영으로 끝난 원인을 반복하지 말고 실제 본문을 고쳐요.',
                     'guidance': self.guide, 'previous_attempt_feedback': feedback}, ensure_ascii=False),
                     max_tokens=24000, tools=WEB_TOOLS)
             try:
@@ -324,7 +380,7 @@ class RevisionRequests:
         self.report['reasons'] = self.report.get('reasons') or [feedback or '수정 결과를 검증하지 못했어요.']
         return None
 
-    def finish(self, subject, content, qa, check):
+    def finish(self, subject, content, qa, check, *, retain=True):
         """차트·수치 잠금 등 후처리가 끝난 실제 후보를 다시 확인해요."""
         self.candidate = subject, content
         report = self.verify(subject, content)
@@ -342,6 +398,8 @@ class RevisionRequests:
             if not passed:
                 reasons.append('다시 받기로 한 사실 검증을 고친 원고가 통과하지 못했어요.')
         previous_score, score = self.qa.get('score'), qa.get('score')
+        if type(previous_score) in (int, float) and type(score) not in (int, float):
+            reasons.append('새 심사 점수가 없어 품질 보존을 확인할 수 없어요.')
         if type(previous_score) in (int, float) and type(score) in (int, float) and score < previous_score:
             reasons.append(f'심사 점수가 {previous_score}→{score}점으로 내려가 기존 원고를 유지했어요.')
         new_fatal = set(qa.get('fatal') or []) - set(self.qa.get('fatal') or [])
@@ -364,7 +422,8 @@ class RevisionRequests:
             **self.report, 'subject': subject, 'content': content, 'check': check, 'review': qa}, text=content,
             calls=list(context.active_calls) if context else None)
         if reasons:
-            self.retain()
+            if retain:
+                self.retain()
             return False
         qa['admin_revision'] = self.report
         return True

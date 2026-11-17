@@ -130,60 +130,69 @@ class Command(BaseCommand):
                 subject, content = candidate
                 rec(writer, 'revise', f'요청별 편집 후보 검증: {subject} ({P.body_length(content)}자)')
 
-            # 2) 팩트체크
-            check = P.step_check(subject, content, recent, verified=pack)
-            stages.record('check', 'checker', check)
-            bad = [c for c in check.get('claims', []) if c.get('status') in P.BAD_CLAIMS]
-            rec('checker', 'check', f"팩트체크 {check.get('verdict')}: 확인 필요 {len(bad)}건")
-            pack = E.merge(pack, E.from_check(check))
-            if not review_only:
-                # 재작성이 기억으로 들여온 새 수치는 지운다(이전 원고에 있던 수치는 그대로)
-                content, dropped = P.lock_numbers(content, pack, baseline=draft.content)
-                if dropped:
-                    check = E.prune_check(check, content)
-                    rec('checker', 'check', f'재작성이 들여온 근거 없는 수치 문장 {len(dropped)}개 삭제')
-
-            # 3) 시각화 — 본문이 다시 쓰였으므로 이전 차트·표를 걷어내고 현재 수치로 새로 만든다.
-            #    사람이 교열하며 기존 그림을 남겼으면 손대지 않는다(교열본을 그대로 심사받는 게 목적).
-            #    교열본에 그림이 없어도 표가 있으면 그대로 심사받는다 — 예전엔 사람이 일부러 뺀 그림 자리에
-            #    차트 담당이 옛 그림을 다시 넣어, 교열 의도와 다른 원고가 심사됐다(#36).
-            render_requested = revision and any(r.get('visual_action') == 'render' for r in revision.requirements)
-            if render_requested:
-                content = P.strip_visual_block(content)
-                content, chart_rel, chart_note, visual_report = P.step_visual(
-                    content, topic_key, rec=rec, feedback=admin_note+'\n'+'\n'.join(
-                        r['request']+' / 완료 기준: '+r['done_when'] for r in revision.requirements
-                        if r.get('visual_action') == 'render'))
-            elif P.has_visual(content):
-                keep_img = draft.chart_path and '/media/'+draft.chart_path in content
-                chart_rel = draft.chart_path if keep_img else ''
-                chart_note = draft.chart_note if keep_img else '수정본의 표를 핵심 도판으로 사용'
-                visual_report = f'수정본 — 도판 그대로 심사: {chart_note}'
-            elif revision:
-                # 요청으로 지운 도판을 자동 생성으로 되살리지 않는다.
-                chart_rel, chart_note, visual_report = '', '수정 요청의 도판 구성을 유지해요.', '도판 없음'
-            else:
-                content = P.strip_visual_block(content)
-                content, chart_rel, chart_note, visual_report = P.step_visual(
-                    content, topic_key, rec=rec, feedback=P.visual_feedback(draft.qa_report))
-
-            if review_only and not opts['no_publish']:
-                keywords = P.headline_keywords((draft.decision.chosen or {}) if draft.decision else {})
-                subject, _why = P.step_headline(subject, content, keywords=keywords, recent=recent)
-            if check.get('subject') != subject or check.get('verification_hash') != P.verification_hash(content):
+            def evaluate(subject, content):
+                nonlocal pack
+                # 2) 팩트체크
                 check = P.step_check(subject, content, recent, verified=pack)
-                stages.record('recheck', 'checker', check)
+                stages.record('check', 'checker', check)
+                bad = [c for c in check.get('claims', []) if c.get('status') in P.BAD_CLAIMS]
+                rec('checker', 'check', f"팩트체크 {check.get('verdict')}: 확인 필요 {len(bad)}건")
+                pack = E.merge(pack, E.from_check(check))
+                if not review_only:
+                    # 재작성이 기억으로 들여온 새 수치는 지운다(이전 원고에 있던 수치는 그대로)
+                    content, dropped = P.lock_numbers(content, pack, baseline=draft.content)
+                    if dropped:
+                        check = E.prune_check(check, content)
+                        rec('checker', 'check', f'재작성이 들여온 근거 없는 수치 문장 {len(dropped)}개 삭제')
 
-            # 4) 재심
-            critique = P.step_critique(subject, content)
-            rec('critic', 'critique', f"평론 {critique['verdict']} · 지적 {len(critique.get('issues') or [])}건: "
-                                      f"{critique.get('reason', '')[:100]}")
-            qa = P.step_review(subject, content, check, chart_rel, visual_report, critique, verified=pack,
-                               previous=draft.qa_report or None, previous_content=draft.content)
-            if revision and not revision.finish(subject, content, qa, check):
-                rec('editor', 'hold', '미반영·품질 하락으로 보완본을 채택하지 않고 기존 원고를 유지해요.')
-                out(self.style.WARNING('수정 결과 보류 — 요청별 결과를 확인해 주세요. 기존 원고를 유지했어요.'))
-                return
+                # 3) 시각화 — 본문이 다시 쓰였으므로 이전 차트·표를 걷어내고 현재 수치로 새로 만든다.
+                #    사람이 교열하며 기존 그림을 남겼으면 손대지 않는다(교열본을 그대로 심사받는 게 목적).
+                #    교열본에 그림이 없어도 표가 있으면 그대로 심사받는다 — 예전엔 사람이 일부러 뺀 그림 자리에
+                #    차트 담당이 옛 그림을 다시 넣어, 교열 의도와 다른 원고가 심사됐다(#36).
+                render_requested = revision and any(r.get('visual_action') == 'render' for r in revision.requirements)
+                if render_requested:
+                    content = P.strip_visual_block(content)
+                    content, chart_rel, chart_note, visual_report = P.step_visual(
+                        content, topic_key, rec=rec, feedback=admin_note+'\n'+'\n'.join(
+                            r['request']+' / 완료 기준: '+r['done_when'] for r in revision.requirements
+                            if r.get('visual_action') == 'render'))
+                elif P.has_visual(content):
+                    keep_img = draft.chart_path and '/media/'+draft.chart_path in content
+                    chart_rel = draft.chart_path if keep_img else ''
+                    chart_note = draft.chart_note if keep_img else '수정본의 표를 핵심 도판으로 사용'
+                    visual_report = f'수정본 — 도판 그대로 심사: {chart_note}'
+                elif revision:
+                    # 요청으로 지운 도판을 자동 생성으로 되살리지 않는다.
+                    chart_rel, chart_note, visual_report = '', '수정 요청의 도판 구성을 유지해요.', '도판 없음'
+                else:
+                    content = P.strip_visual_block(content)
+                    content, chart_rel, chart_note, visual_report = P.step_visual(
+                        content, topic_key, rec=rec, feedback=P.visual_feedback(draft.qa_report))
+
+                if review_only and not opts['no_publish']:
+                    keywords = P.headline_keywords((draft.decision.chosen or {}) if draft.decision else {})
+                    subject, _why = P.step_headline(subject, content, keywords=keywords, recent=recent)
+                if check.get('subject') != subject or check.get('verification_hash') != P.verification_hash(content):
+                    check = P.step_check(subject, content, recent, verified=pack)
+                    stages.record('recheck', 'checker', check)
+
+                # 4) 재심
+                critique = P.step_critique(subject, content)
+                rec('critic', 'critique', f"평론 {critique['verdict']} · 지적 {len(critique.get('issues') or [])}건: "
+                                          f"{critique.get('reason', '')[:100]}")
+                qa = P.step_review(subject, content, check, chart_rel, visual_report, critique, verified=pack,
+                                   previous=draft.qa_report or None, previous_content=draft.content)
+                return subject, content, qa, check, chart_rel, chart_note
+
+            while True:
+                subject, content, qa, check, chart_rel, chart_note = evaluate(subject, content)
+                if not revision or revision.finish(subject, content, qa, check, retain=False):
+                    break
+                candidate = revision.repair(subject, content, qa, check)
+                if candidate is None:
+                    revision.retain()
+                    return
+                subject, content = candidate
             stages.record('review', 'editor', qa)
             stages.complete(subject, content, check, qa)
             verdict_ko = {'accept': '발행', 'minor': '수정 요청', 'major': '보류'}.get(qa['verdict'], qa['verdict'])

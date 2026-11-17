@@ -298,11 +298,30 @@ class SeriesPipelineTests(TestCase):
         self.assertIn('R1 유지 조건', seen['guide'])
         self.assertIn('R1 유지 조건', seen['full'])
 
+    def test_score_regression_is_repaired_in_the_same_series_request(self):
+        from copy import deepcopy
+        draft, note, plan, report, expected = self.request_case()
+        repair = deepcopy(plan)
+        lead = report['items'][0]['evidence']
+        repair['edits'] = [{'request_ids': ['R1'], 'find': lead, 'replace': lead+' 먼저 연결 조건을 확인해요.'}]
+        reviews = [{'score': n, 'verdict': 'accept', 'length': 2000, 'issues': [], 'fatal': []} for n in (60, 90)]
+        with mock.patch('office.revision_requests.ask_agent_json', side_effect=[plan, report, repair, report]), \
+             mock.patch('office.series_pipeline.ask_agent_json', side_effect=fake_json(5)), \
+             mock.patch('office.series_pipeline.review_episode', side_effect=reviews), \
+             mock.patch('office.approval.valid', return_value=False):
+            result = S.revise_draft(draft, note, out=lambda *_: None)
+        draft.refresh_from_db()
+        self.assertEqual(result['status'], 'hold')
+        self.assertIn('먼저 연결 조건을 확인해요.', draft.content)
+        self.assertEqual(draft.qa_report['admin_revision']['status'], 'adopted')
+        self.assertEqual(draft.qa_report['score'], 90)
+
     def test_series_automatic_repair_cannot_undo_the_admin_request(self):
         draft, note, plan, report, expected = self.request_case()
         original = draft.content
         bad = {**report, 'items': [{**report['items'][0], 'status': 'unmet', 'evidence': '', 'reason': '후속 수정에서 리드가 되돌아갔어요.'}]}
         with mock.patch('office.revision_requests.ask_agent_json', side_effect=[plan, report, bad]), \
+             mock.patch('office.revision_requests.RevisionRequests.repair', return_value=None), \
              mock.patch('office.series_pipeline.ask_agent_json', side_effect=fake_json(3)), \
              mock.patch('office.series_pipeline._fix', return_value=(draft.subject, original, True, '자동 보완')), \
              mock.patch('office.approval.valid', return_value=False):

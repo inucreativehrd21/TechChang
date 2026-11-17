@@ -171,8 +171,11 @@ def ask_agent(key: str, prompt: str, *, max_tokens: int = 2000, tools: tuple = (
                 return cached
         timeout = context.reserve() if context else None
         extra = {'timeout': timeout} if timeout else {}
-        text = ask(prompt, system=execution_agent(key)['system'], max_tokens=tokens, tools=tuple(tools),
-                   **route.kwargs(), **extra).strip()
+        from .activity import observe
+        with observe(key, tags.get('stage') or tags.get('step', ''), route.model) as activity:
+            text = ask(prompt, system=execution_agent(key)['system'], max_tokens=tokens, tools=tuple(tools),
+                       **route.kwargs(), **extra).strip()
+            activity['result'] = text
         if context:
             context.remember(sig, text)
         return text
