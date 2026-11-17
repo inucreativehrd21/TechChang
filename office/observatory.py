@@ -87,6 +87,7 @@ def snapshot():
                 'state': {'ok': 'done', 'failed': 'failed', 'skipped': 'skipped'}.get(row.status, 'unknown'),
                 'at': row.created_at.isoformat(), 'ended_at': row.created_at.isoformat(), 'model': '',
                 'detail': '선택하면 저장된 산출물 내용을 확인할 수 있어요.',
+                'sender': row.sender, 'recipient': row.recipient,
                 'transfer': f'{row.sender} → {row.recipient}' if row.recipient else ''})
         state = (job.status if job else 'started' if any(c['state'] == 'running' for c in call_rows)
                  else 'unknown' if any(c['state'] == 'unknown' for c in call_rows) else 'completed')

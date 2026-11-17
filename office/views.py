@@ -185,7 +185,10 @@ def office_state(request):
 # ───────────────────────────── 관리자
 @admin_required
 def observatory(request):
-    return render(request, 'office/observatory.html')
+    return render(request, 'office/observatory.html', {
+        'team_roster': [{'key': key, 'name': AGENTS[key]['name'], 'title': AGENTS[key]['title']}
+                        for key in ('lead', 'hrd', 'data', 'coding', 'checker', 'critic', 'charter', 'editor')],
+    })
 
 
 @admin_required

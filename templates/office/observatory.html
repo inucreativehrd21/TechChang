@@ -4,14 +4,35 @@
 {% block extra_css %}<link href="{% static 'css/lab-observatory.css' %}?v={{ STATIC_VERSION }}" rel="stylesheet">{% endblock %}
 {% block content %}
 <main class="lo" data-state-url="{% url 'office:observatory_state' %}" data-detail-url="{% url 'office:observatory_detail' %}">
-  <header class="lo-head"><div><h1>연구실 실시간 현황</h1><p>작업을 고르면 담당 에이전트와 진행 내용을 한눈에 볼 수 있어요.</p></div><a href="{% url 'office:admin' %}">연구실 관리로 돌아가기</a></header>
+  <header class="lo-head"><div><h1>연구실 실시간 현황</h1><p>팀이 일하는 흐름을 살펴봐요.</p></div><a href="{% url 'office:admin' %}">연구실 관리로 돌아가기</a></header>
   <div class="lo-toolbar"><p role="status" aria-live="polite" data-connection>작업 현황을 불러와요.</p><div><span data-updated></span><button type="button" data-pause>자동 갱신 멈추기</button><button type="button" data-refresh>새로 확인</button></div></div>
   <div class="lo-workspace">
-    <aside class="lo-jobs" aria-label="연구실 작업"><h2>작업 목록 <span data-count>0</span></h2><div data-jobs><p class="lo-empty">작업을 불러오고 있어요.</p></div></aside>
-    <section class="lo-map" aria-labelledby="lo-map-title"><div class="lo-map-heading"><h2 id="lo-map-title">에이전트 작업 계층</h2><p>실행 중 · 완료 · 확인 필요 상태를 구분해요.</p></div><div data-tree><p class="lo-empty">작업을 선택하면 계층이 표시돼요.</p></div></section>
-    <aside class="lo-detail" aria-labelledby="lo-detail-title"><h2 id="lo-detail-title">작업 내용</h2><div data-detail><p class="lo-empty">에이전트 아래 작업을 누르면 응답과 산출물을 볼 수 있어요.</p></div></aside>
+    <aside class="lo-jobs" aria-label="연구실 작업"><h2>작업 <span data-count>0</span></h2><div data-jobs><p class="lo-empty">작업을 불러오고 있어요.</p></div></aside>
+    <section class="lo-map" aria-labelledby="lo-map-title">
+      <div class="lo-map-heading"><div><h2 id="lo-map-title">에이전트 팀</h2><p data-map-caption>작업을 기다리고 있어요.</p></div><button type="button" data-motion aria-pressed="false">모션 멈추기</button></div>
+      <div class="lo-board-wrap">
+        <div class="lo-team-board" data-tree>
+          {% include 'office/_observatory_symbols.html' %}
+          <svg class="lo-wiring" viewBox="0 0 800 620" preserveAspectRatio="none" aria-hidden="true">
+            <path d="M400 70 V145 M160 145 H640 M160 145 V215 M400 145 V215 M640 145 V215 M160 215 V300 M400 215 V300 M640 215 V300 M160 300 H640 M400 300 V330 M160 330 H640 M160 330 V385 M400 330 V385 M640 330 V385 M160 385 V470 M400 385 V470 M640 385 V470 M160 470 H640 M400 470 V530"/>
+            <g class="lo-junctions"><circle cx="400" cy="145" r="3"/><circle cx="400" cy="300" r="3"/><circle cx="400" cy="330" r="3"/><circle cx="400" cy="470" r="3"/></g>
+          </svg>
+          <svg class="lo-flow-layer" viewBox="0 0 800 620" preserveAspectRatio="none" data-flows aria-hidden="true"></svg>
+          <span class="lo-tier lo-tier-plan" aria-hidden="true">기획·조율</span><span class="lo-tier lo-tier-write" aria-hidden="true">분야 집필</span><span class="lo-tier lo-tier-check" aria-hidden="true">전문 검토</span><span class="lo-tier lo-tier-edit" aria-hidden="true">최종 편집</span>
+          {% for agent in team_roster %}
+          <button type="button" class="lo-agent-node" data-agent="{{ agent.key }}" data-state="idle" aria-pressed="false" aria-label="{{ agent.name }} · {{ agent.title }} · 대기">
+            <span class="lo-agent-orbit"><svg viewBox="0 0 64 64" aria-hidden="true"><use href="#lo-glyph-{{ agent.key }}"/></svg><span class="lo-agent-lamp" aria-hidden="true"></span></span>
+            <strong>{{ agent.name }}</strong><span class="lo-agent-role">{{ agent.title }}</span><span class="lo-agent-status" data-node-status>대기</span>
+          </button>
+          {% endfor %}
+          <button type="button" class="lo-agent-node lo-agent-helper" data-agent="research" data-state="idle" aria-pressed="false" aria-label="자료 조사 도우미" hidden><span class="lo-agent-orbit"><svg viewBox="0 0 64 64" aria-hidden="true"><use href="#lo-glyph-checker"/></svg><span class="lo-agent-lamp" aria-hidden="true"></span></span><strong>자료 조사</strong><span class="lo-agent-role">임시 조사 워커</span><span class="lo-agent-status" data-node-status>대기</span></button>
+        </div>
+      </div>
+      <div class="lo-map-footer"><div class="lo-legend"><span><i class="lo-legend-glow"></i>실행 중</span><span><i class="lo-legend-transfer"></i>전달 기록</span><span><i class="lo-legend-sequence"></i>작업 순서</span></div><p data-flow-caption aria-live="polite">에이전트를 누르면 작업 내용을 볼 수 있어요.</p></div>
+    </section>
+    <aside class="lo-detail" aria-labelledby="lo-detail-title"><h2 id="lo-detail-title">작업 내용</h2><div data-detail><p class="lo-empty">에이전트를 선택해 담당 작업과 산출물을 살펴봐요.</p></div></aside>
   </div>
-  <p class="lo-foot">3초마다 확인해요. 완료된 응답과 산출물을 표시하며, 모델의 내부 추론은 표시하지 않아요. 실행 종료와 원고 심사 통과는 별개예요.</p>
+  <p class="lo-foot">3초마다 확인해요. 전달 모션은 기록된 전달 관계와 호출 순서를 시각화한 표현이에요. 실행 종료와 원고 심사 통과는 별개예요.</p>
 </main>
 {% endblock %}
 {% block script %}{{ block.super }}<script src="{% static 'js/lab-observatory.js' %}?v={{ STATIC_VERSION }}" defer></script>{% endblock %}

@@ -5,9 +5,17 @@
   const jobs = app.querySelector('[data-jobs]'), tree = app.querySelector('[data-tree]');
   const panel = app.querySelector('[data-detail]'), connection = app.querySelector('[data-connection]');
   const pause = app.querySelector('[data-pause]');
+  const motion = app.querySelector('[data-motion]'), flowLayer = app.querySelector('[data-flows]');
+  const nodes = [...app.querySelectorAll('[data-agent]')];
+  const reduced = matchMedia('(prefers-reduced-motion: reduce)');
+  const positions = {lead:[400,70],hrd:[160,215],data:[400,215],coding:[640,215],
+    checker:[160,385],critic:[400,385],charter:[640,385],editor:[400,530],research:[672,62]};
   const labels = {running:'실행 중',started:'실행 중',done:'완료',completed:'실행 종료',pending:'대기',
     failed:'실패',unknown:'종료 확인 필요',quarantined:'종료 확인 필요',cancelled:'취소',interrupted:'중단',skipped:'건너뜀'};
-  let data, selectedWork, selectedItem, paused = false, timer, controller, failures = 0;
+  let data = {works:[], agents:Object.fromEntries(nodes.map(n => [n.dataset.agent, {
+    name:n.querySelector('strong').textContent, title:n.querySelector('.lo-agent-role').textContent,
+  }]))}, selectedWork, selectedItem, selectedAgent, paused = false, timer, controller, failures = 0;
+  let motionPaused = reduced.matches, connected = false, flowSignature = '';
   let signature = '', detailKey = '', detailVersion = 0;
   const el = (tag, text, cls) => {
     const n = document.createElement(tag);
@@ -18,6 +26,95 @@
   const badge = (state) => { const n = el('span', labels[state] || state, 'lo-state'); n.dataset.state = state; return n; };
   const time = value => value ? new Date(value).toLocaleTimeString('ko-KR', {hour:'2-digit',minute:'2-digit',second:'2-digit'}) : '';
   const current = () => data?.works.find(w => w.id === selectedWork);
+  const svg = (tag, attributes) => {
+    const n = document.createElementNS('http://www.w3.org/2000/svg', tag);
+    for (const [key, value] of Object.entries(attributes)) n.setAttribute(key, String(value));
+    return n;
+  };
+  function syncMotion() {
+    const stopped = motionPaused || reduced.matches || document.hidden || paused || !connected;
+    app.classList.toggle('is-motion-paused', stopped);
+    app.classList.toggle('is-suspended', !connected);
+    motion.textContent = motionPaused || reduced.matches ? '모션 켜기' : '모션 멈추기';
+    motion.setAttribute('aria-pressed', String(motionPaused || reduced.matches));
+    motion.disabled = reduced.matches;
+    motion.title = reduced.matches ? '기기의 동작 줄이기 설정을 따르고 있어요.' : '';
+    if (stopped) flowLayer.pauseAnimations(); else flowLayer.unpauseAnimations();
+  }
+  function route(from, to) {
+    const [x1,y1] = positions[from], [x2,y2] = positions[to];
+    if (y1 === 70 && y2 === 215) return `M${x1} ${y1} V145 H${x2} V${y2}`;
+    if (y1 === 215 && y2 === 385) return `M${x1} ${y1} V300 H400 V330 H${x2} V${y2}`;
+    if (y1 === 385 && y2 === 530) return `M${x1} ${y1} V470 H${x2} V${y2}`;
+    if (y1 === y2) return `M${x1} ${y1} V${y1-55} H${x2} V${y2}`;
+    if (y1 > y2) return `M${x1} ${y1} C780 ${y1},780 ${y2},${x2} ${y2}`;
+    return `M${x1} ${y1} C${x1} ${(y1+y2)/2},${x2} ${(y1+y2)/2},${x2} ${y2}`;
+  }
+  function flowsFor(work) {
+    if (!work) return [];
+    const valid = (a,b) => Object.hasOwn(positions,a) && Object.hasOwn(positions,b) && a !== b;
+    const records = work.calls.filter(c => valid(c.sender, c.recipient) && c.state === 'done').slice(-4).map(c => ({
+      id:c.id, from:c.sender, to:c.recipient, label:c.label, kind:'record',
+      animate:work.state === 'started' && (Date.now()-Date.parse(c.at) < 18000 ||
+        work.calls.some(a => a.state === 'running' && a.agent === c.recipient &&
+          Date.parse(a.at)-Date.parse(c.at) >= 0 && Date.parse(a.at)-Date.parse(c.at) < 60000)),
+    }));
+    const observed = work.calls.filter(c => c.id.startsWith('call-'));
+    for (const active of observed.filter(c => c.state === 'running' && work.state === 'started')) {
+      if (records.some(r => r.to === active.agent && r.animate)) continue;
+      const previous = observed.filter(c => c.state === 'done' && c.ended_at &&
+        Date.parse(c.ended_at) <= Date.parse(active.at) && valid(c.agent, active.agent))
+        .sort((a,b) => Date.parse(b.ended_at)-Date.parse(a.ended_at))[0];
+      if (previous) records.push({id:active.id, from:previous.agent, to:active.agent,
+        label:active.label, kind:'sequence', animate:true});
+    }
+    return records.slice(-6);
+  }
+  function updateFlows(work) {
+    const flows = flowsFor(work), key = JSON.stringify(flows);
+    if (flowSignature !== key) {
+      flowSignature = key;
+      flowLayer.replaceChildren();
+      for (const flow of flows) {
+        const d = route(flow.from, flow.to);
+        const group = svg('g', {'data-from':flow.from, 'data-to':flow.to, 'data-kind':flow.kind});
+        const title = svg('title', {});
+        title.textContent = `${flow.kind === 'record' ? '전달 기록' : '호출 순서'}: ${flow.from} → ${flow.to}`;
+        group.append(title, svg('path', {d, class:`lo-flow-track${flow.kind === 'sequence' ? ' is-sequence' : ''}`}));
+        if (flow.animate && !reduced.matches) {
+          group.append(svg('path', {d, class:'lo-flow-caption-line'}));
+          for (const [r,begin] of [[3,'0s'],[1.5,'-1.2s']]) {
+            const packet = svg('circle', {r, class:'lo-flow-packet'});
+            packet.append(svg('animateMotion', {path:d, dur:'2.8s', begin, repeatCount:'indefinite', calcMode:'paced'}));
+            group.append(packet);
+          }
+        }
+        flowLayer.append(group);
+      }
+    }
+    const latest = [...flows].reverse().find(f => f.animate) || flows.at(-1);
+    const who = key => data?.agents?.[key]?.name || key;
+    app.querySelector('[data-flow-caption]').textContent = latest
+      ? `${who(latest.from)} → ${who(latest.to)} · ${latest.label}${latest.kind === 'sequence' ? ' 시작 순서' : ' 전달 기록'}`
+      : work?.state === 'started' ? '실행 중인 담당자가 빛나요. 에이전트를 눌러 내용을 확인해요.'
+      : '에이전트를 누르면 작업 내용을 볼 수 있어요.';
+    syncMotion();
+  }
+  function showAgent(work) {
+    ++detailVersion; detailKey = '';
+    const agent = data.agents[selectedAgent];
+    panel.replaceChildren(el('h3', `${agent.name} · ${agent.title}`));
+    const calls = [...(work?.calls || [])].filter(c => c.agent === selectedAgent).reverse();
+    if (!calls.length) { panel.append(el('p', '이 작업에 참여한 기록이 없어요. 팀 안에서 자리를 유지하며 대기해요.', 'lo-empty')); return; }
+    const ordered = [...calls.filter(c => c.state === 'running'), ...calls.filter(c => c.state !== 'running')];
+    for (const c of ordered.slice(0,24)) {
+      const button = el('button', c.label, 'lo-agent-record');
+      button.type = 'button'; button.dataset.item = c.id;
+      button.append(el('small', `${labels[c.state] || c.state} · ${time(c.at)}`));
+      panel.append(button);
+    }
+    if (calls.length > 24) panel.append(el('p', '최근 기록 24건을 표시해요.', 'lo-meta'));
+  }
   const showSummary = work => {
     ++detailVersion; detailKey = '';
     panel.replaceChildren(el('h3', work.title), badge(work.state));
@@ -48,6 +145,8 @@
     const agent = data.agents[item.agent];
     panel.replaceChildren(el('h3', item.label), badge(item.state),
       el('p', `${agent ? `${agent.name} · ${agent.title}` : item.agent} / ${time(item.at)}`, 'lo-meta'));
+    const back = el('button', '담당 에이전트 기록', 'lo-detail-back'); back.type = 'button'; back.dataset.backAgent = item.agent;
+    panel.prepend(back);
     if (item.model) panel.append(el('p', `요청 모델: ${item.model}`, 'lo-meta'));
     if (item.transfer) panel.append(el('p', `전달: ${item.transfer}`, 'lo-meta'));
     const body = el('pre', item.detail || '내용을 불러와요.'); panel.append(body);
@@ -64,8 +163,8 @@
   }
   function draw() {
     const focus = document.activeElement;
-    const focusKey = focus?.dataset.item || focus?.dataset.work;
-    const focusType = focus?.dataset.item ? 'item' : 'work';
+    const focusKey = focus?.dataset.item || focus?.dataset.agent || focus?.dataset.work;
+    const focusType = focus?.dataset.item ? 'item' : focus?.dataset.agent ? 'agent' : 'work';
     jobs.replaceChildren();
     app.querySelector('[data-count]').textContent = data.works.length;
     for (const work of data.works) {
@@ -76,56 +175,43 @@
       jobs.append(b);
     }
     const work = current();
-    tree.replaceChildren();
     if (!work) {
       jobs.append(el('p', '아직 기록된 작업이 없어요. 연구실 관리에서 작업을 시작해 주세요.', 'lo-empty'));
-      tree.append(el('p', '작업이 시작되면 담당 에이전트와 진행 내용을 표시해요.', 'lo-empty'));
-      panel.replaceChildren(el('p', '선택한 작업이 없어요.', 'lo-empty')); return;
     }
-    const root = el('div', null, 'lo-root');
-    root.append(el('strong', work.title), el('p', `${work.state_label || labels[work.state]}${work.draft_status ? ` / 원고 ${work.draft_status}` : ''}`));
-    tree.append(root);
-    const branches = el('div', null, 'lo-branches');
-    const assigned = new Set(work.calls.map(c => c.agent));
-    for (const group of data.groups) {
-      const section = el('section', null, 'lo-group'); section.append(el('h3', group.label));
-      const agents = el('div', null, 'lo-agents');
-      for (const key of group.agents.filter(k => assigned.has(k))) {
-        const agent = data.agents[key]; if (!agent) continue;
-        const calls = work.calls.filter(c => c.agent === key).reverse();
-        const running = calls.some(c => c.state === 'running');
-        const state = running ? 'running' : calls.some(c => c.state === 'unknown') ? 'unknown' : calls.length ? 'done' : 'pending';
-        const node = el('article', null, `lo-agent${running ? ' is-running' : ''}`);
-        const head = el('div', null, 'lo-agent-head'), who = el('div');
-        who.append(el('h4', agent.name), el('small', agent.title)); head.append(who, badge(state)); node.append(head);
-        const list = el('div', null, 'lo-task-list');
-        const ordered = [...calls.filter(c => c.state === 'running'), ...calls.filter(c => c.state !== 'running')];
-        const history = el('details', null, 'lo-history');
-        if (ordered.length > 1) history.append(el('summary', `이전 기록 ${ordered.length - 1}건`));
-        for (const [index, c] of ordered.entries()) {
-          const b = el('button', c.label, 'lo-task'); b.type = 'button'; b.dataset.item = c.id;
-          b.setAttribute('aria-pressed', String(c.id === selectedItem));
-          b.append(el('small', `${labels[c.state] || c.state} · ${time(c.at)}`));
-          if (index === 0) list.append(b); else history.append(b);
-        }
-        if (ordered.length > 1) list.append(history);
-        node.append(list);
-        if (!calls.length) node.append(el('p', '기록된 호출이 없어요.', 'lo-agent-empty'));
-        agents.append(node);
-      }
-      if (agents.childElementCount) { section.append(agents); branches.append(section); }
+    app.querySelector('[data-map-caption]').textContent = work?.title || '작업을 기다리고 있어요.';
+    for (const node of nodes) {
+      const key = node.dataset.agent, agent = data.agents[key];
+      const calls = [...(work?.calls || [])].filter(c => c.agent === key).reverse();
+      if (key === 'research') node.hidden = !calls.length;
+      const active = calls.find(c => c.state === 'running');
+      const latest = active || calls[0];
+      const state = active ? 'running' : latest?.state || 'idle';
+      node.dataset.state = state;
+      node.setAttribute('aria-pressed', String(selectedAgent === key));
+      const status = active ? active.label : labels[state] || '대기';
+      node.querySelector('[data-node-status]').textContent = status;
+      node.setAttribute('aria-label', `${agent?.name || key} · ${agent?.title || ''} · ${status}`);
+      node.title = latest ? `${status} · ${time(latest.at)}` : '이 작업에는 아직 참여 기록이 없어요.';
     }
-    tree.append(branches);
-    if (!work.calls.length) tree.append(el('p', work.state === 'pending' ? '실행을 기다려요. 시작되면 실제 호출이 여기에 표시돼요.' : '호출 관측 기록이 없어요. 기존 작업은 저장된 산출물만 표시할 수 있어요.', 'lo-empty'));
-    const item = work.calls.find(c => c.id === selectedItem);
-    if (item) showItem(work, item); else { selectedItem = null; showSummary(work); }
+    updateFlows(work);
+    const item = work?.calls.find(c => c.id === selectedItem);
+    if (item) showItem(work, item);
+    else if (selectedAgent) { selectedItem = null; showAgent(work); }
+    else if (work) { selectedItem = null; showSummary(work); }
+    else panel.replaceChildren(el('p', '에이전트를 선택해 팀의 역할을 살펴봐요.', 'lo-empty'));
     if (focusKey) app.querySelector(`[data-${focusType}="${CSS.escape(focusKey)}"]`)?.focus({preventScroll:true});
   }
   jobs.addEventListener('click', e => {
     const b = e.target.closest('[data-work]'); if (!b) return;
-    selectedWork = b.dataset.work; selectedItem = null; detailKey = ''; draw();
+    selectedWork = b.dataset.work; selectedItem = null; selectedAgent = null; detailKey = ''; draw();
   });
   tree.addEventListener('click', e => {
+    const b = e.target.closest('[data-agent]'); if (!b) return;
+    selectedAgent = b.dataset.agent; selectedItem = null; detailKey = ''; draw();
+  });
+  panel.addEventListener('click', e => {
+    const back = e.target.closest('[data-back-agent]');
+    if (back) { selectedAgent = back.dataset.backAgent; selectedItem = null; detailKey = ''; draw(); return; }
     const b = e.target.closest('[data-item]'); if (!b) return;
     selectedItem = b.dataset.item; detailKey = ''; draw();
   });
@@ -145,13 +231,15 @@
         throw Error('관리자 인증이 필요해요. 연구실 관리에서 다시 인증해 주세요.');
       }
       if (!res.ok) throw Error('현황을 가져오지 못했어요. 잠시 후 다시 확인해요.');
-      data = await res.json(); failures = 0;
+      data = await res.json(); failures = 0; connected = true;
       if (!data.works.some(w => w.id === selectedWork)) { selectedWork = data.works[0]?.id; selectedItem = null; }
       const next = JSON.stringify(data.works);
       if (signature !== next) { signature = next; draw(); }
+      else updateFlows(current());
       connection.textContent = paused ? '자동 갱신을 멈췄어요.' : '실시간 연결 중 · 3초마다 확인해요.';
       app.querySelector('[data-updated]').textContent = `마지막 확인 ${time(data.now)}`;
     } catch (e) {
+      connected = false; syncMotion();
       failures = Math.min(failures + 1, 4);
       connection.textContent = e.message?.includes('인증') ? e.message : '연결이 끊겼어요. 마지막 확인 내용을 유지하고 다시 시도해요.';
     } finally { clearTimeout(timeout); controller = null; schedule(); }
@@ -159,10 +247,14 @@
   pause.addEventListener('click', () => {
     paused = !paused; pause.textContent = paused ? '자동 갱신 다시 시작' : '자동 갱신 멈추기';
     connection.textContent = paused ? '자동 갱신을 멈췄어요.' : '다시 연결해요.';
+    syncMotion();
     if (paused) clearTimeout(timer); else refresh();
   });
   app.querySelector('[data-refresh]').addEventListener('click', refresh);
-  document.addEventListener('visibilitychange', () => { if (document.hidden) clearTimeout(timer); else if (!paused) refresh(); });
-  window.addEventListener('pagehide', () => { paused = true; clearTimeout(timer); controller?.abort(); });
+  motion.addEventListener('click', () => { motionPaused = !motionPaused; syncMotion(); });
+  reduced.addEventListener('change', () => { motionPaused = reduced.matches; flowSignature = ''; updateFlows(current()); });
+  document.addEventListener('visibilitychange', () => { syncMotion(); if (document.hidden) clearTimeout(timer); else if (!paused) refresh(); });
+  window.addEventListener('pagehide', () => { paused = true; clearTimeout(timer); controller?.abort(); syncMotion(); });
+  syncMotion();
   refresh();
 })();

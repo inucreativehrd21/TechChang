@@ -77,6 +77,24 @@ class ObservatoryTests(TestCase):
                                 {'run': str(self.run_id), 'item': f'stage-{self.stage.pk}'}, **UA).json()
         self.assertIn('<script>untrusted()</script>', detail['text'])
 
+    def test_team_is_rendered_in_full_even_when_no_work_is_selected(self):
+        from office.agents import AGENTS
+        self.login()
+        html = self.client.get('/lab/admin/observatory/', **UA).content.decode()
+        for key, agent in AGENTS.items():
+            self.assertIn(f'data-agent="{key}" data-state="idle"', html)
+            self.assertIn(agent['name'], html)
+        self.assertIn('data-motion', html)
+
+    def test_transfers_keep_recorded_sender_and_recipient_without_inventing_relationships(self):
+        self.stage.sender, self.stage.recipient = 'coding', 'checker'
+        self.stage.save(update_fields=['sender', 'recipient'])
+        work = next(w for w in snapshot()['works'] if w['id'] == str(self.run_id))
+        stage = next(c for c in work['calls'] if c['id'] == f'stage-{self.stage.pk}')
+        self.assertEqual((stage['sender'], stage['recipient']), ('coding', 'checker'))
+        call = next(c for c in work['calls'] if c['id'] == 'call-abc')
+        self.assertNotIn('sender', call)
+
     def test_polling_does_not_load_full_stage_outputs_or_call_records(self):
         from django.db import connection
         from django.test.utils import CaptureQueriesContext
