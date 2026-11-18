@@ -11,6 +11,7 @@ from django.utils.dateparse import parse_datetime
 from .agents import AGENTS, INTERNAL_AGENTS
 from .models import ColumnDraft, JobRequest, StageRun
 from . import activity
+from .observatory_reports import OUTCOME_KEYS, outcome, report
 
 STAGES = {'brief': '기획', 'draft': '집필', 'check': '사실 검증', 'recheck': '재검증',
           'review': '편집 심사', 'critique': '독자 관점 평론', 'chart': '도판 제작',
@@ -27,6 +28,18 @@ def _detail(value):
     return text[:24000]+('\n\n(긴 산출물은 앞 24,000자까지 표시해요.)' if len(text) > 24000 else '')
 
 
+def _call_state(call, meta, job, now):
+    state = call.get('state', 'unknown')
+    if state != 'running':
+        return state
+    started = parse_datetime(call.get('started_at', ''))
+    valid_job = (job and job.status == 'started' and job.lease_until and job.lease_until > now
+                 and (not meta.get('execution_id') or str(job.execution_id) == meta['execution_id']))
+    recent_manual = (not meta.get('job_id') and started and timezone.is_aware(started)
+                     and timedelta(0) <= now-started < timedelta(minutes=21))
+    return 'running' if valid_job or recent_manual else 'unknown'
+
+
 def snapshot():
     now = timezone.now()
     live = activity.recent()
@@ -40,7 +53,13 @@ def snapshot():
     run_ids.update(str(j.checkpoint_run_id) for j in jobs if j.checkpoint_run_id)
     rows = list(StageRun.objects.filter(run_id__in=run_ids).only(
                     'id', 'run_id', 'draft_id', 'seq', 'stage', 'agent', 'sender', 'recipient', 'status', 'created_at')
-                .order_by('-created_at')[:1000])
+                .order_by('-created_at', '-pk')[:1000])
+    latest = {}
+    for row in rows:  # 최신 담당자별 결과만 작은 JSON 필드로 읽어요. 본문은 상세 선택 시에만 읽어요.
+        latest.setdefault((str(row.run_id), row.agent), row.pk)
+    verdicts = {}
+    for value in StageRun.objects.filter(pk__in=latest.values()).values('pk', *('output__'+key for key in OUTCOME_KEYS)):
+        verdicts[value['pk']] = {key: value['output__'+key] for key in OUTCOME_KEYS if value['output__'+key] is not None}
     draft_ids = {s.draft_id for s in rows if s.draft_id}
     draft_ids.update(p.get('metadata', {}).get('draft_id') for p in live
                      if type(p.get('metadata', {}).get('draft_id')) is int)
@@ -69,22 +88,20 @@ def snapshot():
         call_rows = []
         for call in payload.get('calls', [])[-120:]:
             call = dict(call)
-            started = parse_datetime(call.get('started_at', ''))
-            if call.get('state') == 'running':
-                # 완료 통지가 없는 호출을 계속 실행 중으로 표시하지 않아요.
-                valid_job = (job and job.status == 'started' and job.lease_until and job.lease_until > now)
-                recent_manual = not meta.get('job_id') and started and now-started < timedelta(minutes=21)
-                if not (valid_job or recent_manual):
-                    call['state'] = 'unknown'
+            call['state'] = _call_state(call, meta, job, now)
             call_rows.append({'id': 'call-'+str(call.get('id')), 'agent': call.get('agent', ''),
+                'stage': call.get('stage', ''),
                 'label': STAGES.get(call.get('stage'), call.get('stage') or '에이전트 작업'),
                 'state': call.get('state', 'unknown'), 'at': call.get('started_at'),
                 'ended_at': call.get('ended_at'), 'model': call.get('model', ''),
                 'detail': (call.get('result') or '응답을 기다려요. 완료되면 내용을 표시해요.')[:240]})
         for row in stages:
+            execution = {'ok': 'done', 'failed': 'failed', 'skipped': 'skipped'}.get(row.status, 'unknown')
             call_rows.append({'id': 'stage-'+str(row.pk), 'agent': row.agent or 'lead',
+                'stage': row.stage,
                 'label': STAGES.get(row.stage, row.stage),
-                'state': {'ok': 'done', 'failed': 'failed', 'skipped': 'skipped'}.get(row.status, 'unknown'),
+                'state': execution,
+                'outcome': outcome(row.stage, verdicts[row.pk], execution) if row.pk in verdicts else None,
                 'at': row.created_at.isoformat(), 'ended_at': row.created_at.isoformat(), 'model': '',
                 'detail': '선택하면 저장된 산출물 내용을 확인할 수 있어요.',
                 'sender': row.sender, 'recipient': row.recipient,
@@ -128,21 +145,36 @@ def detail(run_id, item_id):
     try:
         run_id = str(uuid.UUID(run_id))
         if item_id.startswith('stage-'):
-            row = StageRun.objects.only('output').get(run_id=run_id, pk=int(item_id[6:]))
-            return {'text': _detail(row.output)}
+            row = StageRun.objects.only('output', 'stage', 'status', 'error', 'seq').get(run_id=run_id, pk=int(item_id[6:]))
+            execution = {'ok': 'done', 'failed': 'failed', 'skipped': 'skipped'}.get(row.status, 'unknown')
+            value = row.output
+            if row.stage == 'final' and isinstance(value, dict) and value.get('review_digest'):
+                review = StageRun.objects.filter(run_id=run_id, stage='review', seq__lt=row.seq, status='ok').only('output').order_by('-seq').first()
+                if review and isinstance(review.output, dict):
+                    from .audit import fingerprint
+                    from .evidence_bundle import report_payload
+                    if fingerprint(report_payload(review.output)) == value['review_digest']:
+                        value = {**review.output, **value}
+            return {'text': _detail(row.output), 'report': report(row.stage, value, execution, error=row.error)}
         if item_id.startswith('call-'):
             path = activity.root()/(run_id+'.json')
             if path.is_symlink():
                 raise ValueError
             payload = json.loads(path.read_text(encoding='utf-8'))
             row = next(c for c in payload['calls'] if c['id'] == item_id[5:])
+            meta = payload.get('metadata') or {}
+            job_id = str(meta.get('job_id', ''))
+            job = JobRequest.objects.filter(pk=job_id).first() if job_id.isdigit() else None
+            state = _call_state(row, meta, job, timezone.now())
             call_id = uuid.UUID(hex=item_id[5:]).hex
             result_path = activity.root()/run_id/(call_id+'.txt')
             if result_path.exists():
                 if result_path.resolve() != result_path.absolute():
                     raise ValueError
-                return {'text': result_path.read_text(encoding='utf-8')}
-            return {'text': row.get('result') or '응답을 기다려요. 완료되면 내용을 표시해요.'}
+                value = result_path.read_text(encoding='utf-8')[:24000]
+            else:
+                value = row.get('result') or '응답을 기다려요. 완료되면 내용을 표시해요.'
+            return {'text': value, 'report': report(row.get('stage', ''), value, state, canonical=False)}
     except (ValueError, OSError, StopIteration, KeyError, StageRun.DoesNotExist):
         pass
     raise Http404

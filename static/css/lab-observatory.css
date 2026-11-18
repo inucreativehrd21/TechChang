@@ -2,6 +2,8 @@
   --lo-accent: var(--accent-primary, #4f46e5);
   --lo-line: var(--border-color, #e4e4e7);
   --lo-muted: var(--text-tertiary, #71717a);
+  --lo-blue: #2563eb;
+  --lo-red: #dc2626;
   max-width: 1800px;
   margin: 0 auto;
   padding: 22px 26px;
@@ -151,3 +153,40 @@
 }
 .lo-agent-node strong, .lo-agent-role, .lo-agent-status { background: rgba(255,255,255,.78); padding-inline: 4px; }
 .lo-agent-node strong { margin-top: 3px; line-height: 1.3; }.lo-agent-role, .lo-agent-status { line-height: 1.3; }.lo-agent-node:not([data-state=running]) .lo-agent-status { display: none; }.lo-agent-node[data-state=running] .lo-agent-role { display: none; }
+.lo .lo-agent-node[data-outcome] .lo-agent-status { display: block; }
+.lo-agent-node[data-outcome=running], .lo-agent-node[data-outcome=passed] { --lo-signal: var(--lo-blue); --lo-halo: rgba(37,99,235,.2); }
+.lo-agent-node[data-outcome=blocked], .lo-agent-node[data-outcome=attention] { --lo-signal: var(--lo-red); --lo-halo: rgba(220,38,38,.2); }
+.lo-agent-node:is([data-outcome=running],[data-outcome=passed],[data-outcome=blocked],[data-outcome=attention]) .lo-agent-orbit { color: var(--lo-signal); border-color: var(--lo-signal); box-shadow: 0 0 0 3px var(--lo-halo); }
+.lo-agent-node:is([data-outcome=running],[data-outcome=passed],[data-outcome=blocked],[data-outcome=attention]) .lo-agent-orbit::before { opacity: 1; background: radial-gradient(circle,var(--lo-halo),transparent 70%); }
+.lo-agent-node:is([data-outcome=running],[data-outcome=passed],[data-outcome=blocked],[data-outcome=attention]) .lo-agent-lamp { background: var(--lo-signal); box-shadow: 0 0 10px var(--lo-signal); }
+.lo-agent-node:is([data-outcome=running],[data-outcome=passed],[data-outcome=blocked],[data-outcome=attention]) .lo-agent-status { color: var(--lo-signal); }
+.lo-agent-node:is([data-outcome=blocked],[data-outcome=attention]) .lo-agent-orbit::before { animation: lo-breathe 3s ease-in-out infinite; }
+.lo-legend .lo-legend-glow { background: var(--lo-blue); }
+.lo-legend .lo-legend-problem { width: 6px; height: 6px; border: 0; border-radius: 50%; background: var(--lo-red); }
+.lo-workspace { grid-template-columns: 180px minmax(0,1fr) 360px; }
+.lo-detail h4 { font-size: .78rem; font-weight: 750; margin: 18px 0 7px; }
+.lo-verdict { padding: 12px; border-left: 3px solid var(--lo-line); background: #fafafa; margin: 12px 0; }
+.lo-verdict:is([data-outcome=running],[data-outcome=passed]) { border-color: var(--lo-blue); background: #eff6ff; }
+.lo-verdict:is([data-outcome=blocked],[data-outcome=attention]) { border-color: var(--lo-red); background: #fef2f2; }
+.lo-result-label { font-size: .82rem; font-weight: 750; }
+.lo-result-label:is([data-outcome=running],[data-outcome=passed]) { color: var(--lo-blue); }
+.lo-result-label:is([data-outcome=blocked],[data-outcome=attention]) { color: var(--lo-red); }
+.lo-verdict p { margin-top: 5px; }
+.lo-report-metrics { display: flex; flex-wrap: wrap; gap: 8px 18px; padding: 10px 0; margin: 0; border-bottom: 1px solid var(--lo-line); }
+.lo-report-metrics dt { font-size: .66rem; font-weight: 500; color: var(--lo-muted); }
+.lo-report-metrics dd { margin: 0; font-size: .9rem; font-weight: 700; }
+.lo-report-item { border-bottom: 1px solid var(--lo-line); padding: 10px 0; }
+.lo-report-section > summary { cursor: pointer; font-size: .78rem; font-weight: 650; padding-block: 12px; }
+.lo-report-item > strong { font-size: .78rem; line-height: 1.7; display: block; overflow-wrap: anywhere; }
+.lo-report-item p, .lo-report-item dd { white-space: pre-wrap; }
+.lo-report-item dl { margin: 8px 0 0; }
+.lo-report-item dt { font-size: .65rem; color: var(--lo-muted); margin-top: 7px; }
+.lo-report-item dd { margin: 0; font-size: .76rem; line-height: 1.8; overflow-wrap: anywhere; }
+.lo-raw, .lo-history { margin-top: 18px; border-top: 1px solid var(--lo-line); padding-top: 10px; }
+.lo-raw summary, .lo-history summary { cursor: pointer; font-size: .75rem; font-weight: 650; padding-block: 6px; }
+.lo-raw pre { font-family: ui-monospace,monospace; font-size: .68rem; }
+@media (max-width:1199px) { .lo-workspace { grid-template-columns:150px minmax(0,1fr) 300px; } }
+@media (max-width:959px) { .lo-workspace { grid-template-columns:150px minmax(0,1fr); }.lo-detail { max-height:650px; } }
+@media (max-width:575px) { .lo-detail { max-height:720px; } }
+.lo.is-motion-paused .lo-agent-orbit::before { animation-play-state: paused; }
+.lo.is-suspended .lo-agent-orbit::before { opacity: .25; }

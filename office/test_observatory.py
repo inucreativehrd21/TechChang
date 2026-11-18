@@ -1,4 +1,5 @@
 import json
+import re
 from pathlib import Path
 import tempfile
 import uuid
@@ -100,10 +101,46 @@ class ObservatoryTests(TestCase):
         from django.test.utils import CaptureQueriesContext
         with CaptureQueriesContext(connection) as queries:
             snapshot()
-        stage_selects = [q['sql'] for q in queries if 'FROM "office_stagerun"' in q['sql']]
+        table = connection.ops.quote_name('office_stagerun')
+        stage_selects = [q['sql'] for q in queries if f'FROM {table}' in q['sql']]
         self.assertTrue(stage_selects)
-        self.assertTrue(all('"output"' not in sql and '"calls"' not in sql for sql in stage_selects))
-        self.assertLessEqual(len(queries), 7)
+        for sql in stage_selects:
+            for field in ('output', 'calls'):
+                self.assertNotRegex(sql, rf'(?:SELECT\s+|,\s*){re.escape(table)}\.{re.escape(connection.ops.quote_name(field))}(?:\s*,|\s+FROM)')
+            self.assertNotIn('$."content"', sql)
+        self.assertLessEqual(len(queries), 8)
+
+    def test_successful_execution_with_failed_review_is_shown_as_not_passed(self):
+        StageRun.objects.create(run_id=self.run_id, draft=self.draft, seq=2, stage='review', agent='editor',
+            output={'verdict': 'accept', 'score': 96, 'must_fix': [{'problem': '출처 미확인', 'fix': '원문 대조'}]})
+        work = next(w for w in snapshot()['works'] if w['id'] == str(self.run_id))
+        saved = next(c for c in work['calls'] if c['stage'] == 'review')
+        self.assertEqual(saved['state'], 'done')
+        self.assertEqual(saved['outcome']['state'], 'blocked')
+
+    def test_latest_result_only_is_used_for_each_agents_signal(self):
+        first = StageRun.objects.create(run_id=self.run_id, seq=2, stage='check', agent='checker',
+                                       output={'verdict': 'fail'})
+        last = StageRun.objects.create(run_id=self.run_id, seq=3, stage='recheck', agent='checker',
+                                      output={'verdict': 'pass', 'claims': []})
+        work = next(w for w in snapshot()['works'] if w['id'] == str(self.run_id))
+        self.assertIsNone(next(c for c in work['calls'] if c['id'] == f'stage-{first.pk}')['outcome'])
+        self.assertEqual(next(c for c in work['calls'] if c['id'] == f'stage-{last.pk}')['outcome']['state'], 'passed')
+
+    def test_final_report_includes_only_the_review_matching_its_digest(self):
+        from office.audit import fingerprint
+        from office.evidence_bundle import report_payload
+        from office.observatory import detail
+        qa = {'verdict': 'minor', 'score': 75, 'must_fix': [{'problem': '핵심 출처 누락', 'fix': '원문 링크 추가'}]}
+        review = StageRun.objects.create(run_id=self.run_id, seq=2, stage='review', agent='editor', output=qa)
+        final = StageRun.objects.create(run_id=self.run_id, seq=3, stage='final', agent='editor',
+            output={'verdict': 'minor', 'score': 75, 'review_digest': fingerprint(report_payload(qa))})
+        value = detail(str(self.run_id), f'stage-{final.pk}')
+        self.assertIn('핵심 출처 누락', json.dumps(value['report'], ensure_ascii=False))
+        self.assertNotIn('핵심 출처 누락', value['text'])
+        review.output = {**qa, 'notes': '다른 버전의 심사'}
+        review.save(update_fields=['output'])
+        self.assertNotIn('다른 버전의 심사', json.dumps(detail(str(self.run_id), f'stage-{final.pk}')['report'], ensure_ascii=False))
 
     def test_completed_and_stale_jobs_never_claim_a_call_is_still_running(self):
         for fields in ({'status': 'completed'}, {'lease_until': timezone.now()-timedelta(seconds=1)}):

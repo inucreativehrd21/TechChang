@@ -26,6 +26,60 @@
   const badge = (state) => { const n = el('span', labels[state] || state, 'lo-state'); n.dataset.state = state; return n; };
   const time = value => value ? new Date(value).toLocaleTimeString('ko-KR', {hour:'2-digit',minute:'2-digit',second:'2-digit'}) : '';
   const current = () => data?.works.find(w => w.id === selectedWork);
+  const resultBadge = result => {
+    const n = el('span', result.label, 'lo-result-label'); n.dataset.outcome = result.state; return n;
+  };
+  function renderReport(target, detail) {
+    target.replaceChildren();
+    const report = detail.report;
+    if (report) {
+      const verdict = el('section', null, 'lo-verdict'); verdict.dataset.outcome = report.outcome.state;
+      verdict.append(resultBadge(report.outcome), el('p', report.outcome.explanation)); target.append(verdict);
+      if (report.metrics.length) {
+        const metrics = el('dl', null, 'lo-report-metrics');
+        for (const metric of report.metrics) { const row=el('div'); row.append(el('dt',metric.label),el('dd',metric.value));metrics.append(row); }
+        target.append(metrics);
+      }
+      target.append(el('h4','다음 조치'),el('p',report.next_action,'lo-next-action'));
+      for (const section of report.sections) {
+        const group=el(section.collapsible ? 'details' : 'section',null,'lo-report-section');
+        group.append(el(section.collapsible ? 'summary' : 'h4',section.title));
+        for (const item of section.items) {
+          const row=el('div',null,'lo-report-item');
+          if (item.title) row.append(el('strong',item.title));
+          if (item.body) row.append(el('p',item.body));
+          if (item.fields.length) {
+            const fields=el('dl');
+            for (const field of item.fields) fields.append(el('dt',field.label),el('dd',field.text));
+            row.append(fields);
+          }
+          group.append(row);
+        }
+        if (section.omitted) group.append(el('p', `나머지 ${section.omitted}건은 원 데이터에서 확인해요.`, 'lo-meta'));
+        target.append(group);
+      }
+      if (report.limited) target.append(el('p','긴 보고는 일부 항목을 생략했어요. 원 데이터를 함께 확인해 주세요.','lo-meta'));
+    } else target.append(el('p','이 기록의 관리자 보고가 없어요. 원 데이터를 확인해 주세요.'));
+    const raw=el('details',null,'lo-raw');
+    raw.append(el('summary','원 데이터 보기'),el('pre',detail.text || '저장된 원 데이터가 없어요.'));
+    target.append(raw);
+  }
+  async function loadReport(work, item, target, version) {
+    const url = new URL(app.dataset.detailUrl, location.origin);
+    url.searchParams.set('run',work.id); url.searchParams.set('item',item.id);
+    try {
+      const res=await fetch(url,{cache:'no-store',headers:{Accept:'application/json'},signal:AbortSignal.timeout(10000)});
+      if (!res.ok || res.redirected || !res.headers.get('content-type')?.includes('application/json')) throw Error();
+      const detail=await res.json();
+      if (version===detailVersion) renderReport(target,detail);
+    } catch (_) {
+      if (version===detailVersion) {
+        target.replaceChildren(el('p','보고 내용을 불러오지 못했어요. 관리자 인증과 연결을 확인해 주세요.'));
+        const retry=el('button','다시 불러오기','lo-detail-back');retry.type='button';retry.dataset.retryDetail='';target.append(retry);
+        detailKey='';
+      }
+    }
+  }
   const svg = (tag, attributes) => {
     const n = document.createElementNS('http://www.w3.org/2000/svg', tag);
     for (const [key, value] of Object.entries(attributes)) n.setAttribute(key, String(value));
@@ -101,18 +155,26 @@
     syncMotion();
   }
   function showAgent(work) {
-    ++detailVersion; detailKey = '';
     const agent = data.agents[selectedAgent];
-    panel.replaceChildren(el('h3', `${agent.name} · ${agent.title}`));
     const calls = [...(work?.calls || [])].filter(c => c.agent === selectedAgent).reverse();
-    if (!calls.length) { panel.append(el('p', '이 작업에 참여한 기록이 없어요. 팀 안에서 자리를 유지하며 대기해요.', 'lo-empty')); return; }
     const ordered = [...calls.filter(c => c.state === 'running'), ...calls.filter(c => c.state !== 'running')];
+    const latest = ordered[0];
+    const key=`agent/${work?.id}/${selectedAgent}/${latest?.id}/${latest?.state}`;
+    if (detailKey===key) return;
+    detailKey=key;const version=++detailVersion;
+    panel.replaceChildren(el('h3', `${agent.name} · ${agent.title}`));
+    if (!calls.length) { panel.append(el('p', '이 작업에 참여한 기록이 없어요. 팀 안에서 자리를 유지하며 대기해요.', 'lo-empty')); return; }
+    panel.append(el('p',`${latest.label} · ${labels[latest.state] || latest.state} · ${time(latest.at)}`,'lo-meta'));
+    const content=el('div','관리자 보고를 정리하고 있어요.','lo-report');panel.append(content);
+    loadReport(work,latest,content,version);
+    const history=el('details',null,'lo-history');history.append(el('summary',`작업 기록 ${calls.length}건`));
     for (const c of ordered.slice(0,24)) {
       const button = el('button', c.label, 'lo-agent-record');
       button.type = 'button'; button.dataset.item = c.id;
-      button.append(el('small', `${labels[c.state] || c.state} · ${time(c.at)}`));
-      panel.append(button);
+      button.append(el('small', `${c.outcome?.label || labels[c.state] || c.state} · ${time(c.at)}`));
+      history.append(button);
     }
+    panel.append(history);
     if (calls.length > 24) panel.append(el('p', '최근 기록 24건을 표시해요.', 'lo-meta'));
   }
   const showSummary = work => {
@@ -149,17 +211,8 @@
     panel.prepend(back);
     if (item.model) panel.append(el('p', `요청 모델: ${item.model}`, 'lo-meta'));
     if (item.transfer) panel.append(el('p', `전달: ${item.transfer}`, 'lo-meta'));
-    const body = el('pre', item.detail || '내용을 불러와요.'); panel.append(body);
-    const url = new URL(app.dataset.detailUrl, location.origin);
-    url.searchParams.set('run', work.id); url.searchParams.set('item', item.id);
-    try {
-      const res = await fetch(url, {cache:'no-store', headers:{Accept:'application/json'}, signal:AbortSignal.timeout(10000)});
-      if (!res.ok || res.redirected || !res.headers.get('content-type')?.includes('application/json')) throw Error();
-      const detail = await res.json();
-      if (version === detailVersion) body.textContent = detail.text;
-    } catch (_) {
-      if (version === detailVersion) { body.textContent = '내용을 불러오지 못했어요. 다시 선택하거나 관리자 로그인을 확인해 주세요.'; detailKey = ''; }
-    }
+    const body = el('div', '관리자 보고를 불러와요.', 'lo-report'); panel.append(body);
+    loadReport(work,item,body,version);
   }
   function draw() {
     const focus = document.activeElement;
@@ -187,8 +240,11 @@
       const latest = active || calls[0];
       const state = active ? 'running' : latest?.state || 'idle';
       node.dataset.state = state;
+      const decision=active ? {state:'running',label:'진행 중'} : latest?.outcome;
+      const resultState=decision?.state || (state==='failed' ? 'blocked' : state==='unknown' ? 'unknown' : 'idle');
+      node.dataset.outcome=resultState;
       node.setAttribute('aria-pressed', String(selectedAgent === key));
-      const status = active ? active.label : labels[state] || '대기';
+      const status = active ? `진행 중 · ${active.label}` : decision?.label || (state==='done' ? '응답 완료 · 판정 대기' : labels[state] || '대기');
       node.querySelector('[data-node-status]').textContent = status;
       node.setAttribute('aria-label', `${agent?.name || key} · ${agent?.title || ''} · ${status}`);
       node.title = latest ? `${status} · ${time(latest.at)}` : '이 작업에는 아직 참여 기록이 없어요.';
@@ -210,6 +266,7 @@
     selectedAgent = b.dataset.agent; selectedItem = null; detailKey = ''; draw();
   });
   panel.addEventListener('click', e => {
+    if (e.target.closest('[data-retry-detail]')) { detailKey='';draw();return; }
     const back = e.target.closest('[data-back-agent]');
     if (back) { selectedAgent = back.dataset.backAgent; selectedItem = null; detailKey = ''; draw(); return; }
     const b = e.target.closest('[data-item]'); if (!b) return;

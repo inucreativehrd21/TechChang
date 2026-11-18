@@ -7,6 +7,8 @@
 .ad-console .ad-head h1 { font-size: clamp(1.6rem,3vw,2rem); font-weight: 820; letter-spacing: -.045em; margin: 9px 0 8px; }
 .ad-head p { color: var(--ad-muted); font-size: .85rem; margin: 0; line-height: 1.7; }
 .ad-site-link { flex-shrink: 0; font-size: .8rem; padding: 9px 12px; border: 1px solid var(--ad-line); border-radius: 7px; background: #fff; }
+.ad-head-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
+.ad-head-actions .ad-lab-live { color: var(--ad-accent); border-color: var(--ad-accent); background: var(--ad-wash); }
 .ad-nav { display: flex; flex-wrap: nowrap; overflow-x: auto; gap: 4px; padding: 4px 0 0; margin-bottom: 26px; border-bottom: 1px solid var(--ad-line); scrollbar-width: thin; }
 .ad-nav a { flex: 0 0 auto; display: flex; align-items: center; gap: 7px; min-height: 50px; padding: 11px 16px 13px; border-bottom: 2px solid transparent; color: var(--ad-muted); font-size: .84rem; font-weight: 650; white-space: nowrap; }
 .ad-nav a[aria-current] { color: var(--ad-accent); border-color: var(--ad-accent); background: var(--ad-wash); }
