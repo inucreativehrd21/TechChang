@@ -82,6 +82,11 @@ def describe(event, actor):
                    title='예외로 승인했어요' if exception else '검수를 승인했어요', quote=p.get('reason', ''))
         if score is not None:
             out['facts'].append(('승인 당시 심사', f'{score}점'))
+    elif action == 'release_queued':
+        out.update(tone='ok', label='공개 대기', title='승인한 원고를 공개 대기로 옮겼어요')
+        out['facts'].append(('공개 방식', '예약 공개' if p.get('publish_at') else '지금 공개 버튼으로 수동 공개'))
+        if p.get('previous_publish_at') and not p.get('publish_at'):
+            out['facts'].append(('지난 예약', '즉시 공개되지 않도록 해제했어요'))
     elif action == 'approval_revoked':
         out.update(tone='warn', label='승인', title='승인을 취소했어요')
         if p.get('reason'):

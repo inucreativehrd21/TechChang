@@ -164,6 +164,9 @@ class PublicationSafetyTests(TestCase):
         response = self.client.get('/lab/admin/')
         self.assertContains(response, '공개 대기 · 수동 공개')
         self.assertContains(response, '자동 공개 일정이 없으며')
+        history = self.client.get(f'/lab/admin/draft/{ready.pk}/audit/')
+        self.assertContains(history, '승인한 원고를 공개 대기로 옮겼어요')
+        self.assertContains(history, '지금 공개 버튼으로 수동 공개')
 
     def test_changed_fact_report_cannot_approve_a_stale_object(self):
         ColumnDraft.objects.filter(pk=self.draft.pk).update(check_report={'verdict': 'revise'})
