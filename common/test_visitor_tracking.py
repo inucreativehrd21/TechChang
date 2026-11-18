@@ -15,12 +15,14 @@ from community.site_stats import CACHE_KEY
 
 PC = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/130.0 Safari/537.36'
 MOBILE = 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) Mobile/15E148'
+HTML_ACCEPT = 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8'
 
 
 class VisitorIntegrationTests(TestCase):
     def setUp(self):
         cache.clear()
         self.addCleanup(cache.clear)
+        self.client.defaults['HTTP_ACCEPT'] = HTML_ACCEPT
         author = User.objects.create_user(Question.BOT_USERNAME)
         category = Category.objects.create(name='HRD')
         self.question = Question.objects.create(
@@ -48,7 +50,7 @@ class VisitorIntegrationTests(TestCase):
 
     def test_home_first_shows_own_visit_on_pc_and_mobile(self):
         for expected, ua in enumerate((PC, MOBILE), start=1):
-            response = Client().get('/', HTTP_USER_AGENT=ua)
+            response = Client(HTTP_ACCEPT=HTML_ACCEPT).get('/', HTTP_USER_AGENT=ua)
             self.assertEqual(response.status_code, 200)
             self.assertEqual(response.context['visitors_today'], expected)
             self.assertEqual(response.context['visitors_total'], str(expected))
@@ -88,6 +90,7 @@ class VisitorFilterTests(TestCase):
         self.mw = VisitorTrackingMiddleware(lambda request: HttpResponse('본문'))
 
     def request(self, path='/98/', method='get', **headers):
+        headers.setdefault('HTTP_ACCEPT', HTML_ACCEPT)
         req = getattr(self.factory, method)(path, HTTP_USER_AGENT=PC, **headers)
         req.session = {}
         return req
@@ -122,9 +125,53 @@ class VisitorFilterTests(TestCase):
                    'facebookexternalhit/1.1', 'curl/8.0', 'python-requests/2',
                    'HeadlessChrome/130', 'UptimeRobot/2.0'):
             with self.subTest(ua=ua):
-                req = self.factory.get('/', HTTP_USER_AGENT=ua)
+                req = self.factory.get('/', HTTP_USER_AGENT=ua, HTTP_ACCEPT=HTML_ACCEPT)
                 req.session = {}
                 self.mw.record_visit(req, HttpResponse())
+                self.assertFalse(req.session)
+                self.assertFalse(DailyVisitor.objects.exists())
+
+    def test_browser_user_agent_alone_does_not_make_a_collector_a_visit(self):
+        for accept in ('', '*/*', 'application/json', 'text/html;q=0,*/*;q=1', 'text/html;q=invalid'):
+            with self.subTest(accept=accept):
+                req = self.request('/map/?q=AI', HTTP_ACCEPT=accept)
+                self.mw.record_visit(req, HttpResponse())
+                self.assertFalse(req.session)
+                self.assertFalse(DailyVisitor.objects.exists())
+
+    def test_real_browser_navigation_is_kept_including_legacy_and_in_app(self):
+        for headers in ({}, {'HTTP_SEC_FETCH_MODE': 'navigate', 'HTTP_SEC_FETCH_DEST': 'document'},
+                        {'HTTP_ACCEPT': 'application/xhtml+xml'}):
+            with self.subTest(headers=headers):
+                req = self.request('/map/?q=AI', **headers)
+                self.mw.record_visit(req, HttpResponse())
+                self.assertTrue(req.session.get(f'visited_{timezone.localdate()}'))
+        self.assertEqual(DailyVisitor.objects.get().visitor_count, 3)
+
+    def test_fetching_html_for_data_is_not_navigation(self):
+        req = self.request('/map/', HTTP_SEC_FETCH_MODE='cors')
+        self.mw.record_visit(req, HttpResponse())
+        self.assertFalse(DailyVisitor.objects.exists())
+
+    def test_new_automation_and_verification_agents_never_count_even_with_html_headers(self):
+        for ua in ('-', 'Go-http-client/1.1', 'WebSiphon/next-0.1', 'sqlmap/1.9', 'Nuclei',
+                   'meta-webindexer/1.1', 'meta-externalagent/1.1', 'ChatGPT-User/1.0',
+                   'Claude-User/1.0', 'ExaUser/1.0', 'GoogleOther', 'axios/1.7',
+                   'Mozilla/5.0 TechChangReleaseCheck', 'Mozilla/5.0 TechChang verification'):
+            with self.subTest(ua=ua):
+                req = self.factory.get('/', HTTP_USER_AGENT=ua, HTTP_ACCEPT=HTML_ACCEPT)
+                req.session = {}
+                self.mw.record_visit(req, HttpResponse())
+                self.assertFalse(req.session)
+                self.assertFalse(DailyVisitor.objects.exists())
+
+    @override_settings(SCANNER_PATH_PATTERNS=[r'\.env', r'/\.git/'])
+    def test_probe_paths_never_count_even_if_an_upstream_returns_html_200(self):
+        middleware = VisitorTrackingMiddleware(lambda request: HttpResponse())
+        for path in ('/.env', '/app/.env.production', '/%2egit/HEAD'):
+            with self.subTest(path=path):
+                req = self.request(path)
+                middleware.record_visit(req, HttpResponse())
                 self.assertFalse(req.session)
                 self.assertFalse(DailyVisitor.objects.exists())
 
@@ -154,6 +201,7 @@ class VisitorConsumerCompatibilityTests(TestCase):
     def setUp(self):
         cache.clear()
         self.addCleanup(cache.clear)
+        self.client.defaults['HTTP_ACCEPT'] = HTML_ACCEPT
         self.today = timezone.localdate()
         DailyVisitor.objects.create(date=self.today - timedelta(days=1), visitor_count=1000)
         DailyVisitor.objects.create(date=self.today, visitor_count=234)
@@ -169,7 +217,7 @@ class VisitorConsumerCompatibilityTests(TestCase):
         original = self.portfolio.html_content
         for ua in (PC, MOBILE):
             with self.subTest(ua=ua):
-                client = Client()
+                client = Client(HTTP_ACCEPT=HTML_ACCEPT)
                 expected = DailyVisitor.objects.get(date=self.today).visitor_count + 1
                 # 이전 캐시를 읽은 상태에서도 새 방문 후 최신 통계를 받아야 해요.
                 site_stats.stats()

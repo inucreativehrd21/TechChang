@@ -1,6 +1,6 @@
 """정상 HTML 방문을 한국 시간 기준 세션당 하루 한 번 집계해요."""
 import re
-from urllib.parse import urlsplit
+from urllib.parse import unquote, urlsplit
 
 from django.conf import settings
 from django.core.cache import cache
@@ -15,7 +15,13 @@ class VisitorTrackingMiddleware:
     # 검색엔진의 크롤링 허용 여부와 방문자 통계 포함 여부는 별개예요.
     AUTOMATED_AGENT = re.compile(
         r'bot|crawler|spider|scraper|slurp|yeti|facebookexternalhit|'
-        r'curl|wget|python|httpx|headless|uptime|monitor|healthcheck', re.I,
+        r'curl|wget|python|httpx|headless|uptime|monitor|healthcheck|'
+        r'Go-http-client|Apache-HttpClient|aiohttp|node-fetch|axios|libwww|okhttp|'
+        r'zgrab|masscan|nmap|nikto|sqlmap|gobuster|dirbuster|nuclei|WebSiphon|'
+        r'meta-(?:externalagent|externalfetcher|webindexer)|'
+        r'ChatGPT-User|Claude-User|ExaUser|GoogleOther|Google-InspectionTool|'
+        r'TechChang(?:ReleaseCheck|[ -](?:release|verification|approval))|'
+        r'Chrome Privacy Preserving Prefetch Proxy', re.I,
     )
 
     def __init__(self, get_response):
@@ -26,6 +32,8 @@ class VisitorTrackingMiddleware:
             urlsplit(settings.STATIC_URL).path or '/static/',
             urlsplit(settings.MEDIA_URL).path or '/media/',
         )))
+        self.scanner_patterns = [re.compile(pattern, re.I) for pattern in
+                                 getattr(settings, 'SCANNER_PATH_PATTERNS', ())]
 
     def __call__(self, request):
         response = self.get_response(request)
@@ -80,7 +88,16 @@ class VisitorTrackingMiddleware:
         if match and (match.app_name == 'admin' or match.url_name == 'portfolio_collection_raw'):
             return False
         agent = request.headers.get('User-Agent', '').strip()
-        if not agent or self.AUTOMATED_AGENT.search(agent):
+        if not agent or agent == '-' or self.AUTOMATED_AGENT.search(agent):
+            return False
+        # 브라우저 UA만 복사한 HTTP 수집기를 방문으로 세지 않아요.
+        # Safari·인앱 브라우저처럼 Fetch Metadata가 없는 정상 탐색은 HTML Accept로 허용해요.
+        if not self.accepts_html(request.headers.get('Accept', '')):
+            return False
+        if request.headers.get('Sec-Fetch-Mode', 'navigate') != 'navigate':
+            return False
+        path = unquote(request.path_info)
+        if any(pattern.search(path) for pattern in self.scanner_patterns):
             return False
         if request.headers.get('X-Requested-With', '').lower() == 'xmlhttprequest':
             return False
@@ -90,3 +107,18 @@ class VisitorTrackingMiddleware:
         if 'prefetch' in (request.headers.get('Purpose', '') + request.headers.get('Sec-Purpose', '')).lower():
             return False
         return True
+
+    @staticmethod
+    def accepts_html(accept):
+        """와일드카드만 보내는 수집기 대신 HTML을 명시한 탐색을 집계해요."""
+        for value in accept.lower().split(','):
+            media, *params = (part.strip() for part in value.split(';'))
+            if media not in ('text/html', 'application/xhtml+xml'):
+                continue
+            try:
+                quality = next((float(p[2:]) for p in params if p.startswith('q=')), 1)
+            except ValueError:
+                continue
+            if 0 < quality <= 1:
+                return True
+        return False
