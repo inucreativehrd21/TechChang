@@ -65,7 +65,7 @@
       {% empty %}<p class="dr-empty">검수 대기 칼럼이 없어요.</p>{% endfor %}
 
       {% if ready %}
-      <div class="dr-sec"><h2>공개 대기</h2><span class="dr-count">{{ ready|length }}</span><p>심사를 통과해 예정 시각에 자동으로 공개돼요.</p></div>
+      <div class="dr-sec"><h2>공개 대기</h2><span class="dr-count">{{ ready|length }}</span><p>승인을 마친 원고예요. 예약 일정이 없으면 지금 공개로 올려 주세요.</p></div>
       {% for d in ready %}{% include 'office/_draft_card.html' with d=d kind='ready' %}{% endfor %}
       {% endif %}
 

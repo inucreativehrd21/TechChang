@@ -9,6 +9,38 @@ from office.audit import append, verify
 
 @skipUnlessDBFeature('has_select_for_update')
 class AuditConcurrencyTests(TransactionTestCase):
+    def test_concurrent_approval_queues_once_under_the_same_draft_lock(self):
+        from django.contrib.auth.models import User
+        from office.models import ColumnDraft
+        from office.test_lab_safety import certified
+        from office.approval import approve_for_release, valid
+        from office.audit import snapshot, fingerprint
+        owner = User.objects.create_superuser('admin', '', 'x')
+        draft = certified(ColumnDraft.objects.create(topic='data', status='hold', subject='동시 승인',
+            content='검증한 본문', qa_report={'verdict': 'accept', 'score': 90}))
+        version = fingerprint(snapshot(draft))
+        barrier = Barrier(2)
+        def writer(_):
+            close_old_connections()
+            try:
+                barrier.wait(timeout=10)
+                try:
+                    approve_for_release(draft.pk, owner, expected_snapshot=version)
+                    return 'ready'
+                except ValueError as exc:
+                    return str(exc)
+            finally:
+                close_old_connections()
+        with ThreadPoolExecutor(max_workers=2) as executor:
+            results = list(executor.map(writer, [1, 2]))
+        self.assertEqual(results.count('ready'), 1)
+        self.assertTrue(any('이미 공개 대기' in result for result in results))
+        draft.refresh_from_db()
+        self.assertEqual(draft.status, 'ready')
+        self.assertTrue(valid(draft))
+        self.assertEqual(AuditEvent.objects.filter(action='approved').count(), 1)
+        self.assertEqual(AuditEvent.objects.filter(action='release_queued').count(), 1)
+
     def test_two_connections_append_distinct_ordered_events(self):
         AuditHead.objects.create(pk=1)
         barrier = Barrier(2)

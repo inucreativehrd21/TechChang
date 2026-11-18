@@ -242,6 +242,13 @@ def office_admin(request, *, decision_payload=None, decision_errors=None, decisi
         d.topic_name = TOPIC_LABEL.get(d.topic, '')
         if d.status in (ColumnDraft.STATUS_HOLD, ColumnDraft.STATUS_READY) and not getattr(d, 'busy_state', None):
             d.approval_version = fingerprint(snapshot(d))
+            if d.status == ColumnDraft.STATUS_HOLD:
+                from .approval import policy
+                try:
+                    policy(d)
+                    d.approval_blocker = ''
+                except ValueError as exc:
+                    d.approval_blocker = str(exc)
     for m in meetings:
         for d in m.decisions.all():
             d.topic_name = TOPIC_LABEL.get(d.topic, '')
@@ -359,37 +366,25 @@ def _save_meeting_decisions(request, meeting_id, payload):
 @admin_required
 @require_POST
 def draft_publish(request, draft_id):
-    from .approval import approve, valid
-    from . import schedule as S
-    draft = get_object_or_404(ColumnDraft, pk=draft_id, status__in=[ColumnDraft.STATUS_HOLD, ColumnDraft.STATUS_READY])
-    from .draft_state import guard
-    busy = guard(draft, '승인·공개')
-    if busy:        # 재작성이 대기·진행 중이면 곧 덮어쓸 옛 원고를 공개하지 않는다
-        messages.error(request, busy)
-        return redirect('office:admin')
+    from .approval import approve_for_release
+    get_object_or_404(ColumnDraft, pk=draft_id)
     mode = request.POST.get('mode', 'normal')
     if mode == 'exception' and not _admin_otp_session_ok(request):
         request.session['admin_otp_next'] = reverse('office:admin') + '#drafts'
         return redirect('common:admin_otp')
     try:
-        from .audit import snapshot, fingerprint
-        version = request.POST.get('version')
-        if not version or version != fingerprint(snapshot(draft)):
-            raise ValueError('검수 화면을 연 뒤 원고나 검증 자료가 바뀌었어요. 새로고침 후 다시 확인해 주세요.')
-        if not request.POST.get('now'):
-            approve(draft, request.user, request.POST.get('reason', ''), mode=mode, expected_snapshot=version)
-        if not valid(draft):
-            raise ValueError('현재 원고를 먼저 검수하고 승인해 주세요.')
-        if draft.publish_at and draft.publish_at > timezone.now() and not request.POST.get('now'):
-            draft.status = ColumnDraft.STATUS_READY
-            draft.save(update_fields=['status'])
-            messages.success(request, '승인한 원고를 예약 공개해요.')
+        draft = approve_for_release(draft_id, request.user, expected_snapshot=request.POST.get('version'),
+                                    reason=request.POST.get('reason', ''), mode=mode,
+                                    now=bool(request.POST.get('now')))
+        if request.POST.get('now'):
+            messages.success(request, f'원고 #{draft.pk}: 공개했어요.')
+        elif draft.publish_at:
+            messages.success(request, f'원고 #{draft.pk}: 승인을 마치고 공개 대기로 옮겼어요. 예정 시각에 공개돼요.')
         else:
-            S.publish_now(draft, by=request.user)
-            messages.success(request, '검수한 원고를 공개했어요.')
+            messages.success(request, f'원고 #{draft.pk}: 승인을 마치고 공개 대기로 옮겼어요. 지금 공개를 누르면 공개돼요.')
     except ValueError as exc:
-        messages.error(request, str(exc))
-    return redirect('office:admin')
+        messages.error(request, f'원고 #{draft_id}: {exc}')
+    return redirect(reverse('office:admin') + '#drafts')
 
 
 @admin_required

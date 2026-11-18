@@ -8,7 +8,7 @@
       {% if d.busy_state == 'queued' %}<span class="dr-chip is-state is-live">재작성 대기</span>
       {% elif d.busy_state == 'running' %}<span class="dr-chip is-state is-live">재작성 중</span>
       {% elif d.busy_state == 'attention' %}<span class="dr-chip is-attention">종료 확인 필요</span>
-      {% elif kind == 'ready' %}<span class="dr-chip is-ready">{{ d.publish_at|date:"m/d H:i" }} 공개 예정</span>
+      {% elif kind == 'ready' %}<span class="dr-chip is-ready">{% if d.publish_at %}{{ d.publish_at|date:"m/d H:i" }} 공개 예정{% else %}공개 대기 · 수동 공개{% endif %}</span>
       {% else %}<span class="dr-chip is-state">검수 대기</span>{% endif %}
       <span class="dr-chip">{{ d.topic_name }}</span>
       <span class="dr-chip">{% if d.series_key %}연재 {{ d.episode_number }}편{% else %}{{ d.get_column_track_display|default:"기존 칼럼" }}{% endif %}</span>
@@ -22,7 +22,7 @@
   </header>
 
   <div class="dr-body">
-    <div class="dr-score{% if d.qa_score >= 85 %} is-pass{% endif %}">
+    <div class="dr-score{% if d.qa_verdict == 'accept' %} is-pass{% endif %}">
       <b>{{ d.qa_score|default:"-" }}</b><span>/100</span>
       <small>편집 심사{% if d.qa_verdict %} · {{ d.qa_verdict }}{% endif %}<br>본문 {{ d.qa_report.length|default:"?" }}자</small>
     </div>
@@ -132,12 +132,13 @@
     <form class="dr-decide" method="post" action="{% url 'office:draft_publish' d.id %}" data-lock>{% csrf_token %}
       <input type="hidden" name="version" value="{{ d.approval_version }}">
       <label class="dr-label" for="approval-mode-{{ d.id }}">검수 결정</label>
+      {% if d.approval_blocker %}<p class="dr-hint" role="note"><strong>일반 승인 전 확인</strong> — {{ d.approval_blocker }}</p>{% else %}<p class="dr-hint">현재 원고의 검증·심사를 통과했어요. 승인하면 공개 대기로 옮겨요.</p>{% endif %}
       <select id="approval-mode-{{ d.id }}" name="mode">
         <option value="normal">검증·심사를 통과한 원고 승인</option>
         <option value="exception">문체·형식만 예외 승인 (재인증 필요)</option>
       </select>
       <div class="dr-reason"><label for="approval-{{ d.id }}">예외 승인 사유 (필수)</label><input type="text" id="approval-{{ d.id }}" name="reason" maxlength="1000" autocomplete="off"></div>
-      <button type="submit" class="dr-btn is-primary">검수 승인 후 공개</button>
+      <button type="submit" class="dr-btn is-primary">검수 승인 · 공개 대기로</button>
     </form>
     <form class="dr-reject" method="post" action="{% url 'office:draft_reject' d.id %}" data-lock>{% csrf_token %}
       <button type="submit" class="dr-link is-danger" data-confirm="이 원고를 반려할까요?">반려</button>
@@ -147,8 +148,8 @@
     <div class="dr-decision">
     <form class="dr-decide" method="post" action="{% url 'office:draft_publish' d.id %}" data-lock>{% csrf_token %}
       <input type="hidden" name="version" value="{{ d.approval_version }}"><input type="hidden" name="now" value="1">
-      <p class="dr-hint">심사를 통과해 예정 시각에 자동으로 공개돼요. 기다리지 않고 지금 올릴 수도 있어요.</p>
-      <button type="submit" class="dr-btn is-primary" data-confirm="예정 시각 전에 지금 바로 공개할까요?">지금 공개</button>
+      <p class="dr-hint">{% if d.publish_at %}승인한 원고가 예정 시각에 자동으로 공개돼요. 지금 올릴 수도 있어요.{% else %}승인을 마쳤어요. 자동 공개 일정이 없으며 지금 공개를 누르면 공개돼요.{% endif %}</p>
+      <button type="submit" class="dr-btn is-primary" data-confirm="이 원고를 지금 바로 공개할까요?">지금 공개</button>
     </form>
     </div>
     {% endif %}

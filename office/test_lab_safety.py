@@ -95,6 +95,76 @@ class PublicationSafetyTests(TestCase):
         self.client.post(f'/lab/admin/draft/{self.draft.pk}/publish/', HTTP_USER_AGENT='Mozilla/5.0')
         self.assertFalse(AuditEvent.objects.filter(action='approved').exists())
 
+    def test_approval_always_advances_to_ready_without_immediate_publication(self):
+        self.client.force_login(self.owner)
+        for when in (None, timezone.now()-timedelta(days=1), timezone.now()+timedelta(days=1)):
+            with self.subTest(publish_at=when):
+                draft = certified(ColumnDraft.objects.create(topic='data', status='hold', subject='승인할 원고',
+                    content='검증된 새 본문', publish_at=when, qa_report={'verdict': 'accept', 'score': 90}))
+                version = audit.fingerprint(audit.snapshot(draft))
+                with mock.patch('office.schedule.publish_now') as publish:
+                    response = self.client.post(f'/lab/admin/draft/{draft.pk}/publish/', {'version': version})
+                self.assertRedirects(response, '/lab/admin/#drafts', fetch_redirect_response=False)
+                publish.assert_not_called()
+                draft.refresh_from_db()
+                self.assertEqual(draft.status, 'ready')
+                self.assertEqual(draft.publish_at, when if when and when > timezone.now() else None)
+                self.assertTrue(approval.valid(draft))
+                queued = AuditEvent.objects.get(draft_id=draft.pk, action='release_queued')
+                self.assertEqual(queued.payload['previous_publish_at'], when.isoformat() if when else None)
+
+    def test_approval_and_queue_transition_roll_back_together(self):
+        version = audit.fingerprint(audit.snapshot(self.draft))
+        save = ColumnDraft.save
+        def fail_queue(draft, *args, **kwargs):
+            if draft.status == 'ready':
+                raise ValueError('공개 대기 저장 실패')
+            return save(draft, *args, **kwargs)
+        with mock.patch.object(ColumnDraft, 'save', fail_queue), self.assertRaisesMessage(ValueError, '저장 실패'):
+            approval.approve_for_release(self.draft.pk, self.owner, expected_snapshot=version)
+        self.draft.refresh_from_db()
+        self.assertEqual(self.draft.status, 'hold')
+        self.assertFalse(approval.valid(self.draft))
+        self.assertFalse(AuditEvent.objects.filter(action__in=['approved', 'release_queued']).exists())
+
+    def test_now_requires_ready_even_if_held_draft_has_an_approval(self):
+        approval.approve(self.draft, self.owner)
+        with mock.patch('office.schedule.publish_now') as publish, self.assertRaisesMessage(ValueError, '공개 대기'):
+            approval.approve_for_release(self.draft.pk, self.owner, now=True,
+                                        expected_snapshot=audit.fingerprint(audit.snapshot(self.draft)))
+        publish.assert_not_called()
+        ready = approval.approve_for_release(self.draft.pk, self.owner,
+                                            expected_snapshot=audit.fingerprint(audit.snapshot(self.draft)))
+        with mock.patch('office.schedule.publish_now') as publish:
+            approval.approve_for_release(ready.pk, self.owner, now=True,
+                                        expected_snapshot=audit.fingerprint(audit.snapshot(ready)))
+        publish.assert_called_once()
+
+    def test_failed_review_is_explained_on_card_and_cannot_advance(self):
+        self.draft.qa_report.update(verdict='minor', must_fix=[{'problem': '근거 수정', 'kind': 'fact'}])
+        certified(self.draft)
+        self.client.force_login(self.owner)
+        response = self.client.get('/lab/admin/')
+        self.assertContains(response, '일반 승인 전 확인')
+        version = response.context['held'][0].approval_version
+        response = self.client.post(f'/lab/admin/draft/{self.draft.pk}/publish/', {'version': version}, follow=True)
+        self.assertContains(response, f'원고 #{self.draft.pk}: 필수 수정이 남아 있어요.')
+        self.draft.refresh_from_db()
+        self.assertEqual(self.draft.status, 'hold')
+        self.assertFalse(AuditEvent.objects.filter(action='approved').exists())
+
+    def test_unscheduled_ready_draft_waits_for_explicit_publication(self):
+        from office.schedule import release_due
+        ready = approval.approve_for_release(self.draft.pk, self.owner,
+                                            expected_snapshot=audit.fingerprint(audit.snapshot(self.draft)))
+        with mock.patch('office.schedule.publish_now') as publish:
+            self.assertEqual(release_due(now=timezone.now()+timedelta(days=3)), [])
+        publish.assert_not_called()
+        self.client.force_login(self.owner)
+        response = self.client.get('/lab/admin/')
+        self.assertContains(response, '공개 대기 · 수동 공개')
+        self.assertContains(response, '자동 공개 일정이 없으며')
+
     def test_changed_fact_report_cannot_approve_a_stale_object(self):
         ColumnDraft.objects.filter(pk=self.draft.pk).update(check_report={'verdict': 'revise'})
         with self.assertRaises(ValueError):
