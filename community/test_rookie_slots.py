@@ -26,6 +26,8 @@ class SlotBoundaryTests(TestCase):
     def setUp(self):
         self.bat = player('시간타자', 'batter', 'lg', 'SS')
         active_on(self.bat, D)
+        # 기준 선수는 첫 시간대 전에 활동했어요. 개막일 오후에 테스트해도 같아야 해요.
+        RookieLog.objects.filter(player=self.bat, day=D, kind='earn').update(created_at=at(D, 0))
         self.plan = [s for s, _r in Clock.day_plan('kbo1', D)]      # 개막일 시간대(뒤쪽부터 채움)
 
     def games(self, p=None, day=D):
