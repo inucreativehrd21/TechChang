@@ -10,7 +10,7 @@ class Command(BaseCommand):
 
     def add_arguments(self, parser):
         parser.add_argument('--question', type=int)
-        parser.add_argument('--track', choices=[*TRACKS, 'legacy'])
+        parser.add_argument('--track', choices=TRACKS)
         parser.add_argument('--reason', default='')
 
     @transaction.atomic
@@ -26,7 +26,9 @@ class Command(BaseCommand):
         if q is None:
             raise CommandError('해당 단편 칼럼을 찾을 수 없어요.')
         old = q.column_track
-        q.column_track = '' if opts['track'] == 'legacy' else opts['track']
+        if opts['track'] not in TRACKS:
+            raise CommandError('학술·기술 심화 또는 일상·실용 팁으로 분류해 주세요.')
+        q.column_track = opts['track']
         q.save(update_fields=['column_track'])
         from office.audit import append
         append('column_classified', payload={'question_id': q.pk, 'before': old,

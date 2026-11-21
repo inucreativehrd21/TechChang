@@ -2,4 +2,4 @@
 RESEARCH = 'research'
 PRACTICAL = 'practical'
 TRACKS = (RESEARCH, PRACTICAL)
-TRACK_CHOICES = [('', '기존 칼럼'), (RESEARCH, '학술·기술 심화'), (PRACTICAL, '일상·실용 팁')]
+TRACK_CHOICES = [(RESEARCH, '학술·기술 심화'), (PRACTICAL, '일상·실용 팁')]

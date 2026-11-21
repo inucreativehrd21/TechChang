@@ -11,7 +11,7 @@
       {% elif kind == 'ready' %}<span class="dr-chip is-ready">{% if d.publish_at %}{{ d.publish_at|date:"m/d H:i" }} 공개 예정{% else %}공개 대기 · 수동 공개{% endif %}</span>
       {% else %}<span class="dr-chip is-state">검수 대기</span>{% endif %}
       <span class="dr-chip">{{ d.topic_name }}</span>
-      <span class="dr-chip">{% if d.series_key %}연재 {{ d.episode_number }}편{% else %}{{ d.get_column_track_display|default:"기존 칼럼" }}{% endif %}</span>
+      <span class="dr-chip">{% if d.series_key %}연재 {{ d.episode_number }}편{% else %}{{ d.get_column_track_display|default:"단편 칼럼" }}{% endif %}</span>
     </div>
     <h3 class="dr-title" id="dr-title-{{ d.id }}">{{ d.subject|default:d.brief|default:"(제목 없음)" }}</h3>
     <p class="dr-sub">

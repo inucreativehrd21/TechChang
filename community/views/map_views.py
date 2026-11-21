@@ -9,7 +9,7 @@
 import re
 from collections import OrderedDict
 
-from django.shortcuts import render
+from django.shortcuts import redirect, render
 from django.utils.html import escape
 from django.utils.safestring import mark_safe
 
@@ -85,7 +85,12 @@ def column_map(request):
     terms = _terms(q)
     from community.column_tracks import TRACK_CHOICES
     track = request.GET.get('track') or ''
-    track_labels = {key or 'legacy': label for key, label in TRACK_CHOICES}
+    if track == 'legacy':
+        params = request.GET.copy()
+        params.pop('track')
+        query = params.urlencode()
+        return redirect(request.path + ('?' + query if query else ''), permanent=True)
+    track_labels = dict(TRACK_CHOICES)
     track = track if track in track_labels else ''
 
     entries = _entries()
@@ -95,10 +100,10 @@ def column_map(request):
     # 검색어에 맞는 글 → 카테고리·소주제 집계(왼쪽 패싯)는 검색어만 반영한다
     text_matched = [e for e in entries if not terms or _score(e, terms)]
     facet_tracks = [{'key': key, 'label': label, 'count': sum(
-        1 for e in text_matched if not e['q'].series_id and (e['q'].column_track or 'legacy') == key)}
+        1 for e in text_matched if not e['q'].series_id and e['q'].column_track == key)}
         for key, label in track_labels.items()]
     matched = [e for e in text_matched if not track or (
-        not e['q'].series_id and (e['q'].column_track or 'legacy') == track)]
+        not e['q'].series_id and e['q'].column_track == track)]
     facet_cats = [{'key': k, 'label': label, 'count': sum(1 for e in matched if e['cat'] == k)} for k, label, _ in CATS]
     sub_counts = OrderedDict()
     for e in matched:

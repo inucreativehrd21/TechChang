@@ -160,11 +160,30 @@ class EditorialPublicTests(TestCase):
 
     def test_map_filters_and_search_retains_type_in_both_templates(self):
         for ua in ('Mozilla/5.0 Windows NT 10.0', 'Mozilla/5.0 iPhone Mobile/15E148'):
-            for track, expected in zip(('research', 'practical', 'legacy'), self.questions):
+            for track, expected in zip(('research', 'practical'), self.questions):
                 response = self.client.get('/map/', {'track': track, 'q': '원고'}, HTTP_USER_AGENT=ua)
                 self.assertEqual(response.status_code, 200)
                 self.assertEqual([e['q'].pk for e in response.context['results']], [expected.pk])
                 self.assertContains(response, f'name="track" value="{track}"')
+
+            response = self.client.get('/map/', {'track': 'legacy', 'q': '원고'}, HTTP_USER_AGENT=ua)
+            self.assertEqual(response.status_code, 301)
+            self.assertNotIn('track=', response.url)
+            response = self.client.get(response.url, HTTP_USER_AGENT=ua)
+            self.assertEqual(response.context['track'], '')
+            self.assertEqual({e['q'].pk for e in response.context['results']}, {q.pk for q in self.questions})
+            self.assertEqual([f['key'] for f in response.context['facet_tracks']], ['research', 'practical'])
+            self.assertNotContains(response, '기존 칼럼')
+            self.assertNotContains(response, 'track=legacy')
+
+    def test_detail_links_only_to_the_two_current_types(self):
+        for ua in ('Mozilla/5.0 Windows NT 10.0', 'Mozilla/5.0 iPhone Mobile/15E148'):
+            for q in self.questions:
+                response = self.client.get(f'/{q.pk}/', HTTP_USER_AGENT=ua)
+                self.assertEqual(response.status_code, 200)
+                self.assertNotContains(response, 'track=legacy')
+                if q.column_track:
+                    self.assertContains(response, f'/map/?track={q.column_track}')
 
     def test_manual_classification_changes_only_type_and_records_reason(self):
         old = self.questions[-1]
@@ -177,6 +196,12 @@ class EditorialPublicTests(TestCase):
         self.assertEqual(old.column_track, 'practical')
         self.assertEqual((old.content, old.create_date), (original_body, original_date))
         self.assertEqual(AuditEvent.objects.get(action='column_classified').payload['after'], 'practical')
+
+        with self.assertRaises(CommandError):
+            call_command('classify_columns', question=old.pk, track='legacy', reason='옛 분류 복원', stdout=StringIO())
+        old.refresh_from_db()
+        self.assertEqual(old.column_track, 'practical')
+        self.assertEqual(AuditEvent.objects.filter(action='column_classified').count(), 1)
 
     def test_research_exemplar_cannot_fall_back_to_high_traffic_practical_article(self):
         from office.arsenal import exemplar
