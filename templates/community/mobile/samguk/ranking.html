@@ -1,0 +1,7 @@
+{% extends 'base_mobile.html' %}
+{% load static %}
+{% block tab_games %}active{% endblock %}
+{% block title %}테크창 삼국지 순위 - 테크창{% endblock %}
+{% block extra_css %}{{ block.super }}<link rel="stylesheet" href="{% static 'css/samguk.css' %}?v={{ STATIC_VERSION }}">{% endblock %}
+{% block script %}{{ block.super }}<script src="{% static 'js/samguk.js' %}?v={{ STATIC_VERSION }}" defer></script>{% endblock %}
+{% block content %}<div class="sg-shell">{% include 'community/samguk/_ranking_body.html' %}</div>{% endblock %}

@@ -1,0 +1,7 @@
+{% load static l10n %}
+<div class="sg-map-art">
+  <picture><source media="(max-width: 767px)" srcset="{% static 'samguk/map/world-mobile.webp' %}"><img class="sg-world" src="{% static 'samguk/map/world.webp' %}" width="2000" height="1400" alt="산맥과 황하, 장강이 흐르는 천하 지도" fetchpriority="high"></picture>
+  <svg class="sg-routes" viewBox="0 0 1000 1000" preserveAspectRatio="none" aria-hidden="true">{% for edge in edges %}<line x1="{{ edge.a.x }}" y1="{{ edge.a.y }}" x2="{{ edge.b.x }}" y2="{{ edge.b.y }}"/>{% endfor %}</svg>
+  {% for c in markers %}<a class="sg-marker{% if c.mine %} is-mine{% elif c.near %} is-near{% endif %}" style="left:{{ c.left|unlocalize }}%;top:{{ c.top|unlocalize }}%" href="#sg-city-{{ c.code }}" data-select-city="{{ c.code }}" data-owner="{{ c.owner }}" aria-label="{{ c.name }}, {{ c.owner_label }}"><span class="sg-marker-dot"></span><span class="sg-marker-name">{{ c.name }}</span></a>{% endfor %}
+  <div class="sg-map-key"><span><i class="sg-key-mine"></i>내 땅</span><span><i class="sg-key-near"></i>맞닿은 성</span><span><i></i>그 밖의 성</span></div>
+</div>

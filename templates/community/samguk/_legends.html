@@ -1,0 +1,29 @@
+  {% if legends %}
+  <section class="sg-legends mt-3">
+    <h3 class="h6">전설의 흔적 <small class="text-muted">진행하면 군령 1이 들지만 점수는 없어요</small></h3>
+    {% for ev in legends %}
+    <div class="sg-legend card mb-2" data-event="{{ ev.event }}" data-city="{{ ev.city }}"><div class="card-body py-2 small">
+      <strong>{{ ev.title }}</strong> · {{ ev.city_name }} — {{ ev.text }}
+      {% for s in ev.series %}
+      <form method="post" action="{% url 'community:samguk_act' %}" class="d-flex flex-wrap gap-2 align-items-end mt-1">{% csrf_token %}
+        <input type="hidden" name="seq" value="{{ seq }}"><input type="hidden" name="kind" value="legend"><input type="hidden" name="series" value="{{ s.series }}"><input type="hidden" name="city" value="{{ ev.city }}">
+        <span>{{ s.name }}: {{ s.step }}{% if s.times > 1 %} ({{ s.count }}/{{ s.times }}){% endif %}</span>
+        <select name="by" class="form-select form-select-sm w-auto" aria-label="전설을 따라갈 장수">{% for o in ev.officers %}<option value="{{ o.code }}">{{ o.name }} (통{{ o.lead }} 무{{ o.war }} 지{{ o.intl }} 정{{ o.pol }} · {{ o.skill }})</option>{% empty %}<option value="">근처에 장수가 없어요</option>{% endfor %}</select>
+        <button class="btn btn-sm btn-outline-primary"{% if not ev.officers or view.over %} disabled{% endif %}>따라가기 (1)</button>
+      </form>
+      {% empty %}
+      {% for code in ev.open_series %}
+      <form method="post" action="{% url 'community:samguk_act' %}" class="d-flex flex-wrap gap-2 align-items-end mt-1">{% csrf_token %}
+        <input type="hidden" name="seq" value="{{ seq }}"><input type="hidden" name="kind" value="legend"><input type="hidden" name="series" value="{{ code }}"><input type="hidden" name="city" value="{{ ev.city }}">
+        <select name="by" class="form-select form-select-sm w-auto" aria-label="전설을 살펴볼 장수">{% for o in ev.officers %}<option value="{{ o.code }}">{{ o.name }}</option>{% empty %}<option value="">근처에 장수가 없어요</option>{% endfor %}</select>
+        <button class="btn btn-sm btn-outline-secondary"{% if not ev.officers or view.over %} disabled{% endif %}>살펴보기 (1)</button>
+      </form>
+      {% endfor %}
+      {% endfor %}
+    </div></div>
+    {% endfor %}
+  </section>
+  {% endif %}
+
+{% if not legends %}<p class="sg-empty">아직 전설의 흔적이 없어요. 천하를 살펴보며 새로운 소문을 기다려 보세요.</p>{% endif %}
+

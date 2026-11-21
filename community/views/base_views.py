@@ -373,6 +373,10 @@ def detail(request, question_id):
         got = safe_award(request.user, 'column', ref=str(question.id))
         if got:
             messages.info(request, f"⚾ 야구선수 훈련 포인트 +{got['tp']} TP — 칼럼 읽기 {got['count']}/{got['cap']}")
+        # 테크창 삼국지 — 칼럼 읽기는 추가 군령 +1(하루 2편, samguk.BONUS)
+        from ..samguk import safe_credit
+        if safe_credit(request.user, 'column', ref=str(question.id)):
+            messages.info(request, '⚔ 테크창 삼국지 군령 +1 — 칼럼 읽기')
 
     # 답변 정렬 방식
     sort = request.GET.get('sort', 'recent')
@@ -592,7 +596,21 @@ def games_index(request):
     bb, g2, ms = (visible(NumberBaseballGame.objects.all()), visible(Game2048.objects.all()),
                   visible(MinesweeperGame.objects.all()))      # 운영자(admin) 판은 세지 않는다
 
-    # 야구선수 키우기 — 정식 판·라이트 판을 맨 위 한 묶음으로
+    # 테크창 삼국지 — 맨 위 묶음. 판 생성(몇 초)은 하지 않고 이미 있는 판만 조회한다
+    from .. import samguk as SG
+    from .. import samguk_data as SGD
+    from ..models import SamgukDay, SamgukRun
+    samguk = None
+    if SG.allowed(request.user):
+        today = SG.game_day()
+        last = SamgukDay.objects.filter(status='closed', date__lt=today).select_related('winner__profile').order_by('-date').first()
+        samguk = {
+            'players': SamgukRun.objects.filter(day__date=today).count(),
+            'generals': len(SGD.GENERALS),
+            'winner': SG.display_name(last.winner) if last and last.winner else None,
+        }
+
+    # 야구선수 키우기 — 정식 판·라이트 판을 한 묶음으로
     ball = {
         'players': rookies.count(),
         'pros': rookies.filter(league__in=PRO_LEAGUES).count(),
@@ -645,6 +663,7 @@ def games_index(request):
 
     context = {
         'ball': ball,
+        'samguk': samguk,
         'games_info': games_info,
         'recent_stats': recent_stats,
     }

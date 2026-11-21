@@ -1,0 +1,7 @@
+{% load samguk_art %}
+<div class="sg-replay container py-3">
+  <h1 class="h4">{{ day.date|date:"n월 j일" }}의 천하인 {{ name }}</h1>
+  <p class="small text-muted">{{ start_city }}에서 시작 · {{ score.total }}점 (도시 {{ score.cities }} · 군벌 {{ score.lords }} · 등용 {{ score.recruits }})</p>
+  <ol class="sg-replay-list">{% for a in actions %}<li data-kind="{{ a.kind }}">{{ a.result.text }}{% if a.result.duel %}{% include 'community/samguk/_duel.html' with duel=a.result.duel %}{% endif %}{% for ev in a.result.npc %}<br><small class="text-muted">{{ ev.text }}</small>{% endfor %}</li>{% endfor %}</ol>
+  <a href="{% url 'community:samguk_ranking' %}?date={{ day.date|date:'Y-m-d' }}">순위로</a>
+</div>

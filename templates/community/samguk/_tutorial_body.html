@@ -1,0 +1,16 @@
+{% comment %}튜토리얼 본문 — 기록을 남기지 않는 고정 판(설계 2.1).{% endcomment %}
+<div class="sg-home sg-tutorial container py-3" data-step="play" data-sg-key="tutorial:{{ user.pk|default:'guest' }}">
+  <header class="sg-head mb-3">
+    <h1 class="h4 mb-1">튜토리얼</h1>
+    <p class="text-muted small mb-0">연습 판이에요. 순위·도감·명성에 아무것도 남지 않아요.</p>
+  </header>
+  <div class="sg-hint alert alert-info small">{{ hint }}</div>
+  {% url 'community:samguk_tutorial_act' as act_url %}
+  {% include 'community/samguk/_board.html' with act_url=act_url %}
+  {% if view.over %}
+  <div class="mt-3">
+    {% if user.is_authenticated %}<a class="btn btn-primary" href="{% url 'community:samguk_home' %}">이제 오늘의 천하로 가요</a>
+    {% else %}<a class="btn btn-primary" href="{% url 'common:login' %}?next={% url 'community:samguk_home' %}">회원으로 오늘의 천하에 참여하세요</a>{% endif %}
+  </div>
+  {% endif %}
+</div>

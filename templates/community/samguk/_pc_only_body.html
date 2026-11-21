@@ -1,0 +1,11 @@
+{% comment %}모바일 안내 카드(설계 1.1) — 장원·객잔·도감·방명록·친구는 PC 전용.{% endcomment %}
+<div class="sg-pc-only container py-4">
+  <div class="card"><div class="card-body">
+    <h1 class="h5">PC에서 이용해 주세요</h1>
+    <p class="mb-3">장원은 넓은 화면에서 가꾸도록 만들었어요. 도감·객잔·장원·방명록·친구는 PC에서 이용해 주세요. 모바일에서 둔 판에서 등용한 장수도 도감에 그대로 올라가요.</p>
+    <div class="d-flex flex-wrap gap-2">
+      <a class="btn btn-primary" href="{% url 'community:samguk_home' %}">오늘의 천하로 돌아가기</a>
+      <a class="btn btn-outline-secondary" href="{% url 'common:toggle_version' %}">PC 버전 보기</a>
+    </div>
+  </div></div>
+</div>

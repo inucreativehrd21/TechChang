@@ -11,6 +11,7 @@ FEATURES = (
     {'key': 'ROOKIE_ENV_ENABLED', 'label': '경기 환경과 조건부 특성', 'description': '날씨·구장·시즌 루틴·미디어데이·조건부 특성 11종을 함께 사용해요.', 'schema': ('community', '0054_liteseason_env')},
     {'key': 'ROOKIE_EXTREME_ENABLED', 'label': '익스트림 공개', 'description': '회원과 손님에게 익스트림 모드를 공개해요. 기존 선수 기록은 유지해요.', 'schema': ('community', '0052_litecareer_mode')},
     {'key': 'ROOKIE_EXTREME_PREVIEW', 'label': '익스트림 관리자 검증', 'description': '관리자가 비공개 익스트림 검증실을 사용할 수 있게 해요. 일반 공개와 별도로 적용해요.', 'schema': ('community', '0052_litecareer_mode')},
+    {'key': 'SAMGUK_ENABLED', 'label': '테크창 삼국지 공개', 'description': '회원과 손님에게 테크창 삼국지를 공개해요. 꺼져 있으면 운영진만 들어가서 시험할 수 있어요.', 'schema': ('community', '0059_samguk')},
 )
 FEATURE_KEYS = {f['key'] for f in FEATURES}
 STORAGE_MIGRATION = ('common', '0017_game_controls')

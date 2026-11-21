@@ -1,0 +1,22 @@
+{% load samguk_art %}
+  {% if view.recruits and not view.over %}
+  <section class="sg-recruits mt-3">
+    <h3 class="h6">등용할 수 있는 장수</h3>
+    {% for r in view.recruits %}
+    <form method="post" action="{{ act_url }}" class="sg-recruit card mb-2"><div class="card-body py-2">{% csrf_token %}
+      <input type="hidden" name="seq" value="{{ seq }}"><input type="hidden" name="kind" value="recruit"><input type="hidden" name="city" value="{{ r.city }}"><input type="hidden" name="target" value="{{ r.target.code }}">
+      <div class="sg-recruit-heading">{% sg_portrait r.target.code %}<div><strong>{{ r.target.name }} {{ r.target.stars }}</strong> <small class="text-muted">{{ r.city_name }}{% if r.captive %} · 포로{% else %} · 재야{% endif %} · 필요 설득력 {{ r.need }}</small></div></div>
+      <div class="d-flex flex-wrap gap-2 mt-1 align-items-end">
+        <label class="small">맡길 장수
+          <select name="by" class="form-select form-select-sm">{% for op in r.options %}<option value="{{ op.by }}">{{ op.name }} (설득력 {{ op.persuade }}{% if op.gold is None %}, 금으로도 부족{% elif op.gold %}, 금 {{ op.gold }} 더 필요{% endif %})</option>{% endfor %}</select>
+        </label>
+        <label class="small">쓸 금 <input type="number" name="gold" min="0" step="50" value="{% with op=r.options.0 %}{{ op.gold|default_if_none:0 }}{% endwith %}" class="form-control form-control-sm"></label>
+        <button class="btn btn-sm btn-primary">등용 (1)</button>
+      </div>
+    </div></form>
+    {% endfor %}
+  </section>
+  {% endif %}
+
+{% if not view.recruits or view.over %}<p class="sg-empty">지금 등용할 수 있는 장수가 없어요. 내 성의 재야 장수나 전투 뒤 포로를 살펴보세요.</p>{% endif %}
+

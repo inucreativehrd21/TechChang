@@ -1,19 +1,57 @@
 {# 게임 목록 (PC·모바일 공용). ball·games_info = base_views.games_index #}
+{% load static %}
 <div class="gm">
 <div class="gm-wrap">
     <div class="gm-head">
         <div class="gm-head-text">
             <span class="gm-eyebrow">Game Center</span>
             <h1 class="gm-title">게임</h1>
-            <p class="gm-sub">야구선수 키우기 {% if extreme_public %}세 모드{% else %}두 모드{% endif %}와 퍼즐 게임 {{ games_info|length }}종이 있어요. 퍼즐 게임은 지금까지 {{ recent_stats.total_games_played }}판 플레이됐어요.</p>
+            <p class="gm-sub">{% if samguk %}테크창 삼국지, {% endif %}야구선수 키우기 {% if extreme_public %}세 모드{% else %}두 모드{% endif %}와 퍼즐 게임 {{ games_info|length }}종이 있어요. 퍼즐 게임은 지금까지 {{ recent_stats.total_games_played }}판 플레이됐어요.</p>
         </div>
     </div>
+
+    {# 테크창 삼국지 — 매일 06:00 새 천하(규칙 community/samguk_rules.py). 지도·장원이 넓은 화면용이라 게임 창(data-game-window) 대신 페이지로 연다 #}
+    {% if samguk %}
+    <section class="gm-ball gm-sg" aria-labelledby="gm-sg-title">
+        <div class="gm-ball-board gm-sg-board">
+            <div class="gm-ball-copy">
+                <h2 class="gm-ball-title" id="gm-sg-title">테크창 삼국지 <span class="gm-pill gm-new">NEW</span></h2>
+                <p>매일 아침 6시, 모두 같은 지도와 장수로 새 천하가 열려요. 하루 군령 안에서 가장 높은 점수를 낸 사람이 그날 천하를 통일해요.</p>
+            </div>
+            <ul class="gm-sg-faces" aria-hidden="true">
+                <li><img src="{% static 'samguk/officer/160/caocao.webp' %}" alt="" width="56" height="56" loading="lazy">위</li>
+                <li><img src="{% static 'samguk/officer/160/liubei.webp' %}" alt="" width="56" height="56" loading="lazy">촉</li>
+                <li><img src="{% static 'samguk/officer/160/sunquan.webp' %}" alt="" width="56" height="56" loading="lazy">오</li>
+            </ul>
+        </div>
+        <div class="gm-ball-modes">
+            <a class="gm-ball-mode" href="{% url 'community:samguk_home' %}">
+                <span class="gm-ball-tag">로그인하고 매일</span>
+                <b>오늘의 천하 <small>하루 한 판</small></b>
+                <span class="gm-ball-desc">시작 도시를 고르고 내정·징병·등용·계략·출정으로 군령 10을 써요. 칼럼 읽기·출석·답변으로 군령을 최대 5 더 받아요.</span>
+                <span class="gm-ball-meta">오늘 참여 {{ samguk.players }}명{% if samguk.winner %} · 어제의 천하인 {{ samguk.winner }}{% endif %}</span>
+            </a>
+            <a class="gm-ball-mode is-lite" href="{% url 'community:samguk_tutorial' %}">
+                <span class="gm-ball-tag">로그인 없이 바로</span>
+                <b>튜토리얼 <small>5분</small></b>
+                <span class="gm-ball-desc">작은 지도에서 행동 여섯 가지를 한 번씩 해 봐요. 기록은 남지 않아요.</span>
+                <span class="gm-ball-meta">처음이라면 여기부터</span>
+            </a>
+            <a class="gm-ball-mode" href="{% if user.is_authenticated %}{% url 'community:samguk_manor' %}{% else %}{% url 'community:samguk_home' %}{% endif %}">
+                <span class="gm-ball-tag">PC에서</span>
+                <b>장원·도감 <small>모으고 꾸미기</small></b>
+                <span class="gm-ball-desc">장수 {{ samguk.generals }}명 도감을 채우고, 객잔에서 하루 한 명을 맞이하고, 장원을 꾸며 친구를 초대해요. 숨은 외전·기연 장수도 있어요.</span>
+                <span class="gm-ball-meta">장원·도감·객잔은 PC 전용</span>
+            </a>
+        </div>
+    </section>
+    {% endif %}
 
     {# 야구선수 키우기 — 정식·라이트·익스트림 모드를 한 묶음으로 #}
     <section class="gm-ball" aria-labelledby="gm-ball-title">
         <div class="gm-ball-board">
             <div class="gm-ball-copy">
-                <h2 class="gm-ball-title" id="gm-ball-title">야구선수 키우기 <span class="gm-pill gm-new">NEW</span></h2>
+                <h2 class="gm-ball-title" id="gm-ball-title">야구선수 키우기</h2>
                 <p>리틀야구부터 드래프트, 프로 무대와 은퇴까지 한 선수의 야구 인생을 키워요. 마음에 드는 모드로 시작해 보세요.</p>
             </div>
             <ul class="gm-ball-crew" aria-hidden="true">

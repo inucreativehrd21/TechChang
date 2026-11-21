@@ -8,3 +8,4 @@ class CommunityConfig(AppConfig):
     def ready(self):
         from . import signals  # noqa: F401 — Question 저장 → IndexNow
         from . import rookie_signals  # noqa: F401 — 출석·댓글·답변 → 야구선수 키우기 TP
+        from . import samguk_signals  # noqa: F401 — 출석·댓글·답변 → 테크창 삼국지 추가 군령

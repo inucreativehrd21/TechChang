@@ -2,6 +2,7 @@
 from django.urls import path, re_path
 from .views import rookie_world_views
 from .views import explore_views
+from .views import samguk_views
 
 # 실시간 게임 비활성화 (나중을 위해 파일은 유지)
 # from .views import wordchain_views, tictactoe_views
@@ -129,6 +130,22 @@ urlpatterns = [
     path('rookie/p/<int:pk>/card.png', rookie_views.rookie_card_png, name='rookie_card_png'),
     path('rookie/p/<int:pk>/og.png', rookie_views.rookie_card_png, {'kind': 'og'}, name='rookie_card_og'),
     path('rookie/p/<int:pk>/story.png', rookie_views.rookie_card_png, {'kind': 'story'}, name='rookie_card_story'),
+    # samguk_views.py - 테크창 삼국지(매일 06:00 새 천하, 규칙 community/samguk_rules.py, 설계 docs/samguk-design.md)
+    path('samguk/', samguk_views.home, name='samguk_home'),
+    path('samguk/faction/', samguk_views.choose_faction, name='samguk_faction'),
+    path('samguk/start/', samguk_views.start, name='samguk_start'),
+    path('samguk/act/', samguk_views.act, name='samguk_act'),
+    path('samguk/tutorial/', samguk_views.tutorial, name='samguk_tutorial'),
+    path('samguk/tutorial/choice/', samguk_views.tutorial_choice, name='samguk_tutorial_choice'),
+    path('samguk/tutorial/act/', samguk_views.tutorial_act, name='samguk_tutorial_act'),
+    path('samguk/ranking/', samguk_views.ranking, name='samguk_ranking'),
+    path('samguk/replay/<str:day>/', samguk_views.replay, name='samguk_replay'),
+    path('samguk/codex/', samguk_views.codex, name='samguk_codex'),                 # 장수 도감(PC 전용)
+    path('samguk/inn/', samguk_views.inn, name='samguk_inn'),                       # 객잔(PC 전용)
+    path('samguk/inn/pick/', samguk_views.inn_pick, name='samguk_inn_pick'),
+    path('samguk/manor/', samguk_views.manor, name='samguk_manor'),                 # 내 장원(PC 전용)
+    path('samguk/manor/<int:pk>/', samguk_views.manor, name='samguk_manor_of'),     # 남의 장원 방문
+    path('samguk/manor/do/', samguk_views.manor_post, name='samguk_manor_post'),
     # rookie_lite_views.py - 야구선수 키우기 라이트(한 판 30분 커리어 시뮬레이터, 규칙 community/rookie_lite.py)
     path('rookie/lite/', rookie_lite_views.lite_home, name='lite_home'),
     path('rookie/lite/world/', rookie_world_views.world_hub, {'edition': 'lite'}, name='lite_world'),

@@ -1404,3 +1404,189 @@ class LiteSeason(models.Model):
         verbose_name_plural = '야구선수 키우기 라이트 시즌'
         ordering = ['career', 'year']
         unique_together = [('career', 'year')]
+
+
+# ── 테크창 삼국지(docs/samguk-design.md 9장, 규칙 community/samguk_rules.py) ─────────────
+class SamgukDay(models.Model):
+    """하루 한 판 — 06:00 에 열리는 그날의 천하. board 는 처음 만든 그대로 둔다(카탈로그를 고쳐도 지난 판은 그대로)."""
+    date = models.DateField(unique=True)
+    rules_version = models.PositiveSmallIntegerField(default=1)
+    board = models.JSONField(default=dict)
+    status = models.CharField(max_length=8, default='open')               # open / closed
+    winner = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL, related_name='+')
+    faction_scores = models.JSONField(default=dict, blank=True)          # {'wei': 점수, ...} 상위 3명 합 ÷ 3
+    closed_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = '테크창 삼국지 하루'
+        verbose_name_plural = '테크창 삼국지 하루'
+        ordering = ['-date']
+
+
+class SamgukRun(models.Model):
+    """한 사람의 그날 판. state 는 samguk_rules 의 dict 그대로."""
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='samguk_runs')
+    day = models.ForeignKey(SamgukDay, on_delete=models.CASCADE, related_name='runs')
+    faction = models.CharField(max_length=8)
+    start_city = models.CharField(max_length=16)
+    state = models.JSONField(default=dict)
+    ap_spent = models.PositiveSmallIntegerField(default=0)
+    ap_bonus = models.PositiveSmallIntegerField(default=0)
+    score = models.IntegerField(default=0)
+    rank = models.PositiveIntegerField(null=True, blank=True)
+    finished_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = '테크창 삼국지 판'
+        verbose_name_plural = '테크창 삼국지 판'
+        unique_together = [('user', 'day')]
+        indexes = [models.Index(fields=['day', '-score'], name='samguk_run_day_score')]
+
+
+class SamgukAction(models.Model):
+    """행동 기록 — 기보 재생과 부정 검증. seq 로 같은 요청이 두 번 들어와도 한 번만 처리한다."""
+    run = models.ForeignKey(SamgukRun, on_delete=models.CASCADE, related_name='actions')
+    seq = models.PositiveSmallIntegerField()
+    kind = models.CharField(max_length=12)
+    payload = models.JSONField(default=dict)
+    result = models.JSONField(default=dict)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = '테크창 삼국지 행동'
+        verbose_name_plural = '테크창 삼국지 행동'
+        ordering = ['run', 'seq']
+        unique_together = [('run', 'seq')]
+
+
+class SamgukCodex(models.Model):
+    """장수 도감 한 칸 — 발견(first_seen) → 등용(first_recruited)."""
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='samguk_codex')
+    general = models.CharField(max_length=32)
+    first_seen = models.DateField(null=True, blank=True)
+    first_recruited = models.DateField(null=True, blank=True)
+    times_recruited = models.PositiveIntegerField(default=0)
+    unified_with = models.PositiveIntegerField(default=0)                  # 함께 천하를 통일한 횟수
+
+    class Meta:
+        verbose_name = '테크창 삼국지 도감'
+        verbose_name_plural = '테크창 삼국지 도감'
+        unique_together = [('user', 'general')]
+
+
+class SamgukMember(models.Model):
+    """사람마다 하나 — 세력·기록·튜토리얼(장원·명성은 6단계에서 채운다)."""
+    TUTORIAL = [('none', '아직'), ('done', '함'), ('skipped', '건너뜀')]
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='samguk')
+    faction = models.CharField(max_length=8, blank=True)
+    faction_since = models.DateField(null=True, blank=True)
+    wins = models.PositiveIntegerField(default=0)
+    streak = models.PositiveIntegerField(default=0)
+    best_score = models.IntegerField(default=0)
+    titles = models.JSONField(default=list, blank=True)
+    fame = models.PositiveIntegerField(default=0)
+    manor = models.JSONField(default=dict, blank=True)
+    beggar = models.JSONField(default=dict, blank=True)
+    hide_from_beggar = models.BooleanField(default=False)
+    tutorial = models.CharField(max_length=8, choices=TUTORIAL, default='none')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = '테크창 삼국지 회원'
+        verbose_name_plural = '테크창 삼국지 회원'
+
+
+class SamgukActivity(models.Model):
+    """추가 군령의 근거 — 게임일마다 출석·칼럼 읽기·댓글/답변을 한 줄씩(같은 ref 는 한 번)."""
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='samguk_activity')
+    day = models.DateField()
+    source = models.CharField(max_length=10)                              # checkin / column / comment
+    ref = models.CharField(max_length=40, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = '테크창 삼국지 활동'
+        verbose_name_plural = '테크창 삼국지 활동'
+        unique_together = [('user', 'day', 'source', 'ref')]
+
+
+class SamgukInn(models.Model):
+    """객잔 — 게임일마다 손님 3명 중 하나를 영입(설계 7.3). offers 는 그날 처음 열 때 정한다."""
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='samguk_inn')
+    day = models.DateField()
+    offers = models.JSONField(default=list)
+    picked = models.CharField(max_length=32, blank=True)
+    reunion = models.BooleanField(default=False)                           # 이미 등록한 장수를 다시 만남(명성 +3)
+    traveler_rumor = models.CharField(max_length=40, blank=True)          # 나그네가 남긴 소문(7단계)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = '테크창 삼국지 객잔'
+        verbose_name_plural = '테크창 삼국지 객잔'
+        unique_together = [('user', 'day')]
+
+
+class SamgukGuestbook(models.Model):
+    """남의 장원 방명록(설계 7.2) — 100자, 장원마다 하루 1개. 주인이 숨기거나 지우고, 누구나 신고한다."""
+    owner = models.ForeignKey(User, on_delete=models.CASCADE, related_name='samguk_guestbook')
+    author = models.ForeignKey(User, on_delete=models.CASCADE, related_name='samguk_guestbook_written')
+    text = models.CharField(max_length=100)
+    day = models.DateField()
+    hidden = models.BooleanField(default=False)
+    reported = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = '테크창 삼국지 방명록'
+        verbose_name_plural = '테크창 삼국지 방명록'
+        ordering = ['-created_at']
+        indexes = [models.Index(fields=['owner', '-created_at'], name='samguk_gb_owner')]
+
+
+class SamgukFriend(models.Model):
+    """친구(양방향) — 신청은 A→B pending, 수락하면 A→B·B→A 둘 다 accepted. 차단은 blocked 한 줄."""
+    STATUS = [('pending', '신청'), ('accepted', '친구'), ('blocked', '차단')]
+    from_user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='samguk_friends_out')
+    to_user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='samguk_friends_in')
+    status = models.CharField(max_length=8, choices=STATUS, default='pending')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = '테크창 삼국지 친구'
+        verbose_name_plural = '테크창 삼국지 친구'
+        unique_together = [('from_user', 'to_user')]
+
+
+class SamgukLegend(models.Model):
+    """외전·기연 시리즈 진행도(설계 8장) — 사람마다 시리즈 하나에 한 줄. progress: {'count', 'days', 'last_day', ...}"""
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='samguk_legends')
+    series = models.CharField(max_length=24)
+    step = models.PositiveSmallIntegerField(default=0)
+    progress = models.JSONField(default=dict, blank=True)
+    completed_at = models.DateField(null=True, blank=True)          # 단계를 다 마침 → 영입 시도 가능
+    recruited_at = models.DateField(null=True, blank=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = '테크창 삼국지 전설 진행'
+        verbose_name_plural = '테크창 삼국지 전설 진행'
+        unique_together = [('user', 'series')]
+
+
+class SamgukRumor(models.Model):
+    """들은 소문 — 지나가는 거지·객잔 나그네. level 이 오를수록 구체적인 소문."""
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='samguk_rumors')
+    series = models.CharField(max_length=24)
+    level = models.PositiveSmallIntegerField(default=1)
+    text = models.CharField(max_length=200)
+    source = models.CharField(max_length=8)                          # beggar / inn
+    heard_on = models.DateField()
+
+    class Meta:
+        verbose_name = '테크창 삼국지 소문'
+        verbose_name_plural = '테크창 삼국지 소문'
+        unique_together = [('user', 'series', 'level')]

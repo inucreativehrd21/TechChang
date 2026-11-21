@@ -62,6 +62,17 @@ def withdraw(user) -> None:
     RookieSeasonStat.objects.filter(user=user).delete()
     RookiePlayer.objects.filter(user=user).delete()
 
+    # 테크창 삼국지 — 판·도감·장원·방명록(쓴 글·받은 글)·친구·소문·활동 기록을 함께 파기(설계 7.2·12장)
+    from django.db.models import Q
+    from community.models import (SamgukActivity, SamgukCodex, SamgukDay, SamgukFriend, SamgukGuestbook,
+                                  SamgukInn, SamgukLegend, SamgukMember, SamgukRumor, SamgukRun)
+    SamgukDay.objects.filter(winner=user).update(winner=None)
+    SamgukRun.objects.filter(user=user).delete()                 # 행동 기록(SamgukAction)은 CASCADE
+    for model in (SamgukCodex, SamgukMember, SamgukActivity, SamgukInn, SamgukLegend, SamgukRumor):
+        model.objects.filter(user=user).delete()
+    SamgukGuestbook.objects.filter(Q(owner=user) | Q(author=user)).delete()
+    SamgukFriend.objects.filter(Q(from_user=user) | Q(to_user=user)).delete()
+
     # 3) 소셜 로그인 연동 정보(카카오 회원번호·토큰·닉네임·이메일)
     subjects = SocialIdentity.objects.filter(user=user, provider='kakao').values_list('subject', flat=True)
     KakaoUser.objects.filter(kakao_id__in=[int(s) for s in subjects if s.isdigit()]).delete()

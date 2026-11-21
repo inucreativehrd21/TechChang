@@ -1,0 +1,40 @@
+{% comment %}장수 도감(설계 6.1) — ???(실루엣) → 발견(이름·초상) → 등용(능력·열전). 초상은 static/samguk/officer/160/<코드>.webp(Codex).{% endcomment %}
+{% load samguk_art %}
+<div class="sg-codex container py-3">
+  <h1 class="h4">장수 도감 <small class="text-muted">등용 {{ codex.got }} / {{ codex.total }} · 발견 {{ codex.seen }}</small></h1>
+  <p class="small"><a href="{% url 'community:samguk_home' %}">오늘의 천하</a> · <a href="{% url 'community:samguk_inn' %}">객잔</a></p>
+  <div class="sg-codex-tools">
+    <label>장수 찾기 <input type="search" class="form-control form-control-sm" data-codex-search placeholder="발견한 장수의 이름"></label>
+    <div class="sg-codex-filters" aria-label="도감 상태 필터"><button type="button" class="btn btn-sm btn-primary" data-codex-filter="all" aria-pressed="true">전체</button><button type="button" class="btn btn-sm btn-outline-secondary" data-codex-filter="recruited" aria-pressed="false">등용</button><button type="button" class="btn btn-sm btn-outline-secondary" data-codex-filter="seen" aria-pressed="false">발견</button></div>
+  </div>
+  <p class="small text-muted" data-codex-empty hidden>조건에 맞는 장수가 없어요.</p>
+  {% for grp in codex.groups %}
+  <section class="sg-codex-group mb-4" data-group="{{ grp.code }}">
+    <h2 class="h6">{{ grp.label }} <small class="text-muted">{{ grp.got }} / {{ grp.total }}</small></h2>
+    <div class="sg-codex-grid">
+      {% for it in grp.items %}
+      <div class="sg-codex-card card is-{{ it.state }}" data-code="{{ it.code }}" data-name="{{ it.name }}" data-tier="{{ it.tier }}">
+        {% sg_portrait it.code it.state large=True %}
+        <div class="card-body p-2 small">
+          <div class="text-muted">No.{{ it.no|stringformat:"03d" }} {{ it.stars }}</div>
+          <strong>{{ it.name }}</strong> {{ it.hanja }}
+          {% if it.detail %}
+          <div>통{{ it.detail.lead }} 무{{ it.detail.war }} 지{{ it.detail.intl }} 정{{ it.detail.pol }} · {{ it.detail.skill }}</div>
+          <div class="text-muted">{{ it.detail.note }}</div>
+          <div class="text-muted">{{ it.detail.source }} · 등용 {{ it.detail.times }}회{% if it.detail.unified %} · 천하통일 {{ it.detail.unified }}회{% endif %}</div>
+          {% elif it.state == 'seen' %}<div class="text-muted">발견 — 등용하면 능력과 열전이 열려요</div>{% endif %}
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </section>
+  {% endfor %}
+  {% for grp in codex.hidden %}
+  <section class="sg-codex-group sg-codex-hidden mb-3" data-group="{{ grp.code }}">
+    <h2 class="h6">{{ grp.label }} <small class="text-muted">{% if grp.got %}{{ grp.got }}{% else %}?{% endif %} / {{ grp.total }}</small></h2>
+    <div class="sg-codex-grid">
+      {% for it in grp.items %}<div class="sg-codex-card card is-recruited is-{{ grp.code }}" data-code="{{ it.code }}" data-name="{{ it.name }}">{% sg_portrait it.code large=True %}<div class="card-body p-2 small"><strong>{{ it.name }}</strong> {{ it.hanja }} {{ it.stars }}<div class="text-muted">{{ it.nation }}</div><div class="text-muted">{{ it.note }}</div></div></div>{% empty %}<p class="small text-muted mb-0">전설 시리즈를 끝내야 만날 수 있어요.</p>{% endfor %}
+    </div>
+  </section>
+  {% endfor %}
+</div>

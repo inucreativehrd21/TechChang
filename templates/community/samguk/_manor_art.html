@@ -1,0 +1,9 @@
+{% load static l10n samguk_art %}
+<section class="sg-estate" aria-label="장원 전경">
+  <img class="sg-estate-world" src="{% static 'samguk/manor/world.webp' %}" width="2000" height="1250" alt="산 아래 마당과 오솔길로 이어진 장원">
+  {% for b in buildings %}<a class="sg-estate-building" href="#sg-building-{{ b.code }}" style="left:{{ b.x|unlocalize }}%;top:{{ b.y|unlocalize }}%;width:{{ b.width|unlocalize }}%" aria-label="{{ b.name }} {{ b.level }}단계"><img src="{% static b.path %}" width="640" height="640" alt=""><span>{{ b.name }} {{ b.level }}</span></a>{% endfor %}
+  {% for d in decor %}<img class="sg-estate-decor" src="{% static d.path %}" style="left:{{ d.x|unlocalize }}%;top:{{ d.y|unlocalize }}%;width:{{ d.width|unlocalize }}%" width="480" height="480" alt="{{ d.name }}">{% endfor %}
+  {% for p in officers %}<a class="sg-estate-officer{% if not p.officer %} is-empty{% endif %}" href="#sg-slot-{{ p.slot }}" style="left:{{ p.x|unlocalize }}%;top:{{ p.y|unlocalize }}%" aria-label="{% if p.officer %}{{ p.officer.name }} 배치 자리{% else %}빈 장수 배치 자리{% endif %}">{% if p.officer %}{% sg_portrait p.officer.code %}<span>{{ p.officer.name }}</span>{% else %}<span>+</span>{% endif %}</a>{% endfor %}
+  <a class="sg-estate-wanderer" href="#sg-beggar" aria-label="지나가는 거지에게 말 걸기"><img src="{% static 'samguk/manor/beggar.webp' %}" width="400" height="560" alt="지나가는 거지"></a>
+  <button type="button" class="sg-motion-toggle" aria-pressed="false">움직임 멈추기</button>
+</section>

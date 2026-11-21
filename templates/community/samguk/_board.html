@@ -1,0 +1,79 @@
+{% load samguk_art %}
+<section id="sg-board" class="sg-board" data-sg-board>
+  <h2 class="visually-hidden">천하 지도와 도시</h2>
+  <div class="sg-status">
+    <div class="sg-ap"><span class="sg-resource-label">군령</span><strong>{{ view.ap_left }}<small> / {{ view.ap_total }}</small></strong><meter min="0" max="{{ view.ap_total }}" value="{{ view.ap_left }}" aria-label="남은 군령">{{ view.ap_left }}</meter>{% if view.ap_bonus %}<small class="sg-bonus">활동 +{{ view.ap_bonus }}</small>{% endif %}</div>
+    <div class="sg-resource sg-gold"><span class="sg-resource-label">금</span><strong>{{ view.gold }}</strong></div>
+    <div class="sg-resource sg-food"><span class="sg-resource-label">군량</span><strong>{{ view.food }}</strong></div>
+    <div class="sg-resource sg-score"><span class="sg-resource-label">점수</span><strong>{{ view.score.total }}</strong></div>
+    {% if view.event.0 %}<details class="sg-weather"><summary>{{ view.event.0 }}</summary><p>{{ view.event.1 }}</p></details>{% endif %}
+  </div>
+  {% if view.over %}<div class="sg-over" role="status"><strong>오늘 판을 마쳤어요. {{ view.score.total }}점</strong><span>도시 {{ view.score.cities }} · 군벌 {{ view.score.lords }} · 천하인 {{ view.score.boss }} · 등용 {{ view.score.recruits }} · 황건 {{ view.score.yellow }} · 병력 {{ view.score.troops }}</span></div>{% endif %}
+  <div class="sg-board-layout">
+    <div class="sg-map-column">
+      <div class="sg-map-toolbar"><span>천하 지도</span><button type="button" class="sg-map-toggle" aria-expanded="true">지도 접기</button></div>
+      <div class="sg-map-stage">{% sg_map view.cities %}</div>
+      <section class="sg-report" aria-label="최근 행동">
+        <div class="sg-report-heading"><strong>최근 행동</strong><button type="button" data-sg-tab="history">기록 보기</button></div>
+        {% if last %}<p>{{ last.0.result.text }}</p>{% if last.0.result.duel %}{% include 'community/samguk/_duel.html' with duel=last.0.result.duel %}{% elif last.0.result.npc %}<small>{{ last.0.result.npc|length }}건의 군벌 소식이 있어요.</small>{% endif %}
+        {% else %}<p>도시를 고르고 다음 수를 두어 보세요.</p>{% endif %}
+      </section>
+    </div>
+    <section class="sg-command" aria-label="도시와 행동">
+      <div class="sg-tabs" aria-label="명령 패널">
+        <button type="button" id="sg-tab-cities" data-sg-tab="cities" aria-controls="sg-panel-cities">도시</button>
+        <button type="button" id="sg-tab-recruits" data-sg-tab="recruits" aria-controls="sg-panel-recruits">등용 <span>{{ view.recruits|length }}</span></button>
+        <button type="button" id="sg-tab-legends" data-sg-tab="legends" aria-controls="sg-panel-legends">전설{% if legends %} <span>{{ legends|length }}</span>{% endif %}</button>
+        <button type="button" id="sg-tab-history" data-sg-tab="history" aria-controls="sg-panel-history">기록</button>
+      </div>
+      <div class="sg-command-scroll" data-sg-scroll="command">
+        <section id="sg-panel-cities" data-sg-panel="cities" aria-labelledby="sg-tab-cities">
+          <label class="sg-city-picker"><span>살펴볼 도시</span><select class="form-select" data-sg-city-picker>{% for c in view.cities %}<option value="{{ c.code }}">{{ c.name }} · {{ c.owner_label }} · {{ c.value }}점</option>{% endfor %}</select></label>
+          <div class="sg-map" aria-label="도시 정보">
+          {% for c in view.cities %}
+          <article id="sg-city-{{ c.code }}" tabindex="-1" aria-label="{{ c.name }} 도시 정보" class="sg-city{% if c.mine %} is-mine{% elif c.near %} is-near{% endif %}" data-city="{{ c.code }}" data-x="{{ c.x }}" data-y="{{ c.y }}" data-owner="{{ c.owner }}">
+            <header class="sg-city-heading"><div><h3>{{ c.name }}</h3><span class="sg-owner-label">{{ c.owner_label }}</span></div><span>{{ c.value }}점 도시</span></header>
+            <p class="sg-troop-count"><span>주둔 병력</span><strong>{% if c.troops is not None %}{{ c.troops }}{% else %}미확인{% endif %}</strong></p>
+            {% if c.officers %}<ul class="sg-officers">
+              {% for o in c.officers %}<li class="sg-officer" data-code="{{ o.code }}" data-tier="{{ o.tier }}">{% sg_portrait o.code %}<div><strong>{{ o.name }}</strong><span class="sg-stars">{{ o.stars }}</span><span class="sg-officer-stats"><span>통솔 <b>{{ o.lead }}</b></span><span>무력 <b>{{ o.war }}</b></span><span>지력 <b>{{ o.intl }}</b></span><span>정치 <b>{{ o.pol }}</b></span></span><small>{{ o.skill }}</small></div></li>{% endfor %}
+            </ul>{% elif not c.visible %}<p class="sg-city-hint">정찰하면 병력과 장수를 확인할 수 있어요.</p>{% elif c.mine %}<p class="sg-city-hint">주둔 중인 장수가 없어요.</p>{% endif %}
+            {% if not view.over and c.mine and c.officers %}
+            <div class="sg-quick-actions">
+              <form method="post" action="{{ act_url }}">{% csrf_token %}<input type="hidden" name="seq" value="{{ seq }}"><input type="hidden" name="kind" value="develop"><input type="hidden" name="city" value="{{ c.code }}"><button class="sg-button sg-quick-button"><strong>내정</strong><span>금·군량 확보</span><small>군령 1</small></button></form>
+              <form method="post" action="{{ act_url }}">{% csrf_token %}<input type="hidden" name="seq" value="{{ seq }}"><input type="hidden" name="kind" value="conscript"><input type="hidden" name="city" value="{{ c.code }}"><button class="sg-button sg-quick-button"><strong>징병</strong><span>병력 보충</span><small>군령 1 · 금 {{ view.conscript_gold }}</small></button></form>
+            </div>
+            <details class="sg-operation" data-sg-detail="{{ c.code }}:attack">
+              <summary><strong>출정</strong><span>장수와 병력을 보내요</span></summary>
+              {% if c.targets %}<form method="post" action="{{ act_url }}" class="sg-operation-form">{% csrf_token %}
+                <input type="hidden" name="seq" value="{{ seq }}"><input type="hidden" name="kind" value="attack"><input type="hidden" name="from" value="{{ c.code }}">
+                <label>칠 성<select name="to" class="form-select" data-sg-attack-target>{% for t in c.targets %}<option value="{{ t.code }}" data-cost="{{ t.cost }}">{{ t.name }} · {{ t.owner }} · 군령 {{ t.cost }}</option>{% endfor %}</select></label>
+                <fieldset><legend>출정 장수 <small>최대 3명, 첫 장수가 대장이에요</small></legend><div class="sg-army-choice">{% for o in c.officers %}<label><input type="checkbox" name="officers" value="{{ o.code }}"> {{ o.name }}</label>{% endfor %}</div></fieldset>
+                <label>보낼 병력<input type="number" name="troops" min="1" max="{{ c.troops }}" value="{{ c.troops }}" required inputmode="numeric" class="form-control"></label>
+                <button class="sg-button sg-button-primary">출정 <span data-sg-attack-cost>군령 {{ c.targets.0.cost }}</span></button>
+              </form>{% else %}<p class="sg-city-hint">맞닿은 도시는 모두 내 땅이에요.</p>{% endif %}
+            </details>
+            <details class="sg-operation" data-sg-detail="{{ c.code }}:scheme">
+              <summary><strong>계략</strong><span>적 병력을 줄여요 · 군령 1</span></summary>
+              {% if c.targets %}<form method="post" action="{{ act_url }}" class="sg-operation-form">{% csrf_token %}
+                <input type="hidden" name="seq" value="{{ seq }}"><input type="hidden" name="kind" value="scheme"><input type="hidden" name="mode" value="raid"><input type="hidden" name="from" value="{{ c.code }}">
+                <label>대상 도시<select name="city" class="form-select">{% for t in c.targets %}<option value="{{ t.code }}">{{ t.name }}</option>{% endfor %}</select></label>
+                <label>맡길 장수<select name="by" class="form-select">{% for o in c.officers %}<option value="{{ o.code }}">{{ o.name }} · 지력 {{ o.intl }}</option>{% endfor %}</select></label>
+                <button class="sg-button sg-button-primary">계략 실행 <span>군령 1</span></button>
+              </form>{% else %}<p class="sg-city-hint">계략을 보낼 이웃 도시가 없어요.</p>{% endif %}
+            </details>
+            {% endif %}
+            {% if not view.over and c.near %}<form method="post" action="{{ act_url }}" class="sg-scout-form">{% csrf_token %}<input type="hidden" name="seq" value="{{ seq }}"><input type="hidden" name="kind" value="scout"><input type="hidden" name="city" value="{{ c.code }}"><button class="sg-button sg-button-primary">정찰 <span>군령 1</span></button></form>{% endif %}
+            {% if not c.mine %}<p class="sg-city-hint">출정은 맞닿은 내 성에서 준비할 수 있어요.</p>{% endif %}
+          </article>
+          {% endfor %}
+          </div>
+        </section>
+        <section id="sg-panel-recruits" data-sg-panel="recruits" aria-labelledby="sg-tab-recruits">{% include 'community/samguk/_recruits.html' %}</section>
+        <section id="sg-panel-legends" data-sg-panel="legends" aria-labelledby="sg-tab-legends">{% include 'community/samguk/_legends.html' %}</section>
+        <section id="sg-panel-history" data-sg-panel="history" aria-labelledby="sg-tab-history">{% include 'community/samguk/_history.html' %}</section>
+      </div>
+      {% if not view.over %}<footer class="sg-command-footer"><span>행동은 군령을 사용해요</span><form method="post" action="{{ act_url }}" data-sg-confirm="end">{% csrf_token %}<input type="hidden" name="seq" value="{{ seq }}"><input type="hidden" name="kind" value="end"><button class="sg-end-button">오늘 판 마치기</button></form></footer>{% endif %}
+    </section>
+  </div>
+  <details class="sg-lords"><summary>천하의 군벌</summary><p>{% for l in view.lords %}<span class="{% if not l.alive %}sg-lord-defeated{% endif %}">{{ l.name }}{% if l.ally %} (동맹){% endif %}{% if l.feud %} (불화){% endif %}</span>{% endfor %}</p></details>
+</section>

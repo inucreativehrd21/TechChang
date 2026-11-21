@@ -1,0 +1,138 @@
+{% comment %}
+장원(설계 7장, PC 전용) — 고정 자리 8칸(건물 5 + 장식 3), 장수 배치 칸, 방명록, 친구, 지나가는 거지.
+기능 확인용 골격. 장원 전경·건물 단계별 그림·배치 칸 좌표는 Codex(자리 순서 = samguk_manor.PLACE_SLOTS).
+{% endcomment %}
+{% load common_tags static samguk_art %}
+<div class="sg-manor container py-3" data-owner="{% if is_mine %}self{% else %}other{% endif %}" data-owner-id="{{ owner.pk }}">
+  <header class="mb-3">
+    <h1 class="h4">{{ owner_name }}의 장원</h1>
+    <p class="small text-muted mb-1">명성 {{ manor.member.fame }} · 도감 수집 {{ manor.codex_got }}명 · 천하통일 {{ manor.member.wins }}회{% if manor.titles %} · {{ manor.titles|last }}{% endif %}</p>
+    <nav class="small"><a href="{% url 'community:samguk_home' %}">오늘의 천하</a> · <a href="{% url 'community:samguk_codex' %}">도감</a> · <a href="{% url 'community:samguk_inn' %}">객잔</a>{% if not is_mine %} · <a href="{% url 'community:samguk_manor' %}">내 장원</a>{% endif %}</nav>
+  </header>
+
+  {% sg_manor_art manor %}
+
+  <section class="sg-manor-buildings mb-3">
+    <h2 class="h6">건물</h2>
+    <div class="d-flex flex-wrap gap-2">
+      {% for b in manor.buildings %}
+      <div id="sg-building-{{ b.code }}" class="card sg-building" data-building="{{ b.code }}" data-level="{{ b.level }}"><div class="card-body p-2 small">
+        <strong>{{ b.name }}</strong> {{ b.level }}단계{% if b.level == 0 %}(아직 없음){% endif %}
+        {% if is_mine and b.cost %}
+        <form method="post" action="{% url 'community:samguk_manor_post' %}" class="mt-1">{% csrf_token %}<input type="hidden" name="what" value="upgrade"><input type="hidden" name="building" value="{{ b.code }}"><button class="btn btn-sm btn-outline-primary">{% if b.level == 0 %}짓기{% else %}올리기{% endif %} (명성 {{ b.cost }})</button></form>
+        {% endif %}
+      </div></div>
+      {% endfor %}
+    </div>
+  </section>
+
+  <section class="sg-manor-placed mb-3">
+    <h2 class="h6">장수 배치 <small class="text-muted">전시만 해요. 매일 판에는 나오지 않아요.</small></h2>
+    <div class="d-flex flex-wrap gap-2">
+      {% for p in manor.placed %}
+      <div id="sg-slot-{{ p.slot }}" class="card sg-slot" data-slot="{{ p.slot }}"><div class="card-body p-2 small">
+        {% if p.officer %}{% sg_portrait p.officer.code %}{% endif %}
+        {% if p.officer %}<strong>{{ p.officer.name }}</strong> {{ p.officer.stars }}{% else %}<span class="text-muted">빈 자리</span>{% endif %}
+        {% if is_mine %}
+        <form method="post" action="{% url 'community:samguk_manor_post' %}" class="mt-1">{% csrf_token %}<input type="hidden" name="what" value="place"><input type="hidden" name="slot" value="{{ p.slot }}">
+          <select name="code" class="form-select form-select-sm" aria-label="배치할 장수"><option value="">(비우기)</option>{% for g in recruited %}<option value="{{ g.code }}"{% if p.officer.code == g.code %} selected{% endif %}>{{ g.name }}</option>{% endfor %}</select>
+          <button class="btn btn-sm btn-outline-secondary mt-1">세우기</button>
+        </form>
+        {% endif %}
+      </div></div>
+      {% endfor %}
+    </div>
+  </section>
+
+  <section class="sg-manor-decor mb-3">
+    <h2 class="h6">장식</h2>
+    <div class="d-flex flex-wrap gap-2">
+      {% for d in manor.decor %}
+      <div class="card sg-decor" data-slot="{{ d.slot }}"><div class="card-body p-2 small">
+        {{ d.name|default:"빈 자리" }}
+        {% if is_mine %}
+        <form method="post" action="{% url 'community:samguk_manor_post' %}" class="mt-1">{% csrf_token %}<input type="hidden" name="what" value="decor"><input type="hidden" name="slot" value="{{ d.slot }}">
+          <select name="decor" class="form-select form-select-sm" aria-label="놓을 장식"><option value="">(치우기)</option>{% for code, spec in manor.decor_options.items %}<option value="{{ code }}">{{ spec.0 }} (명성 {{ spec.1 }})</option>{% endfor %}</select>
+          <button class="btn btn-sm btn-outline-secondary mt-1">놓기</button>
+        </form>
+        {% endif %}
+      </div></div>
+      {% endfor %}
+    </div>
+  </section>
+
+  {% if is_mine %}
+  <section id="sg-beggar" class="sg-beggar card mb-3"><div class="card-body small">
+    <img class="sg-beggar-figure" src="{% static 'samguk/manor/beggar.webp' %}" width="400" height="560" alt="">
+    <p class="sg-beggar-bubble">오늘은 어떤 이야기가 궁금하신가?</p>
+    <strong>지나가는 거지</strong> <span class="text-muted">오늘 남은 한마디 {{ beggar_left }}</span>
+    {% if beggar_left > 0 %}
+    <form method="post" action="{% url 'community:samguk_manor_post' %}" class="d-inline">{% csrf_token %}<input type="hidden" name="what" value="beggar"><button class="btn btn-sm btn-outline-secondary">말 걸기</button></form>
+    <form method="post" action="{% url 'community:samguk_manor_post' %}" class="d-inline">{% csrf_token %}<input type="hidden" name="what" value="beggar"><input type="hidden" name="alms" value="1"><button class="btn btn-sm btn-outline-secondary">동냥하기 (명성 2, 전설 소문)</button></form>
+    {% endif %}
+    <form method="post" action="{% url 'community:samguk_manor_post' %}" class="mt-2">{% csrf_token %}<input type="hidden" name="what" value="privacy">
+      <label><input type="checkbox" name="hide" value="1"{% if manor.member.hide_from_beggar %} checked{% endif %} data-sg-autosubmit> 거지에게 내 소식을 흘리지 않기</label>
+      <noscript><button class="btn btn-sm btn-outline-secondary">소식 설정 저장</button></noscript>
+    </form>
+  </div></section>
+
+  <section class="sg-legend-list mb-3">
+    <h2 class="h6">전설 시리즈 <small class="text-muted">소문을 들었거나 시작한 것만 보여요</small></h2>
+    <ul class="list-unstyled small">
+      {% for l in legends %}
+      <li class="mb-1" data-series="{{ l.series }}"><strong>{{ l.name }}</strong> <span class="text-muted">({{ l.kind }} · {{ l.grants|join:"·" }})</span> —
+        {% if l.recruited %}영입했어요
+        {% elif l.completed %}모든 단계를 마쳤어요.
+          <form method="post" action="{% url 'community:samguk_manor_post' %}" class="d-inline">{% csrf_token %}<input type="hidden" name="what" value="attempt"><input type="hidden" name="series" value="{{ l.series }}"><button class="btn btn-sm btn-primary">영입 시도 (명성 {{ l.fame }} 필요)</button></form>
+        {% else %}{{ l.step_no }} / {{ l.steps }}단계 · 지금: {{ l.now }}{% if l.count %} ({{ l.count }}){% endif %}{% endif %}
+      </li>
+      {% empty %}<li class="text-muted">아직 들은 소문이 없어요. 지나가는 거지나 객잔 나그네에게 귀를 기울여 보세요.</li>{% endfor %}
+    </ul>
+  </section>
+
+  <section class="sg-friends mb-3">
+    <h2 class="h6">친구</h2>
+    {% if incoming %}<p class="small">받은 신청: {% for f in incoming %}{{ f.name }}
+      <form method="post" action="{% url 'community:samguk_manor_post' %}" class="d-inline">{% csrf_token %}<input type="hidden" name="what" value="friend"><input type="hidden" name="how" value="accept"><input type="hidden" name="user" value="{{ f.user.pk }}"><button class="btn btn-sm btn-primary">수락</button></form>
+      <form method="post" action="{% url 'community:samguk_manor_post' %}" class="d-inline">{% csrf_token %}<input type="hidden" name="what" value="friend"><input type="hidden" name="how" value="remove"><input type="hidden" name="user" value="{{ f.user.pk }}"><button class="btn btn-sm btn-outline-secondary">거절</button></form>
+    {% endfor %}</p>{% endif %}
+    <p class="small">{% for f in friends %}<a href="{% url 'community:samguk_manor_of' f.user.pk %}">{{ f.name }}</a>{% if not forloop.last %} · {% endif %}{% empty %}<span class="text-muted">아직 친구가 없어요. 남의 장원에서 친구를 신청해 보세요.</span>{% endfor %}</p>
+    <h3 class="h6 mt-2">놀러 가기</h3>
+    <p class="small">{% for v in visit %}<a href="{% url 'community:samguk_manor_of' v.user.pk %}">{{ v.name }}</a> <span class="text-muted">({{ v.why }})</span>{% if not forloop.last %} · {% endif %}{% empty %}<span class="text-muted">아직 들를 장원이 없어요.</span>{% endfor %}</p>
+  </section>
+  {% else %}
+  <section class="sg-relation mb-3 small">
+    {% if relation == 'friend' %}친구예요.
+      <form method="post" action="{% url 'community:samguk_manor_post' %}" class="d-inline">{% csrf_token %}<input type="hidden" name="what" value="friend"><input type="hidden" name="how" value="remove"><input type="hidden" name="user" value="{{ owner.pk }}"><input type="hidden" name="back" value="{{ request.path }}"><button class="btn btn-sm btn-outline-secondary">친구 끊기</button></form>
+    {% elif relation == 'pending_out' %}친구 신청을 보냈어요.
+    {% elif relation == 'blocked' %}차단한 사용자예요.
+      <form method="post" action="{% url 'community:samguk_manor_post' %}" class="d-inline">{% csrf_token %}<input type="hidden" name="what" value="friend"><input type="hidden" name="how" value="unblock"><input type="hidden" name="user" value="{{ owner.pk }}"><input type="hidden" name="back" value="{{ request.path }}"><button class="btn btn-sm btn-outline-secondary">차단 풀기</button></form>
+    {% elif relation != 'blocked_by' %}
+      <form method="post" action="{% url 'community:samguk_manor_post' %}" class="d-inline">{% csrf_token %}<input type="hidden" name="what" value="friend"><input type="hidden" name="how" value="{% if relation == 'pending_in' %}accept{% else %}request{% endif %}"><input type="hidden" name="user" value="{{ owner.pk }}"><input type="hidden" name="back" value="{{ request.path }}"><button class="btn btn-sm btn-primary">{% if relation == 'pending_in' %}친구 신청 수락{% else %}친구 신청{% endif %}</button></form>
+    {% endif %}
+    {% if relation != 'blocked' %}
+    <form method="post" action="{% url 'community:samguk_manor_post' %}" class="d-inline">{% csrf_token %}<input type="hidden" name="what" value="friend"><input type="hidden" name="how" value="block"><input type="hidden" name="user" value="{{ owner.pk }}"><input type="hidden" name="back" value="{{ request.path }}"><button class="btn btn-sm btn-link text-muted">차단</button></form>
+    {% endif %}
+  </section>
+  {% endif %}
+
+  <section class="sg-guestbook">
+    <h2 class="h6">방명록</h2>
+    {% if not is_mine and relation != 'blocked' and relation != 'blocked_by' %}
+    <form method="post" action="{% url 'community:samguk_manor_post' %}" class="d-flex gap-2 mb-2">{% csrf_token %}<input type="hidden" name="what" value="guestbook"><input type="hidden" name="user" value="{{ owner.pk }}"><input type="hidden" name="back" value="{{ request.path }}">
+      <input type="text" name="text" maxlength="100" required class="form-control form-control-sm" aria-label="방명록 인사" placeholder="인사를 남겨 주세요(100자, 하루 한 번)"><button class="btn btn-sm btn-primary">남기기</button>
+    </form>
+    {% endif %}
+    <ul class="list-unstyled small">
+      {% for e in guestbook %}
+      <li class="sg-gb-entry mb-1{% if e.hidden %} text-muted{% endif %}"><a href="{% url 'community:samguk_manor_of' e.author.pk %}">{{ e.author|display_name }}</a>: {{ e.text }} <span class="text-muted">{{ e.created_at|date:"n/j" }}{% if e.hidden %} · 숨김{% endif %}</span>
+        {% if is_mine %}
+        <form method="post" action="{% url 'community:samguk_manor_post' %}" class="d-inline">{% csrf_token %}<input type="hidden" name="what" value="gb_mod"><input type="hidden" name="entry" value="{{ e.pk }}"><input type="hidden" name="how" value="hide"><button class="btn btn-sm btn-link p-0">{% if e.hidden %}보이기{% else %}숨기기{% endif %}</button></form>
+        <form method="post" action="{% url 'community:samguk_manor_post' %}" class="d-inline">{% csrf_token %}<input type="hidden" name="what" value="gb_mod"><input type="hidden" name="entry" value="{{ e.pk }}"><input type="hidden" name="how" value="delete"><button class="btn btn-sm btn-link p-0">지우기</button></form>
+        {% endif %}
+        <form method="post" action="{% url 'community:samguk_manor_post' %}" class="d-inline">{% csrf_token %}<input type="hidden" name="what" value="gb_mod"><input type="hidden" name="entry" value="{{ e.pk }}"><input type="hidden" name="how" value="report"><input type="hidden" name="back" value="{{ request.path }}"><button class="btn btn-sm btn-link p-0 text-muted">신고</button></form>
+      </li>
+      {% empty %}<li class="text-muted">아직 방명록이 없어요.</li>{% endfor %}
+    </ul>
+  </section>
+</div>

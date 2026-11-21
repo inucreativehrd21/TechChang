@@ -1,0 +1,9 @@
+{% load common_tags pybo_filter %}
+<div class="sg-ranking container py-3">
+  <h1 class="h4">{{ day.date|date:"n월 j일" }}의 순위{% if day.status == 'open' %} <small class="text-muted">(진행 중)</small>{% endif %}</h1>
+  {% if day.status == 'closed' and day.winner %}<p class="sg-victory">천하인: <strong>{{ day.winner|display_name }}</strong> · <a href="{% url 'community:samguk_replay' day.date|date:'Y-m-d' %}">기보 보기</a></p>{% endif %}
+  {% if faction_board %}<p class="small">세력 점수(상위 3명 합 ÷ 3): {% for code, name in factions.items %}{{ name }} {{ faction_board|get_item:code|default:0 }}{% if not forloop.last %} · {% endif %}{% endfor %}</p>{% endif %}
+  <ol class="sg-rank-list">{% for r in rows %}<li>{{ r.user|display_name }} · {{ r.score }}점 · 군령 {{ r.ap_spent }} <span class="text-muted">({{ factions|get_item:r.faction }})</span></li>{% empty %}<li class="text-muted">기록이 없어요.</li>{% endfor %}</ol>
+  {% if recent %}<p class="small">지난 판: {% for d in recent %}<a href="?date={{ d.date|date:'Y-m-d' }}">{{ d.date|date:"n/j" }}</a>{% if not forloop.last %} · {% endif %}{% endfor %}</p>{% endif %}
+  <a href="{% url 'community:samguk_home' %}">오늘의 천하로</a>
+</div>

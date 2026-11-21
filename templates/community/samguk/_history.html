@@ -1,0 +1,8 @@
+{% load samguk_art %}
+  {% if last %}
+  <section class="sg-log mt-3 small"><h3 class="h6">최근 행동</h3>
+    <ol reversed class="mb-0">{% for a in last %}<li>{{ a.result.text }}{% if forloop.first and a.result.duel %}{% include 'community/samguk/_duel.html' with duel=a.result.duel %}{% endif %}{% for ev in a.result.npc %} · {{ ev.text }}{% endfor %}</li>{% endfor %}</ol>
+  </section>
+  {% endif %}
+{% if not last %}<p class="sg-empty">행동하면 결과가 여기에 쌓여요. 연습 판은 기록을 남기지 않아요.</p>{% endif %}
+

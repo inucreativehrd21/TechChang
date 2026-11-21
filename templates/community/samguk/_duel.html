@@ -1,0 +1,5 @@
+{% load samguk_art %}
+<div class="sg-duel" aria-label="일기토 결과">
+  <div>{% sg_portrait duel.att %}<span>{% sg_name duel.att %}</span></div><span>일기토</span><div>{% sg_portrait duel.def %}<span>{% sg_name duel.def %}</span></div>
+  <p>승자 {% sg_portrait duel.winner %} <strong>{% sg_name duel.winner %}</strong></p>
+</div>

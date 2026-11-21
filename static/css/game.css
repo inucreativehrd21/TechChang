@@ -342,3 +342,18 @@ a.gm-rank-name:hover { color: var(--gm-accent); }
 }
 .gm-ball-modes:has(.is-extreme) { grid-template-columns: repeat(3,minmax(0,1fr)); }
 @media (max-width: 900px) { .gm-ball-modes:has(.is-extreme) { grid-template-columns: 1fr; } }
+
+/* 테크창 삼국지 묶음 — 야구 묶음(gm-ball) 틀을 쓰고 판만 지도 그림으로 */
+.gm-sg-board {
+    background-color: #1d2a24;
+    background-image: linear-gradient(90deg, rgba(14, 22, 18, .92) 0%, rgba(14, 22, 18, .72) 55%, rgba(14, 22, 18, .35) 100%), url('../samguk/map/world-mobile.webp');
+    background-size: cover;
+    background-position: center 45%;
+}
+.gm-sg .gm-ball-copy p { color: #d6dccf; }
+.gm-sg-faces { display: flex; gap: 12px; flex: none; margin: 0; padding: 0; list-style: none; }
+.gm-sg-faces li { display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: 0.7rem; font-weight: 700; color: #d6dccf; }
+.gm-sg-faces img { width: 56px; height: 56px; border-radius: 12px; object-fit: cover; border: 2px solid rgba(255, 255, 255, .35); }
+@media (max-width: 640px) { .gm-sg-faces { display: none; } }
+.gm-sg .gm-ball-modes { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+@media (max-width: 900px) { .gm-sg .gm-ball-modes { grid-template-columns: 1fr; } }

@@ -160,3 +160,29 @@ class LiteCareerAdmin(admin.ModelAdmin):
     list_filter = ('role', 'league')
     search_fields = ('name', 'user__username')
     readonly_fields = ('pending', 'flags', 'traits', 'traits_seen', 'stats')
+
+
+# ── 테크창 삼국지 — 신고된 방명록을 운영진이 본다(설계 7.2) ─────────────────────
+from .models import SamgukDay, SamgukGuestbook, SamgukRun  # noqa: E402
+
+
+@admin.register(SamgukGuestbook)
+class SamgukGuestbookAdmin(admin.ModelAdmin):
+    list_display = ('owner', 'author', 'text', 'day', 'hidden', 'reported')
+    list_filter = ('reported', 'hidden', 'day')
+    search_fields = ('text', 'owner__username', 'author__username')
+    raw_id_fields = ('owner', 'author')
+
+
+@admin.register(SamgukDay)
+class SamgukDayAdmin(admin.ModelAdmin):
+    list_display = ('date', 'status', 'winner', 'closed_at')
+    readonly_fields = ('board', 'faction_scores')
+
+
+@admin.register(SamgukRun)
+class SamgukRunAdmin(admin.ModelAdmin):
+    list_display = ('day', 'user', 'faction', 'score', 'rank', 'ap_spent', 'finished_at')
+    list_filter = ('faction', 'day')
+    raw_id_fields = ('user', 'day')
+    readonly_fields = ('state',)
