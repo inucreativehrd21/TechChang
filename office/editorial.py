@@ -4,7 +4,8 @@ from contextvars import ContextVar
 from community.column_tracks import RESEARCH, PRACTICAL, TRACKS, TRACK_CHOICES
 
 _track = ContextVar('column_track', default='')
-LABELS = dict(TRACK_CHOICES)
+# 과거 제작 이력과 유형 미지정 CLI의 표시값이에요. 공개 분류 선택지에는 넣지 않아요.
+LABELS = {'': '단편 칼럼', **dict(TRACK_CHOICES)}
 CRITERIA = {
     RESEARCH: {
         'question': '학술·기술적 탐구 질문과 기존 설명에서 남은 쟁점',

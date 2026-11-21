@@ -67,7 +67,7 @@ class Command(BaseCommand):
     def add_arguments(self, parser):
         parser.add_argument('--topic', choices=['hrd', 'data', 'coding'], required=True)
         parser.add_argument('--track', choices=[*TRACKS, 'both', 'legacy'],
-                            help='예약 제작은 기본 두 유형 각 1편. 수동 제작·기존 파일럿은 미지정 시 기존 칼럼이에요.')
+                            help='예약 제작은 기본 두 유형 각 1편. 유형 미지정 수동 제작은 과거 제작 이력과의 호환 경로예요.')
         parser.add_argument('--dry-run', action='store_true')
         parser.add_argument('--profile', choices=['legacy', 'a', 'b'])
         parser.add_argument('--pilot-title', help='로컬 dry-run에서 동일한 회의 주제로 기획부터 비교해요.')

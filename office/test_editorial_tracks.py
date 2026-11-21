@@ -22,6 +22,17 @@ def track_report(track, quote='이 원고의 근거와 성립 조건을 직접 �
 
 
 class EditorialContractTests(SimpleTestCase):
+    def test_untyped_manual_command_keeps_compatibility_without_a_public_category(self):
+        from community.column_tracks import TRACK_CHOICES
+        from office.management.commands.office_publish import Command
+        output = StringIO()
+        command = Command(stdout=output)
+        with patch.object(command, '_handle_one') as one:
+            command.handle(topic='data')
+        self.assertEqual(one.call_args.kwargs['track'], '')
+        self.assertIn('단편 칼럼', output.getvalue())
+        self.assertEqual([key for key, _ in TRACK_CHOICES], ['research', 'practical'])
+
     def test_context_is_restored_and_research_genre_is_independent_of_old_switch(self):
         self.assertEqual(E.current_track(), '')
         with E.use_track('research'), patch('office.switches.get', return_value=False):
