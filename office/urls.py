@@ -1,6 +1,6 @@
 from django.urls import path
 
-from . import views
+from . import token_views, views
 
 app_name = 'office'
 
@@ -11,6 +11,7 @@ urlpatterns = [
     path('making/<int:question_id>/', views.making, name='making'),
     path('admin/', views.office_admin, name='admin'),
     path('admin/observatory/', views.observatory, name='observatory'),
+    path('admin/tokens/', token_views.token_usage, name='token_usage'),
     path('admin/observatory/state.json', views.observatory_state, name='observatory_state'),
     path('admin/observatory/detail.json', views.observatory_detail, name='observatory_detail'),
     path('admin/decision/<int:decision_id>/choose/', views.decision_choose, name='decision_choose'),

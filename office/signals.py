@@ -32,3 +32,26 @@ def column_saved(sender, instance, created, update_fields=None, **kwargs):
         enqueue(['update_column_map', '--settle', '15'], by='column_saved', via='column_saved', dedupe=True)
 
     transaction.on_commit(launch)
+
+
+def _ledger_receiver():
+    from .models import ColumnDraft
+
+    @receiver(post_save, sender=ColumnDraft, dispatch_uid='office_revision_ledger')
+    def draft_saved(sender, instance, update_fields=None, raw=False, **kwargs):
+        """새로 심사받은 판이면 지적 장부를 한 판 넘겨요(office.revision_ledger). 상태만 바뀐 저장은 건너뛰어요."""
+        if raw:
+            return
+        if update_fields and not ({'subject', 'content', 'qa_report', 'check_report'} & set(update_fields)):
+            return
+        from .revision_ledger import observe
+        try:
+            observe(instance)       # 장부는 보조 기록 — 실패해도 원고 저장·제작을 막지 않아요(savepoint 로 되돌려요)
+        except Exception:  # noqa: BLE001
+            import logging
+            logging.getLogger(__name__).exception('지적 장부 갱신 실패: draft=%s', instance.pk)
+
+    return draft_saved
+
+
+_ledger_receiver()

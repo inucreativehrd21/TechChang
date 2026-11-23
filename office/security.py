@@ -50,7 +50,7 @@ def validate_args(args):
                 raise ValueError('작업 인자가 너무 길거나 올바르지 않아요.')
             if arg in ('--draft', '--revise-draft', '--question', '--meeting', '--settle') and not args[i+1].isdigit():
                 raise ValueError('작업 번호는 숫자여야 해요.')
-            if arg == '--feedback' and not re.fullmatch(r'([EFS]\d{1,3}(,[EFS]\d{1,3})*)?', args[i+1]):
+            if arg == '--feedback' and not re.fullmatch(r'([EFSGK]\d{1,3}(,[EFSGK]\d{1,3})*)?', args[i+1]):
                 raise ValueError('반영할 지적 목록이 올바르지 않아요.')
             if arg == '--track' and args[i+1] not in ('research', 'practical', 'both', 'legacy'):
                 raise ValueError('올바른 칼럼 유형이 필요해요.')

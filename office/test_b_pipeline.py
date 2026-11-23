@@ -35,7 +35,9 @@ class BPipelineTests(TestCase):
                    mock.patch.object(P, 'ask_agent_json', side_effect=qa),
                    mock.patch('office.management.commands.office_publish.patch_revise', return_value=('', '', False, '실패')),
                    mock.patch('office.management.commands.office_publish.call_command'),
-                   mock.patch('office.ledger.record'), mock.patch('office.live.mark'), mock.patch('office.live.finish')]
+                   mock.patch('office.ledger.record'), mock.patch('office.live.mark'), mock.patch('office.live.finish'),
+                   # 제목 점검은 심사와 별개 단계(office.headline) — 여기서는 사실 관문만 봐요
+                   mock.patch('office.headline.review', return_value={})]
         with tempfile.TemporaryDirectory() as tmp, override_settings(BASE_DIR=tmp), use_profile('b'), ExitStack() as stack:
             for patch in patches:
                 stack.enter_context(patch)

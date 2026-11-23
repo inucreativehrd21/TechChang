@@ -30,6 +30,8 @@ def verified():
                       {'id': 'R2', 'status': 'met', 'evidence': '둘째 문장은 검증된 근거예요.', 'reason': '근거를 보존했어요.'}]}
 
 
+# 판 나란히 비교·제목 점검(2026-11-23)은 호출 수를 늘려요 — 이 묶음은 기존 요구 검증 경로만 세요(test_revision_ledger 가 따로 확인)
+@patch.dict('os.environ', {'OFFICE_PAIRWISE_GUARD': '0', 'OFFICE_TITLE_LAB': '0'})
 class RequestVerificationTests(SimpleTestCase):
     def session(self):
         draft = SimpleNamespace(subject='기존 제목', content=BEFORE, qa_report={'score': 71},
@@ -247,6 +249,8 @@ class RequestVerificationTests(SimpleTestCase):
         self.assertEqual(ask.call_count, 2)
 
 
+# 판 나란히 비교·제목 점검(2026-11-23)은 호출 수를 늘려요 — 이 묶음은 기존 요구 검증 경로만 세요(test_revision_ledger 가 따로 확인)
+@patch.dict('os.environ', {'OFFICE_PAIRWISE_GUARD': '0', 'OFFICE_TITLE_LAB': '0'})
 class FactCheckRequirementTests(SimpleTestCase):
     """'고친 원고를 다시 사실 검증받기' 같은 요구는 편집 검증이 아니라 실제 팩트체크 결과로 판정한다.
     2026-11-16 #61: 이 요구가 편집 단계에서 늘 미반영으로 남아 재작성 다섯 번이 팩트체크도 못 가고 유지됐다."""
@@ -306,6 +310,8 @@ class FactCheckRequirementTests(SimpleTestCase):
         self.assertEqual(rows[0]['status_label'], '미반영·확인 필요')
         self.assertEqual(rows[2]['status_label'], '팩트체크 전 중단')
 
+# 판 나란히 비교·제목 점검(2026-11-23)은 호출 수를 늘려요 — 이 묶음은 기존 요구 검증 경로만 세요(test_revision_ledger 가 따로 확인)
+@patch.dict('os.environ', {'OFFICE_PAIRWISE_GUARD': '0', 'OFFICE_TITLE_LAB': '0'})
 class AdminRevisionFlowTests(TestCase):
     def setUp(self):
         from unittest import mock as _otp_mock   # 관리 화면은 모두 OTP 경계 — 여기서는 인증된 운영자로 본다

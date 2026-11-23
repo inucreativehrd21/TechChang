@@ -1,0 +1,131 @@
+{% extends 'common/admin_base.html' %}
+{% load static %}
+{% block title %}토큰 사용량 - 연구실 관리 - 테크창{% endblock %}
+{% block admin_heading %}토큰 사용량{% endblock %}
+{% block admin_description %}칼럼별·단계별 토큰을 보고, 팩트체크가 적정한지와 새는 곳이 있는지 살펴요.{% endblock %}
+{% block admin_css %}<link href="{% static 'css/admin-office.css' %}?v={{ STATIC_VERSION }}" rel="stylesheet">
+<link href="{% static 'css/admin-office-review.css' %}?v={{ STATIC_VERSION }}" rel="stylesheet">
+<style>
+  .tk { display: grid; gap: 18px; }
+  .tk-nav { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+  .tk-nav a { padding: 4px 12px; border: 1px solid var(--ad-line); border-radius: 99px; color: #3f3f46; text-decoration: none; font-size: .85rem; }
+  .tk-nav a.is-on { border-color: var(--ad-accent); color: var(--ad-accent); font-weight: 700; }
+  .tk-nav .tk-back { margin-right: auto; border: 0; padding-left: 0; }
+  .tk-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 10px; margin: 0; padding: 0; list-style: none; }
+  .tk-tiles li { padding: 14px 16px; border: 1px solid var(--ad-line); border-radius: 10px; background: #fff; }
+  .tk-tiles b { display: block; font-size: 1.45rem; font-variant-numeric: tabular-nums; color: #18181b; }
+  .tk-tiles span { color: var(--ad-muted); font-size: .82rem; }
+  .tk-tiles li.is-warn { border-color: #fcd34d; background: #fffbeb; }
+  .tk-card { border: 1px solid var(--ad-line); border-radius: 10px; background: #fff; overflow: hidden; }
+  .tk-card > h2 { margin: 0; padding: 12px 16px; font-size: 1rem; border-bottom: 1px solid var(--ad-line); }
+  .tk-card > p { margin: 0; padding: 10px 16px 0; color: var(--ad-muted); font-size: .84rem; }
+  .tk-table { width: 100%; border-collapse: collapse; font-size: .86rem; }
+  .tk-table th, .tk-table td { padding: 8px 12px; border-top: 1px solid #f1f1f4; text-align: left; vertical-align: top; }
+  .tk-table th { color: var(--ad-muted); font-weight: 650; font-size: .78rem; }
+  .tk-table td.n, .tk-table th.n { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .tk-bar { display: block; height: 8px; min-width: 2px; border-radius: 0 4px 4px 0; background: var(--ad-accent); }
+  .tk-bar-wrap { display: block; width: 160px; background: #f4f4f5; border-radius: 0 4px 4px 0; }
+  .tk-flag { display: block; margin-top: 4px; padding: 3px 8px; border-radius: 6px; background: #fffbeb; color: #92400e; font-size: .78rem; }
+  .tk-flag b { margin-right: 4px; }
+  .tk-subject a { color: #18181b; font-weight: 650; text-decoration: none; }
+  .tk-subject a:hover { color: var(--ad-accent); }
+  .tk-subject small { display: block; color: var(--ad-muted); }
+  .tk-mini { display: flex; flex-wrap: wrap; gap: 4px 10px; color: var(--ad-muted); font-size: .76rem; margin-top: 3px; }
+  .tk-run { padding: 10px 16px 14px; border-top: 1px solid var(--ad-line); }
+  .tk-run h3 { margin: 0 0 6px; font-size: .9rem; }
+  .tk-hot { background: #fffbeb; }
+  .tk-limits { margin: 0; padding: 12px 16px 14px 32px; color: var(--ad-muted); font-size: .8rem; }
+  @media (max-width: 760px) { .tk-hide-sm { display: none; } .tk-bar-wrap { width: 80px; } }
+</style>{% endblock %}
+{% block admin_content %}
+{# 토큰 사용량 — 맥락: data(office.token_usage.overview), detail(한 원고의 실행·단계별 호출), days #}
+<div class="tk">
+  <nav class="tk-nav" aria-label="기간">
+    <a class="tk-back" href="{% url 'office:admin' %}">← 연구실 관리</a>
+    {% for n in day_choices %}<a href="?days={{ n }}" class="{% if n == days %}is-on{% endif %}"{% if n == days %} aria-current="page"{% endif %}>최근 {{ n }}일</a>{% endfor %}
+  </nav>
+
+  <ul class="tk-tiles" aria-label="요약">
+    <li><b>{{ data.total_in|floatformat:"0g" }}</b><span>입력 토큰 · 칼럼 {{ data.columns|length }}편 · 호출 {{ data.calls|floatformat:"0g" }}회</span></li>
+    <li><b>{{ data.fact_in|floatformat:"0g" }}</b><span>팩트체크 입력{% if data.fact_share != None %} · 전체의 {{ data.fact_share }}%{% endif %}</span></li>
+    <li><b>{% if data.median_fact %}{{ data.median_fact|floatformat:"0g" }}{% else %}-{% endif %}</b><span>칼럼 한 편의 팩트체크 중앙값{% if data.median_fact_per_1k %} · 1,000자당 {{ data.median_fact_per_1k|floatformat:"0g" }}{% endif %}</span></li>
+    <li{% if data.flagged %} class="is-warn"{% endif %}><b>{{ data.flagged }}</b><span>누수 신호가 있는 칼럼</span></li>
+    <li><b>{{ data.wasted|floatformat:"0g" }}</b><span>채택 안 된 재작성·실패 단계 토큰</span></li>
+  </ul>
+
+  {% if detail %}
+  <section class="tk-card" aria-labelledby="tk-detail">
+    <h2 id="tk-detail">{{ detail.draft.subject|default:detail.draft.brief|default:"(제목 없음)" }} — 실행·단계별 호출</h2>
+    <p>{% for f in detail.summary.flags %}<span class="tk-flag"><b>{{ f.label }}</b>{{ f.text }}</span>{% empty %}누수 신호가 없어요.{% endfor %}</p>
+    {% for run in detail.runs %}
+    <div class="tk-run">
+      <h3>{{ run.started|date:"m/d H:i" }} 실행 · 입력 {{ run.in|floatformat:"0g" }} · 출력 {{ run.out|floatformat:"0g" }}</h3>
+      <table class="tk-table">
+        <thead><tr><th>단계</th><th>묶음</th><th class="n">입력</th><th class="n">출력</th><th class="n tk-hide-sm">프롬프트 글자</th><th class="n tk-hide-sm">웹·도구</th><th class="tk-hide-sm">모델</th></tr></thead>
+        <tbody>
+        {% for s in run.stages %}{% for c in s.calls %}
+          <tr{% if c.bloated %} class="tk-hot"{% endif %}>
+            <td>{{ s.stage }}{% if c.tag and c.tag != s.stage %} <small>({{ c.tag }})</small>{% endif %}{% if s.status != 'ok' %} <small>· {{ s.status }}</small>{% endif %}{% if c.error %}<small class="tk-mini">{{ c.error }}</small>{% endif %}</td>
+            <td>{{ c.group }}</td>
+            <td class="n">{% if c.measured %}{{ c.in|floatformat:"0g" }}{% if c.cache %}<small class="tk-mini">캐시 {{ c.cache|floatformat:"0g" }}</small>{% endif %}{% else %}기록 없음{% endif %}</td>
+            <td class="n">{{ c.out|floatformat:"0g" }}</td>
+            <td class="n tk-hide-sm">{% if c.prompt_chars != None %}{{ c.prompt_chars|floatformat:"0g" }}{% else %}-{% endif %}</td>
+            <td class="n tk-hide-sm">{{ c.web }}회 · {{ c.turns }}턴</td>
+            <td class="tk-hide-sm">{{ c.backend }} {{ c.model }}</td>
+          </tr>
+        {% endfor %}{% empty %}{% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% empty %}<p>이 원고의 호출 기록이 없어요.</p>{% endfor %}
+  </section>
+  {% endif %}
+
+  <section class="tk-card" aria-labelledby="tk-groups">
+    <h2 id="tk-groups">단계 묶음별 입력 토큰</h2>
+    <table class="tk-table">
+      <thead><tr><th>묶음</th><th class="tk-hide-sm">비중</th><th class="n">입력</th><th class="n">출력</th><th class="n">호출</th><th class="n tk-hide-sm">웹·도구</th></tr></thead>
+      <tbody>
+      {% for g in data.groups %}
+        <tr>
+          <td>{{ g.label }}</td>
+          <td class="tk-hide-sm"><span class="tk-bar-wrap" title="{{ g.label }} {{ g.in|floatformat:"0g" }}토큰 · {{ g.share }}%"><span class="tk-bar" style="width: {{ g.bar }}%"></span></span></td>
+          <td class="n">{{ g.in|floatformat:"0g" }} <small>({{ g.share }}%)</small></td>
+          <td class="n">{{ g.out|floatformat:"0g" }}</td>
+          <td class="n">{{ g.calls }}{% if g.unmeasured %} <small>· 기록 없음 {{ g.unmeasured }}</small>{% endif %}</td>
+          <td class="n tk-hide-sm">{{ g.web }}회 · {{ g.turns }}턴</td>
+        </tr>
+      {% empty %}<tr><td colspan="6">이 기간의 호출 기록이 없어요.</td></tr>{% endfor %}
+      </tbody>
+    </table>
+  </section>
+
+  <section class="tk-card" aria-labelledby="tk-columns">
+    <h2 id="tk-columns">칼럼별 사용량</h2>
+    <p>팩트체크 칸의 배수는 본문 1,000자당 팩트체크 토큰을 최근 칼럼 중앙값과 비교한 값이에요(5편 이상 모이면 계산해요). 제목을 누르면 호출 기록을 봐요.</p>
+    <table class="tk-table">
+      <thead><tr><th>칼럼</th><th class="n">입력 합계</th><th class="n">팩트체크</th><th class="n tk-hide-sm">팩트체크 호출</th><th class="n tk-hide-sm">출력</th></tr></thead>
+      <tbody>
+      {% for c in data.columns %}
+        <tr>
+          <td class="tk-subject"><a href="?days={{ days }}&draft={{ c.draft.pk }}#tk-detail">{{ c.draft.subject|default:c.draft.brief|default:"(제목 없음)"|truncatechars:60 }}</a>
+            <small>#{{ c.draft.pk }} · {{ c.topic_name }}{% if c.draft.series_key %} · 연재 {{ c.draft.episode_number }}편{% endif %} · {{ c.draft.get_status_display }} · 실행 {{ c.runs }}회 · 본문 {{ c.chars|floatformat:"0g" }}자</small>
+            <span class="tk-mini">{% for b in c.bars %}<span>{{ b.label }} {{ b.in|floatformat:"0g" }}</span>{% endfor %}{% if c.retained_tokens %}<span>채택 안 된 재작성 {{ c.retained_tokens|floatformat:"0g" }}</span>{% endif %}</span>
+            {% for f in c.flags %}<span class="tk-flag"><b>{{ f.label }}</b>{{ f.text }}</span>{% endfor %}</td>
+          <td class="n">{{ c.total_in|floatformat:"0g" }}</td>
+          <td class="n">{{ c.fact.in|floatformat:"0g" }}{% if c.fact.share != None %}<small class="tk-mini">{{ c.fact.share }}%{% if c.fact.per_1k %} · 1,000자당 {{ c.fact.per_1k|floatformat:"0g" }}{% endif %}{% if c.fact.vs_median %} · 중앙값의 {{ c.fact.vs_median }}배{% endif %}</small>{% endif %}</td>
+          <td class="n tk-hide-sm">{{ c.fact.calls }}회<small class="tk-mini">웹 {{ c.fact.web }}회 · {{ c.fact.turns }}턴</small></td>
+          <td class="n tk-hide-sm">{{ c.total_out|floatformat:"0g" }}</td>
+        </tr>
+      {% empty %}<tr><td colspan="5">이 기간에 제작·재작성한 칼럼이 없어요.</td></tr>{% endfor %}
+      </tbody>
+    </table>
+  </section>
+
+  <section class="tk-card" aria-labelledby="tk-limits">
+    <h2 id="tk-limits">읽는 법과 한계</h2>
+    <ul class="tk-limits">{% for line in data.limits %}<li>{{ line }}</li>{% endfor %}
+      <li>누수 기준: 프롬프트 추정치보다 4만 토큰 이상·2.5배 넘게 큰 호출, 한 실행 안의 같은 본문 재검증, 한 실행 팩트체크 5회 초과, 1,000자당 팩트체크가 중앙값의 2배 초과.</li></ul>
+  </section>
+</div>
+{% endblock %}

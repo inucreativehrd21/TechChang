@@ -18,7 +18,7 @@
         {% endfor %}
       </ul>
       <p class="oa-mode">제작 방식 <b>{{ switch_summary }}</b> <a href="#settings" data-goto="settings">설정에서 바꾸기</a></p>
-      <p class="oa-links"><a href="{% url 'office:home' %}">연구실 보기 <span aria-hidden="true">↗</span></a><a href="{% url 'community:column_map' %}">칼럼 지도 <span aria-hidden="true">↗</span></a></p>
+      <p class="oa-links"><a href="{% url 'office:home' %}">연구실 보기 <span aria-hidden="true">↗</span></a><a href="{% url 'community:column_map' %}">칼럼 지도 <span aria-hidden="true">↗</span></a><a href="{% url 'office:token_usage' %}">토큰 사용량</a></p>
     </section>
     <section class="oa-run" aria-labelledby="oa-run-title">
       <h2 class="oa-top-title" id="oa-run-title">직접 실행</h2>
@@ -302,8 +302,9 @@
   // 재작성에 반영할 지적 고르기 — 고른 수를 보이고, 하나도 고르지 않으면 추가 지시를 필수로 바꾼다(빈 요청 방지)
   document.querySelectorAll('[data-pick-root]').forEach(function (root) {
     var card = root.closest('.dr'), form = card.querySelector('form.dr-revise'), note = form && form.querySelector('textarea');
-    var boxes = root.querySelectorAll('input[name=feedback]');
-    function picked() { return Array.prototype.filter.call(boxes, function (b) { return b.checked; }).length; }
+    var boxes = root.querySelectorAll('input[name=feedback]'), reopen = root.querySelectorAll('input[name=reopen]');
+    function count(list) { return Array.prototype.filter.call(list, function (b) { return b.checked; }).length; }
+    function picked() { return count(boxes) + count(reopen); }
     function sync() {
       var n = picked();
       root.querySelector('[data-pick-count]').textContent = n + '건 선택' + (n > 20 ? ' · 20건까지만 보낼 수 있어요' : '');
@@ -314,9 +315,10 @@
       }
     }
     boxes.forEach(function (b) { b.addEventListener('change', sync); });
+    reopen.forEach(function (b) { b.addEventListener('change', sync); });
     root.querySelectorAll('[data-pick]').forEach(function (btn) {
       btn.addEventListener('click', function () {
-        boxes.forEach(function (b) { b.checked = btn.dataset.pick === 'all' || (btn.dataset.pick === 'required' && b.dataset.kind !== 'suggestion'); });
+        boxes.forEach(function (b) { b.checked = btn.dataset.pick === 'all' || (btn.dataset.pick === 'required' && b.dataset.kind !== 'suggestion') || (btn.dataset.pick === 'default' && b.dataset.default === '1'); });
         sync();
       });
     });

@@ -274,8 +274,11 @@ QA_PROMPT = (
     '직접 본문에서 확인한 뒤 readability·depth 점수에 반영하고, 동의하지 않으면 그 이유를 notes 에 적으세요.\n\n'
     '[시각자료] 항목에는 차트의 실제 항목·값·자동 점검 결과가 들어 있습니다. '
     '그 값들이 본문 주장과 맞물리는지, 한 그림 안에 묶을 만한 비교인지 직접 판단하세요.\n\n'
+    '"keep" 에는 재작성하더라도 바꾸면 글이 나빠질 가장 좋은 대목을 최대 4개, 본문에서 한 글자도 바꾸지 말고 '
+    '인용하세요. 다음 재작성에서 "지켜야 할 강점"으로 넘어갑니다.\n\n'
     '출력 JSON: {{"scores": {{"structure": 1~5, "depth": 1~5, "evidence": 1~5, "logic": 1~5, '
     '"readability": 1~5, "visual": 1~5}}, "fatal": ["..."], "strengths": "한 줄", '
+    '"keep": [{{"quote": "본문 그대로 인용", "why": "재작성해도 지켜야 할 이유"}}], '
     '"issues": ["구체적 문제 — 어느 섹션의 무엇을 어떻게 고쳐야 하는지", ...], '
     '"notes": "운영자에게 남길 한 줄"}}'
 )
@@ -959,8 +962,10 @@ HEADLINE_PROMPT = (
     '발행 직전 제목 다듬기입니다. 편집장으로서 아래 칼럼의 제목 후보 5개를 내고 하나를 고르세요.\n\n'
     '[현재 제목] {subject}\n[독자가 검색할 만한 말] {keywords}\n[이미 쓴 제목들]\n{recent}\n\n'
     '[본문 앞부분]\n{head}\n\n'
-    '좋은 제목: 본문이 실제로 답하는 질문이나 주장을 담고, 독자가 검색할 말을 자연스럽게 포함하며, '
+    '좋은 제목: 본문이 실제로 답하는 질문이나 주장을 담고, 소리 내 읽어 자연스러우며, '
     '12~40자, 과장·단정(반드시·유일한·결정적) 없이, 이미 쓴 제목과 겹치지 않습니다. '
+    '검색할 말은 자연스러울 때만 넣으세요 — 검색어는 첫 문단·소제목이 받으므로 제목 맨 앞에 두고 쉼표로 설명을 붙이는 '
+    '"검색어, 설명" 공식을 쓰지 마세요. 이미 쓴 제목들의 틀(쉼표 뒤 설명, "~하는 법")도 반복하지 마세요. '
     '현재 제목이 가장 낫다면 keep 을 true 로 두세요.\n'
     '출력 JSON: {{"candidates": ["제목1", "제목2", "제목3", "제목4", "제목5"], "pick": 0, "keep": false, '
     '"reason": "고른 이유 한 문장"}}'
@@ -1071,7 +1076,16 @@ def step_check(subject: str, content: str, recent: list, verified: str = '', exc
 
     본문 대조(similarity — 제목만 보던 중복 판정 보완)와 검증 원장(ledger — 이전에 원문을 확인한
     사실)을 함께 넘기고, 근거 URL 이 붙은 판정은 원장에 다시 쌓는다.
+
+    호출에는 검증한 본문의 지문·길이를 꼬리표로 붙여요 — 관리 화면 토큰 탭이 '같은 본문을 다시 검증'한 낭비와
+    본문 1,000자당 팩트체크 토큰을 계산해요(office.token_usage).
     """
+    from common.services.claude import call_tags
+    with call_tags(body_hash=verification_hash(content or '')[:16], body_chars=len(content or '')):
+        return _check_body(subject, content, recent, verified, exclude_question_id, previous, previous_content, evidence)
+
+
+def _check_body(subject, content, recent, verified, exclude_question_id, previous, previous_content, evidence) -> dict:
     from . import ledger
     from .arsenal import dead_links, link_block
     from .similarity import similarity_block
@@ -1216,6 +1230,24 @@ def length_rule(length: int) -> str:
 
 
 @live_step('review', 'editor')
+def keep_passages(editor_keep, critique: dict | None, text: str, limit: int = 6) -> list[dict]:
+    """편집장·평론가가 인용해 꼽은 강점 → 본문에 실제로 있는 것만 [{quote, why, source}]."""
+    from .revision_ledger import quote_in, similar
+    found = []
+    pool = [(k, 'editor') for k in (editor_keep if isinstance(editor_keep, list) else [])]
+    pool += [(s, 'critic') for s in ((critique or {}).get('strengths') or [])]
+    for item, source in pool:
+        if not isinstance(item, dict):
+            continue
+        quote = str(item.get('quote') or '').strip().strip('「」"')
+        if len(quote) < 8 or not quote_in(quote, text) or any(similar(quote, f['quote']) for f in found):
+            continue
+        found.append({'quote': quote[:240], 'why': str(item.get('why') or '')[:240], 'source': source})
+        if len(found) >= limit:
+            break
+    return found
+
+
 def step_review(subject: str, content: str, check: dict, chart_rel: str,
                 visual_report: str = '', critique: dict | None = None, verified: str = '',
                 previous: dict | None = None, previous_content: str = '', genre: str | None = None) -> dict:
@@ -1266,6 +1298,8 @@ def step_review(subject: str, content: str, check: dict, chart_rel: str,
         qa = merge_reviews(panel)
 
     qa = R.normalize(qa)                     # must_fix·suggestions 정리, issues 순서 맞춤
+    # 지켜야 할 강점 — 편집장 keep + 평론가 strengths 중 본문에 실제로 있는 인용만(office.revision_ledger)
+    qa['keep_passages'] = keep_passages(qa.pop('keep', None), critique, subject + '\n' + content)
     # 재심의 새 필수 수정이 바뀌지 않은 문장을 가리키면 제안으로 — 과녁이 매번 움직이지 않게
     qa['demoted'] = R.demote_stale(qa, previous, previous_content, content)
     # 수정 지시가 기억으로 새 수치를 들이지 않게 — 근거(운영자 확인·근거 묶음)에 없는 값엔 경고

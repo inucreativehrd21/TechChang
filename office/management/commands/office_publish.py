@@ -43,6 +43,7 @@ from office import pipeline as P
 from office import quality
 from office import blueprint as B
 from office import review_protocol as R
+from office import revision_ledger as RL
 from office import evidence as E
 from office import schedule as S
 from office import switches as SW
@@ -337,6 +338,7 @@ class Command(BaseCommand):
                                              verified=pack, genre=genre))
             rec('editor', 'qa', self._qa_line(qa))
             self._save_reviewed(draft, subject, content, check, qa, chart_rel, chart_note, revisions)
+            versions = [self._version(subject, content, check, qa, chart_rel, chart_note, visual_report, 0)]
 
             # 기준 미달이면 — 보류든 수정 요청이든 — 자동으로 MAX_AUTO_REVISIONS 번까지 다시 쓴다.
             # 편집장 지적·팩트체크·평론을 함께 물려 준다. 그 뒤로는 사람이 /lab/admin/ 에서 지시한다.
@@ -363,9 +365,13 @@ class Command(BaseCommand):
                 # 재작성은 '필수 수정'만 처리한다 — 제안까지 넘기면 고칠 범위가 넓어져 다른 곳이 무너졌다.
                 # 먼저 고칠 곳만 바꾸는 패치를 시도하고(검증된 문장·수치를 지킨다), 원고와 맞지 않으면 전체 재작성.
                 notes = R.revision_notes(qa)
+                # 판을 넘어 지킬 것 — 초안부터 꼽힌 강점·이미 해결한 지적(office.revision_ledger). 전에는 직전 판의
+                # 지적만 넘겨서, 두 번째 재작성이 초안의 좋은 대목을 지우거나 해결한 문제를 되돌렸다.
+                keep_guide = RL.guidance_text(RL.advance(RL.ledger_for(draft), subject=subject, content=content,
+                                                         qa=qa, check=check), content)
                 p_subject, p_content, ok, why = timed('editor_patch', writer, lambda: patch_revise(
                     writer, subject, P.strip_visual_block(content), notes, who='편집 심사에서',
-                    guide=f'[팩트체크 보고]\n{P.check_text(check)}' + P.pack_block(pack),
+                    guide=f'[팩트체크 보고]\n{P.check_text(check)}' + P.pack_block(pack) + keep_guide,
                     pack=pack if profile() == 'b' else None), attempt=attempt)
                 if ok and not P.looks_truncated(p_content) and profile() == 'b' and SW.get('settle_leftovers'):
                     p_subject, p_content, why = self._settle_overclaims(timed, writer, content, p_subject, p_content,
@@ -380,7 +386,7 @@ class Command(BaseCommand):
                         issues='\n'.join(f'- {i}' for i in notes), notes=qa.get('notes', ''),
                         check=P.check_text(check), critique=P.critique_text(critique),
                         subject=subject, content=content, structure=G.structure(genre),
-                        standard=P.writing_standard(topic_key, genre)) + P.pack_block(pack),
+                        standard=P.writing_standard(topic_key, genre)) + P.pack_block(pack) + keep_guide,
                         max_tokens=P.COLUMN_MAX_TOKENS), attempt=attempt, kind='memo', sender='editor', recipient=writer)
                     # 잘리거나 짧아진 재작성본은 버리고 이전 원고를 지킨다 (팩트체크 재작성과 같은 안전장치)
                     subject, content, ok, why = P.safe_rewrite(raw, subject, content)
@@ -460,6 +466,19 @@ class Command(BaseCommand):
                     qa['accepted_after_revision'] = True
                 rec('editor', 'qa', '재심 ' + self._qa_line(qa))
                 self._save_reviewed(draft, subject, content, check, qa, chart_rel, chart_note, revisions)
+                versions.append(self._version(subject, content, check, qa, chart_rel, chart_note, visual_report, attempt))
+
+            # 마지막 판이 앞선 판보다 나빠졌으면 나란히 비교해 앞선 판을 지켜요(office.pairwise, 2026-11-23)
+            best = self._keep_best(versions, stages=stages, rec=rec, context=context)
+            if best is not None:
+                subject, content, check, qa = best['subject'], best['content'], best['check'], best['qa']
+                chart_rel, chart_note, visual_report = best['chart_rel'], best['chart_note'], best['visual_report']
+                self._save_reviewed(draft, subject, content, check, qa, chart_rel, chart_note, revisions)
+
+            # 제목 점검 — 100점 심사와 별도. 제목은 바꾸지 않고 후보만 원고 카드에 보여 줘요(office.headline)
+            from office import headline as H
+            H.attach(qa, subject, content, recent=recent, context=context, record=stages.record,
+                     keywords=P.headline_keywords((draft.decision.chosen or {}) if draft and draft.decision else {}))
 
             stages.complete(subject, content, check, qa, revisions=revisions,
                             quality=quality.report(subject, content))
@@ -517,6 +536,59 @@ class Command(BaseCommand):
                                       rerun_args=['office_publish', '--topic', topic_key,
                                                   '--prepare' if prepare else '--if-missing'])
             raise
+
+    @staticmethod
+    def _version(subject, content, check, qa, chart_rel, chart_note, visual_report, attempt):
+        from copy import deepcopy
+        return {'subject': subject, 'content': content, 'check': deepcopy(check), 'qa': deepcopy(qa),
+                'chart_rel': chart_rel, 'chart_note': chart_note, 'visual_report': visual_report, 'attempt': attempt}
+
+    @staticmethod
+    def _keep_best(versions, *, stages, rec, context=None):
+        """자동 재작성이 끝난 뒤 마지막 판이 통과하지 못했고 앞선 판의 점수가 더 높으면, 순서를 바꿔 두 번 나란히
+        비교해 두 번 모두 앞선 판이 나을 때만 그 판을 검수본으로 돌려요. 반환: 되돌릴 판 또는 None.
+
+        앞선 판은 그 판 그대로의 사실 검증(제목·본문 지문 일치)을 통과했어야 해요 — 검증이 다른 본문 기준이면 후보가 아니에요."""
+        from office import pairwise as PW
+        if len(versions) < 2 or not PW.enabled():
+            return None
+        final = versions[-1]
+        if R.publishable(final['qa']):
+            return None
+
+        def sound(v):
+            c = v['check']
+            return (c.get('verdict') == 'pass' and c.get('subject') == v['subject']
+                    and c.get('verification_hash') == P.verification_hash(v['content']) and not v['qa'].get('fatal'))
+
+        def score(v):
+            s = v['qa'].get('score')
+            return s if isinstance(s, (int, float)) else -1
+
+        earlier = [v for v in versions[:-1] if sound(v) and score(v) > score(final)]
+        if not earlier:
+            return None
+        best = max(earlier, key=score)
+        if context and not context.can_start_revision(calls=2, seconds=180):
+            stages.record('best_version', 'editor', {'reason': '예산 부족으로 판 비교를 건너뛰었어요.'}, status='skipped')
+            return None
+        try:
+            result = PW.compare((best['subject'], best['content']), (final['subject'], final['content']))
+        except Exception as exc:  # noqa: BLE001
+            from common.services.cli_errors import ProviderUnavailable
+            if isinstance(exc, (ProviderUnavailable, RunBudgetExceeded)):
+                raise
+            stages.record('best_version', 'editor', {'reason': str(exc)[:300]}, status='failed')
+            return None
+        label = RL.round_label(best['attempt'])
+        stages.record('best_version', 'editor', {**result, 'a': label, 'b': RL.round_label(final['attempt']),
+                                                  'a_score': score(best), 'b_score': score(final),
+                                                  'restored': result['winner'] == 'a'})
+        if result['winner'] != 'a':
+            return None
+        rec('editor', 'qa', f"나란히 비교에서 두 번 모두 {label}({score(best)}점)이 마지막 판({score(final)}점)보다 나아 "
+                            f'{label}을 검수본으로 지켜요.')
+        return best
 
     @staticmethod
     def _save_reviewed(draft, subject, content, check, qa, chart_rel, chart_note, revisions):

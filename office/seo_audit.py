@@ -115,3 +115,48 @@ def retitle_candidates(stats: dict | None = None) -> list:
                         'ctr': round(ctr * 100, 1), 'position': s['position'], 'queries': s['queries']})
     out.sort(key=lambda c: c['impr'], reverse=True)
     return out
+
+
+# ───────────────────────────── 제목 결별 클릭률(2026-11-23)
+import re as _re
+
+# "검색어, 설명" 공식 — 쉼표 앞이 짧은 명사구이고 뒤에 설명이 붙는 제목(예: 「ADsP 점수와 합격 기준, 총점만 보면 놓치는 과락」)
+_FORMULA = _re.compile(r'^[^,:?]{2,24}, [^,]{4,}$')
+
+
+def title_style(subject: str) -> str:
+    s = (subject or '').strip()
+    if s.endswith('?') or s.endswith('까') or s.endswith('나'):
+        return '질문형'
+    if _FORMULA.match(s):
+        return '검색어, 설명 공식'
+    if ':' in s:
+        return '콜론 부제형'
+    return '그 밖의 문장형'
+
+
+def title_ctr_groups(stats: dict, columns, *, min_age_days: int = RETITLE_MIN_AGE_DAYS, max_position: float = 20) -> list:
+    """제목 결별 노출·클릭·클릭률·평균 순위(순수 함수). 클릭률은 순위에 크게 좌우되므로 평균 순위를 함께 봐요.
+
+    발행 직후(순위가 요동치는 기간)와 20위 밖 글은 빼요. 표본이 작으면 결론을 내리지 말라는 표시를 붙여요."""
+    cutoff = timezone.now() - timedelta(days=min_age_days)
+    groups: dict = {}
+    for q in columns:
+        s = stats.get(q.id)
+        if not s or not s.get('impr') or q.create_date > cutoff or s.get('position', 99) > max_position:
+            continue
+        g = groups.setdefault(title_style(q.subject), {'posts': 0, 'impr': 0, 'clicks': 0, '_pos': 0.0, 'examples': []})
+        g['posts'] += 1
+        g['impr'] += s['impr']
+        g['clicks'] += s['clicks']
+        g['_pos'] += s['position'] * s['impr']
+        if len(g['examples']) < 3:
+            g['examples'].append(q.subject)
+    out = []
+    for style, g in groups.items():
+        out.append({'style': style, 'posts': g['posts'], 'impr': int(g['impr']), 'clicks': int(g['clicks']),
+                    'ctr': round(g['clicks'] / g['impr'] * 100, 2) if g['impr'] else 0,
+                    'position': round(g['_pos'] / g['impr'], 1) if g['impr'] else 0,
+                    'examples': g['examples'], 'small_sample': g['posts'] < 5 or g['impr'] < 300})
+    out.sort(key=lambda r: -r['impr'])
+    return out

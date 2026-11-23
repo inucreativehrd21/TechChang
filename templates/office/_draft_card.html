@@ -40,19 +40,31 @@
   </div>
 
   <div class="dr-folds">
+    {% if d.ledger_rounds|length > 1 %}
+    <p class="dr-rounds" aria-label="판별 심사 점수">{% for r in d.ledger_rounds %}<span{% if forloop.last %} class="is-now"{% endif %}><b>{{ r.label }}</b> {{ r.score|default:"-" }}점{% if r.open %} · 남은 지적 {{ r.open }}{% endif %}</span>{% if not forloop.last %}<i aria-hidden="true">→</i>{% endif %}{% endfor %}</p>
+    {% endif %}
     {% if kind == 'held' and not d.busy_state and d.feedback_refs %}
-    {# 재작성에 넘길 지적을 고른다 — 체크박스는 아래 재작성 폼(form 속성)으로 함께 전송된다. 제안도 고르면 반드시 반영할 요구가 된다 #}
+    {% comment %}재작성에 넘길 지적을 고른다 — 체크박스는 아래 재작성 폼(form 속성)으로 함께 전송된다. 제안도 고르면 반드시 반영할 요구가 된다.
+       기본 선택은 필수 수정·팩트체크·회귀·사라진 강점뿐이다. 해결이 확인된 지적은 '다시 열기'로만 보낼 수 있다(office.revision_ledger).{% endcomment %}
     <details class="dr-fold dr-pick" open data-pick-root>
-      <summary>재작성에 반영할 지적 <em data-pick-count>{{ d.feedback_refs|length }}건 선택</em></summary>
+      <summary>재작성에 반영할 지적 <em data-pick-count>선택 확인 중</em></summary>
       <div class="dr-fold-body">
-        <p class="dr-hint">체크한 지적은 하나씩 수정 요구가 되고, 재작성 뒤 항목마다 반영됐는지 확인해요. 빠진 지적이 있으면 보완본을 채택하지 않아요. 이번에 다루지 않을 지적은 체크를 빼 주세요.</p>
+        <p class="dr-hint">체크한 지적은 하나씩 수정 요구가 되고, 재작성 뒤 항목마다 반영됐는지 확인해요. 빠진 지적이 있으면 보완본을 채택하지 않아요. 필수 수정·팩트체크·회귀만 기본으로 골라 뒀어요. 제안은 꼭 필요한 것만 더해 주세요.</p>
         <div class="dr-pick-tools" role="group" aria-label="지적 한꺼번에 고르기">
-          <button type="button" data-pick="all">모두 선택</button><button type="button" data-pick="none">모두 해제</button><button type="button" data-pick="required">필수·팩트체크만</button>
+          <button type="button" data-pick="default">기본 선택</button><button type="button" data-pick="all">모두 선택</button><button type="button" data-pick="none">모두 해제</button>
         </div>
         <ul class="dr-pick-list">
           {% for r in d.feedback_refs %}
-          <li><label><input type="checkbox" name="feedback" value="{{ r.id }}" form="revise-{{ d.id }}" data-kind="{{ r.kind }}" checked>
-            <span class="dr-kind is-{{ r.kind }}">{{ r.label }} <small>{{ r.id }}</small></span><span class="dr-pick-text">{{ r.text }}</span></label></li>
+          <li{% if r.locked %} class="is-locked"{% elif r.state == 'regressed' %} class="is-regressed"{% endif %}>
+            {% if r.locked %}
+            <label><input type="checkbox" name="reopen" value="{{ r.id }}" form="revise-{{ d.id }}">
+              <span class="dr-kind is-{{ r.kind }}">{{ r.label }} <small>{{ r.id }}</small></span>
+              <span class="dr-pick-text"><span class="dr-state is-locked">해결됨 · 체크하면 다시 열기</span>{{ r.text }}<small class="dr-pick-note">{{ r.resolved_note }}. 이번에 다시 지적됐지만 해결 근거가 본문에 남아 있어요. 정말 다시 고쳐야 할 때만 체크해 다시 여세요.</small></span></label>
+            {% else %}
+            <label><input type="checkbox" name="feedback" value="{{ r.id }}" form="revise-{{ d.id }}" data-kind="{{ r.kind }}" data-default="{% if r.default %}1{% else %}0{% endif %}"{% if r.default %} checked{% endif %}>
+              <span class="dr-kind is-{{ r.kind }}">{{ r.label }} <small>{{ r.id }}</small></span><span class="dr-pick-text">{% if r.state_label %}<span class="dr-state is-{{ r.state }}">{{ r.state_label }}{% if r.state == 'repeat' and r.rounds_open > 1 %} · {{ r.rounds_open }}판째{% endif %}</span>{% endif %}{{ r.text }}</span></label>
+            {% endif %}
+          </li>
           {% endfor %}
         </ul>
       </div>
@@ -61,6 +73,40 @@
     <details class="dr-fold"{% if d.qa_report.issues|length <= 3 %} open{% endif %}>
       <summary>편집 심사 지적 <em>{{ d.qa_report.issues|length }}건</em></summary>
       <div class="dr-fold-body"><ul>{% for i in d.qa_report.issues %}<li>{{ i }}</li>{% endfor %}</ul></div>
+    </details>
+    {% endif %}
+    {% if d.ledger_resolved %}
+    <details class="dr-fold">
+      <summary>해결된 지적 <em class="is-ok">{{ d.ledger_resolved|length }}건</em></summary>
+      <div class="dr-fold-body">
+        <p class="dr-hint">앞선 판에서 해결된 지적이에요. 근거가 확인된 항목은 다시 요청할 수 없고, 해결 근거 문장이 사라지면 회귀로 다시 올라와요.</p>
+        <ul class="dr-ledger">{% for i in d.ledger_resolved %}<li><span class="dr-state{% if i.status == 'resolved' %} is-ok{% endif %}">{{ i.round_label }} · {{ i.evidence_label }}</span>{{ i.text }}{% if i.evidence and i.evidence_kind != 'removed' %}<blockquote>{{ i.evidence }}</blockquote>{% endif %}</li>{% endfor %}</ul>
+      </div>
+    </details>
+    {% endif %}
+    {% if d.ledger_keeps %}
+    <details class="dr-fold">
+      <summary>지켜야 할 강점 <em>{{ d.ledger_keeps|length }}건</em></summary>
+      <div class="dr-fold-body">
+        <p class="dr-hint">평론가·편집장이 본문을 인용해 꼽은 대목이에요. 재작성 지시에 '그대로 둘 문장'으로 넘기고, 요청과 무관하게 사라지면 보완본을 채택하지 않아요.</p>
+        <ul class="dr-ledger">{% for k in d.ledger_keeps %}<li><span class="dr-state{% if k.status == 'lost' %} is-regressed{% else %} is-ok{% endif %}">{% if k.status == 'lost' %}사라짐{% else %}유지{% endif %} · {% if k.first_round == 0 %}초안{% else %}재작성 {{ k.first_round }}{% endif %}</span>「{{ k.quote }}」{% if k.why %}<small> {{ k.why }}</small>{% endif %}</li>{% endfor %}</ul>
+      </div>
+    </details>
+    {% endif %}
+    {% if d.title_review.candidates %}
+    <details class="dr-fold dr-title-check"{% if d.title_review.current and not d.title_review.current.ok %} open{% endif %}>
+      <summary>제목 점검 {% if d.title_review.current.ok %}<em class="is-ok">통과</em>{% else %}<em class="is-keep">다듬기 권장</em>{% endif %}</summary>
+      <div class="dr-fold-body">
+        {% if d.title_review.current %}<p class="dr-hint">현재 제목 「{{ d.subject }}」 — 점검 {{ d.title_review.current.passed }}/{{ d.title_review.current.total }}{% if d.title_review.current.misses %} · 아쉬운 점: {{ d.title_review.current.misses|join:", " }}{% endif %}</p>{% endif %}
+        {% if kind == 'held' and not d.busy_state %}
+        <fieldset class="dr-titles"><legend class="dr-hint">후보를 고르면 재작성 요청에 제목 변경이 함께 들어가요. 제목을 바꾸면 사실 검증과 심사를 다시 받아요.</legend>
+          <label><input type="radio" name="title_pick" value="" form="revise-{{ d.id }}" checked> 현재 제목 유지</label>
+          {% for c in d.title_review.candidates %}<label><input type="radio" name="title_pick" value="{{ c.title }}" form="revise-{{ d.id }}"> {{ c.title }} <small>{{ c.style_label }} · 점검 {{ c.passed }}/{{ c.total }}</small></label>{% endfor %}
+        </fieldset>
+        {% else %}
+        <ul>{% for c in d.title_review.candidates %}<li>{{ c.title }} <small>{{ c.style_label }} · 점검 {{ c.passed }}/{{ c.total }}</small></li>{% endfor %}</ul>
+        {% endif %}
+      </div>
     </details>
     {% endif %}
     {% with revision=d.qa_report.admin_revision %}{% if revision or d.admin_note %}
@@ -73,6 +119,7 @@
         {% if d.admin_note %}<blockquote class="dr-quote"><span>운영자 지시</span>{{ d.admin_note }}</blockquote>{% endif %}
         {% if revision %}
           {% if revision.reasons %}<ul>{% for reason in revision.reasons %}<li>{{ reason }}</li>{% endfor %}</ul>{% endif %}
+          {% if revision.pairwise %}<p class="dr-hint">나란히 비교(순서 바꿔 두 번) — {% if revision.pairwise.winner == 'b' %}두 번 모두 보완본이 나았어요{% elif revision.pairwise.winner == 'a' %}두 번 모두 기존 원고가 나았어요{% else %}판정이 엇갈려 점수 규칙으로 정했어요{% endif %}.</p>{% endif %}
           {% if revision.selected_feedback %}<p class="dr-hint">고른 지적 {{ revision.selected_feedback|length }}건 — 요구마다 연결된 지적 번호가 붙어 있어요.</p>{% endif %}
           {% if revision.items %}<ol class="dr-items">{% for item in revision.items %}<li><strong{% if '미' in item.status_label %} class="is-bad"{% endif %}>{{ item.status_label }}</strong>{% if item.reference_ids %}<span class="dr-refs">{{ item.reference_ids|join:" · " }}</span>{% endif %}{{ item.request }}<br>{{ item.reason }}{% if item.evidence %}<blockquote>{{ item.evidence }}</blockquote>{% endif %}</li>{% endfor %}</ol>{% endif %}
           {% if revision.candidate_content %}<details class="dr-fold"><summary>미채택 보완본 보기</summary><p>{{ revision.candidate_subject }}</p><div class="preview">{{ revision.candidate_content|linebreaksbr }}</div></details>{% endif %}

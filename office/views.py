@@ -221,13 +221,20 @@ def office_admin(request, *, decision_payload=None, decision_errors=None, decisi
     ready = list(ColumnDraft.objects.filter(status=ColumnDraft.STATUS_READY).order_by('publish_at'))
     from .models import JobRequest
     from .draft_state import active_jobs, state_of
-    from .revision_requests import feedback_references
+    from .revision_requests import selection_rows
+    from . import revision_ledger as RL
     busy = active_jobs([d.pk for d in held + ready])       # 재작성이 대기열·실행 중인 원고는 입력·승인·반려를 숨긴다
     for d in held + ready:
         d.busy_job = busy.get(d.pk)
         d.busy_state = state_of(d, d.busy_job)
-        d.feedback_refs = feedback_references(d.qa_report, d.check_report)
+        d.feedback_refs = selection_rows(d)           # 지적 장부 상태(새·반복·회귀·해결 잠금)와 기본 선택 포함
         d.busy_feedback = _picked_counts(d.busy_job, d.feedback_refs)
+        ledger = RL.ledger_for(d)
+        d.ledger_rounds = ledger.get('rounds') or []
+        d.ledger_resolved = RL.resolved_items(ledger)
+        d.ledger_keeps = ledger.get('keeps') or []
+        review = (d.qa_report or {}).get('title_review') or {}
+        d.title_review = review if review.get('subject') == d.subject else {}   # 제목이 바뀐 뒤의 옛 후보는 숨겨요
     jobs = list(JobRequest.objects.select_related('draft').order_by('-created_at')[:30])
     for j in jobs:       # 작업 목록에는 명령어(office_revise --draft 9) 대신 사람이 읽는 이름과 원고 제목을 보인다
         j.action_label = JOB_LABEL.get((j.args or [''])[0], j.label or '작업')
@@ -484,9 +491,12 @@ def draft_revise(request, draft_id):
     get_object_or_404(ColumnDraft, pk=draft_id)
     from django.db import transaction
     from .draft_state import guard
-    from .revision_requests import feedback_references, MAX_SELECTED_FEEDBACK
+    from .revision_requests import selection_rows, MAX_SELECTED_FEEDBACK
     note = request.POST.get('note', '').strip()
     picked = set(request.POST.getlist('feedback'))
+    reopened = set(request.POST.getlist('reopen'))
+    picked |= reopened            # '다시 열기'는 그 해결 지적을 이번 재작성에 넣겠다는 뜻이에요
+    title_pick = request.POST.get('title_pick', '').strip()
     with transaction.atomic():
         draft = ColumnDraft.objects.select_for_update().get(pk=draft_id)
         busy = guard(draft, '재요청')
@@ -494,7 +504,21 @@ def draft_revise(request, draft_id):
             messages.info(request, '이미 재작성을 요청했어요. ' + busy)
             return redirect('office:admin')
         # 체크 목록에서 고른 지적(필수 수정·팩트체크·제안) — 화면과 같은 목록에서 id 로 고른다
-        refs = [r for r in feedback_references(draft.qa_report, draft.check_report) if r['id'] in picked]
+        rows = selection_rows(draft)
+        locked = [r for r in rows if r['id'] in picked and r.get('locked') and r['id'] not in reopened]
+        if locked:
+            # 근거가 확인된 '해결' 지적은 다시 보내지 않아요 — 운영자가 '다시 열기'로 명시해야 해요(2026-11-23)
+            messages.error(request, '이미 해결된 지적은 다시 열기를 눌러야 재작성에 넣을 수 있어요: '
+                           + ', '.join(r['id'] for r in locked))
+            return redirect('office:admin')
+        refs = [{k: r[k] for k in ('id', 'kind', 'label', 'text')} for r in rows if r['id'] in picked]
+        title_options = [c.get('title') for c in ((draft.qa_report or {}).get('title_review') or {}).get('candidates') or []
+                         if isinstance(c, dict)]
+        if title_pick and title_pick not in title_options:
+            messages.error(request, '제목 후보가 바뀌었어요. 화면을 새로 고친 뒤 다시 골라 주세요.')
+            return redirect('office:admin')
+        if title_pick:
+            note = (f'제목을 「{title_pick}」로 바꿔 주세요.' + ('\n' + note if note else '')).strip()
         if not note and not refs:
             messages.error(request, '반영할 지적을 고르거나 수정 지시를 입력하세요.')
             return redirect('office:admin')
@@ -512,7 +536,8 @@ def draft_revise(request, draft_id):
         draft.admin_note = note
         from .audit import append, snapshot
         append('revision_requested', actor_id=request.user.pk, draft_id=draft.pk,
-               payload={'note': note, 'feedback': refs, 'before': snapshot(draft)})
+               payload={'note': note, 'feedback': refs, 'reopened': sorted(reopened & {r['id'] for r in refs}),
+                        'before': snapshot(draft)})
         draft.status = ColumnDraft.STATUS_HOLD
         draft.decided_by, draft.decided_at = request.user, timezone.now()
         draft.save(update_fields=['admin_note', 'status', 'decided_by', 'decided_at'])

@@ -51,6 +51,8 @@ def describe(event, actor):
             for r in picked:
                 kinds[r.get('label') or r.get('kind', '')] = kinds.get(r.get('label') or r.get('kind', ''), 0) + 1
             out['facts'].append(('반영할 지적', ' · '.join(f'{k} {n}' for k, n in kinds.items())))
+        if p.get('reopened'):
+            out['facts'].append(('다시 연 해결 지적', ', '.join(p['reopened'])))
     elif action == 'job_started':
         out.update(label='연구팀 작업', title='재작성을 시작했어요')
         out['facts'].append(('작업', _job(p)))

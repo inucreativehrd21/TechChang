@@ -542,3 +542,17 @@ class AuditEvent(models.Model):
         ordering = ['sequence']
         verbose_name = '연구실 감사 기록'
         verbose_name_plural = '연구실 감사 기록'
+
+
+class RevisionLedger(ExecutionBoundModel):
+    """원고 판별 지적 장부(office.revision_ledger) — 초안부터 재작성까지 지적·해결 근거·강점을 이어 가요.
+
+    원고 행과 분리해 둬요. 원고를 통째로 저장하는 경로가 많아서, 같은 행에 두면 오래된 인스턴스 저장이
+    장부를 덮을 수 있어요. 승인 지문(audit.snapshot)에도 포함하지 않아요."""
+    draft = models.OneToOneField(ColumnDraft, on_delete=models.CASCADE, related_name='revision_ledger')
+    data = models.JSONField(default=dict)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = '원고 지적 장부'
+        verbose_name_plural = '원고 지적 장부'

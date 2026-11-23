@@ -250,6 +250,25 @@
 .ad-console .oa .dr-kind.is-fact { color: #a16207; background: #fefce8; }
 .ad-console .oa .dr-kind.is-suggestion { color: var(--ad-accent); background: var(--ad-wash); }
 .ad-console .oa .dr-pick-text { line-height: 1.6; word-break: keep-all; overflow-wrap: anywhere; }
+/* 지적 장부(2026-11-23) — 판을 넘은 상태: 새 지적·다시 남음·회귀·해결 잠금, 판별 점수 흐름, 해결·강점 목록 */
+.ad-console .oa .dr-kind.is-regressed, .ad-console .oa .dr-kind.is-keep { color: var(--dr-bad); background: var(--dr-bad-wash); }
+.ad-console .oa .dr-state { display: inline-block; margin-right: 6px; padding: 0 7px; border-radius: 99px; font-size: .72rem; font-weight: 700; color: #52525b; background: var(--dr-soft); vertical-align: 1px; }
+.ad-console .oa .dr-state.is-new { color: var(--ad-accent); background: var(--ad-wash); }
+.ad-console .oa .dr-state.is-regressed { color: var(--dr-bad); background: var(--dr-bad-wash); }
+.ad-console .oa .dr-state.is-ok, .ad-console .oa .dr-state.is-locked { color: var(--dr-ok); background: var(--dr-ok-wash); }
+.ad-console .oa .dr-pick-list li.is-regressed label { border-color: var(--dr-bad-line); }
+.ad-console .oa .dr-pick-list li.is-locked label { background: #fafafa; }
+.ad-console .oa .dr-pick-list li.is-locked input:not(:checked) ~ .dr-pick-text { text-decoration: none; }
+.ad-console .oa .dr-pick-note { display: block; margin-top: 2px; color: var(--ad-muted); font-size: .78rem; }
+.ad-console .oa .dr-rounds { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 0; padding: 10px 20px; border-top: 1px solid var(--dr-soft); font-size: .8rem; color: var(--ad-muted); }
+.ad-console .oa .dr-rounds span { padding: 1px 8px; border-radius: 99px; border: 1px solid var(--dr-soft); background: #fff; }
+.ad-console .oa .dr-rounds span.is-now { border-color: var(--ad-accent); color: #3f3f46; }
+.ad-console .oa .dr-rounds i { font-style: normal; }
+.ad-console .oa .dr-ledger { list-style: none; padding: 0 !important; }
+.ad-console .oa .dr-ledger blockquote { margin: 4px 0 0; padding-left: 10px; border-left: 2px solid var(--dr-ok-line); color: var(--ad-muted); }
+.ad-console .oa .dr-titles { display: grid; gap: 6px; margin: 0; padding: 0; border: 0; }
+.ad-console .oa .dr-titles label { display: flex; gap: 8px; align-items: baseline; font-weight: 400; margin: 0; }
+.ad-console .oa .dr-titles small { color: var(--ad-muted); }
 .ad-console .oa .dr-refs { display: inline-block; margin: 0 6px 0 2px; padding: 0 7px; border-radius: 99px; font-size: .72rem; font-weight: 700; color: #52525b; background: var(--dr-soft); }
 .ad-console .oa .dr-sent-picks { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 8px 0 0; font-size: .8rem; color: var(--ad-muted); }
 .ad-console .oa .dr-sent-picks span { padding: 1px 8px; border-radius: 99px; background: #fff; border: 1px solid var(--dr-soft); color: #3f3f46; font-weight: 650; }

@@ -123,7 +123,9 @@ def ask(
     rec = {'model': str(model), 'requested_model': str(model), 'requested_provider': provider or 'claude',
            'reasoning_effort': reasoning_effort, 'attempts': [],
            'backend': '', 'seconds': 0.0, 'fallback': '', 'error': '',
-           'input_tokens': None, 'output_tokens': None, 'tags': dict(_call_tags.get()), 'tools': list(tools)}
+           'input_tokens': None, 'output_tokens': None, 'tags': dict(_call_tags.get()), 'tools': list(tools),
+           # 보낸 프롬프트 크기 — 입력 토큰이 이보다 훨씬 크면 도구 결과(웹 열람)가 맥락을 불린 거예요(토큰 관찰)
+           'prompt_chars': len(prompt or '') + len(system or '')}
     started = time.monotonic()
     # 기본값이 아닐 때만 넘긴다 — 기존 호출·테스트의 _cli_ask(prompt, system=, model=) 형태를 유지
     cli_extra = {'timeout': timeout} if timeout else {}
@@ -386,9 +388,14 @@ def _cli_ask(prompt: str, *, system: str, model: ClaudeModel | str,
         raise CliUnavailable(f"exit={proc.returncode} subtype={data.get('subtype')} {detail[:1500]}")
 
     usage = data.get('usage') or {}
+    tools_used = usage.get('server_tool_use') if isinstance(usage.get('server_tool_use'), dict) else {}
     return out, {'input_tokens': usage.get('input_tokens'), 'output_tokens': usage.get('output_tokens'),
                  'cache_read_input_tokens': usage.get('cache_read_input_tokens'),
-                 'cache_creation_input_tokens': usage.get('cache_creation_input_tokens')}
+                 'cache_creation_input_tokens': usage.get('cache_creation_input_tokens'),
+                 # 도구를 몇 번 돌았나 — 팩트체크 토큰이 불어난 이유를 가리려고 남겨요(관리 화면 토큰 탭)
+                 'num_turns': data.get('num_turns'),
+                 'web_search_requests': tools_used.get('web_search_requests'),
+                 'web_fetch_requests': tools_used.get('web_fetch_requests')}
 
 
 def ask_stream(

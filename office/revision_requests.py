@@ -32,6 +32,10 @@ referenced_feedback에 kind가 있으면 운영자가 이번 재작성에 반영
 요구를 이미 충족한 경우에는 바꾸지 않아도 돼요. 작성 메모·수정 완료 설명은 본문에 넣지 않아요.
 도판을 새로 그리거나 수치 변경으로 기존 도판을 갱신해야 하면 visual/render로 지정해요.
 도판 삭제는 visual/remove로 지정하고 편집 목록으로 실제로 지워요. 도판 렌더링은 뒤 단계가 수행해요.
+referenced_feedback의 kind가 regressed면 예전 판에서 해결했다가 되돌아간 지적이에요. 해결 상태를 되살려요.
+kind가 keep이면 예전 판의 강점이 사라진 거예요. 그 문장을 되살리거나 같은 역할을 하는 문장을 둬요.
+preserve_passages는 이전 판들에서 평론가·편집장이 인용해 꼽은 강점이에요. 요구와 관계없으면 한 글자도 바꾸지 않아요.
+already_resolved는 앞선 판에서 이미 해결한 지적이에요. 그 해결을 되돌리는 편집을 하지 않아요.
 고친 원고를 다시 사실 검증받으라는 요구처럼 본문 편집이 아니라 뒤 단계의 독립 팩트체크 통과로만
 완료되는 요구는 kind=check로 적어요. 특정 주장·수치를 고치라는 요구는 check가 아니라 body예요.
 '''
@@ -50,6 +54,7 @@ VERIFY_RULE = '''작성자와 독립적으로 관리자 수정 요청이 반영�
 모든 요구 id를 정확히 한 번 판정해요. met는 evidence가 실제 최종 원고에 있고 완료 기준이 충족될 때만 써요.
 요청 누락은 missing_requests에 원래 요청의 해당 부분을 적고 coverage_complete=false로 해요.
 unrelated_changes는 요청과 무관하게 바뀐 부분, regressions는 새로 깨진 사실·코드·문맥을 구체적으로 적어요.
+preserve_passages(지켜야 할 강점)나 already_resolved(이미 해결한 지적)가 요청과 무관하게 사라지거나 되돌아갔으면 regressions에 적어요.
 사실의 외부 진위는 별도의 팩트체크가 담당해요. 여기서는 요구 이행과 수정 전후 보존을 확인해요.
 kind=check 요구(다시 사실 검증받기)는 뒤 단계 팩트체크가 판정하므로 status를 blocked로 두고 reason만 적어요.
 followup_review_notes가 있으면 관리자 요청 반영 뒤 파이프라인이 편집 심사·점검 지적으로 한 번 더 보완한 거예요.
@@ -60,37 +65,47 @@ followup_review_notes가 있으면 관리자 요청 반영 뒤 파이프라인�
 
 MAX_REQUIREMENTS = 24
 MAX_SELECTED_FEEDBACK = 20
-KIND_LABEL = {'must_fix': '필수 수정', 'fact': '팩트체크', 'suggestion': '편집 제안'}
+KIND_LABEL = {'must_fix': '필수 수정', 'fact': '팩트체크', 'suggestion': '편집 제안',
+              'regressed': '회귀', 'keep': '사라진 강점'}
 
 
-def feedback_references(qa: dict | None, check: dict | None) -> list[dict]:
-    """재작성에 반영할 수 있는 기존 지적 — 관리 화면 체크 목록과 재작성 작업이 같은 목록·같은 id 를 쓴다.
+def base_rows(qa: dict | None, check: dict | None) -> list[dict]:
+    """현재 판의 심사·팩트체크 지적 — 화면·재작성·장부가 같은 목록과 id 를 써요.
 
     E=편집 심사 필수 수정, F=팩트체크, S=편집 제안. 전에는 재작성에 필수 수정만 넘겨서, 운영자가
     '지적대로 고쳐 달라'고 해도 제안은 작성자에게 보이지도 않았다(2026-11-16 #61: 제안 8건이 그대로 남음).
-    원고가 대기열에 있는 동안은 잠겨 있으므로(draft_state) 요청할 때와 실행할 때 목록이 같다."""
-    from .review_protocol import revision_notes
+    원고가 대기열에 있는 동안은 잠겨 있으므로(draft_state) 요청할 때와 실행할 때 목록이 같다.
+    issue_id(필수 수정)·claim(팩트체크 주장)은 판을 넘어 같은 지적을 잇는 데 써요(office.revision_ledger)."""
+    from .review_protocol import as_line, must_fix_items, revision_notes
     qa, check = qa or {}, check or {}
     rows, seen = [], set()
 
-    def add(prefix, kind, text):
+    def add(prefix, kind, text, **meta):
         text = str(text or '').strip()
         if not text or text in seen:
             return
         seen.add(text)
         rows.append({'id': prefix+str(sum(r['kind'] == kind for r in rows)+1), 'kind': kind,
-                     'label': KIND_LABEL[kind], 'text': text})
+                     'label': KIND_LABEL[kind], 'text': text, **{k: v for k, v in meta.items() if v}})
 
-    for text in revision_notes(qa):
-        add('E', 'must_fix', text)
+    items = must_fix_items(qa)
+    if items:
+        for m in items:
+            add('E', 'must_fix', as_line(m), issue_id=str(m.get('issue_id') or ''))
+    else:
+        for text in revision_notes(qa):
+            add('E', 'must_fix', text)
     for c in check.get('claims') or []:
         if isinstance(c, dict) and c.get('status') in ('wrong', 'unverifiable', 'outdated'):
-            add('F', 'fact', str(c.get('claim', ''))+' — '+str(c.get('note', '')))
+            add('F', 'fact', str(c.get('claim', ''))+' — '+str(c.get('note', '')), claim=str(c.get('claim', '')))
     for c in check.get('critical') or []:
         add('F', 'fact', c)
     for finding in check.get('bad') or []:
-        add('F', 'fact', (str(finding.get('claim', ''))+' — '+str(finding.get('note', ''))
-                          if isinstance(finding, dict) else finding))
+        if isinstance(finding, dict):
+            add('F', 'fact', str(finding.get('claim', ''))+' — '+str(finding.get('note', '')),
+                claim=str(finding.get('claim', '')))
+        else:
+            add('F', 'fact', finding)
     if check.get('notes'):
         add('F', 'fact', check['notes'])
     suggestions = [str(x) for x in qa.get('suggestions') or []] or [
@@ -98,6 +113,19 @@ def feedback_references(qa: dict | None, check: dict | None) -> list[dict]:
     for text in suggestions:
         add('S', 'suggestion', text)
     return rows
+
+
+def feedback_references(qa: dict | None, check: dict | None) -> list[dict]:
+    """현재 판의 지적만 — 장부 상태 없이(예전 호출부·테스트 호환)."""
+    return [{k: r[k] for k in ('id', 'kind', 'label', 'text')} for r in base_rows(qa, check)]
+
+
+def selection_rows(draft) -> list[dict]:
+    """관리 화면 체크 목록·재작성 작업이 함께 쓰는 목록 — 현재 지적 + 장부의 회귀·사라진 강점, 상태·잠금 포함."""
+    from .revision_ledger import annotate, is_current, ledger_for
+    ledger = ledger_for(draft)
+    return annotate(feedback_references(draft.qa_report, draft.check_report), ledger,
+                    current=is_current(ledger, draft))
 
 
 class RevisionRequests:
@@ -109,7 +137,9 @@ class RevisionRequests:
         self.column_track = getattr(draft, 'column_track', '')
         self.qa = deepcopy(draft.qa_report or {})
         self.check = deepcopy(draft.check_report or {})
-        rows = feedback_references(self.qa, self.check)
+        from .revision_ledger import ledger_for
+        self.ledger = ledger_for(draft)
+        rows = selection_rows(draft)
         self.selected = None if selected is None else [i for i in selected if i in {r['id'] for r in rows}]
         if self.selected is None:
             self.references = [{'id': r['id'], 'text': r['text']} for r in rows if r['kind'] != 'suggestion']
@@ -130,6 +160,7 @@ class RevisionRequests:
         self.candidate = None
         self.followup = []
         self.quality_attempt = 0
+        self.finds = []
 
     def prepare_budget(self):
         """관리자 재작성은 최종 검수 뒤 두 번 보완할 호출 여유를 둬요. 시간·구독 상한은 유지해요."""
@@ -211,6 +242,8 @@ class RevisionRequests:
                 'referenced_feedback': self.references,
                 'before': {'title': self.subject, 'content': self.content},
                 'after': {'title': subject, 'content': content}}
+        from .revision_ledger import guidance
+        data.update(guidance(self.ledger, self.content))
         if self.followup:
             data['followup_review_notes'] = self.followup
         return data
@@ -249,6 +282,7 @@ class RevisionRequests:
                     or not isinstance(edit.get('replace'), str) or content.count(edit['find']) != 1):
                 raise ValueError('편집 대상이 원고와 정확히 일치하지 않거나 수정 요구 연결이 없어요.')
             content = content.replace(edit['find'], edit['replace'], 1)
+        finds = [edit['find'] for edit in edits]
         title = value.get('title', '')
         if not isinstance(title, str):
             raise ValueError('제목 형식이 올바르지 않아요.')
@@ -257,6 +291,7 @@ class RevisionRequests:
         if not content.strip():
             raise ValueError('수정으로 원고 본문이 비었어요.')
         self.requirements = requirements
+        self.finds = (self.finds + finds) if base is not None else finds   # 보완은 앞선 편집 위에 쌓여요
         self.cached_verification = None
         return title.strip() or base_subject, content
 
@@ -334,6 +369,11 @@ class RevisionRequests:
                           'evidence': evidence if isinstance(evidence, str) else '', 'reason': reason})
         if any(r['met'] is False for r in items) or not items:
             reasons.append('완료가 확인되지 않은 수정 요구가 있어요.')
+        # 요청과 무관하게 사라진 강점·해결 근거 — 모델 판정과 별개로 코드가 확인해요(2026-11-23 장부)
+        from .revision_ledger import lost_passages
+        lost = lost_passages(self.ledger, self.subject+'\n'+self.content, subject+'\n'+content, self.finds)
+        if lost:
+            reasons.append('요청과 무관하게 사라진 대목: '+' · '.join(lost)[:500])
         report = {**self.report, 'candidate_hash': key, 'items': items, 'reasons': reasons,
                   'missing_requests': raw.get('missing_requests', []), 'verified': not reasons}
         self.stages.record('revision_verify', 'editor', report)
@@ -345,12 +385,14 @@ class RevisionRequests:
         """최대 두 번 편집해요. 호출 실패·한도 오류는 재시도하지 않아요."""
         self.prepare_budget()
         feedback = ''
+        from .revision_ledger import guidance
+        ledger_guidance = guidance(self.ledger, self.content)
         for attempt in (1, 2):
             from common.services.claude import call_tags
             with call_tags(stage='revision_candidate', attempt=attempt):
                 value = ask_agent_json(self.writer, EDIT_RULE+'\n'+json.dumps({
                     'request': self.note, 'title': self.subject, 'content': self.content,
-                    'referenced_feedback': self.references,
+                    'referenced_feedback': self.references, **ledger_guidance,
                     'baseline_review': {k: v for k, v in self.qa.items() if k != 'admin_revision'},
                     'previous_revision_problems': (self.qa.get('admin_revision') or {}).get('reasons', []),
                     'previous_candidate': ({'title': self.candidate[0], 'content': self.candidate[1],
@@ -413,7 +455,12 @@ class RevisionRequests:
         from .quality import meta_notes
         if set(meta_notes(content)) - set(meta_notes(self.content)):
             reasons.append('수정 후 본문에 작성 메모가 새로 생겼어요.')
+        pairwise = None if reasons else self._pairwise(subject, content)
+        if pairwise and pairwise['winner'] == 'a':
+            reasons.append('나란히 비교(순서 바꿔 두 번)에서 두 번 모두 기존 원고가 낫다고 판정했어요: '
+                           + (pairwise['runs'][0].get('reason') or '')[:300])
         self.report = {**report, 'status': 'retained' if reasons else 'adopted', 'reasons': reasons,
+                       **({'pairwise': pairwise} if pairwise else {}),
                        'verified': report['verified'] and all(r['met'] is True for r in deferred),
                        'previous_score': previous_score, 'candidate_score': score}
         from .run_context import current
@@ -427,6 +474,31 @@ class RevisionRequests:
             return False
         qa['admin_revision'] = self.report
         return True
+
+    def _pairwise(self, subject, content):
+        """점수 규칙을 통과한 후보를 기존 원고와 나란히 비교해요. 두 번 모두 기존 원고가 나을 때만 막아요.
+
+        예산이 부족하거나 비교 호출이 실패하면 기록만 남기고 건너뛰어요(점수·요구 검증은 이미 통과)."""
+        from . import pairwise as PW
+        from .run_context import current
+        if not PW.enabled() or (subject, content) == (self.subject, self.content):
+            return None
+        context = current()
+        if context and not context.can_start_revision(calls=2, seconds=180):
+            self.stages.record('pairwise', 'editor', {'reason': '예산 부족으로 나란히 비교를 건너뛰었어요.'}, status='skipped')
+            return None
+        try:
+            result = PW.compare((self.subject, self.content), (subject, content), ask_json=ask_agent_json)
+        except Exception as exc:  # noqa: BLE001
+            from common.services.cli_errors import ProviderUnavailable
+            from .run_context import RunBudgetExceeded
+            if isinstance(exc, (ProviderUnavailable, RunBudgetExceeded)):
+                raise
+            self.stages.record('pairwise', 'editor', {'reason': str(exc)[:300]}, status='failed')
+            return None
+        result['a'], result['b'] = 'baseline', 'candidate'
+        self.stages.record('pairwise', 'editor', result)
+        return result
 
     def retain(self, reason=''):
         if reason:

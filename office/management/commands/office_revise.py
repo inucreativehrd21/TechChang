@@ -193,6 +193,11 @@ class Command(BaseCommand):
                     revision.retain()
                     return
                 subject, content = candidate
+            # 제목 점검 — 채택할 판에만. 제목은 바꾸지 않고 후보를 원고 카드에 보여 줘요(office.headline)
+            from office import headline as H
+            from office.run_context import current as current_context
+            H.attach(qa, subject, content, recent=recent, context=current_context(), record=stages.record,
+                     keywords=P.headline_keywords((draft.decision.chosen or {}) if draft.decision else {}))
             stages.record('review', 'editor', qa)
             stages.complete(subject, content, check, qa)
             verdict_ko = {'accept': '발행', 'minor': '수정 요청', 'major': '보류'}.get(qa['verdict'], qa['verdict'])

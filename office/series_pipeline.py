@@ -336,6 +336,7 @@ def review_episode(key: str, no: int, subject: str, content: str, check: dict, c
     scores = qa.get('scores') if isinstance(qa.get('scores'), dict) else {}
     fatal = [f for f in (qa.get('fatal') or []) if isinstance(f, str)]
     qa = R.normalize(qa)
+    qa['keep_passages'] = P.keep_passages(qa.pop('keep', None), critique, subject + '\n' + content)  # 지켜야 할 강점
     qa['demoted'] = R.demote_stale(qa, previous, previous_content, content)   # 바뀌지 않은 곳의 새 지적은 제안으로
     R.flag_numbers(qa, pack)                                                 # 수정 지시의 근거 없는 수치에 경고
     model_issues = list(qa['issues'])

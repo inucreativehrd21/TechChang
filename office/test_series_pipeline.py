@@ -36,6 +36,8 @@ def fake_json(score=5, critical=()):
 CRITIQUE = {'verdict': 'recommend', 'reason': '따라 하기 쉽다', 'issues': [], 'strengths': []}
 
 
+# 판 나란히 비교·제목 점검(2026-11-23)은 호출 수를 늘려요 — 이 묶음은 기존 요구 검증 경로만 세요(test_revision_ledger 가 따로 확인)
+@mock.patch.dict('os.environ', {'OFFICE_PAIRWISE_GUARD': '0', 'OFFICE_TITLE_LAB': '0'})
 class SeriesPipelineTests(TestCase):
     def setUp(self):
         from unittest import mock as _otp_mock   # 관리 화면은 모두 OTP 경계 — 여기서는 인증된 운영자로 본다
