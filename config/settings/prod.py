@@ -69,9 +69,12 @@ SECURE_REFERRER_POLICY = 'same-origin'
 # 예전 CSP_* 설정은 django-csp 4.0 이 읽지 않아(csp 앱 미등록이라 경고도 없음) 운영 응답에 CSP 헤더가
 # 아예 붙지 않았다. 그대로 4.x 형식으로 옮겨 '강제'하면 nonce 없는 인라인 스크립트·onclick 등이 한꺼번에
 # 막혀 사이트가 깨지므로, 단계적으로 켠다. CSP_MODE(.env):
-#   report-only (기본) — 브라우저는 아무것도 막지 않고 위반만 /csp-report/ 로 보낸다(common/csp.py 가 로그로 남김)
-#   enforce            — 위반을 실제로 차단. security 로그에서 위반이 정리된 뒤에만 켤 것
-#   off                — CSP 헤더를 붙이지 않음(예전 실제 동작과 같다)
+#   enforce (기본)     — 위반을 실제로 차단하고 보고도 보낸다(2026-11-24 전환: nonce 없는 인라인 스크립트 33곳에
+#                        nonce, onclick 등 인라인 이벤트 속성은 static/js/csp-actions.js 의 data-* 동작으로 바꿈)
+#   report-only        — 브라우저는 아무것도 막지 않고 위반만 /csp-report/ 로 보낸다(문제 생기면 .env 로 즉시 되돌리기)
+#   off                — CSP 헤더를 붙이지 않음
+# 새 템플릿 규칙: <script> 에는 nonce="{{ csp_nonce }}", onclick=·onsubmit=·href="javascript:" 금지(data-action 등 사용).
+# 비활성 게임(틱택토·끝말잇기) 템플릿은 아직 인라인 속성이 남아 있어 다시 켜기 전에 바꿔야 한다.
 # 보고량은 CSP_REPORT_PERCENTAGE(%) 만큼의 응답에만 report-uri 를 붙여 줄인다(RateLimitedCSPMiddleware).
 # nonce 는 common.context_processors.theme_context 가 request._csp_nonce 에 만든 값을 django-csp 가
 # 그대로 헤더에 쓴다 — 템플릿의 nonce="{{ csp_nonce }}" 와 같은 값이다.
@@ -83,8 +86,10 @@ _CSP_DIRECTIVES = {
     'script-src': [SELF, NONCE, 'https://cdn.jsdelivr.net', 'https://cdnjs.cloudflare.com'],
     # style 속성이 템플릿 전반에 1천여 곳 있어 인라인 스타일은 허용한다(스크립트만 nonce 로 좁힌다).
     # Font Awesome CSS·웹폰트가 cdnjs 에서 오므로 style/font 양쪽에 cdnjs 가 필요하다(예전 설정엔 빠져 있었다).
-    'style-src': [SELF, UNSAFE_INLINE, 'https://cdn.jsdelivr.net', 'https://cdnjs.cloudflare.com'],
-    'font-src': [SELF, 'data:', 'https://cdn.jsdelivr.net', 'https://cdnjs.cloudflare.com'],
+    # 방명록(guestbook_list.html)이 구글 웹폰트를 @import 한다
+    'style-src': [SELF, UNSAFE_INLINE, 'https://cdn.jsdelivr.net', 'https://cdnjs.cloudflare.com',
+                  'https://fonts.googleapis.com'],
+    'font-src': [SELF, 'data:', 'https://cdn.jsdelivr.net', 'https://cdnjs.cloudflare.com', 'https://fonts.gstatic.com'],
     'img-src': [SELF, 'data:', 'https:'],
     # 틱택토 WebSocket(wss://<host>/ws/...) — 'self' 의 ws 매칭을 모든 브라우저가 하진 않아 호스트를 적는다
     'connect-src': [SELF] + [f'wss://{h}' for h in ALLOWED_HOSTS if h and not h.replace('.', '').isdigit()],
@@ -97,7 +102,7 @@ _CSP_CONFIG = {
     'DIRECTIVES': _CSP_DIRECTIVES,
     'REPORT_PERCENTAGE': float(os.environ.get('CSP_REPORT_PERCENTAGE', '5')),
 }
-CSP_MODE = os.environ.get('CSP_MODE', 'report-only').strip().lower()
+CSP_MODE = os.environ.get('CSP_MODE', 'enforce').strip().lower()
 if CSP_MODE == 'enforce':
     CONTENT_SECURITY_POLICY = _CSP_CONFIG
 elif CSP_MODE != 'off':

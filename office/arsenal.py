@@ -97,12 +97,40 @@ BLOCKED = {401, 403, 405, 429}
 UA = 'Mozilla/5.0 (compatible; TechChangLinkCheck/1.0; +https://techchang.com)'
 
 
+def _public(url: str) -> bool:
+    """http(s)·공인 IP 로만 풀리는 주소. 원고 속 주소가 내부망(169.254.169.254·127.0.0.1 등)을 두드리지 않게 해요."""
+    import ipaddress
+    import socket
+    from urllib.parse import urlsplit
+    try:
+        parts = urlsplit(url)
+        host = parts.hostname or ''
+        if parts.scheme not in ('http', 'https') or not host or parts.username:
+            return False
+        addrs = {i[4][0] for i in socket.getaddrinfo(host, parts.port or 443, proto=socket.IPPROTO_TCP)}
+    except (OSError, ValueError):
+        return False
+    return bool(addrs) and all(ipaddress.ip_address(a.split('%')[0]).is_global for a in addrs)
+
+
+class _PublicRedirect(urllib.request.HTTPRedirectHandler):
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        if not _public(newurl):
+            raise urllib.error.URLError('내부 주소로 리디렉션')
+        return super().redirect_request(req, fp, code, msg, headers, newurl)
+
+
+_OPENER = urllib.request.build_opener(_PublicRedirect)
+
+
 def _status(url: str) -> int:
-    """HTTP 상태 코드. 연결 자체가 안 되면 0."""
+    """HTTP 상태 코드. 연결 자체가 안 되거나 공인 주소가 아니면 0."""
+    if not _public(url):
+        return 0
     for method in ('HEAD', 'GET'):
         req = urllib.request.Request(url, method=method, headers={'User-Agent': UA})
         try:
-            with urllib.request.urlopen(req, timeout=8) as r:
+            with _OPENER.open(req, timeout=8) as r:
                 return r.status
         except urllib.error.HTTPError as e:
             if method == 'HEAD' and e.code in (403, 405, 501):

@@ -174,7 +174,7 @@
                 <div id="leveled_skills_panel" style="display: none; margin-bottom: var(--space-6); padding: var(--space-6); background: white; border-radius: var(--radius-lg); border: 1px solid var(--border-light);">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-4);">
                         <label style="font-weight: 700; color: var(--text-primary);">레벨별 스킬</label>
-                        <button type="button" onclick="addLeveledSkill()" style="padding: var(--space-2) var(--space-4); background: var(--accent-blue); color: white; border: none; border-radius: var(--radius-md); cursor: pointer; font-weight: 600; font-size: 0.875rem;">
+                        <button type="button" data-action="addLeveledSkill" style="padding: var(--space-2) var(--space-4); background: var(--accent-blue); color: white; border: none; border-radius: var(--radius-md); cursor: pointer; font-weight: 600; font-size: 0.875rem;">
                             <i class="fas fa-plus"></i> 스킬 추가
                         </button>
                     </div>
@@ -188,7 +188,7 @@
                                 <option value="Advanced" {% if skill.level == 'Advanced' %}selected{% endif %}>고급</option>
                                 <option value="Expert" {% if skill.level == 'Expert' %}selected{% endif %}>전문가</option>
                             </select>
-                            <button type="button" onclick="this.parentElement.remove()" style="padding: var(--space-2); background: #fee; color: #c33; border: none; border-radius: var(--radius-md); cursor: pointer;">
+                            <button type="button" data-remove="parent" style="padding: var(--space-2); background: #fee; color: #c33; border: none; border-radius: var(--radius-md); cursor: pointer;">
                                 <i class="fas fa-times"></i>
                             </button>
                         </div>
@@ -200,7 +200,7 @@
                 <div id="categorized_skills_panel" style="display: none; margin-bottom: var(--space-6); padding: var(--space-6); background: white; border-radius: var(--radius-lg); border: 1px solid var(--border-light);">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-4);">
                         <label style="font-weight: 700; color: var(--text-primary);">카테고리별 스킬</label>
-                        <button type="button" onclick="addCategorizedSkill()" style="padding: var(--space-2) var(--space-4); background: var(--accent-blue); color: white; border: none; border-radius: var(--radius-md); cursor: pointer; font-weight: 600; font-size: 0.875rem;">
+                        <button type="button" data-action="addCategorizedSkill" style="padding: var(--space-2) var(--space-4); background: var(--accent-blue); color: white; border: none; border-radius: var(--radius-md); cursor: pointer; font-weight: 600; font-size: 0.875rem;">
                             <i class="fas fa-plus"></i> 카테고리 추가
                         </button>
                     </div>
@@ -209,7 +209,7 @@
                         <div class="categorized-skill-row" style="padding: var(--space-4); background: var(--bg-secondary); border-radius: var(--radius-md);">
                             <div style="display: grid; grid-template-columns: 1fr 40px; gap: var(--space-3); margin-bottom: var(--space-3);">
                                 <input type="text" name="category_name[]" value="{{ category }}" placeholder="카테고리 이름 (예: Office Skills)" style="padding: var(--space-3); border: 1px solid var(--border-light); border-radius: var(--radius-md); font-weight: 600;">
-                                <button type="button" onclick="this.closest('.categorized-skill-row').remove()" style="padding: var(--space-2); background: #fee; color: #c33; border: none; border-radius: var(--radius-md); cursor: pointer;">
+                                <button type="button" data-remove=".categorized-skill-row" style="padding: var(--space-2); background: #fee; color: #c33; border: none; border-radius: var(--radius-md); cursor: pointer;">
                                     <i class="fas fa-times"></i>
                                 </button>
                             </div>
@@ -524,7 +524,7 @@
                     <img src="{% url 'community:portfolio_collection_asset' portfolio.slug asset.id %}" alt="{{ asset.original_name }}" loading="lazy" style="width: 100%; height: 120px; object-fit: cover; display: block; background: #f1f5f9;">
                     <div style="padding: var(--space-3);">
                         <div style="font-size: 0.78rem; color: var(--text-secondary); word-break: break-all; margin-bottom: var(--space-2);" title="{{ asset.original_name }}">{{ asset.original_name }}</div>
-                        <form method="post" action="{% url 'community:collection_asset_delete' portfolio.slug asset.id %}" onsubmit="return confirm('이 사진을 삭제할까요?');">
+                        <form method="post" action="{% url 'community:collection_asset_delete' portfolio.slug asset.id %}" data-confirm="이 사진을 삭제할까요?">
                             {% csrf_token %}
                             <button type="submit" style="width: 100%; padding: var(--space-2); border: none; border-radius: var(--radius-md); background: rgba(239,68,68,0.1); color: #dc2626; font-size: 0.78rem; font-weight: 600; cursor: pointer;">
                                 <i class="fas fa-trash"></i> 삭제
@@ -585,7 +585,7 @@
                             <a href="{% url 'community:collection_project_edit' portfolio.slug project.id %}" class="btn-premium btn-premium-secondary" style="padding: var(--space-2) var(--space-4);">
                                 <i class="fas fa-edit"></i>
                             </a>
-                            <form method="post" action="{% url 'community:collection_project_delete' portfolio.slug project.id %}" style="display: inline;" onsubmit="return confirm('이 프로젝트를 삭제하시겠습니까?');">
+                            <form method="post" action="{% url 'community:collection_project_delete' portfolio.slug project.id %}" style="display: inline;" data-confirm="이 프로젝트를 삭제하시겠습니까?">
                                 {% csrf_token %}
                                 <button type="submit" class="btn-premium btn-premium-secondary" style="padding: var(--space-2) var(--space-4); background: #fee; color: #c33;">
                                     <i class="fas fa-trash"></i>
@@ -595,7 +595,7 @@
                             <a href="{% url 'community:project_edit' project.id %}" class="btn-premium btn-premium-secondary" style="padding: var(--space-2) var(--space-4);">
                                 <i class="fas fa-edit"></i>
                             </a>
-                            <form method="post" action="{% url 'community:project_delete' project.id %}" style="display: inline;" onsubmit="return confirm('이 프로젝트를 삭제하시겠습니까?');">
+                            <form method="post" action="{% url 'community:project_delete' project.id %}" style="display: inline;" data-confirm="이 프로젝트를 삭제하시겠습니까?">
                                 {% csrf_token %}
                                 <button type="submit" class="btn-premium btn-premium-secondary" style="padding: var(--space-2) var(--space-4); background: #fee; color: #c33;">
                                     <i class="fas fa-trash"></i>
@@ -668,7 +668,7 @@
                             <a href="{% url 'community:collection_experience_edit' portfolio.slug experience.id %}" class="btn-premium btn-premium-secondary" style="padding: var(--space-2) var(--space-4);">
                                 <i class="fas fa-edit"></i>
                             </a>
-                            <form method="post" action="{% url 'community:collection_experience_delete' portfolio.slug experience.id %}" style="display: inline;" onsubmit="return confirm('이 경력을 삭제하시겠습니까?');">
+                            <form method="post" action="{% url 'community:collection_experience_delete' portfolio.slug experience.id %}" style="display: inline;" data-confirm="이 경력을 삭제하시겠습니까?">
                                 {% csrf_token %}
                                 <button type="submit" class="btn-premium btn-premium-secondary" style="padding: var(--space-2) var(--space-4); background: #fee; color: #c33;">
                                     <i class="fas fa-trash"></i>
@@ -678,7 +678,7 @@
                             <a href="{% url 'community:experience_edit' experience.id %}" class="btn-premium btn-premium-secondary" style="padding: var(--space-2) var(--space-4);">
                                 <i class="fas fa-edit"></i>
                             </a>
-                            <form method="post" action="{% url 'community:experience_delete' experience.id %}" style="display: inline;" onsubmit="return confirm('이 경력을 삭제하시겠습니까?');">
+                            <form method="post" action="{% url 'community:experience_delete' experience.id %}" style="display: inline;" data-confirm="이 경력을 삭제하시겠습니까?">
                                 {% csrf_token %}
                                 <button type="submit" class="btn-premium btn-premium-secondary" style="padding: var(--space-2) var(--space-4); background: #fee; color: #c33;">
                                     <i class="fas fa-trash"></i>
@@ -746,7 +746,7 @@
 }
 </style>
 
-<script>
+<script nonce="{{ csp_nonce }}">
 // ===== 표현 방식(빌더 / HTML) 토글 =====
 (function() {
     var modeRadios = document.querySelectorAll('input[name="content_mode"]');
@@ -768,7 +768,7 @@
 })();
 </script>
 
-<script>
+<script nonce="{{ csp_nonce }}">
 document.addEventListener('DOMContentLoaded', function() {
     // ========== Hero Background Management ==========
     const heroTypeRadios = document.querySelectorAll('input[name="hero_background_type"]');
@@ -1002,7 +1002,7 @@ function addLeveledSkill() {
             <option value="Advanced">고급</option>
             <option value="Expert">전문가</option>
         </select>
-        <button type="button" onclick="this.parentElement.remove()" style="padding: var(--space-2); background: #fee; color: #c33; border: none; border-radius: var(--radius-md); cursor: pointer;">
+        <button type="button" data-remove="parent" style="padding: var(--space-2); background: #fee; color: #c33; border: none; border-radius: var(--radius-md); cursor: pointer;">
             <i class="fas fa-times"></i>
         </button>
     `;
@@ -1017,7 +1017,7 @@ function addCategorizedSkill() {
     newRow.innerHTML = `
         <div style="display: grid; grid-template-columns: 1fr 40px; gap: var(--space-3); margin-bottom: var(--space-3);">
             <input type="text" name="category_name[]" placeholder="카테고리 이름 (예: Office Skills)" style="padding: var(--space-3); border: 1px solid var(--border-light); border-radius: var(--radius-md); font-weight: 600;">
-            <button type="button" onclick="this.closest('.categorized-skill-row').remove()" style="padding: var(--space-2); background: #fee; color: #c33; border: none; border-radius: var(--radius-md); cursor: pointer;">
+            <button type="button" data-remove=".categorized-skill-row" style="padding: var(--space-2); background: #fee; color: #c33; border: none; border-radius: var(--radius-md); cursor: pointer;">
                 <i class="fas fa-times"></i>
             </button>
         </div>

@@ -341,7 +341,17 @@ CACHES = {
         'OPTIONS': {
             'MAX_ENTRIES': 1000,
         }
-    }
+    },
+    # 로그인 실패 횟수(common.login_throttle). LocMem 은 gunicorn 워커마다 따로라 제한이 워커 수만큼 느슨해져서,
+    # 워커가 같이 보는 파일 캐시에 둬요. 테스트는 실행마다 비어 있는 메모리 캐시를 써요.
+    'throttle': ({
+        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache', 'LOCATION': 'login-throttle',
+    } if 'test' in __import__('sys').argv[1:2] else {
+        'BACKEND': 'django.core.cache.backends.filebased.FileBasedCache',
+        'LOCATION': str(BASE_DIR / 'cache' / 'throttle'),
+        'TIMEOUT': 3600,
+        'OPTIONS': {'MAX_ENTRIES': 20000},
+    }),
 }
 
 # 로깅 설정 (안전한 버전)
@@ -490,3 +500,7 @@ ACCOUNT_RATE_LIMITS = {
 SITE_OWNER_USERNAME = os.environ.get('SITE_OWNER_USERNAME', 'admin')
 LAB_OPERATOR_IDS = tuple(int(value.strip()) for value in os.environ.get('LAB_OPERATOR_IDS', '').split(',') if value.strip())
 LAB_JOB_SUPERVISOR = os.environ.get('LAB_JOB_SUPERVISOR', 'process')
+
+# 비밀번호 재설정 링크(common.views.password_reset) — 주소는 요청 Host 가 아니라 이 고정값으로 만들고, 2시간만 유효해요
+SITE_BASE_URL = os.environ.get('SITE_BASE_URL', 'https://techchang.com')
+PASSWORD_RESET_TIMEOUT = 2 * 60 * 60

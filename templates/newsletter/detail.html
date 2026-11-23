@@ -12,7 +12,7 @@
 {% block twitter_image %}{% if og_abs %}{{ og_abs }}{% else %}{{ block.super }}{% endif %}{% endblock %}
 {% block og_image_alt %}연구실 위클리 No.{{ issue.issue_no }} — {{ issue.title }}{% endblock %}
 {% block jsonld %}
-<script type="application/ld+json">
+<script nonce="{{ csp_nonce }}" type="application/ld+json">
 {"@context": "https://schema.org", "@type": "Article", "headline": "{{ issue.title|escapejs }}",
  "description": "{{ issue.intro|escapejs }}", "inLanguage": "ko-KR",
  "datePublished": "{{ issue.published_at|date:'c' }}",{% if og_abs %} "image": "{{ og_abs }}",{% endif %}

@@ -182,7 +182,7 @@
 
 <!-- 회원 탈퇴 -->
 <a href="{% url 'common:account_delete' %}" class="m-btn-danger"
-   onclick="return confirm('정말로 회원 탈퇴 페이지로 이동하시겠습니까?')">
+   data-confirm="정말로 회원 탈퇴 페이지로 이동하시겠습니까?">
     <i class="fas fa-user-times me-2"></i>회원 탈퇴
 </a>
 
@@ -200,7 +200,7 @@
                         <label class="form-label">이메일 주소</label>
                         <input type="email" class="form-control" id="verifyEmail" value="{{ user.email }}" placeholder="your@email.com">
                     </div>
-                    <button class="btn btn-primary w-100" onclick="sendVerificationCode('verify')">
+                    <button class="btn btn-primary w-100" data-action="sendVerificationCode" data-args="verify">
                         <i class="fas fa-paper-plane me-2"></i>인증코드 발송
                     </button>
                 </div>
@@ -211,8 +211,8 @@
                         <input type="text" class="form-control" id="verifyCode" maxlength="4" placeholder="0000" inputmode="numeric">
                     </div>
                     <div class="d-grid gap-2">
-                        <button class="btn btn-success" onclick="verifyCode('verify')"><i class="fas fa-check me-2"></i>인증 완료</button>
-                        <button class="btn btn-outline-secondary btn-sm" onclick="sendVerificationCode('verify')">재발송</button>
+                        <button class="btn btn-success" data-action="verifyCode" data-args="verify"><i class="fas fa-check me-2"></i>인증 완료</button>
+                        <button class="btn btn-outline-secondary btn-sm" data-action="sendVerificationCode" data-args="verify">재발송</button>
                     </div>
                 </div>
                 <div id="verifySuccess" style="display:none;">
@@ -237,7 +237,7 @@
                         <label class="form-label">새 이메일 주소</label>
                         <input type="email" class="form-control" id="changeEmail" placeholder="새 이메일 주소">
                     </div>
-                    <button class="btn btn-primary w-100" onclick="sendVerificationCode('change')">
+                    <button class="btn btn-primary w-100" data-action="sendVerificationCode" data-args="change">
                         <i class="fas fa-paper-plane me-2"></i>인증코드 발송
                     </button>
                 </div>
@@ -248,8 +248,8 @@
                         <input type="text" class="form-control" id="changeCode" maxlength="4" placeholder="0000" inputmode="numeric">
                     </div>
                     <div class="d-grid gap-2">
-                        <button class="btn btn-success" onclick="verifyCode('change')"><i class="fas fa-check me-2"></i>변경 완료</button>
-                        <button class="btn btn-outline-secondary btn-sm" onclick="sendVerificationCode('change')">재발송</button>
+                        <button class="btn btn-success" data-action="verifyCode" data-args="change"><i class="fas fa-check me-2"></i>변경 완료</button>
+                        <button class="btn btn-outline-secondary btn-sm" data-action="sendVerificationCode" data-args="change">재발송</button>
                     </div>
                 </div>
                 <div id="changeSuccess" style="display:none;">
@@ -262,7 +262,7 @@
 {% endblock %}
 
 {% block script %}
-<script>
+<script nonce="{{ csp_nonce }}">
 function sendVerificationCode(type) {
     const emailInput = type === 'verify' ? document.getElementById('verifyEmail') : document.getElementById('changeEmail');
     const email = emailInput.value.trim();

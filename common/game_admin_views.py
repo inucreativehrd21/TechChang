@@ -27,6 +27,15 @@ def applied_migrations():
     return set(MigrationRecorder.Migration.objects.values_list('app', 'name'))
 
 
+def _change_pair(value):
+    """이력 한 칸을 (이전,이후)로 읽어요. 관리 화면은 사전으로, 셸 수동 기록은 [이전, 이후]로 남길 수 있어요."""
+    if isinstance(value, dict):
+        return value.get('before'), value.get('after')
+    if isinstance(value, (list, tuple)) and len(value) == 2:
+        return value[0], value[1]
+    return None, value
+
+
 def _context(form=None):
     applied = applied_migrations()
     storage_ready = STORAGE_MIGRATION in applied
@@ -49,9 +58,14 @@ def _context(form=None):
         labels = {f['key']: f['label'] for f in FEATURES}
         words = {None: '환경 설정 사용', True: '켜기', False: '끄기'}
         for change in GameControlChange.objects.select_related('actor')[:20]:
+            items = []
+            changes = change.changes if isinstance(change.changes, dict) else {}
+            for k, v in changes.items():
+                before, after = _change_pair(v)
+                items.append({'label': labels.get(k, k), 'before': words.get(before, str(before)),
+                              'after': words.get(after, str(after))})
             history.append({'at': change.created_at, 'actor': change.actor, 'revision': change.revision,
-                            'items': [{'label': labels.get(k, k), 'before': words[v['before']], 'after': words[v['after']]}
-                                      for k, v in change.changes.items()]})
+                            'items': items})
     from community.models import LiteCareer, RookiePlayer
     stats = []
     if ('community', '0052_litecareer_mode') in applied:

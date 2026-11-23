@@ -71,14 +71,14 @@
 
     {% if game.status == 'playing' %}
     <div class="gm-card">
-        <form id="guessForm" onsubmit="makeGuess(event)" autocomplete="off">
+        <form id="guessForm" data-on="submit" data-action="makeGuess" data-args="$event" autocomplete="off">
             {% csrf_token %}
             <label for="guessInput" class="visually-hidden">추측할 숫자 4자리</label>
             <input type="text" class="bb-input" id="guessInput" maxlength="4" placeholder="0000"
                    inputmode="numeric" pattern="[0-9]{4}" required autofocus>
             <div class="bb-buttons">
                 <button type="submit" class="gm-btn is-primary">확인</button>
-                <button type="button" class="gm-btn" onclick="giveUp()">포기</button>
+                <button type="button" class="gm-btn" data-action="giveUp">포기</button>
             </div>
         </form>
     </div>
@@ -122,7 +122,7 @@
     </div>
 </div>
 
-<script>
+<script nonce="{{ csp_nonce }}">
 const csrfToken = '{{ csrf_token }}';
 const gameId = {{ game.id }};
 const timeLimit = {{ game.time_limit }};

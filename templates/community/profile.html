@@ -452,7 +452,7 @@
                 </div>
 
                 <div style="display: flex; gap: var(--space-4); justify-content: flex-end;">
-                    <button type="button" class="btn-premium btn-premium-secondary" onclick="document.getElementById('activity-tab').querySelector('button').click();">취소</button>
+                    <button type="button" class="btn-premium btn-premium-secondary" data-click="#activity-tab button">취소</button>
                     <button type="submit" class="btn-premium btn-premium-primary">저장</button>
                 </div>
             </form>
@@ -483,7 +483,7 @@
                 </div>
 
                 <div style="display: flex; gap: var(--space-4); justify-content: flex-end;">
-                    <button type="button" class="btn-premium btn-premium-secondary" onclick="document.querySelector('[data-tab=activity]').click();">취소</button>
+                    <button type="button" class="btn-premium btn-premium-secondary" data-click="[data-tab=activity]">취소</button>
                     <button type="submit" class="btn-premium btn-premium-primary">변경</button>
                 </div>
             </form>
@@ -533,7 +533,7 @@
                         <input type="email" class="form-input" id="verifyEmail" value="{{ user.email }}" placeholder="your@email.com" required>
                         <div class="form-text">이메일을 변경하려면 새 이메일을 입력하세요.</div>
                     </div>
-                    <button type="button" class="btn-premium btn-premium-primary w-100" onclick="sendVerificationCode('verify')">
+                    <button type="button" class="btn-premium btn-premium-primary w-100" data-action="sendVerificationCode" data-args="verify">
                         <i class="fas fa-paper-plane me-2"></i>인증코드 발송
                     </button>
                 </div>
@@ -547,10 +547,10 @@
                         <input type="text" class="form-input" id="verifyCode" maxlength="4" placeholder="0000" required>
                     </div>
                     <div class="d-grid gap-2">
-                        <button type="button" class="btn-premium btn-premium-primary" onclick="verifyCode('verify')">
+                        <button type="button" class="btn-premium btn-premium-primary" data-action="verifyCode" data-args="verify">
                             <i class="fas fa-check me-2"></i>인증 완료
                         </button>
-                        <button type="button" class="btn-premium btn-premium-secondary" style="font-size: 0.875rem;" onclick="sendVerificationCode('verify')">
+                        <button type="button" class="btn-premium btn-premium-secondary" style="font-size: 0.875rem;" data-action="sendVerificationCode" data-args="verify">
                             <i class="fas fa-redo me-2"></i>인증코드 재발송
                         </button>
                     </div>
@@ -584,7 +584,7 @@
                         <label for="newEmail" class="form-label" style="font-weight: 600;">새 이메일 주소</label>
                         <input type="email" class="form-input" id="newEmail" placeholder="newemail@example.com" required>
                     </div>
-                    <button type="button" class="btn-premium btn-premium-primary w-100" onclick="sendVerificationCode('change')">
+                    <button type="button" class="btn-premium btn-premium-primary w-100" data-action="sendVerificationCode" data-args="change">
                         <i class="fas fa-paper-plane me-2"></i>인증코드 발송
                     </button>
                 </div>
@@ -598,10 +598,10 @@
                         <input type="text" class="form-input" id="changeCode" maxlength="4" placeholder="0000" required>
                     </div>
                     <div class="d-grid gap-2">
-                        <button type="button" class="btn-premium btn-premium-primary" onclick="verifyCode('change')">
+                        <button type="button" class="btn-premium btn-premium-primary" data-action="verifyCode" data-args="change">
                             <i class="fas fa-check me-2"></i>이메일 변경 완료
                         </button>
-                        <button type="button" class="btn-premium btn-premium-secondary" style="font-size: 0.875rem;" onclick="sendVerificationCode('change')">
+                        <button type="button" class="btn-premium btn-premium-secondary" style="font-size: 0.875rem;" data-action="sendVerificationCode" data-args="change">
                             <i class="fas fa-redo me-2"></i>인증코드 재발송
                         </button>
                     </div>
@@ -618,7 +618,7 @@
     </div>
 </div>
 
-<script>
+<script nonce="{{ csp_nonce }}">
 // Email verification variables
 let currentMode = '';
 let currentEmail = '';

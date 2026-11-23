@@ -109,9 +109,53 @@ class CodexProtocolTests(SimpleTestCase):
             return answer()
         env = {'CODEX_CLI_BIN': 'codex', 'OPENAI_API_KEY': 'secret', 'CODEX_API_KEY': 'secret',
                'ANTHROPIC_API_KEY': 'secret', 'DJANGO_DB_PASSWORD': 'secret'}
-        with mock.patch.dict(os.environ, env), mock.patch.object(codex.subprocess, 'run', side_effect=run):
+        with mock.patch.dict(os.environ, env), mock.patch.object(codex.subprocess, 'run', side_effect=run), \
+                mock.patch.object(codex, 'run_streaming', side_effect=run):
             codex.ask('원래 요청과 근거 묶음', system='검증관 역할', tools=('WebSearch', 'WebFetch'),
                       output_schema={'type': 'object'})
+
+    def test_fallback_effort_is_high_only_for_verification_and_writing(self):
+        with mock.patch.dict(os.environ, {}, clear=False):
+            os.environ.pop('CODEX_FALLBACK_HIGH_STAGES', None)
+            os.environ.pop('CODEX_FALLBACK_HIGH_EFFORT', None)
+            self.assertEqual(codex.fallback_effort({'stage': 'check'}), 'high')
+            self.assertEqual(codex.fallback_effort({'stage': 'revision_candidate'}), 'high')
+            self.assertEqual(codex.fallback_effort({'stage': 'review', 'agent': 'checker'}), 'high')
+            self.assertIsNone(codex.fallback_effort({'stage': 'review'}))
+            self.assertIsNone(codex.fallback_effort({'stage': 'title_lab'}))
+            self.assertIsNone(codex.fallback_effort(None))
+        with mock.patch.dict(os.environ, {'CODEX_FALLBACK_HIGH_STAGES': 'review'}):
+            self.assertIsNone(codex.fallback_effort({'stage': 'check'}))
+            self.assertEqual(codex.fallback_effort({'stage': 'review'}), 'high')
+
+    def test_web_limit_is_told_to_the_model_and_recorded(self):
+        seen = {}
+
+        def run(cmd, **kwargs):
+            config = dict(arg.split('=', 1) for i, arg in enumerate(cmd) if i and cmd[i - 1] == '-c')
+            seen['role'] = Path(json.loads(config['model_instructions_file'])).read_text(encoding='utf-8')
+            seen['hard'] = kwargs.get('web_hard_max')
+            return answer()
+        with mock.patch.dict(os.environ, {'CODEX_CLI_BIN': 'codex', 'CODEX_WEB_SEARCH_MAX': '6'}), \
+                mock.patch.object(codex, 'require_chatgpt_login'), \
+                mock.patch.object(codex, 'run_streaming', side_effect=run):
+            _text, usage = codex.ask('q', tools=('WebSearch',), reasoning_effort='high')
+        self.assertIn('6회 안에서', seen['role'])
+        self.assertEqual(seen['hard'], 10)
+        self.assertEqual(usage['web_search_max'], 6)
+        self.assertEqual(usage['reasoning_effort'], 'high')
+
+    def test_streaming_run_stops_a_runaway_search_without_marking_codex_down(self):
+        import sys
+        events = [json.dumps({'type': 'item.completed', 'item': {'type': 'web_search'}})] * 5
+        script = 'import sys\nsys.stdin.read()\n' + ''.join(f'print({e!r}, flush=True)\n' for e in events)
+        cmd = [sys.executable, '-c', script]
+        with self.assertRaises(codex.WebSearchCapExceeded):
+            codex.run_streaming(cmd, input='프롬프트', cwd=None, env=None, timeout=30, web_hard_max=3)
+        proc = codex.run_streaming(cmd, input='프롬프트', cwd=None, env=None, timeout=30, web_hard_max=5)
+        self.assertEqual(proc.returncode, 0)
+        self.assertEqual(len(proc.stdout.splitlines()), 5)
+        self.assertFalse(issubclass(codex.WebSearchCapExceeded, ProviderUnavailable))
 
     def test_no_web_tools_without_permission_and_unknown_tools_fail(self):
         with mock.patch.dict(os.environ, {'CODEX_CLI_BIN': 'codex'}), \
@@ -176,6 +220,16 @@ class SubscriptionRoutingTests(TestCase):
                 mock.patch.object(codex, 'ask') as secondary:
             self.assertEqual(claude.ask('q'), '원래 결과')
         secondary.assert_not_called()
+
+    def test_fallback_passes_high_effort_for_fact_check_stage(self):
+        with mock.patch.object(claude, '_cli_ask', side_effect=self.limit()), \
+                mock.patch.object(codex, 'ask', return_value=('대체 결과', {})) as secondary:
+            with claude.call_tags(stage='check'):
+                claude.ask('검증')
+            with claude.call_tags(stage='chart'):
+                claude.ask('도판')
+        self.assertEqual(secondary.call_args_list[0].kwargs['reasoning_effort'], 'high')
+        self.assertIsNone(secondary.call_args_list[1].kwargs['reasoning_effort'])
 
     def test_call_scope_can_block_codex_without_allowing_an_api(self):
         with mock.patch.object(claude, '_cli_ask', side_effect=self.limit()), \

@@ -105,3 +105,91 @@ class CoverageSelectTests(SimpleTestCase):
         c.docs[URL] = {'title': 'Doc', 'version': '5.2', 'paras': filler + [rare]}
         picked = c.select('prefetch_related 와 assertNumQueries 를 써요.', budget=len(filler[0]['text']) + 200)
         self.assertTrue(any('assertNumQueries' in p['text'] for p in picked))
+
+
+def _pdf(pages):
+    """matplotlib 으로 글자가 든 PDF 를 만든다(쪽마다 문장 하나)."""
+    import io
+    import matplotlib
+    matplotlib.use('Agg')
+    from matplotlib.backends.backend_pdf import PdfPages
+    import matplotlib.pyplot as plt
+    buf = io.BytesIO()
+    with PdfPages(buf) as pdf:
+        for text in pages:
+            fig = plt.figure(figsize=(8.3, 11.7))
+            fig.text(0.05, 0.9, text, fontsize=8)
+            pdf.savefig(fig)
+            plt.close(fig)
+    return buf.getvalue()
+
+
+class _Resp:
+    def __init__(self, body, ctype):
+        import email.message
+        self.body, self.headers = body, email.message.Message()
+        self.headers['Content-Type'] = ctype
+
+    def read(self, n=-1):
+        return self.body[:n] if n >= 0 else self.body
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc):
+        return False
+
+
+class PdfTests(SimpleTestCase):
+    SENTENCE = 'Workers who receive training are more likely to report positive outcomes from AI adoption.'
+
+    def setUp(self):
+        try:
+            import pypdfium2  # noqa: F401
+        except ImportError:
+            self.skipTest('pypdfium2 미설치')
+
+    def test_pdf_is_split_into_page_sections(self):
+        raw = _pdf(['Cover page of the report with a long enough title line here.', self.SENTENCE])
+        _title, paras = SRC.paragraphs(raw, SRC.PDF_TYPE)
+        page2 = [p for p in paras if p['section'] == '2쪽']
+        self.assertTrue(page2)
+        self.assertIn('more likely to report positive outcomes', page2[0]['text'])
+
+    def test_download_accepts_pdf_by_type_or_magic_and_enters_corpus(self):
+        raw = _pdf([self.SENTENCE])
+        for ctype in ('application/pdf', 'application/octet-stream'):
+            with self.subTest(ctype=ctype), mock.patch.object(SRC._OPENER, 'open', return_value=_Resp(raw, ctype)):
+                body, kind = SRC._download('https://www.oecd.org/report.pdf')
+                self.assertEqual(kind, SRC.PDF_TYPE)
+                self.assertIsInstance(body, bytes)
+        c = SRC.Corpus()
+        with mock.patch.object(SRC, 'allowed', return_value=True), \
+                mock.patch.object(SRC._OPENER, 'open', return_value=_Resp(raw, 'application/pdf')):
+            c.add(['https://www.oecd.org/report.pdf'])
+        picked = c.select('훈련을 받은 근로자는 positive outcomes 를 더 많이 보고했다(training).')
+        self.assertTrue(picked)
+        self.assertTrue(SRC.entries(picked)[0]['source_locator'].startswith('1쪽'))
+
+    def test_octet_stream_that_is_not_pdf_and_oversize_pdf_are_rejected(self):
+        with mock.patch.object(SRC._OPENER, 'open', return_value=_Resp(b'MZ\x90\x00binary', 'application/octet-stream')):
+            with self.assertRaises(ValueError):
+                SRC._download('https://files.example.net/a.bin')
+        with mock.patch.object(SRC, 'MAX_PDF_BYTES', 10), \
+                mock.patch.object(SRC._OPENER, 'open', return_value=_Resp(b'%PDF-' + b'0' * 50, 'application/pdf')):
+            with self.assertRaises(ValueError):
+                SRC._download('https://www.oecd.org/big.pdf')
+
+    def test_broken_pdf_raises_value_error(self):
+        with self.assertRaises(ValueError):
+            SRC.pdf_text(b'%PDF-1.7 not really')
+
+
+class RedirectTests(SimpleTestCase):
+    def test_redirect_to_private_address_is_refused(self):
+        handler = SRC._CheckedRedirect()
+        private = [(socket.AF_INET, socket.SOCK_STREAM, 6, '', ('169.254.169.254', 443))]
+        with mock.patch('office.sources.socket.getaddrinfo', return_value=private), self.assertRaises(ValueError):
+            handler.redirect_request(None, None, 302, 'Found', {}, 'https://metadata.internal/latest/')
+        with self.assertRaises(ValueError):
+            handler.redirect_request(None, None, 302, 'Found', {}, 'http://docs.djangoproject.com/')

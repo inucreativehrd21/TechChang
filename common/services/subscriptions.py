@@ -119,7 +119,10 @@ def ask(primary, prompt, *, system, timeout, tools, record, output_schema=None, 
         record['fallback'] = str(exc)[:500]
         if exc.kind != 'limit' or not allow_fallback:
             raise
+    # 검증·집필 단계는 Codex 추론을 high 로 올려요(호출 태그 stage·agent 기준, codex.fallback_effort)
+    effort = codex.fallback_effort(record.get('tags'))
     with codex_lock(timeout=int(os.environ.get('CODEX_LOCK_TIMEOUT', '1200'))):
         record['model'] = codex.model_name()
         return _invoke('codex', lambda: codex.ask(prompt, system=system, timeout=secondary_timeout,
-                       tools=tools, output_schema=output_schema), record, secondary_timeout)
+                       tools=tools, output_schema=output_schema, reasoning_effort=effort),
+                       record, secondary_timeout)

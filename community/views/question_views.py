@@ -68,9 +68,11 @@ def question_create(request):
 
                 messages.success(request, '게시글이 성공적으로 등록되었습니다. (+50 포인트)')
                 return redirect('community:index')
-            except Exception as e:
-                messages.error(request, f'게시글 저장 중 오류가 발생했습니다: {str(e)}')
-                print(f"Question creation error: {e}")  # 서버 로그용
+            except Exception:
+                # 예외 문구(DB·경로 정보)는 화면에 보여 주지 않고 서버 로그에만 남겨요
+                import logging
+                logging.getLogger(__name__).exception('게시글 저장 실패: user=%s', request.user.pk)
+                messages.error(request, '게시글 저장 중 오류가 발생했습니다. 잠시 뒤 다시 시도해 주세요.')
         else:
             messages.error(request, '폼 유효성 검사에 실패했습니다. 입력 내용을 확인해주세요.')
     else:

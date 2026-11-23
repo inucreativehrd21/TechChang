@@ -250,7 +250,7 @@
                     {% endif %}
                 {% else %}
                     <form method="post" action="{% url 'common:purchase_emoticon' emoticon.id %}" class="emo-form"
-                          onsubmit="return confirm('{{ emoticon.name }} 이모티콘을 {{ emoticon.price }}P에 구매할까요?');">
+                          data-confirm="{{ emoticon.name }} 이모티콘을 {{ emoticon.price }}P에 구매할까요?">
                         {% csrf_token %}
                         <button type="submit" class="emo-btn emo-btn-buy" {% if user_points < emoticon.price %}disabled{% endif %}>
                             {% if user_points < emoticon.price %}

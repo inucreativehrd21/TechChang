@@ -28,6 +28,22 @@ MAX_ASSET_BYTES = 5 * 1024 * 1024   # 개당 5MB
 MAX_ASSET_COUNT = 30                # 포트폴리오당 최대 이미지 수
 
 
+def _http_url(request, name):
+    """링크 칸은 http(s) 주소만 저장해요. 뷰가 모델 필드에 직접 넣어 URLField 검증을 거치지 않으므로,
+    javascript:·data: 주소가 공개 포트폴리오 href 로 나가는 저장형 XSS 를 여기서 막아요(2026-11-24 점검)."""
+    from django.contrib import messages
+    from django.core.validators import URLValidator
+    value = (request.POST.get(name, '') or '').strip()[:200]
+    if not value:
+        return ''
+    try:
+        URLValidator(schemes=['http', 'https'])(value)
+    except ValidationError:
+        messages.warning(request, '링크는 http:// 또는 https:// 로 시작하는 주소만 저장할 수 있어요.')
+        return ''
+    return value
+
+
 def _rewrite_asset_refs(html, asset_map):
     """HTML 내 이미지 참조(src/href/poster/url(...))를 에셋 서빙 URL로 치환.
 
@@ -221,9 +237,9 @@ def portfolio_edit(request):
         portfolio.bio = request.POST.get('bio', '')
         portfolio.location = request.POST.get('location', '')
         portfolio.email = request.POST.get('email', '')
-        portfolio.github_url = request.POST.get('github_url', '')
-        portfolio.linkedin_url = request.POST.get('linkedin_url', '')
-        portfolio.website_url = request.POST.get('website_url', '')
+        portfolio.github_url = _http_url(request, 'github_url')
+        portfolio.linkedin_url = _http_url(request, 'linkedin_url')
+        portfolio.website_url = _http_url(request, 'website_url')
         portfolio.show_experience = request.POST.get('show_experience') == 'on'
         portfolio.theme = request.POST.get('theme', 'light')
 
@@ -353,8 +369,8 @@ def project_create(request):
         project.title = request.POST.get('title', '')
         project.description = request.POST.get('description', '')
         project.project_type = request.POST.get('project_type', 'dev')
-        project.project_url = request.POST.get('project_url', '')
-        project.github_url = request.POST.get('github_url', '')
+        project.project_url = _http_url(request, 'project_url')
+        project.github_url = _http_url(request, 'github_url')
         project.is_featured = request.POST.get('is_featured') == 'on'
 
         # 배경 그라데이션
@@ -406,8 +422,8 @@ def project_edit(request, project_id):
         project.title = request.POST.get('title', '')
         project.description = request.POST.get('description', '')
         project.project_type = request.POST.get('project_type', 'dev')
-        project.project_url = request.POST.get('project_url', '')
-        project.github_url = request.POST.get('github_url', '')
+        project.project_url = _http_url(request, 'project_url')
+        project.github_url = _http_url(request, 'github_url')
         project.is_featured = request.POST.get('is_featured') == 'on'
 
         # 배경 그라데이션
@@ -1165,9 +1181,9 @@ def portfolio_collection_edit(request, slug):
         collection.bio = request.POST.get('bio', '')
         collection.location = request.POST.get('location', '')
         collection.email = request.POST.get('email', '')
-        collection.github_url = request.POST.get('github_url', '')
-        collection.linkedin_url = request.POST.get('linkedin_url', '')
-        collection.website_url = request.POST.get('website_url', '')
+        collection.github_url = _http_url(request, 'github_url')
+        collection.linkedin_url = _http_url(request, 'linkedin_url')
+        collection.website_url = _http_url(request, 'website_url')
         collection.show_experience = request.POST.get('show_experience') == 'on'
         collection.theme = request.POST.get('theme', 'light')
 
@@ -1390,8 +1406,8 @@ def collection_project_create(request, slug):
         project.title = request.POST.get('title', '')
         project.description = request.POST.get('description', '')
         project.project_type = request.POST.get('project_type', 'dev')
-        project.project_url = request.POST.get('project_url', '')
-        project.github_url = request.POST.get('github_url', '')
+        project.project_url = _http_url(request, 'project_url')
+        project.github_url = _http_url(request, 'github_url')
         project.is_featured = request.POST.get('is_featured') == 'on'
         project.background_gradient = request.POST.get('background_gradient', 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)')
 
@@ -1431,8 +1447,8 @@ def collection_project_edit(request, slug, project_id):
         project.title = request.POST.get('title', '')
         project.description = request.POST.get('description', '')
         project.project_type = request.POST.get('project_type', 'dev')
-        project.project_url = request.POST.get('project_url', '')
-        project.github_url = request.POST.get('github_url', '')
+        project.project_url = _http_url(request, 'project_url')
+        project.github_url = _http_url(request, 'github_url')
         project.is_featured = request.POST.get('is_featured') == 'on'
         project.background_gradient = request.POST.get('background_gradient', project.background_gradient)
 

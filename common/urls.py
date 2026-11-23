@@ -20,6 +20,7 @@ urlpatterns = [
     path('theme/', views.save_theme, name='save_theme'),
     path('profile/edit/', views.profile_edit, name='profile_edit'),
     path('password/reset/', views.password_reset, name='password_reset'),
+    path('password/reset/<uidb64>/<token>/', views.PasswordResetConfirm.as_view(), name='password_reset_confirm'),
     path('password/change/', auth_views.PasswordChangeView.as_view(template_name='common/password_change.html', success_url='/common/password/change/done/'), name='password_change'),
     path('password/change/done/', auth_views.PasswordChangeDoneView.as_view(template_name='common/password_change_done.html'), name='password_change_done'),
     path('account/delete/', views.account_delete, name='account_delete'),

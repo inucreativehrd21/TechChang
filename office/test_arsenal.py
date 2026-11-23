@@ -72,7 +72,8 @@ class LinkCheckTests(TestCase):
     def test_dead_vs_blocked(self):
         content = ('출처 https://ok.example/a 와 https://gone.example/b, https://bot-wall.example/c '
                    '그리고 https://down.example/d.')
-        with mock.patch('office.arsenal.urllib.request.urlopen', side_effect=self.fake_open):
+        with mock.patch.object(arsenal._OPENER, 'open', side_effect=self.fake_open), \
+                mock.patch.object(arsenal, '_public', return_value=True):
             res = arsenal.dead_links(content)
         self.assertEqual({u for u, _ in res['dead']}, {'https://gone.example/b', 'https://down.example/d'})
         self.assertEqual([u for u, _ in res['blocked']], ['https://bot-wall.example/c'])
@@ -86,11 +87,21 @@ class LinkCheckTests(TestCase):
         def fake_agent(key, prompt, **kw):
             seen['prompt'] = prompt
             return {'verdict': 'pass', 'claims': []}
-        with mock.patch('office.arsenal.urllib.request.urlopen', side_effect=self.fake_open), \
+        with mock.patch.object(arsenal._OPENER, 'open', side_effect=self.fake_open), \
+                mock.patch.object(arsenal, '_public', return_value=True), \
                 mock.patch('office.pipeline.ask_agent_json', side_effect=fake_agent):
             check = P.step_check('제목', '근거 https://gone.example/x', [])
         self.assertIn('[링크 점검', seen['prompt'])
         self.assertEqual(check['dead_links'], ['https://gone.example/x'])
+
+    def test_internal_addresses_are_never_opened(self):
+        import socket
+        for addr in ('169.254.169.254', '127.0.0.1', '10.0.0.8'):
+            with self.subTest(addr=addr),                     mock.patch('socket.getaddrinfo', return_value=[(socket.AF_INET, 1, 6, '', (addr, 80))]),                     mock.patch.object(arsenal._OPENER, 'open') as opened:
+                self.assertEqual(arsenal._status('http://metadata.internal/latest/'), 0)
+                opened.assert_not_called()
+        self.assertFalse(arsenal._public('file:///etc/passwd'))
+        self.assertFalse(arsenal._public('ftp://ok.example/x'))
 
 
 class HeadlineTests(TestCase):

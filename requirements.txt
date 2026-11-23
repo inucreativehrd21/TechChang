@@ -49,3 +49,7 @@ google-auth-oauthlib>=1.1.0,<2.0.0
 
 # 오피스 팀 차트 담당(office_publish)이 칼럼 표·차트 PNG 를 그릴 때 사용
 matplotlib>=3.8,<4.0
+
+# 연구실 근거 문서 받기(office/sources.py)가 공식 보고서 PDF 본문을 읽을 때 사용(PDFium, Apache-2.0/BSD-3)
+#  미설치 환경에서는 PDF 문서만 건너뛰고 HTML·텍스트 문서는 그대로 받아요.
+pypdfium2>=4.30,<5

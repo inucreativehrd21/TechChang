@@ -3,6 +3,7 @@
 {% block title %}새 포트폴리오 만들기 - 테크창{% endblock %}
 
 {% block content %}
+<style>.pc-name-input:focus { border-color: var(--accent-blue) !important; outline: none; }</style>
 <section style="padding: var(--space-16) var(--space-6); background: var(--bg-secondary); min-height: 100vh;">
     <div style="max-width: 600px; margin: 0 auto;">
         <a href="{% url 'community:portfolio_collection_list' %}" style="display: inline-flex; align-items: center; gap: var(--space-2); color: var(--text-secondary); text-decoration: none; margin-bottom: var(--space-6); font-weight: 600;">
@@ -26,9 +27,7 @@
                 </label>
                 <input type="text" name="portfolio_name" required maxlength="100"
                        placeholder="예: 개발자 포트폴리오, 디자인 작업물, 프리랜서 이력서"
-                       style="width: 100%; padding: var(--space-4); border: 2px solid var(--border-light); border-radius: var(--radius-lg); font-size: 1.125rem; transition: border-color 0.3s ease;"
-                       onfocus="this.style.borderColor='var(--accent-blue)'"
-                       onblur="this.style.borderColor='var(--border-light)'">
+                       style="width: 100%; padding: var(--space-4); border: 2px solid var(--border-light); border-radius: var(--radius-lg); font-size: 1.125rem; transition: border-color 0.3s ease;" class="pc-name-input">
                 <small style="color: var(--text-tertiary); margin-top: var(--space-2); display: block;">
                     이 이름은 나중에 변경할 수 있습니다.
                 </small>

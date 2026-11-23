@@ -1,5 +1,5 @@
 {% load pybo_filter %}{# 글 상세 구조화 데이터 — PC·모바일 상세가 함께 쓴다 #}
-<script type="application/ld+json">
+<script nonce="{{ csp_nonce }}" type="application/ld+json">
 {
   "@context": "https://schema.org",
   "@type": {% if question.is_column %}"Article"{% else %}"DiscussionForumPosting"{% endif %},
@@ -23,7 +23,7 @@
   "commentCount": {{ answer_list|length|default:0 }}
 }
 </script>
-<script type="application/ld+json">
+<script nonce="{{ csp_nonce }}" type="application/ld+json">
 {
   "@context": "https://schema.org",
   "@type": "BreadcrumbList",

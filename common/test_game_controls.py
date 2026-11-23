@@ -50,6 +50,15 @@ class GameControlTests(TestCase):
         self.assertEqual(GameControlChange.objects.get().actor, self.admin)
         self.assertEqual(self.client.get(reverse('common:admin_games')).status_code, 200)
 
+    def test_history_reads_manual_list_records(self):
+        """운영 셸에서 [이전, 이후] 목록으로 남긴 이력이 있어도 화면이 열려야 해요(2026-11-24 500)."""
+        GameControlState.objects.create(pk=1, overrides={'SAMGUK_ENABLED': True}, revision=2)
+        GameControlChange.objects.create(changes={'ROOKIE_ENV_ENABLED': {'before': None, 'after': True}}, revision=1, actor=self.admin)
+        GameControlChange.objects.create(changes={'SAMGUK_ENABLED': [None, True]}, revision=2, actor=None)
+        response = self.client.get(reverse('common:admin_games'))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, '켜기')
+
     def test_off_overrides_true_environment_and_inherit_restores_it(self):
         with override_settings(ROOKIE_SERIES_ENABLED=True):
             self.client.post(reverse('common:admin_games'), self.payload(ROOKIE_SERIES_ENABLED='off'))

@@ -91,7 +91,7 @@
     </p>
 
     <div class="gm-actions">
-        <button type="button" class="gm-btn is-primary" onclick="restartGame()">새 게임</button>
+        <button type="button" class="gm-btn is-primary" data-action="restartGame">새 게임</button>
         <a class="gm-btn" href="{% url 'community:game2048_leaderboard' %}">리더보드</a>
         <a class="gm-btn" href="{% url 'community:games_index' %}">게임 목록</a>
     </div>
@@ -104,13 +104,13 @@
         <h2 class="gm-modal-title" id="messageTitle"></h2>
         <p class="gm-modal-text" id="messageText"></p>
         <div class="gm-actions">
-            <button type="button" class="gm-btn is-primary" onclick="restartGame()">다시 하기</button>
+            <button type="button" class="gm-btn is-primary" data-action="restartGame">다시 하기</button>
             <a class="gm-btn" href="{% url 'community:game2048_leaderboard' %}">리더보드</a>
         </div>
     </div>
 </div>
 
-<script>
+<script nonce="{{ csp_nonce }}">
 const csrfToken = '{{ csrf_token }}';
 const gameId = {{ game.id }};
 const inactivityLimit = {{ game.inactivity_limit }};

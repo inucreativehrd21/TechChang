@@ -1,6 +1,7 @@
 
 # from django.shortcuts import render
 from django.contrib.auth import authenticate, login, logout
+from django.contrib.auth.views import PasswordResetConfirmView
 from django.shortcuts import render, redirect, get_object_or_404
 from django.urls import reverse
 from django.http import JsonResponse
@@ -125,9 +126,15 @@ def account_delete(request):
     is_social = not request.user.has_usable_password() or legacy_kakao
     ctx = {'is_social': is_social}
     if request.method == 'POST':
-        if not is_social and not request.user.check_password(request.POST.get('password', '')):
-            messages.error(request, '비밀번호가 일치하지 않습니다.')
-            return render(request, 'common/account_delete_confirm.html', ctx)
+        if not is_social:
+            from . import login_throttle
+            if login_throttle.blocked(request, request.user.username):
+                messages.error(request, login_throttle.MESSAGE)
+                return render(request, 'common/account_delete_confirm.html', ctx, status=429)
+            if not request.user.check_password(request.POST.get('password', '')):
+                login_throttle.failed(request, request.user.username)
+                messages.error(request, '비밀번호가 일치하지 않습니다.')
+                return render(request, 'common/account_delete_confirm.html', ctx)
 
         if request.POST.get('confirm_delete', '') != '회원탈퇴':
             messages.error(request, '확인 문구를 정확히 입력해주세요.')
@@ -1495,68 +1502,90 @@ def admin_unblock_ip(request, ip_id):
 
 
 # ==================== 비밀번호 찾기 ====================
+RESET_SENT_MESSAGE = ('입력한 정보와 일치하는 인증된 계정이 있으면 비밀번호 재설정 링크를 보냈어요. '
+                      '메일이 오지 않으면 스팸함을 확인하거나 잠시 뒤 다시 시도해 주세요.')
+RESET_ACCOUNT_PER_HOUR = 3
+RESET_IP_PER_HOUR = 10
+
+
+def _reset_quota(request, username):
+    """재설정 메일 발송 한도(계정 시간당 3통·IP 시간당 10통). 넘으면 False."""
+    import hashlib
+    from django.core.cache import caches
+    from .login_throttle import client_ip
+    store = caches['throttle']
+    ident = hashlib.sha256(username.lower().encode('utf-8')).hexdigest()[:32]
+    keys = [(f'reset:acct:{ident}', RESET_ACCOUNT_PER_HOUR), (f'reset:ip:{client_ip(request)}', RESET_IP_PER_HOUR)]
+    if any((store.get(k) or 0) >= limit for k, limit in keys):
+        return False
+    for k, _ in keys:
+        store.set(k, (store.get(k) or 0) + 1, 3600)
+    return True
+
+
 def password_reset(request):
-    """비밀번호 찾기 - 임시 비밀번호 발송"""
+    """비밀번호 찾기 — 재설정 링크를 메일로 보내요. 비밀번호는 링크를 연 사람이 새로 정할 때만 바뀌어요.
+
+    2026-11-24 점검: 예전엔 아이디·이메일만 맞으면 그 자리에서 임시 비밀번호로 바꿔 메일로 보냈어요. 아이디는
+    사이트에 공개되므로 남이 계속 요청해 회원을 로그아웃·잠금시킬 수 있었고(횟수 제한 없음), 성공·실패 문구가 달라
+    아이디·이메일 짝이 맞는지도 알려 줬어요. 이제는 결과와 상관없이 같은 안내를 보여 주고, 발송 횟수를 제한해요.
+    """
     if request.method == 'POST':
-        username = request.POST.get('username', '').strip()
-        email = request.POST.get('email', '').strip().lower()
+        username = request.POST.get('username', '').strip()[:150]
+        email = request.POST.get('email', '').strip().lower()[:254]
 
         if not username or not email:
             messages.error(request, '사용자명과 이메일을 모두 입력해주세요.')
             return render(request, 'common/password_reset.html')
 
-        # 사용자 확인
-        try:
-            user = User.objects.get(username=username, email=email)
-        except User.DoesNotExist:
-            messages.error(request, '일치하는 사용자 정보를 찾을 수 없습니다. 사용자명과 이메일을 확인해주세요.')
-            return render(request, 'common/password_reset.html')
+        if not _reset_quota(request, username):
+            messages.error(request, '재설정 요청이 너무 많아요. 1시간 뒤 다시 시도해 주세요.')
+            return render(request, 'common/password_reset.html', status=429)
 
-        # 이메일 인증 여부 확인 (미인증 계정도 동일 메시지로 처리 — 계정 존재 여부 노출 방지)
-        try:
-            profile = user.profile
-            if not profile.is_email_verified:
-                messages.error(request, '일치하는 사용자 정보를 찾을 수 없습니다. 사용자명과 이메일을 확인해주세요.')
-                return render(request, 'common/password_reset.html')
-        except Profile.DoesNotExist:
-            messages.error(request, '일치하는 사용자 정보를 찾을 수 없습니다. 사용자명과 이메일을 확인해주세요.')
-            return render(request, 'common/password_reset.html')
-
-        # 임시 비밀번호 생성 (암호학적으로 안전한 12자리)
-        temp_password = secrets.token_urlsafe(12)
-
-        # 사용자 비밀번호 변경
-        user.set_password(temp_password)
-        user.save()
-
-        # 이메일 발송
-        try:
-            send_mail(
-                subject='[테크창] 임시 비밀번호 안내',
-                message=f'''
-안녕하세요, {username}님!
-
-비밀번호 찾기 요청에 따라 임시 비밀번호를 발송합니다.
-
-임시 비밀번호: {temp_password}
-
-로그인 후 반드시 비밀번호를 변경해주세요.
-
-감사합니다.
-- 테크창 운영팀
-                ''',
-                from_email=settings.DEFAULT_FROM_EMAIL,
-                recipient_list=[email],
-                fail_silently=False,
-            )
-            messages.success(request, f'{email}로 임시 비밀번호가 발송되었습니다. 이메일을 확인해주세요.')
-            return redirect('common:login')
-        except Exception:
-            logger.exception("임시 비밀번호 이메일 발송 실패")
-            messages.error(request, '임시 비밀번호 발송 중 오류가 발생했습니다. 관리자에게 문의해주세요.')
-            return render(request, 'common/password_reset.html')
+        user = User.objects.filter(username=username, email__iexact=email, is_active=True).first()
+        verified = bool(user) and Profile.objects.filter(user=user, is_email_verified=True).exists()
+        if verified and user.has_usable_password():
+            from django.contrib.auth.tokens import default_token_generator
+            from django.utils.encoding import force_bytes
+            from django.utils.http import urlsafe_base64_encode
+            path = reverse('common:password_reset_confirm', kwargs={
+                'uidb64': urlsafe_base64_encode(force_bytes(user.pk)),
+                'token': default_token_generator.make_token(user)})
+            # 링크 주소는 요청의 Host 가 아니라 고정 주소로 만들어요(Host 헤더로 링크를 바꿔치는 재설정 포이즈닝 방지)
+            link = getattr(settings, 'SITE_BASE_URL', 'https://techchang.com').rstrip('/') + path
+            hours = max(1, settings.PASSWORD_RESET_TIMEOUT // 3600)
+            try:
+                send_mail(
+                    subject='[테크창] 비밀번호 재설정 안내',
+                    message=(f'안녕하세요, {user.username}님.\n\n'
+                             f'아래 링크에서 새 비밀번호를 정해 주세요. 링크는 {hours}시간 동안 한 번만 쓸 수 있어요.\n\n'
+                             f'{link}\n\n'
+                             '직접 요청하지 않았다면 이 메일은 무시해도 돼요. 비밀번호는 바뀌지 않아요.\n\n'
+                             '- 테크창 운영팀'),
+                    from_email=settings.DEFAULT_FROM_EMAIL,
+                    recipient_list=[user.email],
+                    fail_silently=False,
+                )
+            except Exception:
+                logger.exception('비밀번호 재설정 메일 발송 실패: user=%s', user.pk)
+        messages.success(request, RESET_SENT_MESSAGE)
+        return redirect('common:login')
 
     return render(request, 'common/password_reset.html')
+
+
+class PasswordResetConfirm(PasswordResetConfirmView):
+    """메일 링크로 새 비밀번호를 정해요. 토큰은 비밀번호가 바뀌면 무효가 돼요(한 번만 쓸 수 있어요)."""
+    template_name = 'common/password_reset_confirm.html'
+    post_reset_login = False
+
+    def get_success_url(self):
+        return reverse('common:login')
+
+    def form_valid(self, form):
+        response = super().form_valid(form)
+        messages.success(self.request, '새 비밀번호로 바꿨어요. 다시 로그인해 주세요.')
+        return response
 
 
 # ==================== 포인트 랭킹 ====================

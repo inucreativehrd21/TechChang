@@ -60,7 +60,9 @@ urlpatterns = [
     path('lab/', include('office.urls')),  # 연구팀 가상 연구실 (office 앱)
     path('newsletter/', office_views.newsletter_list, name='newsletter_list'),            # 연구실 위클리
     path('newsletter/<slug:slug>/', office_views.newsletter_detail, name='newsletter_detail'),
-    path('accounts/', include('allauth.urls')),  # django-allauth URLs
+    # django-allauth 화면(/accounts/login·signup·password/reset)은 열지 않아요. 사이트 가입·로그인·재설정은
+    # common 앱(약관 동의 기록·8자리 인증 코드·관리자 OTP)이 맡고, 소셜 로그인도 common.social_views 예요.
+    # 2026-11-24 점검: 운영에서 allauth 가입 화면이 열려 약관 동의 없이 계정을 만드는 두 번째 통로였어요(사용 기록 0건).
     # sitemap.xml = 묶음 색인(index). GSC 에서 칼럼·시리즈·회원 글 등 묶음별 색인 비율을 따로 본다.
     path('sitemap.xml', sitemap_index, {'sitemaps': sitemaps, 'sitemap_url_name': 'sitemap_section'},
          name='sitemap_index'),

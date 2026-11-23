@@ -55,6 +55,26 @@ Codex CLI 0.163.0에서 내장 웹 검색·열람은 `web_search`로 기록돼�
 초고가 검수 대기 상태라면 같은 슬롯의 정기 준비는 건너뛰므로, 패치 반영 후 해당 원고의
 관리자 재작성을 실행해서 재검증과 편집 심사를 거쳐요.
 
+### 역할별 추론 강도와 웹 검색 상한 (2026-11-24)
+
+30일 집계에서 Codex로 넘어간 팩트체크는 통과 36%(Claude 80%)·확인 불가 8%(2%)였고, 입력 중앙값이
+12만 토큰(Claude 1.6만)이었어요. 폴백 호출은 모두 `medium`이었고 웹 검색 횟수에 제한이 없었어요.
+팩트체크 웹 검색은 중앙값 5회·상위 10% 10회·최대 16회(그 호출 입력 128만 토큰)였어요.
+
+- 추론 강도: Claude 한도로 넘어온 호출 중 호출 태그 `stage`가 검증·집필 단계
+  (`codex.HIGH_EFFORT_STAGES`: check·recheck·reverify·grounded·code_run·adjudicate·draft·fix·revise·
+  editor_*·revision_candidate·revision_repair·lock)이거나 `agent=checker`이면 `high`로 보내요.
+  나머지(심사·도판·제목 점검 등)는 `CODEX_REASONING_EFFORT`(기본 medium)를 써요. B안 모델 선택
+  (`office.model_router`)이 직접 고른 강도는 바꾸지 않아요. `CODEX_FALLBACK_HIGH_STAGES`로 목록을,
+  `CODEX_FALLBACK_HIGH_EFFORT`로 강도를 바꿀 수 있어요. high는 호출당 Codex 한도를 더 써요.
+- 웹 검색 상한: 웹 도구를 연 호출은 역할 지시에 "검색·열람 합계 `CODEX_WEB_SEARCH_MAX`(기본 8)회 안에서
+  끝내고, 못 찾은 항목은 확인하지 못했다고 적기"를 넣어요. 그래도 `CODEX_WEB_SEARCH_HARD_MAX`(기본 12)회를
+  넘으면 실행을 그 자리에서 끊어요(`WebSearchCapExceeded`). 이 중단은 구독 한도·장애가 아니라서
+  Codex 대기 상태로 기록하지 않아요. 호출 기록에 `reasoning_effort`·`web_search_max`가 남아요.
+- 근거 문서 PDF: `office/sources.py`가 공식 보고서 PDF(15MB·120쪽까지)를 PDFium(`pypdfium2`)으로 읽어
+  'n쪽' 문단으로 근거 묶음에 넣어요. 모델이 웹 검색으로 PDF 속 문장을 찾느라 입력이 불어나는 일을 줄여요.
+  리디렉션 대상 주소도 https·공인 IP 검사를 다시 해요.
+
 CLI 버전이나 모델을 바꿀 때는 `common.test_codex_backend`와 함께 운영과 분리된 코드 경로에서
 같은 CLI로 짧은 텍스트 전용 요청과 공개 URL 검색·열람 요청을 각각 확인해요. 전자는 도구
 없이 완료돼야 하고, 후자는 내장 웹 이벤트와 최종 응답이 모두 있어야 해요.

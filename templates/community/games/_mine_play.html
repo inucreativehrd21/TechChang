@@ -96,14 +96,14 @@
         <p class="gm-modal-text" id="game-over-text"></p>
         <div class="gm-actions">
             <a class="gm-btn is-primary" href="{% url 'community:minesweeper_start' %}">다시 하기</a>
-            <button type="button" class="gm-btn" onclick="document.getElementById('game-over-overlay').classList.remove('show')">판 보기</button>
+            <button type="button" class="gm-btn" data-class-remove="#game-over-overlay show">판 보기</button>
         </div>
     </div>
 </div>
 
 {{ game.board_state|json_script:"board-state-data" }}
 
-<script>
+<script nonce="{{ csp_nonce }}">
 const gameId = {{ game.id }};
 const rows = {{ game.rows }};
 const cols = {{ game.cols }};

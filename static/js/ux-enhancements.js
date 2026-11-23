@@ -137,7 +137,7 @@ class UXEnhancements {
             toast.innerHTML = `
                 <div class="toast-icon">${icons[type] || icons.info}</div>
                 <div class="toast-message">${message}</div>
-                <button class="toast-close" onclick="this.parentElement.remove()">×</button>
+                <button class="toast-close" data-remove="parent">×</button>
             `;
 
             container.appendChild(toast);

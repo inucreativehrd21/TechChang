@@ -116,15 +116,16 @@ class PortfolioExitButtonTests(TestCase):
     def test_html_portfolio_exit_goes_to_referrer_not_history_back(self):
         user = User.objects.create_user('someone', password='x')
         link = self.exit_link(collection(user, 'pf', content_mode='html', html_content='<p>x</p>'))
-        self.assertIn('document.referrer', link)
-        self.assertIn('location.href=r', link)
-        self.assertNotIn('history.back()', link)
+        # CSP 차단 모드(2026-11-24): 인라인 onclick 대신 static/js/csp-actions.js 의 data-back 동작
+        self.assertIn('data-back="referrer"', link)
+        self.assertNotIn('onclick', link)
 
     def test_builder_portfolio_keeps_history_back(self):
         user = User.objects.create_user('builder', password='x')
         link = self.exit_link(collection(user, 'pf2'))
-        self.assertIn('history.back()', link)
-        self.assertNotIn('document.referrer', link)
+        self.assertIn('data-back', link)
+        self.assertNotIn('data-back="referrer"', link)
+        self.assertNotIn('onclick', link)
 
 
 class AdminSelfApprovalTests(TestCase):

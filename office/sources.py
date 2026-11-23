@@ -4,8 +4,13 @@
 없었다. 튜토리얼의 근거는 대부분 공식 문서 몇 쪽이다. 주장별 인용 대신 문서 묶음(검색 코퍼스)과 대조한다(ALCE).
 문서를 받는 일은 모델이 아니라 코드가 한다 — 구독 토큰이 들지 않는다.
 
-외부 주소를 여는 기능이라 경계를 둔다: https 만, 공인 IP 로 풀리는 호스트만, 10초·2MB 제한, 문서 형식(text/html·
-text/plain)만. 예약 도메인(example·test·invalid·localhost)은 열지 않는다.
+외부 주소를 여는 기능이라 경계를 둔다: https 만, 공인 IP 로 풀리는 호스트만(리디렉션 대상도 같은 검사, 최대 3번),
+10초 제한, 문서 형식(text/html·text/plain 2MB, application/pdf 15MB·120쪽)만. 예약 도메인(example·test·invalid·
+localhost)은 열지 않는다.
+
+PDF(2026-11-24): OECD·정부 보고서 원문은 대부분 PDF 인데 예전엔 형식 검사에서 버려져, 모델이 웹 검색으로 같은 문장을
+찾느라 팩트체크 입력이 불어났다(#69 은 운영자가 PDF 를 직접 받아 대조). 코드가 PDFium 으로 쪽별 텍스트를 뽑아
+'n쪽' 소제목을 단 문단으로 나눈다 — 근거 위치가 쪽 번호로 남는다.
 """
 from __future__ import annotations
 
@@ -24,6 +29,10 @@ logger = logging.getLogger(__name__)
 UA = 'Mozilla/5.0 (compatible; TechChangLab/1.0; +https://techchang.com)'
 TIMEOUT = 10
 MAX_BYTES = 2_000_000
+MAX_PDF_BYTES = 15_000_000
+MAX_PDF_PAGES = 120
+MAX_REDIRECTS = 3
+PDF_TYPE = 'application/pdf'
 MAX_DOCS = 6
 PARA_CHARS = 1200
 BUDGET = 30_000          # 원장 대조 프롬프트에 넣을 문서 문단 총량(글자)
@@ -110,9 +119,67 @@ class _Text(HTMLParser):
             self.blocks.append((self.heading, text))
 
 
-def paragraphs(body: str, content_type: str = 'text/html') -> tuple[str, list[dict]]:
-    """(문서 제목, [{'section', 'text'}]) — 짧은 블록은 같은 소제목 안에서 이어 붙여 PARA_CHARS 안팎으로."""
-    if 'html' in content_type:
+_SENTENCE_END = re.compile(r'(?<=[.!?。])\s+(?=[A-Z0-9가-힣“"(])')
+
+
+def _page_blocks(page_no: int, text: str) -> list[tuple[str, str]]:
+    """PDF 한 쪽의 텍스트 → ('n쪽', 문단) 목록. 줄 끝 하이픈을 잇고, 빈 줄·문장 경계로 PARA_CHARS 안팎에 자른다."""
+    text = text.replace('\r\n', '\n').replace('\r', '\n').replace('\x00', '')
+    text = re.sub(r'(\w)-\n(\w)', r'\1\2', text)
+    section = f'{page_no}쪽'
+    out = []
+    for chunk in re.split(r'\n\s*\n', text):
+        flat = re.sub(r'\s+', ' ', chunk).strip()
+        if len(flat) < 40:
+            continue
+        buf = ''
+        for sentence in _SENTENCE_END.split(flat):
+            if buf and len(buf) + len(sentence) > PARA_CHARS:
+                out.append((section, buf))
+                buf = ''
+            buf = f'{buf} {sentence}'.strip()
+        if len(buf) >= 40:
+            out.append((section, buf))
+    return out
+
+
+def pdf_text(raw: bytes) -> tuple[str, list[tuple[str, str]]]:
+    """PDF 바이트 → (문서 제목, [('n쪽', 문단)]). 암호·손상 PDF 는 ValueError."""
+    try:
+        import pypdfium2 as pdfium
+    except ImportError as exc:  # 로컬·CI 에 없으면 PDF 만 건너뛴다
+        raise ValueError('PDF 읽기 라이브러리(pypdfium2)가 없어요') from exc
+    try:
+        doc = pdfium.PdfDocument(raw)
+    except Exception as exc:  # noqa: BLE001 — pdfium 오류 종류가 다양하다
+        raise ValueError(f'PDF 를 열 수 없어요: {type(exc).__name__}') from exc
+    try:
+        title = ''
+        try:
+            title = str((doc.get_metadata_dict() or {}).get('Title') or '').strip()
+        except Exception:  # noqa: BLE001 — 메타데이터는 없어도 된다
+            title = ''
+        blocks = []
+        for i in range(min(len(doc), MAX_PDF_PAGES)):
+            page = doc[i]
+            textpage = page.get_textpage()
+            try:
+                reader = getattr(textpage, 'get_text_bounded', None) or textpage.get_text_range
+                blocks += _page_blocks(i + 1, reader() or '')
+            finally:
+                textpage.close()
+                page.close()
+        return title[:200], blocks
+    finally:
+        doc.close()
+
+
+def paragraphs(body, content_type: str = 'text/html') -> tuple[str, list[dict]]:
+    """(문서 제목, [{'section', 'text'}]) — 짧은 블록은 같은 소제목 안에서 이어 붙여 PARA_CHARS 안팎으로.
+    PDF 는 body 가 바이트이고, 소제목 자리에 'n쪽'이 들어간다."""
+    if PDF_TYPE in content_type:
+        title, blocks = pdf_text(body)
+    elif 'html' in content_type:
         parser = _Text()
         parser.feed(body)
         parser.flush()
@@ -130,15 +197,36 @@ def paragraphs(body: str, content_type: str = 'text/html') -> tuple[str, list[di
     return title, out
 
 
-def _download(url: str) -> tuple[str, str]:
-    req = urllib.request.Request(url, headers={'User-Agent': UA, 'Accept': 'text/html,text/plain'})
-    with urllib.request.urlopen(req, timeout=TIMEOUT) as r:
-        ctype = r.headers.get('Content-Type', '')
-        if not ctype.startswith(('text/html', 'text/plain')):
+class _CheckedRedirect(urllib.request.HTTPRedirectHandler):
+    """리디렉션 대상도 https·공인 IP 검사를 다시 한다 — 공개 주소가 내부망(169.254.169.254 등)으로 넘기는 SSRF 차단."""
+    max_redirections = MAX_REDIRECTS
+
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        if not allowed(newurl):
+            raise ValueError('허용하지 않는 주소로 리디렉션됐어요')
+        return super().redirect_request(req, fp, code, msg, headers, newurl)
+
+
+_OPENER = urllib.request.build_opener(_CheckedRedirect)
+
+
+def _download(url: str):
+    """(본문, 형식). HTML·텍스트는 문자열, PDF 는 바이트."""
+    req = urllib.request.Request(url, headers={'User-Agent': UA,
+                                               'Accept': f'text/html,text/plain,{PDF_TYPE};q=0.9'})
+    with _OPENER.open(req, timeout=TIMEOUT) as r:
+        ctype = (r.headers.get('Content-Type', '') or '').lower()
+        is_pdf = ctype.startswith(PDF_TYPE)
+        if not is_pdf and not ctype.startswith(('text/html', 'text/plain', 'application/octet-stream')):
             raise ValueError(f'문서 형식이 아니에요: {ctype}')
-        raw = r.read(MAX_BYTES + 1)
-        if len(raw) > MAX_BYTES:
+        limit = MAX_PDF_BYTES if is_pdf or ctype.startswith('application/octet-stream') else MAX_BYTES
+        raw = r.read(limit + 1)
+        if len(raw) > limit:
             raise ValueError('문서가 너무 커요')
+        if is_pdf or raw[:5] == b'%PDF-':
+            return raw, PDF_TYPE
+        if ctype.startswith('application/octet-stream'):
+            raise ValueError(f'문서 형식이 아니에요: {ctype}')
         charset = r.headers.get_content_charset() or 'utf-8'
         return raw.decode(charset, errors='replace'), ctype
 

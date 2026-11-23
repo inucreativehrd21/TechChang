@@ -195,7 +195,7 @@ body {
                     color: #111827;
                     z-index: {{ forloop.counter }};">
             {% if entry.author == user %}
-            <button class="delete-btn" onclick="deletePostit({{ entry.id }})">
+            <button class="delete-btn" data-action="deletePostit" data-args="{{ entry.id }}">
                 <i class="fas fa-times"></i>
             </button>
             {% endif %}
@@ -212,7 +212,7 @@ body {
 
 <!-- 추가 버튼 -->
 {% if user.is_authenticated %}
-<button class="add-postit-btn" onclick="showAddModal()">
+<button class="add-postit-btn" data-action="showAddModal">
     <i class="fas fa-plus"></i>
 </button>
 {% endif %}
@@ -226,7 +226,7 @@ body {
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
-                <form id="postitForm" onsubmit="addPostit(event)">
+                <form id="postitForm" data-on="submit" data-action="addPostit" data-args="$event">
                     {% csrf_token %}
                     <div class="mb-3">
                         <label class="form-label">색상 선택</label>
@@ -273,7 +273,7 @@ body {
     </div>
 </div>
 
-<script>
+<script nonce="{{ csp_nonce }}">
 const csrfToken = '{{ csrf_token }}';
 let selectedColor = '#fff475';
 let modal = null;
@@ -343,7 +343,7 @@ function addPostit(event) {
             postit.style.animation = 'popIn 0.5s ease';
 
             postit.innerHTML = `
-                <button class="delete-btn" onclick="deletePostit(${entry.id})">
+                <button class="delete-btn" data-action="deletePostit" data-args="${entry.id}">
                     <i class="fas fa-times"></i>
                 </button>
                 <div class="postit-content">${entry.content}</div>

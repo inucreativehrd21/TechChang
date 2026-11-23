@@ -21,6 +21,7 @@ from django.utils import timezone
 from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.http import require_POST
 
+from . import login_throttle
 from .models import Profile, SocialIdentity
 
 PROVIDERS = {'kakao': '카카오', 'google': 'Google'}
@@ -210,7 +211,10 @@ def disconnect(request, provider):
         identities = SocialIdentity.objects.filter(user=user)
         if not user.has_usable_password() and not identities.exclude(provider=provider).exists():
             messages.error(request, '마지막 로그인 수단은 해제할 수 없어요. 먼저 다른 계정을 연결해 주세요.')
+        elif user.has_usable_password() and login_throttle.blocked(request, user.username):
+            messages.error(request, login_throttle.MESSAGE)
         elif user.has_usable_password() and not user.check_password(request.POST.get('password', '')):
+            login_throttle.failed(request, user.username)
             messages.error(request, '연결을 해제하려면 현재 사이트 비밀번호를 입력해 주세요.')
         else:
             identities.filter(provider=provider).delete()

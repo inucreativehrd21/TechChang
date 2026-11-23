@@ -7,7 +7,7 @@
 {% block og_description %}테크창 연구팀 칼럼을 주제별로 정리하고 키워드·요약으로 찾는 지도{% endblock %}
 {% block meta_robots %}{% if q or sub %}noindex, follow{% else %}{{ seo_robots }}{% endif %}{% endblock %}
 {% block jsonld %}
-<script type="application/ld+json">
+<script nonce="{{ csp_nonce }}" type="application/ld+json">
 {"@context": "https://schema.org", "@type": "CollectionPage", "name": "테크창 칼럼 지도",
  "url": "https://techchang.com{% url 'community:column_map' %}", "inLanguage": "ko-KR",
  "description": "테크창 연구팀 칼럼을 주제별로 정리하고 키워드와 요약을 붙인 지도",

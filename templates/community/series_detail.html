@@ -11,7 +11,7 @@
 {% block twitter_title %}{{ series.title }}{% endblock %}
 {% block twitter_description %}{{ series.description|striptags|truncatechars:155|default:series.subtitle|default:series.title }}{% endblock %}
 {% block jsonld %}
-<script type="application/ld+json">
+<script nonce="{{ csp_nonce }}" type="application/ld+json">
 {
   "@context": "https://schema.org",
   "@type": "ItemList",

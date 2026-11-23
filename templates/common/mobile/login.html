@@ -174,7 +174,7 @@
 {% endblock %}
 
 {% block script %}
-<script>
+<script nonce="{{ csp_nonce }}">
 document.getElementById('adminToggle').addEventListener('click', function() {
     var form = document.getElementById('adminForm');
     var chevron = document.getElementById('adminChevron');

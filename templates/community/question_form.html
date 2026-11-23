@@ -537,7 +537,7 @@
                         <div style="font-weight: 600; color: var(--text-primary);" id="fileName"></div>
                         <div style="font-size: 0.875rem; color: var(--text-tertiary);" id="fileSize"></div>
                     </div>
-                    <button type="button" class="btn-premium btn-premium-secondary" onclick="removeFile()">
+                    <button type="button" class="btn-premium btn-premium-secondary" data-action="removeFile">
                         <i class="fas fa-times"></i>
                     </button>
                 </div>
@@ -577,7 +577,7 @@
 {% endblock %}
 
 {% block script %}
-<script>
+<script nonce="{{ csp_nonce }}">
 document.addEventListener('DOMContentLoaded', function() {
     const form = document.getElementById('questionForm');
     const subjectInput = document.getElementById('{{ form.subject.id_for_label }}');
