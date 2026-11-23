@@ -58,7 +58,7 @@ def _manor_coordinates():
 
 
 @register.inclusion_tag('community/samguk/_manor_art.html')
-def sg_manor_art(manor):
+def sg_manor_art(manor, is_mine=False, beggar_left=0):
     people, places = _manor_coordinates()
     buildings, decor, officers = [], [], []
     for b in manor['buildings']:
@@ -74,4 +74,5 @@ def sg_manor_art(manor):
     for p in manor['placed']:
         x, y = people[p['slot']]
         officers.append({**p, 'x': x / 10, 'y': y / 10})
-    return {'buildings': buildings, 'decor': decor, 'officers': officers}
+    return {'buildings': buildings, 'decor': decor, 'officers': officers,
+            'is_mine': is_mine, 'beggar_left': beggar_left}

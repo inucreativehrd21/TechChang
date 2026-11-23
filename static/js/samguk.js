@@ -28,7 +28,7 @@
   let currentUrl = location.pathname + location.search, noticeTimer, recoveryLogin = null;
   const screens = new Set(['home', 'tutorial', 'ranking', 'replay', 'manor', 'codex', 'inn', 'pc_only']);
   const gameKey = (root, fallback) => root.querySelector('[data-sg-key]')?.dataset.sgKey || fallback;
-  const postButtons = () => [...content.querySelectorAll('form button:not([type]), form button[type=submit], form input[type=submit], [data-sg-autosubmit]')];
+  const postButtons = () => [...content.querySelectorAll('form button:not([type]), form button[type=submit], form input[type=submit], button[type=submit][form], [data-sg-autosubmit]')];
   const formKey = form => JSON.stringify([new URL(form.action, location.href).pathname,
     [...form.querySelectorAll('input[type=hidden]')].filter(e => !['seq', 'csrfmiddlewaretoken'].includes(e.name)).map(e => [e.name, e.value]).sort()]);
   const detailKey = (el, i) => el.dataset.sgDetail || el.id || el.className + ':' + i;
@@ -55,7 +55,8 @@
     close.type = 'button'; close.className = 'sg-feedback-close'; close.dataset.sgDismiss = '';
     close.setAttribute('aria-label', '알림 닫기'); close.textContent = '×'; if (!recovery) feedback.append(close);
     const report = content.querySelector('[data-sg-board] .sg-report');
-    const inBoard = report?.getClientRects().length && !recovery && !feedback.classList.contains('is-error');
+    const inBoard = report?.getClientRects().length && !recovery && !feedback.classList.contains('is-error') &&
+      !items.some(m => m.level?.includes('sg-quest-result'));
     feedback.hidden = !items.length || !!inBoard;
     announcer.textContent = items.map(m => m.text).join(' ');
     if (!recovery && !feedback.classList.contains('is-error')) noticeTimer = setTimeout(() => {
@@ -144,13 +145,13 @@
       x: scrollX, y: scrollY,
       focus: focusForm && content.contains(focusForm) ? {form: formKey(focusForm), index: [...focusForm.elements].indexOf(active), name: active.name, type: active.type, value: active.value} : null,
       search: content.querySelector('[data-codex-search]')?.value || '',
-      filter: content.querySelector('.sg-codex')?.dataset.filter || 'all',
-      motionPaused: content.querySelector('.sg-estate')?.classList.contains('sg-motion-paused')
+      filter: content.querySelector('.sg-codex')?.dataset.filter || 'all'
     };
   }
 
   function setup(snapshot) {
-    boardState = snapshot?.board || {city: location.hash.startsWith('#sg-city-') ? location.hash.slice(9) : null, tab: 'cities', mapCollapsed: false};
+    boardState = snapshot?.board || {city: location.hash.startsWith('#sg-city-') ? location.hash.slice(9) : null,
+      tab: location.hash === '#sg-quests' ? 'legends' : 'cities', mapCollapsed: false};
     if (snapshot) {
       content.querySelectorAll('form[method=post]').forEach(form => {
         const saved = snapshot.forms.get(formKey(form));
@@ -178,21 +179,19 @@
       if (search) search.value = snapshot.search;
       const codex = content.querySelector('.sg-codex');
       if (codex) codex.dataset.filter = snapshot.filter;
-      const estate = content.querySelector('.sg-estate');
-      if (estate && snapshot.motionPaused) estate.classList.add('sg-motion-paused');
     }
     renderBoard(); filterCodex();
     content.querySelectorAll('[data-sg-attack-target]').forEach(select => updateCost(select));
-    content.querySelectorAll('.sg-motion-toggle').forEach(button => {
-      const paused = button.closest('.sg-estate').classList.contains('sg-motion-paused');
-      button.setAttribute('aria-pressed', String(paused)); button.textContent = paused ? '움직임 이어가기' : '움직임 멈추기';
-    });
   }
 
   function updateCost(select) {
     const cost = select.selectedOptions[0]?.dataset.cost;
     const text = select.form.querySelector('[data-sg-attack-cost]');
-    if (text && cost) text.textContent = '군령 ' + cost;
+    const troops = select.form.querySelector('[data-sg-troops]');
+    if (text && cost && troops) {
+      const food = Math.floor(Number(troops.value) / Number(troops.dataset.sgTroops));
+      text.textContent = '군령 ' + cost + ' · 군량 ' + food;
+    }
   }
 
   function commit(payload) {
@@ -206,10 +205,9 @@
     if (same) {
       const oldPicture = content.querySelector('.sg-map-art > picture'), newPicture = template.content.querySelector('.sg-map-art > picture');
       if (oldPicture && newPicture && oldPicture.querySelector('img').getAttribute('src') === newPicture.querySelector('img').getAttribute('src')) newPicture.replaceWith(oldPicture);
-      for (const selector of ['.sg-estate-world', '.sg-estate-wanderer']) {
-        const old = content.querySelector(selector), next = template.content.querySelector(selector);
-        if (old && next) next.replaceWith(old);
-      }
+      const oldEstate = content.querySelector('.sg-estate-world');
+      const newEstate = template.content.querySelector('.sg-estate-world');
+      if (oldEstate && newEstate) newEstate.replaceWith(oldEstate);
     }
     content.replaceChildren(template.content);
     currentUrl = url.pathname + url.search;
@@ -224,6 +222,11 @@
         if (element && element.name === snapshot.focus.name && !element.disabled && !element.closest('[hidden]')) element.focus({preventScroll: true});
       }
       window.scrollTo({left: snapshot.x, top: snapshot.y, behavior: 'instant'});
+    }
+    const reply = content.querySelector('[data-sg-beggar-reply]');
+    if (reply) {
+      reply.focus({preventScroll: true});
+      reply.closest('#sg-beggar').scrollIntoView({block: 'start', behavior: 'instant'});
     }
     needsSync = false;
     recoveryLogin = null;
@@ -301,18 +304,22 @@
       return;
     }
     const tab = event.target.closest('[data-sg-tab]');
-    if (tab) { boardState.tab = tab.dataset.sgTab; renderBoard(); return; }
+    if (tab) {
+      boardState.tab = tab.dataset.sgTab;
+      renderBoard();
+      if (tab.matches('a')) {
+        event.preventDefault();
+        history.replaceState(history.state, '', currentUrl + tab.hash);
+        content.querySelector('#sg-tab-legends')?.focus();
+      }
+      return;
+    }
     if (event.target.closest('.sg-map-toggle')) { boardState.mapCollapsed = !boardState.mapCollapsed; renderBoard(); return; }
     if (event.target.closest('[data-sg-dismiss]')) { feedback.hidden = true; return; }
     if (event.target.closest('[data-sg-sync]')) { request(currentUrl, {method: 'GET'}); return; }
     if (event.target.closest('[data-sg-cancel]')) { dialog.close(); return; }
     if (event.target.closest('[data-sg-confirm-end]')) {
       const target = confirmTarget; dialog.close(); if (target) submit(target.form, target.button); return;
-    }
-    const motion = event.target.closest('.sg-motion-toggle');
-    if (motion) {
-      const paused = motion.closest('.sg-estate').classList.toggle('sg-motion-paused');
-      motion.setAttribute('aria-pressed', String(paused)); motion.textContent = paused ? '움직임 이어가기' : '움직임 멈추기';
     }
     const filter = event.target.closest('[data-codex-filter]');
     if (filter) { filter.closest('.sg-codex').dataset.filter = filter.dataset.codexFilter; filterCodex(); }
@@ -326,7 +333,10 @@
       el.checked = false; notify([{level: 'info', text: '출정 장수는 세 명까지 고를 수 있어요.'}]);
     }
   });
-  shell.addEventListener('input', event => { if (event.target.matches('[data-codex-search]')) filterCodex(); });
+  shell.addEventListener('input', event => {
+    if (event.target.matches('[data-codex-search]')) filterCodex();
+    if (event.target.matches('[data-sg-troops]')) updateCost(event.target.form.querySelector('[data-sg-attack-target]'));
+  });
   shell.addEventListener('toggle', event => {
     const detail = event.target;
     if (detail.matches('.sg-operation') && detail.open) detail.closest('.sg-city').querySelectorAll('.sg-operation').forEach(other => { if (other !== detail) other.open = false; });

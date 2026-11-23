@@ -35,7 +35,7 @@
   {% elif step == 'start' %}
   <section class="sg-start">
     <h2 class="h6">시작 도시를 골라 주세요</h2>
-    <p class="small text-muted">모두 같은 세 곳 중에서 골라요. 하루 한 판이고 다시 시작은 없어요.{% if bonus_ready %} 오늘 활동으로 받은 군령 +{{ bonus_ready }}이 함께 들어가요.{% endif %}</p>
+    <p class="small text-muted">하루 한 판, 기본 군령 {{ base_ap }} · 시작 군량 {{ start_food }}{% if bonus_ready %} · 오늘 활동 군령 +{{ bonus_ready }}{% endif %}</p>
     <div class="row g-2">
       {% for s in starts %}
       <div class="col-md-4"><form method="post" action="{% url 'community:samguk_start' %}" class="card h-100 sg-start-card"><div class="card-body">{% csrf_token %}
@@ -55,9 +55,16 @@
   {% include 'community/samguk/_board.html' with act_url=act_url %}
   {% endif %}
 
+  {% if step != 'play' and quests %}
+  <details id="sg-quests" class="sg-day-summary">
+    <summary>전설 퀘스트</summary>
+    {% include 'community/samguk/_quests.html' %}
+  </details>
+  {% endif %}
+
   {% if step == 'play' %}<details class="sg-day-summary"><summary>오늘의 순위 살펴보기</summary>{% endif %}
   <aside class="sg-today mt-4">
-    <h2 class="h6">오늘의 순위 <a class="small" href="{% url 'community:samguk_ranking' %}">전체</a></h2>
+    <div class="sg-section-heading"><h2 class="h6">오늘의 순위</h2><a class="sg-button" href="{% url 'community:samguk_ranking' %}">전체 순위 보기</a></div>
     {% if ranking %}
     <ol class="small">{% for r in ranking %}<li>{{ r.user|display_name }} · {{ r.score }}점 <span class="text-muted">({{ factions|get_item:r.faction }})</span></li>{% endfor %}</ol>
     {% else %}<p class="small text-muted">아직 아무도 두지 않았어요.</p>{% endif %}

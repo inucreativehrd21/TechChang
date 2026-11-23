@@ -69,6 +69,7 @@ class RulesTests(SimpleTestCase):
     def test_new_run(self):
         s = self.state
         self.assertEqual(R.ap_left(s), R.AP_BASE)
+        self.assertEqual(s['food'], R.START_FOOD)
         self.assertEqual(R.mine(s), [s['start']])
         self.assertEqual(s['gold'], int(R.START_GOLD * 1.15))       # 위 보정
 
@@ -111,6 +112,9 @@ class RulesTests(SimpleTestCase):
         self.assertEqual(R.ap_left(s), R.AP_BONUS_MAX)
 
     def test_recruit_needs_enough_persuasion(self):
+        old_board = {**self.board, 'rules': 1}
+        self.state = R.new_run(old_board, 'wei', 0, seed=1234)
+        self.assertEqual((R.ap_left(self.state), self.state['food']), (10, 1000))
         city = self.state['start']
         code = self.board['free'][city][0]
         target = D.GENERAL[code]
@@ -130,6 +134,34 @@ class RulesTests(SimpleTestCase):
         self.assertIn(code, s['cities'][city]['officers'])
         self.assertIn(code, s['recruited'])
         self.assertEqual(R.score(s)['recruits'], D.RECRUIT_SCORE[target.tier])
+
+    def test_captive_joins_after_dialogue_at_server_price(self):
+        city = self.state['start']
+        for code, total in (('liru', 2), ('guanyu', 3)):
+            with self.subTest(code=code):
+                self.assertEqual(R.recruit_offer(self.state, D.GENERAL[code], True)['total'], total)
+                state = {**self.state, 'captives': {city: [code]}}
+                action = {'kind': 'recruit', 'city': city, 'target': code, 'gold': -9999, 'by': 'forged'}
+                for turn in range(1, total + 1):
+                    state, result = R.apply(self.board, state, action)
+                    self.assertEqual(result['progress'], turn)
+                    self.assertEqual(R.ap_left(state), R.AP_BASE - turn)
+                    self.assertEqual(state['gold'], self.state['gold'])
+                    if turn < total:
+                        self.assertEqual(result['kind'], 'parley')
+                        self.assertNotIn(code, state['recruited'])
+                self.assertIn(code, state['recruited'])
+                self.assertNotIn(code, state['captives'][city])
+
+    def test_free_recruit_uses_fixed_stipend(self):
+        city = self.state['start']
+        state = {**self.state, 'free': {city: ['guanyu']}}
+        action = {'kind': 'recruit', 'city': city, 'target': 'guanyu', 'gold': 0}
+        with self.assertRaises(R.RuleError):
+            R.apply(self.board, {**state, 'gold': 399}, action)
+        next_state, result = R.apply(self.board, state, action)
+        self.assertEqual(next_state['gold'], state['gold'] - 400)
+        self.assertEqual(result['kind'], 'recruit')
 
     def test_capture_scores_city(self):
         s = self.state

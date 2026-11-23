@@ -300,18 +300,19 @@ def check_event_action(user, run, action: dict) -> None:
     series = action.get('series')
     if series not in SERIES:
         raise S.GameError('알 수 없는 전설이에요.')
-    row = _row(user, series)
-    if row.completed_at:
+    from .models import SamgukLegend
+    row = SamgukLegend.objects.filter(user=user, series=series).first()
+    if row and row.completed_at:
         raise S.GameError('이미 마친 전설이에요.')
-    step = current_step(row)
+    step = current_step(row) if row else SERIES[series]['steps'][0]
     if not step or step['kind'] != 'event':
         raise S.GameError('이 전설은 지금 다른 조건을 기다리고 있어요.')
     today = run.day.date.isoformat()
-    if row.progress.get('last_event_day') == today:
+    if row and row.progress.get('last_event_day') == today:
         raise S.GameError('이 전설은 하루에 한 걸음씩만 나아가요. 내일 다시 찾아오세요.')
     board_ev = [e for e in run.day.board.get('legends', []) if e['event'] == step['event']]
-    if not any(e['city'] == action.get('city') for e in board_ev):
-        raise S.GameError('오늘 그 도시에는 이 전설의 흔적이 없어요.')
+    if not any(e['city'] == action.get('city') and e['event'] in encountered_events(run.state) for e in board_ev):
+        raise S.GameError('이 판에서 발견한 전설의 흔적을 골라 주세요.')
     by = action.get('by')
     if by not in D.GENERAL or not cond_ok(step.get('cond'), D.GENERAL[by]):
         raise S.GameError(f'조건에 맞는 장수가 필요해요: {step["text"]}')
@@ -508,20 +509,21 @@ def on_close(user, run) -> list:
     return moved
 
 
-# ── 영입 시도(PC 장원 화면) ────────────────────────────────────────────────
+# ── 전설 퀘스트 영입 ────────────────────────────────────────────────────────
 def attempt(user, series: str) -> dict:
     from . import samguk as S
-    from .models import SamgukCodex
+    from .models import SamgukCodex, SamgukLegend
     if series not in SERIES:
         raise S.GameError('알 수 없는 전설이에요.')
     spec = SERIES[series]
     with transaction.atomic():
-        row = _row(user, series)
+        row = SamgukLegend.objects.select_for_update().filter(user=user, series=series).first()
+        if row is None:
+            raise S.GameError('전설 퀘스트를 먼저 진행해 주세요.')
         if row.recruited_at:
             raise S.GameError('이미 영입했어요.')
         if not row.completed_at:
-            step = current_step(row)
-            raise S.GameError(f'아직 단계가 남았어요: {step["text"] if step else ""}')
+            raise S.GameError('아직 마쳐야 할 단계가 남았어요.')
         m = S.member(user)
         need = spec.get('attempt', {}).get('fame', 0)
         if m.fame < need:
@@ -564,49 +566,89 @@ def rumor_for(user, source: str = 'beggar') -> str | None:
     return None
 
 
-def known(user) -> set:
-    from .models import SamgukRumor
-    return set(SamgukRumor.objects.filter(user=user).values_list('series', flat=True))
+def encountered_events(state: dict) -> set:
+    # 이전 버전에서 이미 수행한 전설 행동도 그 판의 발견으로 인정한다.
+    return set(state.get('legend_discovered', ())) | {h['event'] for h in state.get('legend_hits', ())}
+
+
+def discover_events(user, board: dict, state: dict, action: dict) -> list:
+    """내정·정찰·출정 등으로 들른 도시와 그 주변에서 그날의 흔적을 만난다."""
+    if action['kind'] not in ('develop', 'conscript', 'scout', 'scheme', 'attack'):
+        return []
+    touched = {action.get(key) for key in ('city', 'from', 'to')} & state['cities'].keys()
+    nearby = touched | {neighbor for city in touched for neighbor in D.CITY[city].links}
+    known = encountered_events(state)
+    found = [ev for ev in board.get('legends', ()) if ev['city'] in nearby and ev['event'] not in known]
+    if found:
+        from .models import SamgukRumor
+        state.setdefault('legend_discovered', []).extend(ev['event'] for ev in found)
+        heard = set(SamgukRumor.objects.filter(user=user).values_list('series', flat=True))
+        for ev in found:
+            first = next((s for s in series_of_event(ev['event']) if s not in heard
+                          and SERIES[s]['steps'][0].get('event') == ev['event'] and SERIES[s]['rumors']), None)
+            if first:
+                SamgukRumor.objects.get_or_create(user=user, series=first, level=1, defaults={
+                    'text': SERIES[first]['rumors'][0], 'source': 'board', 'heard_on': date.fromisoformat(board['date']),
+                })
+                heard.add(first)
+    return [D.CITY[ev['city']].name for ev in found]
 
 
 # ── 화면 묶음 ────────────────────────────────────────────────────────────
 def board_legends(user, run) -> list:
-    """판 화면에 보일 전설 이벤트 — 소문을 들었으면 정체와 지금 단계, 아니면 흐릿하게."""
+    """플레이 중 만난 흔적만 표시한다. 소문이나 진행이 있는 시리즈는 이름을 밝힌다."""
+    from .models import SamgukLegend, SamgukRumor
     if run is None:
         return []
-    have = known(user)
+    found = encountered_events(run.state)
+    if not found:
+        return []
+    have = set(SamgukRumor.objects.filter(user=user).values_list('series', flat=True))
+    rows = {r.series: r for r in SamgukLegend.objects.filter(user=user)}
+    today = run.day.date.isoformat()
     out = []
     for ev in run.day.board.get('legends', []):
+        if ev['event'] not in found:
+            continue
         name, vague, *_ = EVENTS[ev['event']]
-        series_here = series_of_event(ev['event'])
-        cand = []
-        for s in series_here:
-            row = _row(user, s) if s in have else None
-            step = current_step(row) if row else None
-            if row and not row.completed_at and step and step['kind'] == 'event' and step['event'] == ev['event']:
-                cand.append({'series': s, 'name': SERIES[s]['name'], 'step': step['text'], 'cond': step.get('cond'),
-                             'count': row.progress.get('count', 0), 'times': step.get('times', 1)})
-        clear = any(s in have for s in series_here)
+        named, unnamed = [], []
+        for series in series_of_event(ev['event']):
+            row = rows.get(series)
+            progress = row.progress if row else {}
+            step = current_step(row) if row else SERIES[series]['steps'][0]
+            if (not step or step.get('event') != ev['event'] or (row and row.completed_at)
+                    or (step.get('own') and run.state['cities'][ev['city']]['owner'] != 'me')):
+                continue
+            entry = {'series': series, 'cond': step.get('cond'),
+                     'used_today': progress.get('last_event_day') == today}
+            if series in have or row:
+                named.append({**entry, 'name': SERIES[series]['name'], 'step': step['text'],
+                              'count': progress.get('count', 0), 'times': step.get('times', 1)})
+            else:
+                unnamed.append(entry)
         out.append({'event': ev['event'], 'city': ev['city'], 'city_name': D.CITY[ev['city']].name,
-                    'title': name if clear else '???', 'text': vague, 'series': cand,
-                    'open_series': [s for s in series_here if s not in have][:3] if not clear else []})
+                    'title': name if named else '낯선 흔적', 'text': vague, 'series': named,
+                    'open_series': unnamed})
     return out
 
 
 def legends_view(user) -> list:
-    from .models import SamgukLegend
+    from .models import SamgukLegend, SamgukRumor
     rows = {r.series: r for r in SamgukLegend.objects.filter(user=user)}
-    have = known(user)
+    heard = {}
+    for series, line in SamgukRumor.objects.filter(user=user).order_by('level').values_list('series', 'text'):
+        heard.setdefault(series, []).append(line)
     out = []
     for series, spec in SERIES.items():
         row = rows.get(series)
-        if row is None and series not in have:
+        if row and row.recruited_at:
+            continue
+        if series not in heard and not (row and (row.step or row.completed_at or row.progress.get('count'))):
             continue
         step = current_step(row) if row else spec['steps'][0]
         out.append({'series': series, 'name': spec['name'], 'kind': HIDDEN_GROUPS[spec['kind']],
                     'step_no': row.step if row else 0, 'steps': len(spec['steps']),
                     'now': step['text'] if step else '모든 단계를 마쳤어요', 'count': (row.progress.get('count', 0) if row else 0),
-                    'completed': bool(row and row.completed_at), 'recruited': bool(row and row.recruited_at),
-                    'fame': spec.get('attempt', {}).get('fame', 0),
-                    'grants': [HIDDEN[c].name for c in spec['grants']]})
+                    'completed': bool(row and row.completed_at), 'rumors': heard.get(series, []),
+                    'fame': spec.get('attempt', {}).get('fame', 0)})
     return out

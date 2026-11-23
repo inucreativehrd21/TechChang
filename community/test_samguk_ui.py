@@ -128,3 +128,21 @@ class SamgukContinuousUITests(TestCase):
             {'what': 'privacy'}, follow=True, **self.headers)
         self.assertEqual(mobile.json()['screen'], 'pc_only')
         self.assertTrue(SamgukMember.objects.get(user=self.user).hide_from_beggar)
+
+    def test_beggar_reply_is_inline_and_rumor_moves_to_quests(self):
+        from community.models import SamgukRumor
+        SamgukMember.objects.filter(user=self.user).update(fame=30)
+        manor = reverse('community:samguk_manor')
+        response = self.client.post(reverse('community:samguk_manor_post'),
+            {'what': 'beggar', 'alms': '1'}, follow=True, **self.headers).json()
+        rumor = SamgukRumor.objects.get(user=self.user)
+        self.assertIn('data-sg-beggar-reply', response['html'])
+        self.assertIn(rumor.text, response['html'])
+        self.assertIn('form="sg-beggar-talk"', response['html'])
+        self.assertEqual(response['messages'], [])
+        self.assertNotContains(self.client.get(manor), rumor.text)
+        self.client.cookies['force_version'] = 'mobile'
+        game = self.client.get(reverse('community:samguk_home'))
+        self.assertTemplateUsed(game, 'base_mobile.html')
+        self.assertContains(game, '전설 퀘스트')
+        self.assertContains(game, rumor.text)

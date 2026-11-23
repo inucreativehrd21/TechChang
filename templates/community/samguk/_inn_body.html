@@ -1,7 +1,14 @@
 {% comment %}객잔(설계 7.3) — 손님 3명 중 하루 한 명 영입. 이미 등록한 장수는 재회(명성 +3).{% endcomment %}
 {% load static samguk_art %}
 <div class="sg-inn container py-3">
-  <h1 class="h4">객잔</h1>
+  <header class="sg-section-heading">
+    <h1>객잔</h1>
+    <nav class="sg-page-actions" aria-label="객잔 메뉴">
+      <a class="sg-button" href="{% url 'community:samguk_manor' %}">장원</a>
+      <a class="sg-button" href="{% url 'community:samguk_codex' %}">도감 보기</a>
+      <a class="sg-button" href="{% url 'community:samguk_home' %}">오늘의 천하</a>
+    </nav>
+  </header>
   <img class="sg-inn-scene" src="{% static 'samguk/inn/scene.webp' %}" width="1600" height="640" alt="차와 이야기가 오가는 객잔의 한낮">
   {% if rumor %}<div class="sg-traveler alert alert-light small"><img src="{% static 'samguk/inn/traveler.webp' %}" width="120" height="160" alt="객잔 나그네"> <div>나그네: “{{ rumor }}”</div></div>{% endif %}
   <p class="small text-muted">오늘의 손님이에요. 한 명을 골라 영입하면 바로 도감에 올라가요. 내일 아침 6시에 새 손님이 와요.</p>
@@ -19,5 +26,4 @@
     </div></div></div>
     {% endfor %}
   </div>
-  <p class="small mt-3"><a href="{% url 'community:samguk_codex' %}">도감 보기</a> · <a href="{% url 'community:samguk_home' %}">오늘의 천하</a></p>
 </div>

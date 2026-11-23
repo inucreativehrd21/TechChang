@@ -1578,12 +1578,12 @@ class SamgukLegend(models.Model):
 
 
 class SamgukRumor(models.Model):
-    """들은 소문 — 지나가는 거지·객잔 나그네. level 이 오를수록 구체적인 소문."""
+    """플레이 중 발견하거나 사람에게 들은 소문. level이 오를수록 구체적인 소문."""
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='samguk_rumors')
     series = models.CharField(max_length=24)
     level = models.PositiveSmallIntegerField(default=1)
     text = models.CharField(max_length=200)
-    source = models.CharField(max_length=8)                          # beggar / inn
+    source = models.CharField(max_length=8)                          # beggar / inn / board
     heard_on = models.DateField()
 
     class Meta:

@@ -1,0 +1,23 @@
+{% if quests %}
+<section class="sg-quests">
+  <h3>진행 중인 전설</h3>
+  {% for quest in quests %}
+  <article class="sg-quest" data-series="{{ quest.series }}">
+    <h4>{{ quest.name }} <small>{{ quest.step_no }} / {{ quest.steps }}단계</small></h4>
+    {% if quest.completed %}
+    <form method="post" action="{% url 'community:samguk_legend_recruit' %}">
+      {% csrf_token %}
+      <input type="hidden" name="series" value="{{ quest.series }}">
+      <button class="sg-button sg-button-primary">전설 장수 맞이하기 <span>필요 명성 {{ quest.fame }}</span></button>
+    </form>
+    {% else %}<p>{{ quest.now }}{% if quest.count %} (현재 {{ quest.count }}){% endif %}</p>{% endif %}
+    {% if quest.rumors %}
+    <details class="sg-rumor-notes" data-sg-detail="quest-{{ quest.series }}">
+      <summary>들은 소문 {{ quest.rumors|length }}건</summary>
+      <ul>{% for line in quest.rumors %}<li>“{{ line }}”</li>{% endfor %}</ul>
+    </details>
+    {% endif %}
+  </article>
+  {% endfor %}
+</section>
+{% endif %}

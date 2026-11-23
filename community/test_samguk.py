@@ -462,9 +462,22 @@ class SamgukLegendTests(TestCase):
         st['cities'][st['start']]['officers'].append(strong)        # 무력 75 이상 장수를 곁에 둔다
         SamgukRun.objects.filter(pk=run.pk).update(state=st)
         weak = next(o for o in st['cities'][st['start']]['officers'] if D.GENERAL[o].war < 75)
+        self.client.force_login(self.user)
+        S.set_tutorial(self.user, 'skipped')
+        home = reverse('community:samguk_home')
+        post = reverse('community:samguk_act')
+        self.assertNotContains(self.client.get(home), 'data-event="nanman"')
+        with self.assertRaises(S.GameError):
+            S.act(self.user, {'kind': 'legend', 'series': 'menghuo', 'city': city, 'by': strong})
+        _, discovery = S.act(self.user, {'kind': 'scout', 'city': city})
+        self.assertEqual(discovery['discoveries'], [D.CITY[city].name])
+        self.assertContains(self.client.get(home), 'data-event="nanman"')
+        self.assertContains(self.client.get(home), L.SERIES['menghuo']['rumors'][0])
         with self.assertRaises(S.GameError):
             S.act(self.user, {'kind': 'legend', 'series': 'menghuo', 'city': city, 'by': weak})
-        run, res = S.act(self.user, {'kind': 'legend', 'series': 'menghuo', 'city': city, 'by': strong})
+        self.client.post(post, {'kind': 'legend', 'series': 'menghuo', 'city': city, 'by': strong, 'seq': 1})
+        run.refresh_from_db()
+        res = run.actions.get(seq=1).result
         self.assertEqual(res['kind'], 'legend')
         self.assertEqual(run.score, R.score(run.state)['total'])
         row = SamgukLegend.objects.get(user=self.user, series='menghuo')

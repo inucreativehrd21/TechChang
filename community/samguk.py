@@ -210,7 +210,7 @@ def act(user, action: dict, seq: int | None = None) -> tuple:
         if run is None:
             raise GameError('먼저 시작 도시를 골라 주세요.')
         done = run.actions.count()
-        if seq is not None and int(seq) != done:
+        if seq is not None and str(seq) != str(done):
             raise GameError('화면이 오래됐어요. 새로 고친 뒤 다시 해 주세요.')
         if day.status != 'open':
             raise GameError('오늘 판은 닫혔어요.')
@@ -221,6 +221,9 @@ def act(user, action: dict, seq: int | None = None) -> tuple:
             state, result = R.apply(day.board, run.state, action)
         except R.RuleError as e:
             raise GameError(str(e)) from None
+        discoveries = L.discover_events(user, day.board, state, action)
+        if discoveries:
+            result['discoveries'] = discoveries
         run.state = state
         run.ap_spent = state['ap_spent']
         run.score = R.score(state)['total']

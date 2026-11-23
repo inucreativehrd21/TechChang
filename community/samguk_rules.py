@@ -4,8 +4,8 @@
 한 사람의 판 진행(state)은 JSON 으로 저장할 수 있는 dict 이며 apply() 가 행동 하나씩 바꾼다.
 
 - 같은 판·같은 상태·같은 행동이면 결과가 같다. 운은 state['seed'](날짜 + 사용자) 와 행동 차례로만 정해진다.
-- 규칙 위반(군령 부족·이웃이 아닌 성·설득력 모자람 등)은 RuleError 를 내고 상태를 바꾸지 않는다 — 군령도 쓰지 않는다.
-- 등용은 확률이 아니라 조건 판정이다(설계 4.3): 화면이 필요치를 미리 보여 주고, 모자라면 시도 자체를 막는다.
+- 규칙 위반(군령 부족·이웃이 아닌 성 등)은 RuleError 를 내고 상태와 군령을 보존한다.
+- 열린 판은 저장된 규칙 버전을 따른다. 2판부터 포로는 차례대로 대화해 영입한다.
 - 수치는 초안이다. 하네스(scratchpad samguk_solver.py)로 조정하고, 바꾸면 RULES_VERSION 을 올린다.
 """
 from __future__ import annotations
@@ -15,25 +15,34 @@ import random
 
 from . import samguk_data as D
 
-RULES_VERSION = 1
+RULES_VERSION = 2
+PARLEY_VERSION = 2
 
-AP_BASE = 10
+AP_BASE = 16
 AP_BONUS_MAX = 5
-SEASON_AP = 3                       # 군령 3 을 쓸 때마다 NPC 차례
+SEASON_AP = 5
+LEGACY_AP, LEGACY_FOOD, LEGACY_SEASON_AP = 10, 1000, 3
 
 COST = {'develop': 1, 'conscript': 1, 'scout': 1, 'recruit': 1, 'scheme': 1, 'attack': 2, 'legend': 1}
 SNOW_CITIES = frozenset({'beiping', 'ye', 'tianshui'})   # 대설: 이 도시가 끼는 출정은 군령 +1
 
 START_GOLD = 1000
-START_FOOD = 1000
+START_FOOD = 2400
 START_TROOPS = 3000
 TROOP_CAP = 15000
 
 DEVELOP_GOLD = (200, 6)             # 200 + 정치 × 6
-DEVELOP_FOOD = (200, 4)
+DEVELOP_FOOD = (300, 5)
+LEGACY_DEVELOP_FOOD = (200, 4)
 CONSCRIPT_COST = 300
 CONSCRIPT_TROOPS = (800, 15)        # 800 + 통솔 × 15
 ATTACK_FOOD_PER = 10                # 병력 10 당 군량 1
+RECRUIT_STIPEND = {1: 0, 2: 0, 3: 200, 4: 400}
+PARLEY_LINES = {
+    '설득하기': '그대가 어떤 뜻으로 싸우는지 먼저 듣겠소.',
+    '문답하기': '백성을 어떻게 돌볼 것인지 알겠소. 이제 마지막으로 한 가지만 더 묻겠소.',
+    '회유하기': '나도 그 뜻에 힘을 보태겠소. 함께 가겠소.',
+}
 
 LUCK = (0.92, 1.08)
 SCHEME_GAP = 20                     # 군사 지력 차가 이 이상이면 상대 전력 −10%
@@ -79,11 +88,15 @@ def new_run(board: dict, faction: str, start: int, seed: int) -> dict:
     for info in lords.values():
         info.setdefault('alive', True)
         info.setdefault('feud', None)
+    version = board.get('rules', 1)
+    modern = version >= PARLEY_VERSION
     state = {
-        'v': RULES_VERSION, 'seed': int(seed), 'faction': faction, 'start': opt['city'],
+        'v': version, 'seed': int(seed), 'faction': faction, 'start': opt['city'],
         'event': board.get('event'), 'tutorial': bool(board.get('tutorial')),
-        'ap_base': int(board.get('ap', AP_BASE)), 'ap_bonus': 0, 'ap_spent': 0, 'turn': 0, 'seasons': 0,
-        'gold': int(START_GOLD * (1 + bonus.get('start_gold', 0))) + int(extra.get('gold', 0)), 'food': START_FOOD,
+        'ap_base': int(board.get('ap', AP_BASE if modern else LEGACY_AP)),
+        'ap_bonus': 0, 'ap_spent': 0, 'turn': 0, 'seasons': 0,
+        'gold': int(START_GOLD * (1 + bonus.get('start_gold', 0))) + int(extra.get('gold', 0)),
+        'food': START_FOOD if modern else LEGACY_FOOD,
         'cities': cities, 'lords': lords,
         'free': copy.deepcopy(board.get('free', {})), 'captives': {},
         'scouted': [], 'seen': [], 'recruited': [],
@@ -107,6 +120,10 @@ def add_bonus(state: dict, n: int) -> int:
 
 def ap_left(state: dict) -> int:
     return state['ap_base'] + state['ap_bonus'] - state['ap_spent']
+
+
+def uses_parley(state: dict) -> bool:
+    return state.get('v', 1) >= PARLEY_VERSION
 
 
 # ── 조회 도우미 ───────────────────────────────────────────────────────────
@@ -173,7 +190,8 @@ def apply(board: dict, state: dict, action: dict) -> tuple:
     new['turn'] += 1
     result['cost'] = cost
     result['npc'] = []
-    while new['ap_spent'] >= (new['seasons'] + 1) * SEASON_AP:
+    season_ap = SEASON_AP if uses_parley(new) and not new.get('tutorial') else LEGACY_SEASON_AP
+    while new['ap_spent'] >= (new['seasons'] + 1) * season_ap:
         new['seasons'] += 1
         result['npc'].extend(npc_turn(new))
     if ap_left(new) <= 0:
@@ -205,7 +223,8 @@ def _best(state: dict, city: str, stat: str) -> D.General | None:
 
 def develop_yield(state: dict, g: D.General) -> tuple:
     gold = DEVELOP_GOLD[0] + DEVELOP_GOLD[1] * g.pol
-    food = DEVELOP_FOOD[0] + DEVELOP_FOOD[1] * g.pol
+    base, per_pol = DEVELOP_FOOD if uses_parley(state) else LEGACY_DEVELOP_FOOD
+    food = base + per_pol * g.pol
     if g.skill == 'supply':
         gold, food = gold * 1.2, food * 1.2
     if state.get('event') == 'harvest':
@@ -296,11 +315,20 @@ def recruit_gold_needed(state: dict, by: D.General, target: D.General, captive: 
     return gold if gold <= state['gold'] else None
 
 
+def recruit_offer(state: dict, target: D.General, captive: bool) -> dict:
+    if captive:
+        stages = ('설득하기', '회유하기') if target.tier <= 2 else ('설득하기', '문답하기', '회유하기')
+        progress = state.get('parley', {}).get(target.code, 0)
+        return {'label': stages[progress], 'progress': progress, 'total': len(stages), 'gold': 0,
+                'reply': PARLEY_LINES[stages[progress - 1]] if progress else ''}
+    # 촉의 등용 우대는 금이 필요한 재야 장수에게 적용한다.
+    discount = 50 if state['faction'] == 'shu' else 0
+    return {'label': '등용하기', 'gold': max(0, RECRUIT_STIPEND[target.tier] - discount)}
+
+
 def _recruit(board, state, a):
     city, code, by_code = a.get('city'), a.get('target'), a.get('by')
-    gold = int(a.get('gold') or 0)
     c = _need_my_city(state, city)
-    by = _officer_in(state, city, by_code)
     free = state['free'].get(city, [])
     caps = state['captives'].get(city, [])
     if code in free:
@@ -309,12 +337,30 @@ def _recruit(board, state, a):
         captive = True
     else:
         raise RuleError('이 도시에 그 장수가 없어요.')
-    if gold < 0 or gold > state['gold']:
-        raise RuleError('쓸 금이 모자라요.')
     target = _g(code)
-    p, need = persuade(state, by, target, gold), recruit_need(target, captive)
-    if p < need:
-        raise RuleError(f'설득력이 모자라요(설득력 {p}, 필요 {need}).')
+    by = _officer_in(state, city, None if uses_parley(state) else by_code)
+    detail = {}
+    if uses_parley(state):
+        offer = recruit_offer(state, target, captive)
+        gold = offer['gold']
+        if captive:
+            progress = offer['progress'] + 1
+            detail = {'progress': progress, 'total': offer['total'], 'reply': PARLEY_LINES[offer['label']]}
+            if progress < offer['total']:
+                state.setdefault('parley', {})[code] = progress
+                return {'kind': 'parley', 'ok': True, 'city': city, 'target': code, **detail,
+                        'text': f'{target.name} “{detail["reply"]}”'}
+            state.get('parley', {}).pop(code, None)
+    else:
+        gold = int(a.get('gold') or 0)
+        if gold < 0 or gold > state['gold']:
+            raise RuleError('쓸 금이 모자라요.')
+        p, need = persuade(state, by, target, gold), recruit_need(target, captive)
+        if p < need:
+            raise RuleError(f'설득력이 모자라요(설득력 {p}, 필요 {need}).')
+        detail = {'persuade': p, 'need': need}
+    if gold > state['gold']:
+        raise RuleError(f'쓸 금이 모자라요(필요 {gold}).')
     state['gold'] -= gold
     (caps if captive else free).remove(code)
     c['officers'].append(code)
@@ -322,7 +368,7 @@ def _recruit(board, state, a):
     if code not in state['recruited']:
         state['recruited'].append(code)
     return {'kind': 'recruit', 'ok': True, 'city': city, 'by': by.code, 'target': code, 'gold': gold,
-            'persuade': p, 'need': need, 'text': f'{target.name}이(가) 우리 편이 되었어요.'}
+            **detail, 'text': f'{target.name} 영입을 마쳤어요.'}
 
 
 def _scheme(board, state, a):
@@ -604,7 +650,8 @@ def _npc_attack(state: dict, lord: str, src: str, dst: str, send: int, party: li
         # 내 장수는 이웃한 내 성으로 물러나고, NPC 끼리 싸움에서 진 쪽 장수는 판에서 흩어진다
         fled = _flee(state, dst) if defender == ME else []
         t['owner'], t['officers'], t['troops'] = lord, list(party), res['att_left']
-        state['captives'].pop(dst, None)
+        for code in state['captives'].pop(dst, []):
+            state.get('parley', {}).pop(code, None)
         out['fled'] = fled
         out['text'] = f'{name}이(가) {D.CITY[dst].name}을(를) 빼앗았어요.'
         if defender in state['lords'] and not _lord_cities(state, defender):

@@ -1,0 +1,16 @@
+{% if s.name %}<p><strong>{{ s.name }}</strong> · {{ s.step }}{% if s.times > 1 %} ({{ s.count }}/{{ s.times }}){% endif %}</p>{% endif %}
+{% if s.used_today %}
+<p class="sg-city-hint">오늘은 한 걸음 나아갔어요. 다음 판에서 이어가요.</p>
+{% elif not s.officers %}
+<p class="sg-city-hint">가까운 도시에 조건에 맞는 장수가 필요해요.</p>
+{% elif not view.over %}
+<form method="post" action="{% url 'community:samguk_act' %}" class="sg-legend-action">
+  {% csrf_token %}
+  <input type="hidden" name="seq" value="{{ seq }}">
+  <input type="hidden" name="kind" value="legend">
+  <input type="hidden" name="series" value="{{ s.series }}">
+  <input type="hidden" name="city" value="{{ ev.city }}">
+  <label>보낼 장수 <select name="by" class="form-select form-select-sm">{% for o in s.officers %}<option value="{{ o.code }}">{{ o.name }}</option>{% endfor %}</select></label>
+  <button class="sg-button">{% if s.name %}따라가기{% else %}살펴보기{% endif %} <span>군령 1</span></button>
+</form>
+{% endif %}

@@ -307,7 +307,7 @@ def codex_milestones(user) -> int:
     return CODEX_MILESTONE_FAME * len(new)
 
 
-# ── 지나가는 거지(설계 7.4) ───────────────────────────────────────────────
+# ── 객잔 앞 거지(설계 7.4) ────────────────────────────────────────────────
 BEGGAR_LINES = 3
 BEGGAR_ALMS = 2
 BEGGAR_QUIET = '요즘은 조용하구먼. 다들 오늘 판에 바쁜가 봐.'
@@ -335,7 +335,7 @@ def _gossip_pool(user) -> list:
         if last.faction_scores:
             best = max(last.faction_scores.items(), key=lambda kv: kv[1])
             facts.append((False, f'fac:{last.date}',
-                          f'어제는 {D.FACTIONS.get(best[0], best[0])}이(가) 세력 다툼에서 이겼다지.'))
+                          f'어제 세력 다툼에서 이긴 쪽은 {D.FACTIONS.get(best[0], best[0])}라더군.'))
     others = (SamgukMember.objects.exclude(user=user).exclude(user_id__in=hidden)
               .select_related('user', 'user__profile').order_by('-updated_at')[:200])
     for m in others:
@@ -344,7 +344,7 @@ def _gossip_pool(user) -> list:
             top = max(placed, key=lambda c: (D.GENERAL[c].tier, c))
             if D.GENERAL[top].tier >= 3:
                 facts.append((m.user_id in friends, f'manor:{m.user_id}:{top}',
-                              f'{S.display_name(m.user)} 나리 장원에 {D.GENERAL[top].name}이(가) 서 있다더군. '
+                              f'{S.display_name(m.user)} 나리 장원에 {D.GENERAL[top].name} 장수가 서 있다더군. '
                               '무서워서 못 지나가겠어.'))
         if m.wins >= 3:
             facts.append((m.user_id in friends, f'wins:{m.user_id}:{m.wins}',
@@ -361,7 +361,7 @@ def beggar_talk(user, alms: bool = False) -> dict:
         if b.get('day') != day:
             b = {'day': day, 'count': 0, 'heard': list(b.get('heard', []))[-200:]}
         if b['count'] >= BEGGAR_LINES:
-            raise S.GameError('거지가 오늘은 더 할 말이 없대요. 내일 또 지나간대요.')
+            raise S.GameError('거지가 내일 객잔 앞에서 다시 만나자고 해요.')
         text = None
         if alms:
             if m.fame < BEGGAR_ALMS:

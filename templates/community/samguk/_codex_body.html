@@ -2,7 +2,10 @@
 {% load samguk_art %}
 <div class="sg-codex container py-3">
   <h1 class="h4">장수 도감 <small class="text-muted">등용 {{ codex.got }} / {{ codex.total }} · 발견 {{ codex.seen }}</small></h1>
-  <p class="small"><a href="{% url 'community:samguk_home' %}">오늘의 천하</a> · <a href="{% url 'community:samguk_inn' %}">객잔</a></p>
+  <nav class="sg-page-actions" aria-label="도감 메뉴">
+    <a class="sg-button" href="{% url 'community:samguk_home' %}">오늘의 천하</a>
+    <a class="sg-button" href="{% url 'community:samguk_inn' %}">객잔</a>
+  </nav>
   <div class="sg-codex-tools">
     <label>장수 찾기 <input type="search" class="form-control form-control-sm" data-codex-search placeholder="발견한 장수의 이름"></label>
     <div class="sg-codex-filters" aria-label="도감 상태 필터"><button type="button" class="btn btn-sm btn-primary" data-codex-filter="all" aria-pressed="true">전체</button><button type="button" class="btn btn-sm btn-outline-secondary" data-codex-filter="recruited" aria-pressed="false">등용</button><button type="button" class="btn btn-sm btn-outline-secondary" data-codex-filter="seen" aria-pressed="false">발견</button></div>

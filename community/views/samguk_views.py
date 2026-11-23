@@ -25,10 +25,11 @@ from ..models import SamgukDay
 
 TUTORIAL_KEY = 'samguk_tutorial'
 TUTORIAL_RESULT_KEY = 'samguk_tutorial_result'
+BEGGAR_REPLY_KEY = 'samguk_beggar_reply'
 TUTORIAL_HINTS = (
     '먼저 허창을 다스려 금과 군량을 모아요. [내정]을 눌러 보세요.',
     '병사가 있어야 싸울 수 있어요. [징병]으로 병력을 늘려 보세요.',
-    '허창에 순욱이 머물고 있어요. 조조로 [등용]해 보세요. 모자란 설득력은 금으로 채워요.',
+    '허창에 순욱이 머물고 있어요. [등용] 탭에서 순욱을 맞이해 보세요.',
     '맞닿은 낙양을 [정찰]해서 지키는 장수와 병력을 확인해 보세요.',
     '이제 [출정]으로 진류나 낙양을 쳐 보세요. 출정은 군령이 2 들어요.',
     '군령을 다 쓰면 판이 끝나요. 점수는 차지한 도시·멸망시킨 군벌·등용한 장수로 매겨요.',
@@ -85,12 +86,16 @@ def board_view(state: dict) -> dict:
     for code, v in state['cities'].items():
         city = D.CITY[code]
         visible = code in mine or code in state['scouted']
+        officers = [_officer(o) for o in v['officers']] if visible else []
+        command = sorted(officers, key=lambda o: (-o['lead'], -o['war'], o['code'])) if code in mine else []
+        tactician = max(command, key=lambda o: o['intl'] + 10 * (D.GENERAL[o['code']].skill == 'divine'),
+                        default=None)
         cities.append({
             'code': code, 'name': city.name, 'x': city.x, 'y': city.y, 'grade': city.grade, 'value': city.value,
             'owner': v['owner'], 'owner_label': _owner_label(state, v['owner']), 'mine': code in mine,
             'near': code in near and code not in mine, 'visible': visible,
-            'troops': v['troops'] if visible else None,
-            'officers': [_officer(o) for o in v['officers']] if visible else [],
+            'troops': v['troops'] if visible else None, 'attack_food': v['troops'] // R.ATTACK_FOOD_PER,
+            'officers': officers, 'command': command, 'tactician': tactician,
             'links': R.links(state, code),
             'targets': [{'code': n, 'name': D.CITY[n].name, 'owner': _owner_label(state, state['cities'][n]['owner']),
                          'cost': R.action_cost(state, {'kind': 'attack', 'from': code, 'to': n})}
@@ -103,18 +108,31 @@ def board_view(state: dict) -> dict:
         for cap, pool in ((False, state['free'].get(code, [])), (True, state['captives'].get(code, []))):
             for t in pool:
                 target = D.GENERAL[t]
-                options = []
-                for by in here:
-                    gold = R.recruit_gold_needed(state, by, target, cap)
-                    options.append({'by': by.code, 'name': by.name, 'persuade': R.persuade(state, by, target, 0),
-                                    'gold': gold})
+                if R.uses_parley(state):
+                    offer = R.recruit_offer(state, target, cap)
+                else:
+                    options = [(gold, by.code) for by in here
+                               if (gold := R.recruit_gold_needed(state, by, target, cap)) is not None]
+                    offer = {'label': '등용하기'}
+                    if options:
+                        offer['gold'], offer['by'] = min(options)
+                if not here:
+                    blocked = '이 성에 아군 장수가 필요해요.'
+                elif R.ap_left(state) < R.COST['recruit']:
+                    blocked = '남은 군령이 필요해요.'
+                elif offer.get('gold') is None:
+                    blocked = '등용 조건을 채우지 못했어요.'
+                elif offer['gold'] > state['gold']:
+                    blocked = f'등용하려면 금 {offer["gold"]}이 필요해요.'
+                else:
+                    blocked = ''
                 recruits.append({'city': code, 'city_name': D.CITY[code].name, 'target': _officer(t), 'captive': cap,
-                                 'need': R.recruit_need(target, cap), 'options': options})
+                                 'offer': offer, 'blocked': blocked})
     return {
         'cities': cities, 'recruits': recruits, 'ap_left': R.ap_left(state),
         'ap_total': state['ap_base'] + state['ap_bonus'], 'ap_bonus': state['ap_bonus'],
         'gold': state['gold'], 'food': state['food'], 'over': state['over'], 'score': R.score(state),
-        'conscript_gold': R.CONSCRIPT_COST,
+        'conscript_gold': R.CONSCRIPT_COST, 'troops_per_food': R.ATTACK_FOOD_PER,
         'faction': D.FACTIONS.get(state['faction'], ''), 'event': B.EVENTS.get(state.get('event') or '', ('', '')),
         'lords': [{'code': k, 'name': v['name'], 'alive': v['alive'], 'ally': v.get('ally'), 'feud': v.get('feud'),
                    'boss': v.get('boss')} for k, v in sorted(state['lords'].items())],
@@ -124,7 +142,7 @@ def board_view(state: dict) -> dict:
 def _action_from_post(post) -> dict:
     kind = post.get('kind', '')
     a = {'kind': kind}
-    for key in ('city', 'from', 'to', 'target', 'by', 'mode', 'other'):
+    for key in ('city', 'from', 'to', 'target', 'by', 'mode', 'other', 'series'):
         if post.get(key):
             a[key] = post.get(key)
     if kind == 'attack':
@@ -154,6 +172,8 @@ def home(request):
         ctx['step'] = 'guest'
         return _render_game(request, 'home', ctx)
     m = S.member(request.user)
+    from .. import samguk_legends as L
+    ctx['quests'] = L.legends_view(request.user)
     ctx['member'] = m
     ctx['faction_ready'] = S.faction_change_ready(m)
     if not m.faction:
@@ -170,6 +190,8 @@ def home(request):
                               'near': [D.CITY[n].name for n in D.CITY[s['city']].links]}
                              for i, s in enumerate(day.board['starts'])]
             ctx['bonus_ready'] = S.bonus_total(request.user, day.date)
+            ctx['base_ap'], ctx['start_food'] = ((R.AP_BASE, R.START_FOOD) if day.rules_version >= R.PARLEY_VERSION
+                                                  else (R.LEGACY_AP, R.LEGACY_FOOD))
         else:
             ctx['step'] = 'play'
             ctx['run'] = run
@@ -188,6 +210,9 @@ def _legend_events(user, run) -> list:
     for ev in L.board_legends(user, run):
         near = [c for c in R.mine(st) if c == ev['city'] or R.adjacent(c, ev['city'])]
         ev['officers'] = [_officer(o) for c in near for o in st['cities'][c]['officers']]
+        for series in ev['series'] + ev['open_series']:
+            series['officers'] = [o for o in ev['officers'] if L.cond_ok(series['cond'], D.GENERAL[o['code']])]
+        ev['unknown'] = next((s for s in ev['open_series'] if s['officers']), None)
         out.append(ev)
     return out
 
@@ -224,6 +249,8 @@ def act(request):
         messages.error(request, str(e))
     else:
         messages.success(request, result.get('text', ''))
+        if result.get('discoveries'):
+            messages.info(request, '전설의 흔적을 발견했어요.')
         for ev in result.get('npc', []):
             messages.info(request, ev.get('text', ''))
         if result.get('legends'):
@@ -231,6 +258,19 @@ def act(request):
             names = ', '.join(dict.fromkeys(L.SERIES[s]['name'] for s in result['legends']))
             messages.info(request, f'전설이 한 걸음 나아갔어요: {names}')
     return redirect(reverse('community:samguk_home') + '#sg-board')
+
+
+@login_required
+@require_POST
+def legend_recruit(request):
+    _gate(request)
+    from .. import samguk_legends as L
+    try:
+        messages.success(request, L.attempt(request.user, request.POST.get('series', ''))['text'],
+                         extra_tags='sg-quest-result')
+    except S.GameError as e:
+        messages.error(request, str(e))
+    return redirect(reverse('community:samguk_home') + '#sg-quests')
 
 
 # ── 튜토리얼(설계 2.1) — 기록을 남기지 않는다. 판은 세션에만 둔다 ─────────────────
@@ -298,6 +338,7 @@ def ranking(request):
     day = day or S.get_day()
     return _render_game(request, 'ranking', {
         'day': day, 'rows': S.ranking(day, 100), 'faction_board': S.faction_board(day), 'factions': D.FACTIONS,
+        'today': S.game_day(),
         'recent': SamgukDay.objects.filter(status='closed').order_by('-date')[:14],
     })
 
@@ -384,9 +425,9 @@ def _manor_ctx(request, owner):
                                   key=lambda g: (-g.tier, g.no, g.code))
         b = (S.member(me).beggar or {})
         ctx['beggar_left'] = M.BEGGAR_LINES - (b.get('count', 0) if b.get('day') == S.game_day().isoformat() else 0)
+        ctx['beggar_alms'] = M.BEGGAR_ALMS
+        ctx['beggar_reply'] = request.session.pop(BEGGAR_REPLY_KEY, None)
         ctx['visit'] = _visit_list(me)
-        from .. import samguk_legends as L
-        ctx['legends'] = L.legends_view(me)
     else:
         ctx['relation'] = SO.relation(me, owner)
     return ctx
@@ -452,10 +493,10 @@ def manor_post(request):
             messages.success(request, M.place(me, request.POST.get('slot', ''), request.POST.get('code', ''))['text'])
         elif what == 'beggar':
             res = M.beggar_talk(me, alms=request.POST.get('alms') == '1')
-            messages.info(request, f'지나가는 거지: “{res["text"]}”')
+            request.session[BEGGAR_REPLY_KEY] = {'text': res['text']}
+            return redirect(reverse('community:samguk_manor') + '#sg-beggar')
         elif what == 'attempt':
-            from .. import samguk_legends as L
-            messages.success(request, L.attempt(me, request.POST.get('series', ''))['text'])
+            return legend_recruit(request)
         elif what == 'privacy':
             from ..models import SamgukMember
             S.member(me)
@@ -493,5 +534,8 @@ def manor_post(request):
         else:
             raise S.GameError('알 수 없는 요청이에요.')
     except S.GameError as e:
+        if what == 'beggar':
+            request.session[BEGGAR_REPLY_KEY] = {'text': str(e), 'error': True}
+            return redirect(reverse('community:samguk_manor') + '#sg-beggar')
         messages.error(request, str(e))
     return redirect(back)

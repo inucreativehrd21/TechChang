@@ -135,6 +135,7 @@ urlpatterns = [
     path('samguk/faction/', samguk_views.choose_faction, name='samguk_faction'),
     path('samguk/start/', samguk_views.start, name='samguk_start'),
     path('samguk/act/', samguk_views.act, name='samguk_act'),
+    path('samguk/quest/recruit/', samguk_views.legend_recruit, name='samguk_legend_recruit'),
     path('samguk/tutorial/', samguk_views.tutorial, name='samguk_tutorial'),
     path('samguk/tutorial/choice/', samguk_views.tutorial_choice, name='samguk_tutorial_choice'),
     path('samguk/tutorial/act/', samguk_views.tutorial_act, name='samguk_tutorial_act'),

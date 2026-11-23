@@ -28,8 +28,12 @@ def _moves(s: dict) -> list:
         best_pol = max((D.GENERAL[o] for o in c['officers']), key=lambda g: g.pol)
         for code in s['free'].get(city, []) + s['captives'].get(city, []):
             captive = code in s['captives'].get(city, [])
-            gold = R.recruit_gold_needed(s, best_pol, D.GENERAL[code], captive)
-            if gold is not None:
+            target = D.GENERAL[code]
+            if R.uses_parley(s):
+                gold = R.recruit_offer(s, target, captive)['gold']
+            else:
+                gold = R.recruit_gold_needed(s, best_pol, target, captive)
+            if gold is not None and gold <= s['gold']:
                 out.append({'kind': 'recruit', 'city': city, 'target': code, 'by': best_pol.code, 'gold': gold})
         if c['troops'] > 0:
             party = sorted(c['officers'], key=lambda o: -(D.GENERAL[o].lead + D.GENERAL[o].war))[:3]
