@@ -21,6 +21,9 @@ EDIT_RULE = '''관리자 수정 요청을 실제 편집으로 수행해요. 요�
  "edits": [{"request_ids": ["R1"], "find": "원고에 정확히 한 번 있는 연속 문자열", "replace": "교체 문자열"}],
  "title": "제목 요청이 있을 때만 새 제목, 아니면 빈 문자열"}
 요구 id는 R1부터 연속으로 붙여요(최대 24개). 임의로 요구를 생략하거나 포괄적인 한 항목에 숨기지 않아요.
+source_quote는 관리자 요청이나 referenced_feedback의 text 하나에서 연속된 한 구간을 글자 그대로 복사해요.
+줄임표(…)로 여러 구간을 잇거나 요약·다듬기를 하지 않아요. 지적이 길면 핵심 문장 하나만 인용해요.
+previous_attempt_feedback에 거절 사유가 있으면 그 요구·편집을 사유대로 고쳐요.
 요청이 기존 심사·팩트체크를 모두 고치라는 뜻이면 referenced_feedback의 각 지적을 구체적인 요구로
 풀고 reference_ids에 해당 지적 id를 연결해요. 같은 문제의 중복 지적은 한 요구에 함께 연결해도 돼요.
 referenced_feedback에 kind가 있으면 운영자가 이번 재작성에 반영하라고 직접 고른 지적이에요
@@ -113,6 +116,25 @@ def base_rows(qa: dict | None, check: dict | None) -> list[dict]:
     for text in suggestions:
         add('S', 'suggestion', text)
     return rows
+
+
+_ELLIPSIS = re.compile(r'\s*(?:…|\.{3,})\s*')
+_QUOTE_EDGE = ' \'"‘’“”「」'
+
+
+def quote_in_sources(quote: str, sources: list[str]) -> bool:
+    """수정 요구의 source_quote 가 관리자 요청이나 고른 지적에서 왔나.
+
+    연속 구간이 그대로 있으면 통과예요. 작성자는 긴 팩트체크 지적을 줄임표(…)로 이어 인용하는 일이 잦아서
+    (2026-11-23 #69·#70: 재작성 요청이 모두 '연결되지 않은 요구'로 실패), 줄임표로 나눈 조각이 모두 6자 이상이고
+    **같은 한 원문**에 모두 그대로 있을 때도 인정해요. 지어낸 문장이나 여러 지적을 섞은 인용은 여전히 막아요."""
+    if any(quote in text for text in sources):
+        return True
+    parts = [p.strip(_QUOTE_EDGE) for p in _ELLIPSIS.split(quote or '')]
+    parts = [p for p in parts if p]
+    if len(parts) < 2 or any(len(p) < 6 for p in parts):
+        return False
+    return any(all(p in text for p in parts) for text in sources)
 
 
 def feedback_references(qa: dict | None, check: dict | None) -> list[dict]:
@@ -256,14 +278,23 @@ class RevisionRequests:
             raise ValueError('보완 중 원래 수정 요구나 완료 기준을 바꿀 수 없어요.')
         if not isinstance(requirements, list) or not 1 <= len(requirements) <= MAX_REQUIREMENTS or not isinstance(edits, list):
             raise ValueError('수정 요구 목록이나 편집 목록이 누락됐어요.')
+        sources = [self.note]+[r['text'] for r in self.references]
         for i, item in enumerate(requirements, 1):
-            if (not isinstance(item, dict) or item.get('id') != f'R{i}'
-                    or any(not isinstance(item.get(k), str) or not item[k].strip()
-                           for k in ('source_quote', 'request', 'done_when'))
-                    or not any(item['source_quote'] in text for text in [self.note]+[r['text'] for r in self.references])
-                    or item.get('kind') not in ('body', 'title', 'visual', 'check')
-                    or (item.get('kind') == 'visual' and item.get('visual_action') not in ('keep', 'remove', 'render'))):
-                raise ValueError('관리자 원문에 연결되지 않은 수정 요구가 있어요.')
+            # 어느 요구가 왜 거절됐는지 적어요 — 전에는 한 문장뿐이라 재시도가 같은 실수를 반복했어요(2026-11-23 #70 R1 두 번 동일)
+            name = f"R{i}" + (f"({item.get('id')})" if isinstance(item, dict) and item.get('id') != f'R{i}' else '')
+            if not isinstance(item, dict) or item.get('id') != f'R{i}':
+                raise ValueError(f'관리자 원문에 연결되지 않은 수정 요구가 있어요: {name} — id는 R1부터 순서대로 붙여요.')
+            empty = [k for k in ('source_quote', 'request', 'done_when')
+                     if not isinstance(item.get(k), str) or not item[k].strip()]
+            if empty:
+                raise ValueError(f"관리자 원문에 연결되지 않은 수정 요구가 있어요: {name} — {', '.join(empty)} 값이 비었어요.")
+            if not quote_in_sources(item['source_quote'], sources):
+                raise ValueError(f"관리자 원문에 연결되지 않은 수정 요구가 있어요: {name} — source_quote 「{item['source_quote'][:80]}」가 "
+                                 '관리자 요청·고른 지적에 그대로 없어요. 한 지적에서 연속된 구간을 글자 그대로 복사해요.')
+            if item.get('kind') not in ('body', 'title', 'visual', 'check') or (
+                    item.get('kind') == 'visual' and item.get('visual_action') not in ('keep', 'remove', 'render')):
+                raise ValueError(f"관리자 원문에 연결되지 않은 수정 요구가 있어요: {name} — kind 「{item.get('kind')}」"
+                                 '(visual이면 visual_action 포함)가 허용 값이 아니에요.')
         known = {r['id'] for r in self.references}
         covered = set()
         for item in requirements:
@@ -275,12 +306,16 @@ class RevisionRequests:
             raise ValueError('모두 반영 요청에서 누락된 기존 검수 지적: '+', '.join(sorted(known-covered)))
         ids = {r['id'] for r in requirements}
         base_subject, content = base or (self.subject, self.content)
-        for edit in edits:
+        for n, edit in enumerate(edits, 1):
             if (not isinstance(edit, dict) or not isinstance(edit.get('request_ids'), list)
-                    or not edit['request_ids'] or any(not isinstance(k, str) or k not in ids for k in edit['request_ids'])
-                    or not isinstance(edit.get('find'), str) or len(edit['find'].strip()) < 4
+                    or not edit['request_ids'] or any(not isinstance(k, str) or k not in ids for k in edit['request_ids'])):
+                raise ValueError(f'편집 대상이 원고와 정확히 일치하지 않거나 수정 요구 연결이 없어요: 편집 {n} — request_ids가 '
+                                 '요구 id와 연결되지 않았어요.')
+            if (not isinstance(edit.get('find'), str) or len(edit['find'].strip()) < 4
                     or not isinstance(edit.get('replace'), str) or content.count(edit['find']) != 1):
-                raise ValueError('편집 대상이 원고와 정확히 일치하지 않거나 수정 요구 연결이 없어요.')
+                hits = content.count(edit['find']) if isinstance(edit.get('find'), str) and edit['find'] else 0
+                raise ValueError(f"편집 대상이 원고와 정확히 일치하지 않거나 수정 요구 연결이 없어요: 편집 {n} — find "
+                                 f"「{str(edit.get('find'))[:60]}」가 원고에 {hits}번 있어요(정확히 한 번이어야 해요).")
             content = content.replace(edit['find'], edit['replace'], 1)
         finds = [edit['find'] for edit in edits]
         title = value.get('title', '')

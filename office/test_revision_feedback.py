@@ -168,3 +168,32 @@ class FeedbackRequestViewTests(TestCase):
         days = audit_timeline.build(self.draft.pk)['days']
         facts = dict(days[0]['rows'][0]['facts'])
         self.assertEqual(facts['반영할 지적'], '필수 수정 1 · 편집 제안 2')
+
+
+class SourceQuoteTests(SimpleTestCase):
+    """2026-11-23 #69·#70: 작성자가 긴 팩트체크 지적을 줄임표로 이어 인용해 재작성 요청이 모두 실패했어요."""
+    NOTE = '해당 산식을 삭제하고 조문 표현으로 바꿔 주세요. 그리고 6,120 ÷ 12 = 510은 가정 예시로 구분하세요.'
+
+    def test_elided_quote_from_one_source_is_accepted(self):
+        from office.revision_requests import quote_in_sources
+        self.assertTrue(quote_in_sources('해당 산식을 삭제하고 … 6,120 ÷ 12 = 510은 가정 예시로 구분하세요.', [self.NOTE]))
+
+    def test_pieces_from_different_sources_or_too_short_are_refused(self):
+        from office.revision_requests import quote_in_sources
+        self.assertFalse(quote_in_sources('해당 산식을 삭제하고…다른 지적의 문장이에요', [self.NOTE, '다른 지적의 문장이에요']))
+        self.assertFalse(quote_in_sources('해당…구분', [self.NOTE]))
+        self.assertFalse(quote_in_sources('지어낸 요구 문장이에요', [self.NOTE]))
+
+    def test_refusal_names_the_requirement_and_why(self):
+        draft = SimpleNamespace(subject='9편', content=BEFORE, qa_report=QA, check_report=CHECK, chart_path='',
+                                chart_note='', revisions=1, STATUS_HOLD='hold', save=mock.Mock(), admin_note='')
+        s = RevisionRequests(draft, '도입을 고쳐 주세요.', 'hrd', mock.Mock())
+        bad = plan()
+        bad['requirements'][0]['source_quote'] = '지어낸 인용이에요'
+        with self.assertRaisesRegex(ValueError, 'R1 — source_quote'):
+            s._parse(bad)
+        missing = plan()
+        missing['edits'][0]['find'] = '원고에 없는 문장이에요'
+        missing['requirements'][0]['source_quote'] = '도입을 고쳐 주세요.'
+        with self.assertRaisesRegex(ValueError, '편집 1 — find .*0번'):
+            s._parse(missing)
