@@ -142,6 +142,13 @@ class LedgerStorageTests(TestCase):
         d.save(update_fields=['content', 'qa_report', 'check_report'])
         self.assertEqual([r['label'] for r in RevisionLedger.objects.get(draft=d).data['rounds']], ['초안', '재작성 1'])
 
+    def test_receiver_survives_garbage_collection(self):
+        import gc
+        gc.collect()                    # 수신기를 약한 참조로 쥐므로, 모듈 수준이 아니면 여기서 끊겨요
+        d = ColumnDraft.objects.create(topic='hrd', subject='제목', content=BODY0, status='hold',
+                                       qa_report=QA0, check_report=CHECK0)
+        self.assertTrue(RevisionLedger.objects.filter(draft=d).exists())
+
     def test_unreviewed_draft_has_no_ledger(self):
         d = ColumnDraft.objects.create(topic='hrd', subject='제목', content=BODY0, status='hold')
         self.assertFalse(RevisionLedger.objects.filter(draft=d).exists())
