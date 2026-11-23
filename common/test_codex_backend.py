@@ -22,8 +22,8 @@ def stream(*events, code=0, stderr=''):
     return SimpleNamespace(returncode=code, stdout='\n'.join(json.dumps(e) for e in events), stderr=stderr)
 
 
-def answer(text='결과예요.'):
-    return stream({'type': 'item.completed', 'item': {'type': 'agent_message', 'text': text}},
+def answer(text='결과예요.', *, events=()):
+    return stream(*events, {'type': 'item.completed', 'item': {'type': 'agent_message', 'text': text}},
                   {'type': 'turn.completed', 'usage': {'input_tokens': 40, 'output_tokens': 10}})
 
 
@@ -40,8 +40,29 @@ class CodexProtocolTests(SimpleTestCase):
         proc = stream({'type': 'item.completed', 'item': {'type': 'web_search'}},
                       {'type': 'item.completed', 'item': {'type': 'agent_message', 'text': '확인 결과'}},
                       {'type': 'turn.completed', 'usage': {}})
-        self.assertEqual(codex.parse_result(proc)[1]['web_search_calls'], 1)
+        self.assertEqual(codex.parse_result(proc, allow_web=True)[1]['web_search_calls'], 1)
         self.assertEqual(codex.parse_result(answer('https://docs.djangoproject.com'))[1]['web_search_calls'], 0)
+
+    def test_mcp_rejects_successful_turn_and_logs_only_tool_identity(self):
+        item = {'type': 'mcp_tool_call', 'server': 'external', 'tool': 'lookup',
+                'arguments': {'query': '비공개 원고'}, 'result': {'content': ['비공개 응답']}}
+        proc = answer(events=[{'type': phase, 'item': item}
+                              for phase in ('item.started', 'item.completed', 'item.completed')])
+        for allow_web in (False, True):
+            with self.subTest(allow_web=allow_web), self.assertRaises(ProviderUnavailable) as cm:
+                codex.parse_result(proc, allow_web=allow_web)
+            self.assertEqual(cm.exception.kind, 'tool_policy')
+            self.assertIn('exit=0', str(cm.exception))
+            self.assertEqual(str(cm.exception).count('mcp_tool_call server=external tool=lookup'), 1)
+            self.assertNotIn('비공개', str(cm.exception))
+
+    def test_tool_event_allowlist_applies_to_all_item_phases(self):
+        for phase in ('item.started', 'item.updated', 'item.completed'):
+            for item_type in ('web_search', 'command_execution', 'file_change', 'collab_tool_call', 'new_tool'):
+                with self.subTest(phase=phase, item_type=item_type), self.assertRaises(ProviderUnavailable) as cm:
+                    proc = answer(events=[{'type': phase, 'item': {'type': item_type}}])
+                    codex.parse_result(proc)
+                self.assertEqual(cm.exception.kind, 'tool_policy')
 
     def test_only_a_completed_nonempty_turn_is_success(self):
         text, usage = codex.parse_result(answer())
@@ -74,6 +95,9 @@ class CodexProtocolTests(SimpleTestCase):
             self.assertEqual(json.loads(config['model_provider']), 'openai')
             self.assertFalse(json.loads(config['features.shell_tool']))
             self.assertFalse(json.loads(config['features.multi_agent']))
+            self.assertFalse(json.loads(config['features.apps']))
+            self.assertFalse(json.loads(config['features.plugins']))
+            self.assertFalse(json.loads(config['features.skill_mcp_dependency_install']))
             self.assertEqual(json.loads(config['web_search']), 'live')
             self.assertIn('검증관 역할', Path(json.loads(config['model_instructions_file'])).read_text(encoding='utf-8'))
             self.assertEqual(kwargs['input'], '원래 요청과 근거 묶음')
@@ -92,8 +116,11 @@ class CodexProtocolTests(SimpleTestCase):
     def test_no_web_tools_without_permission_and_unknown_tools_fail(self):
         with mock.patch.dict(os.environ, {'CODEX_CLI_BIN': 'codex'}), \
                 mock.patch.object(codex, 'require_chatgpt_login'), \
-                mock.patch.object(codex.subprocess, 'run', return_value=answer()) as run:
-            codex.ask('q')
+                mock.patch.object(codex.subprocess, 'run') as run:
+            run.return_value = answer(events=[{'type': 'item.completed', 'item': {'type': 'web_search'}}])
+            with self.assertRaises(ProviderUnavailable) as cm:
+                codex.ask('q')
+            self.assertEqual(cm.exception.kind, 'tool_policy')
             self.assertIn('web_search="disabled"', run.call_args.args[0])
             with self.assertRaises(ProviderUnavailable):
                 codex.ask('q', tools=('Bash',))
