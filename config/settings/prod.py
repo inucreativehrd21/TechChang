@@ -1,5 +1,6 @@
 from .base import *
 import os
+from django.core.exceptions import ImproperlyConfigured
 
 # dotenv 로드 (선택 사항)
 try:
@@ -10,6 +11,9 @@ except ImportError:
 
 # ===== 보안 및 기본 설정 =====
 DEBUG = False
+
+if DATABASES['default']['ENGINE'] != 'django.db.backends.mysql':
+    raise ImproperlyConfigured('운영 환경에는 DJANGO_DB_ENGINE=mysql 설정이 필요해요.')
 
 # SECRET_KEY는 반드시 환경변수로 설정되어야 함 (보안)
 SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY')
