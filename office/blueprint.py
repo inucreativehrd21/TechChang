@@ -32,7 +32,11 @@ BLUEPRINT_PROMPT = (
     '규칙:\n'
     '- claims 에는 본문에서 사실로 말할 것을 빠짐없이 넣으세요(6~14개). 근거를 모르는 것은 넣지 말고, 본문에도 쓰지 않습니다.\n'
     '- 필자가 정한 기준·묶음·점수는 kind 를 "doc" 이 아니라 claim 에 "필자 기준"이라고 적으세요. 공식 분류처럼 쓰지 않습니다.\n'
-    '- 코드·명령은 실제로 존재하는 현재 버전의 것만. 확신이 없으면 웹 검색으로 공식 문서를 확인하세요.'
+    '- 코드·명령은 실제로 존재하는 현재 버전의 것만. 확신이 없으면 웹 검색으로 공식 문서를 확인하세요.\n'
+    # 검색·AI 답변이 인용하기 쉬운 글 구조(GEO, Princeton KDD 2024 — 출처 달린 수치·인용이 인용률을 올림). 2026-11-24
+    '- thesis 는 앞뒤 맥락 없이 떼어 읽어도 뜻이 통하는 한 문장으로 쓰세요. 본문 도입부 첫 두세 문장에 그대로 들어갑니다.\n'
+    '- sections 가운데 1~2개는 독자가 실제로 검색할 법한 질문 꼴 제목으로 두고, 그 절 첫 문장에서 바로 답하세요.\n'
+    '- 핵심 용어는 claims 에 "X는 ~이다" 꼴의 정의 문장 하나로 넣고, 수치 주장에는 출처를 반드시 다세요(인용될 문장의 근거).'
 )
 
 def make_blueprint(agent: str, context: str, *, ask_json, tools: tuple = ()) -> dict:
@@ -166,7 +170,8 @@ def block(bp: dict, ver: dict) -> str:
     if ver and not ver.get('thesis_ok', True) and ver.get('thesis_note'):
         thesis = f"{thesis} → 검증관 조정: {ver['thesis_note']}"
     lines = ['\n[확인된 설계도 — 본문은 이 설계도대로 쓰세요]',
-             f"- 독자 질문: {bp.get('reader_question', '')}", f'- 이 글의 답: {thesis}']
+             f"- 독자 질문: {bp.get('reader_question', '')}",
+             f'- 이 글의 답: {thesis} — 도입부 첫 두세 문장 안에 먼저 밝히세요(검색·AI 요약이 인용하는 자리)']
     if bp.get('sections'):
         lines.append('- 절 구성: ' + ' / '.join(f"{s.get('heading', '')}({s.get('point', '')})"
                                               for s in bp['sections'] if isinstance(s, dict)))
