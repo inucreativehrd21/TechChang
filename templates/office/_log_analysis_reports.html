@@ -1,0 +1,38 @@
+<section aria-labelledby="crew-analysis-heading">
+  <h2 class="pane-title" id="crew-analysis-heading">AI 로그 분석관</h2>
+  {% for report in analysis_reports %}
+  <article class="task" data-analysis-hours="{{ report.hours }}">
+    <div class="t-head">
+      <b>{% if report.hours == 168 %}주간 리포트{% elif report.hours == 24 %}일일 리포트{% else %}수동 리포트{% endif %}</b>
+      {% if report.analysis.severity %}<span class="st">{{ report.analysis.severity }}</span>{% endif %}
+    </div>
+    <div class="meta text-break">{{ report.hours }}시간 · {{ report.period_end|date:"Y.m.d H:i" }} 기준</div>
+    <div class="meta text-break">
+      5xx {{ report.metrics.status_5xx }}건 · 4xx {{ report.metrics.status_4xx }}건 · 오류 {{ report.metrics.error_count }}줄 · 경고 {{ report.metrics.warning_count }}줄 · 자동 차단 {{ report.metrics.security_blocks }}건
+    </div>
+    {% if not report.analysis.available %}
+    <p class="t-body mb-0">이번 리포트의 AI 분석을 완료하지 못했어요.</p>
+    {% elif report.analysis.skipped %}
+    <p class="t-body mb-0">분석 대상 오류가 없었어요.</p>
+    {% else %}
+    {% if report.analysis.overview %}<p class="t-body mb-0">{{ report.analysis.overview|linebreaksbr }}</p>{% endif %}
+    {% if report.analysis.findings %}
+    <details class="t-body">
+      <summary>지적사항 {{ report.analysis.findings|length }}건</summary>
+      <ol class="issues mt-2">
+        {% for finding in report.analysis.findings %}
+        <li class="mb-2">
+          <strong>{{ finding.title }}</strong>
+          {% if finding.cause %}<p class="mb-1">추정 원인 · {{ finding.cause|linebreaksbr }}</p>{% endif %}
+          {% if finding.action %}<p class="mb-1">권장 조치 · {{ finding.action|linebreaksbr }}</p>{% endif %}
+        </li>
+        {% endfor %}
+      </ol>
+    </details>
+    {% endif %}
+    {% endif %}
+  </article>
+  {% empty %}
+  <p class="muted">저장된 로그 리포트가 없어요. 다음 일일·주간 리포트 실행 후 여기에서 확인할 수 있어요.</p>
+  {% endfor %}
+</section>

@@ -2,6 +2,7 @@ from types import SimpleNamespace
 from datetime import date
 from unittest import mock
 
+from django.core.management.base import CommandError
 from django.test import SimpleTestCase
 
 from common.management.commands.send_log_report import Command
@@ -27,6 +28,29 @@ def fake_journal(*lines):
 
 
 class LogClassificationTests(SimpleTestCase):
+    def test_report_analysis_uses_runtime_database_and_timestamped_requests(self):
+        stats = {
+            'status_5xx': 1,
+            'nginx_5xx_samples': [
+                {'at': '2026-11-21T23:12:52+09:00', 'request': '502 GET /map/'},
+            ],
+        }
+        with mock.patch('common.management.commands.send_log_report.connection', display_name='MySQL'), \
+                mock.patch('common.services.claude.ask_json', return_value={'findings': []}) as ask:
+            Command()._analyze_errors(168, stats)
+        self.assertIn('MySQL', ask.call_args.kwargs['system'])
+        self.assertNotIn('SQLite', ask.call_args.kwargs['system'])
+        self.assertIn('mysite.service', ask.call_args.kwargs['system'])
+        self.assertIn('2026-11-21T23:12:52+09:00 502 GET /map/', ask.call_args.args[0])
+
+    def test_sending_a_report_rejects_sqlite_before_collecting_logs(self):
+        cmd = Command()
+        with mock.patch('common.management.commands.send_log_report.connection', vendor='sqlite'), \
+                mock.patch.object(cmd, '_collect_journal') as collect:
+            with self.assertRaisesMessage(CommandError, 'DJANGO_DB_ENGINE=mysql'):
+                cmd._build_report(168, save_analysis=True)
+        collect.assert_not_called()
+
     def test_codex_log_scope_follows_policy_and_receives_only_masked_input(self):
         stats = {'top_errors': ['ERROR 1.2.3.4 ops@example.com broken request'], 'error_count': 1, 'status_5xx': 1}
         for day, allowed in ((date(2026, 10, 28), False), (date(2026, 10, 29), True)):
@@ -111,6 +135,10 @@ class NginxRotationTests(SimpleTestCase):
             self.assertEqual(stats['status_5xx'], 1)
             self.assertEqual(stats['status_404'], 1)
             self.assertEqual(stats['top_errors'], ['500 GET /rookie/lite/'])
+            self.assertEqual(stats['nginx_5xx_samples'], [{
+                'at': (now - timedelta(hours=5)).isoformat(timespec='seconds'),
+                'request': '500 GET /rookie/lite/',
+            }])
 
             week = Command()._collect_nginx_access(168, {}, candidates=[base])
             self.assertEqual(week['status_5xx'], 3)

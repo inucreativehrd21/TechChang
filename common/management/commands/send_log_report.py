@@ -9,11 +9,14 @@ import os
 from datetime import datetime, timedelta
 from collections import Counter, defaultdict
 
-from django.core.management.base import BaseCommand
+from django import get_version
+from django.core.management.base import BaseCommand, CommandError
 from django.core.mail import send_mail
 from django.conf import settings
 from django.contrib.auth.models import User
+from django.db import DatabaseError, connection, transaction
 from django.utils import timezone
+from django.utils.html import escape
 
 # 자동 칼럼 작성 봇 계정 (auto_write_columns 와 동일)
 COLUMN_BOT_USERNAME = 'techchang연구팀'
@@ -73,7 +76,7 @@ class Command(BaseCommand):
             return
 
         self.stdout.write(f'[{datetime.now():%Y-%m-%d %H:%M}] 로그 분석 시작 ({hours}시간)...')
-        report = self._build_report(hours)
+        report = self._build_report(hours, save_analysis=not dry_run)
 
         if dry_run:
             self.stdout.write('\n' + '=' * 60)
@@ -92,30 +95,66 @@ class Command(BaseCommand):
             self.stdout.write(self.style.SUCCESS(f'리포트 발송 완료 → {recipient}'))
 
     # ------------------------------------------------------------------ #
-    def _build_report(self, hours):
-        since = datetime.now() - timedelta(hours=hours)
+    def _build_report(self, hours, *, save_analysis=False):
+        if save_analysis and connection.vendor != 'mysql':
+            raise CommandError('운영 로그 리포트에는 DJANGO_DB_ENGINE=mysql 설정이 필요해요.')
+
+        period_end = timezone.now()
+        since = timezone.localtime(period_end) - timedelta(hours=hours)
         db_stats       = self._collect_db_stats()
         journal_stats  = self._collect_journal(hours)
         security_stats = self._collect_security_logs(hours)
         sys_stats      = self._collect_system_stats()
         ai_analysis    = self._analyze_errors(hours, journal_stats)
 
+        if save_analysis:
+            try:
+                self._save_analysis(hours, period_end, journal_stats, ai_analysis)
+            except DatabaseError as exc:
+                self.stderr.write(self.style.WARNING(f'AI 분석 저장 실패 ({type(exc).__name__}). 메일 발송은 계속해요.'))
+
         html = self._render_html(since, hours, db_stats, journal_stats, security_stats, sys_stats, ai_analysis)
         text = self._render_text(since, hours, db_stats, journal_stats, security_stats, sys_stats, ai_analysis)
         return {'html': html, 'text': text}
+
+    @staticmethod
+    @transaction.atomic
+    def _save_analysis(hours, period_end, journal, analysis):
+        from common.models import LogAnalysisReport, LogFinding
+
+        values = {
+            'period_end': period_end,
+            'metrics': {key: journal.get(key, 0) for key in (
+                'status_5xx', 'status_4xx', 'error_count', 'warning_count', 'security_blocks',
+            )},
+            'analysis': {key: analysis[key] for key in (
+                'available', 'skipped', 'severity', 'overview', 'findings',
+            ) if key in analysis},
+        }
+        reports = LogAnalysisReport.objects.filter(pk=hours)
+        _, created = LogAnalysisReport.objects.get_or_create(hours=hours, defaults=values)
+        if not created and not reports.filter(period_end__lt=period_end).update(**values):
+            return
+
+        for finding in sorted(
+            analysis.get('findings', []),
+            key=lambda item: LogFinding.make_fingerprint(item['title'], item['cause']),
+        ):
+            LogFinding.record(finding, analysis['severity'], analysis['overview'])
 
     # ------------------------------------------------------------------ #
     def _analyze_errors(self, hours, journal):
         """
         Claude(Sonnet)를 에러 분석관으로 활용해 치명적 로그를 해설한다.
-        에러/5xx가 있을 때만 호출되며, API 키 미설정·호출 실패 시 조용히 None을 반환해
-        리포트 발송 자체는 막지 않는다.
+        에러/5xx가 있을 때만 호출한다. 로그 수집이나 분석이 실패해도 리포트는 발송한다.
         """
         top_errors = journal.get('top_errors', [])
         error_count = journal.get('error_count', 0)
         status_5xx  = journal.get('status_5xx', 0)
 
         # 치명적 신호가 없으면 분석하지 않는다 (평소 API 비용 0)
+        if journal.get('available') is False:
+            return {'available': False}
         if not top_errors and status_5xx == 0:
             return {'available': True, 'skipped': True}
 
@@ -127,23 +166,37 @@ class Command(BaseCommand):
             error_block = '\n'.join(
                 f'{i}. {mask_personal(e)}' for i, e in enumerate(top_errors, 1)
             ) or '(개별 에러 라인은 수집되지 않았으나 5xx 응답이 발생함)'
+            nginx_5xx = '\n'.join(
+                f'{sample["at"]} {mask_personal(sample["request"])}'
+                for sample in journal.get('nginx_5xx_samples', [])
+            ) or '(시각이 있는 Nginx 5xx 샘플을 수집하지 못함)'
 
             system = (
-                '당신은 테크창(Django 5.1 / Gunicorn / Nginx / Ubuntu 24.04, SQLite) 서비스의 '
+                f'당신은 테크창(Django {get_version()} / Gunicorn / Nginx / Ubuntu 24.04, '
+                f'현재 DB 엔진 {connection.display_name}) 서비스의 '
                 '시니어 SRE 겸 에러 분석관입니다. 운영 로그에서 추출한 에러를 보고, '
                 '서버 전문 지식이 깊지 않은 운영자도 이해할 수 있도록 한국어로 간결하게 분석합니다. '
-                '추측을 단정하지 말고 근거에 기반해 원인을 추정하며, 바로 실행할 수 있는 조치를 제안합니다.'
+                '추측은 근거가 있는 경우에만 적고 확인된 사실과 구분합니다. '
+                '현재 DB 엔진에 해당하는 설정만 제안합니다. '
+                '운영 Gunicorn은 mysite.service와 preload_app=True를 사용합니다. '
+                '운영 액세스 로그는 /var/log/nginx/techchang_access.log와 그 회전 파일에 있습니다. '
+                '코드 반영을 위해 systemctl reload를 제안하지 마세요. '
+                '502는 먼저 발생 시각을 재시작과 Nginx 업스트림 오류에 대조하고, '
+                '근거 없이 요청 경로가 워커 타임아웃을 일으켰다고 추정하지 마세요. '
+                '4xx, Warning, IP 자동 차단은 서로 다른 집계이며 트래픽 주체를 단정하지 마세요.'
             )
             prompt = (
                 f'다음은 최근 {hours}시간 동안 테크창 서버 로그에서 추출한 에러 지표와 샘플입니다.\n\n'
                 f'[지표]\n'
                 f'- 5xx 에러 응답: {status_5xx}건\n'
                 f'- 4xx 에러 응답: {journal.get("status_4xx", 0)}건\n'
+                f'  (403 {journal.get("status_403", 0)}건, 404 {journal.get("status_404", 0)}건)\n'
                 f'- Error/Exception 라인: {error_count}건\n'
                 f'- Warning 라인: {journal.get("warning_count", 0)}건\n'
                 f'- 보안 미들웨어 IP 자동 차단: {journal.get("security_blocks", 0)}건 '
                 f'(정상 방어 동작, 위 에러 건수에 포함되지 않음)\n\n'
                 f'[에러 로그 샘플]\n{error_block}\n\n'
+                f'[Nginx 5xx 요청 시각 샘플]\n{nginx_5xx}\n\n'
                 '치명적인 문제 위주로 분석해 아래 JSON 형식으로만 응답하세요.\n'
                 '```json\n'
                 '{\n'
@@ -181,15 +234,20 @@ class Command(BaseCommand):
                 },
             )
 
-            findings = data.get('findings', [])
+            findings = data.get('findings') or []
             if isinstance(findings, dict):
                 findings = [findings]
+            findings = [
+                {key: mask_personal(f.get(key) or '').strip() for key in ('title', 'cause', 'action')}
+                for f in findings if isinstance(f, dict) and f.get('title')
+            ]
+            severity = data.get('severity')
 
             return {
                 'available': True,
                 'skipped': False,
-                'severity': str(data.get('severity', '정보')).strip(),
-                'overview': str(data.get('overview', '')).strip(),
+                'severity': severity if severity in ('심각', '주의', '정보') else '정보',
+                'overview': mask_personal(data.get('overview') or '').strip(),
                 'findings': findings[:3],
             }
 
@@ -612,6 +670,7 @@ class Command(BaseCommand):
         req_count = s5 = s4 = s404 = s403 = s401 = 0
         path_404 = Counter()
         samples_5xx = []
+        timed_5xx = []
 
         for base in candidates:
             files = self._rotated_logs(base)
@@ -636,6 +695,11 @@ class Command(BaseCommand):
                                     s5 += 1
                                     if len(samples_5xx) < 5:
                                         samples_5xx.append(f'{code} {method} {path}')
+                                    if log_dt is not None and len(timed_5xx) < 5:
+                                        timed_5xx.append({
+                                            'at': log_dt.isoformat(timespec='seconds'),
+                                            'request': f'{code} {method} {path}',
+                                        })
                                 elif 400 <= code < 500:
                                     s4 += 1
                                     if code == 404:
@@ -663,6 +727,7 @@ class Command(BaseCommand):
             'status_404': existing_stats.get('status_404', 0) + s404,
             'status_403': existing_stats.get('status_403', 0) + s403,
             'status_401': existing_stats.get('status_401', 0) + s401,
+            'nginx_5xx_samples': timed_5xx,
             'top_404': existing_stats.get('top_404') or [
                 {'path': p, 'count': c} for p, c in path_404.most_common(5)
             ],
@@ -794,9 +859,9 @@ class Command(BaseCommand):
 
         items_html = ''
         for f in findings:
-            title  = (f.get('title') or '').strip()
-            cause  = (f.get('cause') or '').strip()
-            action = (f.get('action') or '').strip()
+            title  = escape((f.get('title') or '').strip())
+            cause  = escape((f.get('cause') or '').strip())
+            action = escape((f.get('action') or '').strip())
             items_html += (
                 '<div style="padding:11px 0;border-bottom:1px solid #f4f4f5;">'
                 '<div style="font-weight:700;font-size:0.8125rem;color:#18181b;margin-bottom:5px;">'
@@ -813,9 +878,9 @@ class Command(BaseCommand):
             '<h2>AI 에러 분석관 '
             '<span style="font-weight:700;font-size:0.6875rem;color:#fff;background:' + sev_color + ';'
             'padding:1px 8px;border-radius:999px;margin-left:6px;vertical-align:middle;">'
-            + severity + '</span></h2>'
+            + escape(severity) + '</span></h2>'
             '<div style="font-size:0.82rem;color:#3f3f46;line-height:1.55;margin-bottom:4px;">'
-            + ai.get('overview', '') + '</div>'
+            + escape(ai.get('overview', '')) + '</div>'
             + items_html +
             '<div style="font-size:0.65rem;color:#c4c4cc;margin-top:10px;">Claude Sonnet 분석 · 참고용</div>'
             '</div>'

@@ -1759,7 +1759,7 @@ def send_monitor_email(request):
         return redirect('common:server_monitor')
 
     try:
-        report = ReportCmd()._build_report(hours)
+        report = ReportCmd()._build_report(hours, save_analysis=True)
         _send_mail(
             subject=f'[테크창] 서버 리포트 {dt.now():%Y-%m-%d %H:%M} ({hours}h)',
             message=report['text'],

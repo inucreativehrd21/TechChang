@@ -210,7 +210,7 @@ JOB_LABEL = {'office_revise': '재작성', 'auto_write_series': '연재 재작�
 
 @admin_required
 def office_admin(request, *, decision_payload=None, decision_errors=None, decision_meeting_id=None, response_status=200):
-    from common.models import LogFinding
+    from common.models import LogAnalysisReport, LogFinding
 
     meetings = list(Meeting.objects.prefetch_related('decisions').order_by('-held_at')[:8])
     if decision_meeting_id and (not meetings or meetings[0].pk != decision_meeting_id):
@@ -298,6 +298,7 @@ def office_admin(request, *, decision_payload=None, decision_errors=None, decisi
         'recent_drafts': recent_drafts, 'logs': logs,
         'tasks': tasks, 'done_tasks': done_tasks, 'github_ok': github.available(),
         'pending_findings': pending_findings, 'recent_findings': recent_findings,
+        'analysis_reports': list(LogAnalysisReport.objects.filter(pk__in=(6, 24, 72, 168)).order_by('-hours')),
         'crew_pending': crew_pending,
         'agents': AGENTS, 'topic_label': TOPIC_LABEL, 'job_log': job_log,
         'manual_jobs_available': (os.environ.get('CLAUDE_BACKEND', 'api').lower() == 'cli'

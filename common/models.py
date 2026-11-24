@@ -306,6 +306,15 @@ class BlockedIP(models.Model):
         return f"{self.ip_address} ({self.reason})"
 
 
+class LogAnalysisReport(models.Model):
+    """이메일 로그 리포트에서 기간별로 가장 최근에 생성한 분석."""
+
+    hours = models.PositiveIntegerField(primary_key=True)
+    period_end = models.DateTimeField()
+    metrics = models.JSONField(default=dict)
+    analysis = models.JSONField(default=dict)
+
+
 class LogFinding(models.Model):
     """AI 로그 분석관(send_log_report/대시보드)이 도출한 지적사항.
 
