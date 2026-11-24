@@ -51,3 +51,10 @@ logs/office_live.*
 
 # 로그인 실패 횟수 파일 캐시(config/settings/base.py CACHES throttle)
 /cache/
+
+# 세션 작업 산출물(스크린샷·로그·임시 스크립트) — 저장소에 넣지 않아요
+/output/
+/scratchpad/
+/tmp/
+/.agents/
+/.codex-attachments/
