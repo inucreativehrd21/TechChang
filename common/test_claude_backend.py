@@ -135,6 +135,15 @@ class CliToolsTests(SimpleTestCase):
         self.assertEqual(cmd[cmd.index('--tools') + 1], 'WebSearch,WebFetch')
         i = cmd.index('--allowedTools')
         self.assertEqual(cmd[i + 1:i + 3], ['WebSearch', 'WebFetch'])
+        # WebFetch 를 열면 내부·메타데이터 주소는 거부 규칙으로 막는다(2026-11-24 운영 확인)
+        j = cmd.index('--disallowedTools')
+        self.assertIn('WebFetch(domain:169.254.169.254)', cmd[j + 1:])
+        self.assertIn('WebFetch(domain:127.0.0.1)', cmd[j + 1:])
+
+    def test_search_only_has_no_fetch_deny_rules(self):
+        with cli_env(), mock.patch('common.services.claude.subprocess.run', return_value=cli_result()) as run:
+            claude.ask('q', tools=('WebSearch',))
+        self.assertNotIn('--disallowedTools', run.call_args.args[0])
 
     def test_unsafe_tools_are_never_enabled(self):
         # 에이전트에게 파일 수정·셸 실행은 열지 않는다

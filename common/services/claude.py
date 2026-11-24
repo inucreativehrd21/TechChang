@@ -323,6 +323,12 @@ CLI_TIMEOUT = int(os.environ.get('CLAUDE_CLI_TIMEOUT', '1200'))
 _SYSTEM_ARG_LIMIT = 100_000
 # 에이전트에게 열어 줄 수 있는 도구는 읽기 전용 웹 도구뿐이다 — 파일 수정·셸 실행은 열지 않는다
 CLI_SAFE_TOOLS = ('WebSearch', 'WebFetch')
+# WebFetch 는 서버에서 직접 접속하고 사설 주소를 막지 않는다(2026-11-24 운영 확인: 127.0.0.1 로 TLS 접속 도달).
+# 지금은 http→https 자동 전환 덕에 평문 HTTP 인 메타데이터(IMDSv1)·내부 포트를 못 읽지만, 그건 CLI 동작이라
+# 내부 주소를 거부 규칙으로도 막는다(운영 확인: 거부 규칙이면 접속 자체가 없음).
+# shortcut: 호스트 이름 규칙이라 내부 IP 로 풀리는 외부 도메인은 못 막는다 — 근본 대책은 OCI IMDSv1 끄기.
+CLI_DENY_FETCH_HOSTS = ('localhost', '127.0.0.1', '0.0.0.0', '169.254.169.254', '169.254.0.2',
+                        'metadata.google.internal', 'metadata')
 
 
 class CliUnavailable(ProviderUnavailable):
@@ -356,6 +362,8 @@ def _cli_ask(prompt: str, *, system: str, model: ClaudeModel | str,
     allowed = [t for t in tools if t in CLI_SAFE_TOOLS]
     if allowed:
         cmd += ['--allowedTools', *allowed]
+    if 'WebFetch' in allowed:
+        cmd += ['--disallowedTools', *(f'WebFetch(domain:{h})' for h in CLI_DENY_FETCH_HOSTS)]
     if system:
         cmd += ['--system-prompt', system]
 

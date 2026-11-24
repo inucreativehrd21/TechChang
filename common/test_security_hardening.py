@@ -163,3 +163,94 @@ class CspTemplateRuleTests(TestCase):
         for ua in (UA, 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) Mobile/15E148'):
             response = self.client.get('/', HTTP_USER_AGENT=ua)
             self.assertContains(response, 'js/csp-actions.js')
+
+
+class SecondAuditFixTests(TestCase):
+    """2026-11-24 2차 점검(cloudflare security-audit) 수정 회귀 검사."""
+
+    def setUp(self):
+        import time
+        cache.clear()
+        caches['throttle'].clear()
+        self.root = User.objects.create_superuser('root', 'root@example.test', 'root-pass-1234')
+        self.helper = User.objects.create_user('helper', password='helper-pass-1234', is_staff=True)
+        for u in (self.root, self.helper):
+            Profile.objects.update_or_create(user=u, defaults={'is_email_verified': True})
+        self.time = time
+
+    def admin_client(self, user):
+        from django.test import Client
+        c = Client()
+        c.force_login(user)
+        s = c.session
+        s['admin_otp_until'] = self.time.time() + 1800
+        s['admin_otp_ip'] = '127.0.0.1'
+        s.save()
+        return c
+
+    def test_staff_cannot_change_superuser_password_email_or_rank(self):
+        c = self.admin_client(self.helper)
+        url = reverse('common:admin_user_detail', args=[self.root.id])
+        r = c.post(url, {'action': 'password', 'new_password': 'taken-over-99', 'new_password_confirm': 'taken-over-99'},
+                   HTTP_USER_AGENT=UA)
+        self.assertEqual(r.status_code, 403)
+        r = c.post(url, {'action': 'profile', 'email': 'evil@example.test', 'nickname': 'x'}, HTTP_USER_AGENT=UA)
+        self.assertEqual(r.status_code, 403)
+        r = c.post(reverse('common:admin_change_rank', args=[self.root.id]), {'rank': 'member'}, HTTP_USER_AGENT=UA)
+        self.assertEqual(r.status_code, 403)
+        self.root.refresh_from_db()
+        self.assertTrue(self.root.check_password('root-pass-1234'))
+        self.assertEqual(self.root.email, 'root@example.test')
+        self.assertContains(c.get(url, HTTP_USER_AGENT=UA), '최고 관리자만 바꿀 수 있어요')
+
+    def test_staff_still_manages_members_and_superuser_manages_everyone(self):
+        member('plain', email='plain@example.test')
+        plain = User.objects.get(username='plain')
+        r = self.admin_client(self.helper).post(reverse('common:admin_user_detail', args=[plain.id]),
+                                                {'action': 'password', 'new_password': 'reset-by-staff-1',
+                                                 'new_password_confirm': 'reset-by-staff-1'}, HTTP_USER_AGENT=UA)
+        self.assertEqual(r.status_code, 302)
+        plain.refresh_from_db()
+        self.assertTrue(plain.check_password('reset-by-staff-1'))
+        other_root = User.objects.create_superuser('root2', 'root2@example.test', 'root2-pass-1234')
+        r = self.admin_client(self.root).post(reverse('common:admin_user_detail', args=[other_root.id]),
+                                              {'action': 'password', 'new_password': 'by-superuser-1',
+                                               'new_password_confirm': 'by-superuser-1'}, HTTP_USER_AGENT=UA)
+        self.assertEqual(r.status_code, 302)
+
+    def test_answer_delete_rejects_get(self):
+        from django.test import Client
+        from django.utils import timezone
+        from community.models import Answer, Category, Question
+        q = Question.objects.create(author=self.helper, subject='q', content='c', category=Category.objects.create(name='x'),
+                                    create_date=timezone.now())
+        a = Answer.objects.create(author=self.helper, question=q, content='답변', create_date=timezone.now())
+        browser = Client(enforce_csrf_checks=True)
+        browser.force_login(self.helper)
+        r = browser.get(reverse('community:answer_delete', args=[a.id]), HTTP_USER_AGENT=UA)
+        self.assertEqual(r.status_code, 405)
+        r = browser.post(reverse('community:answer_delete', args=[a.id]), HTTP_USER_AGENT=UA)   # 토큰 없는 POST
+        self.assertEqual(r.status_code, 403)
+        a.refresh_from_db()
+        self.assertFalse(a.is_deleted)
+
+    def test_concurrent_purchase_cannot_spend_the_same_balance_twice(self):
+        from unittest import mock
+        from django.core.files.base import ContentFile
+        from common.models import Emoticon, UserEmoticon
+        Profile.objects.filter(user=self.helper).update(points=100)
+        emo = Emoticon(name='B', price=100, is_available=True)
+        emo.image.save('csp-test-b.gif', ContentFile(b'GIF89a\x01\x00\x01\x00\x00\x00\x00;'), save=True)
+        self.addCleanup(emo.image.delete, save=False)
+        real = Profile.objects.get_or_create
+
+        def other_purchase_lands_first(*a, **kw):
+            # 잔액 확인 전에 다른 구매(이모티콘 A)의 차감이 먼저 끝난 상황
+            out = real(*a, **kw)
+            Profile.objects.filter(user=self.helper).update(points=0)
+            return out
+        c = self.admin_client(self.helper)
+        with mock.patch.object(Profile.objects, 'get_or_create', side_effect=other_purchase_lands_first):
+            c.post(reverse('common:purchase_emoticon', args=[emo.id]), HTTP_USER_AGENT=UA)
+        self.assertFalse(UserEmoticon.objects.filter(user=self.helper, emoticon=emo).exists())
+        self.assertEqual(Profile.objects.get(user=self.helper).points, 0)

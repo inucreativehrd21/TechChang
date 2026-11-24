@@ -1109,11 +1109,19 @@ def admin_user_list(request):
     return render(request, 'common/admin_user_list.html', context)
 
 
+def _outranked(request, user):
+    """staff 는 최고 관리자(superuser) 계정을 바꿀 수 없어요.
+    2026-11-24 2차 점검: staff 가 superuser 비밀번호·이메일을 바꿔 최고 관리자 권한(OTP 메일 포함)을 가질 수 있었어요."""
+    return user.is_superuser and not request.user.is_superuser
+
+
 @admin_required
 @require_POST
 def admin_change_rank(request, user_id):
     """사용자 등급 변경"""
     user = get_object_or_404(User, id=user_id)
+    if _outranked(request, user):
+        return JsonResponse({'success': False, 'message': '최고 관리자 계정은 최고 관리자만 바꿀 수 있어요.'}, status=403)
     new_rank = request.POST.get('rank')
 
     if new_rank not in dict(Profile.RANK_CHOICES).keys():
@@ -1167,7 +1175,11 @@ def admin_user_detail(request, user_id):
     user = get_object_or_404(User, id=user_id)
     profile, created = Profile.objects.get_or_create(user=user)
 
-    if request.method == 'POST':
+    blocked = request.method == 'POST' and _outranked(request, user)
+    if blocked:
+        messages.error(request, '최고 관리자 계정은 최고 관리자만 바꿀 수 있어요.')
+
+    if request.method == 'POST' and not blocked:
         # 비밀번호 재설정 (선택적)
         pwd1 = request.POST.get('new_password', '').strip()
         pwd2 = request.POST.get('new_password_confirm', '').strip()
@@ -1226,12 +1238,13 @@ def admin_user_detail(request, user_id):
         'target_user': user,
         'profile': profile,
         'rank_choices': Profile.RANK_CHOICES,
+        'can_edit': not _outranked(request, user),
         'question_count': question_count,
         'answer_count': answer_count,
         'comment_count': comment_count,
     }
 
-    return render(request, 'common/admin_user_detail.html', context)
+    return render(request, 'common/admin_user_detail.html', context, status=403 if blocked else 200)
 
 
 @login_required
@@ -1322,22 +1335,24 @@ def purchase_emoticon(request, emoticon_id):
     emoticon = get_object_or_404(Emoticon, id=emoticon_id, is_available=True)
     user = request.user
 
-    # 프로필 확인 및 생성
-    profile, _ = Profile.objects.get_or_create(user=user)
+    Profile.objects.get_or_create(user=user)
 
-    # 이미 구매했는지 확인
-    if UserEmoticon.objects.filter(user=user, emoticon=emoticon).exists():
-        messages.warning(request, '이미 구매한 이모티콘입니다!')
-        return redirect('common:emoticon_shop')
-
-    # 포인트가 충분한지 확인
-    if profile.points < emoticon.price:
-        messages.error(request, f'포인트가 부족합니다! (필요: {emoticon.price}P, 보유: {profile.points}P)')
-        return redirect('common:emoticon_shop')
-
-    # 구매 처리
+    # 잔액 확인·차감·구매 기록을 한 잠금 안에서 — 2026-11-24 2차 점검: 확인이 잠금 밖이라 동시 구매 두 건이
+    # 같은 잔액으로 통과했고, deduct_points 는 모자란 만큼을 0 으로 깎고 넘어가 공짜 구매가 됐다
     with transaction.atomic():
-        # 포인트 차감 - 유틸리티 함수 사용
+        profile = Profile.objects.select_for_update().get(user=user)
+
+        # 이미 구매했는지 확인
+        if UserEmoticon.objects.filter(user=user, emoticon=emoticon).exists():
+            messages.warning(request, '이미 구매한 이모티콘입니다!')
+            return redirect('common:emoticon_shop')
+
+        # 포인트가 충분한지 확인
+        if profile.points < emoticon.price:
+            messages.error(request, f'포인트가 부족합니다! (필요: {emoticon.price}P, 보유: {profile.points}P)')
+            return redirect('common:emoticon_shop')
+
+        # 포인트 차감 - 유틸리티 함수 사용(잠금 안이라 잔액이 확인한 값 그대로예요)
         deduct_points(
             user=user,
             amount=emoticon.price,

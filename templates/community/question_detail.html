@@ -814,11 +814,12 @@
                            style="color: var(--accent-blue); font-size: 0.875rem; text-decoration: none;">
                             수정
                         </a>
-                        <a href="{% url 'community:answer_delete' answer.id %}"
-                           style="color: #ef4444; font-size: 0.875rem; text-decoration: none;"
-                           data-confirm="삭제하시겠습니까?">
-                            삭제
-                        </a>
+                        {# 삭제는 CSRF 토큰이 든 POST 로만(2026-11-24 2차 점검: GET 링크라 외부 사이트가 지울 수 있었음) #}
+                        <form method="post" action="{% url 'community:answer_delete' answer.id %}" style="display: inline;"
+                              data-confirm="삭제하시겠습니까?">
+                            {% csrf_token %}
+                            <button type="submit" style="color: #ef4444; font-size: 0.875rem; background: none; border: 0; padding: 0; cursor: pointer;">삭제</button>
+                        </form>
                         {% endif %}
                     </div>
                 </div>

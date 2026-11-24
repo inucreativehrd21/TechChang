@@ -44,17 +44,17 @@ class AnswerPointCapTests(TestCase):
         for i in range(6):
             self.answer(f'답변 {i}')
         last = Answer.objects.filter(author=self.user).order_by('-id').first()
-        self.client.get(reverse('community:answer_delete', args=[last.id]), HTTP_USER_AGENT=UA)
+        self.client.post(reverse('community:answer_delete', args=[last.id]), HTTP_USER_AGENT=UA)
         self.assertEqual(self.points(), ANSWER_DAILY_CAP)
         first = Answer.objects.filter(author=self.user).order_by('id').first()
-        self.client.get(reverse('community:answer_delete', args=[first.id]), HTTP_USER_AGENT=UA)
+        self.client.post(reverse('community:answer_delete', args=[first.id]), HTTP_USER_AGENT=UA)
         self.assertEqual(self.points(), ANSWER_DAILY_CAP - ANSWER_POINTS)
 
     def test_delete_and_repost_does_not_reopen_the_quota(self):
         for i in range(5):
             self.answer(f'답변 {i}')
         first = Answer.objects.filter(author=self.user).order_by('id').first()
-        self.client.get(reverse('community:answer_delete', args=[first.id]), HTTP_USER_AGENT=UA)
+        self.client.post(reverse('community:answer_delete', args=[first.id]), HTTP_USER_AGENT=UA)
         self.answer('다시 쓴 답변')
         self.assertEqual(self.points(), ANSWER_DAILY_CAP - ANSWER_POINTS)
 
@@ -67,5 +67,5 @@ class AnswerPointCapTests(TestCase):
         Profile.objects.filter(user=self.user).update(points=100)
         self.answer('오늘 첫 답변')
         self.assertEqual(self.points(), 120)
-        self.client.get(reverse('community:answer_delete', args=[old.id]), HTTP_USER_AGENT=UA)
+        self.client.post(reverse('community:answer_delete', args=[old.id]), HTTP_USER_AGENT=UA)
         self.assertEqual(self.points(), 100)
