@@ -8,7 +8,7 @@ from unittest import mock
 
 from django.contrib.messages import get_messages
 from django.core.cache import cache
-from django.test import Client, TestCase, override_settings
+from django.test import Client, TestCase, override_settings, tag
 from django.utils import timezone
 
 from . import rookie as R
@@ -22,6 +22,7 @@ from .models import LiteCareer, RookiePlayer
 from .test_rookie_lite import member, PC, MOBILE
 
 
+@tag('slow')  # 커리어 전체를 HTTP로 끝까지 진행해 37초(전체의 약 1/3) — 평소엔 --exclude-tag slow, 배포 전·CI 는 포함
 class CareerHttpFlowTests(TestCase):
     def post_form(self, client, url, data):
         response = client.post(url, data, follow=True,
@@ -122,6 +123,7 @@ class CareerHttpFlowTests(TestCase):
         self.run_life('pitcher', 'SP', PC, False, 20261072, 'us', mode='extreme')
 
 
+@tag('slow')  # 커리어 전체를 HTTP로 끝까지 진행해 37초(전체의 약 1/3) — 평소엔 --exclude-tag slow, 배포 전·CI 는 포함
 class FullCareerHttpFlowTests(TestCase):
     post_form = CareerHttpFlowTests.post_form
 

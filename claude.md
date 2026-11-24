@@ -52,7 +52,11 @@ DJANGO_SETTINGS_MODULE=config.settings.prod ~/venvs/mysite/bin/python3 manage.py
 ```bash
 python manage.py check
 sudo systemctl status mysite nginx
+python scripts/test_groups.py            # 작업 중: 바뀐 파일 기준 묶음 + 보안 묶음 (느린 테스트 제외)
+python scripts/test_groups.py all --slow # 배포 전: 전체 (= manage.py test, CI 와 같음)
 ```
+- 묶음: security(common·보안) · community · lab(office) · samguk · rookie. `@tag('slow')`는 커리어 전체 진행 테스트.
+- 테스트 실행은 직렬이에요. 로컬 Windows는 `--parallel`이 깨지고(ModuleSkipped 피클 오류), 테스트가 병렬 격리를 전제로 쓰이지 않았어요.
 
 ## 핵심 규칙
 

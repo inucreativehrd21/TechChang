@@ -83,9 +83,11 @@ def sitemap_page(request):
 
 
 def ensure_default_categories():
-    """필수 카테고리가 없으면 생성"""
+    """필수 카테고리가 없으면 생성 — 홈 요청마다 불리므로 있는지는 쿼리 한 번으로 확인한다."""
+    existing = set(Category.objects.filter(name__in=DEFAULT_CATEGORIES).values_list('name', flat=True))
     for name in DEFAULT_CATEGORIES:
-        Category.objects.get_or_create(name=name, defaults={'description': name})
+        if name not in existing:
+            Category.objects.get_or_create(name=name, defaults={'description': name})
 
 # 연구실 칼럼 발행 일정 (office_publish cron: 화 HRD / 목 데이터분석 / 토 프로그래밍, 10:00)
 LAB_SLOTS = [(1, 'hrd', 'HRD'), (3, 'data', '데이터분석'), (5, 'coding', '프로그래밍')]
@@ -227,23 +229,17 @@ def index(request):
     if sort not in ('recent', 'recommend', 'popular'):
         sort = 'recent'
 
-    # 기본 쿼리셋 - select_related로 성능 최적화 (삭제되지 않은 질문만)
-    # annotate로 voter_count, answer_count 미리 계산 (N+1 쿼리 방지)
-    # distinct=True로 Cartesian product에 의한 중복 카운트 방지
     # series__isnull=True: 연재 시리즈 회차는 게시글 목록에서 제외 (별도 [시리즈] 탭에서 노출)
+    # 홈 카드(_flow_post)는 추천인·답변 수를 그리지 않는다 — 추천순 정렬에 필요한 추천 수만 센다.
+    # (추천인 전체 prefetch·답변 JOIN 집계는 카드 12장에 쓰이지 않으면서 목록·페이지 개수 쿼리를 무겁게 했다)
     visible = visible_questions(request.user)
 
-    question_list = visible\
-        .select_related('author', 'category')\
-        .prefetch_related('voter')\
-        .annotate(
-            voter_count=Count('voter', distinct=True),
-            answer_count=Count('answer', filter=Q(answer__is_deleted=False), distinct=True)
-        )
+    question_list = visible.select_related('author', 'category')
 
     # 정렬 처리
     if sort == 'recommend':
-        question_list = question_list.order_by('-voter_count', '-create_date')
+        question_list = question_list.annotate(voter_count=Count('voter', distinct=True))\
+            .order_by('-voter_count', '-create_date')
     elif sort == 'popular':
         question_list = question_list.order_by('-view_count', '-create_date')
     else:  # recent
@@ -274,14 +270,6 @@ def index(request):
     except (EmptyPage, PageNotAnInteger):
         page_obj = paginator.get_page(1)
     
-    # 카테고리 목록 및 각 카테고리별 글 개수 가져오기 (단일 쿼리로 최적화)
-    categories, category_counts, total_count = category_counts_for(visible, request.user)
-
-    # 인기 게시글 TOP 5 (조회수 기준, 필터/검색과 무관하게 항상 전체 기준)
-    popular_posts = visible\
-        .select_related('author', 'category')\
-        .order_by('-view_count', '-create_date')[:5]
-
     # 홈의 첫 추천은 공개 칼럼으로 골라요. 운영자 픽을 우선하고 최신 글로 채워요.
     columns = readable_questions(request.user).filter(
         author__username=Question.BOT_USERNAME, is_locked=False,
@@ -291,12 +279,6 @@ def index(request):
     from datetime import timedelta
     recent_popular = list(columns.filter(create_date__gte=timezone.now() - timedelta(days=30))
                           .order_by('-view_count', '-create_date')[:5])
-
-    # 히어로 라이브 패널용 최신 글 (문의글 제목은 새 노출면에 내보내지 않음)
-    recent_posts = Question.objects.filter(is_deleted=False, series__isnull=True)\
-        .exclude(category__name='문의')\
-        .select_related('category')\
-        .order_by('-create_date')[:3]
 
     live = cache.get_or_set('home:live:v4', _home_live_data, 300)
 
@@ -309,9 +291,6 @@ def index(request):
     from community import site_stats
     launch_days = site_stats.launch_days()
 
-    # 총 회원 수
-    total_users = User.objects.count()
-
     from ..rookie_modes import public_enabled
     context = {
         'question_list': page_obj,
@@ -320,13 +299,8 @@ def index(request):
         'kw': kw,
         'category': category_name,
         'sort': sort,
-        'categories': categories,
-        'category_counts': category_counts,
-        'total_count': total_count,
-        'popular_posts': popular_posts,
         'start_posts': start_posts,
         'recent_popular': recent_popular,
-        'recent_posts': recent_posts,
         'picks': _pick_scores(),       # {question_id: 점수} — 편집 심사 85점 이상 칼럼에 '추천' 표시
         'lab': live['lab'],
         'next_slot': _next_column_slot(live['lab']['briefs']) if live['lab'] else None,
@@ -335,7 +309,6 @@ def index(request):
         'ball_crew': BALL_CREW,
         'page_qs': page_qs,
         'launch_days': launch_days,
-        'total_users': total_users,
     }
     template = 'community/mobile/question_list.html' if getattr(request, 'is_mobile', False) else 'community/question_list.html'
     # 방문 집계 미들웨어가 이번 방문을 포함한 통계를 렌더링 전에 채워요.
@@ -345,8 +318,8 @@ def detail(request, question_id):
     # 질문 객체 조회 (삭제되지 않은 것만)
     question = get_object_or_404(
         Question.objects.filter(is_deleted=False)
-                        .select_related('author', 'category')
-                        .prefetch_related('voter', 'comment_set__author'),
+                        .select_related('author__profile', 'category')
+                        .prefetch_related('voter', 'comment_set__author__profile'),
         pk=question_id
     )
 
@@ -381,10 +354,10 @@ def detail(request, question_id):
     # 답변 정렬 방식
     sort = request.GET.get('sort', 'recent')
 
-    # 답변 쿼리셋 최적화
+    # 답변 쿼리셋 최적화 — 표시명(display_name)이 author.profile 을 읽으므로 함께 가져온다(작성자마다 쿼리 1회 방지)
     answer_qs = question.answer_set.filter(is_deleted=False) \
-                     .select_related('author')           \
-                     .prefetch_related('voter', 'comment_set__author')
+                     .select_related('author__profile')  \
+                     .prefetch_related('voter', 'comment_set__author__profile')
 
     # 정렬 (오래된 댓글이 위, 최신 댓글이 아래)
     if sort == 'recommend':
@@ -425,6 +398,7 @@ def detail(request, question_id):
     context = {
         'question': question,
         'answer_list': answer_list,  # 템플릿에서 for answer in answer_list
+        'answer_total': question.answer_set.count(),  # 템플릿 세 곳이 같은 값을 써서 한 번만 센다(삭제분 포함, 기존 표시와 동일)
         'sort': sort,
         'series_nav': series_nav,
         'premium_score': premium_score,
@@ -447,7 +421,7 @@ def recent_answers(request):
     # select_related로 쿼리 최적화
     answer_list = Answer.objects.filter(
         is_deleted=False, question__in=readable_questions(request.user)
-    ).select_related('author', 'question', 'question__category').order_by('-create_date')
+    ).select_related('author__profile', 'question', 'question__category').order_by('-create_date')
     
     paginator = Paginator(answer_list, 10)
     try:
@@ -471,7 +445,7 @@ def recent_comments(request):
         Q(question__in=readable)
         | Q(answer__question__in=readable, answer__is_deleted=False)
     ).select_related(
-        'author', 'question', 'answer__question'
+        'author__profile', 'question', 'answer__question'
     ).order_by('-create_date')
     
     paginator = Paginator(comment_list, 10)
@@ -611,12 +585,13 @@ def games_index(request):
         }
 
     # 야구선수 키우기 — 정식 판·라이트 판을 한 묶음으로
-    ball = {
-        'players': rookies.count(),
-        'pros': rookies.filter(league__in=PRO_LEAGUES).count(),
-        'retired': lites.filter(retired_at__isnull=False).count(),
-        'running': lites.filter(retired_at__isnull=True).count(),
-    }
+    # 같은 표를 조건만 바꿔 여러 번 세지 않고, 표마다 한 번의 집계로 나눠 센다.
+    r = rookies.aggregate(players=Count('pk'), pros=Count('pk', filter=Q(league__in=PRO_LEAGUES)))
+    lt = lites.aggregate(retired=Count('pk', filter=Q(retired_at__isnull=False)),
+                         running=Count('pk', filter=Q(retired_at__isnull=True)))
+    ball = {**r, **lt}
+    tally = {key: qs.aggregate(total=Count('pk'), active=Count('pk', filter=Q(status='playing')))
+             for key, qs in (('bb', bb), ('g2', g2), ('ms', ms))}
 
     # 퍼즐 게임
     games_info = [
@@ -627,8 +602,8 @@ def games_index(request):
             'url': 'community:baseball_start',
             'icon': '⚾',
             'color': 'warning',
-            'total_games': bb.count(),
-            'active_games': bb.filter(status='playing').count(),
+            'total_games': tally['bb']['total'],
+            'active_games': tally['bb']['active'],
             'features': ['싱글 플레이', '논리 퍼즐', '추리 게임'],
         },
         {
@@ -638,8 +613,8 @@ def games_index(request):
             'url': 'community:game2048_start',
             'icon': '🎮',
             'color': 'info',
-            'total_games': g2.count(),
-            'active_games': g2.filter(status='playing').count(),
+            'total_games': tally['g2']['total'],
+            'active_games': tally['g2']['active'],
             'features': ['퍼즐', '싱글 플레이', '키보드 조작'],
         },
         {
@@ -649,15 +624,15 @@ def games_index(request):
             'url': 'community:minesweeper_start',
             'icon': '💣',
             'color': 'danger',
-            'total_games': ms.count(),
-            'active_games': ms.filter(status='playing').count(),
+            'total_games': tally['ms']['total'],
+            'active_games': tally['ms']['active'],
             'features': ['논리 퍼즐', '싱글 플레이', '3가지 난이도'],
         },
     ]
 
     # 최근 활동 통계
     recent_stats = {
-        'total_games_played': bb.count() + g2.count() + ms.count(),
+        'total_games_played': sum(t['total'] for t in tally.values()),
         'active_players': request.user.is_authenticated,
     }
 

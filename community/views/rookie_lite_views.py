@@ -234,10 +234,11 @@ def lite_home(request):
         name = ''
         if request.user.is_authenticated:
             name = (getattr(getattr(request.user, 'profile', None), 'nickname', '') or request.user.username)[:12]
+        wait = X.quit_wait(mine)
         ctx.update(mode='create', last=_identity(last) if last else None,
                    last_line=X.career_line(last) if last else None,
-                   mine=list(mine.filter(retired_at__isnull=False)[:10]), default_name=name, quit_wait=X.quit_wait(mine),
-                   quit_wait_text=X.wait_text(X.quit_wait(mine)),
+                   mine=list(mine.filter(retired_at__isnull=False)[:10]), default_name=name, quit_wait=wait,
+                   quit_wait_text=X.wait_text(wait),
                    hall=X.hall('kbo', limit=5, mode=_mode(request)), school_groups=_school_groups())
         return render(request, 'community/rookie_lite.html', ctx)
     pend = c.pending or {}

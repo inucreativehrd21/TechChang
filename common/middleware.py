@@ -341,6 +341,13 @@ class RequestLoggingMiddleware:
         return False
 
 
+def _has_social_identity(request, user):
+    """이메일 인증·약관 동의 미들웨어가 같은 요청에서 둘 다 묻는다 — 요청당 한 번만 조회한다(요청 객체에만 보관)."""
+    if not hasattr(request, '_tc_has_social_identity'):
+        request._tc_has_social_identity = user.social_identities.exists()
+    return request._tc_has_social_identity
+
+
 class EmailVerificationRequiredMiddleware:
     """소셜 인증 수단이 없는 미인증 사용자에게 이메일 인증을 요구해요.
 
@@ -386,7 +393,7 @@ class EmailVerificationRequiredMiddleware:
         # 아이디 접두사를 인증 근거로 사용하지 않아요.
         if user.is_staff or user.is_superuser:
             return False
-        if user.social_identities.exists():
+        if _has_social_identity(request, user):
             return False
         # 인증 흐름/정적 경로는 통과시켜 무한 리다이렉트 방지
         path = request.path
@@ -431,7 +438,7 @@ class TermsConsentRequiredMiddleware:
         user = getattr(request, 'user', None)
         if not (user and user.is_authenticated) or user.is_staff or user.is_superuser:
             return False
-        if not user.social_identities.exists():
+        if not _has_social_identity(request, user):
             return False
         path = request.path
         if path in self.exempt_paths or path.startswith(self.exempt_prefixes):

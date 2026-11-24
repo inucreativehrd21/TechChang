@@ -101,9 +101,11 @@ TEMPLATES = [
                 'common.context_processors.seo',
             ],
             'loaders': [
-                # 모바일 자동 감지 로더 (mobile/ 서브 경로 우선 시도)
-                'common.mobile_loader.MobileFsLoader',
-                'common.mobile_loader.MobileAppLoader',
+                # 모바일 자동 감지 로더 (mobile/ 서브 경로 우선 시도) — 컴파일 결과는 워커 메모리에 캐시
+                ('common.mobile_loader.MobileCachedLoader', [
+                    'common.mobile_loader.MobileFsLoader',
+                    'common.mobile_loader.MobileAppLoader',
+                ]),
             ],
         },
     },
@@ -353,6 +355,11 @@ CACHES = {
         'OPTIONS': {'MAX_ENTRIES': 20000},
     }),
 }
+
+# 테스트 실행에서만 빠른 해셔를 써요. 기본 PBKDF2(100만 회)가 회원 생성·로그인마다 돌아 전체 테스트 시간의
+# 약 70%를 차지했어요(2026-11-24 실측 364초 → 107초). 운영·cron 의 비밀번호 저장 방식은 그대로예요.
+if 'test' in __import__('sys').argv[1:2]:
+    PASSWORD_HASHERS = ['django.contrib.auth.hashers.MD5PasswordHasher']
 
 # 로깅 설정 (안전한 버전)
 import os

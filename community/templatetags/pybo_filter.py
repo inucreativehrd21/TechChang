@@ -1,5 +1,6 @@
 
 import json
+from functools import lru_cache
 
 import markdown
 import bleach
@@ -37,14 +38,22 @@ def mul(value, arg):
     except (ValueError, TypeError):
         return 0
 
-@register.filter
-def mark(value):
-    """마크다운을 HTML로 변환하고 XSS 공격 방어"""
+@lru_cache(maxsize=64)
+def _render_markdown(value):
     extensions = ["nl2br", "fenced_code", "tables"]
     html = markdown.markdown(value, extensions=extensions)
     # bleach로 위험한 HTML 태그/속성 제거 (XSS 방어)
-    clean_html = bleach.clean(html, tags=ALLOWED_TAGS, attributes=ALLOWED_ATTRS, strip=True)
-    return mark_safe(clean_html)
+    return bleach.clean(html, tags=ALLOWED_TAGS, attributes=ALLOWED_ATTRS, strip=True)
+
+
+@register.filter
+def mark(value):
+    """마크다운을 HTML로 변환하고 XSS 공격 방어.
+
+    긴 칼럼은 변환·정화가 글 상세 응답 시간의 대부분이라, 같은 원문의 결과를 워커 메모리에 둔다.
+    결과는 원문 문자열만으로 정해지므로 원문이 바뀌면 키가 달라져 다시 정화한다(64편, 워커당 수 MB).
+    """
+    return mark_safe(_render_markdown(value))
 
 
 @register.filter

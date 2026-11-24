@@ -612,7 +612,7 @@
                 </div>
                 <div class="meta-item">
                     <i class="fas fa-comment"></i>
-                    <span>댓글 {{ question.answer_set.count }}개</span>
+                    <span>댓글 {{ answer_total }}개</span>
                 </div>
                 <div class="meta-item">
                     {% if user.is_authenticated %}
@@ -760,7 +760,7 @@
         <div class="answers-header">
             <h2 class="section-title" style="margin: 0;">
                 <i class="fas fa-comments"></i>
-                댓글 ({{ question.answer_set.count }})
+                댓글 ({{ answer_total }})
             </h2>
 
             <div class="sort-buttons">
@@ -773,7 +773,7 @@
             </div>
         </div>
 
-        {% if question.answer_set.count > 0 %}
+        {% if answer_total > 0 %}
             {% for answer in answer_list %}
             <div class="comment-item" id="answer_{{ answer.id }}">
                 <div class="comment-header">
