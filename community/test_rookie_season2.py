@@ -146,7 +146,10 @@ class SeasonTwoTransitionTests(TestCase):
         s1.save()
         self.pro = legacy(player('옛프로', 'batter', 'lg', 'SS'))
         u = member('옛리틀')
-        self.kid = R.create(u, name='옛리틀', role='pitcher', team='lg', region='서울')
+        # 입단 경로(career.path)의 날짜도 시즌 1 이전으로 고정한다. created_at만 backdate하면
+        # 현재 날짜가 시즌 2 뒤인 경우 plays_on이 미래 입단으로 보고 경기를 건너뛴다.
+        with mock.patch('django.utils.timezone.now', return_value=at(L.EPOCH - timedelta(days=1), 12)):
+            self.kid = R.create(u, name='옛리틀', role='pitcher', team='lg', region='서울')
         backdate(self.kid)
         self.kid.refresh_from_db()
         legacy(self.kid)
