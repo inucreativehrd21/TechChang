@@ -188,7 +188,7 @@
       <button type="submit" class="dr-btn is-primary">검수 승인 · 공개 대기로</button>
     </form>
     <form class="dr-reject" method="post" action="{% url 'office:draft_reject' d.id %}" data-lock>{% csrf_token %}
-      <button type="submit" class="dr-link is-danger" data-confirm="이 원고를 반려할까요?">반려</button>
+      <button type="submit" class="dr-link is-danger" data-confirm="이 원고를 반려하고 공지사항에 반려 안내를 공개할까요?">반려 및 공지 발행</button>
     </form>
     </div>
     {% else %}

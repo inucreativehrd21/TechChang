@@ -10,10 +10,12 @@ from datetime import timedelta
 
 from django.conf import settings
 from django.contrib import messages
+from django.db import transaction
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
+from django.utils.html import format_html
 from django.views.decorators.cache import never_cache
 from django.views.decorators.http import require_POST
 
@@ -398,21 +400,56 @@ def draft_publish(request, draft_id):
 @admin_required
 @require_POST
 def draft_reject(request, draft_id):
-    draft = get_object_or_404(ColumnDraft, pk=draft_id, status=ColumnDraft.STATUS_HOLD)
-    from .draft_state import guard
-    busy = guard(draft, '반려')
-    if busy:        # 재작성이 대기 중일 때 반려하면 작업이 반려한 원고를 다시 검수 대기로 되살린다
-        messages.error(request, busy)
-        return redirect('office:admin')
     from .approval import revoke
-    revoke(draft, request.user, '반려')
-    draft.status, draft.decided_by, draft.decided_at = ColumnDraft.STATUS_REJECTED, request.user, timezone.now()
-    draft.save(update_fields=['status', 'decided_by', 'decided_at'])
     from .audit import append
-    append('rejected', actor_id=request.user.pk, draft_id=draft.pk, payload={'subject': draft.subject})
-    WorkLog.objects.create(agent='lead', action='reject', draft=draft, text=f'관리자 반려: {draft.subject}')
-    messages.info(request, f'반려: {draft.subject}')
-    return redirect('office:admin')
+    from .draft_state import guard
+
+    with transaction.atomic():
+        draft = get_object_or_404(ColumnDraft.objects.select_for_update(), pk=draft_id)
+        if draft.status != ColumnDraft.STATUS_HOLD:
+            messages.info(request, '원고의 검수 상태가 바뀌었어요. 현재 상태를 확인해 주세요.')
+            return redirect(reverse('office:admin') + '#drafts')
+        busy = guard(draft, '반려')
+        if busy:
+            messages.error(request, busy)
+            return redirect(reverse('office:admin') + '#drafts')
+
+        revoke(draft, request.user, '반려')
+        draft.status, draft.decided_by, draft.decided_at = ColumnDraft.STATUS_REJECTED, request.user, timezone.now()
+        draft.save(update_fields=['status', 'decided_by', 'decided_at'])
+        notice = _publish_rejection_notice(draft)
+        append('rejected', actor_id=request.user.pk, draft_id=draft.pk,
+               payload={'subject': draft.subject, 'notice_question_id': notice.pk})
+        WorkLog.objects.create(agent='lead', action='reject', draft=draft, text=f'관리자 반려: {draft.subject}')
+
+    notice_url = reverse('community:detail', kwargs={'question_id': notice.pk})
+    messages.success(request, format_html('원고를 반려하고 <a href="{}">반려 공지</a>를 발행했어요.', notice_url))
+    return redirect(reverse('office:admin') + '#drafts')
+
+
+def _publish_rejection_notice(draft):
+    from community.models import Category, Question
+
+    title = ' '.join(draft.subject.split())
+    subject = f'[안내] 칼럼 반려 — {title}' if title else '[안내] 칼럼 반려'
+    limit = Question._meta.get_field('subject').max_length
+    if len(subject) > limit:
+        subject = subject[:limit - 1] + '…'
+
+    # 칼럼 제목에 담긴 마크다운과 HTML 문자를 본문에서 그대로 보여 줘요.
+    plain_title = title.translate(str.maketrans({ch: f'&#{ord(ch)};' for ch in r'\`*_[]<>&~'}))
+    manuscript = f'「{plain_title}」 원고' if title else '이번 칼럼 원고'
+    planned = f'{timezone.localtime(draft.publish_at):%m월 %d일 %H:%M}에 발행할 예정이었던 ' if draft.publish_at else ''
+    content = (
+        '안녕하세요. 테크창 운영팀이에요.\n\n'
+        f'검수 결과, {planned}{manuscript}는 발행 기준을 충족하지 못해 반려했어요. '
+        '칼럼을 기다려 주신 독자 여러분께 감사드려요.\n\n'
+        '테크창은 사실 확인과 편집 심사를 거친 칼럼을 소개하고 있어요. '
+        '앞으로도 믿고 읽을 수 있는 칼럼을 전해 드리기 위해 발행 전에 꼼꼼히 검수할게요.'
+    )
+    category, _ = Category.objects.get_or_create(name='공지사항', defaults={'description': '공지사항'})
+    return Question.objects.create(category=category, author=draft.decided_by, subject=subject,
+                                   content=content, create_date=draft.decided_at)
 
 
 def _picked_counts(job, refs):
@@ -490,7 +527,6 @@ def draft_revise(request, draft_id):
     같은 원고에 요청이 두 번 들어가지 않게 원고 행을 잠근 채 '진행 중 작업'을 확인하고 저장한다 — 더블클릭·새로고침 재전송·
     두 탭에서 동시에 눌러도 수정 지시·감사 기록·작업이 한 번만 만들어진다."""
     get_object_or_404(ColumnDraft, pk=draft_id)
-    from django.db import transaction
     from .draft_state import guard
     from .revision_requests import selection_rows, MAX_SELECTED_FEEDBACK
     note = request.POST.get('note', '').strip()

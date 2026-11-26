@@ -11,11 +11,13 @@ from unittest import mock
 
 from django.contrib.auth.models import User
 from django.contrib.messages import get_messages
+from django.db import IntegrityError
 from django.test import TestCase
 from django.utils import timezone
 
+from community.models import Question
 from office import audit, audit_timeline, draft_state
-from office.models import AuditEvent, AuditHead, ColumnDraft, JobRequest
+from office.models import AuditEvent, AuditHead, ColumnDraft, JobRequest, WorkLog
 
 UA = {'HTTP_USER_AGENT': 'Mozilla/5.0'}
 OTP_OK = mock.patch('common.views._admin_otp_session_ok', return_value=True)
@@ -117,6 +119,7 @@ class ReviewGuardTests(TestCase):
         self.draft.refresh_from_db()
         self.assertEqual(self.draft.status, ColumnDraft.STATUS_HOLD)      # 반려로 바뀌지도, 공개되지도 않았다
         self.assertFalse(AuditEvent.objects.filter(action__in=('rejected', 'approved')).exists())
+        self.assertFalse(Question.objects.exists())
 
     def test_reject_is_refused_while_a_job_runs_or_needs_confirmation(self):
         for status in ('started', 'quarantined'):
@@ -133,13 +136,49 @@ class ReviewGuardTests(TestCase):
         ready.refresh_from_db()
         self.assertEqual(ready.status, ColumnDraft.STATUS_READY)
 
-    def test_reject_without_a_job_works_and_is_audited(self):
+    def test_reject_publishes_one_public_notice_and_records_it_in_the_audit(self):
+        self.draft.subject = '검수할 원고 [참고](https://example.com)'
+        self.draft.publish_at = timezone.localtime().replace(hour=10, minute=0)
+        self.draft.admin_note = '내부 수정 지시'
+        self.draft.save(update_fields=['subject', 'publish_at', 'admin_note'])
+
+        response = self.post('reject')
         self.post('reject')
         self.draft.refresh_from_db()
         self.assertEqual(self.draft.status, ColumnDraft.STATUS_REJECTED)
+        self.assertIsNone(self.draft.question_id)
+        notice = Question.objects.get()
+        self.assertEqual(notice.category.name, '공지사항')
+        self.assertEqual(notice.author, self.owner)
+        self.assertIn(self.draft.subject, notice.subject)
+        self.assertNotIn(self.draft.content, notice.content)
+        self.assertNotIn(self.draft.admin_note, notice.content)
+        self.assertIn('10:00에 발행할 예정이었던', notice.content)
+        self.assertIn(f'href="/{notice.pk}/"', ''.join(self.flashes(response)))
         event = AuditEvent.objects.get(action='rejected', draft_id=self.draft.pk)
         self.assertEqual(event.actor_id, self.owner.pk)
+        self.assertEqual(event.payload['notice_question_id'], notice.pk)
+        self.assertEqual(WorkLog.objects.filter(action='reject', draft=self.draft).count(), 1)
         self.assertTrue(audit.verify())
+
+        self.client.logout()
+        public = self.client.get(f'/{notice.pk}/', **UA)
+        self.assertContains(public, self.draft.subject)
+        self.assertContains(public, '발행 기준을 충족하지 못해 반려했어요')
+        self.assertNotContains(public, '<a href="https://example.com">참고</a>')
+
+    def test_reject_rolls_back_the_notice_and_status_if_a_later_write_fails(self):
+        with mock.patch('office.views.WorkLog.objects.create', side_effect=IntegrityError), self.assertRaises(IntegrityError):
+            self.post('reject')
+
+        self.draft.refresh_from_db()
+        self.assertEqual(self.draft.status, ColumnDraft.STATUS_HOLD)
+        self.assertFalse(Question.objects.exists())
+        self.assertFalse(AuditEvent.objects.filter(action='rejected').exists())
+        self.assertTrue(audit.verify())
+
+        self.post('reject')
+        self.assertEqual(Question.objects.count(), 1)
 
 
 class ReviewPageTests(TestCase):
@@ -156,12 +195,15 @@ class ReviewPageTests(TestCase):
 
     def test_idle_draft_shows_revise_decide_and_reject_with_a_lock_hook(self):
         make_draft()
-        response = self.page()
-        self.assertContains(response, 'class="dr-revise"', count=1)
-        self.assertContains(response, 'class="dr-decide"', count=1)
-        self.assertContains(response, 'class="dr-reject"', count=1)
-        self.assertContains(response, 'data-lock>', count=3)               # 스크립트 속 '[data-lock]' 선택자와 구분한다
-        self.assertNotContains(response, '<footer class="dr-status')          # 작업 중 상태 패널은 없다(숨은 전송 중 패널과 구분)
+        for ua in (UA, {'HTTP_USER_AGENT': 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) Mobile/15E148'}):
+            response = self.page(ua)
+            self.assertContains(response, 'class="dr-revise"', count=1)
+            self.assertContains(response, 'class="dr-decide"', count=1)
+            self.assertContains(response, 'class="dr-reject"', count=1)
+            self.assertContains(response, '반려 및 공지 발행', count=1)
+            self.assertContains(response, 'data-confirm="이 원고를 반려하고 공지사항에 반려 안내를 공개할까요?"')
+            self.assertContains(response, 'data-lock>', count=3)               # 스크립트 속 '[data-lock]' 선택자와 구분한다
+            self.assertNotContains(response, '<footer class="dr-status')          # 작업 중 상태 패널은 없다(숨은 전송 중 패널과 구분)
 
     def test_queued_rewrite_hides_every_action_and_shows_what_was_sent(self):
         d = make_draft(admin_note='사례를 국내 중심으로')

@@ -287,9 +287,6 @@
 {% block admin_script %}
 
 <script nonce="{{ csp_nonce }}">
-  document.querySelectorAll('button[data-confirm]').forEach(function (b) {
-    b.addEventListener('click', function (e) { if (!confirm(b.dataset.confirm)) e.preventDefault(); });
-  });
   // 원고 카드: 요청을 한 번 보내면 응답이 오기 전에도 수정 지시·승인·반려를 숨기고 다시 보낼 수 없게 한다(더블클릭·Enter 연타).
   // submit 이벤트 안에서 바로 숨기면 입력값이 빠질 수 있어 한 박자 뒤에 잠근다. 확인창에서 취소하면 submit 자체가 일어나지 않는다.
   document.querySelectorAll('.dr form[data-lock]').forEach(function (f) {
