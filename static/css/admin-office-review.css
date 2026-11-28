@@ -93,6 +93,15 @@
 .ad-console .oa .dr-hint { margin: -3px 0 0; font-size: .76rem; line-height: 1.5; color: var(--ad-muted); }
 .ad-console .oa .dr-revise textarea { width: 100%; min-height: 104px; padding: 10px 12px; border: 1px solid var(--ad-line); border-radius: 8px; font: inherit; font-size: .88rem; line-height: 1.55; resize: vertical; box-sizing: border-box; background: #fff; }
 .ad-console .oa .dr-decide :is(select, input[type="text"], input:not([type])) { width: 100%; min-height: 40px; padding: 8px 10px; border: 1px solid var(--ad-line); border-radius: 8px; font: inherit; font-size: .86rem; box-sizing: border-box; background: #fff; }
+/* 직접 수정해 발행 — 재작성 두 번 뒤에도 심사 미통과 원고(office.manual_edit). 두 열 아래 전체 폭 */
+.ad-console .oa .dr-manual, .ad-console .oa .dr-manual-hint { grid-column: 1 / -1; margin-top: 16px; }
+.ad-console .oa .dr-manual { padding-top: 14px; border-top: 1px solid var(--ad-line); }
+.ad-console .oa .dr-manual > summary { cursor: pointer; font-size: .86rem; font-weight: 800; }
+.ad-console .oa .dr-manual > summary span { margin-left: 6px; font-size: .76rem; font-weight: 600; color: var(--ad-muted); }
+.ad-console .oa .dr-manual form { display: grid; gap: 7px; margin-top: 12px; }
+.ad-console .oa .dr-manual :is(input[type="text"], textarea) { width: 100%; padding: 8px 10px; border: 1px solid var(--ad-line); border-radius: 8px; font: inherit; font-size: .86rem; box-sizing: border-box; background: #fff; }
+.ad-console .oa .dr-manual textarea { min-height: 420px; font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-size: .8rem; line-height: 1.55; resize: vertical; }
+.ad-console .oa .dr-manual button { justify-self: start; }
 .ad-console .oa .dr-reason { display: grid; gap: 6px; }
 .ad-console .oa .dr-reason label { font-size: .78rem; font-weight: 700; color: var(--ad-muted); }
 @supports selector(:has(*)) {      /* 예외 승인을 고를 때만 사유 칸을 보인다(미지원 브라우저는 항상 보인다) */

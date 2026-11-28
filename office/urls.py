@@ -22,6 +22,7 @@ urlpatterns = [
     path('admin/draft/<int:draft_id>/audit.json', views.audit_export, name='audit_export'),
     path('admin/draft/<int:draft_id>/revise/', views.draft_revise, name='draft_revise'),
     path('admin/draft/<int:draft_id>/reject/', views.draft_reject, name='draft_reject'),
+    path('admin/draft/<int:draft_id>/manual-publish/', views.draft_manual_publish, name='draft_manual_publish'),
     path('admin/task/new/', views.task_create, name='task_create'),
     path('admin/task/<int:task_id>/', views.task_action, name='task_action'),
     path('admin/run/', views.run_job, name='run_job'),

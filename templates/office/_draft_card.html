@@ -191,6 +191,28 @@
       <button type="submit" class="dr-link is-danger" data-confirm="이 원고를 반려하고 공지사항에 반려 안내를 공개할까요?">반려 및 공지 발행</button>
     </form>
     </div>
+    {% if d.manual_open %}
+    <details class="dr-manual" data-manual="{{ d.id }}"{% if d.manual_saved %} open{% endif %}>
+      <summary>직접 수정해 발행 <span>재작성 요청 두 번 뒤에도 심사를 통과하지 못했어요</span></summary>
+      <form method="post" action="{% url 'office:draft_manual_publish' d.id %}" data-lock>{% csrf_token %}
+        <input type="hidden" name="version" value="{{ d.approval_version }}">
+        {% if d.manual_otp %}
+        <p class="dr-hint">위 지적을 참고해 제목과 본문(마크다운)을 직접 고쳐 주세요. 이 판은 팩트체크·편집 심사를 다시 받지 않고 <b>바로 공개</b>돼요. 고치기 전·후 판과 사유는 감사 기록에 남아요.{% if d.manual_saved %} <b>지난번에 고쳐 쓴 내용을 다시 채웠어요.</b>{% endif %}</p>
+        <label class="dr-label" for="manual-subject-{{ d.id }}">제목</label>
+        <input type="text" id="manual-subject-{{ d.id }}" name="subject" value="{% if d.manual_saved %}{{ d.manual_saved.subject }}{% else %}{{ d.subject }}{% endif %}" maxlength="200" required autocomplete="off">
+        <label class="dr-label" for="manual-content-{{ d.id }}">본문 (마크다운)</label>
+        <textarea id="manual-content-{{ d.id }}" name="content" rows="24" required spellcheck="false">{% if d.manual_saved %}{{ d.manual_saved.content }}{% else %}{{ d.content }}{% endif %}</textarea>
+        <div class="dr-reason"><label for="manual-reason-{{ d.id }}">수정 사유 (선택)</label><input type="text" id="manual-reason-{{ d.id }}" name="reason" value="{{ d.manual_saved.reason|default:'' }}" maxlength="1000" autocomplete="off" placeholder="예) 필수 지적 E1·E2를 직접 반영"></div>
+        <button type="submit" class="dr-btn is-primary" data-confirm="직접 수정한 판을 심사 없이 지금 공개할까요?">직접 수정해 지금 공개</button>
+        {% else %}
+        <p class="dr-hint">심사를 건너뛰는 공개라 먼저 관리자 재인증이 필요해요. 재인증하면 이 칸에서 바로 고칠 수 있어요(재인증이 중간에 끊겨도 쓴 내용은 보관돼요).</p>
+        <button type="submit" class="dr-btn">재인증하고 수정하기</button>
+        {% endif %}
+      </form>
+    </details>
+    {% elif d.manual_hint %}
+    <p class="dr-hint dr-manual-hint">직접 수정 발행 — {{ d.manual_hint }}</p>
+    {% endif %}
     {% else %}
     <div class="dr-decision">
     <form class="dr-decide" method="post" action="{% url 'office:draft_publish' d.id %}" data-lock>{% csrf_token %}

@@ -258,6 +258,11 @@ def office_admin(request, *, decision_payload=None, decision_errors=None, decisi
                     d.approval_blocker = ''
                 except ValueError as exc:
                     d.approval_blocker = str(exc)
+                    from .manual_edit import blocker
+                    d.manual_hint = blocker(d)
+                    d.manual_open = not d.manual_hint
+                    d.manual_saved = request.session.get(f'manual_edit_{d.pk}') if d.manual_open else None
+                    d.manual_otp = d.manual_open and _admin_otp_session_ok(request)
     for m in meetings:
         for d in m.decisions.all():
             d.topic_name = TOPIC_LABEL.get(d.topic, '')
@@ -379,6 +384,9 @@ def draft_publish(request, draft_id):
     from .approval import approve_for_release
     get_object_or_404(ColumnDraft, pk=draft_id)
     mode = request.POST.get('mode', 'normal')
+    if mode not in ('normal', 'exception'):     # 직접 수정 발행(manual)은 draft_manual_publish 로만
+        messages.error(request, f'원고 #{draft_id}: 올바른 승인 방식을 선택해 주세요.')
+        return redirect(reverse('office:admin') + '#drafts')
     if mode == 'exception' and not _admin_otp_session_ok(request):
         request.session['admin_otp_next'] = reverse('office:admin') + '#drafts'
         return redirect('common:admin_otp')
@@ -393,6 +401,29 @@ def draft_publish(request, draft_id):
         else:
             messages.success(request, f'원고 #{draft.pk}: 승인을 마치고 공개 대기로 옮겼어요. 지금 공개를 누르면 공개돼요.')
     except ValueError as exc:
+        messages.error(request, f'원고 #{draft_id}: {exc}')
+    return redirect(reverse('office:admin') + '#drafts')
+
+
+@admin_required
+@require_POST
+def draft_manual_publish(request, draft_id):
+    """재작성 두 번 뒤에도 심사를 통과하지 못한 원고 — 운영자가 직접 고친 판을 바로 공개한다(office.manual_edit)."""
+    from .manual_edit import publish
+    get_object_or_404(ColumnDraft, pk=draft_id)
+    key = f'manual_edit_{draft_id}'
+    typed = {k: request.POST.get(k, '') for k in ('subject', 'content', 'reason')}
+    if not _admin_otp_session_ok(request):    # 심사를 건너뛰는 공개라 예외 승인처럼 재인증을 요구한다
+        if typed['content'].strip():          # 재인증 다녀오는 동안 고쳐 쓴 판이 사라지지 않게 보관
+            request.session[key] = typed
+        request.session['admin_otp_next'] = reverse('office:admin') + '#drafts'
+        return redirect('common:admin_otp')
+    try:
+        draft = publish(draft_id, request.user, expected_snapshot=request.POST.get('version'), **typed)
+        request.session.pop(key, None)
+        messages.success(request, f'원고 #{draft.pk}: 직접 수정한 판을 공개했어요.')
+    except ValueError as exc:
+        request.session[key] = typed
         messages.error(request, f'원고 #{draft_id}: {exc}')
     return redirect(reverse('office:admin') + '#drafts')
 

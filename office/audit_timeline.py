@@ -84,6 +84,12 @@ def describe(event, actor):
                    title='예외로 승인했어요' if exception else '검수를 승인했어요', quote=p.get('reason', ''))
         if score is not None:
             out['facts'].append(('승인 당시 심사', f'{score}점'))
+    elif action == 'manual_edited':
+        out.update(tone='warn', label='직접 수정', title='운영자가 본문을 직접 고쳤어요', quote=p.get('reason', ''))
+        if p.get('subject'):
+            out['facts'].append(('고친 제목', p['subject']))
+    elif action == 'manual_approved':
+        out.update(tone='warn', label='직접 수정 승인', title='직접 고친 판을 심사 없이 승인했어요', quote=p.get('reason', ''))
     elif action == 'release_queued':
         out.update(tone='ok', label='공개 대기', title='승인한 원고를 공개 대기로 옮겼어요')
         out['facts'].append(('공개 방식', '예약 공개' if p.get('publish_at') else '지금 공개 버튼으로 수동 공개'))
@@ -130,7 +136,7 @@ def build(draft_id):
             counts['asked'] += 1
         elif event.action == 'approved':
             counts['approved'] += 1
-        elif event.action == 'exception_approved':
+        elif event.action in ('exception_approved', 'manual_approved'):
             counts['exception'] += 1
         elif event.action == 'published' and counts['published'] is None:
             counts['published'] = at

@@ -6,6 +6,9 @@ from .audit import snapshot, fingerprint, append
 
 
 def policy(draft, mode='normal'):
+    if mode == 'manual':     # 운영자 직접 수정판 — 심사·팩트체크 대신 수정 표식만 확인(office.manual_edit)
+        from .manual_edit import check
+        return check(draft)
     from .pipeline import verification_hash
     from .review_protocol import publishable, must_fix_items
     check, qa = draft.check_report or {}, draft.qa_report or {}
@@ -50,18 +53,23 @@ def valid(draft):
         return False
     if not isinstance(draft.qa_report, dict):
         return False
-    try:
-        from .evidence_bundle import validate
-        validate(draft)
-    except ValueError:
-        return False
     approval = draft.qa_report.get('human_approval') or {}
     if not isinstance(approval, dict) or type(approval.get('audit_sequence')) is not int:
         return False
+    if approval.get('mode') == 'manual':
+        from .manual_edit import marker_ok
+        if not marker_ok(draft):
+            return False
+    else:
+        try:
+            from .evidence_bundle import validate
+            validate(draft)
+        except ValueError:
+            return False
     from .security import is_operator
     from .models import AuditEvent
     event = AuditEvent.objects.filter(sequence=approval.get('audit_sequence'), draft_id=draft.pk,
-                                      actor_id=draft.decided_by_id, action__in=['approved', 'exception_approved']).first()
+                                      actor_id=draft.decided_by_id, action__in=['approved', 'exception_approved', 'manual_approved']).first()
     from .audit import event_digest
     from .artifacts import verify_archive
     return (event is not None and event.digest == event_digest(event)
@@ -137,7 +145,8 @@ def approve(draft, user, reason='', mode='normal', expected_snapshot=None):
     artifact = snapshot(draft)
     from .artifacts import archive
     archive(artifact['assets'])
-    event = append('exception_approved' if exception else 'approved', actor_id=user.pk, draft_id=draft.pk,
+    action = 'exception_approved' if exception else 'manual_approved' if mode == 'manual' else 'approved'
+    event = append(action, actor_id=user.pk, draft_id=draft.pk,
                    payload={'reason': reason.strip(), 'mode': mode, 'snapshot': artifact})
     draft.qa_report = {**(draft.qa_report or {}), 'human_approval': {
         'actor': user.pk, 'at': timezone.now().isoformat(), 'reason': reason.strip(),
