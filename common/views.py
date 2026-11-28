@@ -619,6 +619,11 @@ def admin_otp_gate(request):
     """
     import time
     if _admin_otp_session_ok(request):
+        # 마지막 사용 후 30분(2026-11-28): 화면을 열거나 버튼을 누르면 연장한다. 자동 갱신(JSON GET 폴링)은
+        # 사용이 아니라 빼요 — 넣으면 탭만 열어 둬도 인증이 끝나지 않아요.
+        session = getattr(request, 'session', None)
+        if session is not None and not (request.method in ('GET', 'HEAD') and _wants_json(request)):
+            session['admin_otp_until'] = time.time() + ADMIN_OTP_WINDOW_SECONDS
         request.admin_otp_left = max(int(getattr(request, 'session', {}).get('admin_otp_until', 0) - time.time()), 0)
         return None
     otp_url = reverse('common:admin_otp')
@@ -639,6 +644,13 @@ def admin_otp_gate(request):
                              'message': '관리자 인증 시간이 지났어요. 다시 인증해 주세요.'}, status=403)
     messages.warning(request, '관리자 인증 시간이 지나 요청을 처리하지 않았어요. 다시 인증한 뒤 한 번 더 진행해 주세요.')
     return redirect(otp_url)
+
+
+@admin_required
+@require_POST
+def admin_otp_keepalive(request):
+    """한 화면에서 입력·클릭이 이어질 때 화면 스크립트가 보내는 '사용 중' 신호 — 통과하면 admin_otp_gate 가 연장한다."""
+    return JsonResponse({'success': True, 'left': request.admin_otp_left})
 
 
 def admin_otp_required(view_func):
@@ -694,7 +706,7 @@ def admin_otp(request):
             '테크창 관리자 대시보드 접속 인증 코드입니다.\n\n'
             f'인증코드: {code}\n\n'
             f'요청 IP: {ip}\n'
-            f'유효시간: {ADMIN_OTP_CODE_TTL_SECONDS // 60}분 · 인증 후 {ADMIN_OTP_WINDOW_SECONDS // 60}분간 유지\n\n'
+            f'유효시간: {ADMIN_OTP_CODE_TTL_SECONDS // 60}분 · 마지막 사용 후 {ADMIN_OTP_WINDOW_SECONDS // 60}분간 유지\n\n'
             '본인이 요청하지 않았다면 코드를 입력하지 말고 즉시 비밀번호를 변경하세요.'
         )
         try:

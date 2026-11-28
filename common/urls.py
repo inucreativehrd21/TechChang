@@ -37,6 +37,7 @@ urlpatterns = [
 
     # 관리자 기능
     path('admin/otp/', views.admin_otp, name='admin_otp'),
+    path('admin/otp/keepalive/', views.admin_otp_keepalive, name='admin_otp_keepalive'),
     path('admin/dashboard/', views.admin_dashboard, name='admin_dashboard'),
     path('admin/games/', game_admin_views.game_admin, name='admin_games'),
     path('admin/games/preview/', game_admin_views.game_preview, name='admin_game_preview'),

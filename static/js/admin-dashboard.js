@@ -39,6 +39,23 @@
         var otpCheck = function () { if (Date.now() >= otpDeadline) { clearInterval(otpTimer); reauth(); } };
         var otpTimer = setInterval(otpCheck, 5000);
         document.addEventListener('visibilitychange', function () { if (!document.hidden) otpCheck(); });
+        // 마지막 사용 후 30분 — 한 화면에서 입력·클릭·스크롤이 이어지면 몇 분마다 '사용 중' 신호를 보내 서버와
+        // 이 화면의 마감을 함께 늦춘다(긴 글 직접 수정 중에 끊기지 않게). 손대지 않으면 신호도 없다.
+        var active = false, lastPing = Date.now();
+        ['keydown', 'input', 'pointerdown', 'wheel'].forEach(function (type) {
+            document.addEventListener(type, function () { active = true; }, {passive: true, capture: true});
+        });
+        var csrf = token || (document.cookie.match(/(?:^|; )csrftoken=([^;]+)/) || [])[1] || '';
+        setInterval(async function () {
+            if (!active || Date.now() - lastPing < 4 * 60 * 1000 || Date.now() >= otpDeadline) return;
+            active = false; lastPing = Date.now();
+            try {
+                var res = await fetch(root.dataset.otpPing, {method: 'POST', credentials: 'same-origin',
+                    headers: {'X-CSRFToken': csrf, 'X-Requested-With': 'XMLHttpRequest'}});
+                var data = await res.json().catch(function () { return {}; });
+                if (res.ok && data.left) otpDeadline = Date.now() + data.left * 1000;
+            } catch (e) { /* 연결이 끊기면 다음 사용 때 다시 시도 */ }
+        }, 30 * 1000);
     }
     async function post(url, body) {
         var response = await fetch(url, {method: 'POST', headers: {'X-CSRFToken': token, 'X-Requested-With': 'XMLHttpRequest', 'Content-Type': 'application/x-www-form-urlencoded'}, body: body || ''});

@@ -228,3 +228,30 @@ class AdminOTPExpiryTests(TestCase):
     def test_otp_bound_to_another_ip_is_refused(self):
         response = self.client.get(reverse('common:admin_user_list'), REMOTE_ADDR='198.51.100.7')
         self.assertRedirects(response, reverse('common:admin_otp'), fetch_redirect_response=False)
+
+    # 마지막 사용 후 30분(2026-11-28) — 쓰는 동안은 끊기지 않고, 자동 갱신만 도는 탭은 30분 뒤 끝난다.
+    def test_use_slides_the_window(self):
+        page = reverse('common:admin_user_list')
+        self.clock.return_value += 20 * 60
+        self.assertEqual(self.client.get(page).status_code, 200)
+        self.clock.return_value += 20 * 60          # 첫 인증에서 40분 — 고정 30분이면 끝났을 시각
+        self.assertEqual(self.client.get(page).status_code, 200)
+
+    def test_polling_alone_does_not_extend(self):
+        self.clock.return_value += 20 * 60
+        self.assertEqual(self.client.get('/lab/admin/activity.json', HTTP_ACCEPT='application/json').status_code, 200)
+        self.clock.return_value += 11 * 60
+        self.assertRedirects(self.client.get(reverse('common:admin_user_list')), reverse('common:admin_otp'),
+                             fetch_redirect_response=False)
+
+    def test_keepalive_extends_while_working_on_one_screen(self):
+        url = reverse('common:admin_otp_keepalive')
+        self.clock.return_value += 20 * 60
+        response = self.client.post(url, HTTP_X_REQUESTED_WITH='XMLHttpRequest')
+        self.assertEqual(response.json()['left'], ADMIN_OTP_WINDOW_SECONDS)
+        self.clock.return_value += 20 * 60
+        self.assertEqual(self.client.get(reverse('common:admin_user_list')).status_code, 200)
+        self.expire()
+        response = self.client.post(url, HTTP_X_REQUESTED_WITH='XMLHttpRequest')
+        self.assertEqual(response.status_code, 403)
+        self.assertTrue(response.json()['otp_required'])
